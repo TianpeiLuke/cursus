@@ -7,19 +7,18 @@ name = "autopipe"
 version = "1.0.0"
 description = "Automatic SageMaker Pipeline Generation from DAG Specifications"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
-    {name = "Tianpei Xie", email = "tianpei.x.luke@gmail.com"}
+    {name = "Tianpei Xie", email = "unidoctor@gmail.com"}
 ]
 maintainers = [
-    {name = "Tianpei Xie", email = "tianpei.x.luke@gmail.com"}
+    {name = "Tianpei Xie", email = "unidoctor@gmail.com"}
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",

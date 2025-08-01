@@ -194,23 +194,23 @@ pip install autopipe[all]        # Everything included
 
 ## 📖 Documentation
 
-- **[Full Documentation](https://github.com/TianpeiLuke/nlp-pipeline/blob/main/README.md)** - Complete guide and architecture
-- **[API Reference](https://github.com/TianpeiLuke/nlp-pipeline/tree/main/src)** - Detailed API documentation
-- **[Examples](https://github.com/TianpeiLuke/nlp-pipeline/tree/main/pipeline_examples)** - Ready-to-use pipeline blueprints
-- **[Developer Guide](https://github.com/TianpeiLuke/nlp-pipeline/tree/main/slipbox/developer_guide)** - Contributing and extending AutoPipe
+- **[Full Documentation](https://github.com/TianpeiLuke/autopipe/blob/main/README.md)** - Complete guide and architecture
+- **[API Reference](https://github.com/TianpeiLuke/autopipe/tree/main/src)** - Detailed API documentation
+- **[Examples](https://github.com/TianpeiLuke/autopipe/tree/main/pipeline_examples)** - Ready-to-use pipeline blueprints
+- **[Developer Guide](https://github.com/TianpeiLuke/autopipe/tree/main/slipbox/developer_guide)** - Contributing and extending AutoPipe
 
 ## 🤝 Contributing
 
-We welcome contributions! See our [Contributing Guide](https://github.com/TianpeiLuke/nlp-pipeline/blob/main/slipbox/developer_guide/README.md) for details.
+We welcome contributions! See our [Contributing Guide](https://github.com/TianpeiLuke/autopipe/blob/main/slipbox/developer_guide/README.md) for details.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/TianpeiLuke/nlp-pipeline/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/TianpeiLuke/autopipe/blob/main/LICENSE) file for details.
 
 ## 🔗 Links
 
-- **GitHub**: https://github.com/TianpeiLuke/nlp-pipeline
-- **Issues**: https://github.com/TianpeiLuke/nlp-pipeline/issues
+- **GitHub**: https://github.com/TianpeiLuke/autopipe
+- **Issues**: https://github.com/TianpeiLuke/autopipe/issues
 - **PyPI**: https://pypi.org/project/autopipe/
 
 ---
