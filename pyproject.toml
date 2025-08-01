@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sm-dag-compiler"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Automatic SageMaker Pipeline Generation from DAG Specifications"
 readme = "README.md"
 license = "MIT"
@@ -125,6 +125,9 @@ Changelog = "https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/CHANGELOG.
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+version = {attr = "sm_dag_compiler.__version__.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
