@@ -194,24 +194,24 @@ pip install sm-dag-compiler[all]        # Everything included
 
 ## 📖 Documentation
 
-- **[Full Documentation](https://github.com/TianpeiLuke/autopipe/blob/main/README.md)** - Complete guide and architecture
-- **[API Reference](https://github.com/TianpeiLuke/autopipe/tree/main/src)** - Detailed API documentation
-- **[Examples](https://github.com/TianpeiLuke/autopipe/tree/main/pipeline_examples)** - Ready-to-use pipeline blueprints
-- **[Developer Guide](https://github.com/TianpeiLuke/autopipe/tree/main/slipbox/developer_guide)** - Contributing and extending AutoPipe
+- **[Full Documentation](https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/README.md)** - Complete guide and architecture
+- **[API Reference](https://github.com/TianpeiLuke/sm-dag-compiler/tree/main/src)** - Detailed API documentation
+- **[Examples](https://github.com/TianpeiLuke/sm-dag-compiler/tree/main/pipeline_examples)** - Ready-to-use pipeline blueprints
+- **[Developer Guide](https://github.com/TianpeiLuke/sm-dag-compiler/tree/main/slipbox/developer_guide)** - Contributing and extending AutoPipe
 
 ## 🤝 Contributing
 
-We welcome contributions! See our [Contributing Guide](https://github.com/TianpeiLuke/autopipe/blob/main/slipbox/developer_guide/README.md) for details.
+We welcome contributions! See our [Contributing Guide](https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/slipbox/developer_guide/README.md) for details.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/TianpeiLuke/autopipe/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/LICENSE) file for details.
 
 ## 🔗 Links
 
-- **GitHub**: https://github.com/TianpeiLuke/autopipe
-- **Issues**: https://github.com/TianpeiLuke/autopipe/issues
-- **PyPI**: https://pypi.org/project/autopipe/
+- **GitHub**: https://github.com/TianpeiLuke/sm-dag-compiler
+- **Issues**: https://github.com/TianpeiLuke/sm-dag-compiler/issues
+- **PyPI**: https://pypi.org/project/sm-dag-compiler/
 
 ---
 

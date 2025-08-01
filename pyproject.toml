@@ -117,11 +117,11 @@ all = [
 sm-dag-compiler = "sm_dag_compiler.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/TianpeiLuke/autopipe"
-Documentation = "https://github.com/TianpeiLuke/autopipe/blob/main/README.md"
-Repository = "https://github.com/TianpeiLuke/autopipe"
-Issues = "https://github.com/TianpeiLuke/autopipe/issues"
-Changelog = "https://github.com/TianpeiLuke/autopipe/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/TianpeiLuke/sm-dag-compiler"
+Documentation = "https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/README.md"
+Repository = "https://github.com/TianpeiLuke/sm-dag-compiler"
+Issues = "https://github.com/TianpeiLuke/sm-dag-compiler/issues"
+Changelog = "https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

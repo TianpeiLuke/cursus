@@ -184,8 +184,8 @@ pip install sm-dag-compiler
 - ✅ Modern packaging standards (no deprecation warnings)
 
 ## Repository Links
-- **GitHub**: https://github.com/TianpeiLuke/autopipe
-- **Issues**: https://github.com/TianpeiLuke/autopipe/issues
+- **GitHub**: https://github.com/TianpeiLuke/sm-dag-compiler
+- **Issues**: https://github.com/TianpeiLuke/sm-dag-compiler/issues
 - **PyPI**: https://pypi.org/project/sm-dag-compiler/ (when published)
 
 ## Next Steps
