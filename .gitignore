@@ -210,6 +210,10 @@ cython_debug/
 *.code-workspace
 launch.json
 
+# OS-specific files
+.DS_Store
+Thumbs.db
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
