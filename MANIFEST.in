@@ -5,7 +5,7 @@ include LICENSE
 include pyproject.toml
 
 # Include all Python files
-recursive-include src/autopipe *.py
+recursive-include src/sm_dag_compiler *.py
 
 # Exclude development and build files
 exclude .gitignore
