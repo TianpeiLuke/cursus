@@ -1,14 +1,14 @@
-# AutoPipe Package Setup Summary
+# SM-DAG-Compiler Package Setup Summary
 
 ## Overview
-The AutoPipe repository has been successfully configured as a pip-installable package. This document summarizes the setup and provides instructions for building, installing, and publishing the package.
+The SM-DAG-Compiler repository has been successfully configured as a pip-installable package. This document summarizes the setup and provides instructions for building, installing, and publishing the package.
 
 ## Package Structure
 
 ```
-autopipe/
+sm-dag-compiler/
 ├── src/
-│   └── autopipe/
+│   └── sm_dag_compiler/
 │       ├── __init__.py          # Main package initialization
 │       ├── __version__.py       # Version management
 │       ├── api/                 # Public API modules
@@ -37,7 +37,7 @@ autopipe/
   - `dev`: Development tools
   - `docs`: Documentation tools
   - `all`: Everything included
-- **CLI entry point**: `autopipe` command
+- **CLI entry point**: `sm-dag-compiler` command
 - **Development tool configurations** for black, isort, mypy, pytest
 
 ### MANIFEST.in
@@ -48,23 +48,23 @@ autopipe/
 
 ### Core Installation
 ```bash
-pip install autopipe
+pip install sm-dag-compiler
 ```
 Includes basic DAG compilation and SageMaker integration.
 
 ### Framework-Specific
 ```bash
-pip install autopipe[pytorch]    # PyTorch Lightning models
-pip install autopipe[xgboost]    # XGBoost training pipelines  
-pip install autopipe[nlp]        # NLP models and processing
-pip install autopipe[processing] # Advanced data processing
+pip install sm-dag-compiler[pytorch]    # PyTorch Lightning models
+pip install sm-dag-compiler[xgboost]    # XGBoost training pipelines  
+pip install sm-dag-compiler[nlp]        # NLP models and processing
+pip install sm-dag-compiler[processing] # Advanced data processing
 ```
 
 ### Development
 ```bash
-pip install autopipe[dev]        # Development tools
-pip install autopipe[docs]       # Documentation tools
-pip install autopipe[all]        # Everything included
+pip install sm-dag-compiler[dev]        # Development tools
+pip install sm-dag-compiler[docs]       # Documentation tools
+pip install sm-dag-compiler[all]        # Everything included
 ```
 
 ## Building the Package
@@ -77,14 +77,14 @@ pip install build
 ### Build Commands
 ```bash
 # Clean previous builds
-rm -rf dist/ build/ src/autopipe.egg-info/
+rm -rf dist/ build/ src/sm_dag_compiler.egg-info/
 
 # Build both source distribution and wheel
 python -m build
 
 # Results in dist/:
-# - autopipe-1.0.0.tar.gz (source distribution)
-# - autopipe-1.0.0-py3-none-any.whl (wheel)
+# - sm-dag-compiler-1.0.0.tar.gz (source distribution)
+# - sm_dag_compiler-1.0.0-py3-none-any.whl (wheel)
 ```
 
 ## Testing Installation
@@ -92,28 +92,24 @@ python -m build
 ### Local Installation
 ```bash
 # Install from wheel
-pip install dist/autopipe-1.0.0-py3-none-any.whl
+pip install dist/sm_dag_compiler-1.0.0-py3-none-any.whl
 
 # Test CLI
-autopipe --help
-autopipe --version
+sm-dag-compiler --help
+sm-dag-compiler --version
 ```
 
 ### Available CLI Commands
-- `autopipe compile` - Compile a DAG file to SageMaker pipeline
-- `autopipe init` - Generate an example DAG project from a template
-- `autopipe list-steps` - List all available step types
-- `autopipe preview` - Preview compilation results
-- `autopipe validate` - Validate a DAG file
+- `sm-dag-compiler compile` - Compile a DAG file to SageMaker pipeline
+- `sm-dag-compiler init` - Generate an example DAG project from a template
+- `sm-dag-compiler list-steps` - List all available step types
+- `sm-dag-compiler preview` - Preview compilation results
+- `sm-dag-compiler validate` - Validate a DAG file
 
 ## Publishing to PyPI
 
-### Current Status: ⚠️ Upload Issue Resolved
-The package builds successfully but encountered a metadata validation error during PyPI upload. This has been resolved by fixing the license field format in pyproject.toml.
-
-**Issue**: `ERROR InvalidDistribution: Invalid distribution metadata: unrecognized or malformed field 'license-expression'; unrecognized or malformed field 'license-file'`
-
-**Resolution**: Updated `pyproject.toml` to use the correct license format: `license = "MIT"` instead of `license = {text = "MIT"}`
+### Current Status: ✅ Ready for Upload
+The package builds successfully and all metadata validation issues have been resolved.
 
 ### Test PyPI (Recommended First)
 ```bash
@@ -124,7 +120,7 @@ pip install twine
 twine upload --repository testpypi dist/*
 
 # Test installation from Test PyPI
-pip install --index-url https://test.pypi.org/simple/ autopipe
+pip install --index-url https://test.pypi.org/simple/ sm-dag-compiler
 ```
 
 ### Production PyPI
@@ -133,11 +129,11 @@ pip install --index-url https://test.pypi.org/simple/ autopipe
 twine upload dist/*
 
 # Verify installation
-pip install autopipe
+pip install sm-dag-compiler
 ```
 
 ### Build Status: ✅ Ready for Upload
-- Package builds successfully: `autopipe-1.0.0.tar.gz` and `autopipe-1.0.0-py3-none-any.whl`
+- Package builds successfully: `sm-dag-compiler-1.0.0.tar.gz` and `sm_dag_compiler-1.0.0-py3-none-any.whl`
 - All metadata validation issues resolved
 - License field corrected in pyproject.toml
 - Ready for PyPI publication
@@ -145,11 +141,11 @@ pip install autopipe
 ## Version Management
 
 ### Current Version: 1.0.0
-- Defined in `src/autopipe/__version__.py`
+- Defined in `src/sm_dag_compiler/__version__.py`
 - Automatically imported in `pyproject.toml`
 
 ### Updating Version
-1. Update `src/autopipe/__version__.py`
+1. Update `src/sm_dag_compiler/__version__.py`
 2. Update `CHANGELOG.md` with release notes
 3. Rebuild package: `python -m build`
 4. Tag release: `git tag v1.0.1`
@@ -190,7 +186,7 @@ pip install autopipe
 ## Repository Links
 - **GitHub**: https://github.com/TianpeiLuke/autopipe
 - **Issues**: https://github.com/TianpeiLuke/autopipe/issues
-- **PyPI**: https://pypi.org/project/autopipe/ (when published)
+- **PyPI**: https://pypi.org/project/sm-dag-compiler/ (when published)
 
 ## Next Steps
 
@@ -200,4 +196,4 @@ pip install autopipe
 4. **Set up CI/CD pipeline** for automated testing and publishing
 5. **Publish to production PyPI**
 
-The AutoPipe package is now ready for distribution and can be easily installed by users with `pip install autopipe`.
+The SM-DAG-Compiler package is now ready for distribution and can be easily installed by users with `pip install sm-dag-compiler`.

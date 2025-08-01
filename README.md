@@ -1,12 +1,12 @@
-# AutoPipe: Automatic SageMaker Pipeline Generation
+# SM-DAG-Compiler: Automatic SageMaker Pipeline Generation
 
-[![PyPI version](https://badge.fury.io/py/autopipe.svg)](https://badge.fury.io/py/autopipe)
+[![PyPI version](https://badge.fury.io/py/sm-dag-compiler.svg)](https://badge.fury.io/py/sm-dag-compiler)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Transform pipeline graphs into production-ready SageMaker pipelines automatically.**
 
-AutoPipe is an intelligent pipeline generation system that automatically creates complete SageMaker pipelines from user-provided pipeline graphs. Simply define your ML workflow as a graph structure, and AutoPipe handles all the complex SageMaker implementation details, dependency resolution, and configuration management automatically.
+SM-DAG-Compiler is an intelligent pipeline generation system that automatically creates complete SageMaker pipelines from user-provided pipeline graphs. Simply define your ML workflow as a graph structure, and SM-DAG-Compiler handles all the complex SageMaker implementation details, dependency resolution, and configuration management automatically.
 
 ## 🚀 Quick Start
 
@@ -14,20 +14,20 @@ AutoPipe is an intelligent pipeline generation system that automatically creates
 
 ```bash
 # Core installation
-pip install autopipe
+pip install sm-dag-compiler
 
 # With ML frameworks
-pip install autopipe[pytorch,xgboost]
+pip install sm-dag-compiler[pytorch,xgboost]
 
 # Full installation with all features
-pip install autopipe[all]
+pip install sm-dag-compiler[all]
 ```
 
 ### 30-Second Example
 
 ```python
-import autopipe
-from autopipe.core.dag import PipelineDAG
+import sm_dag_compiler
+from sm_dag_compiler.core.dag import PipelineDAG
 
 # Create a simple DAG
 dag = PipelineDAG(name="fraud-detection")
@@ -38,7 +38,7 @@ dag.add_edge("data_loading", "preprocessing")
 dag.add_edge("preprocessing", "training")
 
 # Compile to SageMaker pipeline automatically
-pipeline = autopipe.compile_dag(dag)
+pipeline = sm_dag_compiler.compile_dag(dag)
 pipeline.start()  # Deploy and run!
 ```
 
@@ -46,13 +46,13 @@ pipeline.start()  # Deploy and run!
 
 ```bash
 # Generate a new project
-autopipe init --template xgboost --name fraud-detection
+sm-dag-compiler init --template xgboost --name fraud-detection
 
 # Validate your DAG
-autopipe validate my_dag.py
+sm-dag-compiler validate my_dag.py
 
 # Compile to SageMaker pipeline
-autopipe compile my_dag.py --name my-pipeline --output pipeline.json
+sm-dag-compiler compile my_dag.py --name my-pipeline --output pipeline.json
 ```
 
 ## ✨ Key Features
@@ -93,7 +93,7 @@ Based on production deployments across enterprise environments:
 
 ## 🏗️ Architecture
 
-AutoPipe follows a sophisticated layered architecture:
+SM-DAG-Compiler follows a sophisticated layered architecture:
 
 - **🎯 User Interface**: Fluent API and Pipeline DAG for intuitive construction
 - **🧠 Intelligence Layer**: Smart proxies with automatic dependency resolution  
@@ -107,8 +107,8 @@ AutoPipe follows a sophisticated layered architecture:
 ### Basic Pipeline
 
 ```python
-from autopipe import PipelineDAGCompiler
-from autopipe.core.dag import PipelineDAG
+from sm_dag_compiler import PipelineDAGCompiler
+from sm_dag_compiler.core.dag import PipelineDAG
 
 # Create DAG
 dag = PipelineDAG()
@@ -124,7 +124,7 @@ pipeline = compiler.compile(dag, pipeline_name="my-ml-pipeline")
 ### Advanced Configuration
 
 ```python
-from autopipe import create_pipeline_from_dag
+from sm_dag_compiler import create_pipeline_from_dag
 
 # Create pipeline with custom settings
 pipeline = create_pipeline_from_dag(
@@ -141,7 +141,7 @@ pipeline = create_pipeline_from_dag(
 ### Fluent API (Advanced)
 
 ```python
-from autopipe.utils.fluent import Pipeline
+from sm_dag_compiler.utils.fluent import Pipeline
 
 # Natural language-like construction
 pipeline = (Pipeline("fraud-detection")
@@ -156,26 +156,26 @@ pipeline = (Pipeline("fraud-detection")
 
 ### Core Installation
 ```bash
-pip install autopipe
+pip install sm-dag-compiler
 ```
 Includes basic DAG compilation and SageMaker integration.
 
 ### Framework-Specific
 ```bash
-pip install autopipe[pytorch]    # PyTorch Lightning models
-pip install autopipe[xgboost]    # XGBoost training pipelines  
-pip install autopipe[nlp]        # NLP models and processing
-pip install autopipe[processing] # Advanced data processing
+pip install sm-dag-compiler[pytorch]    # PyTorch Lightning models
+pip install sm-dag-compiler[xgboost]    # XGBoost training pipelines  
+pip install sm-dag-compiler[nlp]        # NLP models and processing
+pip install sm-dag-compiler[processing] # Advanced data processing
 ```
 
 ### Development
 ```bash
-pip install autopipe[dev]        # Development tools
-pip install autopipe[docs]       # Documentation tools
-pip install autopipe[all]        # Everything included
+pip install sm-dag-compiler[dev]        # Development tools
+pip install sm-dag-compiler[docs]       # Documentation tools
+pip install sm-dag-compiler[all]        # Everything included
 ```
 
-## 🎯 Who Should Use AutoPipe?
+## 🎯 Who Should Use SM-DAG-Compiler?
 
 ### **Data Scientists & ML Practitioners**
 - Focus on model development, not infrastructure complexity
@@ -215,4 +215,4 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 ---
 
-**AutoPipe**: Making SageMaker pipeline development 10x faster through intelligent automation. 🚀
+**SM-DAG-Compiler**: Making SageMaker pipeline development 10x faster through intelligent automation. 🚀
