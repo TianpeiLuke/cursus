@@ -1,0 +1,46 @@
+# Include package metadata and documentation
+include PACKAGE_README.md
+include CHANGELOG.md
+include LICENSE
+include pyproject.toml
+
+# Include type information
+include src/autopipe/py.typed
+
+# Include configuration files and templates
+recursive-include src/autopipe *.yaml
+recursive-include src/autopipe *.yml
+recursive-include src/autopipe *.json
+recursive-include src/autopipe *.toml
+
+# Include all Python files
+recursive-include src/autopipe *.py
+
+# Exclude development and build files
+exclude .gitignore
+exclude requirements.txt
+exclude README.md
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.so
+recursive-exclude * .DS_Store
+recursive-exclude .git *
+recursive-exclude .venv *
+recursive-exclude .pytest_cache *
+recursive-exclude build *
+recursive-exclude dist *
+recursive-exclude *.egg-info *
+
+# Exclude test files from distribution
+recursive-exclude test *
+recursive-exclude tests *
+
+# Exclude development directories
+recursive-exclude slipbox *
+recursive-exclude tools *
+recursive-exclude dockers *
+recursive-exclude pipeline_config *
+recursive-exclude pipeline_examples *
+
+# Include only essential documentation
+exclude README.md
