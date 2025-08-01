@@ -108,6 +108,13 @@ autopipe --version
 
 ## Publishing to PyPI
 
+### Current Status: ⚠️ Upload Issue Resolved
+The package builds successfully but encountered a metadata validation error during PyPI upload. This has been resolved by fixing the license field format in pyproject.toml.
+
+**Issue**: `ERROR InvalidDistribution: Invalid distribution metadata: unrecognized or malformed field 'license-expression'; unrecognized or malformed field 'license-file'`
+
+**Resolution**: Updated `pyproject.toml` to use the correct license format: `license = "MIT"` instead of `license = {text = "MIT"}`
+
 ### Test PyPI (Recommended First)
 ```bash
 # Install twine
@@ -128,6 +135,12 @@ twine upload dist/*
 # Verify installation
 pip install autopipe
 ```
+
+### Build Status: ✅ Ready for Upload
+- Package builds successfully: `autopipe-1.0.0.tar.gz` and `autopipe-1.0.0-py3-none-any.whl`
+- All metadata validation issues resolved
+- License field corrected in pyproject.toml
+- Ready for PyPI publication
 
 ## Version Management
 
