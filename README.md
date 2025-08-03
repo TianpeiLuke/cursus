@@ -194,14 +194,28 @@ pip install cursus[all]        # Everything included
 
 ## 📖 Documentation
 
-- **[Full Documentation](https://github.com/TianpeiLuke/cursus/blob/main/README.md)** - Complete guide and architecture
-- **[API Reference](https://github.com/TianpeiLuke/cursus/tree/main/src)** - Detailed API documentation
-- **[Examples](https://github.com/TianpeiLuke/cursus/tree/main/pipeline_examples)** - Ready-to-use pipeline blueprints
-- **[Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/developer_guide)** - Contributing and extending Cursus
+### Core Documentation
+- **[Developer Guide](slipbox/0_developer_guide/README.md)** - Comprehensive guide for developing new pipeline steps and extending Cursus
+- **[Design Documentation](slipbox/1_design/README.md)** - Detailed architectural documentation and design principles
+- **[API Reference](slipbox/)** - Detailed API documentation including core, api, steps, and other components
+- **[Examples](slipbox/examples/)** - Ready-to-use pipeline blueprints and examples
+
+### Quick Links
+- **[Getting Started](slipbox/0_developer_guide/adding_new_pipeline_step.md)** - Start here for adding new pipeline steps
+- **[Design Principles](slipbox/1_design/design_principles.md)** - Core architectural principles
+- **[Best Practices](slipbox/0_developer_guide/best_practices.md)** - Recommended development practices
+- **[Component Guide](slipbox/0_developer_guide/component_guide.md)** - Overview of key components
 
 ## 🤝 Contributing
 
-We welcome contributions! See our [Contributing Guide](https://github.com/TianpeiLuke/cursus/blob/main/slipbox/developer_guide/README.md) for details.
+We welcome contributions! See our [Developer Guide](slipbox/0_developer_guide/README.md) for comprehensive details on:
+
+- **[Prerequisites](slipbox/0_developer_guide/prerequisites.md)** - What you need before starting development
+- **[Creation Process](slipbox/0_developer_guide/creation_process.md)** - Step-by-step process for adding new pipeline steps
+- **[Validation Checklist](slipbox/0_developer_guide/validation_checklist.md)** - Comprehensive checklist for validating implementations
+- **[Common Pitfalls](slipbox/0_developer_guide/common_pitfalls.md)** - Common mistakes to avoid
+
+For architectural insights and design decisions, see the [Design Documentation](slipbox/1_design/README.md).
 
 ## 📄 License
 
