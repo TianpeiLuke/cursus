@@ -21,7 +21,7 @@ from .processors import (
 
 # Import specific processors
 from .categorical_label_processor import CategoricalLabelProcessor
-from .multiclass_label_processor import MulticlassLabelProcessor
+from .multiclass_label_processor import MultiClassLabelProcessor
 from .numerical_imputation_processor import NumericalVariableImputationProcessor
 from .numerical_binning_processor import NumericalBinningProcessor
 
@@ -72,7 +72,7 @@ __all__ = [
     
     # Core processors
     'CategoricalLabelProcessor',
-    'MulticlassLabelProcessor',
+    'MultiClassLabelProcessor',
     'NumericalVariableImputationProcessor',
     'NumericalBinningProcessor',
 ]
