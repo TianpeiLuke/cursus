@@ -1,9 +1,15 @@
 # Changelog
 
-All notable changes to Cursus will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.3] - 2025-08-03
+
+### Fixed
+- Fixed import error in processing module `__init__.py` for `MultiClassLabelProcessor` (was incorrectly named `MulticlassLabelProcessor`)
+- Corrected class name reference in module exports
 
 ## [1.0.2] - 2025-08-03
 
