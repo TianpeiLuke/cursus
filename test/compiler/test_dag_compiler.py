@@ -8,10 +8,10 @@ conversion of PipelineDAG structures to SageMaker pipelines.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.pipeline_dag.base_dag import PipelineDAG
-from src.pipeline_api.dag_compiler import PipelineDAGCompiler, compile_dag_to_pipeline
-from src.pipeline_api.dynamic_template import DynamicPipelineTemplate
-from src.pipeline_api.name_generator import validate_pipeline_name
+from src.cursus.api.dag.base_dag import PipelineDAG
+from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler, compile_dag_to_pipeline
+from src.cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
+from src.cursus.core.compiler.name_generator import validate_pipeline_name
 
 
 class TestDagCompiler(unittest.TestCase):
@@ -30,9 +30,9 @@ class TestDagCompiler(unittest.TestCase):
         # Mock config path (doesn't need to exist for these tests)
         self.config_path = "mock_config.json"
 
-    @patch('src.pipeline_api.dag_compiler.Path')
-    @patch('src.pipeline_api.dag_compiler.DynamicPipelineTemplate')
-    @patch('src.pipeline_api.dag_compiler.StepBuilderRegistry')
+    @patch('src.cursus.core.compiler.dag_compiler.Path')
+    @patch('src.cursus.core.compiler.dag_compiler.DynamicPipelineTemplate')
+    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
     def test_compile_dag_pipeline_name_sanitization(self, mock_registry_class, mock_template_class, mock_path):
         """Test that compile_dag_to_pipeline sanitizes pipeline names."""
         # Setup mocks
@@ -57,7 +57,7 @@ class TestDagCompiler(unittest.TestCase):
         )
         
         # Test with problematic pipeline name
-        with patch('src.pipeline_api.name_generator.sanitize_pipeline_name') as mock_sanitize:
+        with patch('src.cursus.core.compiler.name_generator.sanitize_pipeline_name') as mock_sanitize:
             mock_sanitize.return_value = "invalid-pipeline-name"
             pipeline = compiler.compile(self.dag, pipeline_name="invalid.pipeline.name")
             
@@ -94,7 +94,7 @@ class TestDagCompiler(unittest.TestCase):
         )
         
         # Test with no pipeline name (should generate one)
-        with patch('src.pipeline_api.dag_compiler.generate_pipeline_name') as mock_gen_name:
+        with patch('src.cursus.core.compiler.dag_compiler.generate_pipeline_name') as mock_gen_name:
             mock_gen_name.return_value = "test-sanitized-1-0-pipeline"
             pipeline = compiler.compile(self.dag)
             

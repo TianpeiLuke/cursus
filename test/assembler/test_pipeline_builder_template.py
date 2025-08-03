@@ -10,10 +10,10 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from src.pipeline_builder.pipeline_builder_template import PipelineBuilderTemplate
-from src.pipeline_builder.pipeline_dag import PipelineDAG
-from src.pipeline_steps.config_base import BasePipelineConfig
-from src.pipeline_steps.builder_step_base import StepBuilderBase
+from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
+from src.cursus.api.dag.base_dag import PipelineDAG
+from src.cursus.core.base.config_base import BasePipelineConfig
+from src.cursus.core.base.builder_base import StepBuilderBase
 
 
 class TestPipelineBuilderTemplate(unittest.TestCase):
@@ -83,7 +83,7 @@ class TestPipelineBuilderTemplate(unittest.TestCase):
         self.mock_pipeline_cls.return_value = self.mock_pipeline
         
         # Create the builder instance
-        self.builder = PipelineBuilderTemplate(
+        self.builder = PipelineTemplateBase(
             dag=self.mock_dag,
             config_map=self.mock_config_map,
             step_builder_map=self.mock_step_builder_map,

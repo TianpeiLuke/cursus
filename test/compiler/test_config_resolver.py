@@ -9,8 +9,8 @@ using different resolution strategies.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.pipeline_api.config_resolver import StepConfigResolver
-from src.pipeline_steps.config_base import BasePipelineConfig
+from src.cursus.core.compiler.config_resolver import StepConfigResolver
+from src.cursus.core.base.config_base import BasePipelineConfig
 
 
 class TestConfigResolver(unittest.TestCase):
@@ -202,7 +202,7 @@ class TestConfigResolver(unittest.TestCase):
         
         try:
             # Attempt to resolve a node with no matches
-            from src.pipeline_api.exceptions import ConfigurationError
+            from src.cursus.core.compiler.exceptions import ConfigurationError
             with self.assertRaises(ConfigurationError):
                 self.resolver._resolve_single_node("unknown_node", self.configs)
         finally:
@@ -231,7 +231,7 @@ class TestConfigResolver(unittest.TestCase):
         
         try:
             # Attempt to resolve a node with ambiguous matches
-            from src.pipeline_api.exceptions import AmbiguityError
+            from src.cursus.core.compiler.exceptions import AmbiguityError
             with self.assertRaises(AmbiguityError):
                 self.resolver._resolve_single_node("preprocessing", self.configs)
         finally:
