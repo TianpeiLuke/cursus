@@ -54,14 +54,14 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
                 "job_type": "training",
                 "instance_type": "ml.m5.large",
                 "config_type": "TabularPreprocessingConfig",
-                "source_dir": "src/pipeline_scripts",
-                "processing_source_dir": "src/pipeline_scripts"
+                "source_dir": "src/cursus/steps/scripts",
+                "processing_source_dir": "src/cursus/steps/scripts"
             },
             "training": {
                 "instance_type": "ml.m5.large",
                 "config_type": "XGBoostTrainingConfig",
-                "source_dir": "src/pipeline_scripts",
-                "processing_source_dir": "src/pipeline_scripts"
+                "source_dir": "src/cursus/steps/scripts",
+                "processing_source_dir": "src/cursus/steps/scripts"
             }
         }
         

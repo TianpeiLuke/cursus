@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from pathlib import Path
 import logging
 
-from .base_script_contract import ScriptContract, ValidationResult
+from ...core.base.contract_base import ScriptContract, ValidationResult
 from .tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
 from .mims_package_contract import MIMS_PACKAGE_CONTRACT
 from .mims_payload_contract import MIMS_PAYLOAD_CONTRACT

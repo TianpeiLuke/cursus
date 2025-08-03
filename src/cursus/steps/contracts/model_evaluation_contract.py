@@ -5,7 +5,7 @@ Defines the contract for the XGBoost model evaluation script that loads trained 
 processes evaluation data, and generates performance metrics and visualizations.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 MODEL_EVALUATION_CONTRACT = ScriptContract(
     entry_point="model_evaluation_xgb.py",

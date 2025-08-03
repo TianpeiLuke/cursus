@@ -6,15 +6,14 @@ paths for scripts used in pipeline steps, as well as required environment variab
 These contracts are used by step specifications to map logical names to container paths.
 """
 
-# Base contract classes
-from .base_script_contract import ScriptContract, ValidationResult, ScriptAnalyzer
+# Base contract classes - import from core module
+from ...core.base.contract_base import ScriptContract, ValidationResult, ScriptAnalyzer
 from .training_script_contract import TrainingScriptContract, TrainingScriptAnalyzer
 from .contract_validator import ContractValidationReport, ScriptContractValidator
 
 # Processing script contracts
 from .currency_conversion_contract import CURRENCY_CONVERSION_CONTRACT
 from .dummy_training_contract import DUMMY_TRAINING_CONTRACT
-from .hyperparameter_prep_contract import HYPERPARAMETER_PREP_CONTRACT
 from .mims_package_contract import MIMS_PACKAGE_CONTRACT
 from .mims_payload_contract import MIMS_PAYLOAD_CONTRACT
 from .mims_registration_contract import MIMS_REGISTRATION_CONTRACT
@@ -43,7 +42,6 @@ __all__ = [
     # Processing contracts
     "CURRENCY_CONVERSION_CONTRACT",
     "DUMMY_TRAINING_CONTRACT",
-    "HYPERPARAMETER_PREP_CONTRACT",
     "MIMS_PACKAGE_CONTRACT",
     "MIMS_PAYLOAD_CONTRACT",
     "MIMS_REGISTRATION_CONTRACT",

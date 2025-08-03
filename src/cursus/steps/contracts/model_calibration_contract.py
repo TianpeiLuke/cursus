@@ -5,7 +5,7 @@ This file defines the contract for the model calibration processing script,
 specifying input/output paths, environment variables, and required dependencies.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 MODEL_CALIBRATION_CONTRACT = ScriptContract(
     entry_point="model_calibration.py",

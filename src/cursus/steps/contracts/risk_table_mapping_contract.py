@@ -5,7 +5,7 @@ Defines the contract for the risk table mapping script that creates risk tables
 for categorical features and handles missing value imputation for numeric features.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     entry_point="risk_table_mapping.py",

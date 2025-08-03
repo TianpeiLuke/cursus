@@ -5,7 +5,7 @@ Defines the contract for the currency conversion script that converts monetary v
 across different currencies based on marketplace information and exchange rates.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 CURRENCY_CONVERSION_CONTRACT = ScriptContract(
     entry_point="currency_conversion.py",

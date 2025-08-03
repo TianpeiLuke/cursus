@@ -6,7 +6,7 @@ and framework requirements for the DummyTraining step, which processes a pretrai
 by adding hyperparameters.json to it for downstream packaging and payload steps.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 DUMMY_TRAINING_CONTRACT = ScriptContract(
     entry_point="dummy_training.py",

@@ -5,7 +5,7 @@ Defines the contract for the tabular preprocessing script that handles data load
 cleaning, and splitting for training/validation/testing.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 TABULAR_PREPROCESS_CONTRACT = ScriptContract(
     entry_point="tabular_preprocess.py",

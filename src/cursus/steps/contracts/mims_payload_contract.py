@@ -5,7 +5,7 @@ Defines the contract for the MIMS payload generation script that creates
 sample payloads and metadata for model inference testing.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 MIMS_PAYLOAD_CONTRACT = ScriptContract(
     entry_point="mims_payload.py",

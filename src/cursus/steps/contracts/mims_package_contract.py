@@ -5,7 +5,7 @@ Defines the contract for the MIMS packaging script that packages model artifacts
 and inference scripts into a deployable tar.gz file.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 MIMS_PACKAGE_CONTRACT = ScriptContract(
     entry_point="mims_package.py",

@@ -7,7 +7,7 @@ than processing scripts.
 
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, List, Optional, Set
-from .base_script_contract import ValidationResult, ScriptAnalyzer
+from ...core.base.contract_base import ValidationResult, ScriptAnalyzer
 import os
 import ast
 

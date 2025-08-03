@@ -5,7 +5,7 @@ Defines the contract for the Cradle data loading script that downloads
 data from Cradle data sources and processes it for use in ML pipelines.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 CRADLE_DATA_LOADING_CONTRACT = ScriptContract(
     entry_point="scripts.py",

@@ -14,12 +14,13 @@ import inspect
 import pkgutil
 import sys
 
-from ..pipeline_steps.builder_step_base import StepBuilderBase
 # Use TYPE_CHECKING to break circular import
 if TYPE_CHECKING:
-    from ..pipeline_steps.config_base import BasePipelineConfig
+    from ...core.base.builder_base import StepBuilderBase
+    from ...core.base.config_base import BasePipelineConfig
 else:
     # Placeholder for runtime
+    StepBuilderBase = Any
     BasePipelineConfig = Any
 
 from .step_names import STEP_NAMES, get_all_step_names, CONFIG_STEP_REGISTRY, BUILDER_STEP_NAMES
@@ -53,7 +54,9 @@ def register_builder(step_type: str = None):
                   will be derived from the class name using the STEP_NAMES registry.
     """
     def decorator(cls):
-        if not issubclass(cls, StepBuilderBase):
+        # Import at runtime to avoid circular import
+        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+        if not issubclass(cls, RuntimeStepBuilderBase):
             raise TypeError(f"@register_builder can only be used on StepBuilderBase subclasses: {cls.__name__}")
         
         # Determine step type if not provided
@@ -103,8 +106,8 @@ class StepBuilderRegistry:
         "MIMSPackaging": "Package",  # Legacy name from before standardization
         "MIMSPayload": "Payload",    # Legacy name from before standardization
         "ModelRegistration": "Registration",  # Legacy name from before standardization
-        "PyTorchTraining": "PytorchTraining",  # Case sensitivity difference
-        "PyTorchModel": "PytorchModel",  # Case sensitivity difference
+        "PytorchTraining": "PyTorchTraining",  # Case sensitivity difference
+        "PytorchModel": "PyTorchModel",  # Case sensitivity difference
     }
     
     @classmethod
@@ -116,7 +119,9 @@ class StepBuilderRegistry:
             step_type: Step type name
             builder_class: Step builder class
         """
-        if not issubclass(builder_class, StepBuilderBase):
+        # Import at runtime to avoid circular import
+        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+        if not issubclass(builder_class, RuntimeStepBuilderBase):
             raise ValueError(f"Builder class must extend StepBuilderBase: {builder_class}")
         
         cls.BUILDER_REGISTRY[step_type] = builder_class
@@ -130,26 +135,27 @@ class StepBuilderRegistry:
         Returns:
             Dict[str, Type[StepBuilderBase]]: Dictionary of discovered builders
         """
-        from ..pipeline_steps import builder_step_base
         
         discovered_builders = {}
         
         # Get the package containing step builders
         try:
-            from .. import pipeline_steps as steps_package
+            from ..builders import __path__ as builders_path
             
             # Walk through all modules in the package
-            for _, module_name, _ in pkgutil.iter_modules(steps_package.__path__):
+            for _, module_name, _ in pkgutil.iter_modules(builders_path):
                 if module_name.startswith('builder_'):
                     try:
                         # Import the module
-                        module = importlib.import_module(f"..pipeline_steps.{module_name}", __name__)
+                        module = importlib.import_module(f"..builders.{module_name}", __name__)
                         
                         # Find builder classes in the module
+                        # Import at runtime to avoid circular import
+                        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
                         for name, obj in inspect.getmembers(module):
                             if (inspect.isclass(obj) and 
-                                issubclass(obj, builder_step_base.StepBuilderBase) and 
-                                obj != builder_step_base.StepBuilderBase):
+                                issubclass(obj, RuntimeStepBuilderBase) and 
+                                obj != RuntimeStepBuilderBase):
                                 
                                 # Use the same logic as register_builder decorator for consistency
                                 step_type = None
@@ -173,7 +179,7 @@ class StepBuilderRegistry:
                         registry_logger.warning(f"Error discovering builders in {module_name}: {e}")
         
         except ImportError:
-            registry_logger.warning("Could not import src.pipeline_steps for builder discovery")
+            registry_logger.warning("Could not import builders package for builder discovery")
         
         # Manual import and registration of known step builders to ensure backward compatibility
         cls._register_known_builders(discovered_builders)
@@ -184,22 +190,21 @@ class StepBuilderRegistry:
     def _register_known_builders(cls, builder_map: Dict[str, Type[StepBuilderBase]]) -> None:
         """Register known step builders to ensure backward compatibility."""
         # Import all step builders
-        from ..pipeline_steps.builder_data_load_step_cradle import CradleDataLoadingStepBuilder
-        from ..pipeline_steps.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-        from ..pipeline_steps.builder_training_step_xgboost import XGBoostTrainingStepBuilder
-        from ..pipeline_steps.builder_model_eval_step_xgboost import XGBoostModelEvalStepBuilder
-        from ..pipeline_steps.builder_package_step import PackageStepBuilder
-        from ..pipeline_steps.builder_payload_step import PayloadStepBuilder
-        from ..pipeline_steps.builder_registration_step import RegistrationStepBuilder
-        from ..pipeline_steps.builder_training_step_pytorch import PyTorchTrainingStepBuilder
-        from ..pipeline_steps.builder_model_step_pytorch import PyTorchModelStepBuilder
-        from ..pipeline_steps.builder_model_step_xgboost import XGBoostModelStepBuilder
-        from ..pipeline_steps.builder_batch_transform_step import BatchTransformStepBuilder
-        from ..pipeline_steps.builder_model_calibration_step import ModelCalibrationStepBuilder
-        from ..pipeline_steps.builder_currency_conversion_step import CurrencyConversionStepBuilder
-        from ..pipeline_steps.builder_risk_table_mapping_step import RiskTableMappingStepBuilder
-        from ..pipeline_steps.builder_dummy_training_step import DummyTrainingStepBuilder
-        from ..pipeline_steps.builder_hyperparameter_prep_step import HyperparameterPrepStepBuilder
+        from ..builders.builder_data_load_step_cradle import CradleDataLoadingStepBuilder
+        from ..builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+        from ..builders.builder_training_step_xgboost import XGBoostTrainingStepBuilder
+        from ..builders.builder_model_eval_step_xgboost import XGBoostModelEvalStepBuilder
+        from ..builders.builder_package_step import PackageStepBuilder
+        from ..builders.builder_payload_step import PayloadStepBuilder
+        from ..builders.builder_registration_step import RegistrationStepBuilder
+        from ..builders.builder_training_step_pytorch import PyTorchTrainingStepBuilder
+        from ..builders.builder_model_step_pytorch import PyTorchModelStepBuilder
+        from ..builders.builder_model_step_xgboost import XGBoostModelStepBuilder
+        from ..builders.builder_batch_transform_step import BatchTransformStepBuilder
+        from ..builders.builder_model_calibration_step import ModelCalibrationStepBuilder
+        from ..builders.builder_currency_conversion_step import CurrencyConversionStepBuilder
+        from ..builders.builder_risk_table_mapping_step import RiskTableMappingStepBuilder
+        from ..builders.builder_dummy_training_step import DummyTrainingStepBuilder
         
         # Core registry with canonical step names from the central step registry
         known_builders = {
@@ -210,15 +215,14 @@ class StepBuilderRegistry:
             "Package": PackageStepBuilder,  # Using standardized name
             "Payload": PayloadStepBuilder,   # Using standardized name 
             "Registration": RegistrationStepBuilder,  # Using standardized name
-            "PytorchTraining": PyTorchTrainingStepBuilder,  # Canonical: PytorchTraining (not PyTorchTraining)
-            "PytorchModel": PyTorchModelStepBuilder,  # Canonical: PytorchModel (not PyTorchModel)
+            "PyTorchTraining": PyTorchTrainingStepBuilder,  # Canonical: PyTorchTraining (not PytorchTraining)
+            "PyTorchModel": PyTorchModelStepBuilder,  # Canonical: PyTorchModel (not PytorchModel)
             "XGBoostModel": XGBoostModelStepBuilder,
             "BatchTransform": BatchTransformStepBuilder,
             "ModelCalibration": ModelCalibrationStepBuilder,
             "CurrencyConversion": CurrencyConversionStepBuilder,
             "RiskTableMapping": RiskTableMappingStepBuilder,
             "DummyTraining": DummyTrainingStepBuilder,
-            "HyperparameterPrep": HyperparameterPrepStepBuilder,
         }
         
         # Add any known builders that weren't discovered automatically
@@ -355,7 +359,9 @@ class StepBuilderRegistry:
             step_type: Step type name
             builder_class: Step builder class
         """
-        if not issubclass(builder_class, StepBuilderBase):
+        # Import at runtime to avoid circular import
+        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+        if not issubclass(builder_class, RuntimeStepBuilderBase):
             raise ValueError(f"Builder class must extend StepBuilderBase: {builder_class}")
         
         self._custom_builders[step_type] = builder_class
@@ -531,7 +537,9 @@ class StepBuilderRegistry:
         for step_type, builder_class in builder_map.items():
             try:
                 # Check if builder class is valid
-                if not issubclass(builder_class, StepBuilderBase):
+                # Import at runtime to avoid circular import
+                from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+                if not issubclass(builder_class, RuntimeStepBuilderBase):
                     results['invalid'].append(f"{step_type}: Not a StepBuilderBase subclass")
                     continue
                 

@@ -5,7 +5,7 @@ Defines the contract for the MIMS model registration script that registers
 trained models with the MIMS service.
 """
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 MIMS_REGISTRATION_CONTRACT = ScriptContract(
     entry_point="script.py",

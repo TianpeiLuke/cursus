@@ -10,17 +10,32 @@ from sagemaker.workflow.steps import Step
 from sagemaker.workflow.steps import CacheConfig
 
 # Import dependency resolver (with error handling for backward compatibility)
-try:
+if TYPE_CHECKING:
     from ..deps.dependency_resolver import UnifiedDependencyResolver
     from ..deps.registry_manager import RegistryManager
     from ..deps.semantic_matcher import SemanticMatcher
     from ..deps.factory import create_dependency_resolver, create_pipeline_components
     from ..deps.property_reference import PropertyReference
     DEPENDENCY_RESOLVER_AVAILABLE = True
-except ImportError:
-    DEPENDENCY_RESOLVER_AVAILABLE = False
-    logger = logging.getLogger(__name__)
-    logger.warning("Dependency resolver not available, using traditional methods")
+else:
+    try:
+        from ..deps.dependency_resolver import UnifiedDependencyResolver
+        from ..deps.registry_manager import RegistryManager
+        from ..deps.semantic_matcher import SemanticMatcher
+        from ..deps.factory import create_dependency_resolver, create_pipeline_components
+        from ..deps.property_reference import PropertyReference
+        DEPENDENCY_RESOLVER_AVAILABLE = True
+    except ImportError:
+        DEPENDENCY_RESOLVER_AVAILABLE = False
+        # Create placeholder classes for runtime
+        UnifiedDependencyResolver = Any
+        RegistryManager = Any
+        SemanticMatcher = Any
+        PropertyReference = Any
+        create_dependency_resolver = None
+        create_pipeline_components = None
+        logger = logging.getLogger(__name__)
+        logger.warning("Dependency resolver not available, using traditional methods")
 
 # Import for type hints only
 try:
