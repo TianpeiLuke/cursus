@@ -194,11 +194,14 @@ pip install cursus[all]        # Everything included
 
 ## 📖 Documentation
 
+### 📚 [Complete Documentation Hub](slipbox/README.md)
+**Your gateway to all Cursus documentation - start here for comprehensive navigation**
+
 ### Core Documentation
 - **[Developer Guide](slipbox/0_developer_guide/README.md)** - Comprehensive guide for developing new pipeline steps and extending Cursus
 - **[Design Documentation](slipbox/1_design/README.md)** - Detailed architectural documentation and design principles
 - **[API Reference](slipbox/)** - Detailed API documentation including core, api, steps, and other components
-- **[Examples](slipbox/examples/)** - Ready-to-use pipeline blueprints and examples
+- **[Examples](slipbox/examples/README.md)** - Ready-to-use pipeline blueprints and examples
 
 ### Quick Links
 - **[Getting Started](slipbox/0_developer_guide/adding_new_pipeline_step.md)** - Start here for adding new pipeline steps
