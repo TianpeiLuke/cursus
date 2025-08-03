@@ -5,6 +5,42 @@ All notable changes to Cursus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-08-03
+
+### Added
+- **Processing Module** - New `cursus.processing` module with comprehensive data processing utilities
+  - **Base Processor Classes** - `Processor`, `ComposedProcessor`, `IdentityProcessor` for building processing pipelines
+  - **Categorical Processing** - `CategoricalLabelProcessor`, `MulticlassLabelProcessor` for label encoding
+  - **Numerical Processing** - `NumericalVariableImputationProcessor`, `NumericalBinningProcessor` for data preprocessing
+  - **Text/NLP Processing** - `BertTokenizeProcessor`, `GensimTokenizeProcessor` for text tokenization
+  - **Domain-Specific Processors** - `BSMProcessor`, `CSProcessor`, `RiskTableProcessor` for specialized use cases
+  - **Data Loading Utilities** - `BSMDataLoader`, `BSMDatasets` for data management
+  - **Processor Composition** - Support for chaining processors using `>>` operator
+
+### Fixed
+- **Import Path Corrections** - Fixed all incorrect import paths in builder_registry.py and related modules
+  - Corrected circular import issues using TYPE_CHECKING pattern
+  - Fixed imports from non-existent `base_script_contract` to proper `...core.base.contract_base`
+  - Updated all contract files to use correct base class imports
+  - Resolved dependency resolver import issues in builder_base.py
+- **Registry System** - Improved stability of step builder registry initialization
+- **Type Safety** - Enhanced type checking with proper runtime placeholders
+
+### Technical Details
+- **Processing Pipeline** - Processors can be used in preprocessing, inference, evaluation, and other ML pipeline steps
+- **Modular Design** - Each processor is self-contained with clear interfaces and composition support
+- **Optional Dependencies** - Graceful handling of optional dependencies for specialized processors
+- Fixed 10+ contract files with incorrect import statements
+- Implemented TYPE_CHECKING pattern to break circular dependencies
+- Added runtime placeholders for optional dependencies
+- Corrected relative import paths throughout the registry system
+
+## [1.0.1] - 2025-08-01
+
+### Fixed
+- Minor bug fixes and stability improvements
+- Documentation updates
+
 ## [1.0.0] - 2025-01-31
 
 ### Added

@@ -10,8 +10,8 @@ import xgboost as xgb
 import matplotlib.pyplot as plt
 import time
 
-from ..processing.risk_table_processor import RiskTableMappingProcessor
-from ..processing.numerical_imputation_processor import NumericalVariableImputationProcessor
+from ...processing.risk_table_processor import RiskTableMappingProcessor
+from ...processing.numerical_imputation_processor import NumericalVariableImputationProcessor
 from .contract_utils import ContractEnforcer
 
 import logging
