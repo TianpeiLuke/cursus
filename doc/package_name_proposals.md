@@ -8,6 +8,7 @@ This document contains all proposed package names for the AutoPipe project, orga
 - **Simplifies and automates** ML pipeline creation
 - **Bridges the gap** between design and deployment
 
+
 ---
 
 ## ✅ CONFIRMED AVAILABLE NAMES
