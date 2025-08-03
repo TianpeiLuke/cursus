@@ -1,5 +1,5 @@
 """
-AutoPipe: Automatic SageMaker Pipeline Generation
+Cursus: Automatic SageMaker Pipeline Generation
 
 Transform pipeline graphs into production-ready SageMaker pipelines automatically.
 An intelligent pipeline generation system that automatically creates complete SageMaker 
@@ -14,16 +14,16 @@ Key Features:
 - 📈 Proven Results: 60% average code reduction across pipeline components
 
 Basic Usage:
-    >>> import autopipe
-    >>> pipeline = autopipe.compile_dag(my_dag)
+    >>> import cursus
+    >>> pipeline = cursus.compile_dag(my_dag)
     
-    >>> from autopipe import PipelineDAGCompiler
+    >>> from cursus import PipelineDAGCompiler
     >>> compiler = PipelineDAGCompiler()
     >>> pipeline = compiler.compile(my_dag, pipeline_name="fraud-detection")
 
 Advanced Usage:
-    >>> from autopipe.core.dag import PipelineDAG
-    >>> from autopipe.api import compile_dag_to_pipeline
+    >>> from cursus.core.dag import PipelineDAG
+    >>> from cursus.api import compile_dag_to_pipeline
     >>> 
     >>> dag = PipelineDAG()
     >>> # ... build your DAG
@@ -40,17 +40,17 @@ try:
 except ImportError as e:
     # Graceful degradation if dependencies are missing
     import warnings
-    warnings.warn(f"Some AutoPipe features may not be available: {e}")
+    warnings.warn(f"Some Cursus features may not be available: {e}")
     
     def compile_dag(*args, **kwargs):
-        raise ImportError("Core AutoPipe dependencies not available. Please install with: pip install autopipe[all]")
+        raise ImportError("Core Cursus dependencies not available. Please install with: pip install cursus[all]")
     
     def compile_dag_to_pipeline(*args, **kwargs):
-        raise ImportError("Core AutoPipe dependencies not available. Please install with: pip install autopipe[all]")
+        raise ImportError("Core Cursus dependencies not available. Please install with: pip install cursus[all]")
     
     class PipelineDAGCompiler:
         def __init__(self, *args, **kwargs):
-            raise ImportError("Core AutoPipe dependencies not available. Please install with: pip install autopipe[all]")
+            raise ImportError("Core Cursus dependencies not available. Please install with: pip install cursus[all]")
 
 # Core data structures
 try:
@@ -58,11 +58,11 @@ try:
 except ImportError:
     class PipelineDAG:
         def __init__(self, *args, **kwargs):
-            raise ImportError("DAG functionality not available. Please install with: pip install autopipe[all]")
+            raise ImportError("DAG functionality not available. Please install with: pip install cursus[all]")
     
     class EnhancedPipelineDAG:
         def __init__(self, *args, **kwargs):
-            raise ImportError("Enhanced DAG functionality not available. Please install with: pip install autopipe[all]")
+            raise ImportError("Enhanced DAG functionality not available. Please install with: pip install cursus[all]")
 
 # Convenience function for quick pipeline creation
 def create_pipeline_from_dag(dag, pipeline_name=None, **kwargs):

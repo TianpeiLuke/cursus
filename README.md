@@ -1,12 +1,12 @@
-# SM-DAG-Compiler: Automatic SageMaker Pipeline Generation
+# Cursus: Automatic SageMaker Pipeline Generation
 
-[![PyPI version](https://badge.fury.io/py/sm-dag-compiler.svg)](https://badge.fury.io/py/sm-dag-compiler)
+[![PyPI version](https://badge.fury.io/py/cursus.svg)](https://badge.fury.io/py/cursus)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Transform pipeline graphs into production-ready SageMaker pipelines automatically.**
 
-SM-DAG-Compiler is an intelligent pipeline generation system that automatically creates complete SageMaker pipelines from user-provided pipeline graphs. Simply define your ML workflow as a graph structure, and SM-DAG-Compiler handles all the complex SageMaker implementation details, dependency resolution, and configuration management automatically.
+Cursus is an intelligent pipeline generation system that automatically creates complete SageMaker pipelines from user-provided pipeline graphs. Simply define your ML workflow as a graph structure, and Cursus handles all the complex SageMaker implementation details, dependency resolution, and configuration management automatically.
 
 ## 🚀 Quick Start
 
@@ -14,20 +14,20 @@ SM-DAG-Compiler is an intelligent pipeline generation system that automatically 
 
 ```bash
 # Core installation
-pip install sm-dag-compiler
+pip install cursus
 
 # With ML frameworks
-pip install sm-dag-compiler[pytorch,xgboost]
+pip install cursus[pytorch,xgboost]
 
 # Full installation with all features
-pip install sm-dag-compiler[all]
+pip install cursus[all]
 ```
 
 ### 30-Second Example
 
 ```python
-import sm_dag_compiler
-from sm_dag_compiler.core.dag import PipelineDAG
+import cursus
+from cursus.core.dag import PipelineDAG
 
 # Create a simple DAG
 dag = PipelineDAG(name="fraud-detection")
@@ -38,7 +38,7 @@ dag.add_edge("data_loading", "preprocessing")
 dag.add_edge("preprocessing", "training")
 
 # Compile to SageMaker pipeline automatically
-pipeline = sm_dag_compiler.compile_dag(dag)
+pipeline = cursus.compile_dag(dag)
 pipeline.start()  # Deploy and run!
 ```
 
@@ -46,13 +46,13 @@ pipeline.start()  # Deploy and run!
 
 ```bash
 # Generate a new project
-sm-dag-compiler init --template xgboost --name fraud-detection
+cursus init --template xgboost --name fraud-detection
 
 # Validate your DAG
-sm-dag-compiler validate my_dag.py
+cursus validate my_dag.py
 
 # Compile to SageMaker pipeline
-sm-dag-compiler compile my_dag.py --name my-pipeline --output pipeline.json
+cursus compile my_dag.py --name my-pipeline --output pipeline.json
 ```
 
 ## ✨ Key Features
@@ -93,7 +93,7 @@ Based on production deployments across enterprise environments:
 
 ## 🏗️ Architecture
 
-SM-DAG-Compiler follows a sophisticated layered architecture:
+Cursus follows a sophisticated layered architecture:
 
 - **🎯 User Interface**: Fluent API and Pipeline DAG for intuitive construction
 - **🧠 Intelligence Layer**: Smart proxies with automatic dependency resolution  
@@ -107,8 +107,8 @@ SM-DAG-Compiler follows a sophisticated layered architecture:
 ### Basic Pipeline
 
 ```python
-from sm_dag_compiler import PipelineDAGCompiler
-from sm_dag_compiler.core.dag import PipelineDAG
+from cursus import PipelineDAGCompiler
+from cursus.core.dag import PipelineDAG
 
 # Create DAG
 dag = PipelineDAG()
@@ -124,7 +124,7 @@ pipeline = compiler.compile(dag, pipeline_name="my-ml-pipeline")
 ### Advanced Configuration
 
 ```python
-from sm_dag_compiler import create_pipeline_from_dag
+from cursus import create_pipeline_from_dag
 
 # Create pipeline with custom settings
 pipeline = create_pipeline_from_dag(
@@ -141,7 +141,7 @@ pipeline = create_pipeline_from_dag(
 ### Fluent API (Advanced)
 
 ```python
-from sm_dag_compiler.utils.fluent import Pipeline
+from cursus.utils.fluent import Pipeline
 
 # Natural language-like construction
 pipeline = (Pipeline("fraud-detection")
@@ -156,26 +156,26 @@ pipeline = (Pipeline("fraud-detection")
 
 ### Core Installation
 ```bash
-pip install sm-dag-compiler
+pip install cursus
 ```
 Includes basic DAG compilation and SageMaker integration.
 
 ### Framework-Specific
 ```bash
-pip install sm-dag-compiler[pytorch]    # PyTorch Lightning models
-pip install sm-dag-compiler[xgboost]    # XGBoost training pipelines  
-pip install sm-dag-compiler[nlp]        # NLP models and processing
-pip install sm-dag-compiler[processing] # Advanced data processing
+pip install cursus[pytorch]    # PyTorch Lightning models
+pip install cursus[xgboost]    # XGBoost training pipelines  
+pip install cursus[nlp]        # NLP models and processing
+pip install cursus[processing] # Advanced data processing
 ```
 
 ### Development
 ```bash
-pip install sm-dag-compiler[dev]        # Development tools
-pip install sm-dag-compiler[docs]       # Documentation tools
-pip install sm-dag-compiler[all]        # Everything included
+pip install cursus[dev]        # Development tools
+pip install cursus[docs]       # Documentation tools
+pip install cursus[all]        # Everything included
 ```
 
-## 🎯 Who Should Use SM-DAG-Compiler?
+## 🎯 Who Should Use Cursus?
 
 ### **Data Scientists & ML Practitioners**
 - Focus on model development, not infrastructure complexity
@@ -194,25 +194,25 @@ pip install sm-dag-compiler[all]        # Everything included
 
 ## 📖 Documentation
 
-- **[Full Documentation](https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/README.md)** - Complete guide and architecture
-- **[API Reference](https://github.com/TianpeiLuke/sm-dag-compiler/tree/main/src)** - Detailed API documentation
-- **[Examples](https://github.com/TianpeiLuke/sm-dag-compiler/tree/main/pipeline_examples)** - Ready-to-use pipeline blueprints
-- **[Developer Guide](https://github.com/TianpeiLuke/sm-dag-compiler/tree/main/slipbox/developer_guide)** - Contributing and extending AutoPipe
+- **[Full Documentation](https://github.com/TianpeiLuke/cursus/blob/main/README.md)** - Complete guide and architecture
+- **[API Reference](https://github.com/TianpeiLuke/cursus/tree/main/src)** - Detailed API documentation
+- **[Examples](https://github.com/TianpeiLuke/cursus/tree/main/pipeline_examples)** - Ready-to-use pipeline blueprints
+- **[Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/developer_guide)** - Contributing and extending Cursus
 
 ## 🤝 Contributing
 
-We welcome contributions! See our [Contributing Guide](https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/slipbox/developer_guide/README.md) for details.
+We welcome contributions! See our [Contributing Guide](https://github.com/TianpeiLuke/cursus/blob/main/slipbox/developer_guide/README.md) for details.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/TianpeiLuke/cursus/blob/main/LICENSE) file for details.
 
 ## 🔗 Links
 
-- **GitHub**: https://github.com/TianpeiLuke/sm-dag-compiler
-- **Issues**: https://github.com/TianpeiLuke/sm-dag-compiler/issues
-- **PyPI**: https://pypi.org/project/sm-dag-compiler/
+- **GitHub**: https://github.com/TianpeiLuke/cursus
+- **Issues**: https://github.com/TianpeiLuke/cursus/issues
+- **PyPI**: https://pypi.org/project/cursus/
 
 ---
 
-**SM-DAG-Compiler**: Making SageMaker pipeline development 10x faster through intelligent automation. 🚀
+**Cursus**: Making SageMaker pipeline development 10x faster through intelligent automation. 🚀

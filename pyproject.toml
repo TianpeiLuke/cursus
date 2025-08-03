@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sm-dag-compiler"
+name = "cursus"
 dynamic = ["version"]
 description = "Automatic SageMaker Pipeline Generation from DAG Specifications"
 readme = "README.md"
@@ -110,31 +110,31 @@ docs = [
 ]
 # Full installation
 all = [
-    "sm-dag-compiler[pytorch,xgboost,nlp,processing]"
+    "cursus[pytorch,xgboost,nlp,processing]"
 ]
 
 [project.scripts]
-sm-dag-compiler = "sm_dag_compiler.cli:main"
+cursus = "cursus.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/TianpeiLuke/sm-dag-compiler"
-Documentation = "https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/README.md"
-Repository = "https://github.com/TianpeiLuke/sm-dag-compiler"
-Issues = "https://github.com/TianpeiLuke/sm-dag-compiler/issues"
-Changelog = "https://github.com/TianpeiLuke/sm-dag-compiler/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/TianpeiLuke/cursus"
+Documentation = "https://github.com/TianpeiLuke/cursus/blob/main/README.md"
+Repository = "https://github.com/TianpeiLuke/cursus"
+Issues = "https://github.com/TianpeiLuke/cursus/issues"
+Changelog = "https://github.com/TianpeiLuke/cursus/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
-version = {attr = "sm_dag_compiler.__version__.__version__"}
+version = {attr = "cursus.__version__.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["sm_dag_compiler*"]
+include = ["cursus*"]
 
 [tool.setuptools.package-data]
-sm_dag_compiler = ["py.typed", "*.yaml", "*.yml", "*.json"]
+cursus = ["py.typed", "*.yaml", "*.yml", "*.json"]
 
 # Black configuration
 [tool.black]
@@ -160,7 +160,7 @@ extend-exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 88
-known_first_party = ["sm_dag_compiler"]
+known_first_party = ["cursus"]
 
 # mypy configuration
 [tool.mypy]
@@ -203,7 +203,7 @@ markers = [
 
 # Coverage configuration
 [tool.coverage.run]
-source = ["src/sm_dag_compiler"]
+source = ["src/cursus"]
 omit = [
     "*/tests/*",
     "*/test_*",

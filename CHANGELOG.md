@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to AutoPipe will be documented in this file.
+All notable changes to Cursus will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-01-31
 
 ### Added
-- **Initial PyPI Release** - First public release of AutoPipe
+- **Initial PyPI Release** - First public release of Cursus
 - **Core API** - Main pipeline compilation functionality
   - `compile_dag()` - Simple DAG compilation
   - `compile_dag_to_pipeline()` - Advanced compilation with configuration
@@ -16,11 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `create_pipeline_from_dag()` - Convenience function for quick pipeline creation
 
 - **Command Line Interface** - Complete CLI for pipeline management
-  - `autopipe compile` - Compile DAG files to SageMaker pipelines
-  - `autopipe validate` - Validate DAG structure and compatibility
-  - `autopipe preview` - Preview compilation results
-  - `autopipe list-steps` - Show available step types
-  - `autopipe init` - Generate new projects from templates
+  - `cursus compile` - Compile DAG files to SageMaker pipelines
+  - `cursus validate` - Validate DAG structure and compatibility
+  - `cursus preview` - Preview compilation results
+  - `cursus list-steps` - Show available step types
+  - `cursus init` - Generate new projects from templates
 
 - **Core Architecture** - Production-ready pipeline generation system
   - **Pipeline DAG** - Mathematical framework for pipeline topology
@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Version 1.0.0 - Production Ready
 
-This initial release represents the culmination of extensive development and testing in enterprise environments. AutoPipe is now production-ready with:
+This initial release represents the culmination of extensive development and testing in enterprise environments. Cursus is now production-ready with:
 
 - **98% Complete Implementation** - All core features implemented and tested
 - **Enterprise Validation** - Proven in production deployments
@@ -100,26 +100,26 @@ This initial release represents the culmination of extensive development and tes
 
 If you're migrating from an internal or pre-release version:
 
-1. **Update Imports** - Change from `src.pipeline_api` to `autopipe.api`
-2. **Install Package** - `pip install autopipe[all]` for full functionality
+1. **Update Imports** - Change from `src.pipeline_api` to `cursus.api`
+2. **Install Package** - `pip install cursus[all]` for full functionality
 3. **Update Configuration** - Review configuration files for any breaking changes
-4. **Test Thoroughly** - Validate all existing DAGs with `autopipe validate`
+4. **Test Thoroughly** - Validate all existing DAGs with `cursus validate`
 
 ### Getting Started
 
 For new users:
 
-1. **Install** - `pip install autopipe`
-2. **Generate Project** - `autopipe init --template xgboost --name my-project`
-3. **Validate** - `autopipe validate dags/main.py`
-4. **Compile** - `autopipe compile dags/main.py --name my-pipeline`
+1. **Install** - `pip install cursus`
+2. **Generate Project** - `cursus init --template xgboost --name my-project`
+3. **Validate** - `cursus validate dags/main.py`
+4. **Compile** - `cursus compile dags/main.py --name my-pipeline`
 
 ### Support
 
-- **Documentation** - https://github.com/TianpeiLuke/nlp-pipeline/blob/main/README.md
-- **Issues** - https://github.com/TianpeiLuke/nlp-pipeline/issues
-- **Discussions** - https://github.com/TianpeiLuke/nlp-pipeline/discussions
+- **Documentation** - https://github.com/TianpeiLuke/cursus/blob/main/README.md
+- **Issues** - https://github.com/TianpeiLuke/cursus/issues
+- **Discussions** - https://github.com/TianpeiLuke/cursus/discussions
 
 ---
 
-**AutoPipe v1.0.0** - Making SageMaker pipeline development 10x faster through intelligent automation. 🚀
+**Cursus v1.0.0** - Making SageMaker pipeline development 10x faster through intelligent automation. 🚀
