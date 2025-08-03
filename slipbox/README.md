@@ -126,24 +126,45 @@ Cursus implements a sophisticated layered architecture:
 
 🧠 Intelligence Layer  
    ├── Smart Proxies (Intelligent abstraction)
-   └── Dependency Resolution (Automatic wiring)
+   ├── Dependency Resolution (Automatic wiring)
+   ├── Semantic Matching (Name similarity & compatibility scoring algorithms)
+   └── Property Reference (Cross-component property path management & runtime resolution)
 
 🏗️ Orchestration Layer
    ├── Pipeline Assembler (Component coordination)
-   └── Pipeline Compiler (DAG-to-template conversion)
+   ├── Pipeline Compiler (DAG-to-template conversion)
+   ├── Dynamic Pipeline Template (Flexible template system)
+   └── Pipeline Template Base (Template foundation)
 
 📚 Registry Layer
    ├── Specification Registry (Step definitions)
-   └── Registry Manager (Multi-context coordination)
+   ├── Registry Manager (Multi-context coordination)
+   ├── Step Name Registry (Step name management)
+   ├── Step Builder Registry (Builder registration & discovery)
+   └── Hyperparameter Registry (Hyperparameter management & defaults)
+
+📋 Interface Definition Layer
+   ├── Step Specifications (Interface contracts & I/O definitions)
+   └── Script Contracts (Implementation contracts & functionality)
+
+⚙️ Configuration Management Layer
+   ├── Config Field Categorizer (Field categorization & rules)
+   ├── Type-Aware Serializer (Complex type serialization/deserialization)
+   ├── Config Merger (Multi-config merging & unified structures)
+   ├── Config Registry (Configuration class registration)
+   └── Circular Reference Tracker (Cycle detection & resolution)
 
 🔧 Implementation Layer
    ├── Step Builders (SageMaker translation)
-   ├── Step Specifications (Interface contracts)
-   └── Configuration Management (Environment handling)
+   ├── Environment Management (Runtime environment handling)
+   └── Processing Scripts (Business logic implementation)
 
 🏛️ Foundation Layer
    ├── Pipeline DAG (Topology modeling)
-   └── Base Specifications (Type system)
+   ├── Base Specifications (Type system)
+   ├── Base Step Builders (Builder foundation classes)
+   ├── Base Configs (Configuration base classes)
+   └── Base Script Contracts (Contract foundation classes)
 ```
 
 ## 🎯 Key Design Principles
