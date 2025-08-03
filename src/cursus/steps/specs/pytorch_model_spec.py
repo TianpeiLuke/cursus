@@ -10,7 +10,7 @@ from ..registry.step_names import get_spec_step_type
 
 # PyTorch Model Step Specification
 PYTORCH_MODEL_SPEC = StepSpecification(
-    step_type=get_spec_step_type("PytorchModel"),
+    step_type=get_spec_step_type("PyTorchModel"),
     node_type=NodeType.INTERNAL,
     dependencies=[
         DependencySpec(

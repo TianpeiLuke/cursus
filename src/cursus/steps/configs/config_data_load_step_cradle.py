@@ -6,11 +6,18 @@ from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, PrivateAttr
 
-from secure_ai_sandbox_workflow_python_sdk.utils.constants import (
-    OUTPUT_TYPE_DATA,
-    OUTPUT_TYPE_METADATA,
-    OUTPUT_TYPE_SIGNATURE,
-)
+# Try to import from external SDK, fallback to local constants if not available
+try:
+    from secure_ai_sandbox_workflow_python_sdk.utils.constants import (
+        OUTPUT_TYPE_DATA,
+        OUTPUT_TYPE_METADATA,
+        OUTPUT_TYPE_SIGNATURE,
+    )
+except ImportError:
+    # Fallback constants when external SDK is not available
+    OUTPUT_TYPE_SIGNATURE = "SIGNATURE"
+    OUTPUT_TYPE_DATA = "DATA"
+    OUTPUT_TYPE_METADATA = "METADATA"
 
 from ...core.base.config_base import BasePipelineConfig
 

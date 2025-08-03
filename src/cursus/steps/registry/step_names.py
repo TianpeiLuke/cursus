@@ -78,6 +78,20 @@ STEP_NAMES = {
         "description": "XGBoost model evaluation step"
     },
     
+    # Model Steps
+    "PyTorchModel": {
+        "config_class": "PyTorchModelConfig",
+        "builder_step_name": "PyTorchModelStepBuilder",
+        "spec_type": "PyTorchModel",
+        "description": "PyTorch model creation step"
+    },
+    "XGBoostModel": {
+        "config_class": "XGBoostModelConfig",
+        "builder_step_name": "XGBoostModelStepBuilder",
+        "spec_type": "XGBoostModel",
+        "description": "XGBoost model creation step"
+    },
+    
     # Model Processing Steps
     "ModelCalibration": {
         "config_class": "ModelCalibrationConfig",

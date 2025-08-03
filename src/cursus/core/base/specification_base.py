@@ -258,7 +258,9 @@ class OutputSpec(BaseModel):
 
 
 # PropertyReference has been moved to property_reference.py
-from ..deps.property_reference import PropertyReference
+# Import moved to avoid circular dependency - use TYPE_CHECKING if needed
+if TYPE_CHECKING:
+    from ..deps.property_reference import PropertyReference
 
 
 class StepSpecification(BaseModel):

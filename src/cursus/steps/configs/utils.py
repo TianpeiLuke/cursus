@@ -25,8 +25,8 @@ from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import from the advanced implementation
 # RECOMMENDED: Use these imports directly in your code:
-#     from src.config_field_manager import merge_and_save_configs, load_configs
-from ...config_field_manager import (
+#     from ...core.config_fields import merge_and_save_configs, load_configs
+from ...core.config_fields import (
     merge_and_save_configs as new_merge_and_save_configs,
     load_configs as new_load_configs,
     serialize_config as new_serialize_config,

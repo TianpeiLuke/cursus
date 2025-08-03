@@ -24,7 +24,6 @@ from .config_data_load_step_cradle import (
     CradleJobSpecificationConfig
 )
 from .config_dummy_training_step import DummyTrainingConfig
-from .config_hyperparameter_prep_step import HyperparameterPrepConfig
 from .config_model_calibration_step import ModelCalibrationConfig
 from .config_model_eval_step_xgboost import XGBoostModelEvalConfig
 from .config_model_step_pytorch import PyTorchModelStepConfig
@@ -57,7 +56,6 @@ __all__ = [
     "CurrencyConversionConfig",
     "CradleDataLoadConfig",
     "DummyTrainingConfig",
-    "HyperparameterPrepConfig",
     "ModelCalibrationConfig",
     "XGBoostModelEvalConfig",
     "PyTorchModelStepConfig",

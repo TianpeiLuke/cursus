@@ -6,11 +6,11 @@ including their dependencies and outputs based on the actual implementation.
 """
 
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
-from ..registry.step_names import get_spec_step_type
+from ..registry.step_names import get_spec_step_type_with_job_type
 
 # Batch Transform Testing Step Specification
 BATCH_TRANSFORM_TESTING_SPEC = StepSpecification(
-    step_type=get_spec_step_type("BatchTransform-Testing"),
+    step_type=get_spec_step_type_with_job_type("BatchTransform", "testing"),
     node_type=NodeType.INTERNAL,
     dependencies=[
         DependencySpec(

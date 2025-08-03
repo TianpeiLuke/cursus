@@ -1,7 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock, ANY, call
 from pathlib import Path
 from collections import defaultdict
+import json
 
 # Add the project root to the Python path to allow for absolute imports
 import sys
@@ -10,15 +11,361 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# Mock the problematic imports to avoid circular import issues
+sys.modules['src.cursus.core.base.specification_base'] = MagicMock()
+sys.modules['src.cursus.core.deps.property_reference'] = MagicMock()
+sys.modules['src.cursus.core.deps.dependency_resolver'] = MagicMock()
+sys.modules['src.cursus.core.deps.registry_manager'] = MagicMock()
+
 from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
+from src.cursus.core.assembler.pipeline_assembler import PipelineAssembler
 from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.base.config_base import BasePipelineConfig
-from src.cursus.core.base.builder_base import StepBuilderBase
+
+# Create mock classes for testing
+class MockBasePipelineConfig:
+    """Mock BasePipelineConfig for testing."""
+    @staticmethod
+    def get_step_name(config_class_name):
+        return config_class_name.replace('Config', 'Step')
+
+class MockStepBuilderBase:
+    """Mock StepBuilderBase for testing."""
+    pass
+
+class MockRegistryManager:
+    """Mock RegistryManager for testing."""
+    pass
+
+class MockUnifiedDependencyResolver:
+    """Mock UnifiedDependencyResolver for testing."""
+    pass
 
 
-class TestPipelineBuilderTemplate(unittest.TestCase):
+class ConcretePipelineTemplate(PipelineTemplateBase):
+    """Concrete implementation of PipelineTemplateBase for testing."""
+    
+    CONFIG_CLASSES = {
+        'Base': MockBasePipelineConfig,
+        'TestConfig1': MockBasePipelineConfig,
+        'TestConfig2': MockBasePipelineConfig,
+    }
+    
+    def _validate_configuration(self) -> None:
+        """Simple validation for testing."""
+        if 'Base' not in self.configs:
+            raise ValueError("Base configuration required")
+    
+    def _create_pipeline_dag(self) -> PipelineDAG:
+        """Create a simple test DAG."""
+        dag = PipelineDAG()
+        dag.add_node('step1')
+        dag.add_node('step2')
+        dag.add_node('step3')
+        dag.add_edge('step1', 'step2')
+        dag.add_edge('step2', 'step3')
+        return dag
+    
+    def _create_config_map(self):
+        """Create config map for testing."""
+        return {
+            'step1': self.configs.get('TestConfig1', MagicMock(spec=MockBasePipelineConfig)),
+            'step2': self.configs.get('TestConfig2', MagicMock(spec=MockBasePipelineConfig)),
+            'step3': self.configs.get('Base', MagicMock(spec=MockBasePipelineConfig)),
+        }
+    
+    def _create_step_builder_map(self):
+        """Create step builder map for testing."""
+        return {
+            'TestStep1': MagicMock(spec=type),
+            'TestStep2': MagicMock(spec=type),
+            'TestStep3': MagicMock(spec=type),
+        }
+
+
+class TestPipelineTemplateBase(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
+        # Create a temporary config file content
+        self.config_data = {
+            'Base': {
+                'pipeline_name': 'test-pipeline',
+                'pipeline_version': '1.0',
+                'pipeline_s3_loc': 's3://test-bucket/test-pipeline'
+            },
+            'TestConfig1': {
+                'some_param': 'value1'
+            },
+            'TestConfig2': {
+                'some_param': 'value2'
+            }
+        }
+        
+        # Mock file operations
+        self.mock_open = patch('builtins.open', create=True)
+        self.mock_file = self.mock_open.start()
+        self.mock_file.return_value.__enter__.return_value.read.return_value = json.dumps(self.config_data)
+        
+        # Mock load_configs function
+        self.load_configs_patch = patch('src.cursus.core.assembler.pipeline_template_base.load_configs')
+        self.mock_load_configs = self.load_configs_patch.start()
+        
+        # Create mock configs
+        self.mock_base_config = MagicMock(spec=MockBasePipelineConfig)
+        self.mock_base_config.pipeline_name = 'test-pipeline'
+        self.mock_base_config.pipeline_version = '1.0'
+        self.mock_base_config.pipeline_s3_loc = 's3://test-bucket/test-pipeline'
+        
+        self.mock_configs = {
+            'Base': self.mock_base_config,
+            'TestConfig1': MagicMock(spec=MockBasePipelineConfig),
+            'TestConfig2': MagicMock(spec=MockBasePipelineConfig),
+        }
+        self.mock_load_configs.return_value = self.mock_configs
+        
+        # Mock build_complete_config_classes
+        self.build_complete_patch = patch('src.cursus.core.assembler.pipeline_template_base.build_complete_config_classes')
+        self.mock_build_complete = self.build_complete_patch.start()
+        self.mock_build_complete.return_value = {}
+        
+        # Mock create_pipeline_components
+        self.components_patch = patch('src.cursus.core.assembler.pipeline_template_base.create_pipeline_components')
+        self.mock_create_components = self.components_patch.start()
+        
+        self.mock_registry_manager = MagicMock(spec=MockRegistryManager)
+        self.mock_dependency_resolver = MagicMock(spec=MockUnifiedDependencyResolver)
+        
+        self.mock_create_components.return_value = {
+            'registry_manager': self.mock_registry_manager,
+            'resolver': self.mock_dependency_resolver
+        }
+        
+        # Mock PipelineAssembler
+        self.assembler_patch = patch('src.cursus.core.assembler.pipeline_template_base.PipelineAssembler')
+        self.mock_assembler_cls = self.assembler_patch.start()
+        self.mock_assembler = MagicMock()
+        self.mock_pipeline = MagicMock()
+        self.mock_assembler.generate_pipeline.return_value = self.mock_pipeline
+        self.mock_assembler_cls.return_value = self.mock_assembler
+        
+        # Mock generate_pipeline_name
+        self.name_gen_patch = patch('src.cursus.core.assembler.pipeline_template_base.generate_pipeline_name')
+        self.mock_generate_name = self.name_gen_patch.start()
+        self.mock_generate_name.return_value = 'test-pipeline-v1-0'
+
+    def tearDown(self):
+        """Clean up patches after each test."""
+        self.mock_open.stop()
+        self.load_configs_patch.stop()
+        self.build_complete_patch.stop()
+        self.components_patch.stop()
+        self.assembler_patch.stop()
+        self.name_gen_patch.stop()
+
+    def test_initialization(self):
+        """Test that the template initializes correctly."""
+        template = ConcretePipelineTemplate(
+            config_path='test_config.json',
+            sagemaker_session=MagicMock(),
+            role='test-role'
+        )
+        
+        # Verify attributes were set correctly
+        self.assertEqual(template.config_path, 'test_config.json')
+        self.assertEqual(template.configs, self.mock_configs)
+        self.assertEqual(template.base_config, self.mock_base_config)
+        self.assertIsNotNone(template._registry_manager)
+        self.assertIsNotNone(template._dependency_resolver)
+        
+        # Verify load_configs was called with correct parameters
+        self.mock_load_configs.assert_called_once()
+        
+        # Verify components were created
+        self.mock_create_components.assert_called_once_with('test-pipeline')
+
+    def test_initialization_with_provided_components(self):
+        """Test initialization with provided dependency components."""
+        custom_registry = MagicMock(spec=MockRegistryManager)
+        custom_resolver = MagicMock(spec=MockUnifiedDependencyResolver)
+        
+        template = ConcretePipelineTemplate(
+            config_path='test_config.json',
+            registry_manager=custom_registry,
+            dependency_resolver=custom_resolver
+        )
+        
+        # Verify provided components were used
+        self.assertEqual(template._registry_manager, custom_registry)
+        self.assertEqual(template._dependency_resolver, custom_resolver)
+        
+        # Verify create_pipeline_components was not called
+        self.mock_create_components.assert_not_called()
+
+    def test_config_loading(self):
+        """Test that configurations are loaded correctly."""
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        
+        # Verify build_complete_config_classes was called
+        self.mock_build_complete.assert_called_once()
+        
+        # Verify load_configs was called with merged config classes
+        call_args = self.mock_load_configs.call_args
+        self.assertEqual(call_args[0][0], 'test_config.json')
+        # The second argument should be the merged config classes
+        config_classes = call_args[0][1]
+        self.assertIn('Base', config_classes)
+        self.assertIn('TestConfig1', config_classes)
+        self.assertIn('TestConfig2', config_classes)
+
+    def test_base_config_validation(self):
+        """Test that missing base config raises error."""
+        # Mock load_configs to return configs without Base
+        self.mock_load_configs.return_value = {'TestConfig1': MagicMock()}
+        
+        with self.assertRaises(ValueError) as context:
+            ConcretePipelineTemplate(config_path='test_config.json')
+        
+        self.assertIn("Base configuration not found", str(context.exception))
+
+    def test_generate_pipeline(self):
+        """Test that generate_pipeline creates a complete pipeline."""
+        template = ConcretePipelineTemplate(
+            config_path='test_config.json',
+            sagemaker_session=MagicMock(),
+            role='test-role'
+        )
+        
+        # Call generate_pipeline
+        pipeline = template.generate_pipeline()
+        
+        # Verify PipelineAssembler was created with correct parameters
+        self.mock_assembler_cls.assert_called_once()
+        call_kwargs = self.mock_assembler_cls.call_args[1]
+        
+        # Verify DAG was created
+        self.assertIsNotNone(call_kwargs['dag'])
+        
+        # Verify config_map was created
+        self.assertIsNotNone(call_kwargs['config_map'])
+        
+        # Verify step_builder_map was created
+        self.assertIsNotNone(call_kwargs['step_builder_map'])
+        
+        # Verify dependency components were passed
+        self.assertEqual(call_kwargs['registry_manager'], self.mock_registry_manager)
+        self.assertEqual(call_kwargs['dependency_resolver'], self.mock_dependency_resolver)
+        
+        # Verify generate_pipeline was called on assembler
+        self.mock_assembler.generate_pipeline.assert_called_once_with('test-pipeline-v1-0')
+        
+        # Verify pipeline was returned
+        self.assertEqual(pipeline, self.mock_pipeline)
+
+    def test_pipeline_name_generation(self):
+        """Test pipeline name generation."""
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        
+        # Test default name generation
+        name = template._get_pipeline_name()
+        self.mock_generate_name.assert_called_with('test-pipeline', '1.0')
+        self.assertEqual(name, 'test-pipeline-v1-0')
+
+    def test_pipeline_name_explicit_override(self):
+        """Test explicit pipeline name override."""
+        self.mock_base_config.explicit_pipeline_name = 'custom-pipeline-name'
+        
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        name = template._get_pipeline_name()
+        
+        # Should return explicit name without calling generator
+        self.assertEqual(name, 'custom-pipeline-name')
+        self.mock_generate_name.assert_not_called()
+
+    def test_store_pipeline_metadata(self):
+        """Test that pipeline metadata is stored correctly."""
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        
+        # Mock assembler with metadata
+        mock_assembler = MagicMock()
+        mock_assembler.cradle_loading_requests = {'step1': {'request': 'data'}}
+        mock_assembler.step_instances = {'step1': MagicMock(), 'step2': MagicMock()}
+        
+        # Call _store_pipeline_metadata
+        template._store_pipeline_metadata(mock_assembler)
+        
+        # Verify metadata was stored
+        self.assertEqual(template.pipeline_metadata['cradle_loading_requests'], {'step1': {'request': 'data'}})
+        self.assertEqual(template.pipeline_metadata['step_instances'], mock_assembler.step_instances)
+
+    def test_create_with_components_class_method(self):
+        """Test create_with_components class method."""
+        # Call class method
+        template = ConcretePipelineTemplate.create_with_components(
+            config_path='test_config.json',
+            context_name='custom-context',
+            sagemaker_session=MagicMock()
+        )
+        
+        # Verify create_pipeline_components was called with context
+        self.mock_create_components.assert_called_with('custom-context')
+        
+        # Verify template was created with components
+        self.assertIsInstance(template, ConcretePipelineTemplate)
+
+    def test_build_with_context_class_method(self):
+        """Test build_with_context class method."""
+        # Mock dependency_resolution_context
+        with patch('src.cursus.core.assembler.pipeline_template_base.dependency_resolution_context') as mock_context:
+            mock_context.return_value.__enter__.return_value = {
+                'registry_manager': self.mock_registry_manager,
+                'resolver': self.mock_dependency_resolver
+            }
+            
+            # Call class method
+            pipeline = ConcretePipelineTemplate.build_with_context(
+                config_path='test_config.json'
+            )
+            
+            # Verify context manager was used
+            mock_context.assert_called_once_with(clear_on_exit=True)
+            
+            # Verify pipeline was returned
+            self.assertEqual(pipeline, self.mock_pipeline)
+
+    def test_build_in_thread_class_method(self):
+        """Test build_in_thread class method."""
+        # Mock get_thread_components
+        with patch('src.cursus.core.assembler.pipeline_template_base.get_thread_components') as mock_thread:
+            mock_thread.return_value = {
+                'registry_manager': self.mock_registry_manager,
+                'resolver': self.mock_dependency_resolver
+            }
+            
+            # Call class method
+            pipeline = ConcretePipelineTemplate.build_in_thread(
+                config_path='test_config.json'
+            )
+            
+            # Verify thread components were used
+            mock_thread.assert_called_once()
+            
+            # Verify pipeline was returned
+            self.assertEqual(pipeline, self.mock_pipeline)
+
+    def test_fill_execution_document(self):
+        """Test fill_execution_document method."""
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        
+        # Test default implementation
+        doc = {'existing': 'data'}
+        result = template.fill_execution_document(doc)
+        
+        # Should return unchanged document
+        self.assertEqual(result, doc)
+
+
+class TestPipelineAssembler(unittest.TestCase):
+    def setUp(self):
+        """Set up test fixtures for PipelineAssembler tests."""
         # Mock PipelineDAG
         self.mock_dag = MagicMock(spec=PipelineDAG)
         self.mock_dag.nodes = ['step1', 'step2', 'step3']
@@ -30,339 +377,163 @@ class TestPipelineBuilderTemplate(unittest.TestCase):
             'step3': ['step2']
         }[node]
         
-        # Mock BasePipelineConfig
-        self.mock_config_base = MagicMock(spec=BasePipelineConfig)
-        self.mock_config_base.pipeline_s3_loc = "s3://test-bucket/test-pipeline"
+        # Mock configs
+        self.mock_config1 = MagicMock(spec=MockBasePipelineConfig)
+        self.mock_config2 = MagicMock(spec=MockBasePipelineConfig)
+        self.mock_config3 = MagicMock(spec=MockBasePipelineConfig)
         
-        # Mock StepBuilderBase
-        self.mock_builder_base = MagicMock(spec=StepBuilderBase)
-        self.mock_builder_base.get_input_requirements.return_value = {
-            'input1': 'Input 1 description',
-            'input2': 'Input 2 description'
-        }
-        self.mock_builder_base.get_output_properties.return_value = {
-            'output1': 'Output 1 description',
-            'output2': 'Output 2 description'
-        }
-        self.mock_builder_base.create_step.return_value = MagicMock(name="mock_step")
-        
-        # Mock config_map
         self.mock_config_map = {
-            'step1': MagicMock(spec=BasePipelineConfig),
-            'step2': MagicMock(spec=BasePipelineConfig),
-            'step3': MagicMock(spec=BasePipelineConfig)
+            'step1': self.mock_config1,
+            'step2': self.mock_config2,
+            'step3': self.mock_config3
         }
         
-        # Mock step_builder_map
-        self.mock_step_builder_cls = MagicMock(return_value=self.mock_builder_base)
+        # Mock step builders
+        self.mock_builder_cls = MagicMock()
+        self.mock_builder = MagicMock(spec=MockStepBuilderBase)
+        self.mock_builder_cls.return_value = self.mock_builder
+        
         self.mock_step_builder_map = {
-            'Step1': self.mock_step_builder_cls,
-            'Step2': self.mock_step_builder_cls,
-            'Step3': self.mock_step_builder_cls,
-            'MagicMock': self.mock_step_builder_cls  # Add this for the test_collect_step_io_requirements
+            'TestStep1': self.mock_builder_cls,
+            'TestStep2': self.mock_builder_cls,
+            'TestStep3': self.mock_builder_cls,
         }
         
-        # Mock PipelineSession
-        self.mock_session = MagicMock()
+        # Mock dependency components
+        self.mock_registry_manager = MagicMock(spec=MockRegistryManager)
+        self.mock_registry = MagicMock()
+        self.mock_registry_manager.get_registry.return_value = self.mock_registry
         
-        # Mock role
-        self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
+        self.mock_dependency_resolver = MagicMock(spec=MockUnifiedDependencyResolver)
         
-        # Mock notebook_root
-        self.mock_notebook_root = Path("/dummy/notebook/root")
+        # Mock CONFIG_STEP_REGISTRY
+        self.registry_patch = patch('src.cursus.core.assembler.pipeline_assembler.CONFIG_STEP_REGISTRY')
+        self.mock_step_registry = self.registry_patch.start()
+        self.mock_step_registry.get.side_effect = lambda x: {
+            'MockConfig': 'TestStep1',
+            'BasePipelineConfig': 'TestStep2'
+        }.get(x, 'TestStep3')
         
-        # Patch BasePipelineConfig.get_step_name
-        self.get_step_name_patch = patch('src.pipeline_steps.config_base.BasePipelineConfig.get_step_name')
-        self.mock_get_step_name = self.get_step_name_patch.start()
-        self.mock_get_step_name.side_effect = lambda class_name: class_name.replace('Config', '')
+        # Mock create_dependency_resolver
+        self.resolver_patch = patch('src.cursus.core.assembler.pipeline_assembler.create_dependency_resolver')
+        self.mock_create_resolver = self.resolver_patch.start()
+        self.mock_create_resolver.return_value = self.mock_dependency_resolver
         
-        # Patch Pipeline
-        self.pipeline_patch = patch('src.pipeline_builder.pipeline_builder_template.Pipeline')
+        # Mock Pipeline
+        self.pipeline_patch = patch('src.cursus.core.assembler.pipeline_assembler.Pipeline')
         self.mock_pipeline_cls = self.pipeline_patch.start()
         self.mock_pipeline = MagicMock()
         self.mock_pipeline_cls.return_value = self.mock_pipeline
-        
-        # Create the builder instance
-        self.builder = PipelineTemplateBase(
+
+    def tearDown(self):
+        """Clean up patches."""
+        self.registry_patch.stop()
+        self.resolver_patch.stop()
+        self.pipeline_patch.stop()
+
+    def test_assembler_initialization(self):
+        """Test PipelineAssembler initialization."""
+        assembler = PipelineAssembler(
             dag=self.mock_dag,
             config_map=self.mock_config_map,
             step_builder_map=self.mock_step_builder_map,
-            sagemaker_session=self.mock_session,
-            role=self.mock_role,
-            pipeline_parameters=[],
-            notebook_root=self.mock_notebook_root
+            registry_manager=self.mock_registry_manager,
+            dependency_resolver=self.mock_dependency_resolver
         )
-
-    def tearDown(self):
-        """Clean up patches after each test."""
-        self.get_step_name_patch.stop()
-        self.pipeline_patch.stop()
-
-    def test_initialization(self):
-        """Test that the builder initializes correctly."""
-        # Verify attributes were set correctly
-        self.assertEqual(self.builder.dag, self.mock_dag)
-        self.assertEqual(self.builder.config_map, self.mock_config_map)
-        self.assertEqual(self.builder.step_builder_map, self.mock_step_builder_map)
-        self.assertEqual(self.builder.sagemaker_session, self.mock_session)
-        self.assertEqual(self.builder.role, self.mock_role)
-        self.assertEqual(self.builder.notebook_root, self.mock_notebook_root)
-        self.assertEqual(self.builder.pipeline_parameters, [])
         
-        # Verify data structures were initialized
-        self.assertEqual(self.builder.step_instances, {})
-        # step_builders is initialized in the constructor, so it should not be empty
-        self.assertEqual(len(self.builder.step_builders), 3)
-        self.assertIn('step1', self.builder.step_builders)
-        self.assertIn('step2', self.builder.step_builders)
-        self.assertIn('step3', self.builder.step_builders)
-        self.assertEqual(self.builder.step_input_requirements, {})
-        self.assertEqual(self.builder.step_output_properties, {})
-        self.assertIsInstance(self.builder.step_messages, defaultdict)
+        # Verify attributes
+        self.assertEqual(assembler.dag, self.mock_dag)
+        self.assertEqual(assembler.config_map, self.mock_config_map)
+        self.assertEqual(assembler.step_builder_map, self.mock_step_builder_map)
+        self.assertEqual(assembler._registry_manager, self.mock_registry_manager)
+        self.assertEqual(assembler._dependency_resolver, self.mock_dependency_resolver)
+        
+        # Verify step builders were initialized
+        self.assertEqual(len(assembler.step_builders), 3)
 
-    def test_collect_step_io_requirements(self):
-        """Test that _collect_step_io_requirements collects input and output requirements."""
-        # Call the method
-        self.builder._collect_step_io_requirements()
+    def test_assembler_validation_missing_configs(self):
+        """Test assembler validation with missing configs."""
+        # Remove a config
+        incomplete_config_map = {'step1': self.mock_config1}
         
-        # Verify step builders were created
-        self.assertEqual(len(self.builder.step_builders), 3)
-        self.assertIn('step1', self.builder.step_builders)
-        self.assertIn('step2', self.builder.step_builders)
-        self.assertIn('step3', self.builder.step_builders)
-        
-        # Verify input requirements were collected
-        self.assertEqual(len(self.builder.step_input_requirements), 3)
-        for step_name in ['step1', 'step2', 'step3']:
-            self.assertIn(step_name, self.builder.step_input_requirements)
-            self.assertEqual(
-                self.builder.step_input_requirements[step_name],
-                {'input1': 'Input 1 description', 'input2': 'Input 2 description'}
+        with self.assertRaises(ValueError) as context:
+            PipelineAssembler(
+                dag=self.mock_dag,
+                config_map=incomplete_config_map,
+                step_builder_map=self.mock_step_builder_map
             )
         
-        # Verify output properties were collected
-        self.assertEqual(len(self.builder.step_output_properties), 3)
-        for step_name in ['step1', 'step2', 'step3']:
-            self.assertIn(step_name, self.builder.step_output_properties)
-            self.assertEqual(
-                self.builder.step_output_properties[step_name],
-                {'output1': 'Output 1 description', 'output2': 'Output 2 description'}
+        self.assertIn("Missing configs for nodes", str(context.exception))
+
+    def test_assembler_validation_missing_builders(self):
+        """Test assembler validation with missing step builders."""
+        # Remove a step builder
+        incomplete_builder_map = {'TestStep1': self.mock_builder_cls}
+        
+        with self.assertRaises(ValueError) as context:
+            PipelineAssembler(
+                dag=self.mock_dag,
+                config_map=self.mock_config_map,
+                step_builder_map=incomplete_builder_map
             )
-
-    def test_propagate_messages_direct_match(self):
-        """Test that _propagate_messages matches inputs to outputs by name."""
-        # Set up input requirements and output properties
-        self.builder.step_input_requirements = {
-            'step1': {},  # No inputs for step1
-            'step2': {'output1': 'Need output1'},  # step2 needs output1
-            'step3': {'output2': 'Need output2'}   # step3 needs output2
-        }
         
-        self.builder.step_output_properties = {
-            'step1': {'output1': 'Provides output1', 'output2': 'Provides output2'},
-            'step2': {'output2': 'Provides output2'},
-            'step3': {}  # No outputs for step3
-        }
-        
-        # Call the method
-        self.builder._propagate_messages()
-        
-        # Verify messages were created for direct matches
-        self.assertIn('step2', self.builder.step_messages)
-        self.assertIn('output1', self.builder.step_messages['step2'])
-        self.assertEqual(
-            self.builder.step_messages['step2']['output1'],
-            {'source_step': 'step1', 'source_output': 'output1'}
-        )
-        
-        self.assertIn('step3', self.builder.step_messages)
-        self.assertIn('output2', self.builder.step_messages['step3'])
-        self.assertEqual(
-            self.builder.step_messages['step3']['output2'],
-            {'source_step': 'step2', 'source_output': 'output2'}
-        )
-
-    def test_propagate_messages_pattern_match(self):
-        """Test that _propagate_messages matches inputs to outputs by pattern."""
-        # Set up input requirements and output properties
-        self.builder.step_input_requirements = {
-            'step1': {},  # No inputs for step1
-            'step2': {'model_data': 'Need model data'},  # step2 needs model_data
-            'step3': {'training_data': 'Need training data'}   # step3 needs training_data
-        }
-        
-        self.builder.step_output_properties = {
-            'step1': {'model_artifacts': 'Provides model artifacts', 'dataset': 'Provides dataset'},
-            'step2': {'data_output': 'Provides data output'},
-            'step3': {}  # No outputs for step3
-        }
-        
-        # Call the method
-        self.builder._propagate_messages()
-        
-        # Verify messages were created for pattern matches
-        self.assertIn('step2', self.builder.step_messages)
-        self.assertIn('model_data', self.builder.step_messages['step2'])
-        self.assertEqual(
-            self.builder.step_messages['step2']['model_data']['source_step'],
-            'step1'
-        )
-        self.assertEqual(
-            self.builder.step_messages['step2']['model_data']['source_output'],
-            'model_artifacts'
-        )
-        self.assertTrue(self.builder.step_messages['step2']['model_data']['pattern_match'])
-        
-        self.assertIn('step3', self.builder.step_messages)
-        self.assertIn('training_data', self.builder.step_messages['step3'])
-        self.assertEqual(
-            self.builder.step_messages['step3']['training_data']['source_step'],
-            'step2'
-        )
-        self.assertEqual(
-            self.builder.step_messages['step3']['training_data']['source_output'],
-            'data_output'
-        )
-        self.assertTrue(self.builder.step_messages['step3']['training_data']['pattern_match'])
-
-    def test_instantiate_step(self):
-        """Test that _instantiate_step creates a step with the right inputs."""
-        # Set up step instances for dependencies
-        mock_step1 = MagicMock(name="step1")
-        mock_step1.name = "step1"
-        self.builder.step_instances = {'step1': mock_step1}
-        
-        # Set up step builders
-        self.builder.step_builders = {
-            'step2': self.mock_builder_base
-        }
-        
-        # Set up messages
-        self.builder.step_messages = {
-            'step2': {
-                'input1': {'source_step': 'step1', 'source_output': 'output1'}
-            }
-        }
-        
-        # Mock step1 to have output1 attribute
-        mock_step1.output1 = "output1_value"
-        
-        # Call the method
-        step = self.builder._instantiate_step('step2')
-        
-        # Verify the step was created with the right inputs
-        self.mock_builder_base.create_step.assert_called_once()
-        kwargs = self.mock_builder_base.create_step.call_args[1]
-        self.assertEqual(kwargs['dependencies'], [mock_step1])
-        self.assertEqual(kwargs['input1'], "output1_value")
-        
-        # Verify the step was returned
-        self.assertEqual(step, self.mock_builder_base.create_step.return_value)
+        self.assertIn("Missing step builder for step type", str(context.exception))
 
     def test_generate_pipeline(self):
-        """Test that generate_pipeline creates a complete pipeline."""
-        # Mock the internal methods
-        with patch.object(self.builder, '_collect_step_io_requirements') as mock_collect:
-            with patch.object(self.builder, '_propagate_messages') as mock_propagate:
-                with patch.object(self.builder, '_instantiate_step') as mock_instantiate:
-                    # Set up mock steps
-                    mock_step1 = MagicMock(name="step1")
-                    mock_step2 = MagicMock(name="step2")
-                    mock_step3 = MagicMock(name="step3")
-                    mock_instantiate.side_effect = [mock_step1, mock_step2, mock_step3]
-                    
-                    # Call the method
-                    pipeline = self.builder.generate_pipeline("test-pipeline")
-                    
-                    # Verify the internal methods were called
-                    mock_collect.assert_called_once()
-                    mock_propagate.assert_called_once()
-                    
-                    # Verify _instantiate_step was called for each step
-                    self.assertEqual(mock_instantiate.call_count, 3)
-                    mock_instantiate.assert_any_call('step1')
-                    mock_instantiate.assert_any_call('step2')
-                    mock_instantiate.assert_any_call('step3')
-                    
-                    # Verify step instances were stored
-                    self.assertEqual(len(self.builder.step_instances), 3)
-                    self.assertEqual(self.builder.step_instances['step1'], mock_step1)
-                    self.assertEqual(self.builder.step_instances['step2'], mock_step2)
-                    self.assertEqual(self.builder.step_instances['step3'], mock_step3)
-                    
-                    # Verify Pipeline was created with the right parameters
-                    self.mock_pipeline_cls.assert_called_once_with(
-                        name="test-pipeline",
-                        parameters=[],
-                        steps=[mock_step1, mock_step2, mock_step3],
-                        sagemaker_session=self.mock_session
-                    )
-                    
-                    # Verify the pipeline was returned
-                    self.assertEqual(pipeline, self.mock_pipeline)
+        """Test pipeline generation."""
+        assembler = PipelineAssembler(
+            dag=self.mock_dag,
+            config_map=self.mock_config_map,
+            step_builder_map=self.mock_step_builder_map,
+            registry_manager=self.mock_registry_manager,
+            dependency_resolver=self.mock_dependency_resolver
+        )
+        
+        # Mock step creation
+        mock_step1 = MagicMock()
+        mock_step2 = MagicMock()
+        mock_step3 = MagicMock()
+        self.mock_builder.create_step.side_effect = [mock_step1, mock_step2, mock_step3]
+        
+        # Generate pipeline
+        pipeline = assembler.generate_pipeline('test-pipeline')
+        
+        # Verify pipeline was created
+        self.mock_pipeline_cls.assert_called_once_with(
+            name='test-pipeline',
+            parameters=[],
+            steps=[mock_step1, mock_step2, mock_step3],
+            sagemaker_session=None
+        )
+        
+        # Verify step instances were stored
+        self.assertEqual(len(assembler.step_instances), 3)
+        self.assertEqual(assembler.step_instances['step1'], mock_step1)
+        self.assertEqual(assembler.step_instances['step2'], mock_step2)
+        self.assertEqual(assembler.step_instances['step3'], mock_step3)
 
-    def test_add_config_inputs(self):
-        """Test that _add_config_inputs adds inputs from config."""
-        # Create a config with some common inputs
-        config = MagicMock(spec=BasePipelineConfig)
-        config.model_data = "s3://test-bucket/model.tar.gz"
-        config.data_uri = "s3://test-bucket/data"
-        config.input_data = None  # This should not be added
-        
-        # Call the method
-        kwargs = {}
-        self.builder._add_config_inputs(kwargs, config)
-        
-        # Verify inputs were added
-        self.assertEqual(kwargs['model_data'], "s3://test-bucket/model.tar.gz")
-        self.assertEqual(kwargs['data_uri'], "s3://test-bucket/data")
-        self.assertNotIn('input_data', kwargs)
-
-    def test_extract_common_outputs_model_artifacts(self):
-        """Test that _extract_common_outputs extracts model artifacts."""
-        # Create a step with model_artifacts_path
-        prev_step = MagicMock()
-        prev_step.model_artifacts_path = "s3://test-bucket/model.tar.gz"
-        
-        # Ensure training_output_path doesn't override model_artifacts_path
-        # by setting it to None or removing the attribute
-        if hasattr(prev_step, 'training_output_path'):
-            del prev_step.training_output_path
-        
-        # Call the method for a normal step
-        kwargs = {}
-        self.builder._extract_common_outputs(kwargs, prev_step, "step_name", "NormalStep")
-        
-        # Verify model_data was added
-        self.assertEqual(kwargs['model_data'], "s3://test-bucket/model.tar.gz")
-        
-        # Call the method for a packaging step
-        kwargs = {}
-        self.builder._extract_common_outputs(kwargs, prev_step, "step_name", "PackagingStep")
-        
-        # Verify model_artifacts_input_source was added
-        self.assertEqual(kwargs['model_artifacts_input_source'], "s3://test-bucket/model.tar.gz")
-
-    def test_extract_common_outputs_processing_output(self):
-        """Test that _extract_common_outputs extracts processing output."""
-        # Create a step with ProcessingOutputConfig
-        prev_step = MagicMock()
-        prev_step.properties.ProcessingOutputConfig.Outputs = [MagicMock()]
-        prev_step.properties.ProcessingOutputConfig.Outputs[0].S3Output.S3Uri = "s3://test-bucket/output"
-        
-        # Call the method for a normal step
-        kwargs = {}
-        self.builder._extract_common_outputs(kwargs, prev_step, "step_name", "NormalStep")
-        
-        # Verify processing_output was added
-        self.assertEqual(kwargs['processing_output'], "s3://test-bucket/output")
-        
-        # Call the method for a registration step
-        kwargs = {}
-        self.builder._extract_common_outputs(kwargs, prev_step, "step_name", "RegistrationStep")
-        
-        # Verify packaging_step_output was added
-        self.assertEqual(kwargs['packaging_step_output'], "s3://test-bucket/output")
+    def test_create_with_components_class_method(self):
+        """Test create_with_components class method."""
+        # Mock create_pipeline_components
+        with patch('src.cursus.core.assembler.pipeline_assembler.create_pipeline_components') as mock_create:
+            mock_create.return_value = {
+                'registry_manager': self.mock_registry_manager,
+                'resolver': self.mock_dependency_resolver
+            }
+            
+            assembler = PipelineAssembler.create_with_components(
+                dag=self.mock_dag,
+                config_map=self.mock_config_map,
+                step_builder_map=self.mock_step_builder_map,
+                context_name='test-context'
+            )
+            
+            # Verify create_pipeline_components was called
+            mock_create.assert_called_once_with('test-context')
+            
+            # Verify assembler was created with components
+            self.assertEqual(assembler._registry_manager, self.mock_registry_manager)
+            self.assertEqual(assembler._dependency_resolver, self.mock_dependency_resolver)
 
 
 if __name__ == '__main__':

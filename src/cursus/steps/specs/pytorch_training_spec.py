@@ -15,7 +15,7 @@ def _get_pytorch_train_contract():
 
 # PyTorch Training Step Specification
 PYTORCH_TRAINING_SPEC = StepSpecification(
-    step_type=get_spec_step_type("PytorchTraining"),
+    step_type=get_spec_step_type("PyTorchTraining"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_pytorch_train_contract(),
     dependencies=[

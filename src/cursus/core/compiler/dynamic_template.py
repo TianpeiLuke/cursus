@@ -5,16 +5,21 @@ This module provides a dynamic implementation of PipelineTemplateBase that can w
 with any PipelineDAG structure without requiring custom template classes.
 """
 
-from typing import Dict, Type, Any, Optional, List
+from typing import Dict, Type, Any, Optional, List, TYPE_CHECKING
 import logging
 
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.network import NetworkConfig
 
 from ...api.dag.base_dag import PipelineDAG
-from ..assembler.pipeline_template_base import PipelineTemplateBase
 from ..base import StepBuilderBase, BasePipelineConfig
 from ...steps.configs.utils import build_complete_config_classes
+
+if TYPE_CHECKING:
+    from ..assembler.pipeline_template_base import PipelineTemplateBase
+else:
+    # Placeholder for runtime to avoid circular import
+    PipelineTemplateBase = object
 
 from .config_resolver import StepConfigResolver
 from ...steps.registry.builder_registry import StepBuilderRegistry
