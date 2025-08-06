@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-08-06
+
+### Fixed
+- **DAG Compiler Enhancement** - Fixed template state management in `PipelineDAGCompiler`
+  - Added `_last_template` attribute to store template after pipeline generation
+  - Fixed timing issues with template metadata population during compilation
+  - Added `get_last_template()` method to access fully-populated templates
+  - Added `compile_and_fill_execution_doc()` method for proper sequencing of compilation and document filling
+
+### Changed
+- **Package Redeployment** - Updated source code and repackaged for PyPI distribution
+- **Version Increment** - Incremented version to 1.0.4 for new PyPI release
+
+### Technical Details
+- **Template State Management** - Templates now properly retain state after pipeline generation, enabling access to pipeline metadata for execution document generation
+- **Execution Document Integration** - New method ensures proper sequencing when both compiling pipelines and filling execution documents
+- Rebuilt package with latest source code changes
+- Successfully uploaded to PyPI: https://pypi.org/project/cursus/1.0.4/
+- All dependencies and metadata validated
+- Package available for installation via `pip install cursus==1.0.4`
+
 ## [1.0.3] - 2025-08-03
 
 ### Fixed
