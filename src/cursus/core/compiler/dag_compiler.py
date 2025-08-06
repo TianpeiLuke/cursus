@@ -140,6 +140,9 @@ class PipelineDAGCompiler:
         
         self.logger = logging.getLogger(__name__)
         
+        # Store the last template created during compilation
+        self._last_template = None
+        
         # Validate config file exists
         config_path_obj = Path(config_path)
         if not config_path_obj.exists():
@@ -343,6 +346,9 @@ class PipelineDAGCompiler:
             # Build pipeline
             pipeline = template.generate_pipeline()
             
+            # Store the template after generate_pipeline() has updated its internal state
+            self._last_template = template
+            
             # Override pipeline name if provided or generate a new one
             if pipeline_name:
                 pipeline.name = pipeline_name
@@ -527,3 +533,49 @@ class PipelineDAGCompiler:
                 'config_types': [],
                 'config_names': []
             }
+            
+    def get_last_template(self) -> Optional["DynamicPipelineTemplate"]:
+        """
+        Get the last template used during compilation.
+        
+        This template will have its pipeline_metadata populated from the generation process.
+        Use this method to get access to a template that has gone through the complete
+        pipeline generation process, particularly useful for execution document generation.
+        
+        Returns:
+            The last template used in compilation, or None if no compilation has occurred
+        """
+        return self._last_template
+        
+    def compile_and_fill_execution_doc(
+        self, 
+        dag: PipelineDAG, 
+        execution_doc: Dict[str, Any],
+        pipeline_name: Optional[str] = None,
+        **kwargs
+    ) -> Tuple[Pipeline, Dict[str, Any]]:
+        """
+        Compile a DAG to pipeline and fill an execution document in one step.
+        
+        This method ensures proper sequencing of the pipeline generation and 
+        execution document filling, addressing timing issues with template metadata.
+        
+        Args:
+            dag: PipelineDAG instance to compile
+            execution_doc: Execution document template to fill
+            pipeline_name: Optional pipeline name override
+            **kwargs: Additional arguments for template
+            
+        Returns:
+            Tuple of (compiled_pipeline, filled_execution_doc)
+        """
+        # First compile the pipeline (this also stores the template)
+        pipeline = self.compile(dag, pipeline_name=pipeline_name, **kwargs)
+        
+        # Now use the stored template to fill the execution document
+        if self._last_template is not None:
+            filled_doc = self._last_template.fill_execution_document(execution_doc)
+            return pipeline, filled_doc
+        else:
+            self.logger.warning("No template available for execution document filling")
+            return pipeline, execution_doc
