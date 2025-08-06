@@ -1,6 +1,6 @@
 """Version information for Cursus."""
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __title__ = "cursus"
 __description__ = "Automatic SageMaker Pipeline Generation from DAG Specifications"
 __author__ = "Tianpei Xie"
