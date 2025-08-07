@@ -85,6 +85,19 @@ The test provides detailed output including:
 - **Import failure details**: Detailed error messages for failed imports
 - **Circular import chains**: Visual representation of circular dependency paths
 
+### Output Files
+
+When you run the tests, they will generate detailed output files:
+
+- **`slipbox/test/circular_import_test_output_YYYYMMDD_HHMMSS.txt`** - Complete test results with timestamps saved to the slipbox/test folder
+- **Console output** - Real-time test progress and results displayed in the terminal
+
+The output file includes:
+- Complete test execution log
+- Detailed error messages and stack traces
+- Summary statistics
+- Timestamp information for tracking test runs over time
+
 ### Example Output
 
 ```

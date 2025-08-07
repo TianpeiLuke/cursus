@@ -375,50 +375,97 @@ class TestCircularImports(unittest.TestCase):
 
 def run_circular_import_tests():
     """Run the circular import tests with detailed output."""
-    print("="*80)
-    print("CURSUS PACKAGE CIRCULAR IMPORT TEST SUITE")
-    print("="*80)
+    import io
+    from datetime import datetime
+    
+    # Create a string buffer to capture all output
+    output_buffer = io.StringIO()
+    
+    def tee_print(*args, **kwargs):
+        """Print to both stdout and our buffer."""
+        print(*args, **kwargs)
+        print(*args, **kwargs, file=output_buffer)
+    
+    tee_print("="*80)
+    tee_print("CURSUS PACKAGE CIRCULAR IMPORT TEST SUITE")
+    tee_print("="*80)
     
     # Create test suite
     suite = unittest.TestLoader().loadTestsFromTestCase(TestCircularImports)
     
+    # Create a custom stream that writes to both stdout and our buffer
+    class TeeStream:
+        def __init__(self, *streams):
+            self.streams = streams
+        
+        def write(self, data):
+            for stream in self.streams:
+                stream.write(data)
+        
+        def flush(self):
+            for stream in self.streams:
+                stream.flush()
+    
+    tee_stream = TeeStream(sys.stdout, output_buffer)
+    
     # Run tests with detailed output
-    runner = unittest.TextTestRunner(verbosity=2, stream=sys.stdout)
+    runner = unittest.TextTestRunner(verbosity=2, stream=tee_stream)
     result = runner.run(suite)
     
     # Print summary
-    print("\n" + "="*80)
-    print("CIRCULAR IMPORT TEST SUMMARY")
-    print("="*80)
+    tee_print("\n" + "="*80)
+    tee_print("CIRCULAR IMPORT TEST SUMMARY")
+    tee_print("="*80)
     
     total_tests = result.testsRun
     failures = len(result.failures)
     errors = len(result.errors)
     passed = total_tests - failures - errors
     
-    print(f"Total Tests: {total_tests}")
-    print(f"Passed: {passed}")
-    print(f"Failed: {failures}")
-    print(f"Errors: {errors}")
+    tee_print(f"Total Tests: {total_tests}")
+    tee_print(f"Passed: {passed}")
+    tee_print(f"Failed: {failures}")
+    tee_print(f"Errors: {errors}")
     
     if failures > 0:
-        print(f"\nFAILURES:")
+        tee_print(f"\nFAILURES:")
         for test, traceback in result.failures:
-            print(f"  - {test}")
-            print(f"    {traceback.split('AssertionError:')[-1].strip()}")
+            tee_print(f"  - {test}")
+            tee_print(f"    {traceback.split('AssertionError:')[-1].strip()}")
     
     if errors > 0:
-        print(f"\nERRORS:")
+        tee_print(f"\nERRORS:")
         for test, traceback in result.errors:
-            print(f"  - {test}")
+            tee_print(f"  - {test}")
     
     success = failures == 0 and errors == 0
     if success:
-        print(f"\n🎉 ALL CIRCULAR IMPORT TESTS PASSED!")
+        tee_print(f"\n🎉 ALL CIRCULAR IMPORT TESTS PASSED!")
     else:
-        print(f"\n❌ SOME CIRCULAR IMPORT TESTS FAILED!")
+        tee_print(f"\n❌ SOME CIRCULAR IMPORT TESTS FAILED!")
     
-    print("="*80)
+    tee_print("="*80)
+    
+    # Save output to file in slipbox/test folder
+    try:
+        # Ensure slipbox/test directory exists
+        slipbox_test_dir = os.path.join(project_root, 'slipbox', 'test')
+        os.makedirs(slipbox_test_dir, exist_ok=True)
+        
+        # Generate output file with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = os.path.join(slipbox_test_dir, f'circular_import_test_output_{timestamp}.txt')
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(f"Cursus Package Circular Import Test Output\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"{'='*80}\n\n")
+            f.write(output_buffer.getvalue())
+        
+        print(f"\n📄 Test output saved to: {output_file}")
+        
+    except Exception as e:
+        print(f"\n⚠️  Warning: Could not save output file: {e}")
     
     return success
 
