@@ -13,7 +13,6 @@ from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 
 from ...api.dag.base_dag import PipelineDAG
-from .dynamic_template import DynamicPipelineTemplate
 from .config_resolver import StepConfigResolver
 from ...steps.registry.builder_registry import StepBuilderRegistry
 from .validation import ValidationResult, ResolutionPreview, ConversionReport, ValidationEngine
@@ -462,6 +461,9 @@ class PipelineDAGCompiler:
             PipelineAPIError: If template creation fails
         """
         try:
+            # Import here to avoid circular import
+            from .dynamic_template import DynamicPipelineTemplate
+            
             self.logger.info(f"Creating template for DAG with {len(dag.nodes)} nodes")
             
             # Merge kwargs with default values

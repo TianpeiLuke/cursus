@@ -56,6 +56,7 @@ def sanitize_pipeline_name(name: str) -> str:
     2. Replaces underscores with hyphens
     3. Removes any other special characters
     4. Ensures the name starts with an alphanumeric character
+    5. Ensures the name ends with an alphanumeric character
     
     Args:
         name: The pipeline name to sanitize
@@ -76,9 +77,16 @@ def sanitize_pipeline_name(name: str) -> str:
     # Replace multiple consecutive hyphens with a single hyphen
     sanitized = re.sub(r'-+', '-', sanitized)
     
-    # Truncate if the name is too long (SageMaker has a 256 character limit)
+    # Truncate if the name is too long (SageMaker has a 255 character limit)
     if len(sanitized) > 255:
         sanitized = sanitized[:255]
+    
+    # Ensure the name ends with an alphanumeric character (remove trailing hyphens)
+    sanitized = sanitized.rstrip('-')
+    
+    # If we removed all characters and the original wasn't empty, provide a default
+    if not sanitized and name:
+        sanitized = 'pipeline'
     
     # Check if the sanitized name is different from the original
     if sanitized != name:

@@ -57,7 +57,7 @@ class TestNameGenerator(unittest.TestCase):
         
         # Edge cases
         self.assertEqual(sanitize_pipeline_name(""), "")
-        self.assertEqual(sanitize_pipeline_name("."), "p-")  # p- because it needs to start with alphanumeric
+        self.assertEqual(sanitize_pipeline_name("."), "p")  # p because trailing hyphens are removed
         self.assertEqual(sanitize_pipeline_name("a" * 256), "a" * 255)  # Truncated
         
     def test_generate_pipeline_name(self):

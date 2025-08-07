@@ -38,7 +38,7 @@ class TestDagCompiler(unittest.TestCase):
         self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
 
     @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.DynamicPipelineTemplate')
+    @patch('src.cursus.core.compiler.dynamic_template.DynamicPipelineTemplate')
     @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
     def test_compile_with_custom_pipeline_name(self, mock_registry_class, mock_template_class, mock_path):
         """Test that custom pipeline names are used directly."""

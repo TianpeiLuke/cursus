@@ -14,11 +14,8 @@ from sagemaker.network import NetworkConfig
 from ...api.dag.base_dag import PipelineDAG
 from ..base import StepBuilderBase, BasePipelineConfig
 
-if TYPE_CHECKING:
-    from ..assembler.pipeline_template_base import PipelineTemplateBase
-else:
-    # Placeholder for runtime to avoid circular import
-    PipelineTemplateBase = object
+# Import PipelineTemplateBase directly - circular import should be resolved by now
+from ..assembler.pipeline_template_base import PipelineTemplateBase
 
 from .config_resolver import StepConfigResolver
 from ...steps.registry.builder_registry import StepBuilderRegistry
@@ -62,6 +59,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
     PipelineTemplateBase by using intelligent resolution mechanisms
     to map DAG nodes to configurations and step builders.
     """
+    
+    # Initialize CONFIG_CLASSES as empty - will be populated dynamically
+    CONFIG_CLASSES: Dict[str, Type[BasePipelineConfig]] = {}
     
     def __init__(
         self,
@@ -108,7 +108,14 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         self._loaded_metadata = None  # Store metadata from loaded configs
         
         # Call parent constructor AFTER setting CONFIG_CLASSES
-        super().__init__(config_path, **kwargs)
+        super().__init__(
+            config_path=config_path,
+            sagemaker_session=kwargs.get('sagemaker_session'),
+            role=kwargs.get('role'),
+            notebook_root=kwargs.get('notebook_root'),
+            registry_manager=kwargs.get('registry_manager'),
+            dependency_resolver=kwargs.get('dependency_resolver')
+        )
     
     def _detect_config_classes(self) -> Dict[str, Type[BasePipelineConfig]]:
         """

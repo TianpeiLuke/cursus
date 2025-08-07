@@ -27,7 +27,6 @@ from .assembler import PipelineAssembler, PipelineTemplateBase
 from .compiler import (
     compile_dag_to_pipeline,
     PipelineDAGCompiler,
-    DynamicPipelineTemplate,
     StepConfigResolver,
     ValidationResult,
     ResolutionPreview,
@@ -43,6 +42,17 @@ from .compiler import (
     ValidationError,
     ResolutionError
 )
+
+def _get_dynamic_pipeline_template():
+    """Lazy import to avoid circular import issues."""
+    from .compiler import DynamicPipelineTemplate
+    return DynamicPipelineTemplate
+
+# Make DynamicPipelineTemplate available through lazy loading
+def __getattr__(name):
+    if name == "DynamicPipelineTemplate":
+        return _get_dynamic_pipeline_template()
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 from .config_fields import (
     merge_and_save_configs,
     load_configs,
