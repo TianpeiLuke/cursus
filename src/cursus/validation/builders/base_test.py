@@ -6,7 +6,24 @@ import contextlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from typing import Dict, List, Any, Optional, Union, Type, Callable
+from enum import Enum
+from pydantic import BaseModel
 from sagemaker.workflow.steps import Step
+
+
+class ValidationLevel(Enum):
+    """Validation violation severity levels."""
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    INFO = "INFO"
+
+
+class ValidationViolation(BaseModel):
+    """Represents a validation violation."""
+    level: ValidationLevel
+    category: str
+    message: str
+    details: str = ""
 
 # Import base classes for type hints
 from ...core.base.builder_base import StepBuilderBase

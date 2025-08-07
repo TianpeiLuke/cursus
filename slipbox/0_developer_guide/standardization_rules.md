@@ -16,14 +16,91 @@ Standardization Rules provide the enhanced constraint enforcement layer that:
 
 ### 1. Naming Conventions
 
-All components must follow consistent naming conventions. These conventions are now centrally defined and enforced through the `step_names.py` registry, which serves as a single source of truth for step naming across the system.
+All components must follow consistent naming conventions. These conventions are centrally defined and enforced through the `step_names.py` registry, which serves as the single source of truth for step naming across the system.
 
-| Component | Pattern | Examples | Counter-Examples |
-|-----------|---------|----------|-----------------|
-| Step Types | PascalCase | `CradleDataLoading`, `XGBoostTraining`, `PyTorchTraining` | `cradle_data_loading`, `xgboost_training`, `PytorchTraining` |
-| Logical Names | snake_case | `input_data`, `model_artifacts` | `InputData`, `model-artifacts` |
-| Config Classes | PascalCase + `Config` suffix | `CradleDataLoadConfig`, `XGBoostTrainingConfig` | `CradleDataLoadingConfiguration`, `XGBoostConfig` |
-| Builder Classes | PascalCase + `StepBuilder` suffix | `CradleDataLoadingStepBuilder`, `XGBoostTrainingStepBuilder` | `DataLoadingBuilder`, `XGBoostStepBuilder` |
+#### Core Naming Patterns (Based on STEP_NAMES Registry)
+
+The `STEP_NAMES` dictionary defines the canonical relationships between all component names. Here are the actual patterns used:
+
+| Component | Pattern | Registry Examples | Counter-Examples |
+|-----------|---------|-------------------|-----------------|
+| **Canonical Step Names** | PascalCase (registry keys) | `CradleDataLoading`, `XGBoostTraining`, `PyTorchModel`, `TabularPreprocessing` | `cradle_data_loading`, `xgboost_training`, `PytorchTraining` |
+| **Config Classes** | PascalCase + `Config` suffix | `CradleDataLoadConfig`, `XGBoostTrainingConfig`, `PyTorchModelConfig` | `CradleDataLoadingConfiguration`, `XGBoostConfig` |
+| **Builder Classes** | PascalCase + `StepBuilder` suffix | `CradleDataLoadingStepBuilder`, `XGBoostTrainingStepBuilder`, `PyTorchModelStepBuilder` | `DataLoadingBuilder`, `XGBoostStepBuilder` |
+| **Spec Types** | Same as canonical step name | `CradleDataLoading`, `XGBoostTraining`, `PyTorchModel` | `cradle_data_loading_spec`, `XGBoostTrainingSpec` |
+| **SageMaker Step Types** | Exact SageMaker SDK names | `Processing`, `Training`, `Transform`, `CreateModel`, `RegisterModel`, `Lambda` | `ProcessingStep`, `TrainingStep`, `processing` |
+| **Logical Names** | snake_case | `input_data`, `model_artifacts`, `training_data` | `InputData`, `model-artifacts` |
+
+#### Real Examples from STEP_NAMES Registry
+
+Here are actual examples showing the naming relationships:
+
+```python
+# From STEP_NAMES registry - these are the authoritative patterns:
+
+"CradleDataLoading": {
+    "config_class": "CradleDataLoadConfig",           # Config: Remove "ing" + "Config"
+    "builder_step_name": "CradleDataLoadingStepBuilder", # Builder: Keep full name + "StepBuilder"
+    "spec_type": "CradleDataLoading",                 # Spec: Same as canonical name
+    "sagemaker_step_type": "Processing",              # SageMaker: SDK type name
+},
+
+"XGBoostTraining": {
+    "config_class": "XGBoostTrainingConfig",          # Config: Full name + "Config"
+    "builder_step_name": "XGBoostTrainingStepBuilder", # Builder: Full name + "StepBuilder"
+    "spec_type": "XGBoostTraining",                   # Spec: Same as canonical name
+    "sagemaker_step_type": "Training",                # SageMaker: SDK type name
+},
+
+"PyTorchModel": {
+    "config_class": "PyTorchModelConfig",             # Config: Full name + "Config"
+    "builder_step_name": "PyTorchModelStepBuilder",   # Builder: Full name + "StepBuilder"
+    "spec_type": "PyTorchModel",                      # Spec: Same as canonical name
+    "sagemaker_step_type": "CreateModel",             # SageMaker: SDK type name
+}
+```
+
+#### Config Class Naming Pattern Analysis
+
+From the registry, config class names follow these patterns:
+
+| Canonical Name | Config Class | Pattern |
+|----------------|--------------|---------|
+| `CradleDataLoading` | `CradleDataLoadConfig` | Remove "ing" suffix, add "Config" |
+| `TabularPreprocessing` | `TabularPreprocessingConfig` | Keep full name, add "Config" |
+| `XGBoostTraining` | `XGBoostTrainingConfig` | Keep full name, add "Config" |
+| `PyTorchModel` | `PyTorchModelConfig` | Keep full name, add "Config" |
+| `ModelCalibration` | `ModelCalibrationConfig` | Keep full name, add "Config" |
+| `HyperparameterPrep` | `HyperparameterPrepConfig` | Keep full name, add "Config" |
+
+**Rule**: Most config classes use the full canonical name + "Config", except for some "-ing" ending names where the "ing" is dropped.
+
+#### Builder Class Naming Pattern
+
+All builder classes consistently follow: `{CanonicalName}StepBuilder`
+
+| Canonical Name | Builder Class |
+|----------------|---------------|
+| `CradleDataLoading` | `CradleDataLoadingStepBuilder` |
+| `XGBoostTraining` | `XGBoostTrainingStepBuilder` |
+| `PyTorchModel` | `PyTorchModelStepBuilder` |
+| `TabularPreprocessing` | `TabularPreprocessingStepBuilder` |
+
+**Rule**: Always use the full canonical name + "StepBuilder" suffix.
+
+#### SageMaker Step Type Classification
+
+The registry defines 6 SageMaker step types with their corresponding steps:
+
+| SageMaker Type | Step Count | Examples |
+|----------------|------------|----------|
+| `Processing` | 10 steps | `CradleDataLoading`, `TabularPreprocessing`, `ModelCalibration`, `Package` |
+| `Training` | 2 steps | `XGBoostTraining`, `PyTorchTraining` |
+| `CreateModel` | 2 steps | `XGBoostModel`, `PyTorchModel` |
+| `Transform` | 1 step | `BatchTransform` |
+| `RegisterModel` | 1 step | `Registration` |
+| `Lambda` | 1 step | `HyperparameterPrep` |
+| `Base` | 1 step | `Base` |
 
 Additionally, all files must follow consistent naming patterns:
 
@@ -326,6 +403,111 @@ class TestYourStepBuilder(unittest.TestCase):
     def test_specification_compliance(self):
         """Test builder complies with specification."""
         # Compliance test
+```
+
+### 6. SageMaker Step Type Classification Standards
+
+All step builders must be properly classified according to their actual SageMaker step type. This classification is mandatory for the Universal Builder Test framework and step-type-specific validation.
+
+#### Step Registry Requirements
+
+All steps must be registered in `src/cursus/steps/registry/step_names.py` with the correct `sagemaker_step_type` field:
+
+```python
+STEP_NAMES = {
+    "YourNewStep": {
+        "config_class": "YourNewStepConfig",
+        "builder_step_name": "YourNewStepBuilder", 
+        "spec_type": "YourNewStep",
+        "sagemaker_step_type": "Processing",  # MANDATORY: Must match create_step() return type
+        "description": "Description of your new step"
+    },
+}
+```
+
+#### Valid SageMaker Step Types
+
+The `sagemaker_step_type` field must use one of these exact values:
+
+| SageMaker Step Type | When to Use | create_step() Return Type | Examples |
+|-------------------|-------------|---------------------------|----------|
+| `Processing` | Steps that create ProcessingStep instances | `ProcessingStep` | TabularPreprocessing, ModelCalibration, Package |
+| `Training` | Steps that create TrainingStep instances | `TrainingStep` | XGBoostTraining, PyTorchTraining |
+| `Transform` | Steps that create TransformStep instances | `TransformStep` | BatchTransform |
+| `CreateModel` | Steps that create CreateModelStep instances | `CreateModelStep` | XGBoostModel, PyTorchModel |
+| `RegisterModel` | Steps that create model registration steps | Custom registration steps | Registration (MimsModelRegistrationProcessingStep) |
+| `Lambda` | Steps that create LambdaStep instances | `LambdaStep` | HyperparameterPrep |
+| `Base` | Base/utility steps | N/A | Base configuration steps |
+
+#### Verification Requirements
+
+**CRITICAL**: The `sagemaker_step_type` field must be verified against the actual implementation:
+
+1. **Source Code Analysis**: Examine the `create_step()` method in your step builder
+2. **Return Type Verification**: Ensure the return type annotation matches the classification
+3. **Implementation Verification**: Confirm the actual step creation logic matches the classification
+
+Example verification process:
+
+```python
+# In your step builder
+def create_step(self, **kwargs) -> ProcessingStep:  # Return type must match registry
+    """Create the processing step."""
+    # Implementation must create ProcessingStep
+    return ProcessingStep(...)  # Must match both return type and registry classification
+```
+
+#### Step-Type-Specific Validation
+
+Each SageMaker step type has specific validation requirements enforced by the Universal Builder Test framework:
+
+**Processing Steps**:
+- Must define ProcessingInputs and ProcessingOutputs correctly
+- Must use proper container paths and S3 URIs
+- Must handle environment variables appropriately
+
+**Training Steps**:
+- Must define training inputs (training data, validation data)
+- Must specify model output location
+- Must configure hyperparameters correctly
+
+**Transform Steps**:
+- Must define transform input and output
+- Must specify model name or model data
+- Must configure instance types appropriately
+
+**CreateModel Steps**:
+- Must reference model artifacts from training
+- Must define inference code and dependencies
+- Must specify model name and role
+
+**RegisterModel Steps**:
+- Must handle model registration with external systems
+- Must validate model artifacts and metadata
+- Must follow custom registration protocols
+
+#### Universal Builder Test Integration
+
+All step builders are automatically tested using the Universal Builder Test framework, which provides:
+
+1. **Step-Type-Specific Validation**: Tests tailored to each SageMaker step type
+2. **Interface Compliance Testing**: Validates standard interfaces and methods
+3. **Specification Alignment Testing**: Ensures specs and contracts are aligned
+4. **Path Mapping Testing**: Validates input/output path configurations
+5. **Integration Testing**: Tests step interactions and dependencies
+
+Example test execution:
+
+```python
+from src.cursus.validation.builders.universal_test import UniversalBuilderTester
+
+# Test your step builder with step-type-specific validation
+tester = UniversalBuilderTester(YourStepBuilder, config)
+results = tester.run_all_tests()
+
+# Results include step-type-specific validation
+print(f"SageMaker Step Type: {results.sagemaker_step_type}")
+print(f"Step-Type-Specific Tests: {results.sagemaker_validation_results}")
 ```
 
 ## Validation Tools

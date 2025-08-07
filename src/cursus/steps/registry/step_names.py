@@ -11,6 +11,7 @@ STEP_NAMES = {
         "config_class": "BasePipelineConfig",
         "builder_step_name": "StepBuilderBase",
         "spec_type": "Base",
+        "sagemaker_step_type": "Base",  # Special case
         "description": "Base pipeline configuration"
     },
 
@@ -19,6 +20,7 @@ STEP_NAMES = {
         "config_class": "ProcessingStepConfigBase",
         "builder_step_name": "ProcessingStepBuilder",
         "spec_type": "Processing",
+        "sagemaker_step_type": "Processing",
         "description": "Base processing step"
     },
 
@@ -27,6 +29,7 @@ STEP_NAMES = {
         "config_class": "CradleDataLoadConfig",
         "builder_step_name": "CradleDataLoadingStepBuilder",
         "spec_type": "CradleDataLoading",
+        "sagemaker_step_type": "Processing",
         "description": "Cradle data loading step"
     },
 
@@ -35,18 +38,21 @@ STEP_NAMES = {
         "config_class": "TabularPreprocessingConfig",
         "builder_step_name": "TabularPreprocessingStepBuilder",
         "spec_type": "TabularPreprocessing",
+        "sagemaker_step_type": "Processing",
         "description": "Tabular data preprocessing step"
     },
     "RiskTableMapping": {
         "config_class": "RiskTableMappingConfig",
         "builder_step_name": "RiskTableMappingStepBuilder",
         "spec_type": "RiskTableMapping",
+        "sagemaker_step_type": "Processing",
         "description": "Risk table mapping step for categorical features"
     },
     "CurrencyConversion": {
         "config_class": "CurrencyConversionConfig",
         "builder_step_name": "CurrencyConversionStepBuilder",
         "spec_type": "CurrencyConversion",
+        "sagemaker_step_type": "Processing",
         "description": "Currency conversion processing step"
     },
     
@@ -55,18 +61,21 @@ STEP_NAMES = {
         "config_class": "PyTorchTrainingConfig",
         "builder_step_name": "PyTorchTrainingStepBuilder",
         "spec_type": "PyTorchTraining",
+        "sagemaker_step_type": "Training",
         "description": "PyTorch model training step"
     },
     "XGBoostTraining": {
         "config_class": "XGBoostTrainingConfig",
         "builder_step_name": "XGBoostTrainingStepBuilder",
         "spec_type": "XGBoostTraining",
+        "sagemaker_step_type": "Training",
         "description": "XGBoost model training step"
     },
     "DummyTraining": {
         "config_class": "DummyTrainingConfig",
         "builder_step_name": "DummyTrainingStepBuilder",
         "spec_type": "DummyTraining",
+        "sagemaker_step_type": "Processing",
         "description": "Training step that uses a pretrained model"
     },
     
@@ -75,6 +84,7 @@ STEP_NAMES = {
         "config_class": "XGBoostModelEvalConfig",
         "builder_step_name": "XGBoostModelEvalStepBuilder",
         "spec_type": "XGBoostModelEval",
+        "sagemaker_step_type": "Processing",
         "description": "XGBoost model evaluation step"
     },
     
@@ -83,12 +93,14 @@ STEP_NAMES = {
         "config_class": "PyTorchModelConfig",
         "builder_step_name": "PyTorchModelStepBuilder",
         "spec_type": "PyTorchModel",
+        "sagemaker_step_type": "CreateModel",
         "description": "PyTorch model creation step"
     },
     "XGBoostModel": {
         "config_class": "XGBoostModelConfig",
         "builder_step_name": "XGBoostModelStepBuilder",
         "spec_type": "XGBoostModel",
+        "sagemaker_step_type": "CreateModel",
         "description": "XGBoost model creation step"
     },
     
@@ -97,6 +109,7 @@ STEP_NAMES = {
         "config_class": "ModelCalibrationConfig",
         "builder_step_name": "ModelCalibrationStepBuilder",
         "spec_type": "ModelCalibration",
+        "sagemaker_step_type": "Processing",
         "description": "Calibrates model prediction scores to accurate probabilities"
     },
     
@@ -105,18 +118,21 @@ STEP_NAMES = {
         "config_class": "PackageConfig",
         "builder_step_name": "PackageStepBuilder",
         "spec_type": "Package",
+        "sagemaker_step_type": "Processing",
         "description": "Model packaging step"
     },
     "Registration": {
         "config_class": "RegistrationConfig",
         "builder_step_name": "RegistrationStepBuilder",
         "spec_type": "Registration",
+        "sagemaker_step_type": "RegisterModel",
         "description": "Model registration step"
     },
     "Payload": {
         "config_class": "PayloadConfig",
         "builder_step_name": "PayloadStepBuilder",
         "spec_type": "Payload",
+        "sagemaker_step_type": "Processing",
         "description": "Payload testing step"
     },
     
@@ -125,6 +141,7 @@ STEP_NAMES = {
         "config_class": "HyperparameterPrepConfig",
         "builder_step_name": "HyperparameterPrepStepBuilder",
         "spec_type": "HyperparameterPrep",
+        "sagemaker_step_type": "Lambda",  # Special classification
         "description": "Hyperparameter preparation step"
     },
     
@@ -133,6 +150,7 @@ STEP_NAMES = {
         "config_class": "BatchTransformStepConfig",
         "builder_step_name": "BatchTransformStepBuilder",
         "spec_type": "BatchTransform",
+        "sagemaker_step_type": "Transform",
         "description": "Batch transform step"
     }
 }
@@ -213,3 +231,36 @@ def get_step_description(step_name: str) -> str:
 def list_all_step_info() -> Dict[str, Dict[str, str]]:
     """Get complete step information for all registered steps."""
     return STEP_NAMES.copy()
+
+# SageMaker Step Type Classification Functions
+def get_sagemaker_step_type(step_name: str) -> str:
+    """Get SageMaker step type for a step."""
+    if step_name not in STEP_NAMES:
+        raise ValueError(f"Unknown step name: {step_name}")
+    return STEP_NAMES[step_name]["sagemaker_step_type"]
+
+def get_steps_by_sagemaker_type(sagemaker_type: str) -> List[str]:
+    """Get all step names that create a specific SageMaker step type."""
+    return [
+        step_name for step_name, info in STEP_NAMES.items()
+        if info["sagemaker_step_type"] == sagemaker_type
+    ]
+
+def get_all_sagemaker_step_types() -> List[str]:
+    """Get all unique SageMaker step types."""
+    return list(set(info["sagemaker_step_type"] for info in STEP_NAMES.values()))
+
+def validate_sagemaker_step_type(sagemaker_type: str) -> bool:
+    """Validate that a SageMaker step type exists in the registry."""
+    valid_types = {"Processing", "Training", "Transform", "CreateModel", "RegisterModel", "Base", "Utility"}
+    return sagemaker_type in valid_types
+
+def get_sagemaker_step_type_mapping() -> Dict[str, List[str]]:
+    """Get mapping of SageMaker step types to step names."""
+    mapping = {}
+    for step_name, info in STEP_NAMES.items():
+        sagemaker_type = info["sagemaker_step_type"]
+        if sagemaker_type not in mapping:
+            mapping[sagemaker_type] = []
+        mapping[sagemaker_type].append(step_name)
+    return mapping

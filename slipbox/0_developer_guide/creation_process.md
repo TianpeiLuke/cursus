@@ -21,7 +21,7 @@ Adding a new step to the pipeline involves creating several components that work
 
 First, register your step in the central step registry:
 
-**File to Update**: `src/pipeline_registry/step_names.py`
+**File to Update**: `src/cursus/steps/registry/step_names.py`
 
 ```python
 STEP_NAMES = {
@@ -31,10 +31,21 @@ STEP_NAMES = {
         "config_class": "YourNewStepConfig",
         "builder_step_name": "YourNewStepBuilder",
         "spec_type": "YourNewStep",
+        "sagemaker_step_type": "Processing",  # Based on create_step() return type
         "description": "Description of your new step"
     },
 }
 ```
+
+**Important**: The `sagemaker_step_type` field must match the actual SageMaker step type returned by your step builder's `create_step()` method:
+
+- **"Processing"** - for steps that return `ProcessingStep`
+- **"Training"** - for steps that return `TrainingStep`  
+- **"Transform"** - for steps that return `TransformStep`
+- **"CreateModel"** - for steps that return `CreateModelStep`
+- **"RegisterModel"** - for steps that return custom registration steps (like `MimsModelRegistrationProcessingStep`)
+- **"Lambda"** - for steps that return `LambdaStep`
+- **"Base"** - for base/utility steps
 
 This registration connects your step's components together and makes them discoverable by the pipeline system.
 
@@ -369,7 +380,7 @@ The step builder:
 
 Add your new step to the central step names registry:
 
-**File to Update**: `src/pipeline_registry/step_names.py`
+**File to Update**: `src/cursus/steps/registry/step_names.py`
 
 ```python
 # Add to existing STEP_NAMES dictionary
@@ -380,10 +391,13 @@ STEP_NAMES = {
         "config_class": "YourNewStepConfig",
         "builder_step_name": "YourNewStepBuilder",
         "spec_type": "YourNewStep",
+        "sagemaker_step_type": "Processing",  # Based on create_step() return type
         "description": "Description of your new step"
     },
 }
 ```
+
+**Important**: Ensure the `sagemaker_step_type` field matches the actual SageMaker step type returned by your step builder's `create_step()` method. This field is used by the Universal Builder Test framework for step-type-specific validation and testing.
 
 Note: With the auto-discovery system, you don't need to manually update `__init__.py` files anymore. The `@register_builder` decorator automatically handles registration, and step builder files are discovered based on their naming pattern.
 
