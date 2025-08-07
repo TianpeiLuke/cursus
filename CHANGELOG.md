@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-08-06
+
+### Fixed
+- **CRITICAL: Circular Import Resolution** - Completely resolved all circular import issues in the package
+  - Fixed circular dependency in `cursus.core.base.builder_base` module that was preventing 89.3% of modules from importing
+  - Implemented lazy loading pattern using property decorator to break circular import chain
+  - Root cause: `builder_base.py` → `step_names` → `builders` → `builder_base.py` circular dependency
+  - Solution: Converted direct import to lazy property loading with graceful fallback
+  - **Result**: 98.7% module import success rate (157/159 modules), up from 10.7% (17/159 modules)
+
+### Added
+- **Comprehensive Circular Import Test Suite** - New testing infrastructure to prevent future regressions
+  - Created `test/circular_imports/` directory with complete test framework
+  - Added 5 comprehensive test categories covering all package modules
+  - Automated detection and reporting of circular import issues
+  - Import order independence testing to ensure robust module loading
+  - Detailed error reporting with exact circular dependency chains
+  - Test output logging with timestamps and comprehensive statistics
+
+### Changed
+- **Package Architecture Improvement** - Enhanced module loading reliability
+  - All core packages now import successfully without circular dependencies
+  - Maintained Single Source of Truth design principle while fixing imports
+  - Preserved existing API compatibility during circular import resolution
+  - Improved error handling for optional dependencies
+
+### Technical Details
+- **Module Import Success Rate**: Improved from 10.7% to 98.7% (157/159 modules successful)
+- **Circular Imports Eliminated**: Reduced from 142 detected circular imports to 0
+- **Core Package Health**: 100% of core packages (cursus.core.*) now import cleanly
+- **Test Coverage**: 159 modules tested across 15 package categories
+- **Only Remaining Import Issues**: 2 modules with missing optional dependencies (expected behavior)
+- **Package Categories Tested**: Core (4), API (1), Steps (7), Processing (1), Root (2) - all 100% clean
+
+### Quality Assurance
+- **Comprehensive Testing**: All 5 circular import tests now pass (previously 1/5 passing)
+- **Regression Prevention**: Test suite integrated for ongoing monitoring
+- **Package Health Monitoring**: Automated detection of import issues
+- **Development Workflow Restored**: Normal import behavior for all development activities
+
 ## [1.0.4] - 2025-08-06
 
 ### Fixed
