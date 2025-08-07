@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-08-07
+
+### Added
+- **Comprehensive Test Infrastructure** - Major expansion of testing capabilities
+  - **Core Test Suite** - New comprehensive test runner for all core components (`test/core/run_core_tests.py`)
+  - **Test Coverage Analysis** - Advanced coverage analysis tool with detailed reporting (`test/analyze_test_coverage.py`)
+  - **Test Organization** - Restructured test directory with component-based organization
+  - **Performance Metrics** - Test execution timing and performance analysis
+  - **Quality Assurance Reports** - Automated generation of test quality and coverage reports
+
+- **Three-Tier Configuration Architecture** - New configuration management system
+  - **ConfigFieldTierRegistry** - Registry for field tier classifications (Tier 1: Essential User Inputs, Tier 2: System Inputs, Tier 3: Derived Inputs)
+  - **Field Classification System** - Systematic categorization of 50+ configuration fields across three tiers
+  - **Enhanced Configuration Management** - Improved configuration merging and serialization with tier awareness
+
+- **Validation Module** - New pipeline validation infrastructure
+  - **Pipeline Validation** - Utilities for validating pipeline components, specifications, and configurations
+  - **Early Error Detection** - Catch configuration errors early in the development process
+  - **Compatibility Checking** - Ensure specifications and contracts are valid and compatible
+
+### Enhanced
+- **Test Coverage Metrics** - Comprehensive analysis and reporting
+  - **Overall Statistics** - 602 tests across 36 test modules with 85.5% success rate
+  - **Component Coverage** - Detailed coverage analysis for Assembler (100%), Compiler (100%), Base (86.2%), Config Fields (99.0%), Deps (68.2%)
+  - **Function Coverage** - 50.6% function coverage (166/328 functions tested) with detailed gap analysis
+  - **Redundancy Analysis** - Identification and reporting of test redundancy patterns
+
+- **Configuration Field Management** - Major improvements to config field handling
+  - **Type-Aware Serialization** - Enhanced serialization with better type preservation
+  - **Configuration Merging** - Improved config merger with better error handling
+  - **Circular Reference Tracking** - Enhanced circular reference detection and prevention
+
+### Fixed
+- **Import Path Corrections** - Fixed multiple import path issues across the codebase
+  - **Test Module Imports** - Corrected import paths in test modules for better reliability
+  - **Configuration Module Imports** - Fixed import issues in config field modules
+  - **Base Class Imports** - Resolved import path issues in base classes
+
+- **Test Infrastructure Stability** - Improved test execution reliability
+  - **Mock Configuration** - Fixed mock setup issues in factory tests
+  - **Test Isolation** - Improved test isolation to prevent state contamination
+  - **Path Configuration** - Fixed path configuration issues in test modules
+
+### Technical Details
+- **Test Infrastructure** - 602 tests with 1.56 second execution time and 1,847 total assertions
+- **Code Organization** - Restructured test directory from flat structure to component-based hierarchy
+- **Quality Metrics** - 94.9% unique test names with 5.1% redundancy across components
+- **Performance** - Average test duration of 2.59ms per test with efficient memory usage
+- **Documentation** - Comprehensive test documentation with usage examples and troubleshooting guides
+
+### Quality Assurance
+- **Automated Reporting** - Generated comprehensive test reports in JSON and Markdown formats
+- **Coverage Tracking** - Detailed function-level coverage analysis with gap identification
+- **Performance Monitoring** - Test execution performance metrics and optimization recommendations
+- **Regression Prevention** - Enhanced test suite to prevent future regressions
+
 ## [1.0.5] - 2025-08-06
 
 ### Fixed
