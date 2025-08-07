@@ -38,10 +38,10 @@ else:
         logger.warning("Dependency resolver not available, using traditional methods")
 
 # Import for type hints only
-try:
-    from specification_base import StepSpecification
-except ImportError:
-    # Just for type hints, won't be used at runtime if not available
+if TYPE_CHECKING:
+    from .specification_base import StepSpecification
+else:
+    # Just for runtime use, won't affect type checking
     StepSpecification = Any
 
 # Import BasePipelineConfig for type hints only to break circular dependency
@@ -79,10 +79,6 @@ def safe_value_for_logging(value):
         return str(value)
     except Exception:
         return f"[Object of type: {type(value).__name__}]"
-
-
-# Import step names from central source of truth
-from ...steps.registry.step_names import BUILDER_STEP_NAMES as STEP_NAMES
 
 
 class StepBuilderBase(ABC):
@@ -158,8 +154,17 @@ class StepBuilderBase(ABC):
         "FE": "us-west-2"
     }
 
-    # Define standard step names
-    STEP_NAMES = STEP_NAMES
+    @property
+    def STEP_NAMES(self):
+        """Lazy load step names to avoid circular imports while maintaining Single Source of Truth."""
+        if not hasattr(self, '_step_names'):
+            try:
+                from ...steps.registry.step_names import BUILDER_STEP_NAMES
+                self._step_names = BUILDER_STEP_NAMES
+            except ImportError:
+                # Fallback if import fails
+                self._step_names = {}
+        return self._step_names
 
     # Common properties that all steps might need
     COMMON_PROPERTIES = {

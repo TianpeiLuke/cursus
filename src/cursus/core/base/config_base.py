@@ -22,8 +22,8 @@ else:
 
 logger = logging.getLogger(__name__)
 
-# Import step registry from central source of truth
-from ...steps.registry.step_names import CONFIG_STEP_REGISTRY as STEP_REGISTRY
+# Note: Removed circular import to steps.registry.step_names
+# Step registry will be accessed via lazy loading when needed
 
 
 class BasePipelineConfig(BaseModel):
@@ -36,7 +36,7 @@ class BasePipelineConfig(BaseModel):
         "FE": "us-west-2"
     }
     
-    _STEP_NAMES: ClassVar[Dict[str, str]] = STEP_REGISTRY
+    _STEP_NAMES: ClassVar[Dict[str, str]] = {}  # Will be populated via lazy loading
     
     # For internal caching (completely private)
     _cache: Dict[str, Any] = PrivateAttr(default_factory=dict)
@@ -312,13 +312,27 @@ class BasePipelineConfig(BaseModel):
     @classmethod
     def get_step_name(cls, config_class_name: str) -> str:
         """Get the step name for a configuration class."""
-        return cls._STEP_NAMES.get(config_class_name, config_class_name)
+        step_names = cls._get_step_registry()
+        return step_names.get(config_class_name, config_class_name)
 
     @classmethod
     def get_config_class_name(cls, step_name: str) -> str:
         """Get the configuration class name from a step name."""
-        reverse_mapping = {v: k for k, v in cls._STEP_NAMES.items()}
+        step_names = cls._get_step_registry()
+        reverse_mapping = {v: k for k, v in step_names.items()}
         return reverse_mapping.get(step_name, step_name)
+    
+    @classmethod
+    def _get_step_registry(cls) -> Dict[str, str]:
+        """Lazy load step registry to avoid circular imports."""
+        if not cls._STEP_NAMES:
+            try:
+                from ...steps.registry.step_names import CONFIG_STEP_REGISTRY
+                cls._STEP_NAMES = CONFIG_STEP_REGISTRY
+            except ImportError:
+                logger.warning("Could not import step registry, using empty registry")
+                cls._STEP_NAMES = {}
+        return cls._STEP_NAMES
     
     @classmethod
     def from_base_config(cls, base_config: 'BasePipelineConfig', **kwargs) -> 'BasePipelineConfig':
