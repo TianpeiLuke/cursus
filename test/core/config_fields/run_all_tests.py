@@ -14,7 +14,8 @@ from typing import Dict, List, Tuple, Optional
 import importlib.util
 
 # Add the project root to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+project_root = str(Path(__file__).resolve().parent.parent.parent.parent)
+sys.path.insert(0, project_root)
 
 
 class ConfigFieldTestRunner:

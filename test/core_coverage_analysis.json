@@ -1,0 +1,1780 @@
+{
+  "timestamp": "2025-08-07 09:39:40",
+  "coverage_analysis": {
+    "assembler": {
+      "component": "assembler",
+      "source_files": [
+        "src/cursus/core/assembler/pipeline_template_base.py",
+        "src/cursus/core/assembler/pipeline_assembler.py"
+      ],
+      "test_files": [
+        "test/core/assembler/test_pipeline_builder_template.py",
+        "test/core/assembler/test_pipeline_assembler.py"
+      ],
+      "total_source_functions": 12,
+      "tested_functions": 10,
+      "untested_functions": 2,
+      "coverage_percentage": 83.33333333333334,
+      "source_functions_by_file": {
+        "src/cursus/core/assembler/pipeline_template_base.py": [
+          "PipelineTemplateBase.fill_execution_document",
+          "fill_execution_document",
+          "PipelineTemplateBase.create_with_components",
+          "build_in_thread",
+          "PipelineTemplateBase.generate_pipeline",
+          "generate_pipeline",
+          "build_with_context",
+          "PipelineTemplateBase.build_in_thread",
+          "PipelineTemplateBase.build_with_context",
+          "create_with_components"
+        ],
+        "src/cursus/core/assembler/pipeline_assembler.py": [
+          "create_with_components",
+          "generate_pipeline",
+          "PipelineAssembler.generate_pipeline",
+          "PipelineAssembler.create_with_components"
+        ]
+      },
+      "test_functions_by_file": {
+        "test/core/assembler/test_pipeline_builder_template.py": [
+          "test_fill_execution_document",
+          "test_store_pipeline_metadata_without_attributes",
+          "test_store_pipeline_metadata",
+          "test_initialization",
+          "test_build_in_thread_class_method",
+          "test_assembler_validation_missing_configs",
+          "test_config_loading",
+          "test_initialization_partial_components",
+          "test_pipeline_name_generation",
+          "test_assembler_initialization",
+          "test_config_loading_error_handling",
+          "test_pipeline_name_explicit_override",
+          "test_config_classes_validation",
+          "test_generate_pipeline",
+          "test_create_with_components_class_method",
+          "test_get_pipeline_parameters_default",
+          "test_build_with_context_class_method",
+          "test_initialization_with_notebook_root",
+          "test_initialization_with_provided_components",
+          "test_base_config_validation",
+          "test_initialization_default_notebook_root",
+          "test_pipeline_name_fallback_values",
+          "test_assembler_validation_missing_builders"
+        ],
+        "test/core/assembler/test_pipeline_assembler.py": [
+          "test_instantiate_step",
+          "test_get_registry_manager",
+          "test_init_missing_step_builders",
+          "test_init_invalid_dag_edges",
+          "test_pipeline_regeneration",
+          "test_init_success",
+          "test_cradle_loading_requests_storage",
+          "test_generate_pipeline_with_cycle",
+          "test_get_dependency_resolver",
+          "test_initialize_step_builders",
+          "test_init_missing_configs",
+          "test_logging_integration",
+          "test_generate_outputs",
+          "test_propagate_messages",
+          "test_create_with_components",
+          "test_generate_pipeline"
+        ]
+      },
+      "likely_tested_functions": [
+        "PipelineTemplateBase.fill_execution_document",
+        "PipelineAssembler.create_with_components",
+        "fill_execution_document",
+        "build_in_thread",
+        "PipelineTemplateBase.create_with_components",
+        "PipelineTemplateBase.generate_pipeline",
+        "generate_pipeline",
+        "build_with_context",
+        "create_with_components",
+        "PipelineAssembler.generate_pipeline"
+      ],
+      "likely_untested_functions": [
+        "PipelineTemplateBase.build_with_context",
+        "PipelineTemplateBase.build_in_thread"
+      ]
+    },
+    "base": {
+      "component": "base",
+      "source_files": [
+        "src/cursus/core/base/contract_base.py",
+        "src/cursus/core/base/specification_base.py",
+        "src/cursus/core/base/config_base.py",
+        "src/cursus/core/base/builder_base.py",
+        "src/cursus/core/base/hyperparameters_base.py"
+      ],
+      "test_files": [
+        "test/core/base/test_hyperparameters_base.py",
+        "test/core/base/test_contract_base.py",
+        "test/core/base/test_config_base.py",
+        "test/core/base/test_enums.py",
+        "test/core/base/test_builder_base.py",
+        "test/core/base/test_specification_base.py"
+      ],
+      "total_source_functions": 157,
+      "tested_functions": 72,
+      "untested_functions": 85,
+      "coverage_percentage": 45.85987261146497,
+      "source_functions_by_file": {
+        "src/cursus/core/base/contract_base.py": [
+          "ScriptContract.validate_input_paths",
+          "AlignmentResult.error",
+          "ScriptAnalyzer.ast_tree",
+          "get_argument_usage",
+          "get_input_paths",
+          "add_error",
+          "validate_entry_point",
+          "validate_implementation",
+          "ValidationResult.error",
+          "ast_tree",
+          "ScriptAnalyzer.get_env_var_usage",
+          "validate_arguments",
+          "AlignmentResult.success",
+          "add_warning",
+          "error",
+          "success",
+          "validate_output_paths",
+          "ValidationResult.add_error",
+          "ScriptAnalyzer.get_output_paths",
+          "validate_input_paths",
+          "ScriptContract.validate_entry_point",
+          "ValidationResult.combine",
+          "ScriptContract.validate_output_paths",
+          "ScriptContract.validate_arguments",
+          "ScriptAnalyzer.get_argument_usage",
+          "ScriptAnalyzer.get_input_paths",
+          "get_env_var_usage",
+          "ValidationResult.success",
+          "ValidationResult.add_warning",
+          "combine",
+          "ScriptContract.validate_implementation",
+          "get_output_paths"
+        ],
+        "src/cursus/core/base/specification_base.py": [
+          "OutputSpec.validate_property_path",
+          "StepSpecification.validate_script_compliance",
+          "DependencySpec.validate_compatible_sources",
+          "StepSpecification.get_dependency",
+          "validate_output_type",
+          "validate",
+          "OutputSpec.validate_logical_name",
+          "StepSpecification.list_all_output_names",
+          "StepSpecification.list_required_dependencies",
+          "validate_compatible_sources",
+          "validate_property_path",
+          "validate_node_type_constraints",
+          "StepSpecification.get_output_by_name_or_alias",
+          "StepSpecification.validate_node_type",
+          "StepSpecification.model_validate",
+          "StepSpecification.get_output",
+          "validate_node_type",
+          "validate_logical_name",
+          "model_validate",
+          "list_outputs_by_type",
+          "validate_script_compliance",
+          "OutputSpec.matches_name_or_alias",
+          "OutputSpec.validate_aliases",
+          "StepSpecification.validate_contract_alignment",
+          "validate_aliases",
+          "get_output",
+          "StepSpecification.validate_step_type",
+          "OutputSpec.validate_aliases_no_conflict",
+          "StepSpecification.list_optional_dependencies",
+          "get_output_by_name_or_alias",
+          "OutputSpec.validate_output_type",
+          "StepSpecification.list_dependencies_by_type",
+          "validate_step_type",
+          "validate_semantic_keywords",
+          "validate_contract_alignment",
+          "DependencySpec.validate_dependency_type",
+          "get_dependency",
+          "validate_dependency_type",
+          "StepSpecification.validate_node_type_constraints",
+          "list_required_dependencies",
+          "StepSpecification.list_outputs_by_type",
+          "matches_name_or_alias",
+          "StepSpecification.validate",
+          "DependencySpec.matches_name_or_alias",
+          "list_all_output_names",
+          "DependencySpec.validate_semantic_keywords",
+          "list_optional_dependencies",
+          "DependencySpec.validate_logical_name",
+          "validate_aliases_no_conflict",
+          "list_dependencies_by_type"
+        ],
+        "src/cursus/core/base/config_base.py": [
+          "model_dump",
+          "BasePipelineConfig.print_config",
+          "initialize_derived_fields",
+          "get_script_path",
+          "pipeline_description",
+          "pipeline_name",
+          "BasePipelineConfig.model_dump",
+          "categorize_fields",
+          "BasePipelineConfig.get_script_contract",
+          "get_step_name",
+          "BasePipelineConfig.from_base_config",
+          "get_script_contract",
+          "BasePipelineConfig.pipeline_description",
+          "pipeline_s3_loc",
+          "BasePipelineConfig.get_script_path",
+          "BasePipelineConfig.aws_region",
+          "BasePipelineConfig.pipeline_name",
+          "BasePipelineConfig.initialize_derived_fields",
+          "get_config_class_name",
+          "print_config",
+          "BasePipelineConfig.get_config_class_name",
+          "from_base_config",
+          "get_public_init_fields",
+          "BasePipelineConfig.get_step_name",
+          "BasePipelineConfig.get_public_init_fields",
+          "BasePipelineConfig.pipeline_s3_loc",
+          "aws_region",
+          "BasePipelineConfig.categorize_fields",
+          "BasePipelineConfig.script_contract",
+          "script_contract"
+        ],
+        "src/cursus/core/base/builder_base.py": [
+          "StepBuilderBase.log_info",
+          "StepBuilderBase.get_outputs",
+          "extract_inputs_from_dependencies",
+          "log_info",
+          "STEP_NAMES",
+          "StepBuilderBase.STEP_NAMES",
+          "StepBuilderBase.validate_configuration",
+          "create_step",
+          "StepBuilderBase.log_error",
+          "get_property_path",
+          "StepBuilderBase.get_required_dependencies",
+          "validate_configuration",
+          "safe_value_for_logging",
+          "StepBuilderBase.get_property_path",
+          "get_all_property_paths",
+          "StepBuilderBase.extract_inputs_from_dependencies",
+          "StepBuilderBase.get_all_property_paths",
+          "log_debug",
+          "log_warning",
+          "get_required_dependencies",
+          "log_error",
+          "StepBuilderBase.log_warning",
+          "StepBuilderBase.log_debug",
+          "get_optional_dependencies",
+          "StepBuilderBase.get_optional_dependencies",
+          "get_outputs",
+          "StepBuilderBase.create_step"
+        ],
+        "src/cursus/core/base/hyperparameters_base.py": [
+          "num_classes",
+          "from_base_hyperparam",
+          "validate_dimensions",
+          "ModelHyperparameters.categorize_fields",
+          "serialize_config",
+          "ModelHyperparameters.from_base_hyperparam",
+          "categorize_fields",
+          "get_config",
+          "ModelHyperparameters.get_config",
+          "ModelHyperparameters.input_tab_dim",
+          "ModelHyperparameters.serialize_config",
+          "input_tab_dim",
+          "is_binary",
+          "ModelHyperparameters.num_classes",
+          "get_public_init_fields",
+          "ModelHyperparameters.print_hyperparam",
+          "ModelHyperparameters.validate_dimensions",
+          "ModelHyperparameters.is_binary",
+          "print_hyperparam",
+          "ModelHyperparameters.get_public_init_fields"
+        ]
+      },
+      "test_functions_by_file": {
+        "test/core/base/test_hyperparameters_base.py": [
+          "test_init_with_required_fields",
+          "test_empty_field_lists",
+          "test_class_weights_default",
+          "test_validate_assignment",
+          "test_get_config",
+          "test_class_weights_custom",
+          "test_batch_size_validation",
+          "test_categorize_fields",
+          "test_string_representation",
+          "test_derived_properties",
+          "test_from_base_hyperparam",
+          "test_extra_fields_allowed",
+          "test_binary_classification",
+          "test_init_with_all_fields",
+          "test_max_epochs_validation",
+          "test_get_public_init_fields",
+          "test_serialize_config",
+          "test_print_hyperparam_method",
+          "test_single_class_error",
+          "test_derived_fields_caching",
+          "test_class_weights_validation_error"
+        ],
+        "test/core/base/test_contract_base.py": [
+          "test_validate_arguments_uppercase",
+          "test_init_with_minimal_data",
+          "test_success_class_method",
+          "test_error_class_method_with_string",
+          "test_error_class_method_with_list",
+          "test_combine_all_valid",
+          "test_validate_implementation_file_not_found",
+          "test_validate_entry_point_invalid",
+          "test_get_output_paths",
+          "test_validate_output_paths_invalid",
+          "test_init_valid",
+          "test_get_argument_usage",
+          "test_ast_tree_lazy_loading",
+          "test_validate_implementation_success",
+          "test_validate_implementation_missing_paths",
+          "test_init_invalid_with_errors",
+          "test_validate_input_paths_invalid",
+          "test_validate_input_paths_generated_payload_samples",
+          "test_init_with_valid_data",
+          "test_validate_implementation_with_warnings",
+          "test_get_env_var_usage",
+          "test_caching_behavior",
+          "test_get_input_paths",
+          "test_validate_arguments_invalid_characters",
+          "test_combine_class_method"
+        ],
+        "test/core/base/test_config_base.py": [
+          "test_get_config_class_name_class_method",
+          "test_model_dump_includes_derived_properties",
+          "test_region_mapping",
+          "test_extra_fields_allowed",
+          "test_categorize_fields",
+          "test_init_with_optional_fields",
+          "test_from_base_config",
+          "test_source_dir_validation",
+          "test_get_script_path_default",
+          "test_region_validation",
+          "test_get_step_name_class_method",
+          "test_get_public_init_fields",
+          "test_get_script_contract_default",
+          "test_print_config_method",
+          "test_string_representation",
+          "test_derived_properties",
+          "test_init_with_required_fields",
+          "test_derived_fields_caching"
+        ],
+        "test/core/base/test_enums.py": [
+          "test_enum_boolean_context",
+          "test_enum_members",
+          "test_hash_consistency",
+          "test_enum_values",
+          "test_enum_access_by_value",
+          "test_enum_access_by_name",
+          "test_enum_comparison_with_none",
+          "test_node_type_semantics",
+          "test_invalid_enum_value_node_type",
+          "test_string_representation",
+          "test_hashability_in_set",
+          "test_different_enums_not_equal",
+          "test_equality_with_different_enum",
+          "test_hashability",
+          "test_enum_type_checking",
+          "test_mixed_enum_set",
+          "test_equality_with_non_enum",
+          "test_mixed_enum_dictionary",
+          "test_invalid_enum_value_dependency_type",
+          "test_iteration",
+          "test_equality_with_same_enum"
+        ],
+        "test/core/base/test_builder_base.py": [
+          "test_get_environment_variables_no_contract",
+          "test_step_names_class_variable",
+          "test_get_environment_variables_with_contract",
+          "test_get_all_property_paths",
+          "test_sanitize_name_for_sagemaker",
+          "test_abstract_methods_must_be_implemented",
+          "test_get_context_name",
+          "test_get_outputs",
+          "test_get_optional_dependencies",
+          "test_get_job_arguments_no_contract",
+          "test_get_step_name",
+          "test_init_with_optional_params",
+          "test_safe_logging_methods",
+          "test_common_properties_class_variable",
+          "test_get_required_dependencies",
+          "test_invalid_region_raises_error",
+          "test_get_property_path",
+          "test_generate_job_name",
+          "test_region_mapping",
+          "test_get_cache_config",
+          "test_init_with_required_params",
+          "test_get_job_arguments_with_contract"
+        ],
+        "test/core/base/test_specification_base.py": [
+          "test_init_with_script_contract",
+          "test_matches_name_or_alias",
+          "test_validate_contract_alignment_with_contract",
+          "test_validate_basic",
+          "test_init_with_required_fields",
+          "test_init_invalid_with_details",
+          "test_init_with_optional_fields",
+          "test_get_dependency",
+          "test_validate_contract_alignment_missing_outputs",
+          "test_validate_empty_step_type",
+          "test_validate_contract_alignment_no_contract",
+          "test_init_valid",
+          "test_init_invalid_with_errors",
+          "test_list_required_dependencies",
+          "test_validate_contract_alignment_missing_inputs",
+          "test_add_warning",
+          "test_list_optional_dependencies",
+          "test_list_all_output_names",
+          "test_validate_duplicate_output_names",
+          "test_add_error",
+          "test_get_output_by_name_or_alias"
+        ]
+      },
+      "likely_tested_functions": [
+        "from_base_hyperparam",
+        "model_dump",
+        "get_argument_usage",
+        "StepBuilderBase.get_outputs",
+        "StepSpecification.get_dependency",
+        "validate",
+        "get_input_paths",
+        "StepSpecification.list_required_dependencies",
+        "get_script_path",
+        "validate_implementation",
+        "ModelHyperparameters.categorize_fields",
+        "validate_entry_point",
+        "serialize_config",
+        "StepSpecification.list_all_output_names",
+        "ModelHyperparameters.from_base_hyperparam",
+        "STEP_NAMES",
+        "StepSpecification.get_output_by_name_or_alias",
+        "ast_tree",
+        "ScriptAnalyzer.get_env_var_usage",
+        "validate_arguments",
+        "categorize_fields",
+        "get_config",
+        "ModelHyperparameters.get_config",
+        "get_step_name",
+        "BasePipelineConfig.from_base_config",
+        "get_outputs",
+        "add_warning",
+        "error",
+        "ModelHyperparameters.serialize_config",
+        "get_script_contract",
+        "get_property_path",
+        "OutputSpec.matches_name_or_alias",
+        "StepBuilderBase.get_required_dependencies",
+        "success",
+        "validate_output_paths",
+        "get_output",
+        "ScriptAnalyzer.get_output_paths",
+        "validate_input_paths",
+        "ValidationResult.add_error",
+        "add_error",
+        "get_config_class_name",
+        "StepBuilderBase.get_property_path",
+        "get_all_property_paths",
+        "StepSpecification.list_optional_dependencies",
+        "StepBuilderBase.get_all_property_paths",
+        "print_config",
+        "get_output_by_name_or_alias",
+        "BasePipelineConfig.get_config_class_name",
+        "from_base_config",
+        "get_public_init_fields",
+        "BasePipelineConfig.get_step_name",
+        "get_required_dependencies",
+        "get_dependency",
+        "ScriptAnalyzer.get_argument_usage",
+        "print_hyperparam",
+        "ScriptAnalyzer.get_input_paths",
+        "get_env_var_usage",
+        "BasePipelineConfig.get_public_init_fields",
+        "ModelHyperparameters.get_public_init_fields",
+        "list_required_dependencies",
+        "matches_name_or_alias",
+        "ValidationResult.add_warning",
+        "DependencySpec.matches_name_or_alias",
+        "BasePipelineConfig.categorize_fields",
+        "combine",
+        "get_optional_dependencies",
+        "list_optional_dependencies",
+        "list_all_output_names",
+        "StepBuilderBase.get_optional_dependencies",
+        "script_contract",
+        "validate_contract_alignment",
+        "get_output_paths"
+      ],
+      "likely_untested_functions": [
+        "OutputSpec.validate_property_path",
+        "num_classes",
+        "validate_dimensions",
+        "StepSpecification.model_validate",
+        "validate_script_compliance",
+        "BasePipelineConfig.pipeline_description",
+        "StepBuilderBase.log_error",
+        "OutputSpec.validate_aliases",
+        "pipeline_s3_loc",
+        "BasePipelineConfig.aws_region",
+        "StepBuilderBase.extract_inputs_from_dependencies",
+        "ModelHyperparameters.num_classes",
+        "log_warning",
+        "ModelHyperparameters.is_binary",
+        "StepSpecification.validate_node_type_constraints",
+        "BasePipelineConfig.pipeline_s3_loc",
+        "list_dependencies_by_type",
+        "StepBuilderBase.create_step",
+        "ScriptContract.validate_input_paths",
+        "BasePipelineConfig.print_config",
+        "log_info",
+        "OutputSpec.validate_logical_name",
+        "BasePipelineConfig.model_dump",
+        "StepSpecification.get_output",
+        "BasePipelineConfig.get_script_contract",
+        "ModelHyperparameters.input_tab_dim",
+        "create_step",
+        "validate_aliases",
+        "safe_value_for_logging",
+        "ScriptContract.validate_entry_point",
+        "log_debug",
+        "StepSpecification.list_dependencies_by_type",
+        "DependencySpec.validate_dependency_type",
+        "StepSpecification.list_outputs_by_type",
+        "aws_region",
+        "BasePipelineConfig.script_contract",
+        "ScriptAnalyzer.ast_tree",
+        "StepSpecification.validate_script_compliance",
+        "extract_inputs_from_dependencies",
+        "DependencySpec.validate_compatible_sources",
+        "initialize_derived_fields",
+        "validate_output_type",
+        "pipeline_description",
+        "ValidationResult.error",
+        "pipeline_name",
+        "StepSpecification.validate_node_type",
+        "validate_node_type",
+        "StepBuilderBase.STEP_NAMES",
+        "validate_logical_name",
+        "model_validate",
+        "list_outputs_by_type",
+        "input_tab_dim",
+        "BasePipelineConfig.get_script_path",
+        "OutputSpec.validate_aliases_no_conflict",
+        "ModelHyperparameters.print_hyperparam",
+        "ModelHyperparameters.validate_dimensions",
+        "validate_semantic_keywords",
+        "log_error",
+        "StepBuilderBase.log_warning",
+        "StepBuilderBase.log_debug",
+        "ValidationResult.success",
+        "validate_aliases_no_conflict",
+        "validate_step_type",
+        "AlignmentResult.error",
+        "StepBuilderBase.log_info",
+        "validate_node_type_constraints",
+        "validate_compatible_sources",
+        "validate_property_path",
+        "AlignmentResult.success",
+        "StepBuilderBase.validate_configuration",
+        "StepSpecification.validate_contract_alignment",
+        "is_binary",
+        "validate_configuration",
+        "StepSpecification.validate_step_type",
+        "BasePipelineConfig.pipeline_name",
+        "BasePipelineConfig.initialize_derived_fields",
+        "ValidationResult.combine",
+        "ScriptContract.validate_output_paths",
+        "OutputSpec.validate_output_type",
+        "ScriptContract.validate_arguments",
+        "validate_dependency_type",
+        "StepSpecification.validate",
+        "DependencySpec.validate_semantic_keywords",
+        "DependencySpec.validate_logical_name",
+        "ScriptContract.validate_implementation"
+      ]
+    },
+    "compiler": {
+      "component": "compiler",
+      "source_files": [
+        "src/cursus/core/compiler/name_generator.py",
+        "src/cursus/core/compiler/dag_compiler.py",
+        "src/cursus/core/compiler/dynamic_template.py",
+        "src/cursus/core/compiler/config_resolver.py",
+        "src/cursus/core/compiler/validation.py"
+      ],
+      "test_files": [
+        "test/core/compiler/test_validation.py",
+        "test/core/compiler/test_config_resolver.py",
+        "test/core/compiler/test_exceptions.py",
+        "test/core/compiler/test_name_generator.py",
+        "test/core/compiler/test_dynamic_template.py",
+        "test/core/compiler/test_dag_compiler.py",
+        "test/core/compiler/test_fill_execution_document.py",
+        "test/core/compiler/test_enhanced_config_resolver.py"
+      ],
+      "total_source_functions": 47,
+      "tested_functions": 30,
+      "untested_functions": 17,
+      "coverage_percentage": 63.829787234042556,
+      "source_functions_by_file": {
+        "src/cursus/core/compiler/name_generator.py": [
+          "validate_pipeline_name",
+          "generate_random_word",
+          "generate_pipeline_name",
+          "sanitize_pipeline_name"
+        ],
+        "src/cursus/core/compiler/dag_compiler.py": [
+          "preview_resolution",
+          "PipelineDAGCompiler.preview_resolution",
+          "get_supported_step_types",
+          "create_template",
+          "PipelineDAGCompiler.get_last_template",
+          "PipelineDAGCompiler.validate_dag_compatibility",
+          "compile_and_fill_execution_doc",
+          "compile_dag_to_pipeline",
+          "PipelineDAGCompiler.get_supported_step_types",
+          "PipelineDAGCompiler.validate_config_file",
+          "PipelineDAGCompiler.compile_and_fill_execution_doc",
+          "PipelineDAGCompiler.create_template",
+          "PipelineDAGCompiler.compile",
+          "compile",
+          "get_last_template",
+          "PipelineDAGCompiler.compile_with_report",
+          "validate_config_file",
+          "validate_dag_compatibility",
+          "compile_with_report"
+        ],
+        "src/cursus/core/compiler/dynamic_template.py": [
+          "get_builder_registry_stats",
+          "fill_execution_document",
+          "DynamicPipelineTemplate.get_execution_order",
+          "get_step_dependencies",
+          "DynamicPipelineTemplate.get_builder_registry_stats",
+          "DynamicPipelineTemplate.get_resolution_preview",
+          "get_execution_order",
+          "DynamicPipelineTemplate.get_step_dependencies",
+          "DynamicPipelineTemplate.fill_execution_document",
+          "validate_before_build",
+          "get_resolution_preview",
+          "DynamicPipelineTemplate.validate_before_build"
+        ],
+        "src/cursus/core/compiler/config_resolver.py": [
+          "StepConfigResolver.resolve_config_map",
+          "preview_resolution",
+          "resolve_config_map",
+          "StepConfigResolver.preview_resolution"
+        ],
+        "src/cursus/core/compiler/validation.py": [
+          "detailed_report",
+          "ConversionReport.detailed_report",
+          "ConversionReport.summary",
+          "ResolutionPreview.display",
+          "display",
+          "validate_dag_compatibility",
+          "ValidationResult.summary",
+          "ValidationResult.detailed_report",
+          "summary",
+          "ValidationEngine.validate_dag_compatibility"
+        ]
+      },
+      "test_functions_by_file": {
+        "test/core/compiler/test_validation.py": [
+          "test_detailed_report_valid",
+          "test_validation_result_valid",
+          "test_validate_dag_compatibility_with_job_type_variants",
+          "test_validate_dag_compatibility_missing_configs",
+          "test_validate_dag_compatibility_config_errors",
+          "test_conversion_report_detailed_report",
+          "test_validate_dag_compatibility_success",
+          "test_conversion_report_summary",
+          "test_validate_dag_compatibility_unresolvable_builders",
+          "test_resolution_preview_display",
+          "test_validation_result_invalid",
+          "test_detailed_report_invalid_with_recommendations",
+          "test_validate_dag_compatibility_with_legacy_aliases"
+        ],
+        "test/core/compiler/test_config_resolver.py": [
+          "test_resolve_single_node_direct_match",
+          "test_resolve_config_map",
+          "test_direct_name_matching",
+          "test_resolve_single_node_no_match",
+          "test_semantic_matching",
+          "test_pattern_matching",
+          "test_resolve_single_node_ambiguity",
+          "test_preview_resolution",
+          "test_job_type_matching"
+        ],
+        "test/core/compiler/test_exceptions.py": [
+          "test_configuration_error_basic",
+          "test_ambiguity_error_with_dict_candidates",
+          "test_ambiguity_error_with_tuple_candidates",
+          "test_exception_inheritance",
+          "test_configuration_error_with_details",
+          "test_resolution_error_basic",
+          "test_resolution_error_with_details",
+          "test_validation_error_with_details",
+          "test_pipeline_api_error_base",
+          "test_ambiguity_error_basic",
+          "test_validation_error_basic"
+        ],
+        "test/core/compiler/test_name_generator.py": [
+          "test_validate_pipeline_name",
+          "test_generate_pipeline_name",
+          "test_generate_random_word_length",
+          "test_sanitize_pipeline_name"
+        ],
+        "test/core/compiler/test_dynamic_template.py": [
+          "test_create_config_map",
+          "test_create_step_builder_map",
+          "test_get_resolution_preview",
+          "test_get_pipeline_parameters",
+          "test_detect_config_classes",
+          "test_get_step_dependencies",
+          "test_init_stores_config_path",
+          "test_create_pipeline_dag"
+        ],
+        "test/core/compiler/test_dag_compiler.py": [
+          "test_compile_with_custom_pipeline_name",
+          "test_get_supported_step_types",
+          "test_compile_dag_to_pipeline_invalid_dag",
+          "test_compile_dag_to_pipeline_empty_dag",
+          "test_compile_with_report",
+          "test_validate_dag_compatibility_success",
+          "test_compile_dag_to_pipeline_success",
+          "test_compiler_init_missing_config_file",
+          "test_compiler_init_with_custom_components",
+          "test_get_last_template",
+          "test_validate_config_file_success",
+          "test_preview_resolution_exception_handling",
+          "test_compile_and_fill_execution_doc",
+          "test_compiler_init_success",
+          "test_preview_resolution_success",
+          "test_compile_exception_handling",
+          "test_validate_config_file_failure",
+          "test_compile_dag_to_pipeline_exception_handling",
+          "test_compile_dag_to_pipeline_missing_config_file",
+          "test_validate_dag_compatibility_config_resolution_failure",
+          "test_compile_success"
+        ],
+        "test/core/compiler/test_fill_execution_document.py": [
+          "test_fill_execution_document_with_missing_sections",
+          "test_fill_execution_document",
+          "test_fill_execution_document_with_missing_steps",
+          "test_find_registration_step_nodes"
+        ],
+        "test/core/compiler/test_enhanced_config_resolver.py": [
+          "test_ambiguity_detection",
+          "test_direct_name_matching",
+          "test_direct_name_matching_with_metadata",
+          "test_job_type_matching_enhanced",
+          "test_parse_node_name",
+          "test_resolve_single_node_prioritization",
+          "test_preview_resolution",
+          "test_resolve_config_map_exact_matches",
+          "test_resolve_config_map_with_metadata"
+        ]
+      },
+      "likely_tested_functions": [
+        "generate_pipeline_name",
+        "preview_resolution",
+        "PipelineDAGCompiler.preview_resolution",
+        "get_supported_step_types",
+        "DynamicPipelineTemplate.get_resolution_preview",
+        "DynamicPipelineTemplate.get_step_dependencies",
+        "PipelineDAGCompiler.get_last_template",
+        "StepConfigResolver.preview_resolution",
+        "get_resolution_preview",
+        "validate_pipeline_name",
+        "compile_and_fill_execution_doc",
+        "fill_execution_document",
+        "get_step_dependencies",
+        "compile_dag_to_pipeline",
+        "resolve_config_map",
+        "PipelineDAGCompiler.get_supported_step_types",
+        "PipelineDAGCompiler.compile_and_fill_execution_doc",
+        "detailed_report",
+        "display",
+        "compile",
+        "get_last_template",
+        "PipelineDAGCompiler.compile_with_report",
+        "sanitize_pipeline_name",
+        "DynamicPipelineTemplate.fill_execution_document",
+        "validate_config_file",
+        "StepConfigResolver.resolve_config_map",
+        "generate_random_word",
+        "validate_dag_compatibility",
+        "summary",
+        "compile_with_report"
+      ],
+      "likely_untested_functions": [
+        "get_builder_registry_stats",
+        "ConversionReport.detailed_report",
+        "ResolutionPreview.display",
+        "ConversionReport.summary",
+        "PipelineDAGCompiler.compile",
+        "ValidationResult.summary",
+        "DynamicPipelineTemplate.get_execution_order",
+        "ValidationResult.detailed_report",
+        "DynamicPipelineTemplate.get_builder_registry_stats",
+        "get_execution_order",
+        "create_template",
+        "validate_before_build",
+        "DynamicPipelineTemplate.validate_before_build",
+        "PipelineDAGCompiler.validate_dag_compatibility",
+        "PipelineDAGCompiler.validate_config_file",
+        "PipelineDAGCompiler.create_template",
+        "ValidationEngine.validate_dag_compatibility"
+      ]
+    },
+    "config_fields": {
+      "component": "config_fields",
+      "source_files": [
+        "src/cursus/core/config_fields/tier_registry.py",
+        "src/cursus/core/config_fields/config_merger.py",
+        "src/cursus/core/config_fields/config_class_store.py",
+        "src/cursus/core/config_fields/type_aware_config_serializer.py",
+        "src/cursus/core/config_fields/config_class_detector.py",
+        "src/cursus/core/config_fields/config_field_categorizer.py",
+        "src/cursus/core/config_fields/circular_reference_tracker.py"
+      ],
+      "test_files": [
+        "test/core/config_fields/test_type_aware_serialization.py",
+        "test/core/config_fields/test_circular_reference_tracker.py",
+        "test/core/config_fields/test_config_field_categorizer.py",
+        "test/core/config_fields/test_circular_reference_consolidated.py",
+        "test/core/config_fields/test_bug_fixes_consolidated.py",
+        "test/core/config_fields/test_tier_registry.py",
+        "test/core/config_fields/test_config_merger.py",
+        "test/core/config_fields/test_type_aware_deserialization.py",
+        "test/core/config_fields/test_config_class_store.py",
+        "test/core/config_fields/test_integration.py",
+        "test/core/config_fields/test_constants.py"
+      ],
+      "total_source_functions": 58,
+      "tested_functions": 23,
+      "untested_functions": 35,
+      "coverage_percentage": 39.6551724137931,
+      "source_functions_by_file": {
+        "src/cursus/core/config_fields/tier_registry.py": [
+          "reset_to_defaults",
+          "ConfigFieldTierRegistry.register_field",
+          "ConfigFieldTierRegistry.reset_to_defaults",
+          "ConfigFieldTierRegistry.register_fields",
+          "register_fields",
+          "ConfigFieldTierRegistry.get_fields_by_tier",
+          "get_fields_by_tier",
+          "get_tier",
+          "ConfigFieldTierRegistry.get_tier",
+          "register_field"
+        ],
+        "src/cursus/core/config_fields/config_merger.py": [
+          "load",
+          "merge",
+          "ConfigMerger.load",
+          "merge_and_save_configs",
+          "load_configs",
+          "ConfigMerger.save",
+          "merge_with_direction",
+          "ConfigMerger.merge",
+          "ConfigMerger.merge_with_direction",
+          "save"
+        ],
+        "src/cursus/core/config_fields/config_class_store.py": [
+          "ConfigClassStore.get_class",
+          "ConfigClassStore.get_all_classes",
+          "ConfigClassStore.clear",
+          "clear",
+          "ConfigClassStore.register_many",
+          "get_all_classes",
+          "get_class",
+          "register_many",
+          "build_complete_config_classes",
+          "ConfigClassStore.registered_names",
+          "ConfigClassStore.register",
+          "register",
+          "registered_names"
+        ],
+        "src/cursus/core/config_fields/type_aware_config_serializer.py": [
+          "deserialize",
+          "TypeAwareConfigSerializer.generate_step_name",
+          "generate_step_name",
+          "TypeAwareConfigSerializer.deserialize",
+          "serialize_config",
+          "TypeAwareConfigSerializer.serialize",
+          "serialize",
+          "deserialize_config"
+        ],
+        "src/cursus/core/config_fields/config_class_detector.py": [
+          "ConfigClassDetector.detect_from_json",
+          "detect_config_classes_from_json",
+          "detect_from_json",
+          "from_config_store",
+          "ConfigClassDetector.from_config_store"
+        ],
+        "src/cursus/core/config_fields/config_field_categorizer.py": [
+          "print_categorization_stats",
+          "get_categorized_fields",
+          "ConfigFieldCategorizer.get_categorized_fields",
+          "get_category_for_field",
+          "ConfigFieldCategorizer.get_category_for_field",
+          "ConfigFieldCategorizer.print_categorization_stats"
+        ],
+        "src/cursus/core/config_fields/circular_reference_tracker.py": [
+          "CircularReferenceTracker.get_current_path_str",
+          "exit_object",
+          "enter_object",
+          "get_current_path_str",
+          "CircularReferenceTracker.exit_object",
+          "CircularReferenceTracker.enter_object"
+        ]
+      },
+      "test_functions_by_file": {
+        "test/core/config_fields/test_type_aware_serialization.py": [
+          "test_basic_serialization",
+          "test_nested_serialization",
+          "test_generate_step_name_basic",
+          "test_serialize_deserialize_preserves_job_type",
+          "test_serialize_config_includes_step_name",
+          "test_generate_step_name_job_type",
+          "test_full_serialize_config_cycle",
+          "test_generate_step_name_multiple_attributes"
+        ],
+        "test/core/config_fields/test_circular_reference_tracker.py": [
+          "test_circular_reference_detection",
+          "test_object_identification",
+          "test_simple_object_tracking",
+          "test_nested_object_tracking",
+          "test_actual_integration_with_serializer",
+          "test_max_depth_detection",
+          "test_integration_with_serializer_simulation",
+          "test_error_message_formatting",
+          "test_complex_nested_paths"
+        ],
+        "test/core/config_fields/test_config_field_categorizer.py": [
+          "test_get_categorized_fields",
+          "test_categorize_fields_structure",
+          "test_is_special_field",
+          "test_place_field_specific",
+          "test_end_to_end_categorization",
+          "test_place_field_shared",
+          "test_init_categorizes_configs",
+          "test_is_likely_static",
+          "test_categorize_field"
+        ],
+        "test/core/config_fields/test_circular_reference_consolidated.py": [
+          "test_list_items_avoid_false_positives",
+          "test_type_metadata_handling_with_circular_refs",
+          "test_circular_reference_error_messages",
+          "test_deep_nesting_without_circularity",
+          "test_enhanced_placeholders_for_circular_refs",
+          "test_true_circular_references_still_detected",
+          "test_nested_complex_structure",
+          "test_performance_with_large_structures",
+          "test_special_list_format_handling"
+        ],
+        "test/core/config_fields/test_bug_fixes_consolidated.py": [
+          "test_error_handling_improvements",
+          "test_memory_leak_prevention",
+          "test_payload_config_recursion_fix",
+          "test_load_real_config_file",
+          "test_circular_reference_handling_in_data_sources",
+          "test_deep_recursion_prevention",
+          "test_additional_config_with_special_list",
+          "test_circular_reference_handling_in_hyperparameters",
+          "test_special_list_format_handling"
+        ],
+        "test/core/config_fields/test_tier_registry.py": [
+          "test_get_tier_method",
+          "test_field_name_consistency",
+          "test_default_tier_assignments_validation",
+          "test_register_fields_method",
+          "test_register_fields_validation",
+          "test_registry_immutability_during_get_operations",
+          "test_reset_to_defaults_method",
+          "test_get_fields_by_tier_validation",
+          "test_register_field_validation",
+          "test_comprehensive_field_coverage",
+          "test_register_field_method",
+          "test_get_fields_by_tier_method",
+          "test_tier_distribution"
+        ],
+        "test/core/config_fields/test_config_merger.py": [
+          "test_check_mutual_exclusivity",
+          "test_save_creates_correct_output_structure",
+          "test_merge_returns_simplified_structure",
+          "test_check_special_fields_placement",
+          "test_config_types_format",
+          "test_init_creates_categorizer",
+          "test_merge_with_direction",
+          "test_load_from_simplified_structure_with_legacy_data",
+          "test_verify_merged_output_checks_structure",
+          "test_load_from_simplified_structure"
+        ],
+        "test/core/config_fields/test_type_aware_deserialization.py": [
+          "test_config_types_format_with_custom_configs",
+          "test_multiple_config_scenarios",
+          "test_type_metadata_in_serialized_output",
+          "test_type_preservation",
+          "test_config_types_format",
+          "test_custom_config_with_hyperparameters",
+          "test_fallback_behavior"
+        ],
+        "test/core/config_fields/test_config_class_store.py": [
+          "test_get_class_method",
+          "test_register_many_method",
+          "test_registered_names_method",
+          "test_build_complete_config_classes_function",
+          "test_get_all_classes_method",
+          "test_registry_persistence_across_operations",
+          "test_registry_thread_safety_simulation",
+          "test_edge_cases",
+          "test_clear_method",
+          "test_register_direct_functionality",
+          "test_class_name_collision_handling",
+          "test_register_decorator_functionality"
+        ],
+        "test/core/config_fields/test_integration.py": [
+          "test_job_type_variants",
+          "test_serialize_deserialize_with_nesting",
+          "test_end_to_end_workflow"
+        ],
+        "test/core/config_fields/test_constants.py": [
+          "test_merge_direction_enum",
+          "test_type_mapping_completeness",
+          "test_constants_documentation_alignment",
+          "test_special_fields_to_keep_specific_completeness",
+          "test_non_static_field_patterns_accuracy",
+          "test_non_static_field_exceptions_validity",
+          "test_category_type_enum",
+          "test_pattern_exception_logic",
+          "test_field_pattern_matching_logic",
+          "test_special_fields_coverage",
+          "test_enum_completeness",
+          "test_constants_immutability",
+          "test_serialization_mode_enum",
+          "test_type_mapping_consistency"
+        ]
+      },
+      "likely_tested_functions": [
+        "deserialize",
+        "register_fields",
+        "serialize_config",
+        "registered_names",
+        "get_tier",
+        "serialize",
+        "generate_step_name",
+        "merge",
+        "register_many",
+        "get_class",
+        "get_fields_by_tier",
+        "register",
+        "ConfigFieldCategorizer.get_categorized_fields",
+        "reset_to_defaults",
+        "get_categorized_fields",
+        "save",
+        "load",
+        "clear",
+        "get_all_classes",
+        "build_complete_config_classes",
+        "merge_with_direction",
+        "ConfigMerger.merge_with_direction",
+        "register_field"
+      ],
+      "likely_untested_functions": [
+        "merge_and_save_configs",
+        "ConfigMerger.load",
+        "print_categorization_stats",
+        "detect_from_json",
+        "enter_object",
+        "from_config_store",
+        "get_category_for_field",
+        "CircularReferenceTracker.enter_object",
+        "ConfigClassDetector.from_config_store",
+        "ConfigFieldTierRegistry.register_field",
+        "ConfigMerger.merge",
+        "ConfigFieldCategorizer.get_category_for_field",
+        "CircularReferenceTracker.exit_object",
+        "exit_object",
+        "ConfigFieldTierRegistry.get_tier",
+        "ConfigClassStore.get_all_classes",
+        "CircularReferenceTracker.get_current_path_str",
+        "ConfigFieldTierRegistry.reset_to_defaults",
+        "ConfigFieldTierRegistry.get_fields_by_tier",
+        "ConfigClassStore.registered_names",
+        "TypeAwareConfigSerializer.deserialize",
+        "ConfigClassStore.register",
+        "get_current_path_str",
+        "TypeAwareConfigSerializer.serialize",
+        "ConfigFieldCategorizer.print_categorization_stats",
+        "deserialize_config",
+        "ConfigClassStore.get_class",
+        "ConfigClassStore.clear",
+        "ConfigClassDetector.detect_from_json",
+        "TypeAwareConfigSerializer.generate_step_name",
+        "ConfigClassStore.register_many",
+        "ConfigFieldTierRegistry.register_fields",
+        "load_configs",
+        "ConfigMerger.save",
+        "detect_config_classes_from_json"
+      ]
+    },
+    "deps": {
+      "component": "deps",
+      "source_files": [
+        "src/cursus/core/deps/specification_registry.py",
+        "src/cursus/core/deps/registry_manager.py",
+        "src/cursus/core/deps/factory.py",
+        "src/cursus/core/deps/dependency_resolver.py",
+        "src/cursus/core/deps/property_reference.py",
+        "src/cursus/core/deps/semantic_matcher.py"
+      ],
+      "test_files": [
+        "test/core/deps/test_semantic_matcher.py",
+        "test/core/deps/test_property_reference.py",
+        "test/core/deps/test_global_state_isolation.py",
+        "test/core/deps/test_factory.py",
+        "test/core/deps/test_specification_registry.py",
+        "test/core/deps/test_registry_manager.py",
+        "test/core/deps/test_dependency_resolver.py"
+      ],
+      "total_source_functions": 54,
+      "tested_functions": 31,
+      "untested_functions": 23,
+      "coverage_percentage": 57.407407407407405,
+      "source_functions_by_file": {
+        "src/cursus/core/deps/specification_registry.py": [
+          "list_step_names",
+          "get_specification",
+          "SpecificationRegistry.get_specification",
+          "SpecificationRegistry.register",
+          "SpecificationRegistry.list_step_names",
+          "get_specifications_by_type",
+          "find_compatible_outputs",
+          "SpecificationRegistry.find_compatible_outputs",
+          "register",
+          "SpecificationRegistry.list_step_types",
+          "list_step_types",
+          "SpecificationRegistry.get_specifications_by_type"
+        ],
+        "src/cursus/core/deps/registry_manager.py": [
+          "RegistryManager.get_registry",
+          "clear_context",
+          "new_init",
+          "RegistryManager.clear_all_contexts",
+          "integrate_with_pipeline_builder",
+          "list_contexts",
+          "get_registry",
+          "RegistryManager.list_contexts",
+          "get_default_registry",
+          "clear_all_contexts",
+          "RegistryManager.clear_context",
+          "get_context_stats",
+          "RegistryManager.get_context_stats",
+          "get_pipeline_registry"
+        ],
+        "src/cursus/core/deps/factory.py": [
+          "get_thread_components",
+          "dependency_resolution_context",
+          "create_pipeline_components"
+        ],
+        "src/cursus/core/deps/dependency_resolver.py": [
+          "get_resolution_report",
+          "UnifiedDependencyResolver.resolve_all_dependencies",
+          "resolve_all_dependencies",
+          "clear_cache",
+          "resolve_step_dependencies",
+          "create_dependency_resolver",
+          "UnifiedDependencyResolver.resolve_step_dependencies",
+          "register_specification",
+          "UnifiedDependencyResolver.clear_cache",
+          "UnifiedDependencyResolver.register_specification",
+          "UnifiedDependencyResolver.get_resolution_report"
+        ],
+        "src/cursus/core/deps/property_reference.py": [
+          "to_sagemaker_property",
+          "PropertyReference.to_sagemaker_property",
+          "to_runtime_property",
+          "PropertyReference.validate_step_name",
+          "validate_step_name",
+          "PropertyReference.to_runtime_property"
+        ],
+        "src/cursus/core/deps/semantic_matcher.py": [
+          "find_best_matches",
+          "explain_similarity",
+          "SemanticMatcher.explain_similarity",
+          "SemanticMatcher.calculate_similarity",
+          "SemanticMatcher.find_best_matches",
+          "calculate_similarity_with_aliases",
+          "SemanticMatcher.calculate_similarity_with_aliases",
+          "calculate_similarity"
+        ]
+      },
+      "test_functions_by_file": {
+        "test/core/deps/test_semantic_matcher.py": [
+          "test_synonym_matching",
+          "test_domain_specific_synonyms",
+          "test_integration_with_dependency_resolver",
+          "test_name_normalization",
+          "test_direct_name_matching",
+          "test_edge_cases",
+          "test_weight_calculation",
+          "test_find_best_matches",
+          "test_individual_similarity_metrics",
+          "test_calculate_similarity_with_aliases",
+          "test_similarity_explanation"
+        ],
+        "test/core/deps/test_property_reference.py": [
+          "test_to_sagemaker_property",
+          "test_get_property_value",
+          "test_string_representation",
+          "test_parse_property_path",
+          "test_to_runtime_property",
+          "test_init_and_validation"
+        ],
+        "test/core/deps/test_global_state_isolation.py": [
+          "test_registry_state_1",
+          "test_registry_state_2"
+        ],
+        "test/core/deps/test_factory.py": [
+          "test_get_thread_components_single_thread",
+          "test_dependency_resolution_context_nested",
+          "test_create_pipeline_components_default",
+          "test_create_pipeline_components_custom_context",
+          "test_dependency_resolution_context_no_cleanup",
+          "test_end_to_end_pipeline_creation",
+          "test_get_thread_components_multi_thread",
+          "test_create_pipeline_components_isolation",
+          "test_dependency_resolution_context_exception_handling",
+          "test_create_pipeline_components_wiring",
+          "test_dependency_resolution_context_cleanup",
+          "test_multi_context_pipeline_isolation",
+          "test_dependency_resolution_context_basic",
+          "test_thread_components_persistence"
+        ],
+        "test/core/deps/test_specification_registry.py": [
+          "test_complex_pipeline_compatibility",
+          "test_register_multiple_specifications",
+          "test_list_operations_detailed",
+          "test_multiple_compatible_outputs",
+          "test_get_specification_detailed",
+          "test_get_specifications_by_type",
+          "test_find_compatible_outputs",
+          "test_context_isolation",
+          "test_compatibility_checking",
+          "test_data_type_compatibility",
+          "test_get_specification_by_type_detailed",
+          "test_registry_initialization",
+          "test_find_compatible_outputs_detailed",
+          "test_register_specification",
+          "test_empty_registry_operations",
+          "test_registry_string_representation",
+          "test_register_invalid_specification",
+          "test_compatibility_scoring_algorithm"
+        ],
+        "test/core/deps/test_registry_manager.py": [
+          "test_get_registry_no_create",
+          "test_get_context_stats_function",
+          "test_list_contexts",
+          "test_clear_context",
+          "test_get_registry_returns_existing",
+          "test_get_pipeline_registry_backward_compatibility",
+          "test_registry_isolation",
+          "test_manager_string_representation",
+          "test_clear_context_function",
+          "test_registry_operations_on_cleared_context",
+          "test_get_registry_function",
+          "test_concurrent_access_safety",
+          "test_get_default_registry_backward_compatibility",
+          "test_invalid_context_name_handling",
+          "test_get_registry_creates_new",
+          "test_context_statistics_detailed",
+          "test_multiple_contexts_isolation",
+          "test_get_context_stats",
+          "test_memory_usage_monitoring",
+          "test_manager_initialization",
+          "test_clear_all_contexts",
+          "test_list_contexts_function"
+        ],
+        "test/core/deps/test_dependency_resolver.py": [
+          "test_dependency_resolution_with_aliases",
+          "test_end_to_end_resolution",
+          "test_property_reference_functionality",
+          "test_unresolvable_dependencies",
+          "test_type_compatibility_matrix",
+          "test_data_type_compatibility",
+          "test_weight_calculation",
+          "test_semantic_matching",
+          "test_registry_isolation",
+          "test_required_vs_optional_dependencies",
+          "test_multiple_competing_candidates"
+        ]
+      },
+      "likely_tested_functions": [
+        "find_best_matches",
+        "SemanticMatcher.find_best_matches",
+        "RegistryManager.clear_all_contexts",
+        "list_contexts",
+        "get_default_registry",
+        "register_specification",
+        "RegistryManager.clear_context",
+        "SpecificationRegistry.get_specifications_by_type",
+        "PropertyReference.to_runtime_property",
+        "create_pipeline_components",
+        "to_sagemaker_property",
+        "clear_context",
+        "PropertyReference.to_sagemaker_property",
+        "get_specifications_by_type",
+        "to_runtime_property",
+        "RegistryManager.list_contexts",
+        "find_compatible_outputs",
+        "clear_all_contexts",
+        "register",
+        "RegistryManager.get_context_stats",
+        "calculate_similarity",
+        "UnifiedDependencyResolver.register_specification",
+        "calculate_similarity_with_aliases",
+        "get_thread_components",
+        "SemanticMatcher.calculate_similarity_with_aliases",
+        "get_specification",
+        "dependency_resolution_context",
+        "get_registry",
+        "SpecificationRegistry.find_compatible_outputs",
+        "get_context_stats",
+        "get_pipeline_registry"
+      ],
+      "likely_untested_functions": [
+        "RegistryManager.get_registry",
+        "clear_cache",
+        "create_dependency_resolver",
+        "SpecificationRegistry.list_step_types",
+        "list_step_types",
+        "validate_step_name",
+        "get_resolution_report",
+        "integrate_with_pipeline_builder",
+        "resolve_step_dependencies",
+        "explain_similarity",
+        "SemanticMatcher.explain_similarity",
+        "new_init",
+        "UnifiedDependencyResolver.resolve_all_dependencies",
+        "PropertyReference.validate_step_name",
+        "list_step_names",
+        "SpecificationRegistry.get_specification",
+        "resolve_all_dependencies",
+        "SemanticMatcher.calculate_similarity",
+        "SpecificationRegistry.register",
+        "SpecificationRegistry.list_step_names",
+        "UnifiedDependencyResolver.resolve_step_dependencies",
+        "UnifiedDependencyResolver.clear_cache",
+        "UnifiedDependencyResolver.get_resolution_report"
+      ]
+    }
+  },
+  "redundancy_analysis": {
+    "assembler": {
+      "component": "assembler",
+      "total_test_functions": 39,
+      "unique_test_names": 38,
+      "redundant_test_names": 1,
+      "redundant_tests": {
+        "test_generate_pipeline": {
+          "count": 2,
+          "locations": [
+            "test/core/assembler/test_pipeline_builder_template.py",
+            "test/core/assembler/test_pipeline_assembler.py"
+          ]
+        }
+      },
+      "pattern_analysis": {
+        "generate_pipeline": [
+          [
+            "test/core/assembler/test_pipeline_builder_template.py",
+            "test_generate_pipeline"
+          ],
+          [
+            "test/core/assembler/test_pipeline_assembler.py",
+            "test_generate_pipeline"
+          ]
+        ]
+      }
+    },
+    "base": {
+      "component": "base",
+      "total_test_functions": 128,
+      "unique_test_names": 115,
+      "redundant_test_names": 11,
+      "redundant_tests": {
+        "test_init_with_required_fields": {
+          "count": 3,
+          "locations": [
+            "test/core/base/test_hyperparameters_base.py",
+            "test/core/base/test_config_base.py",
+            "test/core/base/test_specification_base.py"
+          ]
+        },
+        "test_categorize_fields": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_hyperparameters_base.py",
+            "test/core/base/test_config_base.py"
+          ]
+        },
+        "test_string_representation": {
+          "count": 3,
+          "locations": [
+            "test/core/base/test_hyperparameters_base.py",
+            "test/core/base/test_config_base.py",
+            "test/core/base/test_enums.py"
+          ]
+        },
+        "test_derived_properties": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_hyperparameters_base.py",
+            "test/core/base/test_config_base.py"
+          ]
+        },
+        "test_extra_fields_allowed": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_hyperparameters_base.py",
+            "test/core/base/test_config_base.py"
+          ]
+        },
+        "test_get_public_init_fields": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_hyperparameters_base.py",
+            "test/core/base/test_config_base.py"
+          ]
+        },
+        "test_derived_fields_caching": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_hyperparameters_base.py",
+            "test/core/base/test_config_base.py"
+          ]
+        },
+        "test_init_valid": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_contract_base.py",
+            "test/core/base/test_specification_base.py"
+          ]
+        },
+        "test_init_invalid_with_errors": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_contract_base.py",
+            "test/core/base/test_specification_base.py"
+          ]
+        },
+        "test_region_mapping": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_config_base.py",
+            "test/core/base/test_builder_base.py"
+          ]
+        },
+        "test_init_with_optional_fields": {
+          "count": 2,
+          "locations": [
+            "test/core/base/test_config_base.py",
+            "test/core/base/test_specification_base.py"
+          ]
+        }
+      },
+      "pattern_analysis": {
+        "init_with_required_fields": [
+          [
+            "test/core/base/test_hyperparameters_base.py",
+            "test_init_with_required_fields"
+          ],
+          [
+            "test/core/base/test_config_base.py",
+            "test_init_with_required_fields"
+          ],
+          [
+            "test/core/base/test_specification_base.py",
+            "test_init_with_required_fields"
+          ]
+        ],
+        "categorize_fields": [
+          [
+            "test/core/base/test_hyperparameters_base.py",
+            "test_categorize_fields"
+          ],
+          [
+            "test/core/base/test_config_base.py",
+            "test_categorize_fields"
+          ]
+        ],
+        "string_representation": [
+          [
+            "test/core/base/test_hyperparameters_base.py",
+            "test_string_representation"
+          ],
+          [
+            "test/core/base/test_config_base.py",
+            "test_string_representation"
+          ],
+          [
+            "test/core/base/test_enums.py",
+            "test_string_representation"
+          ]
+        ],
+        "derived_properties": [
+          [
+            "test/core/base/test_hyperparameters_base.py",
+            "test_derived_properties"
+          ],
+          [
+            "test/core/base/test_config_base.py",
+            "test_derived_properties"
+          ]
+        ],
+        "extra_fields_allowed": [
+          [
+            "test/core/base/test_hyperparameters_base.py",
+            "test_extra_fields_allowed"
+          ],
+          [
+            "test/core/base/test_config_base.py",
+            "test_extra_fields_allowed"
+          ]
+        ],
+        "get_public_init_fields": [
+          [
+            "test/core/base/test_hyperparameters_base.py",
+            "test_get_public_init_fields"
+          ],
+          [
+            "test/core/base/test_config_base.py",
+            "test_get_public_init_fields"
+          ]
+        ],
+        "derived_fields_caching": [
+          [
+            "test/core/base/test_hyperparameters_base.py",
+            "test_derived_fields_caching"
+          ],
+          [
+            "test/core/base/test_config_base.py",
+            "test_derived_fields_caching"
+          ]
+        ],
+        "init_valid": [
+          [
+            "test/core/base/test_contract_base.py",
+            "test_init_valid"
+          ],
+          [
+            "test/core/base/test_specification_base.py",
+            "test_init_valid"
+          ]
+        ],
+        "init_invalid_with_errors": [
+          [
+            "test/core/base/test_contract_base.py",
+            "test_init_invalid_with_errors"
+          ],
+          [
+            "test/core/base/test_specification_base.py",
+            "test_init_invalid_with_errors"
+          ]
+        ],
+        "region_mapping": [
+          [
+            "test/core/base/test_config_base.py",
+            "test_region_mapping"
+          ],
+          [
+            "test/core/base/test_builder_base.py",
+            "test_region_mapping"
+          ]
+        ],
+        "init_with_optional_fields": [
+          [
+            "test/core/base/test_config_base.py",
+            "test_init_with_optional_fields"
+          ],
+          [
+            "test/core/base/test_specification_base.py",
+            "test_init_with_optional_fields"
+          ]
+        ]
+      }
+    },
+    "compiler": {
+      "component": "compiler",
+      "total_test_functions": 79,
+      "unique_test_names": 76,
+      "redundant_test_names": 3,
+      "redundant_tests": {
+        "test_validate_dag_compatibility_success": {
+          "count": 2,
+          "locations": [
+            "test/core/compiler/test_validation.py",
+            "test/core/compiler/test_dag_compiler.py"
+          ]
+        },
+        "test_direct_name_matching": {
+          "count": 2,
+          "locations": [
+            "test/core/compiler/test_config_resolver.py",
+            "test/core/compiler/test_enhanced_config_resolver.py"
+          ]
+        },
+        "test_preview_resolution": {
+          "count": 2,
+          "locations": [
+            "test/core/compiler/test_config_resolver.py",
+            "test/core/compiler/test_enhanced_config_resolver.py"
+          ]
+        }
+      },
+      "pattern_analysis": {
+        "validate_dag_compatibility_success": [
+          [
+            "test/core/compiler/test_validation.py",
+            "test_validate_dag_compatibility_success"
+          ],
+          [
+            "test/core/compiler/test_dag_compiler.py",
+            "test_validate_dag_compatibility_success"
+          ]
+        ],
+        "direct_name_matching": [
+          [
+            "test/core/compiler/test_config_resolver.py",
+            "test_direct_name_matching"
+          ],
+          [
+            "test/core/compiler/test_enhanced_config_resolver.py",
+            "test_direct_name_matching"
+          ]
+        ],
+        "preview_resolution": [
+          [
+            "test/core/compiler/test_config_resolver.py",
+            "test_preview_resolution"
+          ],
+          [
+            "test/core/compiler/test_enhanced_config_resolver.py",
+            "test_preview_resolution"
+          ]
+        ]
+      }
+    },
+    "config_fields": {
+      "component": "config_fields",
+      "total_test_functions": 103,
+      "unique_test_names": 101,
+      "redundant_test_names": 2,
+      "redundant_tests": {
+        "test_special_list_format_handling": {
+          "count": 2,
+          "locations": [
+            "test/core/config_fields/test_circular_reference_consolidated.py",
+            "test/core/config_fields/test_bug_fixes_consolidated.py"
+          ]
+        },
+        "test_config_types_format": {
+          "count": 2,
+          "locations": [
+            "test/core/config_fields/test_config_merger.py",
+            "test/core/config_fields/test_type_aware_deserialization.py"
+          ]
+        }
+      },
+      "pattern_analysis": {
+        "special_list_format_handling": [
+          [
+            "test/core/config_fields/test_circular_reference_consolidated.py",
+            "test_special_list_format_handling"
+          ],
+          [
+            "test/core/config_fields/test_bug_fixes_consolidated.py",
+            "test_special_list_format_handling"
+          ]
+        ],
+        "config_types_format": [
+          [
+            "test/core/config_fields/test_config_merger.py",
+            "test_config_types_format"
+          ],
+          [
+            "test/core/config_fields/test_type_aware_deserialization.py",
+            "test_config_types_format"
+          ]
+        ]
+      }
+    },
+    "deps": {
+      "component": "deps",
+      "total_test_functions": 84,
+      "unique_test_names": 81,
+      "redundant_test_names": 3,
+      "redundant_tests": {
+        "test_weight_calculation": {
+          "count": 2,
+          "locations": [
+            "test/core/deps/test_semantic_matcher.py",
+            "test/core/deps/test_dependency_resolver.py"
+          ]
+        },
+        "test_data_type_compatibility": {
+          "count": 2,
+          "locations": [
+            "test/core/deps/test_specification_registry.py",
+            "test/core/deps/test_dependency_resolver.py"
+          ]
+        },
+        "test_registry_isolation": {
+          "count": 2,
+          "locations": [
+            "test/core/deps/test_registry_manager.py",
+            "test/core/deps/test_dependency_resolver.py"
+          ]
+        }
+      },
+      "pattern_analysis": {
+        "weight_calculation": [
+          [
+            "test/core/deps/test_semantic_matcher.py",
+            "test_weight_calculation"
+          ],
+          [
+            "test/core/deps/test_dependency_resolver.py",
+            "test_weight_calculation"
+          ]
+        ],
+        "data_type_compatibility": [
+          [
+            "test/core/deps/test_specification_registry.py",
+            "test_data_type_compatibility"
+          ],
+          [
+            "test/core/deps/test_dependency_resolver.py",
+            "test_data_type_compatibility"
+          ]
+        ],
+        "registry_isolation": [
+          [
+            "test/core/deps/test_registry_manager.py",
+            "test_registry_isolation"
+          ],
+          [
+            "test/core/deps/test_dependency_resolver.py",
+            "test_registry_isolation"
+          ]
+        ]
+      }
+    }
+  },
+  "summary": {
+    "total_components": 5,
+    "total_source_functions": 328,
+    "total_tested_functions": 166,
+    "overall_coverage": 58.01711460000828
+  }
+}

@@ -10,23 +10,23 @@ import os
 from io import StringIO
 
 # Add the project root to the Python path to allow for absolute imports
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import all test modules
-from test.base.test_config_base import TestBasePipelineConfig
-from test.base.test_builder_base import TestStepBuilderBase
-from test.base.test_specification_base import (
+from test.core.base.test_config_base import TestBasePipelineConfig
+from test.core.base.test_builder_base import TestStepBuilderBase
+from test.core.base.test_specification_base import (
     TestOutputSpec, TestDependencySpec, TestValidationResult, 
     TestAlignmentResult, TestStepSpecification
 )
-from test.base.test_contract_base import (
+from test.core.base.test_contract_base import (
     TestValidationResult as TestContractValidationResult,
     TestScriptContract, TestScriptAnalyzer
 )
-from test.base.test_hyperparameters_base import TestModelHyperparameters
-from test.base.test_enums import (
+from test.core.base.test_hyperparameters_base import TestModelHyperparameters
+from test.core.base.test_enums import (
     TestDependencyType, TestNodeType, TestEnumInteraction, TestEnumEdgeCases
 )
 
@@ -137,12 +137,12 @@ def run_individual_test_modules():
     print("=" * 80)
     
     test_modules = [
-        ('config_base', 'test.base.test_config_base'),
-        ('builder_base', 'test.base.test_builder_base'),
-        ('specification_base', 'test.base.test_specification_base'),
-        ('contract_base', 'test.base.test_contract_base'),
-        ('hyperparameters_base', 'test.base.test_hyperparameters_base'),
-        ('enums', 'test.base.test_enums'),
+        ('config_base', 'test.core.base.test_config_base'),
+        ('builder_base', 'test.core.base.test_builder_base'),
+        ('specification_base', 'test.core.base.test_specification_base'),
+        ('contract_base', 'test.core.base.test_contract_base'),
+        ('hyperparameters_base', 'test.core.base.test_hyperparameters_base'),
+        ('enums', 'test.core.base.test_enums'),
     ]
     
     results = {}

@@ -142,9 +142,9 @@ class TestTypeAwareDeserialization(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         # Define paths
-        self.repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+        self.repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
         self.model_path = os.path.join(os.path.dirname(__file__), "model.tar.gz")
-        self.pipeline_scripts_path = os.path.join(self.repo_root, "src/pipeline_scripts")
+        self.pipeline_scripts_path = os.path.join(self.repo_root, "src/cursus/steps/scripts")
         
         # Check that required directories and files exist
         self.assertTrue(os.path.exists(self.model_path), f"Test model file missing: {self.model_path}")

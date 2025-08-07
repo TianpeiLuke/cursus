@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-08-07 09:08:05",
+  "components": {
+    "assembler": {
+      "source_functions": [],
+      "test_functions": [],
+      "coverage_gaps": [],
+      "redundancy_issues": []
+    },
+    "base": {
+      "source_functions": [],
+      "test_functions": [],
+      "coverage_gaps": [],
+      "redundancy_issues": []
+    },
+    "compiler": {
+      "source_functions": [],
+      "test_functions": [],
+      "coverage_gaps": [],
+      "redundancy_issues": []
+    },
+    "config_fields": {
+      "source_functions": [],
+      "test_functions": [],
+      "coverage_gaps": [],
+      "redundancy_issues": []
+    },
+    "deps": {
+      "source_functions": [],
+      "test_functions": [],
+      "coverage_gaps": [],
+      "redundancy_issues": []
+    }
+  },
+  "summary": {
+    "total_source_functions": 0,
+    "total_test_functions": 0,
+    "total_coverage_gaps": 0,
+    "total_redundancies": 0
+  }
+}
