@@ -28,7 +28,6 @@ This report analyzes the test coverage and redundancies in the `test/deps` direc
 - `test_factory.py` - **NEW** Factory functions and component creation tests
 - `test_global_state_isolation.py` - Global state management tests  
 - `test_property_reference.py` - Property reference functionality tests
-- `test_pydantic_features.py` - Pydantic model validation tests
 - `test_registry_manager.py` - **CONSOLIDATED** registry management tests
 - `test_semantic_matcher.py` - Semantic matching algorithm tests
 - `test_specification_registry.py` - **CONSOLIDATED** specification registry tests
@@ -42,6 +41,7 @@ This report analyzes the test coverage and redundancies in the `test/deps` direc
 - `test_registry_manager_monitoring.py` ✓ Merged into `test_registry_manager.py`
 - `test_registry_manager_pipeline_integration.py` ✓ Merged into `test_registry_manager.py`
 - `test_specification_registry_class.py` ✓ Merged into `test_specification_registry.py`
+- `test_pydantic_features.py` ✓ Removed (framework tests covered by `test/base/test_enums.py`)
 
 ## Test Coverage Analysis
 
@@ -140,9 +140,7 @@ This report analyzes the test coverage and redundancies in the `test/deps` direc
 - ✅ Global state reset functionality
 - ✅ Test isolation between test cases
 
-**PydanticFeatures (`test_pydantic_features.py`):** 5 tests
-- ✅ Model validation and serialization
-- ✅ Enum handling and type checking
+**Note:** Pydantic model validation and enum handling are now covered by `test/base/test_enums.py` and other base specification tests, eliminating the need for separate Pydantic feature tests in the deps module.
 
 ## Coverage Gaps and Recommendations
 
@@ -219,18 +217,17 @@ This report analyzes the test coverage and redundancies in the `test/deps` direc
 **Final Test Run (test/deps):**
 ```
 ============================== test session starts ==============================
-collected 93 items
+collected 88 items
 
-test/deps/test_dependency_resolver.py ...........                         [ 11%]
-test/deps/test_factory.py ..............                                  [ 26%]
-test/deps/test_global_state_isolation.py ......                           [ 33%]
-test/deps/test_property_reference.py ......                               [ 39%]
-test/deps/test_pydantic_features.py .....                                 [ 45%]
-test/deps/test_registry_manager.py ......................                 [ 68%]
-test/deps/test_semantic_matcher.py ...........                            [ 80%]
+test/deps/test_dependency_resolver.py ...........                         [ 12%]
+test/deps/test_factory.py ..............                                  [ 28%]
+test/deps/test_global_state_isolation.py ......                           [ 35%]
+test/deps/test_property_reference.py ......                               [ 42%]
+test/deps/test_registry_manager.py ......................                 [ 67%]
+test/deps/test_semantic_matcher.py ...........                            [ 79%]
 test/deps/test_specification_registry.py ..................               [100%]
 
-======================== 93 passed, 17 warnings in 0.98s ========================
+======================== 88 passed, 17 warnings in 1.97s ========================
 ```
 
 **Integration Test Run (test/integration):**
@@ -240,11 +237,11 @@ test/integration/test_registry_manager_pipeline_integration.py ...        [100%]
 ```
 
 **Results:**
-- ✅ 93 tests passing in test/deps (100% success rate)
+- ✅ 88 tests passing in test/deps (100% success rate)
 - ✅ 3 tests passing in test/integration (100% success rate)
-- ✅ **Total: 96 tests passing** (100% success rate)
+- ✅ **Total: 91 tests passing** (100% success rate)
 - ⚠️ 17 warnings (all Pydantic deprecation warnings, not test-related)
-- 🚀 Fast execution time for deps tests (0.98 seconds)
+- 🚀 Fast execution time for deps tests (1.97 seconds)
 
 ## Recommendations
 
@@ -269,11 +266,12 @@ test/integration/test_registry_manager_pipeline_integration.py ...        [100%]
 
 The test consolidation and enhancement effort successfully:
 
-1. **Reduced Redundancy** - Eliminated 6 redundant test files (43% reduction)
+1. **Reduced Redundancy** - Eliminated 7 redundant test files (50% reduction)
 2. **Enhanced Coverage** - Added comprehensive factory component tests (14 new tests)
 3. **Maintained Coverage** - Preserved all unique test scenarios from consolidation
 4. **Improved Organization** - Created clearer test structure with focused responsibilities
 5. **Enhanced Maintainability** - Simplified test maintenance and updates
-6. **Validated Functionality** - All 96 tests pass with comprehensive coverage
+6. **Validated Functionality** - All 91 tests pass with comprehensive coverage
+7. **Eliminated Infrastructure Tests** - Removed Pydantic framework tests in favor of business logic focus
 
-The dependency management system now has a robust, well-organized test suite that provides comprehensive coverage of all components including factory functions, while minimizing redundancy and maintenance overhead.
+The dependency management system now has a robust, well-organized test suite that provides comprehensive coverage of all components including factory functions, while minimizing redundancy and maintenance overhead. The removal of `test_pydantic_features.py` further streamlined the test suite by eliminating framework-level tests that didn't add business value.
