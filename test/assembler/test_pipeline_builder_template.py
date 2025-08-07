@@ -16,6 +16,8 @@ sys.modules['src.cursus.core.base.specification_base'] = MagicMock()
 sys.modules['src.cursus.core.deps.property_reference'] = MagicMock()
 sys.modules['src.cursus.core.deps.dependency_resolver'] = MagicMock()
 sys.modules['src.cursus.core.deps.registry_manager'] = MagicMock()
+sys.modules['src.cursus.core.deps.semantic_matcher'] = MagicMock()
+sys.modules['src.cursus.core.deps.factory'] = MagicMock()
 
 from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
 from src.cursus.core.assembler.pipeline_assembler import PipelineAssembler
@@ -105,8 +107,8 @@ class TestPipelineTemplateBase(unittest.TestCase):
         self.mock_file = self.mock_open.start()
         self.mock_file.return_value.__enter__.return_value.read.return_value = json.dumps(self.config_data)
         
-        # Mock load_configs function
-        self.load_configs_patch = patch('src.cursus.core.assembler.pipeline_template_base.load_configs')
+        # Mock load_configs function from the correct import path
+        self.load_configs_patch = patch('src.cursus.steps.configs.utils.load_configs')
         self.mock_load_configs = self.load_configs_patch.start()
         
         # Create mock configs
@@ -123,7 +125,7 @@ class TestPipelineTemplateBase(unittest.TestCase):
         self.mock_load_configs.return_value = self.mock_configs
         
         # Mock build_complete_config_classes
-        self.build_complete_patch = patch('src.cursus.core.assembler.pipeline_template_base.build_complete_config_classes')
+        self.build_complete_patch = patch('src.cursus.steps.configs.utils.build_complete_config_classes')
         self.mock_build_complete = self.build_complete_patch.start()
         self.mock_build_complete.return_value = {}
         
@@ -181,6 +183,12 @@ class TestPipelineTemplateBase(unittest.TestCase):
         
         # Verify components were created
         self.mock_create_components.assert_called_once_with('test-pipeline')
+        
+        # Verify loaded_config_data was set
+        self.assertIsNotNone(template.loaded_config_data)
+        
+        # Verify pipeline_metadata was initialized
+        self.assertEqual(template.pipeline_metadata, {})
 
     def test_initialization_with_provided_components(self):
         """Test initialization with provided dependency components."""
@@ -362,6 +370,109 @@ class TestPipelineTemplateBase(unittest.TestCase):
         # Should return unchanged document
         self.assertEqual(result, doc)
 
+    def test_initialization_with_notebook_root(self):
+        """Test initialization with custom notebook_root."""
+        custom_root = Path('/custom/notebook/root')
+        template = ConcretePipelineTemplate(
+            config_path='test_config.json',
+            notebook_root=custom_root
+        )
+        
+        # Verify notebook_root was set
+        self.assertEqual(template.notebook_root, custom_root)
+
+    def test_initialization_default_notebook_root(self):
+        """Test initialization with default notebook_root."""
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        
+        # Verify default notebook_root was set to current working directory
+        self.assertEqual(template.notebook_root, Path.cwd())
+
+    def test_config_loading_error_handling(self):
+        """Test error handling when config file loading fails."""
+        # Mock file operations to raise an exception
+        self.mock_file.return_value.__enter__.return_value.read.side_effect = Exception("File read error")
+        
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        
+        # Verify loaded_config_data is None when file loading fails
+        self.assertIsNone(template.loaded_config_data)
+
+    def test_pipeline_name_fallback_values(self):
+        """Test pipeline name generation with fallback values."""
+        # Remove pipeline_name and pipeline_version from base config
+        del self.mock_base_config.pipeline_name
+        del self.mock_base_config.pipeline_version
+        
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        name = template._get_pipeline_name()
+        
+        # Should use fallback values
+        self.mock_generate_name.assert_called_with('mods', '1.0')
+
+    def test_get_pipeline_parameters_default(self):
+        """Test default pipeline parameters."""
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        params = template._get_pipeline_parameters()
+        
+        # Default implementation should return empty list
+        self.assertEqual(params, [])
+
+    def test_store_pipeline_metadata_without_attributes(self):
+        """Test storing pipeline metadata when assembler doesn't have expected attributes."""
+        template = ConcretePipelineTemplate(config_path='test_config.json')
+        
+        # Mock assembler without cradle_loading_requests or step_instances
+        mock_assembler = MagicMock()
+        # Remove the attributes
+        if hasattr(mock_assembler, 'cradle_loading_requests'):
+            del mock_assembler.cradle_loading_requests
+        if hasattr(mock_assembler, 'step_instances'):
+            del mock_assembler.step_instances
+        
+        # Call _store_pipeline_metadata
+        template._store_pipeline_metadata(mock_assembler)
+        
+        # Verify metadata dict is still empty since attributes don't exist
+        self.assertEqual(template.pipeline_metadata, {})
+
+    def test_config_classes_validation(self):
+        """Test that CONFIG_CLASSES must be defined."""
+        # Create a template class without CONFIG_CLASSES
+        class InvalidTemplate(PipelineTemplateBase):
+            def _validate_configuration(self):
+                pass
+            def _create_pipeline_dag(self):
+                return MagicMock()
+            def _create_config_map(self):
+                return {}
+            def _create_step_builder_map(self):
+                return {}
+        
+        with self.assertRaises(ValueError) as context:
+            InvalidTemplate(config_path='test_config.json')
+        
+        self.assertIn("CONFIG_CLASSES must be defined", str(context.exception))
+
+    def test_initialization_partial_components(self):
+        """Test initialization with only one component provided."""
+        custom_registry = MagicMock(spec=MockRegistryManager)
+        
+        template = ConcretePipelineTemplate(
+            config_path='test_config.json',
+            registry_manager=custom_registry
+            # dependency_resolver not provided
+        )
+        
+        # Verify provided component was used
+        self.assertEqual(template._registry_manager, custom_registry)
+        
+        # Verify missing component was created
+        self.assertIsNotNone(template._dependency_resolver)
+        
+        # Verify create_pipeline_components was called to get missing component
+        self.mock_create_components.assert_called_once_with('test-pipeline')
+
 
 class TestPipelineAssembler(unittest.TestCase):
     def setUp(self):
@@ -390,7 +501,7 @@ class TestPipelineAssembler(unittest.TestCase):
         
         # Mock step builders
         self.mock_builder_cls = MagicMock()
-        self.mock_builder = MagicMock(spec=MockStepBuilderBase)
+        self.mock_builder = MagicMock()
         self.mock_builder_cls.return_value = self.mock_builder
         
         self.mock_step_builder_map = {
@@ -400,7 +511,7 @@ class TestPipelineAssembler(unittest.TestCase):
         }
         
         # Mock dependency components
-        self.mock_registry_manager = MagicMock(spec=MockRegistryManager)
+        self.mock_registry_manager = MagicMock()
         self.mock_registry = MagicMock()
         self.mock_registry_manager.get_registry.return_value = self.mock_registry
         
