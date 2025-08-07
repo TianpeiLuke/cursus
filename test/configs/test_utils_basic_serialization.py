@@ -12,11 +12,11 @@ sys.path.insert(0, str(repo_root))
 from unittest.mock import patch, MagicMock
 
 # Import utilities for config serialization
-from src.pipeline_steps.utils import merge_and_save_configs, serialize_config
-from src.pipeline_steps.config_base import BasePipelineConfig
-from src.pipeline_steps.hyperparameters_base import ModelHyperparameters
-from src.config_field_manager.config_field_categorizer import ConfigFieldCategorizer
-from src.config_field_manager.constants import SPECIAL_FIELDS_TO_KEEP_SPECIFIC, CategoryType
+from src.cursus.steps.configs.utils import merge_and_save_configs, serialize_config
+from src.cursus.core.base.config_base import BasePipelineConfig
+from src.cursus.core.base.hyperparameters_base import ModelHyperparameters
+from src.cursus.core.config_fields.config_field_categorizer import ConfigFieldCategorizer
+from src.cursus.core.config_fields.constants import SPECIAL_FIELDS_TO_KEEP_SPECIFIC, CategoryType
 
 
 class TestBasicSerializationAndFields(unittest.TestCase):

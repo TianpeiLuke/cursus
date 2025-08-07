@@ -20,7 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 # Import the necessary modules
-from src.pipeline_steps.utils import load_configs, build_complete_config_classes
+from src.cursus.steps.configs.utils import load_configs, build_complete_config_classes
 
 class TestConfigLoading(unittest.TestCase):
     """Tests for the configuration loading functionality."""

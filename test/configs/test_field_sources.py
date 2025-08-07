@@ -13,11 +13,11 @@ from pathlib import Path
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, repo_root)
 
-from src.pipeline_steps.utils import get_field_sources, merge_and_save_configs
-from src.pipeline_steps.config_base import BasePipelineConfig
-from src.pipeline_steps.config_processing_step_base import ProcessingStepConfigBase
-from src.pipeline_steps.config_dummy_training_step import DummyTrainingConfig
-from src.pipeline_steps.hyperparameters_base import ModelHyperparameters
+from src.cursus.steps.configs.utils import get_field_sources, merge_and_save_configs
+from src.cursus.core.base.config_base import BasePipelineConfig
+from src.cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from src.cursus.steps.configs.config_dummy_training_step import DummyTrainingConfig
+from src.cursus.core.base.hyperparameters_base import ModelHyperparameters
 
 
 class TestFieldSources(unittest.TestCase):

@@ -7,8 +7,8 @@ field values.
 """
 
 import unittest
-from src.pipeline_steps.config_base import BasePipelineConfig
-from src.pipeline_steps.config_processing_step_base import ProcessingStepConfigBase
+from src.cursus.core.base.config_base import BasePipelineConfig
+from src.cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 
 class TestConfigInheritance(unittest.TestCase):
