@@ -14,7 +14,7 @@ def test_registry_functions():
     print("Testing SageMaker Step Type Registry Functions...")
     
     try:
-        from cursus.steps.registry.step_names import (
+        from src.cursus.steps.registry.step_names import (
             get_sagemaker_step_type,
             get_steps_by_sagemaker_type,
             get_all_sagemaker_step_types,
