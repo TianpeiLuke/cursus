@@ -13,7 +13,6 @@ from sagemaker.network import NetworkConfig
 
 from ...api.dag.base_dag import PipelineDAG
 from ..base import StepBuilderBase, BasePipelineConfig
-from ...steps.configs.utils import build_complete_config_classes
 
 if TYPE_CHECKING:
     from ..assembler.pipeline_template_base import PipelineTemplateBase

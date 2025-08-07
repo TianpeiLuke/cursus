@@ -26,7 +26,6 @@ from ..deps.factory import create_pipeline_components, dependency_resolution_con
 
 from .pipeline_assembler import PipelineAssembler
 from ...api.dag.base_dag import PipelineDAG
-from ...steps.configs.utils import load_configs, build_complete_config_classes
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +119,9 @@ class PipelineTemplateBase(ABC):
         """
         if not self.CONFIG_CLASSES:
             raise ValueError("CONFIG_CLASSES must be defined by subclass")
+        
+        # Import here to avoid circular imports
+        from ...steps.configs.utils import build_complete_config_classes, load_configs
         
         # Build a complete config classes dictionary with hyperparameter classes
         complete_classes = build_complete_config_classes()

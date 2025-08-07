@@ -37,7 +37,7 @@ from ...core.config_fields import (
 
 # Import the config class detector for efficient class detection
 try:
-    from ...config_field_manager.config_class_detector import detect_config_classes_from_json
+    from ...core.config_fields.config_class_detector import detect_config_classes_from_json
 except ImportError:
     # Fallback implementation if the module is not available
     def detect_config_classes_from_json(config_path: str) -> Dict[str, Type[BaseModel]]:
@@ -53,7 +53,7 @@ class CategoryType(Enum):
     SHARED = auto()
     SPECIFIC = auto()
 
-from ...config_field_manager.type_aware_config_serializer import (
+from ...core.config_fields.type_aware_config_serializer import (
     serialize_config as new_serialize_config,
     deserialize_config,
     TypeAwareConfigSerializer
