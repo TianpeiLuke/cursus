@@ -29,7 +29,7 @@ STEP_NAMES = {
         "config_class": "CradleDataLoadConfig",
         "builder_step_name": "CradleDataLoadingStepBuilder",
         "spec_type": "CradleDataLoading",
-        "sagemaker_step_type": "Processing",
+        "sagemaker_step_type": "CradleDataLoading",
         "description": "Cradle data loading step"
     },
 
@@ -125,7 +125,7 @@ STEP_NAMES = {
         "config_class": "RegistrationConfig",
         "builder_step_name": "RegistrationStepBuilder",
         "spec_type": "Registration",
-        "sagemaker_step_type": "RegisterModel",
+        "sagemaker_step_type": "MimsModelRegistrationProcessing",
         "description": "Model registration step"
     },
     "Payload": {

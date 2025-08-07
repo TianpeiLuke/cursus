@@ -28,7 +28,7 @@ The `STEP_NAMES` dictionary defines the canonical relationships between all comp
 | **Config Classes** | PascalCase + `Config` suffix | `CradleDataLoadConfig`, `XGBoostTrainingConfig`, `PyTorchModelConfig` | `CradleDataLoadingConfiguration`, `XGBoostConfig` |
 | **Builder Classes** | PascalCase + `StepBuilder` suffix | `CradleDataLoadingStepBuilder`, `XGBoostTrainingStepBuilder`, `PyTorchModelStepBuilder` | `DataLoadingBuilder`, `XGBoostStepBuilder` |
 | **Spec Types** | Same as canonical step name | `CradleDataLoading`, `XGBoostTraining`, `PyTorchModel` | `cradle_data_loading_spec`, `XGBoostTrainingSpec` |
-| **SageMaker Step Types** | Exact SageMaker SDK names | `Processing`, `Training`, `Transform`, `CreateModel`, `RegisterModel`, `Lambda` | `ProcessingStep`, `TrainingStep`, `processing` |
+| **SageMaker Step Types** | Step class name minus "Step" suffix | `Processing`, `Training`, `Transform`, `CreateModel`, `MimsModelRegistrationProcessing`, `CradleDataLoading` | `ProcessingStep`, `TrainingStep`, `processing` |
 | **Logical Names** | snake_case | `input_data`, `model_artifacts`, `training_data` | `InputData`, `model-artifacts` |
 
 #### Real Examples from STEP_NAMES Registry
@@ -90,17 +90,24 @@ All builder classes consistently follow: `{CanonicalName}StepBuilder`
 
 #### SageMaker Step Type Classification
 
-The registry defines 6 SageMaker step types with their corresponding steps:
+The registry defines SageMaker step types following the rule: **Step class name minus "Step" suffix**
 
-| SageMaker Type | Step Count | Examples |
-|----------------|------------|----------|
-| `Processing` | 10 steps | `CradleDataLoading`, `TabularPreprocessing`, `ModelCalibration`, `Package` |
-| `Training` | 2 steps | `XGBoostTraining`, `PyTorchTraining` |
-| `CreateModel` | 2 steps | `XGBoostModel`, `PyTorchModel` |
-| `Transform` | 1 step | `BatchTransform` |
-| `RegisterModel` | 1 step | `Registration` |
-| `Lambda` | 1 step | `HyperparameterPrep` |
-| `Base` | 1 step | `Base` |
+| SageMaker Type | Step Count | Examples | Derived From |
+|----------------|------------|----------|--------------|
+| `Processing` | 8 steps | `TabularPreprocessing`, `ModelCalibration`, `Package`, `Payload` | `ProcessingStep` → `Processing` |
+| `Training` | 2 steps | `XGBoostTraining`, `PyTorchTraining` | `TrainingStep` → `Training` |
+| `CreateModel` | 2 steps | `XGBoostModel`, `PyTorchModel` | `CreateModelStep` → `CreateModel` |
+| `Transform` | 1 step | `BatchTransform` | `TransformStep` → `Transform` |
+| `Lambda` | 1 step | `HyperparameterPrep` | `LambdaStep` → `Lambda` |
+| `MimsModelRegistrationProcessing` | 1 step | `Registration` | `MimsModelRegistrationProcessingStep` → `MimsModelRegistrationProcessing` |
+| `CradleDataLoading` | 1 step | `CradleDataLoading` | `CradleDataLoadingStep` → `CradleDataLoading` |
+| `Base` | 1 step | `Base` | Special case for base configurations |
+
+**Naming Rule**: Take the actual step class name returned by `create_step()` and remove the "Step" suffix:
+- `ProcessingStep` → `Processing`
+- `TrainingStep` → `Training`
+- `MimsModelRegistrationProcessingStep` → `MimsModelRegistrationProcessing`
+- `CradleDataLoadingStep` → `CradleDataLoading`
 
 Additionally, all files must follow consistent naming patterns:
 
@@ -427,17 +434,25 @@ STEP_NAMES = {
 
 #### Valid SageMaker Step Types
 
-The `sagemaker_step_type` field must use one of these exact values:
+The `sagemaker_step_type` field follows the rule: **Step class name minus "Step" suffix**
 
 | SageMaker Step Type | When to Use | create_step() Return Type | Examples |
 |-------------------|-------------|---------------------------|----------|
-| `Processing` | Steps that create ProcessingStep instances | `ProcessingStep` | TabularPreprocessing, ModelCalibration, Package |
+| `Processing` | Steps that create ProcessingStep instances | `ProcessingStep` | TabularPreprocessing, ModelCalibration, Package, Payload |
 | `Training` | Steps that create TrainingStep instances | `TrainingStep` | XGBoostTraining, PyTorchTraining |
 | `Transform` | Steps that create TransformStep instances | `TransformStep` | BatchTransform |
 | `CreateModel` | Steps that create CreateModelStep instances | `CreateModelStep` | XGBoostModel, PyTorchModel |
-| `RegisterModel` | Steps that create model registration steps | Custom registration steps | Registration (MimsModelRegistrationProcessingStep) |
 | `Lambda` | Steps that create LambdaStep instances | `LambdaStep` | HyperparameterPrep |
+| `MimsModelRegistrationProcessing` | Steps that create MimsModelRegistrationProcessingStep | `MimsModelRegistrationProcessingStep` | Registration |
+| `CradleDataLoading` | Steps that create CradleDataLoadingStep | `CradleDataLoadingStep` | CradleDataLoading |
 | `Base` | Base/utility steps | N/A | Base configuration steps |
+
+**Naming Rule Examples**:
+- `ProcessingStep` → `Processing`
+- `TrainingStep` → `Training`
+- `MimsModelRegistrationProcessingStep` → `MimsModelRegistrationProcessing`
+- `CradleDataLoadingStep` → `CradleDataLoading`
+- `LambdaStep` → `Lambda`
 
 #### Verification Requirements
 
