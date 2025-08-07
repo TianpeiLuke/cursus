@@ -9,9 +9,9 @@ job types, and to use metadata from the configuration file.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.pipeline_api.config_resolver import StepConfigResolver
-from src.pipeline_api.exceptions import ResolutionError, AmbiguityError, ConfigurationError
-from src.pipeline_steps.config_base import BasePipelineConfig
+from src.cursus.core.compiler.config_resolver import StepConfigResolver
+from src.cursus.core.compiler.exceptions import ResolutionError, AmbiguityError, ConfigurationError
+from src.cursus.core.base.config_base import BasePipelineConfig
 
 
 class TestEnhancedConfigResolver(unittest.TestCase):

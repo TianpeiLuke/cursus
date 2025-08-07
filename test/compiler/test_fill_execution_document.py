@@ -8,8 +8,8 @@ with Cradle data loading requests and registration configurations.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.pipeline_dag.base_dag import PipelineDAG
-from src.pipeline_api.dynamic_template import DynamicPipelineTemplate
+from src.cursus.api.dag.base_dag import PipelineDAG
+from src.cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
 
 
 class TestFillExecutionDocument(unittest.TestCase):

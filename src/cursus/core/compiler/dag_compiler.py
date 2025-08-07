@@ -68,14 +68,14 @@ def compile_dag_to_pipeline(
         >>> pipeline.upsert()
     """
     try:
-        logger.info(f"Compiling DAG with {len(dag.nodes)} nodes to pipeline")
-        
-        # Validate inputs
+        # Validate inputs first before accessing dag.nodes
         if not isinstance(dag, PipelineDAG):
             raise ValueError("dag must be a PipelineDAG instance")
         
         if not dag.nodes:
             raise ValueError("DAG must contain at least one node")
+            
+        logger.info(f"Compiling DAG with {len(dag.nodes)} nodes to pipeline")
         
         config_path_obj = Path(config_path)
         if not config_path_obj.exists():
