@@ -12,8 +12,8 @@ import unittest
 import json
 from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
-from src.pipeline_deps.base_specifications import (
-    StepSpecification, DependencySpec, OutputSpec, 
+from src.cursus.core.base.specification_base import (
+    StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
 

@@ -11,8 +11,8 @@ Tests the functionality of specification registry including:
 import unittest
 from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
-from src.pipeline_deps.base_specifications import (
-    StepSpecification, DependencySpec, OutputSpec, 
+from src.cursus.core.base.specification_base import (
+    StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
 from src.pipeline_deps.specification_registry import SpecificationRegistry

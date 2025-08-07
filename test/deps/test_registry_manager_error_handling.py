@@ -8,7 +8,7 @@ import time
 import gc
 from src.pipeline_deps import RegistryManager
 from src.pipeline_deps.specification_registry import SpecificationRegistry
-from src.pipeline_deps.base_specifications import (
+from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
 from src.pipeline_deps.dependency_resolver import UnifiedDependencyResolver

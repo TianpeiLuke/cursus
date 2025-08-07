@@ -10,7 +10,7 @@ import unittest
 from typing import Dict, Any, Optional, Union, Type
 
 from src.pipeline_steps.builder_step_base import StepBuilderBase
-from src.pipeline_deps.base_specifications import StepSpecification
+from src.cursus.core.base.specification_base import StepSpecification
 from src.pipeline_script_contracts.base_script_contract import ScriptContract
 from src.pipeline_steps.config_base import BaseModel as ConfigBase
 

@@ -11,13 +11,13 @@ Tests the integration aspects of StepSpecification including:
 import unittest
 import json
 from typing import List, Dict
-from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
-from src.pipeline_deps.base_specifications import (
-    StepSpecification, DependencySpec, OutputSpec, 
+from src.cursus.core.base.specification_base import (
+    StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
-from src.pipeline_deps.property_reference import PropertyReference
+from src.cursus.core.deps.property_reference import PropertyReference
 
 
 class TestStepSpecificationIntegration(IsolatedTestCase):
@@ -54,17 +54,17 @@ class TestStepSpecificationIntegration(IsolatedTestCase):
         # Create an output spec for property references
         self.source_output_spec = OutputSpec(
             logical_name="source_output",
-            output_type=self.dependency_type,
+            output_type="processing_output",  # Use string value instead of enum
             property_path="properties.ProcessingOutputConfig.Outputs['DataOutput'].S3Output.S3Uri",
             data_type="S3Uri"
         )
 
     def test_property_reference_integration(self):
         """Test integration with property references."""
-        # Create a property reference
+        # Create a property reference using the correct parameter format
         prop_ref = PropertyReference(
             step_name="source_step",
-            output_spec=self.source_output_spec  # Use the output spec we created in setUp
+            output_spec=self.source_output_spec.model_dump()  # Convert to dict format
         )
         
         # Create step specification that would use this reference

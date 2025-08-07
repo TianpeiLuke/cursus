@@ -5,7 +5,7 @@ Tests for RegistryManager integration with pipeline builders.
 import unittest
 from src.pipeline_deps import RegistryManager, integrate_with_pipeline_builder
 from src.pipeline_deps.specification_registry import SpecificationRegistry
-from src.pipeline_deps.base_specifications import (
+from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
 from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state

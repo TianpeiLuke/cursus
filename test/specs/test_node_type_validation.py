@@ -14,8 +14,8 @@ import os
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from src.pipeline_deps.base_specifications import (
-    StepSpecification, DependencySpec, OutputSpec, 
+from src.cursus.core.base.specification_base import (
+    StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
 from src.pipeline_deps.specification_registry import SpecificationRegistry
@@ -263,7 +263,7 @@ class TestSpecificationRegistry(unittest.TestCase):
         
         self.assertIn("Invalid specification", str(context.exception))
     
-    @patch('src.pipeline_deps.base_specifications.logger')
+    @patch('src.cursus.core.base.specification_base.logger')
     def test_registration_logging(self, mock_logger):
         """Test that registration logs appropriate messages."""
         self.registry.register("test_step", self.source_spec)

@@ -9,18 +9,17 @@ Tests the integration between script contracts and specifications including:
 
 import unittest
 from typing import List, Dict
-from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
-from src.pipeline_deps.base_specifications import (
-    StepSpecification, DependencySpec, OutputSpec, 
+from src.cursus.core.base.specification_base import (
+    StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
 import logging
 # Configure logging to see validation errors
 logging.basicConfig(level=logging.INFO)
 
-# Import the real ScriptContract for reference
-from src.pipeline_script_contracts.base_script_contract import ScriptContract as RealScriptContract
+# Note: Real ScriptContract import removed as module doesn't exist in current structure
 
 # Define our test-specific contract classes that have the interface our tests expect
 class ScriptContract:
