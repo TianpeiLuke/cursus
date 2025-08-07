@@ -1,0 +1,33 @@
+Cursus Package Circular Import Test Output
+Generated: 2025-08-06 20:22:23
+================================================================================
+
+================================================================================
+CURSUS PACKAGE CIRCULAR IMPORT TEST SUITE
+================================================================================
+test_api_modules_import_successfully (test.circular_imports.test_circular_imports.TestCircularImports.test_api_modules_import_successfully)
+Test that API modules can be imported without circular dependencies. ... ok
+test_core_modules_import_successfully (test.circular_imports.test_circular_imports.TestCircularImports.test_core_modules_import_successfully)
+Test that core modules can be imported without circular dependencies. ... ok
+test_import_order_independence (test.circular_imports.test_circular_imports.TestCircularImports.test_import_order_independence)
+Test that modules can be imported in different orders without issues. ... ok
+test_no_circular_imports_in_cursus_package (test.circular_imports.test_circular_imports.TestCircularImports.test_no_circular_imports_in_cursus_package)
+Test that there are no circular imports in the cursus package. ... ok
+test_step_modules_import_successfully (test.circular_imports.test_circular_imports.TestCircularImports.test_step_modules_import_successfully)
+Test that step-related modules can be imported without circular dependencies. ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 30.271s
+
+OK
+
+================================================================================
+CIRCULAR IMPORT TEST SUMMARY
+================================================================================
+Total Tests: 5
+Passed: 5
+Failed: 0
+Errors: 0
+
+🎉 ALL CIRCULAR IMPORT TESTS PASSED!
+================================================================================

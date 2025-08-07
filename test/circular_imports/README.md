@@ -1,4 +1,24 @@
+---
+title: "Circular Import Test Suite Documentation"
+date: "2025-08-06"
+type: "test_documentation"
+related_docs:
+  - "../../slipbox/test/circular_import_analysis_report.md"
+  - "../../slipbox/test/circular_import_fix_summary.md"
+tags:
+  - "circular_imports"
+  - "testing"
+  - "test_suite"
+  - "documentation"
+---
+
 # Circular Import Test for Cursus Package
+
+## Related Documentation
+
+- 📊 **[Circular Import Analysis Report](../../slipbox/test/circular_import_analysis_report.md)** - Detailed analysis of circular import issues found
+- 📋 **[Circular Import Fix Summary Report](../../slipbox/test/circular_import_fix_summary.md)** - Complete fix implementation and results
+- 📄 **[Latest Test Output](../../slipbox/test/circular_import_test_output_20250806_202223.txt)** - Most recent test execution results
 
 This directory contains a comprehensive test suite to detect circular imports in the cursus package.
 
