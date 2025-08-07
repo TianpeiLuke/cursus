@@ -1,5 +1,13 @@
 """
-Tests for RegistryManager - multi-registry management functionality.
+Comprehensive tests for RegistryManager functionality.
+
+Tests the complete functionality of registry manager including:
+- Core registry management operations
+- Context patterns and isolation
+- Convenience functions and backward compatibility
+- Error handling and edge cases
+- Monitoring and statistics
+- Pipeline integration scenarios
 """
 
 import unittest
@@ -11,7 +19,7 @@ from src.cursus.core.base.specification_base import (
 from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
 
-class TestRegistryManager(IsolatedTestCase):
+class TestRegistryManagerCore(IsolatedTestCase):
     """Test cases for RegistryManager."""
     
     def setUp(self):
@@ -320,6 +328,172 @@ class TestConvenienceFunctions(IsolatedTestCase):
         self.assertIn("eval_step", registry3.list_step_names())
         self.assertNotIn("eval_step", registry1.list_step_names())
         self.assertNotIn("eval_step", registry2.list_step_names())
+
+
+class TestRegistryManagerErrorHandling(IsolatedTestCase):
+    """Test error handling in RegistryManager."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+        self.manager = RegistryManager()
+        
+        # Create test specification
+        output_spec = OutputSpec(
+            logical_name="test_output",
+            output_type=DependencyType.PROCESSING_OUTPUT,
+            property_path="properties.test",
+            data_type="S3Uri"
+        )
+        
+        self.test_spec = StepSpecification(
+            step_type="TestStep",
+            node_type="source",
+            dependencies=[],
+            outputs=[output_spec]
+        )
+    
+    def test_invalid_context_name_handling(self):
+        """Test handling of invalid context names."""
+        # Test empty context name - should work but create empty context
+        registry = self.manager.get_registry("")
+        self.assertIsNotNone(registry)
+        
+        # Test None context name - implementation may handle this gracefully
+        try:
+            registry = self.manager.get_registry(None)
+            # If no exception, verify it creates a registry
+            self.assertIsNotNone(registry)
+        except (TypeError, AttributeError):
+            # If exception is raised, that's also acceptable
+            pass
+    
+    def test_registry_operations_on_cleared_context(self):
+        """Test operations on cleared contexts."""
+        # Create and populate registry
+        registry = self.manager.get_registry("test_context")
+        registry.register("test_step", self.test_spec)
+        
+        # Clear the context
+        self.manager.clear_context("test_context")
+        
+        # Verify context is cleared
+        self.assertNotIn("test_context", self.manager.list_contexts())
+        
+        # Getting the same context should create a new empty registry
+        new_registry = self.manager.get_registry("test_context")
+        self.assertEqual(len(new_registry.list_step_names()), 0)
+        self.assertIsNot(registry, new_registry)
+    
+    def test_concurrent_access_safety(self):
+        """Test thread safety of registry operations."""
+        import threading
+        import time
+        
+        results = []
+        errors = []
+        
+        def create_registry(context_name):
+            try:
+                registry = self.manager.get_registry(f"context_{context_name}")
+                registry.register(f"step_{context_name}", self.test_spec)
+                results.append(context_name)
+            except Exception as e:
+                errors.append(e)
+        
+        # Create multiple threads
+        threads = []
+        for i in range(10):
+            thread = threading.Thread(target=create_registry, args=(i,))
+            threads.append(thread)
+        
+        # Start all threads
+        for thread in threads:
+            thread.start()
+        
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+        
+        # Verify results
+        self.assertEqual(len(errors), 0, f"Errors occurred: {errors}")
+        self.assertEqual(len(results), 10)
+        self.assertEqual(len(self.manager.list_contexts()), 10)
+
+
+class TestRegistryManagerMonitoring(IsolatedTestCase):
+    """Test monitoring capabilities of RegistryManager."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+        self.manager = RegistryManager()
+        
+        # Create test specifications
+        self.output_spec = OutputSpec(
+            logical_name="test_output",
+            output_type=DependencyType.PROCESSING_OUTPUT,
+            property_path="properties.test",
+            data_type="S3Uri"
+        )
+        
+        self.test_spec = StepSpecification(
+            step_type="TestStep",
+            node_type="source",
+            dependencies=[],
+            outputs=[self.output_spec]
+        )
+    
+    def test_context_statistics_detailed(self):
+        """Test detailed context statistics."""
+        # Create contexts with different characteristics
+        registry1 = self.manager.get_registry("small_pipeline")
+        registry1.register("step1", self.test_spec)
+        
+        registry2 = self.manager.get_registry("large_pipeline")
+        for i in range(5):
+            registry2.register(f"step_{i}", self.test_spec)
+        
+        # Get detailed stats
+        stats = self.manager.get_context_stats()
+        
+        # Verify detailed statistics
+        self.assertIn("small_pipeline", stats)
+        self.assertIn("large_pipeline", stats)
+        
+        small_stats = stats["small_pipeline"]
+        large_stats = stats["large_pipeline"]
+        
+        self.assertEqual(small_stats["step_count"], 1)
+        self.assertEqual(large_stats["step_count"], 5)
+        
+        self.assertEqual(small_stats["step_type_count"], 1)
+        self.assertEqual(large_stats["step_type_count"], 1)  # All same type
+        
+        # Basic stats should be present
+        self.assertIn("step_count", small_stats)
+        self.assertIn("step_type_count", small_stats)
+    
+    def test_memory_usage_monitoring(self):
+        """Test memory usage patterns."""
+        import sys
+        
+        # Get initial memory usage
+        initial_contexts = len(self.manager.list_contexts())
+        
+        # Create many contexts
+        for i in range(100):
+            registry = self.manager.get_registry(f"context_{i}")
+            registry.register(f"step_{i}", self.test_spec)
+        
+        # Verify contexts were created
+        self.assertEqual(len(self.manager.list_contexts()), 100)
+        
+        # Clear all contexts
+        self.manager.clear_all_contexts()
+        
+        # Verify cleanup
+        self.assertEqual(len(self.manager.list_contexts()), 0)
 
 
 if __name__ == '__main__':

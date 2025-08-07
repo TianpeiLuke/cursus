@@ -1,5 +1,12 @@
 """
-Tests for SpecificationRegistry - atomized registry functionality.
+Comprehensive tests for SpecificationRegistry functionality.
+
+Tests the complete functionality of specification registry including:
+- Registry creation and basic operations
+- Registering and retrieving specifications
+- Type-based queries and compatibility finding
+- Context isolation and complex pipeline scenarios
+- Data type compatibility and edge cases
 """
 
 import unittest
@@ -495,6 +502,165 @@ class TestSpecificationRegistry(IsolatedTestCase):
         
         self.assertEqual(len(s3_matches), 1)
         self.assertEqual(s3_matches[0][1], "s3_output")
+
+    def test_register_multiple_specifications(self):
+        """Test registering multiple specifications."""
+        # Register first spec
+        first_name = "first_step"
+        self.registry.register(first_name, self.data_loading_spec)
+        
+        # Create and register second spec
+        second_spec = StepSpecification(
+            step_type="SecondStep",
+            node_type=self.node_type_source,  # SOURCE must have outputs
+            dependencies=[],
+            outputs=[OutputSpec(
+                logical_name="second_output",
+                output_type=self.dependency_type,
+                property_path="properties.Output.S3Uri",
+                data_type="S3Uri"
+            )]
+        )
+        second_name = "second_step"
+        self.registry.register(second_name, second_spec)
+        
+        # Check if both registered
+        self.assertEqual(len(self.registry._specifications), 2)
+        self.assertIn(first_name, self.registry._specifications)
+        self.assertIn(second_name, self.registry._specifications)
+        self.assertEqual(self.registry._specifications[first_name], self.data_loading_spec)
+        self.assertEqual(self.registry._specifications[second_name], second_spec)
+
+    def test_get_specification_detailed(self):
+        """Test detailed specification retrieval."""
+        # Register specification
+        step_name = "test_step"
+        self.registry.register(step_name, self.preprocessing_spec)
+        
+        # Get specification by name
+        spec = self.registry.get_specification(step_name)
+        
+        # Check if correct
+        self.assertEqual(spec, self.preprocessing_spec)
+        self.assertEqual(spec.step_type, "PreprocessingStep")
+        self.assertEqual(len(spec.dependencies), 1)
+        self.assertEqual(len(spec.outputs), 1)
+        
+        # Access items from dictionaries
+        output_name = next(iter(spec.outputs.keys()))
+        self.assertEqual(spec.outputs[output_name].logical_name, "processed_data")
+
+    def test_get_specification_by_type_detailed(self):
+        """Test detailed retrieval of specifications by type."""
+        # Create specs with same type
+        spec1 = StepSpecification(
+            step_type="SharedType",
+            node_type=self.node_type_source,
+            dependencies=[],
+            outputs=[OutputSpec(
+                logical_name="output1",
+                output_type=self.dependency_type,
+                property_path="properties.Output1.S3Uri",
+                data_type="S3Uri"
+            )]
+        )
+        spec2 = StepSpecification(
+            step_type="SharedType",  # Same type as spec1
+            node_type=self.node_type_source,
+            dependencies=[],
+            outputs=[OutputSpec(
+                logical_name="output2",
+                output_type=self.dependency_type,
+                property_path="properties.Output2.S3Uri",
+                data_type="S3Uri"
+            )]
+        )
+        spec3 = StepSpecification(
+            step_type="UniqueType",  # Different type
+            node_type=self.node_type_source,
+            dependencies=[],
+            outputs=[OutputSpec(
+                logical_name="output3",
+                output_type=self.dependency_type,
+                property_path="properties.Output3.S3Uri",
+                data_type="S3Uri"
+            )]
+        )
+        
+        # Register specifications
+        self.registry.register("step1", spec1)
+        self.registry.register("step2", spec2)
+        self.registry.register("step3", spec3)
+        
+        # Get specifications by type
+        shared_specs = self.registry.get_specifications_by_type("SharedType")
+        unique_specs = self.registry.get_specifications_by_type("UniqueType")
+        
+        # Check results
+        self.assertEqual(len(shared_specs), 2)  # Should be 2 specs of type "SharedType"
+        self.assertEqual(len(unique_specs), 1)  # Should be 1 spec of type "UniqueType"
+
+    def test_list_operations_detailed(self):
+        """Test detailed listing operations."""
+        # Register specifications
+        self.registry.register("step1", self.data_loading_spec)
+        
+        other_spec = StepSpecification(
+            step_type="OtherType",
+            node_type=self.node_type_source,
+            dependencies=[],
+            outputs=[OutputSpec(
+                logical_name="other_output",
+                output_type=self.dependency_type,
+                property_path="properties.Other.S3Uri",
+                data_type="S3Uri"
+            )]
+        )
+        self.registry.register("step2", other_spec)
+        
+        # Test list_step_names
+        step_names = self.registry.list_step_names()
+        self.assertEqual(len(step_names), 2)
+        self.assertIn("step1", step_names)
+        self.assertIn("step2", step_names)
+        
+        # Test list_step_types
+        step_types = self.registry.list_step_types()
+        self.assertEqual(len(step_types), 2)
+        self.assertIn("DataLoadingStep", step_types)
+        self.assertIn("OtherType", step_types)
+
+    def test_find_compatible_outputs_detailed(self):
+        """Test detailed compatible output finding."""
+        # Register source step
+        source_spec = StepSpecification(
+            step_type="SourceStep",
+            node_type=self.node_type_source,
+            dependencies=[],
+            outputs=[OutputSpec(
+                logical_name="source_output",
+                output_type=self.dependency_type,
+                property_path="properties.Output.S3Uri",
+                data_type="S3Uri"
+            )]
+        )
+        self.registry.register("source", source_spec)
+        
+        # Create dependency spec to search for
+        dep_spec = DependencySpec(
+            logical_name="test_input",
+            dependency_type=self.dependency_type,
+            data_type="S3Uri",
+            compatible_sources=["SourceStep"]  # Match source step type
+        )
+        
+        # Find compatible outputs
+        compatible = self.registry.find_compatible_outputs(dep_spec)
+        
+        # Should find the source output
+        self.assertEqual(len(compatible), 1)
+        self.assertEqual(compatible[0][0], "source")  # Step name
+        self.assertEqual(compatible[0][1], "source_output")  # Output name
 
 
 if __name__ == '__main__':
