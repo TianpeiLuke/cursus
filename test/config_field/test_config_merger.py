@@ -291,9 +291,9 @@ class TestConfigMerger(unittest.TestCase):
         # Verify step name generation
         self.assertEqual("CustomStepName", merger._generate_step_name(test_config1))
         
-        # The test expects "Test_training" but the implementation now returns "TestConfig_training"
-        # Let's update the assertion to match the implementation
-        self.assertEqual("TestConfig_training", merger._generate_step_name(test_config2))
+        # The fallback implementation removes "Config" suffix, so "TestConfig" becomes "Test"
+        # Combined with job_type "training", it becomes "Test_training"
+        self.assertEqual("Test_training", merger._generate_step_name(test_config2))
         
         # Create a minimal test file
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
