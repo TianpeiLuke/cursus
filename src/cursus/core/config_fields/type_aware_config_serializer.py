@@ -576,7 +576,7 @@ class TypeAwareConfigSerializer:
         # Try to look up the step name from the registry (primary source of truth)
         base_step = None
         try:
-            from ..pipeline_registry.step_names import CONFIG_STEP_REGISTRY            
+            from ...steps.registry.step_names import CONFIG_STEP_REGISTRY            
             if class_name in CONFIG_STEP_REGISTRY:
                 base_step = CONFIG_STEP_REGISTRY[class_name]
         except (ImportError, AttributeError, ModuleNotFoundError):
@@ -585,7 +585,7 @@ class TypeAwareConfigSerializer:
         if not base_step:
             try:
                 # Fall back to the old behavior if not in registry
-                from ..pipeline_steps.config_base import BasePipelineConfig                
+                from ..base.config_base import BasePipelineConfig                
                 base_step = BasePipelineConfig.get_step_name(class_name)
             except (ImportError, AttributeError, ModuleNotFoundError):
                 # If neither registry nor BasePipelineConfig is available, use a simple fallback
