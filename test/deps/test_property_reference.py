@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, MagicMock
 import re
 
-from src.pipeline_deps import (
+from src.cursus.core.deps import (
     PropertyReference,
     OutputSpec,
     DependencyType,

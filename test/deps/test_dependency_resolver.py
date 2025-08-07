@@ -1,5 +1,5 @@
 import unittest
-from src.pipeline_deps import (
+from src.cursus.core.deps import (
     UnifiedDependencyResolver,
     SpecificationRegistry,
     StepSpecification,

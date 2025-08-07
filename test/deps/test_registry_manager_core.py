@@ -3,12 +3,12 @@ Tests for core functionality of RegistryManager.
 """
 
 import unittest
-from src.pipeline_deps import RegistryManager
-from src.pipeline_deps.specification_registry import SpecificationRegistry
+from src.cursus.core.deps import RegistryManager
+from src.cursus.core.deps.specification_registry import SpecificationRegistry
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
 
 class TestRegistryManager(IsolatedTestCase):

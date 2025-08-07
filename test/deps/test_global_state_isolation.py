@@ -7,11 +7,11 @@ these issues using the test_helpers module.
 """
 
 import unittest
-from src.pipeline_deps import RegistryManager, get_registry, create_dependency_resolver
+from src.cursus.core.deps import RegistryManager, get_registry, create_dependency_resolver
 from src.cursus.core.base.specification_base import (
     StepSpecification, OutputSpec, DependencyType, NodeType
 )
-from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
 
 class TestWithoutIsolation(unittest.TestCase):

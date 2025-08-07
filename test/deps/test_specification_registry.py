@@ -3,8 +3,8 @@ Tests for SpecificationRegistry - atomized registry functionality.
 """
 
 import unittest
-from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
-from src.pipeline_deps.specification_registry import SpecificationRegistry
+from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from src.cursus.core.deps.specification_registry import SpecificationRegistry
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )

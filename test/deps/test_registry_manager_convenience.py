@@ -3,15 +3,15 @@ Tests for convenience functions of RegistryManager.
 """
 
 import unittest
-from src.pipeline_deps import (
+from src.cursus.core.deps import (
     RegistryManager, get_registry, get_pipeline_registry, 
     get_default_registry, list_contexts, clear_context, get_context_stats
 )
-from src.pipeline_deps.specification_registry import SpecificationRegistry
+from src.cursus.core.deps.specification_registry import SpecificationRegistry
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
 
 class TestConvenienceFunctions(IsolatedTestCase):

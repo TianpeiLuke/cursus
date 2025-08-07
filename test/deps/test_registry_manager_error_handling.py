@@ -6,14 +6,14 @@ import unittest
 import threading
 import time
 import gc
-from src.pipeline_deps import RegistryManager
-from src.pipeline_deps.specification_registry import SpecificationRegistry
+from src.cursus.core.deps import RegistryManager
+from src.cursus.core.deps.specification_registry import SpecificationRegistry
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from src.pipeline_deps.dependency_resolver import UnifiedDependencyResolver
-from src.pipeline_deps.semantic_matcher import SemanticMatcher
-from test.pipeline_deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from src.cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
+from src.cursus.core.deps.semantic_matcher import SemanticMatcher
+from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
 
 class TestErrorHandlingAndEdgeCases(IsolatedTestCase):
