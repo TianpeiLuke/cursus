@@ -10,7 +10,14 @@ import logging
 from unittest.mock import patch
 from pydantic import ValidationError
 
-from src.pipeline_dag.edge_types import (
+# Add the project root to the Python path to allow for absolute imports
+import sys
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from src.cursus.api.dag.edge_types import (
     EdgeType,
     DependencyEdge,
     ConditionalEdge,
@@ -201,7 +208,7 @@ class TestConditionalEdge(unittest.TestCase):
         self.assertEqual(edge.condition, 'x > 0')
         self.assertEqual(edge.edge_type, EdgeType.CONDITIONAL)
     
-    @patch('src.pipeline_dag.edge_types.logger')
+    @patch('src.cursus.api.dag.edge_types.logger')
     def test_empty_condition_warning(self, mock_logger):
         """Test that empty condition triggers warning."""
         ConditionalEdge(**self.valid_edge_data)
@@ -212,7 +219,7 @@ class TestConditionalEdge(unittest.TestCase):
         self.assertIn("ConditionalEdge", call_args)
         self.assertIn("no condition specified", call_args)
     
-    @patch('src.pipeline_dag.edge_types.logger')
+    @patch('src.cursus.api.dag.edge_types.logger')
     def test_non_empty_condition_no_warning(self, mock_logger):
         """Test that non-empty condition doesn't trigger warning."""
         data = {**self.valid_edge_data, 'condition': 'x > 0'}
@@ -324,7 +331,7 @@ class TestEdgeCollection(unittest.TestCase):
             confidence=0.9
         )
         
-        with patch('src.pipeline_dag.edge_types.logger') as mock_logger:
+        with patch('src.cursus.api.dag.edge_types.logger') as mock_logger:
             edge_id = self.collection.add_edge(high_conf_edge)
             
             # Should replace the original edge
@@ -348,7 +355,7 @@ class TestEdgeCollection(unittest.TestCase):
         self.collection.add_edge(high_conf_edge)
         
         # Try to add higher confidence edge (1.0 > 0.9, so it should replace)
-        with patch('src.pipeline_dag.edge_types.logger') as mock_logger:
+        with patch('src.cursus.api.dag.edge_types.logger') as mock_logger:
             edge_id = self.collection.add_edge(self.edge1)  # confidence=1.0 should replace 0.9
             
             # Should replace with higher confidence edge
