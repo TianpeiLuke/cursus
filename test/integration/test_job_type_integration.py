@@ -13,8 +13,8 @@ import os
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from src.pipeline_deps.specification_registry import SpecificationRegistry
-from src.pipeline_step_specs import (
+from src.cursus.core.deps.specification_registry import SpecificationRegistry
+from src.cursus.steps.specs import (
     # Job type-specific data loading specifications
     DATA_LOADING_TRAINING_SPEC,
     DATA_LOADING_VALIDATION_SPEC,

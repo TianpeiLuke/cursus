@@ -18,7 +18,7 @@ from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
-from src.pipeline_deps.specification_registry import SpecificationRegistry
+from src.cursus.core.deps.specification_registry import SpecificationRegistry
 
 
 class TestNodeTypeSystem(unittest.TestCase):

@@ -20,7 +20,7 @@ from typing import List, Dict, Set
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 try:
-    from src.pipeline_registry.step_names import (
+    from src.cursus.steps.registry.step_names import (
         STEP_TYPE_REGISTRY,
         get_spec_step_type,
         get_builder_step_type
