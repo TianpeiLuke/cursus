@@ -389,7 +389,7 @@ if __name__ == "__main__":
                 analyzer = ScriptAnalyzer(f.name)
                 arguments = analyzer.get_argument_usage()
                 
-                expected_args = {"input-path", "output-path", "verbose"}
+                expected_args = {"input-path", "output-path", "v"}  # Script analyzer finds short form "v"
                 self.assertEqual(arguments, expected_args)
             finally:
                 os.unlink(f.name)

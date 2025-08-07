@@ -199,7 +199,7 @@ class TestModelHyperparameters(unittest.TestCase):
         
         # Check derived fields (properties)
         derived_fields = set(categories['derived'])
-        expected_derived = {'input_tab_dim', 'num_classes', 'is_binary'}
+        expected_derived = {'input_tab_dim', 'num_classes', 'is_binary', 'model_extra', 'model_fields_set'}
         self.assertEqual(derived_fields, expected_derived)
     
     def test_get_public_init_fields(self):

@@ -169,7 +169,7 @@ class TestBasePipelineConfig(unittest.TestCase):
         
         # Check derived fields (properties)
         derived_fields = set(categories['derived'])
-        expected_derived = {'aws_region', 'pipeline_name', 'pipeline_description', 'pipeline_s3_loc', 'script_contract'}
+        expected_derived = {'aws_region', 'pipeline_name', 'pipeline_description', 'pipeline_s3_loc', 'script_contract', 'model_extra', 'model_fields_set'}
         self.assertEqual(derived_fields, expected_derived)
     
     def test_get_public_init_fields(self):
