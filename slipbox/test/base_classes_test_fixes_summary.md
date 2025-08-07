@@ -1,3 +1,18 @@
+---
+title: "Base Classes Test Fixes Summary"
+date: "2025-08-06"
+status: "COMPLETED"
+type: "test_fixes_summary"
+related_docs:
+  - "base_classes_test_report.md"
+  - "../test/base/"
+tags:
+  - "test_fixes"
+  - "base_classes"
+  - "test_results"
+  - "pydantic_v2"
+---
+
 # Base Classes Test Fixes Summary
 
 ## Overview
