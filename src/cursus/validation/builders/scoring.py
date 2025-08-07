@@ -8,7 +8,6 @@ to different test levels, reflecting their importance in the overall architectur
 
 from typing import Dict, Any, List, Tuple, Optional
 import json
-import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
 
@@ -284,6 +283,8 @@ class StepBuilderScorer:
             Path to the saved chart or None if matplotlib is not available
         """
         try:
+            import matplotlib.pyplot as plt
+            
             report = self.generate_report()
             
             # Create level names and scores
@@ -344,6 +345,9 @@ class StepBuilderScorer:
             plt.close()
             
             return filename
+        except ImportError:
+            print("matplotlib not available, skipping chart generation")
+            return None
         except Exception as e:
             print(f"Could not generate chart: {str(e)}")
             return None

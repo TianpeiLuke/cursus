@@ -10,16 +10,16 @@ from types import SimpleNamespace
 from typing import Dict, List, Any, Optional, Union, Type
 
 # Import base classes for type hints
-from src.pipeline_steps.builder_step_base import StepBuilderBase
-from src.cursus.core.base.specification_base import StepSpecification
-from src.pipeline_script_contracts.base_script_contract import ScriptContract
-from src.pipeline_steps.config_base import BaseModel as ConfigBase
+from ...core.base.builder_base import StepBuilderBase
+from ...core.base.specification_base import StepSpecification
+from ...core.base.contract_base import ScriptContract
+from ...core.base.config_base import BaseModel as ConfigBase
 
 # Import test levels
-from .level1_interface_tests import InterfaceTests
-from .level2_specification_tests import SpecificationTests
-from .level3_path_mapping_tests import PathMappingTests
-from .level4_integration_tests import IntegrationTests
+from .interface_tests import InterfaceTests
+from .specification_tests import SpecificationTests
+from .path_mapping_tests import PathMappingTests
+from .integration_tests import IntegrationTests
 from .base_test import StepName
 
 
@@ -198,7 +198,7 @@ class TestUniversalStepBuilder(unittest.TestCase):
         """Test UniversalStepBuilderTest with XGBoostTrainingStepBuilder."""
         try:
             # Import the builder class
-            from src.pipeline_steps.builder_training_step_xgboost import XGBoostTrainingStepBuilder
+            from ...steps.builders.builder_training_step_xgboost import XGBoostTrainingStepBuilder
             
             # Create tester
             tester = UniversalStepBuilderTest(XGBoostTrainingStepBuilder)
@@ -216,7 +216,7 @@ class TestUniversalStepBuilder(unittest.TestCase):
         """Test UniversalStepBuilderTest with TabularPreprocessingStepBuilder."""
         try:
             # Import the builder class
-            from src.pipeline_steps.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+            from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
             
             # Create tester
             tester = UniversalStepBuilderTest(TabularPreprocessingStepBuilder)
@@ -234,8 +234,8 @@ class TestUniversalStepBuilder(unittest.TestCase):
         """Test UniversalStepBuilderTest with explicitly provided components."""
         try:
             # Import the builder class
-            from src.pipeline_steps.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-            from src.pipeline_step_specs.preprocessing_training_spec import PREPROCESSING_TRAINING_SPEC
+            from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+            from ...steps.specs.preprocessing_training_spec import PREPROCESSING_TRAINING_SPEC
             
             # Create a custom configuration
             config = SimpleNamespace()

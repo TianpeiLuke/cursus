@@ -1,7 +1,17 @@
 """
-Pipeline Validation Module.
+Cursus Validation Framework.
 
-This module contains validation utilities for pipeline components, ensuring
-that specifications, contracts, and configurations are valid and compatible.
-It helps catch configuration errors early in the development process.
+This package provides validation and testing capabilities for the cursus
+pipeline system, including step builder validation and other quality
+assurance tools.
+
+Subpackages:
+- builders: Universal step builder validation framework
 """
+
+from .builders import UniversalStepBuilderTest, StepBuilderScorer
+
+__all__ = [
+    'UniversalStepBuilderTest',
+    'StepBuilderScorer'
+]

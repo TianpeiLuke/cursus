@@ -9,13 +9,13 @@ from typing import Dict, List, Any, Optional, Union, Type, Callable
 from sagemaker.workflow.steps import Step
 
 # Import base classes for type hints
-from src.pipeline_steps.builder_step_base import StepBuilderBase
-from src.cursus.core.base.specification_base import StepSpecification
-from src.pipeline_script_contracts.base_script_contract import ScriptContract
-from src.pipeline_steps.config_base import BaseModel as ConfigBase  # Using Pydantic BaseModel that ConfigBase extends
+from ...core.base.builder_base import StepBuilderBase
+from ...core.base.specification_base import StepSpecification
+from ...core.base.contract_base import ScriptContract
+from ...core.base.config_base import BaseModel as ConfigBase
 
 # Step name is string type from the registry
-from src.pipeline_registry.step_names import STEP_NAMES
+from ...steps.registry.step_names import STEP_NAMES
 StepName = str  # Step names are stored as string keys in STEP_NAMES dictionary
 
 
