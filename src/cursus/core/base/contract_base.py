@@ -47,6 +47,44 @@ class ValidationResult(BaseModel):
             errors=all_errors,
             warnings=all_warnings
         )
+    
+    def add_error(self, error: str) -> None:
+        """Add an error to the result and mark as invalid"""
+        self.errors.append(error)
+        self.is_valid = False
+    
+    def add_warning(self, warning: str) -> None:
+        """Add a warning to the result"""
+        self.warnings.append(warning)
+
+
+class AlignmentResult(ValidationResult):
+    """Result of contract-specification alignment validation"""
+    missing_outputs: List[str] = Field(default_factory=list)
+    missing_inputs: List[str] = Field(default_factory=list)
+    extra_outputs: List[str] = Field(default_factory=list)
+    extra_inputs: List[str] = Field(default_factory=list)
+    
+    @classmethod
+    def success(cls, message: str = "Alignment validation passed") -> 'AlignmentResult':
+        """Create a successful alignment result"""
+        return cls(is_valid=True)
+    
+    @classmethod
+    def error(cls, errors: List[str], missing_outputs: List[str] = None, 
+              missing_inputs: List[str] = None, extra_outputs: List[str] = None,
+              extra_inputs: List[str] = None) -> 'AlignmentResult':
+        """Create a failed alignment result"""
+        if isinstance(errors, str):
+            errors = [errors]
+        return cls(
+            is_valid=False, 
+            errors=errors,
+            missing_outputs=missing_outputs or [],
+            missing_inputs=missing_inputs or [],
+            extra_outputs=extra_outputs or [],
+            extra_inputs=extra_inputs or []
+        )
 
 
 class ScriptContract(BaseModel):

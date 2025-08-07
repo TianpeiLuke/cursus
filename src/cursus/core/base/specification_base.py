@@ -129,6 +129,23 @@ class DependencySpec(BaseModel):
         # Remove empty strings, convert to lowercase, and remove duplicates
         cleaned = list(set(keyword.strip().lower() for keyword in v if keyword and keyword.strip()))
         return cleaned
+    
+    def matches_name_or_alias(self, name: str) -> bool:
+        """
+        Check if the given name matches the logical name or any alias.
+        
+        Args:
+            name: The name to check
+            
+        Returns:
+            True if the name matches the logical name or any alias
+        """
+        if name == self.logical_name:
+            return True
+        
+        # DependencySpec doesn't have aliases in the current implementation
+        # but we'll add this for consistency with the test expectations
+        return hasattr(self, 'aliases') and name in getattr(self, 'aliases', [])
 
 
 class OutputSpec(BaseModel):
@@ -255,6 +272,21 @@ class OutputSpec(BaseModel):
                     raise ValueError(f"alias '{alias}' cannot be the same as logical_name '{self.logical_name}'")
         
         return self
+    
+    def matches_name_or_alias(self, name: str) -> bool:
+        """
+        Check if the given name matches the logical name or any alias.
+        
+        Args:
+            name: The name to check
+            
+        Returns:
+            True if the name matches the logical name or any alias
+        """
+        if name == self.logical_name:
+            return True
+        
+        return name in self.aliases
 
 
 # PropertyReference has been moved to property_reference.py
