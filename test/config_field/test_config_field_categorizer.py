@@ -16,8 +16,8 @@ from pathlib import Path
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.config_field_manager.config_field_categorizer import ConfigFieldCategorizer
-from src.config_field_manager.constants import CategoryType, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
+from src.cursus.core.config_fields.config_field_categorizer import ConfigFieldCategorizer
+from src.cursus.core.config_fields.constants import CategoryType, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
 
 
 class BaseTestConfig:
@@ -95,7 +95,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
             self.processing_config
         ]
 
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_init_categorizes_configs(self, mock_serialize):
         """Test that the categorizer correctly initializes and categorizes configs."""
         # Setup mock serialize function
@@ -120,7 +120,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         self.assertIn('shared_field', categorizer.field_info['sources'])
         self.assertEqual(len(categorizer.field_info['sources']['shared_field']), 5)
         
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_is_special_field(self, mock_serialize):
         """Test that special fields are correctly identified."""
         # Setup mock
@@ -142,7 +142,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
             "simple_field", "simple_value", None
         ))
         
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_is_likely_static(self, mock_serialize):
         """Test that static fields are correctly identified."""
         # Setup mock
@@ -171,7 +171,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         self.assertTrue(categorizer._is_likely_static("simple_field", "simple_value", None))
         self.assertTrue(categorizer._is_likely_static("version", 1, None))
 
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_categorize_field(self, mock_serialize):
         """Test that fields are correctly categorized according to rules."""
         # Setup mock serialize function
@@ -203,7 +203,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         # Test special field
         self.assertEqual(categorizer._categorize_field("hyperparameters"), CategoryType.SPECIFIC)
         
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_categorize_fields_structure(self, mock_serialize):
         """Test that the categorization structure is correct."""
         # Setup mock serialize function
@@ -230,7 +230,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         self.assertIsInstance(categorization["shared"], dict)
         self.assertIsInstance(categorization["specific"], defaultdict)
         
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_place_field_shared(self, mock_serialize):
         """Test that fields are correctly placed in the shared category."""
         # Setup mocks
@@ -301,7 +301,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         self.assertEqual(categorization["specific"]["Config1"]["specific_field"], "value1")
         self.assertEqual(categorization["specific"]["Config2"]["specific_field"], "value2")
         
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_get_categorized_fields(self, mock_serialize):
         """Test that get_categorized_fields returns the correct structure."""
         # Setup mocks
@@ -321,7 +321,7 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         self.assertEqual(result['shared']['shared_field'], 'shared_value')
         self.assertEqual(result['specific']['Config1']['specific_field'], 'specific_value')
         
-    @mock.patch('src.config_field_manager.config_field_categorizer.serialize_config')
+    @mock.patch('src.cursus.core.config_fields.config_field_categorizer.serialize_config')
     def test_end_to_end_categorization(self, mock_serialize):
         """Test the end-to-end field categorization process with the simplified structure."""
         # Setup mock serialize function

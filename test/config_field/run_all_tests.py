@@ -67,13 +67,6 @@ class ConfigFieldTestRunner:
         """Run a test suite and return results."""
         print(f"\n🧪 Running tests from {module_name}...")
         
-        # Create a test runner with detailed output
-        stream = unittest.TextTestRunner._makeResult(
-            unittest.TextTestRunner(), 
-            lambda: None, 
-            2  # verbosity
-        )
-        
         # Run the tests
         start_time = time.time()
         result = unittest.TextTestRunner(

@@ -565,27 +565,31 @@ class TypeAwareConfigSerializer:
             str: Generated step name with job type and other variants included
         """
         # First check for step_name_override - highest priority
-        if hasattr(config, "step_name_override") and config.step_name_override != config.__class__.__name__:
-            return config.step_name_override
+        if hasattr(config, "step_name_override") and config.step_name_override:
+            step_name_override = getattr(config, "step_name_override")
+            if step_name_override != config.__class__.__name__:
+                return step_name_override
             
         # Get class name
         class_name = config.__class__.__name__
         
-        # Look up the step name from the registry (primary source of truth)
+        # Try to look up the step name from the registry (primary source of truth)
+        base_step = None
         try:
             from ..pipeline_registry.step_names import CONFIG_STEP_REGISTRY            
             if class_name in CONFIG_STEP_REGISTRY:
                 base_step = CONFIG_STEP_REGISTRY[class_name]
-            else:
+        except (ImportError, AttributeError, ModuleNotFoundError):
+            pass  # Registry not available
+            
+        if not base_step:
+            try:
                 # Fall back to the old behavior if not in registry
-                # Import here to avoid circular imports
                 from ..pipeline_steps.config_base import BasePipelineConfig                
                 base_step = BasePipelineConfig.get_step_name(class_name)
-        except (ImportError, AttributeError):
-            # If registry not available, fall back to the old behavior
-            # Import here to avoid circular imports
-            from ..pipeline_steps.config_base import BasePipelineConfig            
-            base_step = BasePipelineConfig.get_step_name(class_name)
+            except (ImportError, AttributeError, ModuleNotFoundError):
+                # If neither registry nor BasePipelineConfig is available, use a simple fallback
+                base_step = self._generate_step_name_fallback(class_name)
         
         step_name = base_step
         
@@ -597,6 +601,27 @@ class TypeAwareConfigSerializer:
                     step_name = f"{step_name}_{val}"
                     
         return step_name
+    
+    def _generate_step_name_fallback(self, class_name: str) -> str:
+        """
+        Fallback method to generate step names when registry is not available.
+        
+        Args:
+            class_name: The class name to convert
+            
+        Returns:
+            str: Generated step name
+        """
+        # Simple conversion: remove "Config" suffix and convert to step name format
+        if class_name.endswith("Config"):
+            base_name = class_name[:-6]  # Remove "Config"
+        else:
+            base_name = class_name
+            
+        # Convert CamelCase to step name format
+        # e.g., "TestProcessing" -> "TestProcessing"
+        # This is a simple fallback - more sophisticated conversion could be added
+        return base_name
 
 
 # Removed duplicate _generate_step_name function - now using TypeAwareConfigSerializer.generate_step_name instead

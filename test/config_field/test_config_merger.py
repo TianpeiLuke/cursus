@@ -19,8 +19,8 @@ from datetime import datetime
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.config_field_manager.config_merger import ConfigMerger
-from src.config_field_manager.constants import CategoryType, MergeDirection, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
+from src.cursus.core.config_fields.config_merger import ConfigMerger
+from src.cursus.core.config_fields.constants import CategoryType, MergeDirection, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
 
 
 class TestConfig:
@@ -111,7 +111,7 @@ class TestConfigMerger(unittest.TestCase):
     def test_init_creates_categorizer(self):
         """Test that the merger correctly initializes and creates a categorizer."""
         # Mock only the ConfigFieldCategorizer class
-        with mock.patch('src.config_field_manager.config_merger.ConfigFieldCategorizer') as mock_categorizer_class:
+        with mock.patch('src.cursus.core.config_fields.config_merger.ConfigFieldCategorizer') as mock_categorizer_class:
             # Setup mock categorizer
             mock_categorizer = mock.MagicMock()
             mock_categorizer_class.return_value = mock_categorizer
@@ -157,7 +157,7 @@ class TestConfigMerger(unittest.TestCase):
         self.assertIn("specific_field", result["specific"]["Config1"])
         self.assertIn("another_field", result["specific"]["Config2"])
         
-    @mock.patch('src.config_field_manager.config_merger.ConfigFieldCategorizer')
+    @mock.patch('src.cursus.core.config_fields.config_merger.ConfigFieldCategorizer')
     def test_verify_merged_output_checks_structure(self, mock_categorizer_class):
         """Test that verify_merged_output validates the structure."""
         # Setup mock categorizer
@@ -195,7 +195,7 @@ class TestConfigMerger(unittest.TestCase):
         # Verify warning was called
         merger.logger.warning.assert_called()
         
-    @mock.patch('src.config_field_manager.config_merger.ConfigFieldCategorizer')
+    @mock.patch('src.cursus.core.config_fields.config_merger.ConfigFieldCategorizer')
     def test_check_mutual_exclusivity(self, mock_categorizer_class):
         """Test that check_mutual_exclusivity identifies collisions."""
         # Setup mock categorizer
@@ -237,7 +237,7 @@ class TestConfigMerger(unittest.TestCase):
         # Verify warning was called
         merger.logger.warning.assert_called()
         
-    @mock.patch('src.config_field_manager.config_merger.ConfigFieldCategorizer')
+    @mock.patch('src.cursus.core.config_fields.config_merger.ConfigFieldCategorizer')
     def test_check_special_fields_placement(self, mock_categorizer_class):
         """Test that check_special_fields_placement identifies special fields in shared."""
         # Setup mock categorizer
@@ -375,7 +375,7 @@ class TestConfigMerger(unittest.TestCase):
         self.assertIn("TestConfig1", config["specific"])
         self.assertIn("specific_field", config["specific"]["TestConfig1"])
     
-    @mock.patch('src.config_field_manager.type_aware_config_serializer.TypeAwareConfigSerializer')
+    @mock.patch('src.cursus.core.config_fields.type_aware_config_serializer.TypeAwareConfigSerializer')
     def test_load_from_simplified_structure(self, mock_serializer_class):
         """Test that load correctly loads from a file with simplified structure."""
         # Setup mock serializer
@@ -415,7 +415,7 @@ class TestConfigMerger(unittest.TestCase):
         self.assertIn("specific_field", result["specific"]["Config1"])
         self.assertIn("other_field", result["specific"]["Config2"])
     
-    @mock.patch('src.config_field_manager.type_aware_config_serializer.TypeAwareConfigSerializer')
+    @mock.patch('src.cursus.core.config_fields.type_aware_config_serializer.TypeAwareConfigSerializer')
     def test_load_from_simplified_structure_with_legacy_data(self, mock_serializer_class):
         """Test that load correctly handles data with legacy structure references."""
         # Setup mock serializer

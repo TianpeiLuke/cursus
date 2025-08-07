@@ -8,8 +8,8 @@ circular references in object graphs during deserialization.
 import unittest
 from typing import Dict, Any, Optional, List, Type
 
-from src.config_field_manager.circular_reference_tracker import CircularReferenceTracker
-from src.config_field_manager.type_aware_config_serializer import TypeAwareConfigSerializer
+from src.cursus.core.config_fields.circular_reference_tracker import CircularReferenceTracker
+from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
 from pydantic import BaseModel
 
 

@@ -159,13 +159,16 @@ class TestConfigClassStore(unittest.TestCase):
         ConfigClassStore.register(TestConfigA)
         
         # Create another class with the same name
-        class TestConfigA(BaseModel):  # Same name, different class
+        class TestConfigADuplicate(BaseModel):  # Different name to avoid scope issues
             name: str = "different"
             different_field: str = "collision"
         
+        # Manually set the class name to create collision
+        TestConfigADuplicate.__name__ = "TestConfigA"
+        
         # Register the second class (should overwrite with warning)
         with self.assertLogs(level='WARNING') as log:
-            ConfigClassStore.register(TestConfigA)
+            ConfigClassStore.register(TestConfigADuplicate)
         
         # Verify warning was logged
         self.assertTrue(any("already registered" in message for message in log.output))

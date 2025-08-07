@@ -17,13 +17,10 @@ from pathlib import Path
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.config_field_manager import (
-    ConfigClassStore,
-    merge_and_save_configs,
-    load_configs,
-    serialize_config,
-    deserialize_config
-)
+from src.cursus.core.config_fields.config_class_store import ConfigClassStore
+from src.cursus.core.config_fields.config_merger import merge_and_save_configs, load_configs
+from src.cursus.core.config_fields.type_aware_config_serializer import serialize_config
+from src.cursus.core.config_fields.type_aware_config_serializer import deserialize_config
 
 
 # Define test configuration classes

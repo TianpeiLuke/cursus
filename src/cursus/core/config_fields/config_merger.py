@@ -361,3 +361,35 @@ class ConfigMerger:
                         raise ValueError(f"Conflict on key {key}: source={source_value}, target={target_value}")
         
         return result
+
+
+# Convenience functions for backward compatibility and ease of use
+def merge_and_save_configs(config_list: List[Any], output_file: str, 
+                          processing_step_config_base_class: Optional[type] = None) -> Dict[str, Any]:
+    """
+    Convenience function to merge configs and save to file.
+    
+    Args:
+        config_list: List of configuration objects to merge
+        output_file: Path to output file
+        processing_step_config_base_class: Optional base class for processing steps
+        
+    Returns:
+        dict: Merged configuration
+    """
+    merger = ConfigMerger(config_list, processing_step_config_base_class)
+    return merger.save(output_file)
+
+
+def load_configs(input_file: str, config_classes: Optional[Dict[str, type]] = None) -> Dict[str, Any]:
+    """
+    Convenience function to load configs from file.
+    
+    Args:
+        input_file: Path to input file
+        config_classes: Optional mapping of class names to class objects
+        
+    Returns:
+        dict: Loaded configuration
+    """
+    return ConfigMerger.load(input_file, config_classes)
