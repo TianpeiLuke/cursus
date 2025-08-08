@@ -14,7 +14,7 @@ from .config_class_store import ConfigClassStore, build_complete_config_classes
 
 # Import base classes to ensure essential classes are always available
 try:
-    from ...steps.configs.config_base import BasePipelineConfig
+    from ..base.config_base import BasePipelineConfig
 except ImportError:
     # For testing environments or when running outside the main project
     BasePipelineConfig = None

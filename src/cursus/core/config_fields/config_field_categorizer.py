@@ -48,7 +48,7 @@ class ConfigFieldCategorizer:
         if self.processing_base_class is None:
             # Try to infer the base class from imports
             try:
-                from ..pipeline_steps.config_processing_step_base import ProcessingStepConfigBase
+                from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
                 self.processing_base_class = ProcessingStepConfigBase
             except ImportError:
                 self.logger.warning("Could not import ProcessingStepConfigBase. "
