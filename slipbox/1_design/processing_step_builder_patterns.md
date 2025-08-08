@@ -270,9 +270,102 @@ def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
     # Process remaining inputs normally...
 ```
 
-### 8. Step Creation Pattern
+#### File Upload and S3 Handling Pattern (DummyTraining Step)
+```python
+def _upload_model_to_s3(self) -> str:
+    """Upload the pretrained model to S3."""
+    target_s3_uri = f"{self.config.pipeline_s3_loc}/dummy_training/input/model.tar.gz"
+    target_s3_uri = self._normalize_s3_uri(target_s3_uri)
+    
+    try:
+        S3Uploader.upload(
+            self.config.pretrained_model_path,
+            target_s3_uri,
+            sagemaker_session=self.session
+        )
+        return target_s3_uri
+    except Exception as e:
+        self.log_error(f"Failed to upload model to S3: {e}")
+        raise
 
-All Processing steps follow this orchestration pattern:
+def _prepare_hyperparameters_file(self) -> str:
+    """Serialize hyperparameters to JSON and upload to S3."""
+    hyperparams_dict = self.config.hyperparameters.model_dump()
+    local_dir = Path(tempfile.mkdtemp())
+    local_file = local_dir / "hyperparameters.json"
+    
+    try:
+        # Write JSON locally
+        with open(local_file, "w") as f:
+            json.dump(hyperparams_dict, indent=2, fp=f)
+        
+        # Construct S3 target URI
+        target_s3_uri = f"{self.config.pipeline_s3_loc}/dummy_training/config/hyperparameters.json"
+        
+        # Upload to S3
+        S3Uploader.upload(str(local_file), target_s3_uri, sagemaker_session=self.session)
+        return target_s3_uri
+    finally:
+        shutil.rmtree(local_dir)
+
+def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
+    """Handle inputs with automatic file upload."""
+    processing_inputs = []
+    
+    # Upload model if not provided via dependencies
+    model_s3_uri = inputs.get("pretrained_model_path")
+    if not model_s3_uri:
+        model_s3_uri = self._upload_model_to_s3()
+    
+    # Upload hyperparameters if not provided
+    hyperparams_s3_uri = inputs.get("hyperparameters_s3_uri")
+    if not hyperparams_s3_uri:
+        hyperparams_s3_uri = self._prepare_hyperparameters_file()
+    
+    # Create ProcessingInput objects with uploaded files
+    processing_inputs.extend([
+        ProcessingInput(
+            source=model_s3_uri,
+            destination=os.path.dirname(self.contract.expected_input_paths["pretrained_model_path"]),
+            input_name="model"
+        ),
+        ProcessingInput(
+            source=hyperparams_s3_uri,
+            destination=os.path.dirname(self.contract.expected_input_paths["hyperparameters_s3_uri"]),
+            input_name="config"
+        )
+    ])
+    
+    return processing_inputs
+```
+
+#### S3 Path Utilities Pattern
+```python
+def _normalize_s3_uri(self, uri: str, description: str = "S3 URI") -> str:
+    """Normalize S3 URI handling PipelineVariable objects."""
+    # Handle PipelineVariable objects
+    if hasattr(uri, 'expr'):
+        uri = str(uri.expr)
+        
+    # Handle Pipeline step references with Get key
+    if isinstance(uri, dict) and 'Get' in uri:
+        return uri
+        
+    return S3PathHandler.normalize(uri, description)
+
+def _validate_s3_uri(self, uri: str, description: str = "S3 URI") -> bool:
+    """Validate S3 URI format."""
+    if hasattr(uri, 'expr') or (isinstance(uri, dict) and 'Get' in uri):
+        return True
+    return S3PathHandler.is_valid(uri)
+```
+
+### 8. Step Creation Patterns
+
+Processing steps use two distinct patterns for step creation based on their processor type:
+
+#### Pattern A: Direct ProcessingStep Creation (Most Common)
+Used by SKLearnProcessor-based steps (TabularPreprocessing, Package, Payload, ModelCalibration, DummyTraining):
 
 ```python
 def create_step(self, **kwargs) -> ProcessingStep:
@@ -298,7 +391,7 @@ def create_step(self, **kwargs) -> ProcessingStep:
     # Get standardized step name
     step_name = self._get_step_name()
     
-    # Create step
+    # Create step directly
     step = ProcessingStep(
         name=step_name,
         processor=processor,
@@ -315,6 +408,67 @@ def create_step(self, **kwargs) -> ProcessingStep:
     
     return step
 ```
+
+#### Pattern B: Processor.run() + step_args Pattern (XGBoost)
+Used by XGBoostProcessor-based steps (XGBoostModelEval):
+
+```python
+def create_step(self, **kwargs) -> ProcessingStep:
+    # Extract parameters and handle inputs (same as Pattern A)
+    inputs_raw = kwargs.get('inputs', {})
+    outputs = kwargs.get('outputs', {})
+    dependencies = kwargs.get('dependencies', [])
+    enable_caching = kwargs.get('enable_caching', True)
+    
+    # Handle inputs from dependencies and explicit inputs
+    inputs = {}
+    if dependencies:
+        extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+        inputs.update(extracted_inputs)
+    inputs.update(inputs_raw)
+    
+    # Create components
+    processor = self._create_processor()
+    proc_inputs = self._get_inputs(inputs)
+    proc_outputs = self._get_outputs(outputs)
+    job_args = self._get_job_arguments()
+    
+    # Get standardized step name
+    step_name = self._get_step_name()
+    
+    # Get script paths from config
+    script_path = self.config.processing_entry_point
+    source_dir = self.config.processing_source_dir
+    
+    # Create step arguments using processor.run()
+    step_args = processor.run(
+        code=script_path,
+        source_dir=source_dir,
+        inputs=proc_inputs,
+        outputs=proc_outputs,
+        arguments=job_args,
+    )
+
+    # Create step with step_args
+    processing_step = ProcessingStep(
+        name=step_name,
+        step_args=step_args,
+        depends_on=dependencies,
+        cache_config=self._get_cache_config(enable_caching)
+    )
+    
+    # Attach specification for future reference
+    setattr(processing_step, '_spec', self.spec)
+    
+    return processing_step
+```
+
+**Key Differences:**
+- **Pattern A**: Direct ProcessingStep instantiation with processor and parameters
+- **Pattern B**: Uses `processor.run()` to create `step_args`, then creates ProcessingStep with `step_args`
+- **Usage**: Pattern A for SKLearn-based steps, Pattern B for XGBoost-based steps
+- **Script Handling**: Pattern A uses `code` parameter for single script, Pattern B uses `code` + `source_dir` in processor.run()
+- **Package Support**: Pattern A uploads only the processing script, Pattern B allows uploading entire local packages/directories to the container via `source_dir` parameter
 
 ## Configuration Validation Patterns
 
@@ -354,22 +508,36 @@ def validate_configuration(self) -> None:
 ## Key Differences Between Processing Step Types
 
 ### 1. By Processor Type
-- **SKLearnProcessor**: Most common, used for general data processing
-- **XGBoostProcessor**: Used for XGBoost-specific processing with custom framework versions
+- **SKLearnProcessor**: Most common, used for general data processing (TabularPreprocessing, Package, Payload, ModelCalibration, DummyTraining)
+- **XGBoostProcessor**: Used for XGBoost-specific processing with custom framework versions (XGBoostModelEval)
 
-### 2. By Job Type Support
+### 2. By Step Creation Pattern
+- **Pattern A (Direct ProcessingStep)**: SKLearnProcessor-based steps use direct ProcessingStep creation
+- **Pattern B (processor.run + step_args)**: XGBoostProcessor-based steps use processor.run() to create step_args
+
+### 3. By Job Type Support
 - **Multi-job-type**: TabularPreprocessing, CurrencyConversion (training/validation/testing/calibration)
 - **Single-purpose**: Package, Payload, ModelCalibration (specific function)
 
-### 3. By Input Complexity
+### 4. By Input Complexity
 - **Simple inputs**: Single data input (RiskTableMapping)
 - **Complex inputs**: Multiple data sources, metadata, signatures (TabularPreprocessing)
-- **Special handling**: Local path overrides (Package step)
+- **Special handling**: Local path overrides (Package step), file uploads (DummyTraining)
 
-### 4. By Environment Variable Usage
+### 5. By File Handling Requirements
+- **Standard processing**: Use provided S3 paths (most steps)
+- **Local path override**: Always use local paths for specific inputs (Package step)
+- **File upload**: Upload local files to S3 before processing (DummyTraining step)
+
+### 6. By Environment Variable Usage
 - **Simple env vars**: Basic configuration (Package)
 - **Complex env vars**: JSON serialized objects, lists (CurrencyConversion)
 - **Script-driven**: Minimal env vars, script handles logic (some steps)
+
+### 7. By Framework Requirements
+- **Standard framework**: Use default SKLearn framework version
+- **Custom framework**: Require specific XGBoost framework versions with Python version specification
+- **Framework-specific env vars**: XGBoost steps may require additional framework-specific environment variables
 
 ## Best Practices Identified
 
@@ -387,12 +555,44 @@ def validate_configuration(self) -> None:
 Processing step builders should be tested for:
 
 1. **Processor Creation**: Correct processor type and configuration
-2. **Input/Output Handling**: ProcessingInput/ProcessingOutput object creation
-3. **Environment Variables**: Proper variable construction and JSON serialization
-4. **Job Arguments**: Correct argument formatting and optional parameter handling
-5. **Specification Compliance**: Adherence to step specifications
-6. **Contract Integration**: Proper use of script contracts for path mapping
-7. **Job Type Variants**: Different behavior for different job types
-8. **Error Conditions**: Proper handling of missing inputs, invalid configurations
+2. **Step Creation Pattern Compliance**: 
+   - SKLearn steps use Pattern A (direct ProcessingStep creation)
+   - XGBoost steps use Pattern B (processor.run + step_args)
+3. **Input/Output Handling**: ProcessingInput/ProcessingOutput object creation
+4. **Environment Variables**: Proper variable construction and JSON serialization
+5. **Job Arguments**: Correct argument formatting and optional parameter handling
+6. **Specification Compliance**: Adherence to step specifications
+7. **Contract Integration**: Proper use of script contracts for path mapping
+8. **Job Type Variants**: Different behavior for different job types
+9. **Special Input Handling**:
+   - Local path override patterns (Package step)
+   - File upload and S3 handling (DummyTraining step)
+   - S3 path normalization and validation
+10. **Framework-Specific Requirements**:
+    - XGBoost framework version and Python version validation
+    - Framework-specific environment variable handling
+11. **Error Conditions**: Proper handling of missing inputs, invalid configurations, file upload failures
 
-This pattern analysis provides the foundation for creating comprehensive, type-specific validation in the universal tester framework.
+### Recommended Test Categories by Step Type
+
+#### SKLearnProcessor Steps (Pattern A)
+- Direct ProcessingStep creation validation
+- Standard processor configuration testing
+- Basic input/output path mapping
+
+#### XGBoostProcessor Steps (Pattern B)  
+- processor.run() + step_args creation validation
+- Framework version and Python version testing
+- XGBoost-specific environment variable validation
+
+#### Special Handling Steps
+- **Package Step**: Local path override testing, inference scripts handling
+- **DummyTraining Step**: File upload testing, S3 path validation, hyperparameters serialization
+- **Multi-job-type Steps**: Job type specification loading, variant behavior testing
+
+#### Framework-Specific Testing
+- Processor type detection and validation
+- Framework version compatibility testing
+- Step creation pattern enforcement based on processor type
+
+This comprehensive pattern analysis provides the foundation for creating robust, type-specific validation in the universal tester framework that can handle the full complexity and variety of Processing step implementations.
