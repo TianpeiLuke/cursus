@@ -133,6 +133,33 @@ tags:
   - [component]
 ```
 
+### Test Tags
+
+Documentation for test components should begin with "test":
+
+```yaml
+tags:
+  - test
+  - [test_type]
+  - [component_name]
+  - [test_purpose]
+```
+
+Example locations for test tags:
+- Test suite documentation
+- Test case specifications
+- Validation framework documentation
+- Test runner guides
+- Testing methodology documents
+
+Common test type subcategories:
+- `unit` - Unit test documentation
+- `integration` - Integration test documentation
+- `validation` - Validation framework documentation
+- `builders` - Step builder test documentation
+- `end_to_end` - End-to-end test documentation
+- `performance` - Performance test documentation
+
 ## Examples
 
 ### Module README Example (Entry Point)
@@ -205,6 +232,30 @@ topics:
   - implementation plan
 language: python
 date of note: 2025-07-05
+---
+```
+
+### Test Documentation Example
+
+```yaml
+---
+tags:
+  - test
+  - builders
+  - tabular_preprocessing
+  - validation
+keywords:
+  - step builder tests
+  - tabular preprocessing
+  - validation infrastructure
+  - universal test framework
+  - processing step validation
+topics:
+  - test suite documentation
+  - validation framework
+  - step builder testing
+language: python
+date of note: 2025-08-08
 ---
 ```
 

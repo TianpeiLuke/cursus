@@ -225,6 +225,30 @@ cd test/steps/builders
 python test_real_builders.py
 ```
 
+### Tabular Preprocessing Step Builder Tests
+
+For comprehensive testing of the `TabularPreprocessingStepBuilder`, see the dedicated test suite:
+
+**📁 [Tabular Preprocessing Tests](tabular_preprocessing/README.md)**
+
+This test suite provides:
+- ✅ **Comprehensive Validation**: Uses existing validation infrastructure
+- ✅ **Simplified Structure**: Clean, maintainable test files
+- ✅ **Multiple Test Methods**: Runner scripts, unittest, and programmatic access
+- ✅ **Detailed Documentation**: Complete usage examples and troubleshooting
+
+**Quick Start**:
+```bash
+cd test/steps/builders/tabular_preprocessing
+python run_test.py
+```
+
+The tabular preprocessing tests demonstrate best practices for:
+- Using the existing validation infrastructure
+- Creating comprehensive test suites for step builders
+- Implementing multiple job type validation
+- Following the standardized test documentation format
+
 ### Integration with pytest
 ```python
 import pytest
