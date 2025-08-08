@@ -3,12 +3,12 @@ tags:
   - code
   - cli
   - interface
-  - autopipe
+  - cursus
   - main_entry_point
 keywords:
   - command line interface
   - CLI
-  - autopipe
+  - cursus
   - click framework
   - pipeline compilation
   - DAG validation
@@ -26,7 +26,7 @@ date of note: 2025-08-07
 
 ## Overview
 
-The main CLI interface (`src/cursus/cli/__init__.py`) provides the primary command-line entry point for the AutoPipe system. Built using the Click framework, it offers a comprehensive set of commands for pipeline compilation, validation, testing, and project management.
+The main CLI interface (`src/cursus/cli/__init__.py`) provides the primary command-line entry point for the Cursus system. Built using the Click framework, it offers a comprehensive set of commands for pipeline compilation, validation, testing, and project management.
 
 ## Architecture
 
@@ -135,7 +135,7 @@ cursus init --template xgboost --name fraud-detection
 
 ### Global Options
 - **`--verbose`**: Enables detailed output across all commands
-- **Version display**: Shows AutoPipe version information
+- **Version display**: Shows Cursus version information
 - **Context preservation**: Maintains settings across subcommands
 
 ### Command-Specific Options
@@ -221,4 +221,4 @@ cursus init --template xgboost --name fraud-detection
 - **Parallel processing**: Parallel validation and testing
 - **Memory optimization**: Reduce memory footprint for large DAGs
 
-This CLI interface serves as the primary user interaction point for the AutoPipe system, providing a comprehensive and user-friendly way to work with pipeline compilation, validation, and testing workflows.
+This CLI interface serves as the primary user interaction point for the Cursus system, providing a comprehensive and user-friendly way to work with pipeline compilation, validation, and testing workflows.

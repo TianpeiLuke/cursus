@@ -25,7 +25,7 @@ date of note: 2025-08-07
 
 ## Introduction
 
-The Cursus CLI provides a comprehensive command-line interface for the AutoPipe system, offering tools for pipeline compilation, validation, testing, and project management. Built with modern CLI best practices, it serves as the primary user interaction point for developers working with step builders and pipeline automation.
+The Cursus CLI provides a comprehensive command-line interface for the Cursus system, offering tools for pipeline compilation, validation, testing, and project management. Built with modern CLI best practices, it serves as the primary user interaction point for developers working with step builders and pipeline automation.
 
 ## Architecture Overview
 
@@ -393,4 +393,4 @@ cursus test all <builder_class> --verbose
 cursus validate interface <builder_class> --verbose
 ```
 
-This CLI system provides a comprehensive, user-friendly interface for all aspects of the AutoPipe development workflow, from initial project creation through testing, validation, and pipeline compilation.
+This CLI system provides a comprehensive, user-friendly interface for all aspects of the Cursus development workflow, from initial project creation through testing, validation, and pipeline compilation.

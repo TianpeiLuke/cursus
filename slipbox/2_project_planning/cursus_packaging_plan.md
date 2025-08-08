@@ -1,13 +1,13 @@
-# AutoPipe PyPI Package Conversion Plan
+# Cursus PyPI Package Conversion Plan
 
-**Package Name**: `autopipe`  
-**Tagline**: "Automatic SageMaker Pipeline Generation"  
+**Package Name**: `cursus`
+**Tagline**: "Automatic SageMaker Pipeline Generation"
 **Version**: 1.0.0  
 **License**: MIT  
 
 ## Executive Summary
 
-Convert the nlp-pipeline repository into a production-ready PyPI package called `autopipe` that enables automatic SageMaker pipeline generation from DAG specifications. The package will emphasize the core value proposition of 10x faster development through intelligent automation.
+Convert the nlp-pipeline repository into a production-ready PyPI package called `cursus` that enables automatic SageMaker pipeline generation from DAG specifications. The package will emphasize the core value proposition of 10x faster development through intelligent automation.
 
 ## 1. Package Structure & Organization
 
@@ -29,7 +29,7 @@ src/
 
 ### 1.2 Proposed Package Structure
 ```
-autopipe/
+cursus/
 ├── __init__.py           # Main exports and version
 ├── api/                  # High-level user API (from pipeline_api)
 ├── core/                 # Core functionality
@@ -55,7 +55,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "autopipe"
+name = "cursus"
 version = "1.0.0"
 description = "Automatic SageMaker Pipeline Generation from DAG Specifications"
 readme = "README.md"
@@ -116,11 +116,11 @@ dev = [
 ]
 # Full installation
 all = [
-    "autopipe[pytorch,xgboost,nlp]"
+    "cursus[pytorch,xgboost,nlp]"
 ]
 
 [project.scripts]
-autopipe = "autopipe.cli:main"
+cursus = "cursus.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/TianpeiLuke/nlp-pipeline"
@@ -135,18 +135,18 @@ Issues = "https://github.com/TianpeiLuke/nlp-pipeline/issues"
 - **Version Flexibility**: Minimum versions with reasonable upper bounds
 - **Installation Options**:
   ```bash
-  pip install autopipe                    # Core only
-  pip install autopipe[pytorch]          # With PyTorch
-  pip install autopipe[xgboost]          # With XGBoost  
-  pip install autopipe[all]              # Everything
-  pip install autopipe[dev]              # Development tools
+  pip install cursus                    # Core only
+  pip install cursus[pytorch]          # With PyTorch
+  pip install cursus[xgboost]          # With XGBoost
+  pip install cursus[all]              # Everything
+  pip install cursus[dev]              # Development tools
   ```
 
 ## 3. Main Package API Design
 
 ### 3.1 Primary Entry Points
 ```python
-# autopipe/__init__.py
+# cursus/__init__.py
 from .api import (
     compile_dag,
     compile_dag_to_pipeline,
@@ -169,16 +169,16 @@ __all__ = [
 ### 3.2 User-Friendly API
 ```python
 # Simple usage
-import autopipe
-pipeline = autopipe.compile_dag(my_dag)
+import cursus
+pipeline = cursus.compile_dag(my_dag)
 
 # Advanced usage
-from autopipe import PipelineDAGCompiler
+from cursus import PipelineDAGCompiler
 compiler = PipelineDAGCompiler(config_path="config.yaml")
 pipeline = compiler.compile(my_dag, pipeline_name="fraud-detection")
 
 # Fluent API (if available)
-from autopipe.fluent import Pipeline
+from cursus.fluent import Pipeline
 pipeline = (Pipeline("fraud-detection")
     .load_data("s3://data/")
     .train_xgboost()
@@ -191,31 +191,31 @@ pipeline = (Pipeline("fraud-detection")
 ### 4.1 CLI Commands
 ```bash
 # Compile DAG to pipeline
-autopipe compile my_dag.py --output pipeline.json --name my-pipeline
+cursus compile my_dag.py --output pipeline.json --name my-pipeline
 
 # Validate DAG structure
-autopipe validate my_dag.py
+cursus validate my_dag.py
 
 # Preview compilation results
-autopipe preview my_dag.py
+cursus preview my_dag.py
 
 # Show supported step types
-autopipe list-steps
+cursus list-steps
 
 # Generate example DAG
-autopipe init --template xgboost --name my-project
+cursus init --template xgboost --name my-project
 ```
 
 ### 4.2 CLI Implementation
 ```python
-# autopipe/cli/__init__.py
+# cursus/cli/__init__.py
 import click
 from ..api import compile_dag_to_pipeline, PipelineDAGCompiler
 
 @click.group()
 @click.version_option()
 def main():
-    """AutoPipe: Automatic SageMaker Pipeline Generation"""
+    """Cursus: Automatic SageMaker Pipeline Generation"""
     pass
 
 @main.command()
@@ -301,9 +301,9 @@ twine upload dist/*
 from src.pipeline_api import compile_dag_to_pipeline
 from src.pipeline_dag import PipelineDAG
 
-# New imports (autopipe package)
-from autopipe import compile_dag_to_pipeline
-from autopipe.core.dag import PipelineDAG
+# New imports (cursus package)
+from cursus import compile_dag_to_pipeline
+from cursus.core.dag import PipelineDAG
 ```
 
 ### 8.2 Backward Compatibility
@@ -330,7 +330,7 @@ from autopipe.core.dag import PipelineDAG
 
 ### Phase 1: Core Package Structure (Week 1)
 - [ ] Create pyproject.toml
-- [ ] Restructure src/ to autopipe/
+- [ ] Restructure src/ to cursus/
 - [ ] Create main __init__.py with exports
 - [ ] Basic CLI implementation
 - [ ] Update imports throughout codebase
@@ -382,7 +382,7 @@ from autopipe.core.dag import PipelineDAG
 ## 13. Next Steps
 
 1. **Create pyproject.toml** with the configuration above
-2. **Restructure package** from src/ to autopipe/
+2. **Restructure package** from src/ to cursus/
 3. **Implement CLI** with basic commands
 4. **Create package README** with quick start guide
 5. **Build and test** package locally
@@ -391,4 +391,4 @@ from autopipe.core.dag import PipelineDAG
 
 ---
 
-**Package Vision**: Make AutoPipe the go-to solution for automatic SageMaker pipeline generation, emphasizing the 10x development speed improvement and intelligent automation that eliminates manual configuration complexity.
+**Package Vision**: Make Cursus the go-to solution for automatic SageMaker pipeline generation, emphasizing the 10x development speed improvement and intelligent automation that eliminates manual configuration complexity.

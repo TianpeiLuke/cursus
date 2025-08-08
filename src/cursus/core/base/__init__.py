@@ -1,8 +1,8 @@
 """
-Core base classes for the autopipe framework.
+Core base classes for the cursus framework.
 
 This module provides the foundational base classes that are used throughout
-the autopipe framework for configuration, contracts, specifications, and builders.
+the cursus framework for configuration, contracts, specifications, and builders.
 """
 
 from typing import TYPE_CHECKING

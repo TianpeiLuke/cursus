@@ -15,7 +15,7 @@ from ..__version__ import __version__
 
 
 @click.group()
-@click.version_option(version=__version__, prog_name="autopipe")
+@click.version_option(version=__version__, prog_name="cursus")
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
 @click.pass_context
 def main(ctx, verbose):
@@ -49,7 +49,7 @@ def compile(ctx, dag_file, output, name, config, format):
     a SageMaker pipeline that can be executed on AWS.
     
     Example:
-        autopipe compile my_dag.py --name fraud-detection --output pipeline.json
+        cursus compile my_dag.py --name fraud-detection --output pipeline.json
     """
     try:
         from ..api.dag_compiler import compile_dag_to_pipeline
@@ -91,7 +91,7 @@ def compile(ctx, dag_file, output, name, config, format):
                 click.echo(yaml.dump(pipeline.definition(), default_flow_style=False))
                 
     except ImportError as e:
-        click.echo(f"Error: Missing dependencies. Please install with: pip install autopipe[all]", err=True)
+        click.echo(f"Error: Missing dependencies. Please install with: pip install cursus[all]", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"Error compiling DAG: {e}", err=True)
@@ -114,7 +114,7 @@ def validate(ctx, dag_file, config):
     it can be successfully compiled to a SageMaker pipeline.
     
     Example:
-        autopipe validate my_dag.py --config config.yaml
+        cursus validate my_dag.py --config config.yaml
     """
     try:
         from ..api.validation import ValidationEngine
@@ -141,7 +141,7 @@ def validate(ctx, dag_file, config):
             sys.exit(1)
             
     except ImportError as e:
-        click.echo(f"Error: Missing dependencies. Please install with: pip install autopipe[all]", err=True)
+        click.echo(f"Error: Missing dependencies. Please install with: pip install cursus[all]", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"Error validating DAG: {e}", err=True)
@@ -164,7 +164,7 @@ def preview(ctx, dag_file, config):
     resolution without actually compiling the complete pipeline.
     
     Example:
-        autopipe preview my_dag.py
+        cursus preview my_dag.py
     """
     try:
         from ..api.dag_compiler import PipelineDAGCompiler
@@ -188,7 +188,7 @@ def preview(ctx, dag_file, config):
         click.echo(preview.display())
         
     except ImportError as e:
-        click.echo(f"Error: Missing dependencies. Please install with: pip install autopipe[all]", err=True)
+        click.echo(f"Error: Missing dependencies. Please install with: pip install cursus[all]", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"Error previewing DAG: {e}", err=True)
@@ -217,7 +217,7 @@ def list_steps(ctx):
             click.echo(f"  • {step_type}")
             
     except ImportError as e:
-        click.echo(f"Error: Missing dependencies. Please install with: pip install autopipe[all]", err=True)
+        click.echo(f"Error: Missing dependencies. Please install with: pip install cursus[all]", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"Error listing step types: {e}", err=True)
@@ -408,7 +408,7 @@ def init(ctx, template, name, output_dir):
     based on the selected template.
     
     Example:
-        autopipe init --template xgboost --name fraud-detection
+        cursus init --template xgboost --name fraud-detection
     """
     try:
         project_dir = output_dir / name
@@ -427,8 +427,8 @@ def init(ctx, template, name, output_dir):
         click.echo(f"✅ Created {template} project: {project_dir}")
         click.echo(f"Next steps:")
         click.echo(f"  cd {name}")
-        click.echo(f"  autopipe validate dags/main.py")
-        click.echo(f"  autopipe compile dags/main.py --name {name}")
+        click.echo(f"  cursus validate dags/main.py")
+        click.echo(f"  cursus compile dags/main.py --name {name}")
         
     except Exception as e:
         click.echo(f"Error creating project: {e}", err=True)
@@ -457,8 +457,8 @@ def _generate_template_files(project_dir: Path, template: str, name: str):
 Example DAG for {name} project.
 """
 
-from autopipe.core.dag import PipelineDAG
-from autopipe.steps.specs import *
+from cursus.core.dag import PipelineDAG
+from cursus.steps.specs import *
 
 # Create the DAG
 dag = PipelineDAG(name="{name}")
@@ -548,17 +548,17 @@ AutoPipe project generated from {template} template.
 
 1. Validate the DAG:
    ```bash
-   autopipe validate dags/main.py --config config/config.yaml
+   cursus validate dags/main.py --config config/config.yaml
    ```
 
 2. Preview compilation:
    ```bash
-   autopipe preview dags/main.py --config config/config.yaml
+   cursus preview dags/main.py --config config/config.yaml
    ```
 
 3. Compile to SageMaker pipeline:
    ```bash
-   autopipe compile dags/main.py --config config/config.yaml --name {name}
+   cursus compile dags/main.py --config config/config.yaml --name {name}
    ```
 
 ## Configuration

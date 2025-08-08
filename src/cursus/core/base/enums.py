@@ -1,5 +1,5 @@
 """
-Shared enums for the autopipe core base classes.
+Shared enums for the cursus core base classes.
 
 This module contains enums that are used across multiple base classes
 to avoid circular imports and provide a single source of truth.
