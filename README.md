@@ -26,8 +26,8 @@ pip install cursus[all]
 ### 30-Second Example
 
 ```python
-import cursus
-from cursus.core.dag import PipelineDAG
+from cursus.api import compile_dag
+from cursus.api.dag import PipelineDAG
 
 # Create a simple DAG
 dag = PipelineDAG(name="fraud-detection")
@@ -38,7 +38,7 @@ dag.add_edge("data_loading", "preprocessing")
 dag.add_edge("preprocessing", "training")
 
 # Compile to SageMaker pipeline automatically
-pipeline = cursus.compile_dag(dag)
+pipeline = compile_dag(dag)
 pipeline.start()  # Deploy and run!
 ```
 
@@ -107,49 +107,58 @@ Cursus follows a sophisticated layered architecture:
 ### Basic Pipeline
 
 ```python
-from cursus import PipelineDAGCompiler
-from cursus.core.dag import PipelineDAG
+from cursus.api import compile_dag
+from cursus.api.dag import PipelineDAG
 
 # Create DAG
-dag = PipelineDAG()
-dag.add_node("load_data", "DATA_LOADING_SPEC")
-dag.add_node("train_model", "XGBOOST_TRAINING_SPEC")
+dag = PipelineDAG(name="my-ml-pipeline")
+dag.add_node("load_data", "CRADLE_DATA_LOADING")
+dag.add_node("train_model", "XGBOOST_TRAINING")
 dag.add_edge("load_data", "train_model")
 
-# Compile with configuration
-compiler = PipelineDAGCompiler(config_path="config.yaml")
-pipeline = compiler.compile(dag, pipeline_name="my-ml-pipeline")
+# Compile to SageMaker pipeline
+pipeline = compile_dag(dag)
 ```
 
 ### Advanced Configuration
 
 ```python
-from cursus import create_pipeline_from_dag
+from cursus.api import compile_dag_to_pipeline
+from cursus.api.dag import PipelineDAG
 
-# Create pipeline with custom settings
-pipeline = create_pipeline_from_dag(
-    dag=my_dag,
-    pipeline_name="advanced-pipeline",
-    config_path="advanced_config.yaml",
-    quality_requirements={
-        "min_auc": 0.88,
-        "max_training_time": "4 hours"
-    }
+# Create DAG with more complex workflow
+dag = PipelineDAG(name="advanced-pipeline")
+dag.add_node("data_loading", "CRADLE_DATA_LOADING")
+dag.add_node("preprocessing", "TABULAR_PREPROCESSING")
+dag.add_node("training", "XGBOOST_TRAINING")
+dag.add_node("evaluation", "MODEL_EVALUATION")
+dag.add_edge("data_loading", "preprocessing")
+dag.add_edge("preprocessing", "training")
+dag.add_edge("training", "evaluation")
+
+# Compile with custom configuration
+pipeline = compile_dag_to_pipeline(
+    dag=dag,
+    pipeline_name="advanced-ml-pipeline",
+    config_path="config.yaml"
 )
 ```
 
-### Fluent API (Advanced)
+### Using the Compiler Class
 
 ```python
-from cursus.utils.fluent import Pipeline
+from cursus.core.compiler import PipelineDAGCompiler
+from cursus.api.dag import PipelineDAG
 
-# Natural language-like construction
-pipeline = (Pipeline("fraud-detection")
-    .load_data("s3://fraud-data/")
-    .preprocess_with_defaults()
-    .train_xgboost(max_depth=6, eta=0.3)
-    .evaluate_performance()
-    .deploy_if_threshold_met(min_auc=0.85))
+# Create DAG
+dag = PipelineDAG(name="compiler-example")
+dag.add_node("preprocessing", "TABULAR_PREPROCESSING")
+dag.add_node("training", "XGBOOST_TRAINING")
+dag.add_edge("preprocessing", "training")
+
+# Use compiler for more control
+compiler = PipelineDAGCompiler()
+pipeline = compiler.compile(dag, pipeline_name="my-pipeline")
 ```
 
 ## 🔧 Installation Options
