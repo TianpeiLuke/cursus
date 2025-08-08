@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2025-08-08
+
+### Added
+- **Universal Step Builder Test System** - Comprehensive testing framework for step builder validation
+  - **CLI Interface** - New command-line interface for running builder tests (`cursus.cli.builder_test_cli`)
+  - **Four-Level Test Architecture** - Structured testing across Interface, Specification, Path Mapping, and Integration levels
+  - **Test Scoring System** - Advanced scoring mechanism with weighted evaluation across test levels
+  - **Processing Step Builder Tests** - Specialized test variants for processing step builders
+  - **Test Pattern Detection** - Smart pattern-based test categorization and level detection
+
+- **Enhanced Validation Infrastructure** - Major expansion of validation capabilities
+  - **Builder Test Variants** - Specialized test classes for different step builder types (Processing, Training, Transform)
+  - **Interface Standard Validator** - Validation of step builder interface compliance
+  - **Test Scoring and Rating** - Comprehensive scoring system with quality ratings (Excellent, Good, Satisfactory, Needs Work, Poor)
+  - **Test Report Generation** - Automated generation of detailed test reports with charts and statistics
+
+- **CLI Enhancements** - Extended command-line interface functionality
+  - **Universal Builder Test CLI** - Run tests at different levels and variants for any step builder
+  - **Validation CLI** - Command-line validation tools for step builders and specifications
+  - **Builder Discovery** - Automatic discovery and listing of available step builder classes
+
+### Enhanced
+- **Test Coverage and Quality** - Improved test infrastructure and coverage analysis
+  - **Pattern-Based Test Scoring** - Advanced scoring system with level-based weighting and importance factors
+  - **Test Level Detection** - Smart detection of test levels using explicit prefixes, keywords, and fallback mapping
+  - **Comprehensive Test Reports** - Detailed reports with pass rates, level scores, and failure analysis
+  - **Test Execution Performance** - Optimized test execution with better error handling and reporting
+
+- **Documentation and Naming** - Improved consistency and documentation
+  - **Brand Consistency** - Updated all references from "AutoPipe" to "Cursus" throughout the codebase
+  - **Package Name Standardization** - Consistent use of "cursus" instead of legacy "autopipe" references
+  - **Documentation Headers** - Standardized documentation format and headers across modules
+
+### Fixed
+- **Import Path Corrections** - Fixed import errors and path issues
+  - **Module Import Fixes** - Resolved import path issues in validation and CLI modules
+  - **Test Module Stability** - Improved test module imports and execution reliability
+  - **Processing Step Builder Tests** - Fixed test execution issues for tabular preprocessing step builders
+
+### Technical Details
+- **Test Architecture** - Four-level testing system with weighted scoring (Interface: 1.0x, Specification: 1.5x, Path Mapping: 2.0x, Integration: 2.5x)
+- **Scoring Algorithm** - Importance-weighted scoring with test-specific multipliers and comprehensive rating system
+- **CLI Integration** - Full command-line interface for test execution with verbose output and detailed reporting
+- **Test Discovery** - Automatic discovery of step builder classes with AST parsing for missing dependencies
+- **Report Generation** - JSON reports, console output, and optional chart generation with matplotlib
+
+### Quality Assurance
+- **Universal Test Coverage** - Comprehensive testing framework covering all step builder types and patterns
+- **Automated Quality Assessment** - Scoring system provides objective quality metrics for step builders
+- **Regression Prevention** - Enhanced test suite prevents regressions in step builder implementations
+- **Development Workflow** - Improved developer experience with CLI tools and automated validation
+
 ## [1.0.6] - 2025-08-07
 
 ### Added
