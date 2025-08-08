@@ -1,8 +1,8 @@
 """
-AutoPipe Command Line Interface
+Cursus Command Line Interface
 
 Provides command-line tools for compiling DAGs to SageMaker pipelines,
-validating pipeline configurations, and managing AutoPipe workflows.
+validating pipeline configurations, and managing Cursus workflows.
 """
 
 import sys
@@ -20,7 +20,7 @@ from ..__version__ import __version__
 @click.pass_context
 def main(ctx, verbose):
     """
-    AutoPipe: Automatic SageMaker Pipeline Generation
+    Cursus: Automatic SageMaker Pipeline Generation
     
     Transform pipeline graphs into production-ready SageMaker pipelines automatically.
     """
@@ -28,7 +28,7 @@ def main(ctx, verbose):
     ctx.obj['verbose'] = verbose
     
     if verbose:
-        click.echo(f"AutoPipe v{__version__}")
+        click.echo(f"Cursus v{__version__}")
 
 
 @main.command()
@@ -542,7 +542,7 @@ steps:
     # Write README
     readme_content = f'''# {name}
 
-AutoPipe project generated from {template} template.
+Cursus project generated from {template} template.
 
 ## Usage
 

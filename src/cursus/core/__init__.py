@@ -1,7 +1,7 @@
 """
-AutoPipe Core module.
+Cursus Core module.
 
-This module provides the core functionality for AutoPipe, including:
+This module provides the core functionality for Cursus, including:
 - Pipeline assembling and template management
 - DAG compilation and configuration resolution
 - Configuration field management and three-tier architecture

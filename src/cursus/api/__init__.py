@@ -1,7 +1,7 @@
 """
-AutoPipe API module.
+Cursus API module.
 
-This module provides the main API interfaces for AutoPipe functionality,
+This module provides the main API interfaces for Cursus functionality,
 including DAG management and pipeline compilation.
 """
 

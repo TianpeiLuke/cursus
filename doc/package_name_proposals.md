@@ -1,6 +1,6 @@
-# AutoPipe Package Name Proposals
+# Cursus Package Name Proposals
 
-This document contains all proposed package names for the AutoPipe project, organized by category and availability status.
+This document contains all proposed package names for the Cursus project, organized by category and availability status.
 
 ## Project Value Proposition
 - **Automatic pipeline generation** from DAG specifications
@@ -24,7 +24,7 @@ All names below have been verified as available on PyPI using our `check_pypi_na
 - ✅ `sagemaker-dag-gen` - Generator-focused
 - ✅ `sagepipegen` - Compact, brandable
 
-### AutoPipe Brand Variants
+### Cursus Brand Variants
 - ✅ `autopipe-framework` - Professional, maintains your brand
 - ✅ `autopipe-toolkit` - Tool-focused
 - ✅ `autopipe-core` - Core functionality emphasis
