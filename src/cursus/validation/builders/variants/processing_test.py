@@ -60,8 +60,8 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTestBase):
         try:
             builder = self._create_builder_instance()
             
-            # Test that builder can create processor
-            self._assert(hasattr(builder, 'build'), "Builder should have build method")
+            # Test that builder can create step (not build method)
+            self._assert(hasattr(builder, 'create_step'), "Builder should have create_step method")
             
             # Test processor configuration based on framework
             framework = self.step_info.get('framework')

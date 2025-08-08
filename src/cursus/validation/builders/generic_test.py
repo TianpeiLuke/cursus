@@ -53,7 +53,7 @@ class GenericStepBuilderTest(UniversalStepBuilderTestBase):
         try:
             builder = self._create_builder_instance()
             self._assert(builder is not None, "Builder instance should be created")
-            self._assert(hasattr(builder, 'build'), "Builder should have build method")
+            self._assert(hasattr(builder, 'create_step'), "Builder should have create_step method")
             
         except Exception as e:
             self._assert(False, f"Failed to create builder instance: {str(e)}")
@@ -95,9 +95,9 @@ class GenericStepBuilderTest(UniversalStepBuilderTestBase):
         except Exception as e:
             self._assert(False, f"Dependency handling test failed: {str(e)}")
     
-    def test_builder_build_method(self):
-        """Test that the builder's build method works."""
-        self._log("Testing builder build method...")
+    def test_builder_create_step_method(self):
+        """Test that the builder's create_step method works."""
+        self._log("Testing builder create_step method...")
         
         try:
             builder = self._create_builder_instance()
@@ -105,15 +105,15 @@ class GenericStepBuilderTest(UniversalStepBuilderTestBase):
             # Create mock dependencies
             mock_dependencies = self._create_mock_dependencies()
             
-            # Test build method exists and is callable
-            self._assert(hasattr(builder, 'build'), "Builder should have build method")
-            self._assert(callable(builder.build), "Build method should be callable")
+            # Test create_step method exists and is callable
+            self._assert(hasattr(builder, 'create_step'), "Builder should have create_step method")
+            self._assert(callable(builder.create_step), "create_step method should be callable")
             
-            # Note: We don't actually call build() as it may require complex setup
+            # Note: We don't actually call create_step() as it may require complex setup
             # This test just verifies the method exists
             
         except Exception as e:
-            self._assert(False, f"Build method test failed: {str(e)}")
+            self._assert(False, f"create_step method test failed: {str(e)}")
     
     def test_step_info_detection(self):
         """Test that step information is properly detected."""

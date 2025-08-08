@@ -84,6 +84,18 @@ from test_tabular_preprocessing import run_comprehensive_test
 result = run_comprehensive_test()
 ```
 
+### Method 5: Run scoring tests (Recommended for Quality Assessment)
+```bash
+cd test/steps/builders/tabular_preprocessing
+python run_scoring_test.py
+```
+
+### Method 6: Run scoring tests programmatically
+```python
+from test_scoring import run_comprehensive_scoring_test
+score_report = run_comprehensive_scoring_test()
+```
+
 ## Test Validation Levels
 
 The existing validation infrastructure provides comprehensive testing across multiple levels:
@@ -236,6 +248,66 @@ This test suite integrates seamlessly with the existing validation infrastructur
 - Follows the same patterns as `test_real_builders.py`
 - Compatible with the existing mock factory system
 - Supports the same validation patterns used throughout the codebase
+
+## Scoring System
+
+The test suite includes a comprehensive scoring system that evaluates the TabularPreprocessingStepBuilder across multiple quality dimensions:
+
+### Scoring Levels
+
+The scoring system uses a weighted approach across four test levels:
+
+- **Level 1 - Interface Tests** (Weight: 1.0): Basic interface compliance
+- **Level 2 - Specification Tests** (Weight: 1.5): Specification and contract compliance  
+- **Level 3 - Path Mapping Tests** (Weight: 2.0): Path mapping and property paths
+- **Level 4 - Integration Tests** (Weight: 2.5): System integration
+
+### Quality Ratings
+
+- **90-100**: Excellent - Production ready
+- **80-89**: Good - Minor improvements needed
+- **70-79**: Satisfactory - Some attention required
+- **60-69**: Needs Work - Significant improvements needed
+- **0-59**: Poor - Major refactoring required
+
+### Scoring Features
+
+- **Comprehensive Reports**: JSON reports with detailed breakdowns
+- **Visual Charts**: Matplotlib-based score visualizations (if available)
+- **Configuration Comparison**: Test different configurations side-by-side
+- **Detailed Analysis**: Level-by-level performance analysis
+- **Actionable Recommendations**: Specific guidance based on scores
+
+### Scoring Output Example
+
+```
+🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
+TABULAR PREPROCESSING STEP BUILDER SCORING TEST
+🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
+
+STEP BUILDER QUALITY SCORE REPORT
+
+Overall Score: 85.2/100 - Good
+Pass Rate: 82.4% (14/17 tests)
+
+Scores by Level:
+  Level 1 Interface: 95.0/100 (4/4 tests)
+  Level 2 Specification: 87.5/100 (3/4 tests)
+  Level 3 Path Mapping: 80.0/100 (4/5 tests)
+  Level 4 Integration: 75.0/100 (3/4 tests)
+
+Failed Tests:
+  ❌ test_contract_alignment: Contract property mismatch
+  ❌ test_property_path_validity: Invalid property path format
+  ❌ test_dependency_resolution: Missing dependency mapping
+
+```
+
+### Scoring Files
+
+- **File**: `test_scoring.py` - Main scoring implementation
+- **File**: `run_scoring_test.py` - Simple scoring test runner
+- **Directory**: `scoring_reports/` - Generated reports and charts
 
 ## Advantages of Using Existing Validators
 

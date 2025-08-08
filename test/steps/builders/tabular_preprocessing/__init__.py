@@ -30,8 +30,18 @@ from .test_tabular_preprocessing import (
     run_comprehensive_test
 )
 
+# Import scoring functionality
+from .test_scoring import (
+    run_comprehensive_scoring_test,
+    run_scoring_comparison_test,
+    create_comprehensive_test_config
+)
+
 __all__ = [
     "TestTabularPreprocessingWithExistingValidators",
     "TestTabularPreprocessingMultipleJobTypes", 
-    "run_comprehensive_test"
+    "run_comprehensive_test",
+    "run_comprehensive_scoring_test",
+    "run_scoring_comparison_test",
+    "create_comprehensive_test_config"
 ]

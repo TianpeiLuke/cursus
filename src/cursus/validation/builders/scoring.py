@@ -21,22 +21,36 @@ LEVEL_WEIGHTS = {
 
 # Define test to level mapping
 TEST_LEVEL_MAP = {
+    # Level 1: Interface tests
     "test_inheritance": "level1_interface",
     "test_required_methods": "level1_interface",
     "test_error_handling": "level1_interface",
+    "test_generic_step_creation": "level1_interface",
+    "test_processor_creation": "level1_interface",
+    "test_generic_configuration_validation": "level1_interface",
     
+    # Level 2: Specification and contract tests
     "test_specification_usage": "level2_specification",
     "test_contract_alignment": "level2_specification",
     "test_environment_variable_handling": "level2_specification",
     "test_job_arguments": "level2_specification",
+    "test_environment_variables_processing": "level2_specification",
+    "test_processing_job_arguments": "level2_specification",
+    "test_property_files_configuration": "level2_specification",
     
+    # Level 3: Path mapping tests
     "test_input_path_mapping": "level3_path_mapping",
     "test_output_path_mapping": "level3_path_mapping",
     "test_property_path_validity": "level3_path_mapping",
+    "test_processing_inputs_outputs": "level3_path_mapping",
+    "test_processing_code_handling": "level3_path_mapping",
     
+    # Level 4: Integration tests
     "test_dependency_resolution": "level4_integration",
     "test_step_creation": "level4_integration",
     "test_step_name": "level4_integration",
+    "test_generic_dependency_handling": "level4_integration",
+    "test_processing_step_dependencies": "level4_integration",
 }
 
 # Define importance weights for specific tests
