@@ -14,9 +14,24 @@ class IntegrationTests(UniversalStepBuilderTestBase):
     """
     Level 4 tests focusing on system integration.
     
-    These tests validate that a step builder correctly integrates with
-    the broader system architecture and can create functional steps.
+    These tests validate that a step builder integrates correctly with
+    the overall system and can create functional SageMaker steps.
     """
+    
+    def get_step_type_specific_tests(self) -> list:
+        """Return step type-specific test methods for integration tests."""
+        return []  # Integration tests are generic
+    
+    def _configure_step_type_mocks(self) -> None:
+        """Configure step type-specific mock objects for integration tests."""
+        pass  # Generic integration tests
+    
+    def _validate_step_type_requirements(self) -> dict:
+        """Validate step type-specific requirements for integration tests."""
+        return {
+            "integration_tests_completed": True,
+            "step_type_agnostic": True
+        }
     
     def test_dependency_resolution(self) -> None:
         """Test that the builder correctly resolves dependencies."""

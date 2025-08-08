@@ -19,6 +19,21 @@ class SpecificationTests(UniversalStepBuilderTestBase):
     and contracts to define its behavior and requirements.
     """
     
+    def get_step_type_specific_tests(self) -> list:
+        """Return step type-specific test methods for specification tests."""
+        return []  # Specification tests are generic
+    
+    def _configure_step_type_mocks(self) -> None:
+        """Configure step type-specific mock objects for specification tests."""
+        pass  # Generic specification tests
+    
+    def _validate_step_type_requirements(self) -> dict:
+        """Validate step type-specific requirements for specification tests."""
+        return {
+            "specification_tests_completed": True,
+            "step_type_agnostic": True
+        }
+    
     def test_specification_usage(self) -> None:
         """Test that the builder properly uses step specifications."""
         # Placeholder implementation

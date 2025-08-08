@@ -24,6 +24,23 @@ class InterfaceTests(UniversalStepBuilderTestBase):
     standardization rules and alignment requirements.
     """
     
+    def get_step_type_specific_tests(self) -> list:
+        """Return step type-specific test methods for interface tests."""
+        return []  # Interface tests are generic, no step-type specific tests
+    
+    def _configure_step_type_mocks(self) -> None:
+        """Configure step type-specific mock objects for interface tests."""
+        # Interface tests use generic mocks, no step-type specific configuration needed
+        pass
+    
+    def _validate_step_type_requirements(self) -> dict:
+        """Validate step type-specific requirements for interface tests."""
+        # Interface tests don't have step-type specific requirements
+        return {
+            "interface_tests_completed": True,
+            "step_type_agnostic": True
+        }
+    
     def test_inheritance(self) -> None:
         """Test that the builder inherits from StepBuilderBase."""
         from ...core.base.builder_base import StepBuilderBase

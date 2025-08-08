@@ -13,11 +13,26 @@ from .base_test import UniversalStepBuilderTestBase
 
 class PathMappingTests(UniversalStepBuilderTestBase):
     """
-    Level 3 tests focusing on path mapping compliance.
+    Level 3 tests focusing on path mapping validation.
     
     These tests validate that a step builder correctly maps input and output
-    paths and uses valid property paths for dependency resolution.
+    paths and handles property path resolution.
     """
+    
+    def get_step_type_specific_tests(self) -> list:
+        """Return step type-specific test methods for path mapping tests."""
+        return []  # Path mapping tests are generic
+    
+    def _configure_step_type_mocks(self) -> None:
+        """Configure step type-specific mock objects for path mapping tests."""
+        pass  # Generic path mapping tests
+    
+    def _validate_step_type_requirements(self) -> dict:
+        """Validate step type-specific requirements for path mapping tests."""
+        return {
+            "path_mapping_tests_completed": True,
+            "step_type_agnostic": True
+        }
     
     def test_input_path_mapping(self) -> None:
         """Test that the builder correctly maps specification dependencies to script contract paths."""

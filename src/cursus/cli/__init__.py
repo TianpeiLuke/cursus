@@ -224,6 +224,175 @@ def list_steps(ctx):
         sys.exit(1)
 
 
+@main.group()
+@click.pass_context
+def test(ctx):
+    """
+    Run Universal Step Builder Tests.
+    
+    Test step builders at different levels and with different variants
+    to ensure compliance with the UniversalStepBuilderTestBase architecture.
+    """
+    pass
+
+
+@test.command('all')
+@click.argument('builder_class')
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.pass_context
+def test_all(ctx, builder_class, verbose):
+    """
+    Run all tests (universal test suite) for a step builder.
+    
+    Example:
+        cursus test all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder
+    """
+    try:
+        from .builder_test_cli import import_builder_class, run_all_tests, print_test_results
+        
+        if ctx.parent.obj['verbose'] or verbose:
+            click.echo(f"🔍 Importing builder class: {builder_class}")
+        
+        builder_cls = import_builder_class(builder_class)
+        
+        if ctx.parent.obj['verbose'] or verbose:
+            click.echo(f"✅ Successfully imported: {builder_cls.__name__}")
+            click.echo(f"🚀 Running all tests for {builder_cls.__name__}...")
+        
+        results = run_all_tests(builder_cls, ctx.parent.obj['verbose'] or verbose)
+        print_test_results(results, ctx.parent.obj['verbose'] or verbose)
+        
+        # Return appropriate exit code
+        failed_tests = sum(1 for result in results.values() if not result.get("passed", False))
+        if failed_tests > 0:
+            click.echo(f"\n⚠️  {failed_tests} test(s) failed. Please review and fix the issues.")
+            sys.exit(1)
+        else:
+            click.echo(f"\n🎉 All tests passed successfully!")
+            
+    except Exception as e:
+        click.echo(f"❌ Error during test execution: {e}", err=True)
+        if ctx.parent.obj['verbose'] or verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+@test.command('level')
+@click.argument('level_number', type=click.IntRange(1, 4))
+@click.argument('builder_class')
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.pass_context
+def test_level(ctx, level_number, builder_class, verbose):
+    """
+    Run tests for a specific level.
+    
+    LEVEL_NUMBER: Test level (1=Interface, 2=Specification, 3=Path Mapping, 4=Integration)
+    
+    Example:
+        cursus test level 1 src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder
+    """
+    try:
+        from .builder_test_cli import import_builder_class, run_level_tests, print_test_results
+        
+        level_names = {1: "Interface", 2: "Specification", 3: "Path Mapping", 4: "Integration"}
+        level_name = level_names[level_number]
+        
+        if ctx.parent.obj['verbose'] or verbose:
+            click.echo(f"🔍 Importing builder class: {builder_class}")
+        
+        builder_cls = import_builder_class(builder_class)
+        
+        if ctx.parent.obj['verbose'] or verbose:
+            click.echo(f"✅ Successfully imported: {builder_cls.__name__}")
+            click.echo(f"🚀 Running Level {level_number} ({level_name}) tests for {builder_cls.__name__}...")
+        
+        results = run_level_tests(builder_cls, level_number, ctx.parent.obj['verbose'] or verbose)
+        print_test_results(results, ctx.parent.obj['verbose'] or verbose)
+        
+        # Return appropriate exit code
+        failed_tests = sum(1 for result in results.values() if not result.get("passed", False))
+        if failed_tests > 0:
+            click.echo(f"\n⚠️  {failed_tests} test(s) failed. Please review and fix the issues.")
+            sys.exit(1)
+        else:
+            click.echo(f"\n🎉 All Level {level_number} tests passed successfully!")
+            
+    except Exception as e:
+        click.echo(f"❌ Error during test execution: {e}", err=True)
+        if ctx.parent.obj['verbose'] or verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+@test.command('variant')
+@click.argument('variant_name', type=click.Choice(['processing']))
+@click.argument('builder_class')
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.pass_context
+def test_variant(ctx, variant_name, builder_class, verbose):
+    """
+    Run tests for a specific variant.
+    
+    VARIANT_NAME: Test variant (currently: processing)
+    
+    Example:
+        cursus test variant processing src.cursus.steps.builders.builder_tabular_preprocessing_step.TabularPreprocessingStepBuilder
+    """
+    try:
+        from .builder_test_cli import import_builder_class, run_variant_tests, print_test_results
+        
+        if ctx.parent.obj['verbose'] or verbose:
+            click.echo(f"🔍 Importing builder class: {builder_class}")
+        
+        builder_cls = import_builder_class(builder_class)
+        
+        if ctx.parent.obj['verbose'] or verbose:
+            click.echo(f"✅ Successfully imported: {builder_cls.__name__}")
+            click.echo(f"🚀 Running {variant_name.title()} variant tests for {builder_cls.__name__}...")
+        
+        results = run_variant_tests(builder_cls, variant_name, ctx.parent.obj['verbose'] or verbose)
+        print_test_results(results, ctx.parent.obj['verbose'] or verbose)
+        
+        # Return appropriate exit code
+        failed_tests = sum(1 for result in results.values() if not result.get("passed", False))
+        if failed_tests > 0:
+            click.echo(f"\n⚠️  {failed_tests} test(s) failed. Please review and fix the issues.")
+            sys.exit(1)
+        else:
+            click.echo(f"\n🎉 All {variant_name} variant tests passed successfully!")
+            
+    except Exception as e:
+        click.echo(f"❌ Error during test execution: {e}", err=True)
+        if ctx.parent.obj['verbose'] or verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+@test.command('list-builders')
+@click.pass_context
+def test_list_builders(ctx):
+    """
+    List available step builder classes.
+    
+    Shows common step builder classes that can be tested.
+    """
+    try:
+        from .builder_test_cli import list_available_builders
+        
+        click.echo("📋 Available Step Builder Classes:")
+        click.echo("=" * 50)
+        for builder in list_available_builders():
+            click.echo(f"  • {builder}")
+        click.echo("\nNote: This is a basic list. You can test any builder class by providing its full import path.")
+        
+    except Exception as e:
+        click.echo(f"❌ Error listing builders: {e}", err=True)
+        sys.exit(1)
+
+
 @main.command()
 @click.option('--template', type=click.Choice(['xgboost', 'pytorch', 'basic']), 
               default='basic', help='Template type to generate')
