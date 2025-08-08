@@ -7,11 +7,14 @@ assurance tools.
 
 Subpackages:
 - builders: Universal step builder validation framework
+- naming: Naming convention validation tools
 """
 
 from .builders import UniversalStepBuilderTest, StepBuilderScorer
+from .naming import NamingStandardValidator
 
 __all__ = [
     'UniversalStepBuilderTest',
-    'StepBuilderScorer'
+    'StepBuilderScorer',
+    'NamingStandardValidator'
 ]
