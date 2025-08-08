@@ -1,328 +1,272 @@
----
-tags:
-  - test
-  - builders
-  - tabular_preprocessing
-  - validation
-keywords:
-  - step builder tests
-  - tabular preprocessing
-  - validation infrastructure
-  - universal test framework
-  - processing step validation
-topics:
-  - test suite documentation
-  - validation framework
-  - step builder testing
-language: python
-date of note: 2025-08-08
----
+# Tabular Preprocessing Step Builder Tests - Enhanced 4-Level Processing Tester
 
-# Tabular Preprocessing Step Builder Tests
+This directory contains comprehensive tests for the `TabularPreprocessingStepBuilder` using the **Enhanced 4-Level Processing Tester** from `src/cursus/validation/builders/variants/processing_test.py`.
 
 ## Overview
 
-This directory contains comprehensive tests for the `TabularPreprocessingStepBuilder` class using the existing validation infrastructure from `src/cursus/validation/builders`.
+The tests have been refactored to leverage the enhanced 4-level Processing tester that validates Processing step builders against all patterns identified in the Processing Step Builder Patterns analysis. This provides comprehensive coverage of:
 
-## Test Architecture
+- **Level 1: Interface Tests** - Method signatures, processor creation, configuration attributes
+- **Level 2: Specification Tests** - Job types, environment variables, arguments, contract mapping  
+- **Level 3: Path Mapping Tests** - Input/output creation, special patterns, S3 handling
+- **Level 4: Integration Tests** - End-to-end step creation, dependencies, caching
 
-The test suite leverages the existing validation framework:
+## Files
 
-- **UniversalStepBuilderTest**: Comprehensive validation across all architectural levels
-- **ProcessingStepBuilderTest**: Processing-specific validation patterns
+### Core Test Files
 
-## Test Configuration
+- **`test_tabular_preprocessing.py`** - Main test suite using the 4-level Processing tester
+- **`test_scoring.py`** - Comprehensive scoring and evaluation system
+- **`run_test.py`** - Test runner script with 4-level validation
+- **`run_scoring_test.py`** - Scoring test runner with pattern analysis
 
-The test case uses the exact configuration specified in the requirements:
+### Test Structure
 
-- **source_dir**: `'src/cursus/steps/scripts'`
-- **processing_entry_point**: `'tabular_preprocess.py'`
-- **job_type**: `'training'` (uses `PREPROCESSING_TRAINING_SPEC`)
-- **SageMaker step type**: `Processing` (uses Processing variant tests)
-
-## Test Files
-
-### Core Test Module
-- **File**: `test_tabular_preprocessing.py`
-- **Description**: Comprehensive test suite using existing validation infrastructure
-- **Classes**:
-  - `TestTabularPreprocessingWithExistingValidators`: Main validation tests
-  - `TestTabularPreprocessingMultipleJobTypes`: Multi job-type validation
-
-### Test Runner
-- **File**: `run_test.py`
-- **Description**: Simple script to execute the test suite with detailed output
-
-### Package Configuration
-- **File**: `__init__.py`
-- **Description**: Package setup with easy import access to test functions
+```
+test_tabular_preprocessing.py
+├── TestTabularPreprocessingWith4LevelTester
+│   ├── test_4_level_processing_validation()      # Complete 4-level validation
+│   ├── test_level1_interface_tests()             # Level 1: Interface compliance
+│   ├── test_level2_specification_tests()         # Level 2: Specification compliance
+│   ├── test_level3_path_mapping_tests()          # Level 3: Path mapping compliance
+│   ├── test_level4_integration_tests()           # Level 4: Integration compliance
+│   └── test_legacy_compatibility()               # Backward compatibility
+└── TestTabularPreprocessingMultipleJobTypes
+    └── test_all_job_types_with_4_level_tester()  # Multi job-type validation
+```
 
 ## Usage
 
-### Method 1: Run with the runner script (Recommended)
+### 1. Run All 4-Level Tests
+
 ```bash
-cd test/steps/builders/tabular_preprocessing
 python run_test.py
 ```
 
-### Method 2: Run with Python unittest
+This runs the complete 4-level Processing validation suite and provides:
+- Pattern compliance analysis
+- Level-by-level results
+- Processing-specific pattern validation
+- Troubleshooting guidance
+
+### 2. Run Specific Level Tests
+
 ```bash
-cd test/steps/builders/tabular_preprocessing
-python -m unittest test_tabular_preprocessing -v
+# Level 1: Interface Tests
+python test_tabular_preprocessing.py TestTabularPreprocessingWith4LevelTester.test_level1_interface_tests
+
+# Level 2: Specification Tests  
+python test_tabular_preprocessing.py TestTabularPreprocessingWith4LevelTester.test_level2_specification_tests
+
+# Level 3: Path Mapping Tests
+python test_tabular_preprocessing.py TestTabularPreprocessingWith4LevelTester.test_level3_path_mapping_tests
+
+# Level 4: Integration Tests
+python test_tabular_preprocessing.py TestTabularPreprocessingWith4LevelTester.test_level4_integration_tests
 ```
 
-### Method 3: Run specific test classes
-```bash
-cd test/steps/builders/tabular_preprocessing
-python -m unittest test_tabular_preprocessing.TestTabularPreprocessingWithExistingValidators -v
-python -m unittest test_tabular_preprocessing.TestTabularPreprocessingMultipleJobTypes -v
-```
+### 3. Run Comprehensive Scoring
 
-### Method 4: Import and run programmatically
-```python
-from test_tabular_preprocessing import run_comprehensive_test
-result = run_comprehensive_test()
-```
-
-### Method 5: Run scoring tests (Recommended for Quality Assessment)
 ```bash
-cd test/steps/builders/tabular_preprocessing
 python run_scoring_test.py
 ```
 
-### Method 6: Run scoring tests programmatically
-```python
-from test_scoring import run_comprehensive_scoring_test
-score_report = run_comprehensive_scoring_test()
+This generates detailed scoring reports with:
+- Overall Processing step compliance score
+- Level-by-level scoring breakdown
+- Pattern-specific analysis
+- Recommendations for improvement
+
+### 4. Quick Validation
+
+```bash
+# Quick test validation
+python run_test.py --quick
+
+# Quick scoring validation
+python run_scoring_test.py --quick
 ```
 
-## Test Validation Levels
+### 5. Pattern Analysis
 
-The existing validation infrastructure provides comprehensive testing across multiple levels:
+```bash
+python run_scoring_test.py --patterns
+```
+
+This analyzes compliance with specific Processing patterns:
+- Processor Creation Patterns (SKLearn vs XGBoost)
+- Step Creation Patterns (Pattern A vs Pattern B)
+- Environment Variable Patterns (Basic, JSON-serialized, Step-specific)
+- Input/Output Handling Patterns
+- Special Input Patterns (Local path override, File upload)
+
+## 4-Level Processing Test Coverage
 
 ### Level 1: Interface Tests
-- ✅ Inheritance from `StepBuilderBase`
-- ✅ Required methods implementation (`validate_configuration`, `_get_inputs`, `_get_outputs`, `create_step`)
-- ✅ Method signatures and return types
-- ✅ Error handling and exception management
+- ✅ `test_processor_creation_method` - Validates `_create_processor()` implementation
+- ✅ `test_processing_configuration_attributes` - Checks required config attributes
+- ✅ `test_framework_specific_methods` - Tests SKLearn vs XGBoost specifics
+- ✅ `test_step_creation_pattern_compliance` - Validates Pattern A vs Pattern B
+- ✅ `test_processing_input_output_methods` - Tests `_get_inputs()` and `_get_outputs()`
+- ✅ `test_environment_variables_method` - Validates `_get_environment_variables()`
+- ✅ `test_job_arguments_method` - Tests `_get_job_arguments()`
 
 ### Level 2: Specification Tests
-- ✅ `PREPROCESSING_TRAINING_SPEC` usage validation
-- ✅ Contract alignment with `TABULAR_PREPROCESS_CONTRACT`
-- ✅ Dependency specification (`DATA` input)
-- ✅ Output specification (`processed_data` output)
+- ✅ `test_job_type_specification_loading` - Multi job-type support
+- ✅ `test_environment_variable_patterns` - All 3 env var patterns
+- ✅ `test_job_arguments_patterns` - All 3 job argument patterns
+- ✅ `test_specification_driven_inputs` - Spec-driven input handling
+- ✅ `test_specification_driven_outputs` - Spec-driven output handling
+- ✅ `test_contract_path_mapping` - Contract-based path mapping
+- ✅ `test_multi_job_type_support` - Job type variations
+- ✅ `test_framework_specific_specifications` - Framework-specific specs
 
 ### Level 3: Path Mapping Tests
-- ✅ Input path mapping: `DATA` → `/opt/ml/processing/input/data`
-- ✅ Output path mapping: `processed_data` → `/opt/ml/processing/output`
-- ✅ Property path validation for SageMaker integration
+- ✅ `test_processing_input_creation` - ProcessingInput object creation
+- ✅ `test_processing_output_creation` - ProcessingOutput object creation
+- ✅ `test_container_path_mapping` - Script contract path mapping
+- ✅ `test_special_input_handling` - Special input patterns
+- ✅ `test_s3_path_normalization` - S3 URI handling
+- ✅ `test_file_upload_patterns` - File upload pattern
+- ✅ `test_local_path_override_patterns` - Local path override pattern
+- ✅ `test_dependency_input_extraction` - Dependency resolution
 
 ### Level 4: Integration Tests
-- ✅ ProcessingStep creation with realistic inputs/outputs
-- ✅ Mock dependency resolution
-- ✅ SageMaker step validation
-- ✅ Step specification attachment
+- ✅ `test_step_creation_pattern_execution` - Pattern A vs B execution
+- ✅ `test_framework_specific_step_creation` - Framework-specific creation
+- ✅ `test_processing_dependency_resolution` - Dependency handling
+- ✅ `test_step_name_generation` - Standardized naming
+- ✅ `test_cache_configuration` - Caching patterns
+- ✅ `test_step_dependencies_handling` - Dependency management
+- ✅ `test_end_to_end_step_creation` - Complete step creation
+- ✅ `test_specification_attachment` - Spec attachment to steps
 
-### Processing Variant Tests
-- ✅ SKLearnProcessor creation and configuration
-- ✅ Framework version validation (`0.23-1`)
-- ✅ Instance type selection (large vs small)
-- ✅ Processing job arguments construction
-- ✅ Environment variable setup
+## Processing Pattern Compliance
 
-## Configuration Details
+The 4-level tester validates compliance with all Processing step patterns identified in the analysis:
 
-The test creates a comprehensive `TabularPreprocessingConfig` with:
+### ✅ Processor Creation Patterns
+- **SKLearn Pattern**: Uses `SKLearnProcessor` with standard configuration
+- **XGBoost Pattern**: Uses `XGBoostProcessor` with framework-specific config
 
-### Essential User Inputs (Tier 1)
-- `label_name`: "target"
+### ✅ Step Creation Patterns
+- **Pattern A**: Direct `ProcessingStep` instantiation (SKLearn)
+- **Pattern B**: `processor.run()` + `step_args` (XGBoost)
 
-### System Fields with Defaults (Tier 2)
-- `processing_entry_point`: "tabular_preprocess.py"
-- `job_type`: "training"
-- `train_ratio`: 0.7
-- `test_val_ratio`: 0.5
+### ✅ Environment Variable Patterns
+- **Basic Pattern**: Standard SageMaker variables (`SAGEMAKER_PROGRAM`, `SAGEMAKER_SUBMIT_DIRECTORY`)
+- **JSON-Serialized Pattern**: Complex configurations as JSON strings
+- **Step-Specific Pattern**: Custom variables (`LABEL_FIELD`, `CURRENCY_CONVERSION_DICT`)
 
-### Processing Configuration
-- `processing_instance_count`: 1
-- `processing_volume_size`: 30
-- `processing_instance_type_large`: "ml.m5.xlarge"
-- `processing_instance_type_small`: "ml.m5.large"
-- `processing_framework_version`: "0.23-1"
-- `use_large_processing_instance`: False
-- `py_version`: "py3"
+### ✅ Job Arguments Patterns
+- **Simple Pattern**: Basic job type arguments
+- **Complex Pattern**: Arguments with optional parameters
+- **No Arguments Pattern**: Steps without job arguments
 
-### Optional Column Configurations
-- `categorical_columns`: ["category_col1", "category_col2"]
-- `numerical_columns`: ["num_col1", "num_col2"]
-- `text_columns`: ["text_col1"]
-- `date_columns`: ["date_col1"]
+### ✅ Special Input Handling Patterns
+- **Local Path Override Pattern**: Override dependency inputs with local paths
+- **File Upload Pattern**: Automatic file upload and S3 handling
+- **S3 Path Handling**: S3 URI normalization and validation
 
-## Test Dependencies
+## Scoring System
 
-The tests require the following components to be implemented:
+The scoring system provides detailed analysis:
 
-### Required Classes
-- `TabularPreprocessingStepBuilder` (in `src/cursus/steps/builders/`)
-- `TabularPreprocessingConfig` (in `src/cursus/steps/configs/`)
-- `PREPROCESSING_TRAINING_SPEC` (in `src/cursus/steps/specs/`)
-- `TABULAR_PREPROCESS_CONTRACT` (in `src/cursus/steps/contracts/`)
+### Score Ranges
+- **90-100%**: 🟢 Excellent - Fully compliant with Processing patterns
+- **80-89%**: 🟡 Good - Minor pattern deviations
+- **70-79%**: 🟠 Satisfactory - Some pattern issues
+- **60-69%**: 🔴 Needs Work - Significant pattern problems
+- **<60%**: ⚫ Poor - Major pattern violations
 
-### Required Script
-- `tabular_preprocess.py` (in `src/cursus/steps/scripts/`)
+### Generated Reports
+- **Overall Score**: Weighted average across all levels
+- **Level Scores**: Individual scores for each of the 4 levels
+- **Pattern Analysis**: Compliance with specific Processing patterns
+- **Recommendations**: Targeted improvement suggestions
 
-### Validation Infrastructure
-- `UniversalStepBuilderTest` (in `src/cursus/validation/builders/`)
-- `ProcessingStepBuilderTest` (in `src/cursus/validation/builders/variants/`)
+## Dependencies
 
-## Expected Results
+The tests require the following components:
 
-The test suite validates:
+### Core Components
+- `TabularPreprocessingStepBuilder` - The step builder being tested
+- `TabularPreprocessingConfig` - Configuration class
+- `PREPROCESSING_TRAINING_SPEC` - Step specification
+- `TABULAR_PREPROCESS_CONTRACT` - Script contract
 
-- ✅ **Universal Test Compliance**: All core architectural requirements
-- ✅ **Processing Step Validation**: SKLearnProcessor creation and configuration
-- ✅ **Configuration Validation**: 3-tier design compliance
-- ✅ **Script Integration**: Proper script path resolution and contract alignment
-- ✅ **Environment Variables**: Required and optional env var setup
-- ✅ **Job Arguments**: Proper job_type argument passing
-- ✅ **Multiple Job Types**: Support for training, validation, testing, calibration
-- ✅ **Realistic Integration**: End-to-end pipeline simulation
+### Testing Framework
+- `ProcessingStepBuilderTest` - Enhanced 4-level Processing tester
+- `StepBuilderScorer` - Scoring and analysis system
+- `score_builder_results` - Report generation function
 
-## Success Criteria
-
-The test expects:
-- **Pass Rate**: ≥70% of all tests should pass
-- **Critical Tests**: All inheritance, methods, specification, and contract tests must pass
-- **Processing Tests**: All Processing-specific validations must pass
-- **Integration Tests**: Realistic pipeline scenarios must work correctly
-
-## Test Output Example
-
-```
-🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
-TABULAR PREPROCESSING STEP BUILDER VALIDATION
-Using Existing Cursus Validation Infrastructure
-🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
-
-================================================================================
-TESTING WITH UNIVERSAL STEP BUILDER TEST
-================================================================================
-
-Universal Test Results: 15/18 tests passed (83.3%)
-
-================================================================================
-TESTING WITH PROCESSING STEP BUILDER TEST
-================================================================================
-
-Processing Test Results: 12/15 tests passed (80.0%)
-
-🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯
-FINAL TEST SUMMARY
-🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯
-Tests run: 4
-Failures: 0
-Errors: 0
-Success rate: 100.0%
-
-✅ ALL TESTS PASSED!
-The TabularPreprocessingStepBuilder is ready for use.
-```
+### Scripts
+- `tabular_preprocess.py` - Processing script in `src/cursus/steps/scripts/`
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Import Errors**: Ensure the `src` directory is in the Python path
-2. **Missing Dependencies**: Install required packages (sagemaker, pydantic, etc.)
-3. **Mock Failures**: Check that SageMaker components are properly mocked
+#### Level 1 Failures
+- **Processor Creation**: Check `_create_processor()` method implementation
+- **Configuration**: Verify all required processing config attributes exist
+- **Framework Methods**: Ensure framework-specific methods are implemented
 
-### Debug Mode
+#### Level 2 Failures
+- **Specification Loading**: Check job type-based specification loading
+- **Environment Variables**: Verify all 3 environment variable patterns
+- **Contract Mapping**: Ensure contract-based path mapping works
 
-For detailed debugging, the tests include verbose output options and detailed error reporting.
+#### Level 3 Failures
+- **Input/Output Creation**: Check ProcessingInput/ProcessingOutput creation
+- **Special Patterns**: Verify special input handling patterns
+- **Path Mapping**: Ensure container path mapping is correct
 
-## Integration with Existing Infrastructure
+#### Level 4 Failures
+- **Step Creation**: Debug end-to-end step creation process
+- **Dependencies**: Check dependency resolution and handling
+- **Integration**: Verify complete system integration
 
-This test suite integrates seamlessly with the existing validation infrastructure:
+### Debug Commands
 
-- Uses the same Universal Test framework as other step builders
-- Follows the same patterns as `test_real_builders.py`
-- Compatible with the existing mock factory system
-- Supports the same validation patterns used throughout the codebase
+```bash
+# Verbose test output
+python test_tabular_preprocessing.py -v
 
-## Scoring System
+# Quick validation check
+python run_test.py --quick
 
-The test suite includes a comprehensive scoring system that evaluates the TabularPreprocessingStepBuilder across multiple quality dimensions:
+# Pattern-specific analysis
+python run_scoring_test.py --patterns
 
-### Scoring Levels
-
-The scoring system uses a weighted approach across four test levels:
-
-- **Level 1 - Interface Tests** (Weight: 1.0): Basic interface compliance
-- **Level 2 - Specification Tests** (Weight: 1.5): Specification and contract compliance  
-- **Level 3 - Path Mapping Tests** (Weight: 2.0): Path mapping and property paths
-- **Level 4 - Integration Tests** (Weight: 2.5): System integration
-
-### Quality Ratings
-
-- **90-100**: Excellent - Production ready
-- **80-89**: Good - Minor improvements needed
-- **70-79**: Satisfactory - Some attention required
-- **60-69**: Needs Work - Significant improvements needed
-- **0-59**: Poor - Major refactoring required
-
-### Scoring Features
-
-- **Comprehensive Reports**: JSON reports with detailed breakdowns
-- **Visual Charts**: Matplotlib-based score visualizations (if available)
-- **Configuration Comparison**: Test different configurations side-by-side
-- **Detailed Analysis**: Level-by-level performance analysis
-- **Actionable Recommendations**: Specific guidance based on scores
-
-### Scoring Output Example
-
-```
-🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
-TABULAR PREPROCESSING STEP BUILDER SCORING TEST
-🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
-
-STEP BUILDER QUALITY SCORE REPORT
-
-Overall Score: 85.2/100 - Good
-Pass Rate: 82.4% (14/17 tests)
-
-Scores by Level:
-  Level 1 Interface: 95.0/100 (4/4 tests)
-  Level 2 Specification: 87.5/100 (3/4 tests)
-  Level 3 Path Mapping: 80.0/100 (4/5 tests)
-  Level 4 Integration: 75.0/100 (3/4 tests)
-
-Failed Tests:
-  ❌ test_contract_alignment: Contract property mismatch
-  ❌ test_property_path_validity: Invalid property path format
-  ❌ test_dependency_resolution: Missing dependency mapping
-
+# Help and usage examples
+python run_test.py --help
+python run_scoring_test.py --help
 ```
 
-### Scoring Files
+## Migration from Legacy Tests
 
-- **File**: `test_scoring.py` - Main scoring implementation
-- **File**: `run_scoring_test.py` - Simple scoring test runner
-- **Directory**: `scoring_reports/` - Generated reports and charts
+The tests have been fully refactored to use the 4-level Processing tester while maintaining backward compatibility:
 
-## Advantages of Using Existing Validators
+### What Changed
+- ✅ **Enhanced Coverage**: Now tests all Processing patterns identified in the analysis
+- ✅ **4-Level Structure**: Organized into Interface, Specification, Path Mapping, and Integration levels
+- ✅ **Pattern Validation**: Specific validation for Processing step patterns
+- ✅ **Comprehensive Scoring**: Detailed scoring with pattern-specific analysis
+- ✅ **Better Reporting**: Level-by-level results and recommendations
 
-- **Consistency**: Same validation patterns across all step builders
-- **Maintenance**: Centralized validation logic reduces duplication
-- **Reliability**: Well-tested validation infrastructure
-- **Extensibility**: Easy to add new validation patterns
-- **Standards Compliance**: Ensures adherence to architectural standards
+### What Stayed the Same
+- ✅ **Test Interface**: Same test runner commands and basic usage
+- ✅ **Configuration**: Same test configuration approach
+- ✅ **Compatibility**: Legacy test methods still work via compatibility layer
 
-## Related Documentation
+## Benefits of 4-Level Testing
 
-- [Universal Step Builder Test Design](../../../slipbox/1_design/universal_step_builder_test.md)
-- [Processing Step Builder Patterns](../../../slipbox/1_design/processing_step_builder_patterns.md)
-- [Validation Infrastructure](../../../src/cursus/validation/builders/README_ENHANCED_SYSTEM.md)
-- [Tabular Preprocessing Step Builder](../../../src/cursus/steps/builders/builder_tabular_preprocessing_step.py)
-- [Tabular Preprocessing Config](../../../src/cursus/steps/configs/config_tabular_preprocessing_step.py)
-- [Preprocessing Training Spec](../../../src/cursus/steps/specs/preprocessing_training_spec.py)
-- [Tabular Preprocess Contract](../../../src/cursus/steps/contracts/tabular_preprocess_contract.py)
+1. **Comprehensive Coverage**: Tests all identified Processing step patterns
+2. **Structured Validation**: Clear separation of concerns across 4 levels
+3. **Pattern Compliance**: Specific validation against Processing patterns
+4. **Detailed Analysis**: Level-by-level scoring and recommendations
+5. **Maintainability**: Easier to understand and maintain test structure
+6. **Extensibility**: Easy to add new Processing pattern tests
+
+This enhanced testing approach ensures that the `TabularPreprocessingStepBuilder` fully complies with all Processing step patterns and provides a robust foundation for Processing step validation.

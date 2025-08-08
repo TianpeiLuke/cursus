@@ -1,8 +1,9 @@
 """
-Tabular Preprocessing Step Builder Test using Existing Validation Infrastructure.
+Tabular Preprocessing Step Builder Test using Enhanced 4-Level Processing Tester.
 
-This test leverages the existing UniversalStepBuilderTest and ProcessingStepBuilderTest
-classes from src/cursus/validation/builders to provide comprehensive validation.
+This test leverages the enhanced 4-level Processing tester from 
+src/cursus/validation/builders/variants/processing_test.py to provide 
+comprehensive validation based on Processing Step Builder Patterns analysis.
 """
 
 import sys
@@ -15,8 +16,7 @@ src_path = Path(__file__).parent.parent.parent.parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
 try:
-    # Import the existing validation infrastructure
-    from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+    # Import the enhanced 4-level Processing tester
     from cursus.validation.builders.variants.processing_test import ProcessingStepBuilderTest
     
     # Import the components we need to test
@@ -31,12 +31,13 @@ except ImportError as e:
     IMPORTS_AVAILABLE = False
 
 
-class TestTabularPreprocessingWithExistingValidators(unittest.TestCase):
+class TestTabularPreprocessingWith4LevelTester(unittest.TestCase):
     """
-    Test TabularPreprocessingStepBuilder using the existing validation infrastructure.
+    Test TabularPreprocessingStepBuilder using the enhanced 4-level Processing tester.
     
-    This test class demonstrates how to use the existing UniversalStepBuilderTest
-    and ProcessingStepBuilderTest classes to validate the TabularPreprocessingStepBuilder.
+    This test class demonstrates how to use the enhanced ProcessingStepBuilderTest
+    with its 4-level hierarchy to validate the TabularPreprocessingStepBuilder
+    against all identified Processing step patterns.
     """
     
     def setUp(self):
@@ -86,54 +87,13 @@ class TestTabularPreprocessingWithExistingValidators(unittest.TestCase):
             depends_on=[]
         )
     
-    def test_universal_step_builder_validation(self):
-        """Test using UniversalStepBuilderTest."""
+    def test_4_level_processing_validation(self):
+        """Test using the enhanced 4-level ProcessingStepBuilderTest."""
         print("\n" + "="*80)
-        print("TESTING WITH UNIVERSAL STEP BUILDER TEST")
+        print("TESTING WITH ENHANCED 4-LEVEL PROCESSING TESTER")
         print("="*80)
         
-        # Create universal tester
-        tester = UniversalStepBuilderTest(
-            builder_class=TabularPreprocessingStepBuilder,
-            config=self.config,
-            spec=PREPROCESSING_TRAINING_SPEC,
-            contract=TABULAR_PREPROCESS_CONTRACT,
-            step_name="TabularPreprocessingStep",
-            verbose=True
-        )
-        
-        # Run all tests
-        results = tester.run_all_tests()
-        
-        # Validate key results
-        self.assertTrue(results.get("test_inheritance", {}).get("passed", False), 
-                       "Inheritance test should pass")
-        self.assertTrue(results.get("test_required_methods", {}).get("passed", False), 
-                       "Required methods test should pass")
-        
-        # Print summary
-        total_tests = len(results)
-        passed_tests = sum(1 for result in results.values() if result.get("passed", False))
-        pass_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
-        
-        print(f"\nUniversal Test Results: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
-        
-        # Report failed tests
-        failed_tests = {k: v for k, v in results.items() if not v.get("passed", False)}
-        if failed_tests:
-            print("\nFailed Tests:")
-            for test_name, result in failed_tests.items():
-                print(f"❌ {test_name}: {result.get('error', 'Unknown error')}")
-        
-        return results
-    
-    def test_processing_step_builder_validation(self):
-        """Test using ProcessingStepBuilderTest."""
-        print("\n" + "="*80)
-        print("TESTING WITH PROCESSING STEP BUILDER TEST")
-        print("="*80)
-        
-        # Create processing-specific tester
+        # Create enhanced 4-level processing tester
         tester = ProcessingStepBuilderTest(
             builder_class=TabularPreprocessingStepBuilder,
             config=self.config,
@@ -146,67 +106,281 @@ class TestTabularPreprocessingWithExistingValidators(unittest.TestCase):
         # Run all tests
         results = tester.run_all_tests()
         
-        # Validate processing-specific results
-        processing_tests = [
-            "test_processor_creation",
-            "test_processing_inputs_outputs",
-            "test_processing_job_arguments",
-            "test_environment_variables_processing",
-            "test_property_files_configuration",
-            "test_processing_code_handling"
-        ]
+        # Print level-by-level results
+        self._print_level_results(results)
         
-        for test_name in processing_tests:
-            if test_name in results:
-                test_result = results[test_name]
-                print(f"Processing Test {test_name}: {'✅ PASSED' if test_result.get('passed', False) else '❌ FAILED'}")
-                if not test_result.get('passed', False):
-                    print(f"  Error: {test_result.get('error', 'Unknown error')}")
+        # Validate critical tests pass
+        self._validate_critical_tests(results)
         
         # Print summary
         total_tests = len(results)
         passed_tests = sum(1 for result in results.values() if result.get("passed", False))
         pass_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
         
-        print(f"\nProcessing Test Results: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
+        print(f"\n4-Level Processing Test Results: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
+        
+        # Ensure minimum pass rate for Processing steps
+        self.assertGreaterEqual(pass_rate, 80.0, 
+                               f"Processing step pass rate {pass_rate:.1f}% is below minimum threshold of 80%")
         
         return results
     
-    def test_combined_validation(self):
-        """Test combining both universal and processing-specific validation."""
-        print("\n" + "="*80)
-        print("COMBINED VALIDATION TEST")
-        print("="*80)
+    def test_level1_interface_tests(self):
+        """Test Level 1: Interface Tests specifically."""
+        print("\n" + "="*60)
+        print("LEVEL 1: INTERFACE TESTS")
+        print("="*60)
         
-        # Run universal tests
-        universal_results = self.test_universal_step_builder_validation()
+        tester = ProcessingStepBuilderTest(
+            builder_class=TabularPreprocessingStepBuilder,
+            config=self.config,
+            spec=PREPROCESSING_TRAINING_SPEC,
+            contract=TABULAR_PREPROCESS_CONTRACT,
+            step_name="TabularPreprocessingStep",
+            verbose=True
+        )
         
-        # Run processing-specific tests
-        processing_results = self.test_processing_step_builder_validation()
+        # Run Level 1 tests
+        level1_tests = [
+            "level1_test_processor_creation_method",
+            "level1_test_processing_configuration_attributes",
+            "level1_test_framework_specific_methods",
+            "level1_test_step_creation_pattern_compliance",
+            "level1_test_processing_input_output_methods",
+            "level1_test_environment_variables_method",
+            "level1_test_job_arguments_method"
+        ]
         
-        # Combine results
-        all_results = {}
-        all_results.update(universal_results)
-        all_results.update(processing_results)
+        results = {}
+        for test_name in level1_tests:
+            if hasattr(tester, test_name):
+                try:
+                    getattr(tester, test_name)()
+                    results[test_name] = {"passed": True}
+                    print(f"✅ {test_name}")
+                except Exception as e:
+                    results[test_name] = {"passed": False, "error": str(e)}
+                    print(f"❌ {test_name}: {str(e)}")
         
-        # Calculate overall statistics
-        total_tests = len(all_results)
-        passed_tests = sum(1 for result in all_results.values() if result.get("passed", False))
-        pass_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
+        # Validate Level 1 critical tests
+        critical_level1_tests = [
+            "level1_test_processor_creation_method",
+            "level1_test_processing_configuration_attributes"
+        ]
         
-        print(f"\n" + "="*80)
-        print(f"OVERALL RESULTS: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
-        print("="*80)
+        for test_name in critical_level1_tests:
+            if test_name in results:
+                self.assertTrue(results[test_name]["passed"], 
+                               f"Critical Level 1 test failed: {test_name}")
         
-        # Ensure minimum pass rate
-        self.assertGreaterEqual(pass_rate, 70.0, 
-                               f"Pass rate {pass_rate:.1f}% is below minimum threshold of 70%")
+        return results
+    
+    def test_level2_specification_tests(self):
+        """Test Level 2: Specification Tests specifically."""
+        print("\n" + "="*60)
+        print("LEVEL 2: SPECIFICATION TESTS")
+        print("="*60)
         
-        return all_results
+        tester = ProcessingStepBuilderTest(
+            builder_class=TabularPreprocessingStepBuilder,
+            config=self.config,
+            spec=PREPROCESSING_TRAINING_SPEC,
+            contract=TABULAR_PREPROCESS_CONTRACT,
+            step_name="TabularPreprocessingStep",
+            verbose=True
+        )
+        
+        # Run Level 2 tests
+        level2_tests = [
+            "level2_test_job_type_specification_loading",
+            "level2_test_environment_variable_patterns",
+            "level2_test_job_arguments_patterns",
+            "level2_test_specification_driven_inputs",
+            "level2_test_specification_driven_outputs",
+            "level2_test_contract_path_mapping",
+            "level2_test_multi_job_type_support",
+            "level2_test_framework_specific_specifications"
+        ]
+        
+        results = {}
+        for test_name in level2_tests:
+            if hasattr(tester, test_name):
+                try:
+                    getattr(tester, test_name)()
+                    results[test_name] = {"passed": True}
+                    print(f"✅ {test_name}")
+                except Exception as e:
+                    results[test_name] = {"passed": False, "error": str(e)}
+                    print(f"❌ {test_name}: {str(e)}")
+        
+        return results
+    
+    def test_level3_path_mapping_tests(self):
+        """Test Level 3: Path Mapping Tests specifically."""
+        print("\n" + "="*60)
+        print("LEVEL 3: PATH MAPPING TESTS")
+        print("="*60)
+        
+        tester = ProcessingStepBuilderTest(
+            builder_class=TabularPreprocessingStepBuilder,
+            config=self.config,
+            spec=PREPROCESSING_TRAINING_SPEC,
+            contract=TABULAR_PREPROCESS_CONTRACT,
+            step_name="TabularPreprocessingStep",
+            verbose=True
+        )
+        
+        # Run Level 3 tests
+        level3_tests = [
+            "level3_test_processing_input_creation",
+            "level3_test_processing_output_creation",
+            "level3_test_container_path_mapping",
+            "level3_test_special_input_handling",
+            "level3_test_s3_path_normalization",
+            "level3_test_file_upload_patterns",
+            "level3_test_local_path_override_patterns",
+            "level3_test_dependency_input_extraction"
+        ]
+        
+        results = {}
+        for test_name in level3_tests:
+            if hasattr(tester, test_name):
+                try:
+                    getattr(tester, test_name)()
+                    results[test_name] = {"passed": True}
+                    print(f"✅ {test_name}")
+                except Exception as e:
+                    results[test_name] = {"passed": False, "error": str(e)}
+                    print(f"❌ {test_name}: {str(e)}")
+        
+        return results
+    
+    def test_level4_integration_tests(self):
+        """Test Level 4: Integration Tests specifically."""
+        print("\n" + "="*60)
+        print("LEVEL 4: INTEGRATION TESTS")
+        print("="*60)
+        
+        tester = ProcessingStepBuilderTest(
+            builder_class=TabularPreprocessingStepBuilder,
+            config=self.config,
+            spec=PREPROCESSING_TRAINING_SPEC,
+            contract=TABULAR_PREPROCESS_CONTRACT,
+            step_name="TabularPreprocessingStep",
+            verbose=True
+        )
+        
+        # Run Level 4 tests
+        level4_tests = [
+            "level4_test_step_creation_pattern_execution",
+            "level4_test_framework_specific_step_creation",
+            "level4_test_processing_dependency_resolution",
+            "level4_test_step_name_generation",
+            "level4_test_cache_configuration",
+            "level4_test_step_dependencies_handling",
+            "level4_test_end_to_end_step_creation",
+            "level4_test_specification_attachment"
+        ]
+        
+        results = {}
+        for test_name in level4_tests:
+            if hasattr(tester, test_name):
+                try:
+                    getattr(tester, test_name)()
+                    results[test_name] = {"passed": True}
+                    print(f"✅ {test_name}")
+                except Exception as e:
+                    results[test_name] = {"passed": False, "error": str(e)}
+                    print(f"❌ {test_name}: {str(e)}")
+        
+        return results
+    
+    def test_legacy_compatibility(self):
+        """Test that legacy test methods still work for backward compatibility."""
+        print("\n" + "="*60)
+        print("LEGACY COMPATIBILITY TESTS")
+        print("="*60)
+        
+        tester = ProcessingStepBuilderTest(
+            builder_class=TabularPreprocessingStepBuilder,
+            config=self.config,
+            spec=PREPROCESSING_TRAINING_SPEC,
+            contract=TABULAR_PREPROCESS_CONTRACT,
+            step_name="TabularPreprocessingStep",
+            verbose=True
+        )
+        
+        # Test legacy methods
+        legacy_tests = [
+            "test_processor_creation",
+            "test_processing_inputs_outputs",
+            "test_processing_job_arguments",
+            "test_environment_variables_processing",
+            "test_property_files_configuration",
+            "test_processing_code_handling",
+            "test_processing_step_dependencies"
+        ]
+        
+        results = {}
+        for test_name in legacy_tests:
+            if hasattr(tester, test_name):
+                try:
+                    getattr(tester, test_name)()
+                    results[test_name] = {"passed": True}
+                    print(f"✅ {test_name} (legacy)")
+                except Exception as e:
+                    results[test_name] = {"passed": False, "error": str(e)}
+                    print(f"❌ {test_name} (legacy): {str(e)}")
+        
+        return results
+    
+    def _print_level_results(self, results):
+        """Print results organized by level."""
+        print("\n📊 RESULTS BY LEVEL:")
+        print("-" * 60)
+        
+        levels = {
+            "Level 1 (Interface)": [k for k in results.keys() if k.startswith("level1_")],
+            "Level 2 (Specification)": [k for k in results.keys() if k.startswith("level2_")],
+            "Level 3 (Path Mapping)": [k for k in results.keys() if k.startswith("level3_")],
+            "Level 4 (Integration)": [k for k in results.keys() if k.startswith("level4_")],
+            "Legacy/Other": [k for k in results.keys() if not any(k.startswith(f"level{i}_") for i in range(1, 5))]
+        }
+        
+        for level_name, test_names in levels.items():
+            if test_names:
+                passed = sum(1 for name in test_names if results.get(name, {}).get("passed", False))
+                total = len(test_names)
+                pass_rate = (passed / total) * 100 if total > 0 else 0
+                
+                print(f"\n📁 {level_name}: {passed}/{total} passed ({pass_rate:.1f}%)")
+                
+                for test_name in test_names:
+                    result = results.get(test_name, {})
+                    status = "✅" if result.get("passed", False) else "❌"
+                    display_name = test_name.replace("level1_", "").replace("level2_", "").replace("level3_", "").replace("level4_", "")
+                    print(f"  {status} {display_name}")
+                    
+                    if not result.get("passed", False) and "error" in result:
+                        print(f"    💬 {result['error']}")
+    
+    def _validate_critical_tests(self, results):
+        """Validate that critical tests pass."""
+        critical_tests = [
+            "level1_test_processor_creation_method",
+            "level2_test_environment_variable_patterns",
+            "level3_test_processing_input_creation",
+            "level4_test_end_to_end_step_creation"
+        ]
+        
+        for test_name in critical_tests:
+            if test_name in results:
+                self.assertTrue(results[test_name].get("passed", False), 
+                               f"Critical test failed: {test_name}")
 
 
 class TestTabularPreprocessingMultipleJobTypes(unittest.TestCase):
-    """Test TabularPreprocessingStepBuilder with multiple job types."""
+    """Test TabularPreprocessingStepBuilder with multiple job types using 4-level tester."""
     
     def setUp(self):
         """Set up test configurations for different job types."""
@@ -244,10 +418,10 @@ class TestTabularPreprocessingMultipleJobTypes(unittest.TestCase):
         # Job types to test
         self.job_types = ["training", "validation", "testing", "calibration"]
     
-    def test_all_job_types(self):
-        """Test TabularPreprocessingStepBuilder with all job types."""
+    def test_all_job_types_with_4_level_tester(self):
+        """Test TabularPreprocessingStepBuilder with all job types using 4-level tester."""
         print("\n" + "="*80)
-        print("TESTING MULTIPLE JOB TYPES")
+        print("TESTING MULTIPLE JOB TYPES WITH 4-LEVEL TESTER")
         print("="*80)
         
         all_results = {}
@@ -261,8 +435,8 @@ class TestTabularPreprocessingMultipleJobTypes(unittest.TestCase):
             config_dict["job_type"] = job_type
             config = TabularPreprocessingConfig(**config_dict)
             
-            # Create tester
-            tester = UniversalStepBuilderTest(
+            # Create 4-level tester
+            tester = ProcessingStepBuilderTest(
                 builder_class=TabularPreprocessingStepBuilder,
                 config=config,
                 spec=PREPROCESSING_TRAINING_SPEC,
@@ -285,7 +459,7 @@ class TestTabularPreprocessingMultipleJobTypes(unittest.TestCase):
             print(f"Job type {job_type}: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
             
             # Check critical tests
-            critical_tests = ["test_inheritance", "test_required_methods"]
+            critical_tests = ["level1_test_processor_creation_method", "level2_test_job_type_specification_loading"]
             for test_name in critical_tests:
                 if test_name in results:
                     test_result = results[test_name]
@@ -306,21 +480,24 @@ class TestTabularPreprocessingMultipleJobTypes(unittest.TestCase):
         return all_results
 
 
-def run_comprehensive_test():
-    """Run comprehensive test suite using existing validators."""
+def run_comprehensive_4_level_test():
+    """Run comprehensive test suite using the enhanced 4-level Processing tester."""
     print("🧪" * 40)
     print("COMPREHENSIVE TABULAR PREPROCESSING TESTS")
-    print("Using Existing Validation Infrastructure")
+    print("Using Enhanced 4-Level Processing Tester")
     print("🧪" * 40)
     
     # Create test suite
     suite = unittest.TestSuite()
     
     # Add test cases
-    suite.addTest(TestTabularPreprocessingWithExistingValidators('test_universal_step_builder_validation'))
-    suite.addTest(TestTabularPreprocessingWithExistingValidators('test_processing_step_builder_validation'))
-    suite.addTest(TestTabularPreprocessingWithExistingValidators('test_combined_validation'))
-    suite.addTest(TestTabularPreprocessingMultipleJobTypes('test_all_job_types'))
+    suite.addTest(TestTabularPreprocessingWith4LevelTester('test_4_level_processing_validation'))
+    suite.addTest(TestTabularPreprocessingWith4LevelTester('test_level1_interface_tests'))
+    suite.addTest(TestTabularPreprocessingWith4LevelTester('test_level2_specification_tests'))
+    suite.addTest(TestTabularPreprocessingWith4LevelTester('test_level3_path_mapping_tests'))
+    suite.addTest(TestTabularPreprocessingWith4LevelTester('test_level4_integration_tests'))
+    suite.addTest(TestTabularPreprocessingWith4LevelTester('test_legacy_compatibility'))
+    suite.addTest(TestTabularPreprocessingMultipleJobTypes('test_all_job_types_with_4_level_tester'))
     
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
@@ -340,7 +517,7 @@ def run_comprehensive_test():
 
 if __name__ == '__main__':
     if IMPORTS_AVAILABLE:
-        run_comprehensive_test()
+        run_comprehensive_4_level_test()
     else:
         print("❌ Cannot run tests - required imports not available")
         print("Please ensure the following components are implemented:")
