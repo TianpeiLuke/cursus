@@ -120,29 +120,97 @@ The scoring algorithm calculates:
 
 ## Implementation
 
-The scoring system is implemented in the `test/pipeline_steps/universal_step_builder_test/scoring.py` module, with these key components:
+The scoring system is implemented in the `src/cursus/validation/builders/scoring.py` module, with these key components:
 
-### 1. Test-to-Level Mapping
+### 1. Enhanced Pattern-Based Level Detection
+
+The scoring system now uses **smart pattern-based detection** to automatically determine test levels without requiring manual mapping updates. This eliminates the maintenance burden of updating `TEST_LEVEL_MAP` for every new step type variant.
 
 ```python
-# Define test to level mapping
+def _detect_level_from_test_name(self, test_name: str) -> Optional[str]:
+    """
+    Detect test level from method name using smart pattern detection.
+    
+    This method uses multiple strategies to determine the test level:
+    1. Explicit level prefix (level1_, level2_, etc.) - preferred for new variants
+    2. Keyword-based detection for legacy and descriptive test names
+    3. Fallback to explicit TEST_LEVEL_MAP for edge cases
+    """
+    # Strategy 1: Explicit level prefix (preferred for new variants)
+    if test_name.startswith("level1_"):
+        return "level1_interface"
+    elif test_name.startswith("level2_"):
+        return "level2_specification"
+    elif test_name.startswith("level3_"):
+        return "level3_path_mapping"
+    elif test_name.startswith("level4_"):
+        return "level4_integration"
+    
+    # Strategy 2: Keyword-based detection for legacy and descriptive tests
+    test_lower = test_name.lower()
+    
+    # Level 1 keywords: interface, methods, creation, inheritance, basic functionality
+    level1_keywords = [
+        "inheritance", "required_methods", "processor_creation", "interface",
+        "error_handling", "generic_step_creation", "generic_configuration",
+        "framework_specific_methods", "step_creation_pattern_compliance",
+        "processing_input_output_methods", "environment_variables_method",
+        "job_arguments_method", "processing_configuration_attributes"
+    ]
+    if any(keyword in test_lower for keyword in level1_keywords):
+        return "level1_interface"
+    
+    # Similar keyword detection for levels 2, 3, and 4...
+    
+    # Strategy 3: Fallback to explicit TEST_LEVEL_MAP for edge cases
+    return TEST_LEVEL_MAP.get(test_name)
+```
+
+### Benefits of Pattern-Based Detection
+
+1. **Zero Maintenance** - No need to update `TEST_LEVEL_MAP` for new step type variants
+2. **Convention-Based** - Uses the `level1_`, `level2_`, etc. naming convention
+3. **Backward Compatible** - Still supports legacy test names via keyword detection and fallback mapping
+4. **Scalable** - Works for any future step type variants (Training, Transform, etc.)
+5. **Self-Documenting** - Test names clearly indicate their level
+
+### 2. Legacy Test-to-Level Mapping (Fallback Only)
+
+The `TEST_LEVEL_MAP` is now used only as a fallback for edge cases:
+
+```python
+# Define test to level mapping (fallback only - most tests use pattern detection)
 TEST_LEVEL_MAP = {
+    # Level 1: Interface tests
     "test_inheritance": "level1_interface",
     "test_required_methods": "level1_interface",
     "test_error_handling": "level1_interface",
+    "test_generic_step_creation": "level1_interface",
+    "test_processor_creation": "level1_interface",
+    "test_generic_configuration_validation": "level1_interface",
     
+    # Level 2: Specification and contract tests
     "test_specification_usage": "level2_specification",
     "test_contract_alignment": "level2_specification",
     "test_environment_variable_handling": "level2_specification",
     "test_job_arguments": "level2_specification",
+    "test_environment_variables_processing": "level2_specification",
+    "test_processing_job_arguments": "level2_specification",
+    "test_property_files_configuration": "level2_specification",
     
+    # Level 3: Path mapping tests
     "test_input_path_mapping": "level3_path_mapping",
     "test_output_path_mapping": "level3_path_mapping",
     "test_property_path_validity": "level3_path_mapping",
+    "test_processing_inputs_outputs": "level3_path_mapping",
+    "test_processing_code_handling": "level3_path_mapping",
     
+    # Level 4: Integration tests
     "test_dependency_resolution": "level4_integration",
     "test_step_creation": "level4_integration",
     "test_step_name": "level4_integration",
+    "test_generic_dependency_handling": "level4_integration",
+    "test_processing_step_dependencies": "level4_integration",
 }
 ```
 

@@ -95,7 +95,7 @@ class StepBuilderScorer:
         
     def _group_by_level(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """
-        Group test results by level.
+        Group test results by level using smart pattern detection.
         
         Returns:
             Dictionary mapping levels to their test results
@@ -103,11 +103,86 @@ class StepBuilderScorer:
         grouped = {level: {} for level in LEVEL_WEIGHTS.keys()}
         
         for test_name, result in self.results.items():
-            if test_name in TEST_LEVEL_MAP:
-                level = TEST_LEVEL_MAP[test_name]
+            level = self._detect_level_from_test_name(test_name)
+            if level:
                 grouped[level][test_name] = result
         
         return grouped
+    
+    def _detect_level_from_test_name(self, test_name: str) -> Optional[str]:
+        """
+        Detect test level from method name using smart pattern detection.
+        
+        This method uses multiple strategies to determine the test level:
+        1. Explicit level prefix (level1_, level2_, etc.) - preferred for new variants
+        2. Keyword-based detection for legacy and descriptive test names
+        3. Fallback to explicit TEST_LEVEL_MAP for edge cases
+        
+        Args:
+            test_name: Name of the test method
+            
+        Returns:
+            Level name or None if level cannot be determined
+        """
+        # Strategy 1: Explicit level prefix (preferred for new variants)
+        if test_name.startswith("level1_"):
+            return "level1_interface"
+        elif test_name.startswith("level2_"):
+            return "level2_specification"
+        elif test_name.startswith("level3_"):
+            return "level3_path_mapping"
+        elif test_name.startswith("level4_"):
+            return "level4_integration"
+        
+        # Strategy 2: Keyword-based detection for legacy and descriptive tests
+        test_lower = test_name.lower()
+        
+        # Level 1 keywords: interface, methods, creation, inheritance, basic functionality
+        level1_keywords = [
+            "inheritance", "required_methods", "processor_creation", "interface",
+            "error_handling", "generic_step_creation", "generic_configuration",
+            "framework_specific_methods", "step_creation_pattern_compliance",
+            "processing_input_output_methods", "environment_variables_method",
+            "job_arguments_method", "processing_configuration_attributes"
+        ]
+        if any(keyword in test_lower for keyword in level1_keywords):
+            return "level1_interface"
+        
+        # Level 2 keywords: specification, contract, environment, arguments, job types
+        level2_keywords = [
+            "specification", "contract", "environment", "arguments", "job_type",
+            "environment_variable_handling", "processing_job_arguments",
+            "property_files_configuration", "job_type_specification_loading",
+            "environment_variable_patterns", "job_arguments_patterns",
+            "specification_driven", "contract_path_mapping", "multi_job_type",
+            "framework_specific_specifications"
+        ]
+        if any(keyword in test_lower for keyword in level2_keywords):
+            return "level2_specification"
+        
+        # Level 3 keywords: path, mapping, input, output, container paths
+        level3_keywords = [
+            "path_mapping", "input", "output", "property_path", "processing_inputs_outputs",
+            "processing_code_handling", "processing_input_creation", "processing_output_creation",
+            "container_path_mapping", "special_input_handling", "s3_path_normalization",
+            "file_upload_patterns", "local_path_override_patterns", "dependency_input_extraction"
+        ]
+        if any(keyword in test_lower for keyword in level3_keywords):
+            return "level3_path_mapping"
+        
+        # Level 4 keywords: integration, dependency, step_creation, end-to-end
+        level4_keywords = [
+            "dependency", "step_creation", "integration", "end_to_end", "step_name",
+            "generic_dependency_handling", "processing_step_dependencies",
+            "step_creation_pattern_execution", "framework_specific_step_creation",
+            "processing_dependency_resolution", "step_name_generation",
+            "cache_configuration", "step_dependencies_handling", "specification_attachment"
+        ]
+        if any(keyword in test_lower for keyword in level4_keywords):
+            return "level4_integration"
+        
+        # Strategy 3: Fallback to explicit TEST_LEVEL_MAP for edge cases
+        return TEST_LEVEL_MAP.get(test_name)
     
     def calculate_level_score(self, level: str) -> Tuple[float, int, int]:
         """
@@ -257,8 +332,13 @@ class StepBuilderScorer:
             
         return filename
     
-    def print_report(self) -> None:
-        """Print a formatted score report to the console."""
+    def print_report(self, show_test_detection: bool = False) -> None:
+        """
+        Print a formatted score report to the console.
+        
+        Args:
+            show_test_detection: Whether to show test level detection details
+        """
         report = self.generate_report()
         
         print("\n" + "=" * 80)
@@ -277,6 +357,10 @@ class StepBuilderScorer:
             display_level = level.replace("level", "Level ").replace("_", " ").title()
             print(f"  {display_level}: {data['score']:.1f}/100 ({data['passed']}/{data['total']} tests)")
         
+        # Show test detection details if requested
+        if show_test_detection:
+            self._print_test_detection_details()
+        
         # Failed tests
         if report["failed_tests"]:
             print("\nFailed Tests:")
@@ -284,6 +368,120 @@ class StepBuilderScorer:
                 print(f"  ❌ {test['name']}: {test['error']}")
         
         print("\n" + "=" * 80)
+    
+    def _print_test_detection_details(self) -> None:
+        """Print details about how tests were detected and categorized."""
+        print("\nTest Level Detection Details:")
+        print("-" * 50)
+        
+        detection_stats = {
+            "explicit_prefix": 0,
+            "keyword_based": 0,
+            "fallback_map": 0,
+            "undetected": 0
+        }
+        
+        for test_name in self.results.keys():
+            detection_method = self._get_detection_method(test_name)
+            detection_stats[detection_method] += 1
+            
+        print(f"  Explicit prefix (level1_, level2_, etc.): {detection_stats['explicit_prefix']} tests")
+        print(f"  Keyword-based detection: {detection_stats['keyword_based']} tests")
+        print(f"  Fallback to TEST_LEVEL_MAP: {detection_stats['fallback_map']} tests")
+        print(f"  Undetected (no level assigned): {detection_stats['undetected']} tests")
+        
+        # Show undetected tests if any
+        if detection_stats['undetected'] > 0:
+            undetected_tests = [
+                test_name for test_name in self.results.keys()
+                if self._detect_level_from_test_name(test_name) is None
+            ]
+            print(f"\n  Undetected tests: {', '.join(undetected_tests)}")
+    
+    def _get_detection_method(self, test_name: str) -> str:
+        """
+        Determine how a test name was detected for level assignment.
+        
+        Args:
+            test_name: Name of the test method
+            
+        Returns:
+            Detection method: 'explicit_prefix', 'keyword_based', 'fallback_map', or 'undetected'
+        """
+        # Check explicit prefix first
+        if test_name.startswith(("level1_", "level2_", "level3_", "level4_")):
+            return "explicit_prefix"
+        
+        # Check if it would be detected by keywords
+        test_lower = test_name.lower()
+        
+        all_keywords = [
+            # Level 1 keywords
+            "inheritance", "required_methods", "processor_creation", "interface",
+            "error_handling", "generic_step_creation", "generic_configuration",
+            "framework_specific_methods", "step_creation_pattern_compliance",
+            "processing_input_output_methods", "environment_variables_method",
+            "job_arguments_method", "processing_configuration_attributes",
+            
+            # Level 2 keywords
+            "specification", "contract", "environment", "arguments", "job_type",
+            "environment_variable_handling", "processing_job_arguments",
+            "property_files_configuration", "job_type_specification_loading",
+            "environment_variable_patterns", "job_arguments_patterns",
+            "specification_driven", "contract_path_mapping", "multi_job_type",
+            "framework_specific_specifications",
+            
+            # Level 3 keywords
+            "path_mapping", "input", "output", "property_path", "processing_inputs_outputs",
+            "processing_code_handling", "processing_input_creation", "processing_output_creation",
+            "container_path_mapping", "special_input_handling", "s3_path_normalization",
+            "file_upload_patterns", "local_path_override_patterns", "dependency_input_extraction",
+            
+            # Level 4 keywords
+            "dependency", "step_creation", "integration", "end_to_end", "step_name",
+            "generic_dependency_handling", "processing_step_dependencies",
+            "step_creation_pattern_execution", "framework_specific_step_creation",
+            "processing_dependency_resolution", "step_name_generation",
+            "cache_configuration", "step_dependencies_handling", "specification_attachment"
+        ]
+        
+        if any(keyword in test_lower for keyword in all_keywords):
+            return "keyword_based"
+        
+        # Check if it's in the fallback map
+        if test_name in TEST_LEVEL_MAP:
+            return "fallback_map"
+        
+        return "undetected"
+    
+    def get_detection_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of test detection methods used.
+        
+        Returns:
+            Dictionary with detection statistics and details
+        """
+        detection_stats = {
+            "explicit_prefix": [],
+            "keyword_based": [],
+            "fallback_map": [],
+            "undetected": []
+        }
+        
+        for test_name in self.results.keys():
+            detection_method = self._get_detection_method(test_name)
+            detection_stats[detection_method].append(test_name)
+        
+        return {
+            "summary": {
+                "explicit_prefix": len(detection_stats["explicit_prefix"]),
+                "keyword_based": len(detection_stats["keyword_based"]),
+                "fallback_map": len(detection_stats["fallback_map"]),
+                "undetected": len(detection_stats["undetected"]),
+                "total": len(self.results)
+            },
+            "details": detection_stats
+        }
     
     def generate_chart(self, builder_name: str, output_dir: str = "test_reports") -> Optional[str]:
         """
