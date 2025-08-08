@@ -1,3 +1,26 @@
+---
+tags:
+  - design
+  - testing
+  - validation
+  - scoring
+  - quality_metrics
+keywords:
+  - universal step builder test scoring
+  - test scoring system
+  - quality metrics
+  - architectural compliance scoring
+  - pattern-based detection
+  - test level classification
+topics:
+  - test scoring system
+  - quality assessment
+  - validation framework
+  - architectural compliance
+language: python
+date of note: 2025-08-08
+---
+
 # Universal Step Builder Test Scoring System
 
 ## Related Documents
