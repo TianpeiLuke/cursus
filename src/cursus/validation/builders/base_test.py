@@ -196,57 +196,6 @@ class UniversalStepBuilderTestBase(ABC):
         
         return mock_config
     
-    def _add_builder_specific_config(self, mock_config: SimpleNamespace) -> None:
-        """Add builder-specific configuration attributes."""
-        # Get builder class name
-        builder_name = self.builder_class.__name__
-        
-        if "XGBoostTraining" in builder_name:
-            self._add_xgboost_training_config(mock_config)
-        elif "TabularPreprocessing" in builder_name:
-            self._add_tabular_preprocessing_config(mock_config)
-        elif "ModelEval" in builder_name:
-            self._add_model_eval_config(mock_config)
-        # Add more builder-specific configurations as needed
-        else:
-            self._add_generic_config(mock_config)
-    
-    def _add_xgboost_training_config(self, mock_config: SimpleNamespace) -> None:
-        """Add XGBoost training-specific configuration attributes."""
-        mock_config.training_instance_type = 'ml.m5.xlarge'
-        mock_config.training_instance_count = 1
-        mock_config.training_volume_size = 30
-        mock_config.training_entry_point = 'train_xgb.py'
-        mock_config.source_dir = 'src/pipeline_scripts'
-        mock_config.framework_version = '1.7-1'
-        mock_config.py_version = 'py3'
-    
-    def _add_tabular_preprocessing_config(self, mock_config: SimpleNamespace) -> None:
-        """Add tabular preprocessing-specific configuration attributes."""
-        mock_config.processing_instance_type = 'ml.m5.large'
-        mock_config.processing_instance_count = 1
-        mock_config.processing_volume_size = 30
-        mock_config.processing_entry_point = 'tabular_preprocess.py'
-        mock_config.source_dir = 'src/pipeline_scripts'
-    
-    def _add_model_eval_config(self, mock_config: SimpleNamespace) -> None:
-        """Add model evaluation-specific configuration attributes."""
-        mock_config.processing_instance_type = 'ml.m5.large'
-        mock_config.processing_instance_count = 1
-        mock_config.processing_volume_size = 30
-        mock_config.processing_entry_point = 'model_evaluation_xgb.py'
-        mock_config.source_dir = 'src/pipeline_scripts'
-        mock_config.id_field = 'id'
-        mock_config.label_field = 'label'
-    
-    def _add_generic_config(self, mock_config: SimpleNamespace) -> None:
-        """Add generic configuration attributes for unknown builder types."""
-        mock_config.instance_type = 'ml.m5.large'
-        mock_config.instance_count = 1
-        mock_config.volume_size = 30
-        mock_config.entry_point = 'generic_script.py'
-        mock_config.source_dir = 'src/pipeline_scripts'
-    
     def _create_mock_dependencies(self) -> List[Step]:
         """Create mock dependencies for the builder."""
         # Create a list of mock steps
