@@ -31,11 +31,11 @@ from cursus.api import PipelineDAG
 
 # Create a simple DAG
 dag = PipelineDAG()
-dag.add_node("data_loading")
-dag.add_node("preprocessing") 
-dag.add_node("training")
-dag.add_edge("data_loading", "preprocessing")
-dag.add_edge("preprocessing", "training")
+dag.add_node("CradleDataLoading")
+dag.add_node("TabularPreprocessing") 
+dag.add_node("XGBoostTraining")
+dag.add_edge("CradleDataLoading", "TabularPreprocessing")
+dag.add_edge("TabularPreprocessing", "XGBoostTraining")
 
 # Compile to SageMaker pipeline automatically
 pipeline = compile_dag_to_pipeline(dag, pipeline_name="fraud-detection")
@@ -112,9 +112,9 @@ from cursus.api import PipelineDAG
 
 # Create DAG
 dag = PipelineDAG()
-dag.add_node("load_data")
-dag.add_node("train_model")
-dag.add_edge("load_data", "train_model")
+dag.add_node("CradleDataLoading")
+dag.add_node("XGBoostTraining")
+dag.add_edge("CradleDataLoading", "XGBoostTraining")
 
 # Compile to SageMaker pipeline
 pipeline = compile_dag_to_pipeline(dag, pipeline_name="my-ml-pipeline")
@@ -128,13 +128,13 @@ from cursus.api import PipelineDAG
 
 # Create DAG with more complex workflow
 dag = PipelineDAG()
-dag.add_node("data_loading")
-dag.add_node("preprocessing")
-dag.add_node("training")
-dag.add_node("evaluation")
-dag.add_edge("data_loading", "preprocessing")
-dag.add_edge("preprocessing", "training")
-dag.add_edge("training", "evaluation")
+dag.add_node("CradleDataLoading")
+dag.add_node("TabularPreprocessing")
+dag.add_node("XGBoostTraining")
+dag.add_node("XGBoostModelEval")
+dag.add_edge("CradleDataLoading", "TabularPreprocessing")
+dag.add_edge("TabularPreprocessing", "XGBoostTraining")
+dag.add_edge("XGBoostTraining", "XGBoostModelEval")
 
 # Compile with custom configuration
 pipeline = compile_dag_to_pipeline(
@@ -152,9 +152,9 @@ from cursus.api import PipelineDAG
 
 # Create DAG
 dag = PipelineDAG()
-dag.add_node("preprocessing")
-dag.add_node("training")
-dag.add_edge("preprocessing", "training")
+dag.add_node("TabularPreprocessing")
+dag.add_node("XGBoostTraining")
+dag.add_edge("TabularPreprocessing", "XGBoostTraining")
 
 # Use compiler for more control
 compiler = PipelineDAGCompiler()
