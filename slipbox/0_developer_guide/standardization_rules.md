@@ -529,6 +529,68 @@ print(f"Step-Type-Specific Tests: {results.sagemaker_validation_results}")
 
 We provide comprehensive tools to validate compliance with these standardization rules:
 
+### Interface Standard Validation
+
+The `InterfaceStandardValidator` provides comprehensive validation for step builder interface compliance according to standardization rules.
+
+**Implementation Location**: `src/cursus/validation/interface/interface_standard_validator.py`
+
+```python
+# Example interface validator usage
+from src.cursus.validation.interface.interface_standard_validator import InterfaceStandardValidator
+
+validator = InterfaceStandardValidator()
+
+# Validate complete step builder interface
+violations = validator.validate_step_builder_interface(YourStepBuilder)
+
+if violations:
+    print("Interface compliance violations:")
+    for violation in violations:
+        print(f"  - {violation.violation_type}: {violation.message}")
+        if violation.suggestions:
+            print(f"    Suggestions: {', '.join(violation.suggestions)}")
+else:
+    print("✅ Step builder passes all interface compliance checks")
+
+# Individual validation methods available:
+# - validate_inheritance_compliance(step_builder_class)
+# - validate_required_methods(step_builder_class)
+# - validate_method_signatures(step_builder_class)
+# - validate_method_documentation(step_builder_class)
+# - validate_class_documentation(step_builder_class)
+# - validate_builder_registry_compliance(step_builder_class)
+```
+
+**Validation Categories**:
+
+1. **Inheritance Compliance**
+   - Validates inheritance from `StepBuilderBase`
+   - Checks method resolution order (MRO)
+
+2. **Required Methods Validation**
+   - Ensures all required methods are implemented: `validate_configuration`, `_get_inputs`, `_get_outputs`, `create_step`
+   - Validates method callability
+
+3. **Method Signature Validation**
+   - Validates parameter signatures for required methods
+   - Checks for required parameters like `inputs` for `_get_inputs`, `**kwargs` for `create_step`
+   - Validates return type annotations
+
+4. **Documentation Validation**
+   - **Method Documentation**: Validates docstring presence and quality for required methods
+   - **Class Documentation**: Validates class-level documentation including purpose and examples
+   - Checks for missing return documentation when methods have return types
+
+5. **Registry Compliance**
+   - Validates naming conventions (classes should end with "StepBuilder")
+   - Ensures compatibility with step builder registry requirements
+
+**Test Coverage**: The interface validator is thoroughly tested with 24 comprehensive tests split across multiple test files:
+- `test/validation/interface/test_interface_violation.py` - Tests violation data structure (4 tests)
+- `test/validation/interface/test_validator_core.py` - Tests core validator functionality (17 tests)
+- `test/validation/interface/test_validator_integration.py` - Integration tests (3 tests)
+
 ### Naming Convention Validation
 
 The `NamingStandardValidator` provides comprehensive validation for naming conventions as defined in the standardization rules document.
