@@ -12,9 +12,11 @@ Subpackages:
 
 from .builders import UniversalStepBuilderTest, StepBuilderScorer
 from .naming import NamingStandardValidator
+from .interface import InterfaceStandardValidator
 
 __all__ = [
     'UniversalStepBuilderTest',
     'StepBuilderScorer',
-    'NamingStandardValidator'
+    'NamingStandardValidator',
+    'InterfaceStandardValidator'
 ]

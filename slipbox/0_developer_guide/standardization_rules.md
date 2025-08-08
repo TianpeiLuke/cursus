@@ -527,55 +527,109 @@ print(f"Step-Type-Specific Tests: {results.sagemaker_validation_results}")
 
 ## Validation Tools
 
-We provide tools to validate compliance with these standardization rules:
+We provide comprehensive tools to validate compliance with these standardization rules:
 
 ### Naming Convention Validation
 
+The `NamingStandardValidator` provides comprehensive validation for naming conventions as defined in the standardization rules document.
+
 ```python
 # Example validator usage
-from src.tools.validation import NamingStandardValidator
+from src.cursus.validation.naming import NamingStandardValidator
 
 validator = NamingStandardValidator()
+
+# Validate step specification naming
 errors = validator.validate_step_specification(YOUR_STEP_SPEC)
 if errors:
     print("Naming convention violations:")
     for error in errors:
         print(f"  - {error}")
-```
 
-### Interface Validation
-
-```python
-# Example validator usage
-from src.tools.validation import InterfaceStandardValidator
-
-validator = InterfaceStandardValidator()
-errors = validator.validate_step_builder_interface(YourStepBuilder)
+# Validate step builder class naming
+errors = validator.validate_step_builder_class(YourStepBuilder)
 if errors:
-    print("Interface violations:")
+    print("Builder naming violations:")
+    for error in errors:
+        print(f"  - {error}")
+
+# Validate config class naming
+errors = validator.validate_config_class(YourConfigClass)
+if errors:
+    print("Config naming violations:")
+    for error in errors:
+        print(f"  - {error}")
+
+# Validate file naming patterns
+errors = validator.validate_file_naming("builder_your_step.py", "builder")
+if errors:
+    print("File naming violations:")
+    for error in errors:
+        print(f"  - {error}")
+
+# Validate all registry entries
+errors = validator.validate_all_registry_entries()
+if errors:
+    print("Registry naming violations:")
     for error in errors:
         print(f"  - {error}")
 ```
 
-### Documentation Validation
+### Universal Builder Test Framework
+
+The `UniversalStepBuilderTest` provides comprehensive validation across all architectural levels, including interface compliance, specification alignment, path mapping, and integration testing.
 
 ```python
-# Example validator usage
-from src.tools.validation import DocumentationStandardValidator
+# Example comprehensive builder testing
+from src.cursus.validation.builders.universal_test import UniversalStepBuilderTest
 
-validator = DocumentationStandardValidator()
-errors = validator.validate_class_documentation(YourStepBuilder)
-if errors:
-    print("Documentation violations:")
-    for error in errors:
-        print(f"  - {error}")
+# Test a specific builder with comprehensive validation
+tester = UniversalStepBuilderTest(YourStepBuilder)
+results = tester.run_all_tests()
+
+# Check results
+total_tests = len(results)
+passed_tests = sum(1 for result in results.values() if result["passed"])
+pass_rate = (passed_tests / total_tests) * 100
+
+print(f"Builder validation: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
+
+# Check for failed tests
+failed_tests = {k: v for k, v in results.items() if not v["passed"]}
+if failed_tests:
+    print("Failed tests:")
+    for test_name, result in failed_tests.items():
+        print(f"  ❌ {test_name}: {result['error']}")
+```
+
+### SageMaker Step Type Validation
+
+The `SageMakerStepTypeValidator` provides specialized validation for SageMaker step type compliance and step-type-specific requirements.
+
+```python
+# Example SageMaker step type validation
+from src.cursus.validation.builders.sagemaker_step_type_validator import SageMakerStepTypeValidator
+
+validator = SageMakerStepTypeValidator(YourStepBuilder)
+
+# Get step type information
+step_type_info = validator.get_step_type_info()
+print(f"Detected step type: {step_type_info['sagemaker_step_type']}")
+print(f"Step name: {step_type_info['detected_step_name']}")
+
+# Validate step type compliance
+violations = validator.validate_step_type_compliance()
+if violations:
+    print("Step type violations:")
+    for violation in violations:
+        print(f"  {violation.level.name}: {violation.message}")
 ```
 
 ### Builder Registry Validation
 
 ```python
 # Example registry validator usage
-from src.pipeline_registry.builder_registry import get_global_registry
+from src.cursus.steps.registry.builder_registry import get_global_registry
 
 registry = get_global_registry()
 validation = registry.validate_registry()
@@ -591,6 +645,28 @@ if validation['missing']:
     print("Missing entries:")
     for entry in validation['missing']:
         print(f"  - {entry}")
+
+# Get registry statistics
+stats = registry.get_registry_stats()
+print(f"Registry stats: {stats}")
+```
+
+### Command-Line Interface Validation
+
+For convenient validation during development, use the CLI validation tools:
+
+```bash
+# Validate all registry entries
+python -m src.cursus.cli.validation_cli validate-registry --verbose
+
+# Validate specific file naming
+python -m src.cursus.cli.validation_cli validate-file-name "builder_your_step.py" "builder" --verbose
+
+# Validate step names
+python -m src.cursus.cli.validation_cli validate-step-name "YourStepName" --verbose
+
+# Validate logical names
+python -m src.cursus.cli.validation_cli validate-logical-name "your_logical_name" --verbose
 ```
 
 ### Job Type Handling
