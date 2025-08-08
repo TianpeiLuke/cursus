@@ -26,19 +26,19 @@ pip install cursus[all]
 ### 30-Second Example
 
 ```python
-from cursus.api import compile_dag
-from cursus.api.dag import PipelineDAG
+from cursus.core import compile_dag_to_pipeline
+from cursus.api import PipelineDAG
 
 # Create a simple DAG
-dag = PipelineDAG(name="fraud-detection")
-dag.add_node("data_loading", "CRADLE_DATA_LOADING")
-dag.add_node("preprocessing", "TABULAR_PREPROCESSING") 
-dag.add_node("training", "XGBOOST_TRAINING")
+dag = PipelineDAG()
+dag.add_node("data_loading")
+dag.add_node("preprocessing") 
+dag.add_node("training")
 dag.add_edge("data_loading", "preprocessing")
 dag.add_edge("preprocessing", "training")
 
 # Compile to SageMaker pipeline automatically
-pipeline = compile_dag(dag)
+pipeline = compile_dag_to_pipeline(dag, pipeline_name="fraud-detection")
 pipeline.start()  # Deploy and run!
 ```
 
@@ -107,31 +107,31 @@ Cursus follows a sophisticated layered architecture:
 ### Basic Pipeline
 
 ```python
-from cursus.api import compile_dag
-from cursus.api.dag import PipelineDAG
+from cursus.core import compile_dag_to_pipeline
+from cursus.api import PipelineDAG
 
 # Create DAG
-dag = PipelineDAG(name="my-ml-pipeline")
-dag.add_node("load_data", "CRADLE_DATA_LOADING")
-dag.add_node("train_model", "XGBOOST_TRAINING")
+dag = PipelineDAG()
+dag.add_node("load_data")
+dag.add_node("train_model")
 dag.add_edge("load_data", "train_model")
 
 # Compile to SageMaker pipeline
-pipeline = compile_dag(dag)
+pipeline = compile_dag_to_pipeline(dag, pipeline_name="my-ml-pipeline")
 ```
 
 ### Advanced Configuration
 
 ```python
-from cursus.api import compile_dag_to_pipeline
-from cursus.api.dag import PipelineDAG
+from cursus.core import compile_dag_to_pipeline
+from cursus.api import PipelineDAG
 
 # Create DAG with more complex workflow
-dag = PipelineDAG(name="advanced-pipeline")
-dag.add_node("data_loading", "CRADLE_DATA_LOADING")
-dag.add_node("preprocessing", "TABULAR_PREPROCESSING")
-dag.add_node("training", "XGBOOST_TRAINING")
-dag.add_node("evaluation", "MODEL_EVALUATION")
+dag = PipelineDAG()
+dag.add_node("data_loading")
+dag.add_node("preprocessing")
+dag.add_node("training")
+dag.add_node("evaluation")
 dag.add_edge("data_loading", "preprocessing")
 dag.add_edge("preprocessing", "training")
 dag.add_edge("training", "evaluation")
@@ -147,13 +147,13 @@ pipeline = compile_dag_to_pipeline(
 ### Using the Compiler Class
 
 ```python
-from cursus.core.compiler import PipelineDAGCompiler
-from cursus.api.dag import PipelineDAG
+from cursus.core import PipelineDAGCompiler
+from cursus.api import PipelineDAG
 
 # Create DAG
-dag = PipelineDAG(name="compiler-example")
-dag.add_node("preprocessing", "TABULAR_PREPROCESSING")
-dag.add_node("training", "XGBOOST_TRAINING")
+dag = PipelineDAG()
+dag.add_node("preprocessing")
+dag.add_node("training")
 dag.add_edge("preprocessing", "training")
 
 # Use compiler for more control
