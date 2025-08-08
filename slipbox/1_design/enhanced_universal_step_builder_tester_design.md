@@ -73,26 +73,40 @@ The current universal tester treats all step builders uniformly, but our pattern
 
 The enhanced design provides step type-aware testing while maintaining the universal interface.
 
-## Architecture Overview
+## Enhanced System Architecture
+
+The enhanced universal step builder tester follows a layered architecture with specialized components for different SageMaker step types:
 
 ```
-Enhanced Universal Tester
-├── UniversalStepBuilderTester (Base)
-│   ├── Interface Validation
-│   ├── Configuration Validation
-│   ├── Step Name Generation
-│   └── Specification Integration
+Enhanced Universal Step Builder Testing System
+├── Core Components
+│   ├── TestFactory           # Main entry point and orchestrator
+│   ├── StepInfoDetector     # Analyzes step builders and detects patterns
+│   ├── StepTypeMockFactory  # Creates realistic step type-specific mocks
+│   └── UniversalTest        # Core test execution engine
+├── Test Levels
+│   ├── InterfaceTests       # Level 1: Interface compliance
+│   ├── SpecificationTests   # Level 2: Specification integration
+│   ├── PathMappingTests     # Level 3: Path mapping validation ⭐ ENHANCED
+│   └── IntegrationTests     # Level 4: End-to-end testing
 ├── Step Type Variants
-│   ├── ProcessingStepTester
-│   ├── TrainingStepTester
-│   ├── CreateModelStepTester
-│   ├── TransformStepTester
-│   └── CustomStepTester
-└── Pattern Detection & Classification
-    ├── SageMaker Step Type Detection
-    ├── Framework Detection
-    └── Pattern Classification
+│   ├── ProcessingTest       # Processing-specific tests
+│   ├── TrainingTest         # Training-specific tests
+│   ├── TransformTest        # Transform-specific tests
+│   └── CreateModelTest      # CreateModel-specific tests
+└── Utilities
+    ├── MockFactory          # Enhanced mock creation ⭐ ENHANCED
+    ├── BaseTest            # Common test functionality
+    └── SageMakerValidator  # SageMaker step validation
 ```
+
+### Key Architectural Improvements
+
+1. **TestFactory**: Centralized entry point that automatically detects step types and creates appropriate test configurations
+2. **StepInfoDetector**: Analyzes step builder classes to determine SageMaker step type, framework, and implementation patterns
+3. **Enhanced PathMappingTests**: Comprehensive validation of input/output path mapping and property path resolution
+4. **StepTypeMockFactory**: Creates realistic mock objects based on actual step builder patterns and frameworks
+5. **Step Type Variants**: Specialized test classes for each SageMaker step type with type-specific validation logic
 
 ## Core Design Components
 

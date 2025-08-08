@@ -1,341 +1,403 @@
-# Universal Processing Builder Test Framework
+---
+tags:
+  - testing
+  - validation
+  - step_builder
+  - enhanced_system
+  - documentation
+keywords:
+  - universal step builder test
+  - enhanced testing system
+  - step builder validation
+  - testing improvements
+  - developer guide
+topics:
+  - step builder testing
+  - enhanced validation
+  - testing documentation
+  - developer adoption
+language: python
+date of note: 2025-08-07
+---
 
-This directory contains the Universal Processing Builder Test framework, a comprehensive testing system specifically designed for Processing step builders in the cursus framework. The framework enforces standardization rules, alignment rules, and provides LLM-powered feedback and scoring.
+# Enhanced Universal Step Builder Testing System
 
 ## Overview
 
-The Universal Processing Builder Test framework extends the existing `universal_builder_test` system with Processing-specific validations and enhanced LLM integration for intelligent feedback. It provides:
+This directory contains the enhanced universal step builder testing system that implements the improvements identified in the Next Steps action items from the universal step builder test design document.
 
-1. **Standardization Rule Enforcement** - Validates naming conventions, interface compliance, documentation standards, error handling, and testing standards
-2. **Alignment Rule Enforcement** - Validates alignment between scripts, contracts, specifications, and builders
-3. **LLM-Powered Feedback** - Provides intelligent analysis, scoring, and recommendations for step builder implementations
+## Key Improvements Implemented
 
-## Key Components
+### ✅ 1. Full Implementation of Path Mapping Tests
 
-### 1. ProcessingStepBuilderValidator
+**Location**: `src/cursus/validation/builders/path_mapping_tests.py`
 
-The core validator that extends `UniversalStepBuilderTestBase` with Processing-specific validations:
+**Improvements**:
+- **Step Type-Aware Validation**: Different validation logic for Processing, Training, Transform, and CreateModel steps
+- **Input Path Mapping**: Validates that specification dependencies are correctly mapped to script contract paths
+- **Output Path Mapping**: Validates that specification outputs are correctly mapped to script contract paths
+- **Property Path Validation**: Comprehensive validation of property path format and resolution
 
-- **Standardization Validation**: Checks naming conventions, interface compliance, documentation, error handling, and testing standards
-- **Alignment Validation**: Validates Script ↔ Contract, Contract ↔ Specification, Specification ↔ Dependencies, and Builder ↔ Configuration alignment
-- **Processing-Specific Tests**: Tests ProcessingStep creation, processor configuration, input/output handling, environment variables, and job arguments
-
-### 2. ProcessingStepBuilderLLMAnalyzer
-
-LLM-powered analyzer that provides intelligent feedback:
-
-- **Scoring System**: Calculates code quality, architecture compliance, and maintainability scores
-- **Feedback Generation**: Provides strengths, weaknesses, and actionable recommendations
-- **Detailed Analysis**: Generates comprehensive analysis reports
-
-### 3. UniversalProcessingBuilderTest
-
-Main orchestrator that combines all validation levels:
-
-- **Comprehensive Testing**: Runs universal tests, Processing-specific tests, standardization validation, and alignment validation
-- **Report Generation**: Creates detailed JSON reports and analysis files
-- **Scoring Integration**: Provides overall scores and ratings
-
-## Usage
-
-### Basic Usage
-
+**Example Usage**:
 ```python
-from test.steps.builders.universal_processing_builder_test import test_processing_builder
-from src.cursus.steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+from cursus.validation.builders.test_factory import TestFactory
+from cursus.steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
 
-# Test a Processing step builder
-results = test_processing_builder(
-    builder_class=TabularPreprocessingStepBuilder,
-    verbose=True,
-    save_reports=True
-)
+factory = TestFactory()
+results = factory.test_builder(TabularPreprocessingStepBuilder, verbose=True)
 
-print(f"Overall Score: {results['summary']['overall_score']:.1f}/100")
-print(f"Rating: {results['summary']['overall_rating']}")
+# Path mapping tests are automatically included
+for test_name, result in results.items():
+    if 'path_mapping' in test_name:
+        print(f"{test_name}: {'PASSED' if result['passed'] else 'FAILED'}")
 ```
 
-### Advanced Usage
+### ✅ 2. Enhanced Mock Factory Integration
 
+**Location**: `src/cursus/validation/builders/mock_factory.py`
+
+**Improvements**:
+- **Realistic Step Builder Patterns**: Mock configurations based on actual step builder implementations
+- **Framework-Specific Mocks**: Different mock objects for XGBoost, PyTorch, TensorFlow, etc.
+- **Builder Type-Specific Configuration**: Specialized configs for TabularPreprocessing, ModelEval, etc.
+- **Enhanced Hyperparameters**: Realistic hyperparameter mocks with derived properties
+
+**Key Features**:
 ```python
-from test.steps.builders.universal_processing_builder_test import UniversalProcessingBuilderTest
-from src.cursus.steps.builders.builder_payload_step import PayloadStepBuilder
-from src.cursus.steps.configs.config_payload_step import PayloadConfig
-
-# Create custom config
-config = PayloadConfig(
-    region="NA",
-    pipeline_name="test-pipeline",
-    bucket="test-bucket",
-    # ... other config parameters
-)
-
-# Create comprehensive tester
-tester = UniversalProcessingBuilderTest(
-    builder_class=PayloadStepBuilder,
-    config=config,
-    verbose=True,
-    save_reports=True,
-    output_dir="custom_reports"
-)
-
-# Run comprehensive test
-results = tester.run_comprehensive_test()
+# Automatic step type detection and appropriate mock creation
+factory = StepTypeMockFactory(step_info)
+mock_config = factory.create_mock_config()  # Creates realistic config
+step_mocks = factory.create_step_type_mocks()  # Creates step-specific mocks
 ```
 
-### Testing Individual Components
+### ✅ 3. Step Type-Specific Validation
+
+**Location**: `src/cursus/validation/builders/variants/`
+
+**Improvements**:
+- **Processing Step Tests**: Specialized tests for ProcessingInput/ProcessingOutput validation
+- **Training Step Tests**: Specialized tests for TrainingInput and hyperparameter handling
+- **Transform Step Tests**: Specialized tests for TransformInput and model integration
+- **CreateModel Step Tests**: Specialized tests for model creation and configuration
+
+**Architecture**:
+```
+src/cursus/validation/builders/
+├── variants/
+│   ├── processing_test.py      # Processing-specific tests
+│   ├── training_test.py        # Training-specific tests
+│   ├── transform_test.py       # Transform-specific tests
+│   └── createmodel_test.py     # CreateModel-specific tests
+```
+
+### ✅ 4. Comprehensive Property Path Validation
+
+**Features**:
+- **Format Validation**: Ensures property paths follow expected patterns
+- **Resolution Testing**: Tests property path parsing and resolution
+- **Step Reference Validation**: Validates step name and property references
+- **Pipeline Variable Support**: Handles SageMaker pipeline variables correctly
+
+## Usage Examples
+
+### Basic Testing
 
 ```python
-from test.steps.builders.universal_processing_builder_test import ProcessingStepBuilderValidator
+from cursus.validation.builders.test_factory import TestFactory
 
-# Create validator
-validator = ProcessingStepBuilderValidator(
-    builder_class=YourStepBuilder,
+# Test any step builder
+factory = TestFactory()
+results = factory.test_builder(YourStepBuilderClass, verbose=True)
+
+# Print results
+for test_name, result in results.items():
+    status = "✅ PASSED" if result['passed'] else "❌ FAILED"
+    print(f"{status} {test_name}")
+```
+
+### Advanced Testing with Custom Configuration
+
+```python
+from cursus.validation.builders.test_factory import TestFactory
+from cursus.validation.builders.mock_factory import StepTypeMockFactory
+from cursus.validation.builders.step_info_detector import StepInfoDetector
+
+# Get step information
+detector = StepInfoDetector()
+step_info = detector.analyze_builder(YourStepBuilderClass)
+
+# Create custom mock factory
+mock_factory = StepTypeMockFactory(step_info)
+custom_config = mock_factory.create_mock_config()
+
+# Run tests with custom configuration
+factory = TestFactory()
+results = factory.test_builder(
+    YourStepBuilderClass, 
+    custom_config=custom_config,
     verbose=True
 )
-
-# Test standardization rules
-standardization_violations = validator.validate_standardization_rules()
-for violation in standardization_violations:
-    print(f"[{violation.severity}] {violation.message}")
-    print(f"Suggestion: {violation.suggestion}")
-
-# Test alignment rules
-alignment_violations = validator.validate_alignment_rules()
-for violation in alignment_violations:
-    print(f"{violation.component_a} ↔ {violation.component_b}: {violation.message}")
 ```
 
-## Supported Processing Step Types
-
-The framework automatically detects and supports the following Processing step types:
-
-- **TabularPreprocessing** - Data preprocessing steps
-- **PayloadGeneration** - MIMS payload generation steps
-- **ModelEvaluation** - Model evaluation steps
-- **PackageCreation** - Model packaging steps
-- **DataLoading** - Data loading steps (including CradleData)
-- **RiskTableMapping** - Risk table mapping steps
-- **CurrencyConversion** - Currency conversion steps
-- **ModelCalibration** - Model calibration steps
-- **BatchTransform** - Batch transformation steps
-
-## Validation Rules
-
-### Standardization Rules
-
-1. **Naming Conventions (NAMING_001-003)**
-   - Class names must follow `XXXStepBuilder` pattern
-   - Step types must be in PascalCase
-   - Public methods should be in snake_case
-
-2. **Interface Standardization (INTERFACE_001-004)**
-   - Must inherit from `StepBuilderBase`
-   - Must implement required methods: `validate_configuration`, `_get_inputs`, `_get_outputs`, `create_step`
-   - Should use `@register_builder()` decorator
-
-3. **Documentation Standards (DOC_001-003)**
-   - Classes must have comprehensive docstrings
-   - Methods should have proper documentation
-   - Documentation should include purpose, parameters, returns, and exceptions
-
-4. **Error Handling Standards (ERROR_001-002)**
-   - `validate_configuration()` should raise `ValueError` for invalid configs
-   - Proper exception handling throughout the implementation
-
-5. **Testing Standards (TEST_001)**
-   - Comprehensive unit tests should exist
-   - Integration tests and error handling tests recommended
-
-### Alignment Rules
-
-1. **Script ↔ Contract Alignment**
-   - Environment variables must match contract requirements
-   - Script paths must align with contract definitions
-
-2. **Contract ↔ Specification Alignment**
-   - Input paths in contract must match specification dependencies
-   - Output paths in contract must match specification outputs
-
-3. **Specification ↔ Dependencies Alignment**
-   - Required dependencies must have compatible sources defined
-   - Dependency logical names must be consistent
-
-4. **Builder ↔ Configuration Alignment**
-   - Builder must use configuration parameters correctly
-   - Instance type selection must respect configuration flags
-
-## Output Reports
-
-The framework generates several types of reports:
-
-### 1. Comprehensive JSON Report
-```
-{
-  "builder_class": "TabularPreprocessingStepBuilder",
-  "module": "src.cursus.steps.builders.builder_tabular_preprocessing_step",
-  "processing_step_type": "TabularPreprocessing",
-  "test_results": { ... },
-  "standardization_violations": [ ... ],
-  "alignment_violations": [ ... ],
-  "llm_feedback": { ... },
-  "summary": {
-    "total_tests": 15,
-    "passed_tests": 13,
-    "pass_rate": 86.7,
-    "overall_score": 82.5,
-    "overall_rating": "Good"
-  }
-}
-```
-
-### 2. Detailed Analysis Text File
-Contains comprehensive analysis including:
-- Test results summary
-- Failed test details
-- Standardization violations
-- Alignment violations
-- Recommendations for improvement
-
-## Scoring System
-
-The framework uses a weighted scoring system:
-
-- **Test Pass Rate** (40%): Percentage of tests that pass
-- **Code Quality Score** (30%): Based on standardization violations
-- **Architecture Compliance Score** (20%): Based on alignment violations
-- **Maintainability Score** (10%): Combination of pass rate and code quality
-
-### Rating Levels
-- **90-100**: Excellent
-- **80-89**: Good
-- **70-79**: Satisfactory
-- **60-69**: Needs Work
-- **0-59**: Poor
-
-## Integration with CI/CD
-
-The framework can be integrated into CI/CD pipelines:
+### Testing Multiple Builders
 
 ```python
-# In your test suite
-import pytest
-from test.steps.builders.universal_processing_builder_test import test_processing_builder
-
-@pytest.mark.parametrize("builder_class", [
-    TabularPreprocessingStepBuilder,
-    PayloadStepBuilder,
-    PackageStepBuilder,
-    XGBoostModelEvalStepBuilder
-])
-def test_processing_builder_compliance(builder_class):
-    """Test Processing builder compliance with standards."""
-    results = test_processing_builder(
-        builder_class=builder_class,
-        verbose=False,
-        save_reports=True
-    )
-    
-    # Assert minimum quality standards
-    assert results['summary']['overall_score'] >= 70, f"Builder {builder_class.__name__} scored {results['summary']['overall_score']:.1f}/100"
-    assert results['summary']['standardization_errors'] == 0, f"Builder {builder_class.__name__} has standardization errors"
-    assert results['summary']['alignment_errors'] == 0, f"Builder {builder_class.__name__} has alignment errors"
+# Use the provided example script
+python test/steps/builders/test_real_builders.py
 ```
 
-## Running the Tests
+## Test Categories
 
-### Command Line Usage
+### Level 1: Interface Tests
+- **Inheritance validation**: Ensures proper inheritance from StepBuilderBase
+- **Method implementation**: Validates all required methods are implemented
+- **Type hints**: Validates proper type annotations
+- **Documentation**: Validates docstring compliance
 
+### Level 2: Specification Tests
+- **Specification usage**: Validates proper specification integration
+- **Contract alignment**: Validates spec-contract alignment
+- **Registry integration**: Validates proper builder registration
+
+### Level 3: Path Mapping Tests ⭐ **ENHANCED**
+- **Input path mapping**: Validates input path correctness
+- **Output path mapping**: Validates output path correctness
+- **Property path validity**: Validates property path format and resolution
+
+### Level 4: Integration Tests
+- **Step creation**: Validates successful step creation
+- **Dependency resolution**: Validates dependency handling
+- **Environment variables**: Validates environment variable processing
+- **Error handling**: Validates proper error responses
+
+## Step Type-Specific Features
+
+### Processing Steps
+```python
+# Automatic validation of:
+# - ProcessingInput objects
+# - ProcessingOutput objects
+# - Processor configuration
+# - Job arguments
+```
+
+### Training Steps
+```python
+# Automatic validation of:
+# - TrainingInput channels
+# - Hyperparameter handling
+# - Estimator configuration
+# - Output path structure
+```
+
+### Transform Steps
+```python
+# Automatic validation of:
+# - TransformInput configuration
+# - Transformer setup
+# - Model integration
+# - Output handling
+```
+
+### CreateModel Steps
+```python
+# Automatic validation of:
+# - Model configuration
+# - Container setup
+# - Execution role
+# - Model data handling
+```
+
+## Running Tests
+
+### Individual Builder Testing
 ```bash
-# Run all Processing builder tests
-cd /path/to/cursus
-python -m test.steps.builders.universal_processing_builder_test
-
-# Run specific builder test
+cd test/steps/builders
 python -c "
-from test.steps.builders.universal_processing_builder_test import test_processing_builder
-from src.cursus.steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-test_processing_builder(TabularPreprocessingStepBuilder, verbose=True)
+from test_real_builders import test_tabular_preprocessing_builder
+test_tabular_preprocessing_builder()
 "
 ```
 
-### Programmatic Usage
-
-```python
-# Test all available Processing builders
-from test.steps.builders.universal_processing_builder_test import test_processing_builder
-
-builders_to_test = [
-    'TabularPreprocessingStepBuilder',
-    'PayloadStepBuilder', 
-    'PackageStepBuilder',
-    'XGBoostModelEvalStepBuilder'
-]
-
-for builder_name in builders_to_test:
-    try:
-        module_path = f"src.cursus.steps.builders.builder_{builder_name.lower().replace('stepbuilder', '_step')}"
-        module = __import__(module_path, fromlist=[builder_name])
-        builder_class = getattr(module, builder_name)
-        
-        print(f"\nTesting {builder_name}...")
-        results = test_processing_builder(builder_class, verbose=True)
-        print(f"Score: {results['summary']['overall_score']:.1f}/100 ({results['summary']['overall_rating']})")
-        
-    except ImportError as e:
-        print(f"Could not test {builder_name}: {e}")
+### Comprehensive Testing
+```bash
+cd test/steps/builders
+python test_real_builders.py
 ```
 
-## Best Practices
+### Integration with pytest
+```python
+import pytest
+from cursus.validation.builders.test_factory import TestFactory
 
-1. **Run Tests Early**: Use the framework during development to catch issues early
-2. **Address Violations**: Fix ERROR-level violations before committing code
-3. **Improve Documentation**: Address documentation warnings to improve maintainability
-4. **Monitor Scores**: Aim for scores above 80 for production code
-5. **Use Custom Configs**: Provide realistic configurations for more accurate testing
-6. **Review Reports**: Use the detailed analysis to understand improvement areas
+@pytest.mark.parametrize("builder_class", [
+    TabularPreprocessingStepBuilder,
+    XGBoostTrainingStepBuilder,
+    # Add more builders
+])
+def test_step_builder_compliance(builder_class):
+    factory = TestFactory()
+    results = factory.test_builder(builder_class)
+    
+    # Assert all tests passed
+    for test_name, result in results.items():
+        assert result['passed'], f"{test_name} failed: {result.get('error', 'Unknown error')}"
+```
 
-## Extending the Framework
+## Benefits of Enhanced System
 
-To add support for new Processing step types:
+### 1. **Comprehensive Coverage**
+- Tests all aspects of step builder functionality
+- Step type-specific validation ensures relevant testing
+- Property path validation catches integration issues
 
-1. Add the new type to `ProcessingStepType` enum
-2. Update `_detect_processing_step_type()` method
-3. Add type-specific configuration in `_add_builder_specific_config()`
-4. Add any type-specific validation rules as needed
+### 2. **Realistic Testing**
+- Mock objects based on actual step builder patterns
+- Framework-specific configurations
+- Realistic hyperparameter and configuration mocks
+
+### 3. **Better Error Reporting**
+- Detailed error messages with context
+- Step type-aware error reporting
+- Clear indication of what failed and why
+
+### 4. **Easy Integration**
+- Simple API for testing any step builder
+- Automatic step type detection
+- Minimal setup required
+
+### 5. **Extensible Design**
+- Easy to add new step types
+- Pluggable test variants
+- Configurable mock factories
+
+## Architecture Overview
+
+```
+Enhanced Universal Step Builder Testing System
+├── Core Components
+│   ├── TestFactory           # Main entry point
+│   ├── StepInfoDetector     # Analyzes step builders
+│   ├── StepTypeMockFactory  # Creates realistic mocks
+│   └── UniversalTest        # Orchestrates testing
+├── Test Levels
+│   ├── InterfaceTests       # Level 1: Interface compliance
+│   ├── SpecificationTests   # Level 2: Specification integration
+│   ├── PathMappingTests     # Level 3: Path mapping validation ⭐
+│   └── IntegrationTests     # Level 4: End-to-end testing
+├── Step Type Variants
+│   ├── ProcessingTest       # Processing-specific tests
+│   ├── TrainingTest         # Training-specific tests
+│   ├── TransformTest        # Transform-specific tests
+│   └── CreateModelTest      # CreateModel-specific tests
+└── Utilities
+    ├── MockFactory          # Enhanced mock creation ⭐
+    ├── BaseTest            # Common test functionality
+    └── SageMakerValidator  # SageMaker step validation
+```
+
+## Migration Guide
+
+### From Original Universal Tester
+
+The enhanced system is backward compatible. Existing code will continue to work:
+
+```python
+# Old way (still works)
+from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+tester = UniversalStepBuilderTest(YourBuilderClass)
+results = tester.run_all_tests()
+
+# New way (recommended)
+from cursus.validation.builders.test_factory import TestFactory
+factory = TestFactory()
+results = factory.test_builder(YourBuilderClass, verbose=True)
+```
+
+### Key Differences
+
+1. **Enhanced Path Mapping**: More comprehensive path validation
+2. **Step Type Awareness**: Specialized tests for different step types
+3. **Better Mocks**: More realistic mock objects
+4. **Improved Reporting**: Better error messages and test results
+
+## Contributing
+
+### Adding New Step Types
+
+1. **Create Step Type Variant**:
+   ```python
+   # src/cursus/validation/builders/variants/your_step_test.py
+   from ..base_test import UniversalStepBuilderTestBase
+   
+   class YourStepTest(UniversalStepBuilderTestBase):
+       def test_your_step_specific_feature(self):
+           # Your step-specific tests
+           pass
+   ```
+
+2. **Update Mock Factory**:
+   ```python
+   # Add to StepTypeMockFactory
+   def _add_your_step_config(self, mock_config):
+       # Add your step-specific configuration
+       pass
+   ```
+
+3. **Register with Test Factory**:
+   ```python
+   # Update TestFactory to include your step type
+   ```
+
+### Adding New Test Categories
+
+1. **Create Test Class**:
+   ```python
+   from .base_test import UniversalStepBuilderTestBase
+   
+   class YourTestCategory(UniversalStepBuilderTestBase):
+       def test_your_feature(self):
+           # Your tests
+           pass
+   ```
+
+2. **Register with Universal Test**:
+   ```python
+   # Add to UniversalTest.run_all_tests()
+   ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Import Errors**: Ensure all dependencies are installed and paths are correct
-2. **Configuration Errors**: Provide valid configuration objects for testing
-3. **Missing Specifications**: Some tests require step specifications to be available
-4. **Mock Failures**: Check that mock objects are properly configured
+1. **Import Errors**: Ensure proper Python path setup
+2. **Mock Configuration**: Check step type detection
+3. **Specification Issues**: Verify spec and contract availability
+4. **Path Mapping Failures**: Check input/output path alignment
 
 ### Debug Mode
 
-Enable verbose output for detailed debugging:
-
 ```python
-results = test_processing_builder(
-    builder_class=YourBuilder,
-    verbose=True  # Enable detailed output
-)
+factory = TestFactory()
+results = factory.test_builder(YourBuilderClass, verbose=True, debug=True)
 ```
 
-## Contributing
+## Future Enhancements
 
-When contributing to the framework:
+### Planned Features
+- **Performance Testing**: Measure step creation performance
+- **Resource Validation**: Validate compute resource configurations
+- **Security Testing**: Validate IAM role and security configurations
+- **Integration Testing**: Test with actual SageMaker services
 
-1. Follow the existing code patterns and documentation standards
-2. Add tests for new functionality
-3. Update this README for any new features
-4. Ensure backward compatibility with existing builders
+### Extensibility Points
+- **Custom Validators**: Add domain-specific validation
+- **Custom Mock Factories**: Create specialized mock objects
+- **Custom Test Reporters**: Add custom result reporting
+- **Plugin System**: Add third-party test extensions
 
-## See Also
+## Conclusion
 
-- [Standardization Rules](../../../slipbox/0_developer_guide/standardization_rules.md)
-- [Alignment Rules](../../../slipbox/0_developer_guide/alignment_rules.md)
-- [Universal Builder Test Documentation](../universal_builder_test/README.md)
-- [Step Builder Development Guide](../../../slipbox/0_developer_guide/step_builder.md)
+The enhanced universal step builder testing system provides comprehensive, realistic, and extensible testing for step builders. The improvements address the key areas identified in the Next Steps action items and provide a solid foundation for ensuring step builder quality and compliance.
+
+For questions or contributions, please refer to the main project documentation or create an issue in the project repository.

@@ -3,12 +3,17 @@ Base class for universal step builder tests.
 """
 
 import contextlib
+from abc import ABC, abstractmethod
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from typing import Dict, List, Any, Optional, Union, Type, Callable
 from enum import Enum
 from pydantic import BaseModel
 from sagemaker.workflow.steps import Step
+
+# Import new components
+from .step_info_detector import StepInfoDetector
+from .mock_factory import StepTypeMockFactory
 
 
 class ValidationLevel(Enum):
@@ -36,7 +41,7 @@ from ...steps.registry.step_names import STEP_NAMES
 StepName = str  # Step names are stored as string keys in STEP_NAMES dictionary
 
 
-class UniversalStepBuilderTestBase:
+class UniversalStepBuilderTestBase(ABC):
     """
     Base class for universal step builder tests.
     
@@ -52,7 +57,8 @@ class UniversalStepBuilderTestBase:
         contract: Optional[ScriptContract] = None,
         step_name: Optional[Union[str, StepName]] = None,
         verbose: bool = False,
-        test_reporter: Optional[Callable] = None
+        test_reporter: Optional[Callable] = None,
+        **kwargs
     ):
         """
         Initialize with explicit components.
@@ -65,6 +71,7 @@ class UniversalStepBuilderTestBase:
             step_name: Optional step name (will extract from class name if not provided)
             verbose: Whether to print verbose output
             test_reporter: Optional function to report test results
+            **kwargs: Additional arguments for subclasses
         """
         self.builder_class = builder_class
         self._provided_config = config
@@ -73,7 +80,34 @@ class UniversalStepBuilderTestBase:
         self._provided_step_name = step_name
         self.verbose = verbose
         self.test_reporter = test_reporter or (lambda *args, **kwargs: None)
+        
+        # Detect step information using new detector
+        self.step_info_detector = StepInfoDetector(builder_class)
+        self.step_info = self.step_info_detector.detect_step_info()
+        
+        # Create mock factory based on step info
+        self.mock_factory = StepTypeMockFactory(self.step_info)
+        
+        # Setup test environment
         self._setup_test_environment()
+        
+        # Configure step type-specific mocks
+        self._configure_step_type_mocks()
+    
+    @abstractmethod
+    def get_step_type_specific_tests(self) -> List[str]:
+        """Return step type-specific test methods."""
+        pass
+    
+    @abstractmethod
+    def _configure_step_type_mocks(self) -> None:
+        """Configure step type-specific mock objects."""
+        pass
+    
+    @abstractmethod
+    def _validate_step_type_requirements(self) -> Dict[str, Any]:
+        """Validate step type-specific requirements."""
+        pass
     
     def run_all_tests(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -150,27 +184,9 @@ class UniversalStepBuilderTestBase:
         return builder
     
     def _create_mock_config(self) -> SimpleNamespace:
-        """Create a mock configuration for the builder."""
-        # Basic config with required attributes
-        mock_config = SimpleNamespace()
-        mock_config.region = 'NA'
-        mock_config.pipeline_name = 'test-pipeline'
-        mock_config.pipeline_s3_loc = 's3://bucket/prefix'
-        
-        # Add hyperparameters if needed
-        mock_hp = SimpleNamespace()
-        mock_hp.model_dump = lambda: {'param': 'value'}
-        mock_config.hyperparameters = mock_hp
-        
-        # Add common methods
-        mock_config.get_image_uri = lambda: 'mock-image-uri'
-        mock_config.get_script_path = lambda: 'mock_script.py'
-        mock_config.get_script_contract = lambda: None
-        
-        # Add builder-specific attributes
-        self._add_builder_specific_config(mock_config)
-        
-        return mock_config
+        """Create a mock configuration for the builder using the factory."""
+        # Use the mock factory to create step type-specific config
+        return self.mock_factory.create_mock_config()
     
     def _create_invalid_config(self) -> SimpleNamespace:
         """Create an invalid configuration for testing error handling."""
@@ -280,29 +296,8 @@ class UniversalStepBuilderTestBase:
     
     def _get_expected_dependencies(self) -> List[str]:
         """Get the list of expected dependency names for the builder."""
-        # Try to create a builder instance to get required dependencies
-        try:
-            # Create a temporary builder instance
-            temp_builder = self._create_builder_instance()
-            
-            # Get required dependencies
-            if hasattr(temp_builder, 'get_required_dependencies'):
-                return temp_builder.get_required_dependencies()
-        except Exception:
-            pass
-        
-        # Fallback: guess dependency names based on builder class name
-        builder_name = self.builder_class.__name__
-        
-        if "XGBoostTraining" in builder_name:
-            return ["input_path"]
-        elif "TabularPreprocessing" in builder_name:
-            return ["DATA"]
-        elif "ModelEval" in builder_name:
-            return ["model_input", "eval_data_input"]
-        
-        # Default
-        return ["input"]
+        # Use the mock factory to get expected dependencies
+        return self.mock_factory.get_expected_dependencies()
     
     @contextlib.contextmanager
     def _assert_raises(self, expected_exception):

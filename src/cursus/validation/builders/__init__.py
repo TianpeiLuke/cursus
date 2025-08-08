@@ -28,16 +28,12 @@ from .path_mapping_tests import PathMappingTests
 from .integration_tests import IntegrationTests
 from .scoring import StepBuilderScorer, score_builder_results
 from .base_test import UniversalStepBuilderTestBase
-from .processing_test import (
-    UniversalProcessingBuilderTest,
-    ProcessingStepBuilderValidator,
-    ProcessingStepBuilderLLMAnalyzer,
-    test_processing_builder,
-    ProcessingStepType,
-    StandardizationViolation,
-    AlignmentViolation,
-    LLMFeedback
-)
+# Enhanced universal tester system
+from .test_factory import UniversalStepBuilderTestFactory
+from .step_info_detector import StepInfoDetector
+from .mock_factory import StepTypeMockFactory
+from .generic_test import GenericStepBuilderTest
+from .variants.processing_test import ProcessingStepBuilderTest
 
 __all__ = [
     'UniversalStepBuilderTest',
@@ -48,12 +44,10 @@ __all__ = [
     'StepBuilderScorer',
     'score_builder_results',
     'UniversalStepBuilderTestBase',
-    'UniversalProcessingBuilderTest',
-    'ProcessingStepBuilderValidator',
-    'ProcessingStepBuilderLLMAnalyzer',
-    'test_processing_builder',
-    'ProcessingStepType',
-    'StandardizationViolation',
-    'AlignmentViolation',
-    'LLMFeedback'
+    # Enhanced universal tester system
+    'UniversalStepBuilderTestFactory',
+    'StepInfoDetector',
+    'StepTypeMockFactory',
+    'GenericStepBuilderTest',
+    'ProcessingStepBuilderTest'
 ]
