@@ -316,6 +316,62 @@ STEP_TYPE_REQUIREMENTS: Dict[str, StepTypeRequirements] = {
 STEP_TYPE_VARIANT_MAP: Dict[str, Type] = {}
 
 
+# Reference examples for each step type pattern
+STEP_TYPE_EXAMPLES: Dict[str, Dict[str, List[str]]] = {
+    "Processing": {
+        "standard_patterns": [
+            "builder_tabular_preprocessing_step",
+            "builder_package_step"
+        ],
+        "custom_package_patterns": [
+            "builder_model_eval_step_xgboost"
+        ],
+        "custom_step_patterns": [
+            "builder_data_load_step_cradle"
+        ]
+    },
+    "Training": {
+        "standard_patterns": [
+            "builder_training_step_xgboost"
+        ]
+    },
+    "Transform": {
+        "standard_patterns": [
+            "builder_batch_transform_step"
+        ]
+    },
+    "CreateModel": {
+        "standard_patterns": [
+            "builder_model_step_xgboost",
+            "builder_model_step_pytorch"
+        ]
+    },
+    "RegisterModel": {
+        "custom_step_patterns": [
+            "builder_registration_step"
+        ]
+    }
+}
+
+
+# Custom step detection patterns
+CUSTOM_STEP_DETECTION: Dict[str, str] = {
+    "CradleDataLoadingStep": "basic_interface_only",
+    "MimsModelRegistrationProcessingStep": "basic_interface_only"
+}
+
+
+# Framework-specific processor mappings
+FRAMEWORK_PROCESSOR_MAP: Dict[str, List[str]] = {
+    "sklearn": ["SKLearnProcessor"],
+    "xgboost": ["XGBoostProcessor"],
+    "pytorch": ["PyTorchProcessor"],
+    "tensorflow": ["TensorFlowProcessor"],
+    "huggingface": ["HuggingFaceProcessor"],
+    "spark": ["SparkMLProcessor"]
+}
+
+
 def register_step_type_variant(step_type: str, variant_class: Type) -> None:
     """
     Register a test variant class for a specific step type.
@@ -376,6 +432,135 @@ def validate_step_type(step_type: str) -> bool:
     return step_type in STEP_TYPE_REQUIREMENTS
 
 
+def get_step_type_examples(step_type: str) -> Optional[Dict[str, List[str]]]:
+    """
+    Get reference examples for a specific step type.
+    
+    Args:
+        step_type: The SageMaker step type
+        
+    Returns:
+        Dictionary of example patterns if available, None otherwise
+    """
+    return STEP_TYPE_EXAMPLES.get(step_type)
+
+
+def is_custom_step(step_class_name: str) -> bool:
+    """
+    Check if a step class is a custom step that requires basic interface testing only.
+    
+    Args:
+        step_class_name: The name of the step class
+        
+    Returns:
+        True if it's a custom step, False otherwise
+    """
+    return step_class_name in CUSTOM_STEP_DETECTION
+
+
+def get_custom_step_test_level(step_class_name: str) -> Optional[str]:
+    """
+    Get the test level for a custom step.
+    
+    Args:
+        step_class_name: The name of the step class
+        
+    Returns:
+        Test level string if it's a custom step, None otherwise
+    """
+    return CUSTOM_STEP_DETECTION.get(step_class_name)
+
+
+def detect_framework_from_processor(processor_class_name: str) -> Optional[str]:
+    """
+    Detect the framework based on processor class name.
+    
+    Args:
+        processor_class_name: The name of the processor class
+        
+    Returns:
+        Framework name if detected, None otherwise
+    """
+    for framework, processors in FRAMEWORK_PROCESSOR_MAP.items():
+        if processor_class_name in processors:
+            return framework
+    return None
+
+
+def get_test_pattern_for_builder(builder_class_name: str, step_type: str) -> str:
+    """
+    Determine the appropriate test pattern for a step builder.
+    
+    Args:
+        builder_class_name: The name of the step builder class
+        step_type: The SageMaker step type
+        
+    Returns:
+        Test pattern string: "standard", "custom_package", "custom_step", or "unknown"
+    """
+    # Check if it's a custom step first
+    if is_custom_step(builder_class_name):
+        return "custom_step"
+    
+    # Get examples for the step type
+    examples = get_step_type_examples(step_type)
+    if not examples:
+        return "unknown"
+    
+    # Check each pattern category
+    for pattern_type, pattern_examples in examples.items():
+        if builder_class_name in pattern_examples:
+            if pattern_type == "standard_patterns":
+                return "standard"
+            elif pattern_type == "custom_package_patterns":
+                return "custom_package"
+            elif pattern_type == "custom_step_patterns":
+                return "custom_step"
+    
+    # Default to standard if not found in examples but step type is known
+    return "standard"
+
+
+def should_run_advanced_tests(builder_class_name: str, step_type: str) -> bool:
+    """
+    Determine if advanced tests should be run for a step builder.
+    
+    Args:
+        builder_class_name: The name of the step builder class
+        step_type: The SageMaker step type
+        
+    Returns:
+        True if advanced tests should be run, False for basic interface only
+    """
+    test_pattern = get_test_pattern_for_builder(builder_class_name, step_type)
+    
+    # Custom steps should only run basic interface tests
+    if test_pattern == "custom_step":
+        return False
+    
+    # All other patterns should run advanced tests
+    return True
+
+
+def get_reference_examples_for_pattern(step_type: str, pattern: str) -> List[str]:
+    """
+    Get reference examples for a specific step type and pattern.
+    
+    Args:
+        step_type: The SageMaker step type
+        pattern: The pattern type ("standard", "custom_package", "custom_step")
+        
+    Returns:
+        List of reference example names
+    """
+    examples = get_step_type_examples(step_type)
+    if not examples:
+        return []
+    
+    pattern_key = f"{pattern}_patterns"
+    return examples.get(pattern_key, [])
+
+
 # Default variant registration function - to be called during module initialization
 def _register_default_variants():
     """Register default test variant classes when they become available."""
@@ -424,9 +609,19 @@ __all__ = [
     "StepTypeRequirements",
     "STEP_TYPE_REQUIREMENTS", 
     "STEP_TYPE_VARIANT_MAP",
+    "STEP_TYPE_EXAMPLES",
+    "CUSTOM_STEP_DETECTION",
+    "FRAMEWORK_PROCESSOR_MAP",
     "register_step_type_variant",
     "get_step_type_variant",
     "get_step_type_requirements",
     "get_all_step_types",
-    "validate_step_type"
+    "validate_step_type",
+    "get_step_type_examples",
+    "is_custom_step",
+    "get_custom_step_test_level",
+    "detect_framework_from_processor",
+    "get_test_pattern_for_builder",
+    "should_run_advanced_tests",
+    "get_reference_examples_for_pattern"
 ]

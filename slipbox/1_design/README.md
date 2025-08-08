@@ -244,6 +244,58 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Informed architectural decisions about safety mechanisms and system robustness
 - **Strategic Value**: Ensures optimal balance between performance and system reliability
 
+### 🧪 Testing & Validation Framework
+
+#### **[Universal Step Builder Test](universal_step_builder_test.md)** - Comprehensive Step Builder Validation
+- **Purpose**: Standardized test suite for validating step builder implementation compliance
+- **Key Features**: Parameterized testing, comprehensive coverage, realistic mocking, self-contained execution
+- **Benefits**: Enforces interface compliance, validates specification integration, confirms dependency handling
+- **Strategic Value**: Quality gate ensuring all step builders align with architectural standards
+
+#### **[Universal Step Builder Test Scoring](universal_step_builder_test_scoring.md)** - Quality Scoring System
+- **Purpose**: Quantitative metrics for evaluating step builder quality and architectural compliance
+- **Key Features**: Weighted assessment, multi-level evaluation, objective metrics, visual reporting
+- **Benefits**: Quantifies quality, enables comparisons, identifies weaknesses, establishes baselines
+- **Strategic Value**: Transforms test results into actionable quality metrics with automated quality gates
+
+#### **[Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md)** - Step Type-Aware Testing Architecture
+- **Purpose**: Comprehensive design for step type-specific testing with specialized variants
+- **Key Features**: Hierarchical testing architecture, SageMaker step type classification, pattern-specific validation
+- **Benefits**: Type-aware validation, specialized testing patterns, comprehensive coverage
+- **Strategic Value**: Next-generation testing framework with step type-specific variants for improved quality assurance
+
+### 🔍 Step Builder Pattern Analysis
+
+#### **[Processing Step Builder Patterns](processing_step_builder_patterns.md)** - Processing Step Implementation Analysis
+- **Purpose**: Analysis of Processing step builder implementations and common patterns
+- **Key Features**: Processor creation patterns, environment variable handling, job type variants, specification-driven design
+- **Benefits**: Identifies common patterns, best practices, testing implications
+- **Strategic Value**: Foundation for creating comprehensive, type-specific validation in universal tester
+
+#### **[Training Step Builder Patterns](training_step_builder_patterns.md)** - Training Step Implementation Analysis
+- **Purpose**: Analysis of Training step builder implementations focusing on framework-specific patterns
+- **Key Features**: Estimator creation patterns, hyperparameter handling, data channel strategies, framework-specific implementations
+- **Benefits**: Understanding of training-specific patterns, framework differences, validation requirements
+- **Strategic Value**: Enables specialized testing for training step builders with framework-aware validation
+
+#### **[CreateModel Step Builder Patterns](createmodel_step_builder_patterns.md)** - CreateModel Step Implementation Analysis
+- **Purpose**: Analysis of CreateModel step builder implementations covering model creation patterns
+- **Key Features**: Model creation patterns, image URI generation, inference configuration, framework-specific models
+- **Benefits**: Understanding of model creation patterns, inference setup, deployment considerations
+- **Strategic Value**: Specialized validation for model creation steps with deployment-aware testing
+
+#### **[Transform Step Builder Patterns](transform_step_builder_patterns.md)** - Transform Step Implementation Analysis
+- **Purpose**: Analysis of Transform step builder implementations focusing on batch inference operations
+- **Key Features**: Transformer creation patterns, batch inference configuration, model integration, data processing
+- **Benefits**: Understanding of batch inference patterns, model integration, data transformation
+- **Strategic Value**: Specialized validation for transform steps with batch inference-aware testing
+
+#### **[Step Builder Patterns Summary](step_builder_patterns_summary.md)** - Comprehensive Pattern Analysis Summary
+- **Purpose**: Synthesized analysis of all step builder patterns with cross-references to related design documents
+- **Key Features**: Pattern synthesis, cross-references, testing implications, architectural insights
+- **Benefits**: Comprehensive understanding of step builder ecosystem, unified pattern view
+- **Strategic Value**: Foundation for enhanced universal tester design with complete pattern coverage
+
 ### 📋 Governance & Quality
 
 #### **[Design Principles](design_principles.md)** - Architectural Philosophy

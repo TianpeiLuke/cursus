@@ -1,9 +1,48 @@
 # Universal Step Builder Test
 
+## Related Documents
+
+### Enhanced Universal Tester Design
+- [Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md) - Comprehensive design for step type-aware testing with specialized variants
+
+### Pattern Analysis Documents
+- [Processing Step Builder Patterns](processing_step_builder_patterns.md) - Analysis of Processing step implementations
+- [Training Step Builder Patterns](training_step_builder_patterns.md) - Analysis of Training step implementations
+- [CreateModel Step Builder Patterns](createmodel_step_builder_patterns.md) - Analysis of CreateModel step implementations
+- [Transform Step Builder Patterns](transform_step_builder_patterns.md) - Analysis of Transform step implementations
+- [Step Builder Patterns Summary](step_builder_patterns_summary.md) - Comprehensive summary of all step builder patterns
+
+### Universal Tester Scoring System
+- [Universal Step Builder Test Scoring](universal_step_builder_test_scoring.md) - Quality scoring system that extends this test framework
+
+### Related Design Documents
+- [SageMaker Step Type Classification Design](sagemaker_step_type_classification_design.md) - Step type classification system
+- [Step Builder Registry Design](step_builder_registry_design.md) - Step builder registry architecture
+- [Step Builder](step_builder.md) - Core step builder design principles
+- [Step Specification](step_specification.md) - Step specification system design
+- [Specification Driven Design](specification_driven_design.md) - Specification-driven architecture
+- [Dependency Resolver](dependency_resolver.md) - Dependency resolution system
+- [Registry Manager](registry_manager.md) - Registry management system
+- [Validation Engine](validation_engine.md) - Validation framework design
+
+### Configuration and Contract Documents
+- [Config Field Categorization](config_field_categorization.md) - Configuration field classification
+- [Script Contract](script_contract.md) - Script contract specifications
+- [Step Contract](step_contract.md) - Step contract definitions
+- [Environment Variable Contract Enforcement](environment_variable_contract_enforcement.md) - Environment variable contracts
+
+### Implementation Improvement Documents
+- [Job Type Variant Handling](job_type_variant_handling.md) - Job type variant implementation
+- [Training Step Improvements](training_step_improvements.md) - Training step enhancements
+- [PyTorch Training Step Improvements](pytorch_training_step_improvements.md) - PyTorch-specific improvements
+- [Packaging Step Improvements](packaging_step_improvements.md) - Package step enhancements
+
+## Overview
+
 This document outlines the design and implementation of a standardized, universal test suite for validating step builder classes. The universal test serves as a quality gate to ensure that all step builders align with architectural standards and can seamlessly integrate into the specification-driven pipeline system.
 
-> **Related Documentation**  
-> For the quality scoring system that extends this test framework, see [universal_step_builder_test_scoring.md](./universal_step_builder_test_scoring.md).
+> **Note on Enhanced Design**  
+> This document describes the current universal tester implementation. For the enhanced design with step type-specific variants, see [Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md).
 
 ## Purpose
 

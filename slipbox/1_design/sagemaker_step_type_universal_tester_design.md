@@ -40,6 +40,8 @@ The current universal tester provides general validation but lacks the specifici
 - **Configuration Needs**: Step type-specific configuration parameters
 - **Validation Rules**: Different compliance requirements and best practices
 
+Additionally, the testing framework should leverage existing standardized step builder implementations as reference examples to ensure consistency and validate against proven patterns. Different step builders may require different levels of testing based on their complexity and whether they use custom packages or implement custom step types.
+
 ## Current State Analysis
 
 ### Existing Universal Test Framework
@@ -178,6 +180,142 @@ Each step type has comprehensive requirements including:
 
 The registry supports all 12 SageMaker step types with detailed specifications for each variant's validation requirements.
 
+## Reference Examples and Tiered Testing Strategy
+
+### Reference Step Builder Examples
+
+The universal tester variants leverage existing standardized step builder implementations as reference examples to ensure consistency and validate against proven patterns:
+
+#### Processing Step Examples
+- **`builder_tabular_preprocessing_step.py`**: Standard processing step without custom package dependencies
+  - Uses SKLearnProcessor with standard framework
+  - Implements specification-driven input/output handling
+  - Follows contract-based environment variable setup
+- **`builder_package_step.py`**: Standard processing step for model packaging
+  - Uses SKLearnProcessor with local inference scripts handling
+  - Implements standard ProcessingInput/ProcessingOutput patterns
+- **`builder_model_eval_step_xgboost.py`**: Processing step with custom package dependencies
+  - Uses XGBoostProcessor with custom framework version
+  - Requires custom package-specific environment variables
+  - Demonstrates advanced processor configuration
+
+#### Training Step Examples
+- **`builder_training_step_xgboost.py`**: Standard training step implementation
+  - Uses XGBoost estimator with proper configuration
+  - Implements TrainingInput channel management
+  - Handles hyperparameter file generation and upload
+  - Demonstrates output path management for model artifacts
+
+#### Custom Step Examples
+- **`builder_data_load_step_cradle.py`**: Custom CradleDataLoadingStep
+  - Inherits from custom step class, not standard SageMaker steps
+  - Requires basic interface validation only
+  - Should skip advanced SageMaker integration tests
+- **`builder_registration_step.py`**: Custom MimsModelRegistrationProcessingStep
+  - Uses custom step implementation
+  - Requires basic interface validation only
+  - Should skip advanced SageMaker integration tests
+
+### Tiered Testing Strategy
+
+The universal tester implements a tiered approach where different step builders receive different levels of testing based on their complexity and type:
+
+#### Level 1: Universal Interface Tests (All Variants)
+All step builder variants share common Level 1 tests:
+- Interface compliance validation
+- Basic method signature checks
+- Configuration validation
+- Registry integration checks
+- Step name generation validation
+
+#### Level 2+: Variant-Specific Tests (Based on Examples)
+
+**ProcessingStepBuilderTest Patterns:**
+
+*Standard Processing Pattern* (following `tabular_preprocessing_step`, `package_step`):
+```python
+def test_standard_processing_pattern(self):
+    # Validate SKLearnProcessor creation
+    # Test ProcessingInput/ProcessingOutput handling
+    # Verify environment variable setup
+    # Check job arguments construction
+```
+
+*Custom Package Processing Pattern* (following `model_eval_step_xgboost`):
+```python
+def test_custom_package_processing_pattern(self):
+    # Validate XGBoostProcessor creation
+    # Test custom framework version handling
+    # Verify package-specific environment variables
+    # Check advanced processor configuration
+```
+
+**TrainingStepBuilderTest Patterns:**
+
+*Standard Training Pattern* (following `training_step_xgboost`):
+```python
+def test_standard_training_pattern(self):
+    # Validate XGBoost estimator creation
+    # Test TrainingInput channel creation
+    # Verify hyperparameter file handling
+    # Check output path management
+```
+
+**Custom Step Detection:**
+
+*Basic Interface Only* (for CradleDataLoadingStep, MimsModelRegistrationProcessingStep):
+```python
+def test_custom_step_basic_interface(self):
+    # Only Level 1 tests (interface compliance)
+    # Skip advanced SageMaker integration tests
+    # Focus on configuration validation
+    # Check basic method presence
+```
+
+### Example-Driven Validation Registry
+
+```python
+STEP_TYPE_EXAMPLES = {
+    "Processing": {
+        "standard_patterns": [
+            "builder_tabular_preprocessing_step",
+            "builder_package_step"
+        ],
+        "custom_package_patterns": [
+            "builder_model_eval_step_xgboost"
+        ],
+        "custom_step_patterns": [
+            "builder_data_load_step_cradle"
+        ]
+    },
+    "Training": {
+        "standard_patterns": [
+            "builder_training_step_xgboost"
+        ]
+    }
+}
+
+CUSTOM_STEP_DETECTION = {
+    "CradleDataLoadingStep": "basic_interface_only",
+    "MimsModelRegistrationProcessingStep": "basic_interface_only"
+}
+```
+
+### Pattern-Based Test Selection
+
+The universal tester automatically selects appropriate test patterns based on:
+
+1. **Step Type Detection**: Uses `sagemaker_step_type` from step registry
+2. **Custom Step Detection**: Identifies custom step classes that inherit from non-standard SageMaker steps
+3. **Package Dependency Analysis**: Detects custom package requirements (XGBoost, PyTorch, etc.)
+4. **Reference Pattern Matching**: Compares implementation patterns against reference examples
+
+This ensures that:
+- Standard step builders get comprehensive testing based on proven patterns
+- Custom package step builders get appropriate framework-specific validation
+- Custom step implementations get basic interface validation without breaking on advanced tests
+- The testing framework learns from existing standardized solutions
+
 ## Specific Variant Implementations
 
 ### 1. ProcessingStepBuilderTest
@@ -266,27 +404,119 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
 - **Step Creation**: Validate actual SageMaker step creation
 - **Pipeline Compatibility**: Test integration with SageMaker Pipelines
 
+## Implementation Details
+
+### Registry-Based Pattern Detection
+
+The enhanced registry provides comprehensive pattern detection and test selection:
+
+```python
+from cursus.steps.registry.step_type_test_variants import (
+    get_test_pattern_for_builder,
+    should_run_advanced_tests,
+    get_reference_examples_for_pattern,
+    detect_framework_from_processor
+)
+
+# Example usage in universal tester
+class UniversalStepBuilderTest:
+    def __init__(self, builder_class, **kwargs):
+        self.builder_class = builder_class
+        self.step_type = self._detect_sagemaker_step_type()
+        self.test_pattern = get_test_pattern_for_builder(
+            builder_class.__name__, 
+            self.step_type
+        )
+        self.run_advanced_tests = should_run_advanced_tests(
+            builder_class.__name__, 
+            self.step_type
+        )
+        
+    def select_test_suite(self):
+        """Select appropriate test suite based on pattern detection"""
+        if self.test_pattern == "custom_step":
+            return self._get_basic_interface_tests()
+        elif self.test_pattern == "custom_package":
+            return self._get_custom_package_tests()
+        else:
+            return self._get_standard_tests()
+```
+
+### Example-Driven Validation
+
+The system uses reference examples to validate implementation patterns:
+
+```python
+# Get reference examples for validation
+reference_examples = get_reference_examples_for_pattern("Processing", "standard")
+# Returns: ["builder_tabular_preprocessing_step", "builder_package_step"]
+
+# Use examples to validate method signatures and patterns
+def validate_against_reference_examples(self, builder_class):
+    """Validate builder follows patterns from reference examples"""
+    for example_name in self.reference_examples:
+        example_class = self._load_example_class(example_name)
+        self._compare_method_signatures(builder_class, example_class)
+        self._validate_implementation_patterns(builder_class, example_class)
+```
+
+### Framework Detection and Custom Package Handling
+
+The registry automatically detects frameworks and custom packages:
+
+```python
+# Detect framework from processor usage
+def detect_builder_framework(self, builder_class):
+    """Detect framework used by step builder"""
+    if hasattr(builder_class, '_create_processor'):
+        # Analyze processor creation method
+        processor_type = self._extract_processor_type(builder_class)
+        framework = detect_framework_from_processor(processor_type)
+        return framework
+    return None
+
+# Apply framework-specific tests
+def apply_framework_tests(self, framework):
+    """Apply framework-specific validation tests"""
+    if framework == "xgboost":
+        self._test_xgboost_processor_config()
+        self._test_xgboost_environment_variables()
+    elif framework == "sklearn":
+        self._test_sklearn_processor_config()
+        self._test_sklearn_script_handling()
+```
+
 ## Implementation Strategy
 
-### Phase 1: Core Framework Enhancement
+### Phase 1: Enhanced Registry Implementation ✅
+1. **Registry Enhancement**: Enhanced step type registry with reference examples and pattern detection
+2. **Pattern Detection Functions**: Implemented helper functions for test pattern selection
+3. **Custom Step Detection**: Added custom step detection and test level determination
+4. **Framework Detection**: Added framework detection based on processor types
+
+### Phase 2: Core Framework Enhancement
 1. **Base Class Enhancement**: Modify `UniversalStepBuilderTest` with variant detection
-2. **Registry Integration**: Enhance step type registry with variant mappings
-3. **Factory Pattern**: Implement factory pattern for variant creation
-4. **Base Variant Class**: Create abstract base class for all variants
+2. **Factory Pattern**: Implement factory pattern for variant creation using registry
+3. **Base Variant Class**: Create abstract base class for all variants
+4. **Pattern-Based Test Selection**: Integrate registry functions for automatic test selection
 
-### Phase 2: Primary Variants Implementation
+### Phase 3: Primary Variants Implementation
 1. **ProcessingStepBuilderTest**: Implement comprehensive processing step validation
+   - Standard pattern tests (following tabular_preprocessing_step, package_step)
+   - Custom package pattern tests (following model_eval_step_xgboost)
+   - Custom step pattern tests (basic interface only)
 2. **TrainingStepBuilderTest**: Implement training step validation with estimator handling
-3. **TransformStepBuilderTest**: Implement transform step validation with transformer handling
-4. **CreateModelStepBuilderTest**: Implement model creation step validation
+   - Standard pattern tests (following training_step_xgboost)
+   - Hyperparameter handling validation
+   - TrainingInput channel management tests
 
-### Phase 3: Advanced Variants Implementation
-1. **TuningStepBuilderTest**: Implement hyperparameter tuning validation
-2. **LambdaStepBuilderTest**: Implement Lambda step validation
-3. **Remaining Variants**: Implement CallbackStep, ConditionStep, FailStep variants
+### Phase 4: Advanced Variants Implementation
+1. **TransformStepBuilderTest**: Implement transform step validation with transformer handling
+2. **CreateModelStepBuilderTest**: Implement model creation step validation
+3. **Remaining Standard Variants**: Implement TuningStep, LambdaStep, CallbackStep variants
 4. **Specialized Variants**: Implement EMRStep, AutoMLStep, NotebookJobStep variants
 
-### Phase 4: Integration & Optimization
+### Phase 5: Integration & Optimization
 1. **CI/CD Integration**: Integrate enhanced testing with existing pipelines
 2. **Performance Optimization**: Optimize test execution and resource usage
 3. **Documentation**: Create comprehensive documentation and examples
