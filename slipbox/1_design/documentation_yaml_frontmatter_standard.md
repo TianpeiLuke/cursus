@@ -102,6 +102,25 @@ tags:
   - [component_purpose]
 ```
 
+### Design Tags
+
+Documentation for design documents should begin with "design":
+
+```yaml
+tags:
+  - design
+  - [design_area]
+  - [component_name]
+  - [architecture_aspect]
+  - [design_purpose]
+```
+
+Example locations for design tags:
+- Architecture design documents
+- System design specifications
+- Component design documents
+- Technical design proposals
+
 ### Project Tags
 
 Project documentation should categorize planning, implementation or analysis:
