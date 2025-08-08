@@ -1,29 +1,97 @@
 """
-Processing step builder test variant.
+Enhanced Processing step builder test variant with 4-level hierarchy.
+
+This module provides comprehensive validation for Processing steps using the enhanced
+4-level test hierarchy based on the patterns identified in Processing Step Builder
+Patterns analysis.
 """
 
 from typing import Dict, List, Any
 from ..base_test import UniversalStepBuilderTestBase
+from .processing_interface_test import ProcessingInterfaceTests
+from .processing_specification_test import ProcessingSpecificationTests
+from .processing_path_mapping_test import ProcessingPathMappingTests
+from .processing_integration_test import ProcessingIntegrationTests
 
 
 class ProcessingStepBuilderTest(UniversalStepBuilderTestBase):
     """
-    Specialized test variant for Processing step builders.
+    Enhanced Processing step builder test with 4-level hierarchy.
     
-    This class provides comprehensive validation for Processing steps based on
-    the patterns identified in the Processing Step Builder Patterns design document.
+    This class orchestrates the 4-level testing approach for Processing steps:
+    - Level 1: Interface Tests (ProcessingInterfaceTests)
+    - Level 2: Specification Tests (ProcessingSpecificationTests)  
+    - Level 3: Path Mapping Tests (ProcessingPathMappingTests)
+    - Level 4: Integration Tests (ProcessingIntegrationTests)
+    
+    Based on the patterns identified in Processing Step Builder Patterns analysis.
     """
     
+    def __init__(self, *args, **kwargs):
+        """Initialize with 4-level test hierarchy."""
+        # Initialize 4-level test hierarchy first
+        self._init_test_levels_early(*args, **kwargs)
+        
+        # Then call parent init
+        super().__init__(*args, **kwargs)
+    
+    def _init_test_levels_early(self, *args, **kwargs) -> None:
+        """Initialize the 4-level test hierarchy early (before parent init)."""
+        # Extract parameters that will be available after parent init
+        builder_class = kwargs.get('builder_class')
+        verbose = kwargs.get('verbose', False)
+        
+        # Create placeholder objects that will be properly initialized later
+        self.interface_tests = None
+        self.specification_tests = None
+        self.path_mapping_tests = None
+        self.integration_tests = None
+    
+    def _init_test_levels(self) -> None:
+        """Initialize the 4-level test hierarchy."""
+        # Level 1: Interface Tests
+        self.interface_tests = ProcessingInterfaceTests(
+            builder_class=self.builder_class,
+            mock_factory=self.mock_factory,
+            step_info=self.step_info,
+            verbose=self.verbose
+        )
+        
+        # Level 2: Specification Tests
+        self.specification_tests = ProcessingSpecificationTests(
+            builder_class=self.builder_class,
+            mock_factory=self.mock_factory,
+            step_info=self.step_info,
+            verbose=self.verbose
+        )
+        
+        # Level 3: Path Mapping Tests
+        self.path_mapping_tests = ProcessingPathMappingTests(
+            builder_class=self.builder_class,
+            mock_factory=self.mock_factory,
+            step_info=self.step_info,
+            verbose=self.verbose
+        )
+        
+        # Level 4: Integration Tests
+        self.integration_tests = ProcessingIntegrationTests(
+            builder_class=self.builder_class,
+            mock_factory=self.mock_factory,
+            step_info=self.step_info,
+            verbose=self.verbose
+        )
+    
     def get_step_type_specific_tests(self) -> List[str]:
-        """Return Processing step-specific test methods."""
-        return [
-            "test_processor_creation",
-            "test_processing_inputs_outputs",
-            "test_processing_job_arguments",
-            "test_environment_variables_processing",
-            "test_property_files_configuration",
-            "test_processing_code_handling"
-        ]
+        """Return Processing step-specific test methods from all levels."""
+        all_tests = []
+        
+        # Collect tests from all 4 levels
+        all_tests.extend([f"level1_{test}" for test in self.interface_tests.get_step_type_specific_tests()])
+        all_tests.extend([f"level2_{test}" for test in self.specification_tests.get_step_type_specific_tests()])
+        all_tests.extend([f"level3_{test}" for test in self.path_mapping_tests.get_step_type_specific_tests()])
+        all_tests.extend([f"level4_{test}" for test in self.integration_tests.get_step_type_specific_tests()])
+        
+        return all_tests
     
     def _configure_step_type_mocks(self) -> None:
         """Configure Processing step-specific mock objects."""
@@ -32,237 +100,214 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTestBase):
         
         # Log Processing step info if verbose
         if self.verbose:
-            self._log(f"Processing step detected - Framework: {self.step_info.get('framework', 'Unknown')}")
-            self._log(f"Test pattern: {self.step_info.get('test_pattern', 'standard')}")
+            framework = self.step_info.get('framework', 'Unknown')
+            pattern = self.step_info.get('step_creation_pattern', 'Unknown')
+            job_types = self.step_info.get('supported_job_types', [])
+            special_patterns = self.step_info.get('special_input_patterns', [])
+            
+            self._log(f"Processing step detected:")
+            self._log(f"  Framework: {framework}")
+            self._log(f"  Step creation pattern: {pattern}")
+            self._log(f"  Supported job types: {job_types}")
+            self._log(f"  Special input patterns: {special_patterns}")
             
         # Set up Processing-specific mock attributes
         self.mock_processor = self.step_type_mocks.get('processor_class')
         self.mock_processing_input = self.step_type_mocks.get('processing_input')
         self.mock_processing_output = self.step_type_mocks.get('processing_output')
+        
+        # Initialize test levels if not already done
+        if self.interface_tests is None:
+            self._init_test_levels()
+        
+        # Configure mocks for all test levels
+        if self.interface_tests:
+            self.interface_tests._configure_step_type_mocks()
+        if self.specification_tests:
+            self.specification_tests._configure_step_type_mocks()
+        if self.path_mapping_tests:
+            self.path_mapping_tests._configure_step_type_mocks()
+        if self.integration_tests:
+            self.integration_tests._configure_step_type_mocks()
     
     def _validate_step_type_requirements(self) -> Dict[str, Any]:
-        """Validate Processing step-specific requirements."""
+        """Validate Processing step-specific requirements across all levels."""
         validation_results = {
             "is_processing_step": self.step_info.get("sagemaker_step_type") == "Processing",
             "processor_framework_detected": self.step_info.get("framework") is not None,
+            "step_creation_pattern_detected": self.step_info.get("step_creation_pattern") is not None,
             "processing_mocks_created": len(self.step_type_mocks) > 0,
             "expected_processing_dependencies": len(self._get_expected_dependencies()) > 0
         }
         
+        # Collect validation results from all levels
+        validation_results.update({
+            "level1_requirements": self.interface_tests._validate_step_type_requirements(),
+            "level2_requirements": self.specification_tests._validate_step_type_requirements(),
+            "level3_requirements": self.path_mapping_tests._validate_step_type_requirements(),
+            "level4_requirements": self.integration_tests._validate_step_type_requirements()
+        })
+        
         return validation_results
     
-    # Processing step-specific test methods
+    # Level 1: Interface Tests (delegated methods)
+    
+    def level1_test_processor_creation_method(self):
+        """Level 1: Test processor creation method."""
+        return self.interface_tests.test_processor_creation_method()
+    
+    def level1_test_processing_configuration_attributes(self):
+        """Level 1: Test processing configuration attributes."""
+        return self.interface_tests.test_processing_configuration_attributes()
+    
+    def level1_test_framework_specific_methods(self):
+        """Level 1: Test framework-specific methods."""
+        return self.interface_tests.test_framework_specific_methods()
+    
+    def level1_test_step_creation_pattern_compliance(self):
+        """Level 1: Test step creation pattern compliance."""
+        return self.interface_tests.test_step_creation_pattern_compliance()
+    
+    def level1_test_processing_input_output_methods(self):
+        """Level 1: Test processing input/output methods."""
+        return self.interface_tests.test_processing_input_output_methods()
+    
+    def level1_test_environment_variables_method(self):
+        """Level 1: Test environment variables method."""
+        return self.interface_tests.test_environment_variables_method()
+    
+    def level1_test_job_arguments_method(self):
+        """Level 1: Test job arguments method."""
+        return self.interface_tests.test_job_arguments_method()
+    
+    # Level 2: Specification Tests (delegated methods)
+    
+    def level2_test_job_type_specification_loading(self):
+        """Level 2: Test job type specification loading."""
+        return self.specification_tests.test_job_type_specification_loading()
+    
+    def level2_test_environment_variable_patterns(self):
+        """Level 2: Test environment variable patterns."""
+        return self.specification_tests.test_environment_variable_patterns()
+    
+    def level2_test_job_arguments_patterns(self):
+        """Level 2: Test job arguments patterns."""
+        return self.specification_tests.test_job_arguments_patterns()
+    
+    def level2_test_specification_driven_inputs(self):
+        """Level 2: Test specification-driven inputs."""
+        return self.specification_tests.test_specification_driven_inputs()
+    
+    def level2_test_specification_driven_outputs(self):
+        """Level 2: Test specification-driven outputs."""
+        return self.specification_tests.test_specification_driven_outputs()
+    
+    def level2_test_contract_path_mapping(self):
+        """Level 2: Test contract path mapping."""
+        return self.specification_tests.test_contract_path_mapping()
+    
+    def level2_test_multi_job_type_support(self):
+        """Level 2: Test multi-job-type support."""
+        return self.specification_tests.test_multi_job_type_support()
+    
+    def level2_test_framework_specific_specifications(self):
+        """Level 2: Test framework-specific specifications."""
+        return self.specification_tests.test_framework_specific_specifications()
+    
+    # Level 3: Path Mapping Tests (delegated methods)
+    
+    def level3_test_processing_input_creation(self):
+        """Level 3: Test ProcessingInput creation."""
+        return self.path_mapping_tests.test_processing_input_creation()
+    
+    def level3_test_processing_output_creation(self):
+        """Level 3: Test ProcessingOutput creation."""
+        return self.path_mapping_tests.test_processing_output_creation()
+    
+    def level3_test_container_path_mapping(self):
+        """Level 3: Test container path mapping."""
+        return self.path_mapping_tests.test_container_path_mapping()
+    
+    def level3_test_special_input_handling(self):
+        """Level 3: Test special input handling."""
+        return self.path_mapping_tests.test_special_input_handling()
+    
+    def level3_test_s3_path_normalization(self):
+        """Level 3: Test S3 path normalization."""
+        return self.path_mapping_tests.test_s3_path_normalization()
+    
+    def level3_test_file_upload_patterns(self):
+        """Level 3: Test file upload patterns."""
+        return self.path_mapping_tests.test_file_upload_patterns()
+    
+    def level3_test_local_path_override_patterns(self):
+        """Level 3: Test local path override patterns."""
+        return self.path_mapping_tests.test_local_path_override_patterns()
+    
+    def level3_test_dependency_input_extraction(self):
+        """Level 3: Test dependency input extraction."""
+        return self.path_mapping_tests.test_dependency_input_extraction()
+    
+    # Level 4: Integration Tests (delegated methods)
+    
+    def level4_test_step_creation_pattern_execution(self):
+        """Level 4: Test step creation pattern execution."""
+        return self.integration_tests.test_step_creation_pattern_execution()
+    
+    def level4_test_framework_specific_step_creation(self):
+        """Level 4: Test framework-specific step creation."""
+        return self.integration_tests.test_framework_specific_step_creation()
+    
+    def level4_test_processing_dependency_resolution(self):
+        """Level 4: Test processing dependency resolution."""
+        return self.integration_tests.test_processing_dependency_resolution()
+    
+    def level4_test_step_name_generation(self):
+        """Level 4: Test step name generation."""
+        return self.integration_tests.test_step_name_generation()
+    
+    def level4_test_cache_configuration(self):
+        """Level 4: Test cache configuration."""
+        return self.integration_tests.test_cache_configuration()
+    
+    def level4_test_step_dependencies_handling(self):
+        """Level 4: Test step dependencies handling."""
+        return self.integration_tests.test_step_dependencies_handling()
+    
+    def level4_test_end_to_end_step_creation(self):
+        """Level 4: Test end-to-end step creation."""
+        return self.integration_tests.test_end_to_end_step_creation()
+    
+    def level4_test_specification_attachment(self):
+        """Level 4: Test specification attachment."""
+        return self.integration_tests.test_specification_attachment()
+    
+    # Legacy compatibility methods (for backward compatibility)
     
     def test_processor_creation(self):
-        """Validate processor creation patterns."""
-        self._log("Testing processor creation...")
-        
-        try:
-            builder = self._create_builder_instance()
-            
-            # Test that builder can create step (not build method)
-            self._assert(hasattr(builder, 'create_step'), "Builder should have create_step method")
-            
-            # Test processor configuration based on framework
-            framework = self.step_info.get('framework')
-            if framework:
-                self._log(f"Testing {framework} processor creation")
-                
-                # Validate framework-specific processor attributes
-                config = builder.config
-                if framework == "sklearn":
-                    self._assert(
-                        hasattr(config, 'framework_version'),
-                        "SKLearn processor should have framework_version"
-                    )
-                elif framework == "xgboost":
-                    self._assert(
-                        hasattr(config, 'framework_version'),
-                        "XGBoost processor should have framework_version"
-                    )
-            
-        except Exception as e:
-            self._assert(False, f"Processor creation test failed: {str(e)}")
+        """Legacy: Validate processor creation patterns."""
+        return self.level1_test_processor_creation_method()
     
     def test_processing_inputs_outputs(self):
-        """Test ProcessingInput and ProcessingOutput handling."""
-        self._log("Testing processing inputs and outputs...")
-        
-        try:
-            builder = self._create_builder_instance()
-            
-            # Test that builder handles processing inputs/outputs
-            # This would typically involve checking the build method's behavior
-            # For now, we validate the configuration supports it
-            
-            config = builder.config
-            self._assert(
-                hasattr(config, 'processing_entry_point'),
-                "Processing config should have entry point"
-            )
-            
-            # Test expected dependencies (inputs)
-            expected_deps = self._get_expected_dependencies()
-            self._assert(len(expected_deps) > 0, "Processing step should have input dependencies")
-            
-            # Log expected inputs/outputs
-            if self.verbose:
-                self._log(f"Expected processing inputs: {expected_deps}")
-            
-        except Exception as e:
-            self._assert(False, f"Processing inputs/outputs test failed: {str(e)}")
+        """Legacy: Test ProcessingInput and ProcessingOutput handling."""
+        return self.level3_test_processing_input_creation()
     
     def test_processing_job_arguments(self):
-        """Test processing job arguments construction."""
-        self._log("Testing processing job arguments...")
-        
-        try:
-            builder = self._create_builder_instance()
-            config = builder.config
-            
-            # Test processing-specific configuration
-            self._assert(
-                hasattr(config, 'processing_instance_type'),
-                "Processing config should have instance type"
-            )
-            self._assert(
-                hasattr(config, 'processing_instance_count'),
-                "Processing config should have instance count"
-            )
-            self._assert(
-                hasattr(config, 'processing_volume_size'),
-                "Processing config should have volume size"
-            )
-            
-            # Test source directory configuration
-            self._assert(
-                hasattr(config, 'source_dir'),
-                "Processing config should have source directory"
-            )
-            
-        except Exception as e:
-            self._assert(False, f"Processing job arguments test failed: {str(e)}")
+        """Legacy: Test processing job arguments construction."""
+        return self.level2_test_job_arguments_patterns()
     
     def test_environment_variables_processing(self):
-        """Test environment variable setup for processing."""
-        self._log("Testing processing environment variables...")
-        
-        try:
-            builder = self._create_builder_instance()
-            
-            # Test that builder can handle environment variables
-            # This is typically configured in the processing job
-            
-            # For tabular preprocessing, test specific environment variables
-            builder_name = self.builder_class.__name__
-            if "TabularPreprocessing" in builder_name:
-                self._log("Testing tabular preprocessing environment variables")
-                # Tabular preprocessing typically uses specific env vars
-                # This would be validated in the actual build process
-            
-            # Test basic environment variable support
-            config = builder.config
-            if hasattr(config, 'get_script_path'):
-                script_path = config.get_script_path()
-                self._assert(script_path is not None, "Script path should be available")
-            
-        except Exception as e:
-            self._assert(False, f"Environment variables test failed: {str(e)}")
+        """Legacy: Test environment variable setup for processing."""
+        return self.level2_test_environment_variable_patterns()
     
     def test_property_files_configuration(self):
-        """Test property files configuration for processing."""
-        self._log("Testing property files configuration...")
-        
-        try:
-            builder = self._create_builder_instance()
-            
-            # Test property file handling
-            # Processing steps often use property files for configuration
-            
-            config = builder.config
-            
-            # Test that configuration supports property files
-            if hasattr(config, 'get_script_contract'):
-                contract = config.get_script_contract()
-                # Contract may be None, which is acceptable
-                self._log(f"Script contract: {contract}")
-            
-            # Test pipeline configuration
-            self._assert(
-                hasattr(config, 'pipeline_s3_loc'),
-                "Config should have pipeline S3 location"
-            )
-            
-        except Exception as e:
-            self._assert(False, f"Property files configuration test failed: {str(e)}")
+        """Legacy: Test property files configuration for processing."""
+        return self.level2_test_contract_path_mapping()
     
     def test_processing_code_handling(self):
-        """Test processing code and script handling."""
-        self._log("Testing processing code handling...")
-        
-        try:
-            builder = self._create_builder_instance()
-            config = builder.config
-            
-            # Test script configuration
-            self._assert(
-                hasattr(config, 'processing_entry_point'),
-                "Processing config should have entry point"
-            )
-            
-            # Test source directory
-            self._assert(
-                hasattr(config, 'source_dir'),
-                "Processing config should have source directory"
-            )
-            
-            # Test image URI configuration
-            if hasattr(config, 'get_image_uri'):
-                image_uri = config.get_image_uri()
-                self._assert(image_uri is not None, "Image URI should be available")
-                self._log(f"Processing image URI: {image_uri}")
-            
-            # Test framework-specific code handling
-            framework = self.step_info.get('framework')
-            if framework:
-                self._log(f"Testing {framework} code handling")
-                
-                if framework in ["sklearn", "xgboost"]:
-                    self._assert(
-                        hasattr(config, 'py_version'),
-                        f"{framework} processor should have Python version"
-                    )
-            
-        except Exception as e:
-            self._assert(False, f"Processing code handling test failed: {str(e)}")
+        """Legacy: Test processing code and script handling."""
+        return self.level1_test_step_creation_pattern_compliance()
     
     def test_processing_step_dependencies(self):
-        """Test Processing step dependency handling."""
-        self._log("Testing processing step dependencies...")
-        
-        try:
-            builder = self._create_builder_instance()
-            expected_deps = self._get_expected_dependencies()
-            
-            # Test dependency resolution
-            self._assert(len(expected_deps) > 0, "Processing step should have dependencies")
-            
-            # Test specific dependency patterns
-            builder_name = self.builder_class.__name__
-            if "TabularPreprocessing" in builder_name:
-                self._assert(
-                    "DATA" in expected_deps,
-                    "Tabular preprocessing should depend on DATA"
-                )
-            elif "ModelEval" in builder_name:
-                expected_model_deps = ["model_input", "eval_data_input"]
-                for dep in expected_model_deps:
-                    if dep in expected_deps:
-                        self._log(f"Found expected model evaluation dependency: {dep}")
-            
-            # Log all dependencies
-            if self.verbose:
-                self._log(f"Processing dependencies: {expected_deps}")
-            
-        except Exception as e:
-            self._assert(False, f"Processing dependencies test failed: {str(e)}")
+        """Legacy: Test Processing step dependency handling."""
+        return self.level4_test_processing_dependency_resolution()
