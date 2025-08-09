@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 # Import the components to be tested
-from src.pipeline_scripts.risk_table_mapping import (
+from src.cursus.steps.scripts.risk_table_mapping import (
     OfflineBinning,
     main as risk_mapping_main
 )

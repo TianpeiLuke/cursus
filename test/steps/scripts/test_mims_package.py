@@ -15,7 +15,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the functions and main entrypoint from the script to be tested
-from src.pipeline_scripts.mims_package import (
+from src.cursus.steps.scripts.mims_package import (
     ensure_directory,
     check_file_exists,
     list_directory_contents,
@@ -136,7 +136,7 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
         
         # --- Act ---
         # Use patch.object to replace the module-level constants with our temporary paths
-        from src.pipeline_scripts import mims_package
+        from src.cursus.steps.scripts import mims_package
         with patch.object(mims_package, 'MODEL_PATH', self.model_path), \
              patch.object(mims_package, 'SCRIPT_PATH', self.script_path), \
              patch.object(mims_package, 'OUTPUT_PATH', self.output_path), \
@@ -165,7 +165,7 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
         self._create_dummy_file(self.script_path / "requirements.txt", "pandas\nscikit-learn")
 
         # --- Act ---
-        from src.pipeline_scripts import mims_package
+        from src.cursus.steps.scripts import mims_package
         with patch.object(mims_package, 'MODEL_PATH', self.model_path), \
              patch.object(mims_package, 'SCRIPT_PATH', self.script_path), \
              patch.object(mims_package, 'OUTPUT_PATH', self.output_path), \

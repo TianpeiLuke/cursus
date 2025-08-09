@@ -16,7 +16,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the functions and main entrypoint from the script to be tested
-from src.pipeline_scripts.mims_payload import (
+from src.cursus.steps.scripts.mims_payload import (
     VariableType,
     create_model_variable_list,
     extract_hyperparameters_from_tarball,

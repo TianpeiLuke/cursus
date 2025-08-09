@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 # Import the functions to be tested from the updated script
-from src.pipeline_scripts.tabular_preprocess import (
+from src.cursus.steps.scripts.tabular_preprocess import (
     combine_shards,
     _read_file_to_df,
     peek_json_format,
