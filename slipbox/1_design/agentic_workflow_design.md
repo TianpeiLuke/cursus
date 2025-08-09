@@ -54,6 +54,74 @@ The workflow operates in **two main phases**:
 - Two-level code validation with tool integration
 - Iterative code refinement until validation passes
 
+### Workflow Diagram
+
+```mermaid
+flowchart TD
+    %% User Input
+    A[User Requirements<br/>Step Type & Documentation Locations] --> B[Step 1: Initial Planning]
+    
+    %% Phase 1: Plan Development and Validation
+    subgraph Phase1 ["Phase 1: Plan Development & Validation"]
+        B[Step 1: Initial Planning<br/>Agent: Planner<br/>Template: initial_planner_prompt_template.md] --> C[Step 2: Plan Validation<br/>Agent: Validator<br/>Template: plan_validator_prompt_template.md]
+        
+        C --> D{Validation<br/>Passed?}
+        D -->|No| E[Step 3: Plan Revision<br/>Agent: Planner<br/>Template: revision_planner_prompt_template.md]
+        E --> F[Step 4: Iterative Validation<br/>Agent: Validator<br/>Template: plan_validator_prompt_template.md]
+        F --> G{All Issues<br/>Resolved?}
+        G -->|No| E
+        G -->|Yes| H[Step 5: Plan Convergence<br/>✓ Alignment Score ≥ 9/10<br/>✓ Standardization Score ≥ 8/10<br/>✓ Compatibility Score ≥ 8/10]
+        D -->|Yes| H
+    end
+    
+    %% Phase 2: Code Implementation and Validation
+    subgraph Phase2 ["Phase 2: Code Implementation & Validation"]
+        H --> I[Step 6: Code Implementation<br/>Agent: Programmer<br/>Template: programmer_prompt_template.md]
+        
+        I --> J[Step 7: Code Validation<br/>Agent: Validator<br/>Templates:<br/>• two_level_validation_agent_prompt_template.md<br/>• two_level_standardization_validation_agent_prompt_template.md]
+        
+        J --> K{Validation<br/>Passed?}
+        K -->|No| L[Step 8: Code Refinement<br/>Agent: Programmer<br/>Template: code_refinement_programmer_prompt_template.md]
+        L --> M[Step 9: Validation Convergence<br/>Agent: Validator<br/>Repeat Step 7 Templates]
+        M --> N{All Validations<br/>Pass?}
+        N -->|No| L
+        N -->|Yes| O[✅ Production Ready Implementation]
+        K -->|Yes| O
+    end
+    
+    %% Human-in-the-Loop Integration
+    P[👤 Human Review & Approval] -.-> C
+    P -.-> F
+    P -.-> J
+    P -.-> M
+    P -.-> O
+    
+    %% Styling
+    classDef plannerAgent fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef validatorAgent fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef programmerAgent fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef userInput fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef decision fill:#ffecb3,stroke:#f57f17,stroke-width:2px
+    classDef success fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    classDef phase fill:#f5f5f5,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5
+    
+    class B,E plannerAgent
+    class C,F,J,M validatorAgent
+    class I,L programmerAgent
+    class A,P userInput
+    class D,G,K,N decision
+    class O success
+```
+
+### Workflow Legend
+
+| Agent Type | Color | Templates Used |
+|------------|-------|----------------|
+| 🎯 **Planner Agent** | Blue | `initial_planner_prompt_template.md`<br/>`revision_planner_prompt_template.md` |
+| 🔍 **Validator Agent** | Purple | `plan_validator_prompt_template.md`<br/>`two_level_validation_agent_prompt_template.md`<br/>`two_level_standardization_validation_agent_prompt_template.md` |
+| 💻 **Programmer Agent** | Green | `programmer_prompt_template.md`<br/>`code_refinement_programmer_prompt_template.md` |
+| 👤 **Human-in-the-Loop** | Orange | Requirements, Reviews, Approvals |
+
 ## Detailed Workflow Steps
 
 ### Step 1: Initial Planning
@@ -368,7 +436,63 @@ interface_results = interface_validator.validate_step_builder_interface(builder_
 **Input**: Validation report and original code  
 **Output**: Refined code implementation  
 
-The Programmer agent fixes identified issues while maintaining the validated plan structure.
+The Programmer agent fixes identified issues using the enhanced `code_refinement_programmer_prompt_template.md`:
+
+**Template Enhancement Requirements**:
+- Fill knowledge blanks by referencing:
+  
+  **Developer Guide Documents**:
+  - `slipbox/0_developer_guide/alignment_rules.md` - Alignment requirements for fixes
+  - `slipbox/0_developer_guide/standardization_rules.md` - Standardization requirements for fixes
+  - `slipbox/0_developer_guide/common_pitfalls.md` - Common issues and their solutions
+  - `slipbox/0_developer_guide/best_practices.md` - Best practices for code refinement
+  - `slipbox/0_developer_guide/validation_checklist.md` - Validation requirements to address
+  
+  **Design Pattern Documents**:
+  - `slipbox/1_design/processing_step_builder_patterns.md` - Processing step refinement patterns
+  - `slipbox/1_design/training_step_builder_patterns.md` - Training step refinement patterns
+  - `slipbox/1_design/createmodel_step_builder_patterns.md` - Model creation refinement patterns
+  - `slipbox/1_design/transform_step_builder_patterns.md` - Transform step refinement patterns
+  - `slipbox/1_design/step_builder_patterns_summary.md` - Summary of refinement patterns
+  
+  **Validation Framework Documents**:
+  - `slipbox/1_design/two_level_alignment_validation_system_design.md` - Understanding validation results
+  - `slipbox/1_design/unified_alignment_tester_design.md` - Alignment testing framework
+  - `slipbox/1_design/enhanced_dependency_validation_design.md` - Dependency validation patterns
+  
+  **Implementation Reference Documents**:
+  - `slipbox/1_design/dependency_resolution_improvement.md` - Dependency resolution fixes
+  - `slipbox/1_design/design_principles_compliance_analysis.md` - Compliance improvement strategies
+  - `slipbox/1_design/config_field_categorization_three_tier.md` - Configuration refinement patterns
+  
+  **Code Implementation Examples**:
+  - `src/cursus/steps/builders/` - Correct builder implementations for reference
+  - `src/cursus/steps/configs/` - Correct configuration implementations
+  - `src/cursus/steps/specs/` - Correct specification implementations
+  - `src/cursus/steps/contracts/` - Correct contract implementations
+  - `src/cursus/steps/scripts/` - Correct script implementations
+
+- Add user input fields for:
+  - Refined code documentation location
+  - Specific validation issues to address
+  - Priority level for different types of fixes
+- Include validation-driven refinement strategies
+
+**Refinement Requirements**:
+- Address all critical validation issues identified in Step 7
+- Maintain architectural integrity while fixing issues
+- Follow standardization rules precisely
+- Preserve validated plan structure and design intent
+- Implement fixes using established patterns and best practices
+- Ensure all tool-based validations will pass after refinement
+
+**Refinement Priorities**:
+1. **Critical Alignment Issues**: Script-contract misalignments, logical name inconsistencies
+2. **Tool Validation Failures**: Naming violations, interface non-compliance
+3. **Integration Issues**: Dependency resolution problems, cross-component compatibility
+4. **Code Quality Issues**: Error handling, documentation, best practices compliance
+
+The Programmer agent fixes identified issues while maintaining the validated plan structure and ensuring all subsequent validations will pass.
 
 ### Step 9: Validation Convergence
 
