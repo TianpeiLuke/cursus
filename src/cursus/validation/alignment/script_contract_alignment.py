@@ -40,6 +40,9 @@ class ScriptContractAlignmentTester:
         """
         self.scripts_dir = Path(scripts_dir)
         self.contracts_dir = Path(contracts_dir)
+        
+        # Build entry_point to contract file mapping
+        self._entry_point_to_contract = self._build_entry_point_mapping()
     
     def validate_all_scripts(self, target_scripts: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
@@ -87,7 +90,16 @@ class ScriptContractAlignmentTester:
             Validation result dictionary
         """
         script_path = self.scripts_dir / f"{script_name}.py"
-        contract_path = self.contracts_dir / f"{script_name}_contract.py"
+        
+        # Use entry_point mapping to find the correct contract file
+        script_filename = f"{script_name}.py"
+        contract_file = self._entry_point_to_contract.get(script_filename)
+        
+        if contract_file:
+            contract_path = self.contracts_dir / contract_file
+        else:
+            # Fallback to naming convention
+            contract_path = self.contracts_dir / f"{script_name}_contract.py"
         
         # Check if files exist
         if not script_path.exists():
@@ -108,7 +120,7 @@ class ScriptContractAlignmentTester:
                     'severity': 'ERROR',
                     'category': 'missing_contract',
                     'message': f'Contract file not found: {contract_path}',
-                    'recommendation': f'Create contract file {script_name}_contract.py'
+                    'recommendation': f'Create contract file {contract_file or f"{script_name}_contract.py"}'
                 }]
             }
         
@@ -207,26 +219,43 @@ class ScriptContractAlignmentTester:
                     if path in sys.path:
                         sys.path.remove(path)
             
-            # Look for the contract object
-            contract_var_name = f"{script_name.upper()}_CONTRACT"
-            if hasattr(module, contract_var_name):
-                contract_obj = getattr(module, contract_var_name)
-            else:
-                # Try alternative naming patterns
-                alt_names = [
-                    f"{script_name}_CONTRACT",
-                    f"{script_name}_contract",
-                    "CONTRACT",
-                    "contract"
-                ]
-                contract_obj = None
-                for name in alt_names:
-                    if hasattr(module, name):
-                        contract_obj = getattr(module, name)
+            # Look for the contract object - try multiple naming patterns
+            contract_obj = None
+            
+            # Try various naming patterns
+            possible_names = [
+                f"{script_name.upper()}_CONTRACT",
+                f"{script_name}_CONTRACT", 
+                f"{script_name}_contract",
+                "MODEL_EVALUATION_CONTRACT",  # Specific for model_evaluation_xgb
+                "CONTRACT",
+                "contract"
+            ]
+            
+            # Also try to find any variable ending with _CONTRACT
+            for attr_name in dir(module):
+                if attr_name.endswith('_CONTRACT') and not attr_name.startswith('_'):
+                    possible_names.append(attr_name)
+            
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_names = []
+            for name in possible_names:
+                if name not in seen:
+                    seen.add(name)
+                    unique_names.append(name)
+            
+            for name in unique_names:
+                if hasattr(module, name):
+                    contract_obj = getattr(module, name)
+                    # Verify it's actually a contract object
+                    if hasattr(contract_obj, 'entry_point'):
                         break
-                
-                if contract_obj is None:
-                    raise AttributeError(f"No contract object found in {contract_path}")
+                    else:
+                        contract_obj = None
+            
+            if contract_obj is None:
+                raise AttributeError(f"No contract object found in {contract_path}. Tried: {unique_names}")
             
             # Convert ScriptContract object to dictionary format
             contract_dict = {
@@ -552,6 +581,88 @@ class ScriptContractAlignmentTester:
             })
         
         return issues
+    
+    def _build_entry_point_mapping(self) -> Dict[str, str]:
+        """
+        Build a mapping from entry_point values to contract file names.
+        
+        Returns:
+            Dictionary mapping entry_point (script filename) to contract filename
+        """
+        mapping = {}
+        
+        if not self.contracts_dir.exists():
+            return mapping
+        
+        # Scan all contract files
+        for contract_file in self.contracts_dir.glob("*_contract.py"):
+            if contract_file.name.startswith('__'):
+                continue
+                
+            try:
+                # Extract entry_point from contract
+                entry_point = self._extract_entry_point_from_contract(contract_file)
+                if entry_point:
+                    mapping[entry_point] = contract_file.name
+            except Exception:
+                # Skip contracts that can't be loaded
+                continue
+        
+        return mapping
+    
+    def _extract_entry_point_from_contract(self, contract_path: Path) -> Optional[str]:
+        """
+        Extract the entry_point value from a contract file.
+        
+        Args:
+            contract_path: Path to the contract file
+            
+        Returns:
+            Entry point value or None if not found
+        """
+        try:
+            # Add the project root to sys.path temporarily
+            project_root = str(contract_path.parent.parent.parent.parent)
+            src_root = str(contract_path.parent.parent.parent)
+            contract_dir = str(contract_path.parent)
+            
+            paths_to_add = [project_root, src_root, contract_dir]
+            added_paths = []
+            
+            for path in paths_to_add:
+                if path not in sys.path:
+                    sys.path.insert(0, path)
+                    added_paths.append(path)
+            
+            try:
+                # Load the module
+                spec = importlib.util.spec_from_file_location(
+                    f"contract_{contract_path.stem}", contract_path
+                )
+                if spec is None or spec.loader is None:
+                    return None
+                
+                module = importlib.util.module_from_spec(spec)
+                module.__package__ = 'cursus.steps.contracts'
+                spec.loader.exec_module(module)
+                
+                # Look for contract objects and extract entry_point
+                for attr_name in dir(module):
+                    if attr_name.endswith('_CONTRACT') or attr_name == 'CONTRACT':
+                        contract_obj = getattr(module, attr_name)
+                        if hasattr(contract_obj, 'entry_point'):
+                            return contract_obj.entry_point
+                
+                return None
+                
+            finally:
+                # Clean up sys.path
+                for path in added_paths:
+                    if path in sys.path:
+                        sys.path.remove(path)
+                        
+        except Exception:
+            return None
     
     def _discover_scripts(self) -> List[str]:
         """Discover all Python scripts in the scripts directory."""

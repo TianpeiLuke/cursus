@@ -1,15 +1,276 @@
 {
   "script_name": "model_evaluation_xgb",
   "level1": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "missing_contract",
-        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_evaluation_xgb_contract.py",
-        "recommendation": "Create contract file model_evaluation_xgb_contract.py"
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
+        "details": {
+          "path": "/opt/ml/processing/input/eval_data",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/input/eval_data in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
+        "details": {
+          "path": "/opt/ml/processing/input/model",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: eval_data_dir",
+        "details": {
+          "argument": "eval_data_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add eval_data_dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: output_eval_dir",
+        "details": {
+          "argument": "output_eval_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add output_eval_dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: model_dir",
+        "details": {
+          "argument": "model_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add model_dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: output_metrics_dir",
+        "details": {
+          "argument": "output_metrics_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add output_metrics_dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: job_type",
+        "details": {
+          "argument": "job_type",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add job_type to contract arguments or remove from script"
+      },
+      {
+        "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/eval_data",
+        "details": {
+          "path": "/opt/ml/processing/input/eval_data",
+          "operation": "read",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
+      },
+      {
+        "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
+        "details": {
+          "path": "/opt/ml/processing/input/model",
+          "operation": "read",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "operation": "write",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "operation": "write",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
       }
-    ]
+    ],
+    "script_analysis": {
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
+      "path_references": [
+        "path='\\n    Load the trained XGBoost model and all preprocessing artifacts from the specified directory.\\n    Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.\\n    ' line_number=22 context='\\ndef load_model_artifacts(model_dir):\\n>>>     \"\"\"\\n    Load the trained XGBoost model and all preprocessing artifacts from the specified directory.\\n    Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.' is_hardcoded=True construction_method=None",
+        "path='xgboost_model.bst' line_number=28 context='    logger.info(f\"Loading model artifacts from {model_dir}\")\\n    model = xgb.Booster()\\n>>>     model.load_model(os.path.join(model_dir, \"xgboost_model.bst\"))\\n    logger.info(\"Loaded xgboost_model.bst\")\\n    with open(os.path.join(model_dir, \"risk_table_map.pkl\"), \"rb\") as f:' is_hardcoded=False construction_method='os.path.join'",
+        "path='xgboost_model.bst' line_number=28 context='    logger.info(f\"Loading model artifacts from {model_dir}\")\\n    model = xgb.Booster()\\n>>>     model.load_model(os.path.join(model_dir, \"xgboost_model.bst\"))\\n    logger.info(\"Loaded xgboost_model.bst\")\\n    with open(os.path.join(model_dir, \"risk_table_map.pkl\"), \"rb\") as f:' is_hardcoded=True construction_method=None",
+        "path='Loaded xgboost_model.bst' line_number=29 context='    model = xgb.Booster()\\n    model.load_model(os.path.join(model_dir, \"xgboost_model.bst\"))\\n>>>     logger.info(\"Loaded xgboost_model.bst\")\\n    with open(os.path.join(model_dir, \"risk_table_map.pkl\"), \"rb\") as f:\\n        risk_tables = pkl.load(f)' is_hardcoded=True construction_method=None",
+        "path='risk_table_map.pkl' line_number=30 context='    model.load_model(os.path.join(model_dir, \"xgboost_model.bst\"))\\n    logger.info(\"Loaded xgboost_model.bst\")\\n>>>     with open(os.path.join(model_dir, \"risk_table_map.pkl\"), \"rb\") as f:\\n        risk_tables = pkl.load(f)\\n    logger.info(\"Loaded risk_table_map.pkl\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='risk_table_map.pkl' line_number=30 context='    model.load_model(os.path.join(model_dir, \"xgboost_model.bst\"))\\n    logger.info(\"Loaded xgboost_model.bst\")\\n>>>     with open(os.path.join(model_dir, \"risk_table_map.pkl\"), \"rb\") as f:\\n        risk_tables = pkl.load(f)\\n    logger.info(\"Loaded risk_table_map.pkl\")' is_hardcoded=True construction_method=None",
+        "path='Loaded risk_table_map.pkl' line_number=32 context='    with open(os.path.join(model_dir, \"risk_table_map.pkl\"), \"rb\") as f:\\n        risk_tables = pkl.load(f)\\n>>>     logger.info(\"Loaded risk_table_map.pkl\")\\n    with open(os.path.join(model_dir, \"impute_dict.pkl\"), \"rb\") as f:\\n        impute_dict = pkl.load(f)' is_hardcoded=True construction_method=None",
+        "path='impute_dict.pkl' line_number=33 context='        risk_tables = pkl.load(f)\\n    logger.info(\"Loaded risk_table_map.pkl\")\\n>>>     with open(os.path.join(model_dir, \"impute_dict.pkl\"), \"rb\") as f:\\n        impute_dict = pkl.load(f)\\n    logger.info(\"Loaded impute_dict.pkl\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='impute_dict.pkl' line_number=33 context='        risk_tables = pkl.load(f)\\n    logger.info(\"Loaded risk_table_map.pkl\")\\n>>>     with open(os.path.join(model_dir, \"impute_dict.pkl\"), \"rb\") as f:\\n        impute_dict = pkl.load(f)\\n    logger.info(\"Loaded impute_dict.pkl\")' is_hardcoded=True construction_method=None",
+        "path='Loaded impute_dict.pkl' line_number=35 context='    with open(os.path.join(model_dir, \"impute_dict.pkl\"), \"rb\") as f:\\n        impute_dict = pkl.load(f)\\n>>>     logger.info(\"Loaded impute_dict.pkl\")\\n    with open(os.path.join(model_dir, \"feature_columns.txt\"), \"r\") as f:\\n        feature_columns = [line.strip().split(\",\")[1] for line in f if not line.startswith(\"#\")]' is_hardcoded=True construction_method=None",
+        "path='feature_columns.txt' line_number=36 context='        impute_dict = pkl.load(f)\\n    logger.info(\"Loaded impute_dict.pkl\")\\n>>>     with open(os.path.join(model_dir, \"feature_columns.txt\"), \"r\") as f:\\n        feature_columns = [line.strip().split(\",\")[1] for line in f if not line.startswith(\"#\")]\\n    logger.info(f\"Loaded feature_columns.txt: {feature_columns}\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='feature_columns.txt' line_number=36 context='        impute_dict = pkl.load(f)\\n    logger.info(\"Loaded impute_dict.pkl\")\\n>>>     with open(os.path.join(model_dir, \"feature_columns.txt\"), \"r\") as f:\\n        feature_columns = [line.strip().split(\",\")[1] for line in f if not line.startswith(\"#\")]\\n    logger.info(f\"Loaded feature_columns.txt: {feature_columns}\")' is_hardcoded=True construction_method=None",
+        "path='Loaded feature_columns.txt: ' line_number=38 context='    with open(os.path.join(model_dir, \"feature_columns.txt\"), \"r\") as f:\\n        feature_columns = [line.strip().split(\",\")[1] for line in f if not line.startswith(\"#\")]\\n>>>     logger.info(f\"Loaded feature_columns.txt: {feature_columns}\")\\n    with open(os.path.join(model_dir, \"hyperparameters.json\"), \"r\") as f:\\n        hyperparams = json.load(f)' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=39 context='        feature_columns = [line.strip().split(\",\")[1] for line in f if not line.startswith(\"#\")]\\n    logger.info(f\"Loaded feature_columns.txt: {feature_columns}\")\\n>>>     with open(os.path.join(model_dir, \"hyperparameters.json\"), \"r\") as f:\\n        hyperparams = json.load(f)\\n    logger.info(\"Loaded hyperparameters.json\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='hyperparameters.json' line_number=39 context='        feature_columns = [line.strip().split(\",\")[1] for line in f if not line.startswith(\"#\")]\\n    logger.info(f\"Loaded feature_columns.txt: {feature_columns}\")\\n>>>     with open(os.path.join(model_dir, \"hyperparameters.json\"), \"r\") as f:\\n        hyperparams = json.load(f)\\n    logger.info(\"Loaded hyperparameters.json\")' is_hardcoded=True construction_method=None",
+        "path='Loaded hyperparameters.json' line_number=41 context='    with open(os.path.join(model_dir, \"hyperparameters.json\"), \"r\") as f:\\n        hyperparams = json.load(f)\\n>>>     logger.info(\"Loaded hyperparameters.json\")\\n    return model, risk_tables, impute_dict, feature_columns, hyperparams\\n' is_hardcoded=True construction_method=None",
+        "path='\\n    Apply risk table mapping and numerical imputation to the evaluation DataFrame.\\n    Ensures all features are numeric and columns are ordered as required by the model.\\n    ' line_number=45 context='\\ndef preprocess_eval_data(df, feature_columns, risk_tables, impute_dict):\\n>>>     \"\"\"\\n    Apply risk table mapping and numerical imputation to the evaluation DataFrame.\\n    Ensures all features are numeric and columns are ordered as required by the model.' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=88 context='        # Format numeric values to 4 decimal places\\n        if isinstance(value, (int, float)):\\n>>>             formatted_value = f\"{value:.4f}\"\\n        else:\\n            formatted_value = str(value)' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=101 context='    \\n    if is_binary:\\n>>>         logger.info(f\"METRIC_KEY: AUC-ROC               = {metrics.get(\\'auc_roc\\', \\'N/A\\'):.4f}\")\\n        logger.info(f\"METRIC_KEY: Average Precision     = {metrics.get(\\'average_precision\\', \\'N/A\\'):.4f}\")\\n        logger.info(f\"METRIC_KEY: F1 Score              = {metrics.get(\\'f1_score\\', \\'N/A\\'):.4f}\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=102 context='    if is_binary:\\n        logger.info(f\"METRIC_KEY: AUC-ROC               = {metrics.get(\\'auc_roc\\', \\'N/A\\'):.4f}\")\\n>>>         logger.info(f\"METRIC_KEY: Average Precision     = {metrics.get(\\'average_precision\\', \\'N/A\\'):.4f}\")\\n        logger.info(f\"METRIC_KEY: F1 Score              = {metrics.get(\\'f1_score\\', \\'N/A\\'):.4f}\")\\n    else:' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=103 context='        logger.info(f\"METRIC_KEY: AUC-ROC               = {metrics.get(\\'auc_roc\\', \\'N/A\\'):.4f}\")\\n        logger.info(f\"METRIC_KEY: Average Precision     = {metrics.get(\\'average_precision\\', \\'N/A\\'):.4f}\")\\n>>>         logger.info(f\"METRIC_KEY: F1 Score              = {metrics.get(\\'f1_score\\', \\'N/A\\'):.4f}\")\\n    else:\\n        logger.info(f\"METRIC_KEY: Macro AUC-ROC         = {metrics.get(\\'auc_roc_macro\\', \\'N/A\\'):.4f}\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=105 context='        logger.info(f\"METRIC_KEY: F1 Score              = {metrics.get(\\'f1_score\\', \\'N/A\\'):.4f}\")\\n    else:\\n>>>         logger.info(f\"METRIC_KEY: Macro AUC-ROC         = {metrics.get(\\'auc_roc_macro\\', \\'N/A\\'):.4f}\")\\n        logger.info(f\"METRIC_KEY: Micro AUC-ROC         = {metrics.get(\\'auc_roc_micro\\', \\'N/A\\'):.4f}\")\\n        ap_macro = metrics.get(\\'average_precision_macro\\', \\'N/A\\')' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=106 context='    else:\\n        logger.info(f\"METRIC_KEY: Macro AUC-ROC         = {metrics.get(\\'auc_roc_macro\\', \\'N/A\\'):.4f}\")\\n>>>         logger.info(f\"METRIC_KEY: Micro AUC-ROC         = {metrics.get(\\'auc_roc_micro\\', \\'N/A\\'):.4f}\")\\n        ap_macro = metrics.get(\\'average_precision_macro\\', \\'N/A\\')\\n        if isinstance(ap_macro, (int, float)):' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=109 context='        ap_macro = metrics.get(\\'average_precision_macro\\', \\'N/A\\')\\n        if isinstance(ap_macro, (int, float)):\\n>>>             logger.info(f\"METRIC_KEY: Macro Average Precision = {ap_macro:.4f}\")\\n        else:\\n            logger.info(f\"METRIC_KEY: Macro Average Precision = {ap_macro}\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=112 context='        else:\\n            logger.info(f\"METRIC_KEY: Macro Average Precision = {ap_macro}\")\\n>>>         logger.info(f\"METRIC_KEY: Macro F1              = {metrics.get(\\'f1_score_macro\\', \\'N/A\\'):.4f}\")\\n        logger.info(f\"METRIC_KEY: Micro F1              = {metrics.get(\\'f1_score_micro\\', \\'N/A\\'):.4f}\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=113 context='            logger.info(f\"METRIC_KEY: Macro Average Precision = {ap_macro}\")\\n        logger.info(f\"METRIC_KEY: Macro F1              = {metrics.get(\\'f1_score_macro\\', \\'N/A\\'):.4f}\")\\n>>>         logger.info(f\"METRIC_KEY: Micro F1              = {metrics.get(\\'f1_score_micro\\', \\'N/A\\'):.4f}\")\\n    \\n    # Add a summary section with pass/fail criteria if defined' is_hardcoded=True construction_method=None",
+        "path='\\n    Compute binary classification metrics: AUC-ROC, average precision, and F1 score.\\n    ' line_number=119 context='\\ndef compute_metrics_binary(y_true, y_prob):\\n>>>     \"\"\"\\n    Compute binary classification metrics: AUC-ROC, average precision, and F1 score.\\n    \"\"\"' is_hardcoded=True construction_method=None",
+        "path='precision_at_threshold_0.5' line_number=132 context='    # Add more detailed metrics\\n    precision, recall, _ = precision_recall_curve(y_true, y_score)\\n>>>     metrics[\"precision_at_threshold_0.5\"] = precision[0]\\n    metrics[\"recall_at_threshold_0.5\"] = recall[0]\\n    ' is_hardcoded=True construction_method=None",
+        "path='recall_at_threshold_0.5' line_number=133 context='    precision, recall, _ = precision_recall_curve(y_true, y_score)\\n    metrics[\"precision_at_threshold_0.5\"] = precision[0]\\n>>>     metrics[\"recall_at_threshold_0.5\"] = recall[0]\\n    \\n    # Thresholds at different operating points' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=141 context='    \\n    # Log basic summary and detailed formatted metrics\\n>>>     logger.info(f\"Binary metrics computed: AUC={metrics[\\'auc_roc\\']:.4f}, AP={metrics[\\'average_precision\\']:.4f}, F1={metrics[\\'f1_score\\']:.4f}\")\\n    log_metrics_summary(metrics, is_binary=True)\\n    ' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=141 context='    \\n    # Log basic summary and detailed formatted metrics\\n>>>     logger.info(f\"Binary metrics computed: AUC={metrics[\\'auc_roc\\']:.4f}, AP={metrics[\\'average_precision\\']:.4f}, F1={metrics[\\'f1_score\\']:.4f}\")\\n    log_metrics_summary(metrics, is_binary=True)\\n    ' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=141 context='    \\n    # Log basic summary and detailed formatted metrics\\n>>>     logger.info(f\"Binary metrics computed: AUC={metrics[\\'auc_roc\\']:.4f}, AP={metrics[\\'average_precision\\']:.4f}, F1={metrics[\\'f1_score\\']:.4f}\")\\n    log_metrics_summary(metrics, is_binary=True)\\n    ' is_hardcoded=True construction_method=None",
+        "path='\\n    Compute multiclass metrics: one-vs-rest AUC-ROC, average precision, F1 for each class,\\n    and micro/macro averages for all metrics.\\n    ' line_number=147 context='\\ndef compute_metrics_multiclass(y_true, y_prob, n_classes):\\n>>>     \"\"\"\\n    Compute multiclass metrics: one-vs-rest AUC-ROC, average precision, F1 for each class,\\n    and micro/macro averages for all metrics.' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=179 context='    \\n    # Log basic summary and detailed formatted metrics\\n>>>     logger.info(f\"Multiclass metrics computed: Macro AUC={metrics[\\'auc_roc_macro\\']:.4f}, Micro AUC={metrics[\\'auc_roc_micro\\']:.4f}\")\\n    log_metrics_summary(metrics, is_binary=False)\\n    ' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=179 context='    \\n    # Log basic summary and detailed formatted metrics\\n>>>     logger.info(f\"Multiclass metrics computed: Macro AUC={metrics[\\'auc_roc_macro\\']:.4f}, Micro AUC={metrics[\\'auc_roc_micro\\']:.4f}\")\\n    log_metrics_summary(metrics, is_binary=False)\\n    ' is_hardcoded=True construction_method=None",
+        "path='\\n    Load the first .csv or .parquet file found in the evaluation data directory.\\n    Returns a pandas DataFrame.\\n    ' line_number=185 context='\\ndef load_eval_data(eval_data_dir):\\n>>>     \"\"\"\\n    Load the first .csv or .parquet file found in the evaluation data directory.\\n    Returns a pandas DataFrame.' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=190 context='    \"\"\"\\n    logger.info(f\"Loading eval data from {eval_data_dir}\")\\n>>>     eval_files = sorted([f for f in Path(eval_data_dir).glob(\"**/*\") if f.suffix in [\".csv\", \".parquet\"]])\\n    if not eval_files:\\n        logger.error(\"No eval data file found in eval_data input.\")' is_hardcoded=True construction_method=None",
+        "path='No eval data file found in eval_data input.' line_number=192 context='    eval_files = sorted([f for f in Path(eval_data_dir).glob(\"**/*\") if f.suffix in [\".csv\", \".parquet\"]])\\n    if not eval_files:\\n>>>         logger.error(\"No eval data file found in eval_data input.\")\\n        raise RuntimeError(\"No eval data file found in eval_data input.\")\\n    eval_file = eval_files[0]' is_hardcoded=True construction_method=None",
+        "path='No eval data file found in eval_data input.' line_number=193 context='    if not eval_files:\\n        logger.error(\"No eval data file found in eval_data input.\")\\n>>>         raise RuntimeError(\"No eval data file found in eval_data input.\")\\n    eval_file = eval_files[0]\\n    logger.info(f\"Using eval data file: {eval_file}\")' is_hardcoded=True construction_method=None",
+        "path='\\n    Determine the ID and label columns in the DataFrame.\\n    Falls back to the first and second columns if not found.\\n    ' line_number=204 context='\\ndef get_id_label_columns(df, id_field, label_field):\\n>>>     \"\"\"\\n    Determine the ID and label columns in the DataFrame.\\n    Falls back to the first and second columns if not found.' is_hardcoded=True construction_method=None",
+        "path='\\n    Save predictions to a CSV file, including id, true label, and class probabilities.\\n    ' line_number=214 context='\\ndef save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir):\\n>>>     \"\"\"\\n    Save predictions to a CSV file, including id, true label, and class probabilities.\\n    \"\"\"' is_hardcoded=True construction_method=None",
+        "path='eval_predictions.csv' line_number=222 context='    for i, col in enumerate(prob_cols):\\n        out_df[col] = y_prob[:, i]\\n>>>     out_path = os.path.join(output_eval_dir, \"eval_predictions.csv\")\\n    out_df.to_csv(out_path, index=False)\\n    logger.info(f\"Saved predictions to {out_path}\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='eval_predictions.csv' line_number=222 context='    for i, col in enumerate(prob_cols):\\n        out_df[col] = y_prob[:, i]\\n>>>     out_path = os.path.join(output_eval_dir, \"eval_predictions.csv\")\\n    out_df.to_csv(out_path, index=False)\\n    logger.info(f\"Saved predictions to {out_path}\")' is_hardcoded=True construction_method=None",
+        "path='\\n    Save computed metrics as a JSON file.\\n    ' line_number=227 context='\\ndef save_metrics(metrics, output_metrics_dir):\\n>>>     \"\"\"\\n    Save computed metrics as a JSON file.\\n    \"\"\"' is_hardcoded=True construction_method=None",
+        "path='metrics.json' line_number=230 context='    Save computed metrics as a JSON file.\\n    \"\"\"\\n>>>     out_path = os.path.join(output_metrics_dir, \"metrics.json\")\\n    with open(out_path, \"w\") as f:\\n        json.dump(metrics, f, indent=2)' is_hardcoded=False construction_method='os.path.join'",
+        "path='metrics.json' line_number=230 context='    Save computed metrics as a JSON file.\\n    \"\"\"\\n>>>     out_path = os.path.join(output_metrics_dir, \"metrics.json\")\\n    with open(out_path, \"w\") as f:\\n        json.dump(metrics, f, indent=2)' is_hardcoded=True construction_method=None",
+        "path='metrics_summary.txt' line_number=236 context='    \\n    # Also create a plain text summary for easy viewing\\n>>>     summary_path = os.path.join(output_metrics_dir, \"metrics_summary.txt\")\\n    with open(summary_path, \"w\") as f:\\n        f.write(\"METRICS SUMMARY\\\\n\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='metrics_summary.txt' line_number=236 context='    \\n    # Also create a plain text summary for easy viewing\\n>>>     summary_path = os.path.join(output_metrics_dir, \"metrics_summary.txt\")\\n    with open(summary_path, \"w\") as f:\\n        f.write(\"METRICS SUMMARY\\\\n\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=243 context='        # Write key metrics at the top\\n        if \"auc_roc\" in metrics:  # Binary classification\\n>>>             f.write(f\"AUC-ROC:           {metrics[\\'auc_roc\\']:.4f}\\\\n\")\\n            if \\'average_precision\\' in metrics:\\n                f.write(f\"Average Precision: {metrics[\\'average_precision\\']:.4f}\\\\n\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=245 context='            f.write(f\"AUC-ROC:           {metrics[\\'auc_roc\\']:.4f}\\\\n\")\\n            if \\'average_precision\\' in metrics:\\n>>>                 f.write(f\"Average Precision: {metrics[\\'average_precision\\']:.4f}\\\\n\")\\n            if \\'f1_score\\' in metrics:\\n                f.write(f\"F1 Score:          {metrics[\\'f1_score\\']:.4f}\\\\n\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=247 context='                f.write(f\"Average Precision: {metrics[\\'average_precision\\']:.4f}\\\\n\")\\n            if \\'f1_score\\' in metrics:\\n>>>                 f.write(f\"F1 Score:          {metrics[\\'f1_score\\']:.4f}\\\\n\")\\n        else:  # Multiclass classification\\n            f.write(f\"AUC-ROC (Macro):   {metrics.get(\\'auc_roc_macro\\', \\'N/A\\'):.4f}\\\\n\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=249 context='                f.write(f\"F1 Score:          {metrics[\\'f1_score\\']:.4f}\\\\n\")\\n        else:  # Multiclass classification\\n>>>             f.write(f\"AUC-ROC (Macro):   {metrics.get(\\'auc_roc_macro\\', \\'N/A\\'):.4f}\\\\n\")\\n            f.write(f\"AUC-ROC (Micro):   {metrics.get(\\'auc_roc_micro\\', \\'N/A\\'):.4f}\\\\n\")\\n            f.write(f\"F1 Score (Macro):  {metrics.get(\\'f1_score_macro\\', \\'N/A\\'):.4f}\\\\n\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=250 context='        else:  # Multiclass classification\\n            f.write(f\"AUC-ROC (Macro):   {metrics.get(\\'auc_roc_macro\\', \\'N/A\\'):.4f}\\\\n\")\\n>>>             f.write(f\"AUC-ROC (Micro):   {metrics.get(\\'auc_roc_micro\\', \\'N/A\\'):.4f}\\\\n\")\\n            f.write(f\"F1 Score (Macro):  {metrics.get(\\'f1_score_macro\\', \\'N/A\\'):.4f}\\\\n\")\\n        ' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=251 context='            f.write(f\"AUC-ROC (Macro):   {metrics.get(\\'auc_roc_macro\\', \\'N/A\\'):.4f}\\\\n\")\\n            f.write(f\"AUC-ROC (Micro):   {metrics.get(\\'auc_roc_micro\\', \\'N/A\\'):.4f}\\\\n\")\\n>>>             f.write(f\"F1 Score (Macro):  {metrics.get(\\'f1_score_macro\\', \\'N/A\\'):.4f}\\\\n\")\\n        \\n        f.write(\"=\" * 50 + \"\\\\n\\\\n\")' is_hardcoded=True construction_method=None",
+        "path='.6f' line_number=260 context='        for name, value in sorted(metrics.items()):\\n            if isinstance(value, (int, float)):\\n>>>                 f.write(f\"{name}: {value:.6f}\\\\n\")\\n            else:\\n                f.write(f\"{name}: {value}\\\\n\")' is_hardcoded=True construction_method=None",
+        "path='\\n    Plot ROC curve and save as JPG.\\n    ' line_number=267 context='\\ndef plot_and_save_roc_curve(y_true, y_score, output_dir, prefix=\"\"):\\n>>>     \"\"\"\\n    Plot ROC curve and save as JPG.\\n    \"\"\"' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=273 context='    auc = roc_auc_score(y_true, y_score)\\n    plt.figure()\\n>>>     plt.plot(fpr, tpr, label=f\"ROC curve (AUC = {auc:.2f})\")\\n    plt.plot([0, 1], [0, 1], \"k--\", label=\"Random\")\\n    plt.xlabel(\"False Positive Rate\")' is_hardcoded=True construction_method=None",
+        "path='roc_curve.jpg' line_number=279 context='    plt.title(\"ROC Curve\")\\n    plt.legend(loc=\"lower right\")\\n>>>     out_path = os.path.join(output_dir, f\"{prefix}roc_curve.jpg\")\\n    plt.savefig(out_path, format=\"jpg\")\\n    plt.close()' is_hardcoded=True construction_method=None",
+        "path='\\n    Plot Precision-Recall curve and save as JPG.\\n    ' line_number=285 context='\\ndef plot_and_save_pr_curve(y_true, y_score, output_dir, prefix=\"\"):\\n>>>     \"\"\"\\n    Plot Precision-Recall curve and save as JPG.\\n    \"\"\"' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=291 context='    ap = average_precision_score(y_true, y_score)\\n    plt.figure()\\n>>>     plt.plot(recall, precision, label=f\"PR curve (AP = {ap:.2f})\")\\n    plt.xlabel(\"Recall\")\\n    plt.ylabel(\"Precision\")' is_hardcoded=True construction_method=None",
+        "path='pr_curve.jpg' line_number=296 context='    plt.title(\"Precision-Recall Curve\")\\n    plt.legend(loc=\"lower left\")\\n>>>     out_path = os.path.join(output_dir, f\"{prefix}pr_curve.jpg\")\\n    plt.savefig(out_path, format=\"jpg\")\\n    plt.close()' is_hardcoded=True construction_method=None",
+        "path='\\n    Run model prediction and evaluation, then save predictions and metrics.\\n    Also generate and save ROC and PR curves as JPG.\\n    ' line_number=302 context='\\ndef evaluate_model(model, df, feature_columns, id_col, label_col, hyperparams, output_eval_dir, output_metrics_dir):\\n>>>     \"\"\"\\n    Run model prediction and evaluation, then save predictions and metrics.\\n    Also generate and save ROC and PR curves as JPG.' is_hardcoded=True construction_method=None",
+        "path='Detected binary classification task based on model hyperparameters.' line_number=323 context='    \\n    if is_binary_model:\\n>>>         logger.info(\"Detected binary classification task based on model hyperparameters.\")\\n        # Ensure y_true is also binary (0 or 1) for consistent metric calculation\\n        y_true = (y_true > 0).astype(int)' is_hardcoded=True construction_method=None",
+        "path=' classes.' line_number=331 context='    else:\\n        n_classes = y_prob.shape[1]\\n>>>         logger.info(f\"Detected multiclass classification task with {n_classes} classes.\")\\n        metrics = compute_metrics_multiclass(y_true, y_prob, n_classes)\\n        for i in range(n_classes):' is_hardcoded=True construction_method=None",
+        "path='\\n    Main entry point for XGBoost model evaluation script.\\n    Loads model and data, runs evaluation, and saves results.\\n    ' line_number=345 context='\\ndef main():\\n>>>     \"\"\"\\n    Main entry point for XGBoost model evaluation script.\\n    Loads model and data, runs evaluation, and saves results.' is_hardcoded=True construction_method=None"
+      ],
+      "env_var_accesses": [
+        "variable_name='ID_FIELD' line_number=358 context='\\n    # Access environment variables with defaults\\n>>>     ID_FIELD = os.environ.get(\"ID_FIELD\", \"id\")\\n    LABEL_FIELD = os.environ.get(\"LABEL_FIELD\", \"label\")\\n' access_method='os.environ.get' has_default=True default_value='id'",
+        "variable_name='LABEL_FIELD' line_number=359 context='    # Access environment variables with defaults\\n    ID_FIELD = os.environ.get(\"ID_FIELD\", \"id\")\\n>>>     LABEL_FIELD = os.environ.get(\"LABEL_FIELD\", \"label\")\\n\\n    # Use command line arguments for paths' access_method='os.environ.get' has_default=True default_value='label'"
+      ],
+      "imports": [
+        "module_name='os' import_alias=None line_number=1 is_from_import=False imported_items=[]",
+        "module_name='json' import_alias=None line_number=2 is_from_import=False imported_items=[]",
+        "module_name='argparse' import_alias=None line_number=3 is_from_import=False imported_items=[]",
+        "module_name='pandas' import_alias='pd' line_number=4 is_from_import=False imported_items=[]",
+        "module_name='numpy' import_alias='np' line_number=5 is_from_import=False imported_items=[]",
+        "module_name='pickle' import_alias='pkl' line_number=6 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=7 is_from_import=True imported_items=['Path']",
+        "module_name='sklearn.metrics' import_alias=None line_number=8 is_from_import=True imported_items=['roc_auc_score', 'average_precision_score', 'precision_recall_curve', 'roc_curve', 'f1_score']",
+        "module_name='xgboost' import_alias='xgb' line_number=9 is_from_import=False imported_items=[]",
+        "module_name='matplotlib.pyplot' import_alias='plt' line_number=10 is_from_import=False imported_items=[]",
+        "module_name='time' import_alias=None line_number=11 is_from_import=False imported_items=[]",
+        "module_name='processing.risk_table_processor' import_alias=None line_number=13 is_from_import=True imported_items=['RiskTableMappingProcessor']",
+        "module_name='processing.numerical_imputation_processor' import_alias=None line_number=14 is_from_import=True imported_items=['NumericalVariableImputationProcessor']",
+        "module_name='logging' import_alias=None line_number=16 is_from_import=False imported_items=[]"
+      ],
+      "argument_definitions": [
+        "argument_name='job_type' line_number=350 is_required=True has_default=False default_value=None argument_type='str' choices=None",
+        "argument_name='model_dir' line_number=351 is_required=True has_default=False default_value=None argument_type='str' choices=None",
+        "argument_name='eval_data_dir' line_number=352 is_required=True has_default=False default_value=None argument_type='str' choices=None",
+        "argument_name='output_eval_dir' line_number=353 is_required=True has_default=False default_value=None argument_type='str' choices=None",
+        "argument_name='output_metrics_dir' line_number=354 is_required=True has_default=False default_value=None argument_type='str' choices=None"
+      ],
+      "file_operations": []
+    },
+    "contract": {
+      "entry_point": "model_evaluation_xgb.py",
+      "inputs": {
+        "model_input": {
+          "path": "/opt/ml/processing/input/model"
+        },
+        "processed_data": {
+          "path": "/opt/ml/processing/input/eval_data"
+        }
+      },
+      "outputs": {
+        "eval_output": {
+          "path": "/opt/ml/processing/output/eval"
+        },
+        "metrics_output": {
+          "path": "/opt/ml/processing/output/metrics"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [
+          "ID_FIELD",
+          "LABEL_FIELD"
+        ],
+        "optional": {}
+      },
+      "description": "\n    XGBoost model evaluation script that:\n    1. Loads trained XGBoost model and preprocessing artifacts\n    2. Loads and preprocesses evaluation data using risk tables and imputation\n    3. Generates predictions and computes performance metrics\n    4. Creates ROC and Precision-Recall curve visualizations\n    5. Saves predictions, metrics, and plots\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts directory containing:\n      - xgboost_model.bst: Trained XGBoost model\n      - risk_table_map.pkl: Risk table mappings for categorical features\n      - impute_dict.pkl: Imputation dictionary for numerical features\n      - feature_columns.txt: Feature column names and order\n      - hyperparameters.json: Model hyperparameters and metadata\n    - /opt/ml/processing/input/eval_data: Evaluation data (CSV or Parquet files)\n    \n    Output Structure:\n    - /opt/ml/processing/output/eval/eval_predictions.csv: Model predictions with probabilities\n    - /opt/ml/processing/output/metrics/metrics.json: Performance metrics\n    - /opt/ml/processing/output/metrics/roc_curve.jpg: ROC curve visualization\n    - /opt/ml/processing/output/metrics/pr_curve.jpg: Precision-Recall curve visualization\n    \n    Environment Variables:\n    - ID_FIELD: Name of the ID column in evaluation data\n    - LABEL_FIELD: Name of the label column in evaluation data\n    \n    Arguments:\n    - job_type: Type of evaluation job to perform (e.g., \"evaluation\", \"validation\")\n    \n    Supports both binary and multiclass classification with appropriate metrics for each.\n    ",
+      "framework_requirements": {
+        "pandas": ">=1.3.0",
+        "numpy": ">=1.21.0",
+        "scikit-learn": ">=1.0.0",
+        "xgboost": ">=1.6.0",
+        "matplotlib": ">=3.5.0"
+      }
+    }
   },
   "level2": {
     "passed": false,
@@ -28,8 +289,8 @@
       {
         "severity": "CRITICAL",
         "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/model_evaluation_xgb_spec.json",
-        "recommendation": "Create the specification file model_evaluation_xgb_spec.json"
+        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/model_evaluation_xgb_spec.py",
+        "recommendation": "Create the specification file model_evaluation_xgb_spec.py"
       }
     ]
   },
@@ -48,7 +309,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-08T23:45:56.223461",
+    "validation_timestamp": "2025-08-08T23:56:12.890410",
     "validator_version": "1.0.0"
   }
 }

@@ -55,11 +55,6 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
         description="S3 URI where hyperparameters.json will be saved."
     )
     
-    # Add job_type to distinguish between different instances of the same config class
-    job_type: Optional[str] = Field(
-        default=None,
-        description="Type of job (e.g. training, inference, evaluation) for distinguishing configs."
-    )
 
     class Config(ProcessingStepConfigBase.Config):
         pass

@@ -36,26 +36,6 @@
       {
         "severity": "ERROR",
         "category": "environment_variables",
-        "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATED_DATA_PATH",
-        "details": {
-          "variable": "OUTPUT_CALIBRATED_DATA_PATH",
-          "script": "model_calibration"
-        },
-        "recommendation": "Add OUTPUT_CALIBRATED_DATA_PATH to contract environment_variables"
-      },
-      {
-        "severity": "ERROR",
-        "category": "environment_variables",
-        "message": "Script accesses undeclared environment variable: INPUT_DATA_PATH",
-        "details": {
-          "variable": "INPUT_DATA_PATH",
-          "script": "model_calibration"
-        },
-        "recommendation": "Add INPUT_DATA_PATH to contract environment_variables"
-      },
-      {
-        "severity": "ERROR",
-        "category": "environment_variables",
         "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH",
         "details": {
           "variable": "OUTPUT_CALIBRATION_PATH",
@@ -74,6 +54,26 @@
         "recommendation": "Add OUTPUT_METRICS_PATH to contract environment_variables"
       },
       {
+        "severity": "ERROR",
+        "category": "environment_variables",
+        "message": "Script accesses undeclared environment variable: INPUT_DATA_PATH",
+        "details": {
+          "variable": "INPUT_DATA_PATH",
+          "script": "model_calibration"
+        },
+        "recommendation": "Add INPUT_DATA_PATH to contract environment_variables"
+      },
+      {
+        "severity": "ERROR",
+        "category": "environment_variables",
+        "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATED_DATA_PATH",
+        "details": {
+          "variable": "OUTPUT_CALIBRATED_DATA_PATH",
+          "script": "model_calibration"
+        },
+        "recommendation": "Add OUTPUT_CALIBRATED_DATA_PATH to contract environment_variables"
+      },
+      {
         "severity": "INFO",
         "category": "file_operations",
         "message": "Contract declares input not read by script: /opt/ml/processing/input/eval_data",
@@ -83,6 +83,17 @@
           "script": "model_calibration"
         },
         "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "operation": "write",
+          "script": "model_calibration"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
       },
       {
         "severity": "WARNING",
@@ -105,17 +116,6 @@
           "script": "model_calibration"
         },
         "recommendation": "Either write to /opt/ml/processing/output/calibrated_data in script or remove from contract outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
-        "details": {
-          "path": "/opt/ml/processing/output/metrics",
-          "operation": "write",
-          "script": "model_calibration"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -258,12 +258,59 @@
     "passed": false,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/model_calibration_spec.json",
-        "recommendation": "Create the specification file model_calibration_spec.json"
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve dependency: evaluation_data",
+        "details": {
+          "logical_name": "evaluation_data",
+          "specification": "model_calibration"
+        },
+        "recommendation": "Create a step that produces output evaluation_data or remove dependency"
       }
-    ]
+    ],
+    "specification": {
+      "step_type": "ModelCalibration",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "evaluation_data",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "XGBoostModelEval",
+            "ModelEvaluation",
+            "XGBoostTraining",
+            "CrossValidation",
+            "TrainingEvaluation"
+          ],
+          "data_type": "S3Uri",
+          "description": "Evaluation dataset with ground truth labels and model predictions"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "calibration_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration mapping and artifacts"
+        },
+        {
+          "logical_name": "metrics_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration quality metrics and visualizations"
+        },
+        {
+          "logical_name": "calibrated_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Dataset with calibrated probabilities"
+        }
+      ]
+    }
   },
   "level4": {
     "passed": false,
@@ -280,7 +327,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-08T23:45:56.222701",
+    "validation_timestamp": "2025-08-08T23:56:12.881570",
     "validator_version": "1.0.0"
   }
 }

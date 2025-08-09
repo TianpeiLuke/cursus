@@ -6,22 +6,22 @@
       {
         "severity": "WARNING",
         "category": "logical_names",
-        "message": "Script uses logical name not in contract: config",
-        "details": {
-          "logical_name": "config",
-          "script": "risk_table_mapping"
-        },
-        "recommendation": "Add logical name config to contract or update script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
         "message": "Script uses logical name not in contract: data",
         "details": {
           "logical_name": "data",
           "script": "risk_table_mapping"
         },
         "recommendation": "Add logical name data to contract or update script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "logical_names",
+        "message": "Script uses logical name not in contract: config",
+        "details": {
+          "logical_name": "config",
+          "script": "risk_table_mapping"
+        },
+        "recommendation": "Add logical name config to contract or update script"
       },
       {
         "severity": "WARNING",
@@ -32,17 +32,6 @@
           "script": "risk_table_mapping"
         },
         "recommendation": "Add job_type to contract arguments or remove from script"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/data",
-        "details": {
-          "path": "/opt/ml/processing/input/data",
-          "operation": "read",
-          "script": "risk_table_mapping"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/data in script or remove from contract inputs"
       },
       {
         "severity": "INFO",
@@ -65,6 +54,17 @@
           "script": "risk_table_mapping"
         },
         "recommendation": "Either read /opt/ml/processing/input/config in script or remove from contract inputs"
+      },
+      {
+        "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/data",
+        "details": {
+          "path": "/opt/ml/processing/input/data",
+          "operation": "read",
+          "script": "risk_table_mapping"
+        },
+        "recommendation": "Either read /opt/ml/processing/input/data in script or remove from contract inputs"
       },
       {
         "severity": "WARNING",
@@ -212,13 +212,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "ConfigurationStep",
-              "ProcessingStep",
-              "FeatureEngineering",
               "DataPrep",
-              "HyperparameterPrep",
-              "DataQuality"
+              "DataQuality",
+              "ProcessingStep",
+              "ModelTraining",
+              "FeatureEngineering",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -271,13 +271,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "ConfigurationStep",
-              "ProcessingStep",
-              "FeatureEngineering",
               "DataPrep",
-              "HyperparameterPrep",
-              "DataQuality"
+              "DataQuality",
+              "ProcessingStep",
+              "ModelTraining",
+              "FeatureEngineering",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -330,13 +330,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "ConfigurationStep",
-              "ProcessingStep",
-              "FeatureEngineering",
               "DataPrep",
-              "HyperparameterPrep",
-              "DataQuality"
+              "DataQuality",
+              "ProcessingStep",
+              "ModelTraining",
+              "FeatureEngineering",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -389,13 +389,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "ConfigurationStep",
-              "ProcessingStep",
-              "FeatureEngineering",
               "DataPrep",
-              "HyperparameterPrep",
-              "DataQuality"
+              "DataQuality",
+              "ProcessingStep",
+              "ModelTraining",
+              "FeatureEngineering",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -424,12 +424,95 @@
     "passed": false,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/risk_table_mapping_spec.json",
-        "recommendation": "Create the specification file risk_table_mapping_spec.json"
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve dependency: data_input",
+        "details": {
+          "logical_name": "data_input",
+          "specification": "risk_table_mapping"
+        },
+        "recommendation": "Create a step that produces output data_input or remove dependency"
+      },
+      {
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve dependency: hyperparameters_s3_uri",
+        "details": {
+          "logical_name": "hyperparameters_s3_uri",
+          "specification": "risk_table_mapping"
+        },
+        "recommendation": "Create a step that produces output hyperparameters_s3_uri or remove dependency"
+      },
+      {
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve dependency: risk_tables",
+        "details": {
+          "logical_name": "risk_tables",
+          "specification": "risk_table_mapping"
+        },
+        "recommendation": "Create a step that produces output risk_tables or remove dependency"
       }
-    ]
+    ],
+    "specification": {
+      "step_type": "RiskTableMapping_Testing",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "data_input",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "TabularPreprocessing",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Preprocessed testing data from tabular preprocessing step"
+        },
+        {
+          "logical_name": "hyperparameters_s3_uri",
+          "dependency_type": "hyperparameters",
+          "required": false,
+          "compatible_sources": [
+            "ConfigurationStep",
+            "DataPrep",
+            "DataQuality",
+            "ProcessingStep",
+            "ModelTraining",
+            "FeatureEngineering",
+            "HyperparameterPrep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
+        },
+        {
+          "logical_name": "risk_tables",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "RiskTableMapping_Training"
+          ],
+          "data_type": "S3Uri",
+          "description": "Risk tables and imputation models from training step"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "processed_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Processed testing data with risk table mappings applied"
+        },
+        {
+          "logical_name": "risk_tables",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['risk_tables'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Risk tables and imputation models (passthrough from training)"
+        }
+      ]
+    }
   },
   "level4": {
     "passed": false,
@@ -446,7 +529,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-08-08T23:45:56.232548",
+    "validation_timestamp": "2025-08-08T23:56:12.901069",
     "validator_version": "1.0.0"
   }
 }
