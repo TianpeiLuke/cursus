@@ -1,3 +1,28 @@
+---
+tags:
+  - llm_developer
+  - prompt_template
+  - plan_validator
+  - validation
+  - agentic_workflow
+keywords:
+  - plan validation
+  - implementation plan
+  - pipeline step validation
+  - alignment rules
+  - standardization compliance
+  - cross-component compatibility
+  - design principles
+  - validation checklist
+topics:
+  - plan validation
+  - implementation validation
+  - pipeline architecture
+  - agentic workflow
+language: python
+date of note: 2025-08-09
+---
+
 # Pipeline Step Plan Validator Prompt
 
 ## Your Role: Pipeline Step Plan Validator
@@ -13,35 +38,189 @@ Our pipeline architecture follows a specification-driven approach with a four-la
 3. **Step Builders**: Connect specifications and contracts via SageMaker
 4. **Processing Scripts**: Implement the actual business logic
 
-## Your Task
+## User Input Requirements
 
-Based on the provided implementation plan, validate that the proposed pipeline step design meets all our architectural principles, alignment rules, and cross-component compatibility requirements. Your review should be comprehensive and highlight any issues or improvements needed before coding begins.
+Please provide the following information:
+
+1. **Validation Report Location**: Where should the validation report be documented?
+   - Example: `slipbox/3_llm_developer/validation_reports/[step_name]_plan_validation_report.md`
 
 ## Implementation Plan
 
 [INJECT PLANNER OUTPUT HERE]
 
-## Relevant Documentation
+## Knowledge Base - Developer Guide References
 
 ### Design Principles
-
-[INJECT DESIGN_PRINCIPLES DOCUMENT HERE]
+**Source**: `slipbox/0_developer_guide/design_principles.md`
+- Specification-driven architecture principles
+- Four-layer design pattern enforcement
+- Separation of concerns between components
+- Dependency injection and inversion of control
+- Configuration-driven behavior
+- Testability and maintainability requirements
 
 ### Alignment Rules
-
-[INJECT ALIGNMENT_RULES DOCUMENT HERE]
-
-### Common Pitfalls
-
-[INJECT COMMON_PITFALLS DOCUMENT HERE]
+**Source**: `slipbox/0_developer_guide/alignment_rules.md`
+- Critical alignment requirements between components
+- Script-to-contract path alignment strategies
+- Contract-to-specification logical name matching
+- Specification-to-dependency consistency requirements
+- Builder-to-configuration parameter passing rules
+- Environment variable declaration and usage patterns
+- Output property path correctness validation
+- Cross-component semantic matching requirements
 
 ### Standardization Rules
+**Source**: `slipbox/0_developer_guide/standardization_rules.md`
+- Naming conventions for all components
+- Interface standardization requirements
+- Documentation standards and completeness
+- Error handling standardization patterns
+- Testing standards and coverage requirements
+- Code organization and structure standards
 
-[INJECT STANDARDIZATION_RULES DOCUMENT HERE]
+### Common Pitfalls
+**Source**: `slipbox/0_developer_guide/common_pitfalls.md`
+- Hardcoded path usage instead of contract references
+- Environment variable handling errors and missing defaults
+- Directory vs. file path confusion patterns
+- Incomplete compatible sources specifications
+- Property path inconsistency and formatting issues
+- Missing script validation implementations
+- Cross-component integration failures
 
-### Dependency Resolver Documentation
+### Validation Checklist
+**Source**: `slipbox/0_developer_guide/validation_checklist.md`
+- Comprehensive validation requirements for all components
+- Step-by-step validation procedures
+- Quality gates and acceptance criteria
+- Integration testing requirements
+- Performance and scalability considerations
 
-[INJECT DEPENDENCY_RESOLVER DOCUMENT HERE]
+### Best Practices
+**Source**: `slipbox/0_developer_guide/best_practices.md`
+- Development best practices for pipeline components
+- Code quality standards and guidelines
+- Performance optimization techniques
+- Security considerations and implementations
+- Maintainability and extensibility patterns
+
+## Knowledge Base - Design Pattern References
+
+### Processing Step Patterns
+**Source**: `slipbox/1_design/processing_step_builder_patterns.md`
+- Processing step validation patterns and requirements
+- Input/output handling for processing steps
+- Resource configuration patterns for processing workloads
+- Error handling specific to processing operations
+- Integration patterns with upstream and downstream components
+
+### Training Step Patterns
+**Source**: `slipbox/1_design/training_step_builder_patterns.md`
+- Training step validation patterns and requirements
+- Model training specific input/output handling
+- Resource configuration for training workloads
+- Hyperparameter management patterns
+- Model artifact handling and validation
+
+### Model Creation Patterns
+**Source**: `slipbox/1_design/createmodel_step_builder_patterns.md`
+- Model creation validation patterns and requirements
+- Model packaging and deployment preparation
+- Model metadata and versioning patterns
+- Integration with model registry systems
+- Model validation and testing patterns
+
+### Transform Step Patterns
+**Source**: `slipbox/1_design/transform_step_builder_patterns.md`
+- Transform step validation patterns and requirements
+- Data transformation input/output handling
+- Batch processing and streaming patterns
+- Data quality validation requirements
+- Performance optimization for transform operations
+
+### Dependency Resolution Patterns
+**Source**: `slipbox/1_design/dependency_resolver.md`
+- Dependency resolution validation requirements
+- Type compatibility assessment patterns
+- Semantic matching validation approaches
+- Compatible sources specification patterns
+- Cross-component integration validation
+
+### Unified Alignment Testing
+**Source**: `slipbox/1_design/unified_alignment_tester_design.md`
+- Alignment validation framework requirements
+- Automated alignment testing patterns
+- Cross-component consistency validation
+- Integration testing approaches for alignment
+
+### Enhanced Dependency Validation
+**Source**: `slipbox/1_design/enhanced_dependency_validation_design.md`
+- Enhanced validation patterns for dependencies
+- Advanced compatibility assessment techniques
+- Semantic validation approaches
+- Integration validation requirements
+
+## Knowledge Base - Validation Framework References
+
+### Two-Level Alignment Validation System
+**Source**: `slipbox/1_design/two_level_alignment_validation_system_design.md`
+- Two-level validation system architecture
+- LLM-based validation approaches
+- Tool-based validation integration
+- Validation metrics and scoring systems
+
+### Universal Testing Framework
+**Source**: `slipbox/1_design/universal_step_builder_test.md`
+- Universal testing framework for step builders
+- Comprehensive test coverage requirements
+- Automated testing patterns and approaches
+- Integration testing methodologies
+
+### Step Type Classification Validation
+**Source**: `slipbox/1_design/sagemaker_step_type_classification_design.md`
+- Step type validation requirements
+- SageMaker step type specific patterns
+- Classification validation approaches
+- Type-specific validation criteria
+
+## Knowledge Base - Implementation Examples
+
+### Builder Implementation References
+**Source**: `src/cursus/steps/builders/`
+- Existing step builder implementations for pattern validation
+- Proven implementation patterns and approaches
+- Integration examples with SageMaker components
+- Error handling and validation implementations
+
+### Configuration Implementation References
+**Source**: `src/cursus/steps/configs/`
+- Configuration class validation examples
+- Three-tier configuration pattern implementations
+- Parameter validation and type checking examples
+- Configuration inheritance and composition patterns
+
+### Specification Implementation References
+**Source**: `src/cursus/steps/specs/`
+- Step specification validation examples
+- Input/output specification patterns
+- Dependency specification implementations
+- Compatible sources specification examples
+
+### Contract Implementation References
+**Source**: `src/cursus/steps/contracts/`
+- Script contract validation examples
+- Path specification and environment variable patterns
+- Container integration patterns
+- Contract-specification alignment examples
+
+### Registry Integration References
+**Source**: `src/cursus/steps/registry/`
+- Registry integration validation examples
+- Step registration patterns and requirements
+- Naming consistency validation approaches
+- Registry-based validation implementations
 
 ## Instructions
 

@@ -1,3 +1,26 @@
+---
+tags:
+  - llm_developer
+  - prompt_template
+  - planner
+  - implementation_planning
+  - agentic_workflow
+keywords:
+  - pipeline step planner
+  - implementation planning
+  - step architecture
+  - component design
+  - integration strategy
+  - alignment planning
+topics:
+  - pipeline step planning
+  - architectural design
+  - component integration
+  - agentic workflow
+language: python
+date of note: 2025-08-09
+---
+
 # Pipeline Step Planner Prompt
 
 ## Your Role: Pipeline Step Planner
