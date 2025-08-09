@@ -408,73 +408,71 @@ class AlignmentReport:
         if not self.summary:
             self.generate_summary()
             
-        html_template = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Alignment Validation Report</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
-                .summary { display: flex; justify-content: space-around; margin: 20px 0; }
-                .metric { text-align: center; padding: 10px; }
-                .metric h3 { margin: 0; font-size: 2em; }
-                .metric p { margin: 5px 0; color: #666; }
-                .passing { color: #28a745; }
-                .failing { color: #dc3545; }
-                .warning { color: #ffc107; }
-                .level-section { margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
-                .level-header { background-color: #e9ecef; padding: 10px; font-weight: bold; }
-                .test-result { padding: 10px; border-bottom: 1px solid #eee; }
-                .test-passed { border-left: 4px solid #28a745; }
-                .test-failed { border-left: 4px solid #dc3545; }
-                .issue { margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 3px; }
-                .critical { border-left: 4px solid #dc3545; }
-                .error { border-left: 4px solid #fd7e14; }
-                .warning { border-left: 4px solid #ffc107; }
-                .info { border-left: 4px solid #17a2b8; }
-                .recommendations { margin: 20px 0; }
-                .recommendation { margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-                .high-priority { border-left: 4px solid #dc3545; }
-                .medium-priority { border-left: 4px solid #ffc107; }
-                .low-priority { border-left: 4px solid #28a745; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Alignment Validation Report</h1>
-                <p>Generated: {timestamp}</p>
-                <p>Overall Status: <span class="{status_class}">{status}</span></p>
-            </div>
-            
-            <div class="summary">
-                <div class="metric">
-                    <h3>{pass_rate:.1f}%</h3>
-                    <p>Pass Rate</p>
-                </div>
-                <div class="metric">
-                    <h3>{total_tests}</h3>
-                    <p>Total Tests</p>
-                </div>
-                <div class="metric">
-                    <h3>{total_issues}</h3>
-                    <p>Total Issues</p>
-                </div>
-                <div class="metric">
-                    <h3>{critical_issues}</h3>
-                    <p>Critical Issues</p>
-                </div>
-            </div>
-            
-            {level_sections}
-            
-            <div class="recommendations">
-                <h2>Recommendations</h2>
-                {recommendations_html}
-            </div>
-        </body>
-        </html>
-        """
+        html_template = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Alignment Validation Report</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        .header {{ background-color: #f0f0f0; padding: 20px; border-radius: 5px; }}
+        .summary {{ display: flex; justify-content: space-around; margin: 20px 0; }}
+        .metric {{ text-align: center; padding: 10px; }}
+        .metric h3 {{ margin: 0; font-size: 2em; }}
+        .metric p {{ margin: 5px 0; color: #666; }}
+        .passing {{ color: #28a745; }}
+        .failing {{ color: #dc3545; }}
+        .warning {{ color: #ffc107; }}
+        .level-section {{ margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }}
+        .level-header {{ background-color: #e9ecef; padding: 10px; font-weight: bold; }}
+        .test-result {{ padding: 10px; border-bottom: 1px solid #eee; }}
+        .test-passed {{ border-left: 4px solid #28a745; }}
+        .test-failed {{ border-left: 4px solid #dc3545; }}
+        .issue {{ margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 3px; }}
+        .critical {{ border-left: 4px solid #dc3545; }}
+        .error {{ border-left: 4px solid #fd7e14; }}
+        .warning {{ border-left: 4px solid #ffc107; }}
+        .info {{ border-left: 4px solid #17a2b8; }}
+        .recommendations {{ margin: 20px 0; }}
+        .recommendation {{ margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }}
+        .high-priority {{ border-left: 4px solid #dc3545; }}
+        .medium-priority {{ border-left: 4px solid #ffc107; }}
+        .low-priority {{ border-left: 4px solid #28a745; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Alignment Validation Report</h1>
+        <p>Generated: {timestamp}</p>
+        <p>Overall Status: <span class="{status_class}">{status}</span></p>
+    </div>
+    
+    <div class="summary">
+        <div class="metric">
+            <h3>{pass_rate:.1f}%</h3>
+            <p>Pass Rate</p>
+        </div>
+        <div class="metric">
+            <h3>{total_tests}</h3>
+            <p>Total Tests</p>
+        </div>
+        <div class="metric">
+            <h3>{total_issues}</h3>
+            <p>Total Issues</p>
+        </div>
+        <div class="metric">
+            <h3>{critical_issues}</h3>
+            <p>Critical Issues</p>
+        </div>
+    </div>
+    
+    {level_sections}
+    
+    <div class="recommendations">
+        <h2>Recommendations</h2>
+        {recommendations_html}
+    </div>
+</body>
+</html>"""
         
         # Generate level sections
         level_sections = ""

@@ -1,0 +1,85 @@
+"""
+Test suite for AlignmentIssue model.
+"""
+
+import unittest
+
+from src.cursus.validation.alignment.alignment_utils import (
+    AlignmentIssue, SeverityLevel, AlignmentLevel
+)
+
+
+class TestAlignmentIssue(unittest.TestCase):
+    """Test AlignmentIssue model."""
+    
+    def test_alignment_issue_creation(self):
+        """Test basic AlignmentIssue creation."""
+        issue = AlignmentIssue(
+            level=SeverityLevel.ERROR,
+            category="test_category",
+            message="Test issue",
+            details={"key": "value"}
+        )
+        
+        self.assertEqual(issue.level, SeverityLevel.ERROR)
+        self.assertEqual(issue.category, "test_category")
+        self.assertEqual(issue.message, "Test issue")
+        self.assertEqual(issue.details, {"key": "value"})
+        self.assertIsNone(issue.recommendation)
+        self.assertIsNone(issue.alignment_level)
+    
+    def test_alignment_issue_with_recommendation(self):
+        """Test AlignmentIssue creation with recommendation."""
+        issue = AlignmentIssue(
+            level=SeverityLevel.WARNING,
+            category="path_validation",
+            message="Hardcoded path found",
+            details={"path": "/opt/ml/input", "line": 42},
+            recommendation="Use environment variables instead"
+        )
+        
+        self.assertEqual(issue.recommendation, "Use environment variables instead")
+        self.assertEqual(issue.details["path"], "/opt/ml/input")
+        self.assertEqual(issue.details["line"], 42)
+    
+    def test_alignment_issue_with_alignment_level(self):
+        """Test AlignmentIssue creation with alignment level."""
+        issue = AlignmentIssue(
+            level=SeverityLevel.CRITICAL,
+            category="script_contract",
+            message="Script contract mismatch",
+            details={"script": "train.py"},
+            alignment_level=AlignmentLevel.SCRIPT_CONTRACT
+        )
+        
+        self.assertEqual(issue.alignment_level, AlignmentLevel.SCRIPT_CONTRACT)
+        self.assertEqual(issue.level, SeverityLevel.CRITICAL)
+    
+    def test_alignment_issue_defaults(self):
+        """Test AlignmentIssue default values."""
+        issue = AlignmentIssue(
+            level=SeverityLevel.INFO,
+            category="general",
+            message="Info message"
+        )
+        
+        self.assertEqual(issue.details, {})
+        self.assertIsNone(issue.recommendation)
+        self.assertIsNone(issue.alignment_level)
+    
+    def test_alignment_issue_string_representation(self):
+        """Test AlignmentIssue string representation."""
+        issue = AlignmentIssue(
+            level=SeverityLevel.ERROR,
+            category="validation",
+            message="Test error message",
+            details={"context": "test"}
+        )
+        
+        str_repr = str(issue)
+        self.assertIn("ERROR", str_repr)
+        self.assertIn("Test error message", str_repr)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -7,7 +7,7 @@ with special attention to SageMaker container path conventions.
 
 import os
 import re
-from typing import List, Dict, Set, Optional, Tuple
+from typing import List, Dict, Set, Optional, Tuple, Any
 from pathlib import Path
 
 from ..alignment_utils import (

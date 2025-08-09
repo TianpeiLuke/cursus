@@ -1,0 +1,41 @@
+{
+  "total_scripts": 8,
+  "passed_scripts": 0,
+  "failed_scripts": 8,
+  "error_scripts": 0,
+  "validation_timestamp": "2025-08-08T22:12:11.282972",
+  "script_results": {
+    "currency_conversion": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.283049"
+    },
+    "dummy_training": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.283528"
+    },
+    "mims_package": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.283850"
+    },
+    "mims_payload": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.284077"
+    },
+    "model_calibration": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.284285"
+    },
+    "model_evaluation_xgb": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.284527"
+    },
+    "risk_table_mapping": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.284732"
+    },
+    "tabular_preprocess": {
+      "status": "FAILING",
+      "timestamp": "2025-08-08T22:12:11.284928"
+    }
+  }
+}

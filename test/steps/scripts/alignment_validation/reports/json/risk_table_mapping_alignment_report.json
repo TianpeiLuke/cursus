@@ -1,0 +1,54 @@
+{
+  "script_name": "risk_table_mapping",
+  "level1": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "ERROR",
+        "category": "missing_contract",
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/risk_table_mapping_contract.json",
+        "recommendation": "Create contract file risk_table_mapping_contract.json"
+      }
+    ]
+  },
+  "level2": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/risk_table_mapping_contract.json",
+        "recommendation": "Create the contract file risk_table_mapping_contract.json"
+      }
+    ]
+  },
+  "level3": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/risk_table_mapping_spec.json",
+        "recommendation": "Create the specification file risk_table_mapping_spec.json"
+      }
+    ]
+  },
+  "level4": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/risk_table_mapping_builder.py",
+        "recommendation": "Create the builder file risk_table_mapping_builder.py"
+      }
+    ]
+  },
+  "overall_status": "FAILING",
+  "metadata": {
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
+    "contract_mapping": "risk_table_mapping_contract",
+    "validation_timestamp": "2025-08-08T22:12:11.284732",
+    "validator_version": "1.0.0"
+  }
+}

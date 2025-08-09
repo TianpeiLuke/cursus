@@ -1,0 +1,54 @@
+{
+  "script_name": "tabular_preprocess",
+  "level1": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "ERROR",
+        "category": "missing_contract",
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/tabular_preprocess_contract.json",
+        "recommendation": "Create contract file tabular_preprocess_contract.json"
+      }
+    ]
+  },
+  "level2": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/tabular_preprocess_contract.json",
+        "recommendation": "Create the contract file tabular_preprocess_contract.json"
+      }
+    ]
+  },
+  "level3": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/tabular_preprocess_spec.json",
+        "recommendation": "Create the specification file tabular_preprocess_spec.json"
+      }
+    ]
+  },
+  "level4": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/tabular_preprocess_builder.py",
+        "recommendation": "Create the builder file tabular_preprocess_builder.py"
+      }
+    ]
+  },
+  "overall_status": "FAILING",
+  "metadata": {
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
+    "contract_mapping": "tabular_preprocess_contract",
+    "validation_timestamp": "2025-08-08T22:12:11.284928",
+    "validator_version": "1.0.0"
+  }
+}

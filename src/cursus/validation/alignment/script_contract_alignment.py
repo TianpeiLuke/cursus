@@ -7,6 +7,8 @@ Ensures scripts use paths, environment variables, and arguments as declared in c
 
 import os
 import json
+import sys
+import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
@@ -85,7 +87,7 @@ class ScriptContractAlignmentTester:
             Validation result dictionary
         """
         script_path = self.scripts_dir / f"{script_name}.py"
-        contract_path = self.contracts_dir / f"{script_name}_contract.json"
+        contract_path = self.contracts_dir / f"{script_name}_contract.py"
         
         # Check if files exist
         if not script_path.exists():
@@ -106,22 +108,21 @@ class ScriptContractAlignmentTester:
                     'severity': 'ERROR',
                     'category': 'missing_contract',
                     'message': f'Contract file not found: {contract_path}',
-                    'recommendation': f'Create contract file {script_name}_contract.json'
+                    'recommendation': f'Create contract file {script_name}_contract.py'
                 }]
             }
         
-        # Load contract
+        # Load contract from Python module
         try:
-            with open(contract_path, 'r') as f:
-                contract = json.load(f)
+            contract = self._load_python_contract(contract_path, script_name)
         except Exception as e:
             return {
                 'passed': False,
                 'issues': [{
                     'severity': 'CRITICAL',
                     'category': 'contract_parse_error',
-                    'message': f'Failed to parse contract: {str(e)}',
-                    'recommendation': 'Fix JSON syntax in contract file'
+                    'message': f'Failed to load contract: {str(e)}',
+                    'recommendation': 'Fix Python syntax in contract file'
                 }]
             }
         
@@ -170,6 +171,99 @@ class ScriptContractAlignmentTester:
             'script_analysis': analysis,
             'contract': contract
         }
+    
+    def _load_python_contract(self, contract_path: Path, script_name: str) -> Dict[str, Any]:
+        """Load contract from Python module and convert to dictionary format."""
+        try:
+            # Add the project root to sys.path temporarily to handle relative imports
+            # Go up to the project root (where src/ is located)
+            project_root = str(contract_path.parent.parent.parent.parent)  # Go up to project root
+            src_root = str(contract_path.parent.parent.parent)  # Go up to src/ level
+            contract_dir = str(contract_path.parent)
+            
+            paths_to_add = [project_root, src_root, contract_dir]
+            added_paths = []
+            
+            for path in paths_to_add:
+                if path not in sys.path:
+                    sys.path.insert(0, path)
+                    added_paths.append(path)
+            
+            try:
+                # Load the module
+                spec = importlib.util.spec_from_file_location(f"{script_name}_contract", contract_path)
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Could not load contract module from {contract_path}")
+                
+                module = importlib.util.module_from_spec(spec)
+                
+                # Set the module's package to handle relative imports
+                module.__package__ = 'cursus.steps.contracts'
+                
+                spec.loader.exec_module(module)
+            finally:
+                # Remove added paths from sys.path
+                for path in added_paths:
+                    if path in sys.path:
+                        sys.path.remove(path)
+            
+            # Look for the contract object
+            contract_var_name = f"{script_name.upper()}_CONTRACT"
+            if hasattr(module, contract_var_name):
+                contract_obj = getattr(module, contract_var_name)
+            else:
+                # Try alternative naming patterns
+                alt_names = [
+                    f"{script_name}_CONTRACT",
+                    f"{script_name}_contract",
+                    "CONTRACT",
+                    "contract"
+                ]
+                contract_obj = None
+                for name in alt_names:
+                    if hasattr(module, name):
+                        contract_obj = getattr(module, name)
+                        break
+                
+                if contract_obj is None:
+                    raise AttributeError(f"No contract object found in {contract_path}")
+            
+            # Convert ScriptContract object to dictionary format
+            contract_dict = {
+                'entry_point': getattr(contract_obj, 'entry_point', f"{script_name}.py"),
+                'inputs': {},
+                'outputs': {},
+                'arguments': {},
+                'environment_variables': {
+                    'required': getattr(contract_obj, 'required_env_vars', []),
+                    'optional': getattr(contract_obj, 'optional_env_vars', {})
+                },
+                'description': getattr(contract_obj, 'description', ''),
+                'framework_requirements': getattr(contract_obj, 'framework_requirements', {})
+            }
+            
+            # Convert expected_input_paths to inputs format
+            if hasattr(contract_obj, 'expected_input_paths'):
+                for logical_name, path in contract_obj.expected_input_paths.items():
+                    contract_dict['inputs'][logical_name] = {'path': path}
+            
+            # Convert expected_output_paths to outputs format
+            if hasattr(contract_obj, 'expected_output_paths'):
+                for logical_name, path in contract_obj.expected_output_paths.items():
+                    contract_dict['outputs'][logical_name] = {'path': path}
+            
+            # Convert expected_arguments to arguments format
+            if hasattr(contract_obj, 'expected_arguments'):
+                for arg_name, default_value in contract_obj.expected_arguments.items():
+                    contract_dict['arguments'][arg_name] = {
+                        'default': default_value,
+                        'required': default_value is None or default_value == ""
+                    }
+            
+            return contract_dict
+            
+        except Exception as e:
+            raise Exception(f"Failed to load Python contract from {contract_path}: {str(e)}")
     
     def _validate_path_usage(self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]:
         """Validate that script path usage matches contract declarations."""

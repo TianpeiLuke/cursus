@@ -1,0 +1,54 @@
+{
+  "script_name": "dummy_training",
+  "level1": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "ERROR",
+        "category": "missing_contract",
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/dummy_training_contract.json",
+        "recommendation": "Create contract file dummy_training_contract.json"
+      }
+    ]
+  },
+  "level2": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/dummy_training_contract.json",
+        "recommendation": "Create the contract file dummy_training_contract.json"
+      }
+    ]
+  },
+  "level3": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/dummy_training_spec.json",
+        "recommendation": "Create the specification file dummy_training_spec.json"
+      }
+    ]
+  },
+  "level4": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/dummy_training_builder.py",
+        "recommendation": "Create the builder file dummy_training_builder.py"
+      }
+    ]
+  },
+  "overall_status": "FAILING",
+  "metadata": {
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
+    "contract_mapping": "dummy_training_contract",
+    "validation_timestamp": "2025-08-08T22:12:11.283528",
+    "validator_version": "1.0.0"
+  }
+}

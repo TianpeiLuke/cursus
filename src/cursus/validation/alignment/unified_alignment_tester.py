@@ -32,9 +32,9 @@ class UnifiedAlignmentTester:
     
     def __init__(self, 
                  scripts_dir: str = "src/cursus/steps/scripts",
-                 contracts_dir: str = "src/cursus/core/contracts",
-                 specs_dir: str = "src/cursus/core/specifications",
-                 builders_dir: str = "src/cursus/core/step_builders"):
+                 contracts_dir: str = "src/cursus/steps/contracts",
+                 specs_dir: str = "src/cursus/steps/specs",
+                 builders_dir: str = "src/cursus/steps/builders"):
         """
         Initialize the unified alignment tester.
         
@@ -77,22 +77,34 @@ class UnifiedAlignmentTester:
         # Level 1: Script ↔ Contract Alignment
         if 1 not in skip_levels:
             print("\n📝 Level 1: Validating Script ↔ Contract Alignment...")
-            self._run_level1_validation(target_scripts)
+            try:
+                self._run_level1_validation(target_scripts)
+            except Exception as e:
+                print(f"⚠️  Level 1 validation encountered an error: {e}")
         
         # Level 2: Contract ↔ Specification Alignment
         if 2 not in skip_levels:
             print("\n📋 Level 2: Validating Contract ↔ Specification Alignment...")
-            self._run_level2_validation(target_scripts)
+            try:
+                self._run_level2_validation(target_scripts)
+            except Exception as e:
+                print(f"⚠️  Level 2 validation encountered an error: {e}")
         
         # Level 3: Specification ↔ Dependencies Alignment
         if 3 not in skip_levels:
             print("\n🔗 Level 3: Validating Specification ↔ Dependencies Alignment...")
-            self._run_level3_validation(target_scripts)
+            try:
+                self._run_level3_validation(target_scripts)
+            except Exception as e:
+                print(f"⚠️  Level 3 validation encountered an error: {e}")
         
         # Level 4: Builder ↔ Configuration Alignment
         if 4 not in skip_levels:
             print("\n⚙️  Level 4: Validating Builder ↔ Configuration Alignment...")
-            self._run_level4_validation(target_scripts)
+            try:
+                self._run_level4_validation(target_scripts)
+            except Exception as e:
+                print(f"⚠️  Level 4 validation encountered an error: {e}")
         
         # Generate summary and recommendations
         print("\n📊 Generating alignment report...")
