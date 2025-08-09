@@ -443,7 +443,7 @@ class TestDummyTrainingMain(unittest.TestCase):
             result = main()
             
             # Verify failure with appropriate exit code
-            self.assertEqual(result, 4)  # Unexpected error
+            self.assertEqual(result, 3)  # RuntimeError
 
 
 if __name__ == '__main__':

@@ -74,6 +74,34 @@ class TestPathReference(unittest.TestCase):
         str_repr = str(path_ref)
         self.assertIn("/test/path", str_repr)
         self.assertIn("20", str_repr)
+    
+    def test_path_reference_serialization(self):
+        """Test PathReference serialization to dict."""
+        path_ref = PathReference(
+            path="/opt/ml/processing/input/data.csv",
+            line_number=42,
+            context="data = pd.read_csv('/opt/ml/processing/input/data.csv')",
+            is_hardcoded=True,
+            construction_method="literal"
+        )
+        
+        path_dict = path_ref.dict()
+        
+        self.assertEqual(path_dict["path"], "/opt/ml/processing/input/data.csv")
+        self.assertEqual(path_dict["line_number"], 42)
+        self.assertEqual(path_dict["context"], "data = pd.read_csv('/opt/ml/processing/input/data.csv')")
+        self.assertTrue(path_dict["is_hardcoded"])
+        self.assertEqual(path_dict["construction_method"], "literal")
+    
+    def test_path_reference_validation(self):
+        """Test PathReference validation with invalid data."""
+        # Test with missing required fields
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            PathReference(
+                path="/test/path"
+                # Missing required line_number and context
+            )
 
 
 if __name__ == '__main__':

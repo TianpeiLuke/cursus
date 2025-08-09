@@ -77,8 +77,52 @@ class TestAlignmentIssue(unittest.TestCase):
         )
         
         str_repr = str(issue)
-        self.assertIn("ERROR", str_repr)
+        self.assertIn("level=<SeverityLevel.ERROR: 'ERROR'>", str_repr)
         self.assertIn("Test error message", str_repr)
+    
+    def test_alignment_issue_validation(self):
+        """Test AlignmentIssue validation with invalid data."""
+        # Test with invalid severity level
+        with self.assertRaises(ValueError):
+            AlignmentIssue(
+                level="INVALID",  # Should be SeverityLevel enum
+                category="test",
+                message="Test"
+            )
+    
+    def test_alignment_issue_serialization(self):
+        """Test AlignmentIssue serialization to dict."""
+        issue = AlignmentIssue(
+            level=SeverityLevel.WARNING,
+            category="test_category",
+            message="Test message",
+            details={"key": "value"},
+            recommendation="Fix this",
+            alignment_level=AlignmentLevel.SCRIPT_CONTRACT
+        )
+        
+        issue_dict = issue.dict()
+        
+        self.assertEqual(issue_dict["level"], SeverityLevel.WARNING)
+        self.assertEqual(issue_dict["category"], "test_category")
+        self.assertEqual(issue_dict["message"], "Test message")
+        self.assertEqual(issue_dict["details"], {"key": "value"})
+        self.assertEqual(issue_dict["recommendation"], "Fix this")
+        self.assertEqual(issue_dict["alignment_level"], AlignmentLevel.SCRIPT_CONTRACT)
+    
+    def test_alignment_issue_json_serialization(self):
+        """Test AlignmentIssue JSON serialization."""
+        issue = AlignmentIssue(
+            level=SeverityLevel.ERROR,
+            category="test",
+            message="Test message"
+        )
+        
+        json_str = issue.json()
+        self.assertIsInstance(json_str, str)
+        self.assertIn("ERROR", json_str)
+        self.assertIn("test", json_str)
+        self.assertIn("Test message", json_str)
 
 
 if __name__ == '__main__':

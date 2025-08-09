@@ -29,25 +29,25 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: model_calibration</h2>
-        <p>Generated: 2025-08-08T22:12:11.284285</p>
+        <p>Generated: 2025-08-08T23:45:56.222701</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>4</h3>
+            <h3>14</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
-            <h3>3</h3>
+            <h3>1</h3>
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>6</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>0</h3>
+            <h3>6</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -59,9 +59,59 @@
                 <h4>Level 1: Script ↔ Contract</h4>
                 <p>Status: FAILED</p>
                 
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script uses logical name not in contract: metrics
+                    <br><em>Recommendation: Add logical name metrics to contract or update script</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script uses logical name not in contract: eval_data
+                    <br><em>Recommendation: Add logical name eval_data to contract or update script</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script uses logical name not in contract: calibration
+                    <br><em>Recommendation: Add logical name calibration to contract or update script</em>
+                </div>
+                
                 <div class="issue error">
-                    <strong>ERROR:</strong> Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_calibration_contract.json
-                    <br><em>Recommendation: Create contract file model_calibration_contract.json</em>
+                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_CALIBRATED_DATA_PATH
+                    <br><em>Recommendation: Add OUTPUT_CALIBRATED_DATA_PATH to contract environment_variables</em>
+                </div>
+                
+                <div class="issue error">
+                    <strong>ERROR:</strong> Script accesses undeclared environment variable: INPUT_DATA_PATH
+                    <br><em>Recommendation: Add INPUT_DATA_PATH to contract environment_variables</em>
+                </div>
+                
+                <div class="issue error">
+                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH
+                    <br><em>Recommendation: Add OUTPUT_CALIBRATION_PATH to contract environment_variables</em>
+                </div>
+                
+                <div class="issue error">
+                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_METRICS_PATH
+                    <br><em>Recommendation: Add OUTPUT_METRICS_PATH to contract environment_variables</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/eval_data
+                    <br><em>Recommendation: Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/calibration
+                    <br><em>Recommendation: Either write to /opt/ml/processing/output/calibration in script or remove from contract outputs</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/calibrated_data
+                    <br><em>Recommendation: Either write to /opt/ml/processing/output/calibrated_data in script or remove from contract outputs</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/metrics
+                    <br><em>Recommendation: Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs</em>
                 </div>
                 
             </div>
@@ -70,9 +120,9 @@
                 <h4>Level 2: Contract ↔ Specification</h4>
                 <p>Status: FAILED</p>
                 
-                <div class="issue critical">
-                    <strong>CRITICAL:</strong> Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_calibration_contract.json
-                    <br><em>Recommendation: Create the contract file model_calibration_contract.json</em>
+                <div class="issue error">
+                    <strong>ERROR:</strong> No specification files found for model_calibration
+                    <br><em>Recommendation: Create specification files like model_calibration_training_spec.py</em>
                 </div>
                 
             </div>
@@ -92,9 +142,9 @@
                 <h4>Level 4: Builder ↔ Configuration</h4>
                 <p>Status: FAILED</p>
                 
-                <div class="issue critical">
-                    <strong>CRITICAL:</strong> Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/model_calibration_builder.py
-                    <br><em>Recommendation: Create the builder file model_calibration_builder.py</em>
+                <div class="issue error">
+                    <strong>ERROR:</strong> Configuration file not found: src/cursus/steps/configs/config_model_calibration_step.py
+                    <br><em>Recommendation: Create configuration file config_model_calibration_step.py</em>
                 </div>
                 
             </div>
@@ -105,7 +155,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py</p>
         <p><strong>Contract Mapping:</strong> model_calibration_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-08T22:12:11.284285</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-08T23:45:56.222701</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

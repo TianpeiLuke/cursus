@@ -12,7 +12,6 @@ import time
 
 from ...processing.risk_table_processor import RiskTableMappingProcessor
 from ...processing.numerical_imputation_processor import NumericalVariableImputationProcessor
-from .contract_utils import ContractEnforcer
 
 import logging
 
@@ -105,7 +104,11 @@ def log_metrics_summary(metrics, is_binary=True):
     else:
         logger.info(f"METRIC_KEY: Macro AUC-ROC         = {metrics.get('auc_roc_macro', 'N/A'):.4f}")
         logger.info(f"METRIC_KEY: Micro AUC-ROC         = {metrics.get('auc_roc_micro', 'N/A'):.4f}")
-        logger.info(f"METRIC_KEY: Macro Average Precision = {metrics.get('average_precision_macro', 'N/A'):.4f}")
+        ap_macro = metrics.get('average_precision_macro', 'N/A')
+        if isinstance(ap_macro, (int, float)):
+            logger.info(f"METRIC_KEY: Macro Average Precision = {ap_macro:.4f}")
+        else:
+            logger.info(f"METRIC_KEY: Macro Average Precision = {ap_macro}")
         logger.info(f"METRIC_KEY: Macro F1              = {metrics.get('f1_score_macro', 'N/A'):.4f}")
         logger.info(f"METRIC_KEY: Micro F1              = {metrics.get('f1_score_micro', 'N/A'):.4f}")
     
@@ -337,11 +340,6 @@ def evaluate_model(model, df, feature_columns, id_col, label_col, hyperparams, o
     save_metrics(metrics, output_metrics_dir)
     logger.info("Evaluation complete")
 
-def get_script_contract():
-    """Get the contract for this script"""
-    # Import at runtime to avoid circular imports
-    from ..contracts.model_evaluation_contract import MODEL_EVALUATION_CONTRACT
-    return MODEL_EVALUATION_CONTRACT
 
 def main():
     """
@@ -350,33 +348,36 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_type", type=str, required=True)
+    parser.add_argument("--model_dir", type=str, required=True, help="Directory containing model artifacts")
+    parser.add_argument("--eval_data_dir", type=str, required=True, help="Directory containing evaluation data")
+    parser.add_argument("--output_eval_dir", type=str, required=True, help="Directory to save evaluation predictions")
+    parser.add_argument("--output_metrics_dir", type=str, required=True, help="Directory to save metrics")
     args = parser.parse_args()
 
-    # Get and validate contract
-    contract = get_script_contract()
-    
-    # Use contract enforcement context manager
-    with ContractEnforcer(contract) as enforcer:
-        # Access validated environment variables (contract ensures these exist)
-        ID_FIELD = os.environ["ID_FIELD"]
-        LABEL_FIELD = os.environ["LABEL_FIELD"]
+    # Access environment variables with defaults
+    ID_FIELD = os.environ.get("ID_FIELD", "id")
+    LABEL_FIELD = os.environ.get("LABEL_FIELD", "label")
 
-        # Use contract paths instead of hardcoded paths
-        model_dir = enforcer.get_input_path('model_input')
-        eval_data_dir = enforcer.get_input_path('eval_data_input')
-        output_eval_dir = enforcer.get_output_path('eval_output')
-        output_metrics_dir = enforcer.get_output_path('metrics_output')
+    # Use command line arguments for paths
+    model_dir = args.model_dir
+    eval_data_dir = args.eval_data_dir
+    output_eval_dir = args.output_eval_dir
+    output_metrics_dir = args.output_metrics_dir
 
-        logger.info("Starting model evaluation script")
-        model, risk_tables, impute_dict, feature_columns, hyperparams = load_model_artifacts(model_dir)
-        df = load_eval_data(eval_data_dir)
-        df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
-        df = df[[col for col in feature_columns if col in df.columns]]
-        id_col, label_col = get_id_label_columns(df, ID_FIELD, LABEL_FIELD)
-        evaluate_model(
-            model, df, feature_columns, id_col, label_col, hyperparams, output_eval_dir, output_metrics_dir
-        )
-        logger.info("Model evaluation script complete")
+    # Ensure output directories exist
+    os.makedirs(output_eval_dir, exist_ok=True)
+    os.makedirs(output_metrics_dir, exist_ok=True)
+
+    logger.info("Starting model evaluation script")
+    model, risk_tables, impute_dict, feature_columns, hyperparams = load_model_artifacts(model_dir)
+    df = load_eval_data(eval_data_dir)
+    df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
+    df = df[[col for col in feature_columns if col in df.columns]]
+    id_col, label_col = get_id_label_columns(df, ID_FIELD, LABEL_FIELD)
+    evaluate_model(
+        model, df, feature_columns, id_col, label_col, hyperparams, output_eval_dir, output_metrics_dir
+    )
+    logger.info("Model evaluation script complete")
 
 if __name__ == "__main__":
     main()

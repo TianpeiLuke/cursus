@@ -72,8 +72,31 @@ data.to_csv("/opt/ml/processing/output/processed.csv", index=False)
             "arguments": {}
         }
         
-        contract_path = self.contracts_dir / "test_script_contract.json"
-        contract_path.write_text(json.dumps(contract, indent=2))
+        # Create test contract as Python module
+        contract_content = f'''
+"""Contract for test_script.py"""
+
+from src.cursus.core.base.contract_base import ScriptContract
+
+class TestScriptContract(ScriptContract):
+    def __init__(self):
+        super().__init__(
+            entry_point="test_script.py",
+            expected_input_paths={{
+                "train": "/opt/ml/processing/input/train/data.csv"
+            }},
+            expected_output_paths={{
+                "processed": "/opt/ml/processing/output/processed.csv"
+            }},
+            expected_arguments={{}},
+            required_env_vars=[],
+            optional_env_vars={{}}
+        )
+
+TEST_SCRIPT_CONTRACT = TestScriptContract()
+'''
+        contract_path = self.contracts_dir / "test_script_contract.py"
+        contract_path.write_text(contract_content)
         
         # Mock the script analyzer to return expected results
         with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:
@@ -124,16 +147,27 @@ data = pd.read_csv("/opt/ml/processing/input/undeclared/data.csv")
         script_path = self.scripts_dir / "test_script.py"
         script_path.write_text(script_content)
         
-        # Create minimal contract
-        contract = {
-            "inputs": {},
-            "outputs": {},
-            "environment_variables": {"required": [], "optional": []},
-            "arguments": {}
-        }
-        
-        contract_path = self.contracts_dir / "test_script_contract.json"
-        contract_path.write_text(json.dumps(contract, indent=2))
+        # Create minimal contract as Python module
+        contract_content = '''
+"""Contract for test_script.py"""
+
+from src.cursus.core.base.contract_base import ScriptContract
+
+class TestScriptContract(ScriptContract):
+    def __init__(self):
+        super().__init__(
+            entry_point="test_script.py",
+            expected_input_paths={},
+            expected_output_paths={},
+            expected_arguments={},
+            required_env_vars=[],
+            optional_env_vars={}
+        )
+
+TEST_SCRIPT_CONTRACT = TestScriptContract()
+'''
+        contract_path = self.contracts_dir / "test_script_contract.py"
+        contract_path.write_text(contract_content)
         
         # Mock the script analyzer
         with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:

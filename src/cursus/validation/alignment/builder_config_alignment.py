@@ -6,8 +6,10 @@ Ensures builders properly handle configuration fields and validation.
 """
 
 import os
+import sys
 import json
 import ast
+import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
@@ -23,16 +25,21 @@ class BuilderConfigurationAlignmentTester:
     - Configuration schema matches usage
     """
     
-    def __init__(self, builders_dir: str, specs_dir: str):
+    def __init__(self, builders_dir: str, configs_dir: str):
         """
         Initialize the builder-configuration alignment tester.
         
         Args:
             builders_dir: Directory containing step builders
-            specs_dir: Directory containing step specifications
+            configs_dir: Directory containing step configurations
         """
         self.builders_dir = Path(builders_dir)
-        self.specs_dir = Path(specs_dir)
+        self.configs_dir = Path(configs_dir)
+        
+        # Add the project root to Python path for imports
+        project_root = self.builders_dir.parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
     
     def validate_all_builders(self, target_scripts: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
@@ -79,8 +86,9 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        builder_path = self.builders_dir / f"{builder_name}_builder.py"
-        spec_path = self.specs_dir / f"{builder_name}_spec.json"
+        # Look for Python builder file with actual naming convention
+        builder_path = self.builders_dir / f"builder_{builder_name}_step.py"
+        config_path = self.configs_dir / f"config_{builder_name}_step.py"
         
         # Check if files exist
         if not builder_path.exists():
@@ -90,33 +98,32 @@ class BuilderConfigurationAlignmentTester:
                     'severity': 'CRITICAL',
                     'category': 'missing_file',
                     'message': f'Builder file not found: {builder_path}',
-                    'recommendation': f'Create the builder file {builder_name}_builder.py'
+                    'recommendation': f'Create the builder file builder_{builder_name}_step.py'
                 }]
             }
         
-        if not spec_path.exists():
+        if not config_path.exists():
             return {
                 'passed': False,
                 'issues': [{
                     'severity': 'ERROR',
-                    'category': 'missing_specification',
-                    'message': f'Specification file not found: {spec_path}',
-                    'recommendation': f'Create specification file {builder_name}_spec.json'
+                    'category': 'missing_configuration',
+                    'message': f'Configuration file not found: {config_path}',
+                    'recommendation': f'Create configuration file config_{builder_name}_step.py'
                 }]
             }
         
-        # Load specification
+        # Load configuration from Python file
         try:
-            with open(spec_path, 'r') as f:
-                specification = json.load(f)
+            config_analysis = self._load_config_from_python(config_path, builder_name)
         except Exception as e:
             return {
                 'passed': False,
                 'issues': [{
                     'severity': 'CRITICAL',
-                    'category': 'spec_parse_error',
-                    'message': f'Failed to parse specification: {str(e)}',
-                    'recommendation': 'Fix JSON syntax in specification file'
+                    'category': 'config_load_error',
+                    'message': f'Failed to load configuration: {str(e)}',
+                    'recommendation': 'Fix Python syntax or configuration structure in config file'
                 }]
             }
         
@@ -142,16 +149,16 @@ class BuilderConfigurationAlignmentTester:
         issues = []
         
         # Validate configuration field handling
-        config_issues = self._validate_configuration_fields(builder_analysis, specification, builder_name)
+        config_issues = self._validate_configuration_fields(builder_analysis, config_analysis, builder_name)
         issues.extend(config_issues)
         
         # Validate required field validation
-        validation_issues = self._validate_required_fields(builder_analysis, specification, builder_name)
+        validation_issues = self._validate_required_fields(builder_analysis, config_analysis, builder_name)
         issues.extend(validation_issues)
         
-        # Validate default values
-        default_issues = self._validate_default_values(builder_analysis, specification, builder_name)
-        issues.extend(default_issues)
+        # Validate configuration import
+        import_issues = self._validate_config_import(builder_analysis, config_analysis, builder_name)
+        issues.extend(import_issues)
         
         # Determine overall pass/fail status
         has_critical_or_error = any(
@@ -162,7 +169,7 @@ class BuilderConfigurationAlignmentTester:
             'passed': not has_critical_or_error,
             'issues': issues,
             'builder_analysis': builder_analysis,
-            'specification': specification
+            'config_analysis': config_analysis
         }
     
     def _analyze_builder_code(self, builder_ast: ast.AST, builder_content: str) -> Dict[str, Any]:
@@ -319,13 +326,268 @@ class BuilderConfigurationAlignmentTester:
         
         return issues
     
+    def _load_config_from_python(self, config_path: Path, builder_name: str) -> Dict[str, Any]:
+        """Load configuration from Python file."""
+        try:
+            # Try to import the module directly
+            import sys
+            module_name = f"config_{builder_name}_step"
+            
+            # Add both the configs directory and the project root to sys.path temporarily
+            configs_dir_str = str(self.configs_dir)
+            project_root_str = str(self.configs_dir.parent.parent.parent)
+            
+            paths_to_add = []
+            if configs_dir_str not in sys.path:
+                sys.path.insert(0, configs_dir_str)
+                paths_to_add.append(configs_dir_str)
+            if project_root_str not in sys.path:
+                sys.path.insert(0, project_root_str)
+                paths_to_add.append(project_root_str)
+            
+            try:
+                spec = importlib.util.spec_from_file_location(module_name, config_path)
+                module = importlib.util.module_from_spec(spec)
+                
+                # Set up the module's __package__ to help with relative imports
+                module.__package__ = 'src.cursus.steps.configs'
+                
+                sys.modules[module_name] = module  # Add to sys.modules to help with relative imports
+                spec.loader.exec_module(module)
+            finally:
+                # Clean up sys.path
+                for path in paths_to_add:
+                    if path in sys.path:
+                        sys.path.remove(path)
+            
+            # Look for configuration class (CamelCase name)
+            possible_names = [
+                f"{builder_name.title().replace('_', '')}Config",
+                f"{''.join(word.capitalize() for word in builder_name.split('_'))}Config",
+                f"{''.join(word.capitalize() for word in builder_name.split('_'))}StepConfig",  # StepConfig pattern
+                f"CurrencyConversionConfig",  # Specific case
+                f"DummyTrainingConfig",       # Specific case
+                f"BatchTransformStepConfig"   # Specific case
+            ]
+            
+            config_class = None
+            config_class_name = None
+            
+            for name in possible_names:
+                if hasattr(module, name):
+                    config_class = getattr(module, name)
+                    config_class_name = name
+                    break
+            
+            if config_class is None:
+                # List all classes in the module for debugging
+                classes = [name for name in dir(module) if isinstance(getattr(module, name), type)]
+                raise ValueError(f"Configuration class not found in {config_path}. Available classes: {classes}")
+            
+            # Analyze the configuration class
+            return self._analyze_config_class(config_class, config_class_name)
+            
+        except Exception as e:
+            # Return a simplified analysis if we can't load the module
+            return {
+                'class_name': f"{builder_name}Config",
+                'fields': {},
+                'required_fields': set(),
+                'optional_fields': set(),
+                'default_values': {},
+                'load_error': str(e)
+            }
+    
+    def _analyze_config_class(self, config_class, class_name: str) -> Dict[str, Any]:
+        """Analyze configuration class to extract field information."""
+        analysis = {
+            'class_name': class_name,
+            'fields': {},
+            'required_fields': set(),
+            'optional_fields': set(),
+            'default_values': {}
+        }
+        
+        # Get class annotations (type hints)
+        if hasattr(config_class, '__annotations__'):
+            for field_name, field_type in config_class.__annotations__.items():
+                # Determine if field is optional based on type annotation
+                is_optional = self._is_optional_field(field_type, field_name, config_class)
+                
+                analysis['fields'][field_name] = {
+                    'type': str(field_type),
+                    'required': not is_optional
+                }
+                
+                if is_optional:
+                    analysis['optional_fields'].add(field_name)
+                else:
+                    analysis['required_fields'].add(field_name)
+        
+        # Check for default values in class definition and Pydantic Field definitions
+        for attr_name in dir(config_class):
+            if not attr_name.startswith('_'):
+                attr_value = getattr(config_class, attr_name, None)
+                if not callable(attr_value):
+                    analysis['default_values'][attr_name] = attr_value
+                    # If a field has a default value, it's optional
+                    if attr_name in analysis['required_fields']:
+                        analysis['required_fields'].remove(attr_name)
+                        analysis['optional_fields'].add(attr_name)
+                        if attr_name in analysis['fields']:
+                            analysis['fields'][attr_name]['required'] = False
+        
+        return analysis
+    
+    def _is_optional_field(self, field_type, field_name: str, config_class) -> bool:
+        """
+        Determine if a field is optional based on its type annotation and Field definition.
+        
+        Args:
+            field_type: The type annotation for the field
+            field_name: Name of the field
+            config_class: The configuration class
+            
+        Returns:
+            True if the field is optional, False if required
+        """
+        import typing
+        
+        # First priority: Check Pydantic field info for definitive answer
+        try:
+            if hasattr(config_class, 'model_fields'):
+                # Pydantic v2 style
+                field_info = config_class.model_fields.get(field_name)
+                if field_info and hasattr(field_info, 'is_required'):
+                    # Use Pydantic's own determination of required/optional
+                    return not field_info.is_required()
+            elif hasattr(config_class, '__fields__'):
+                # Pydantic v1 style
+                field_info = config_class.__fields__.get(field_name)
+                if field_info and hasattr(field_info, 'required'):
+                    return not field_info.required
+        except Exception:
+            # If Pydantic info fails, fall back to other methods
+            pass
+        
+        # Second priority: Check for Optional[Type] or Union[Type, None] patterns in type annotation
+        type_str = str(field_type)
+        if 'Optional[' in type_str or 'Union[' in type_str:
+            # Handle Optional[Type] which is Union[Type, None]
+            if hasattr(typing, 'get_origin') and hasattr(typing, 'get_args'):
+                origin = typing.get_origin(field_type)
+                if origin is typing.Union:
+                    args = typing.get_args(field_type)
+                    # Check if None is one of the union types
+                    if type(None) in args:
+                        return True
+            # Fallback string-based check
+            elif 'NoneType' in type_str or ', None' in type_str or 'None]' in type_str:
+                return True
+        
+        # Third priority: Check if the field has a class-level default value
+        if hasattr(config_class, field_name):
+            default_value = getattr(config_class, field_name)
+            # If it's not a callable (method) and not a Field descriptor, it's a default
+            if not callable(default_value):
+                return True
+        
+        # If none of the above, assume required
+        return False
+    
+    def _validate_config_import(self, builder_analysis: Dict[str, Any], config_analysis: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
+        """Validate that builder properly imports and uses configuration."""
+        issues = []
+        
+        # Check if builder imports the configuration class
+        config_class_name = config_analysis.get('class_name', '')
+        
+        # Look for import statements in builder (this is a simplified check)
+        # In a real implementation, we'd parse import statements from the AST
+        has_config_import = any(
+            class_def['class_name'] == config_class_name.replace('Config', 'StepBuilder')
+            for class_def in builder_analysis.get('class_definitions', [])
+        )
+        
+        if not has_config_import:
+            issues.append({
+                'severity': 'INFO',
+                'category': 'config_import',
+                'message': f'Builder may not be properly importing configuration class {config_class_name}',
+                'details': {'config_class': config_class_name, 'builder': builder_name},
+                'recommendation': f'Ensure builder imports and uses {config_class_name}'
+            })
+        
+        return issues
+
+    def _validate_configuration_fields(self, builder_analysis: Dict[str, Any], config_analysis: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
+        """Validate that builder properly handles configuration fields."""
+        issues = []
+        
+        # Get configuration fields from analysis
+        config_fields = set(config_analysis.get('fields', {}).keys())
+        required_fields = config_analysis.get('required_fields', set())
+        
+        # Get fields accessed in builder
+        accessed_fields = set()
+        for access in builder_analysis.get('config_accesses', []):
+            accessed_fields.add(access['field_name'])
+        
+        # Check for accessed fields not in configuration
+        undeclared_fields = accessed_fields - config_fields
+        for field_name in undeclared_fields:
+            issues.append({
+                'severity': 'ERROR',
+                'category': 'configuration_fields',
+                'message': f'Builder accesses undeclared configuration field: {field_name}',
+                'details': {'field_name': field_name, 'builder': builder_name},
+                'recommendation': f'Add {field_name} to configuration class or remove from builder'
+            })
+        
+        # Check for required fields not accessed
+        unaccessed_required = required_fields - accessed_fields
+        for field_name in unaccessed_required:
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'configuration_fields',
+                'message': f'Required configuration field not accessed in builder: {field_name}',
+                'details': {'field_name': field_name, 'builder': builder_name},
+                'recommendation': f'Access required field {field_name} in builder or make it optional'
+            })
+        
+        return issues
+
+    def _validate_required_fields(self, builder_analysis: Dict[str, Any], config_analysis: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
+        """Validate that builder properly validates required fields."""
+        issues = []
+        
+        required_fields = config_analysis.get('required_fields', set())
+        
+        # Check if builder has validation logic
+        has_validation = len(builder_analysis.get('validation_calls', [])) > 0
+        
+        if required_fields and not has_validation:
+            issues.append({
+                'severity': 'INFO',
+                'category': 'required_field_validation',
+                'message': f'Builder has required fields but no explicit validation logic detected',
+                'details': {'required_fields': list(required_fields), 'builder': builder_name},
+                'recommendation': 'Consider adding explicit validation logic for required configuration fields'
+            })
+        
+        return issues
+
     def _discover_builders(self) -> List[str]:
         """Discover all builder files in the builders directory."""
         builders = []
         
         if self.builders_dir.exists():
-            for builder_file in self.builders_dir.glob("*_builder.py"):
-                builder_name = builder_file.stem.replace('_builder', '')
-                builders.append(builder_name)
+            for builder_file in self.builders_dir.glob("builder_*_step.py"):
+                if not builder_file.name.startswith('__'):
+                    # Extract builder name from builder_*_step.py pattern
+                    stem = builder_file.stem
+                    if stem.startswith('builder_') and stem.endswith('_step'):
+                        builder_name = stem[8:-5]  # Remove 'builder_' prefix and '_step' suffix
+                        builders.append(builder_name)
         
         return sorted(builders)

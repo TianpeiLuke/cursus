@@ -37,6 +37,47 @@ class TestSeverityLevel(unittest.TestCase):
             for j, other_severity in enumerate(severities):
                 if i != j:
                     self.assertNotEqual(severity, other_severity)
+    
+    def test_severity_level_string_representation(self):
+        """Test string representation of severity levels."""
+        self.assertEqual(str(SeverityLevel.INFO), "SeverityLevel.INFO")
+        self.assertEqual(str(SeverityLevel.WARNING), "SeverityLevel.WARNING")
+        self.assertEqual(str(SeverityLevel.ERROR), "SeverityLevel.ERROR")
+        self.assertEqual(str(SeverityLevel.CRITICAL), "SeverityLevel.CRITICAL")
+    
+    def test_severity_level_membership(self):
+        """Test membership in SeverityLevel enum."""
+        self.assertIn(SeverityLevel.INFO, SeverityLevel)
+        self.assertIn(SeverityLevel.WARNING, SeverityLevel)
+        self.assertIn(SeverityLevel.ERROR, SeverityLevel)
+        self.assertIn(SeverityLevel.CRITICAL, SeverityLevel)
+    
+    def test_severity_level_iteration(self):
+        """Test iteration over SeverityLevel enum."""
+        expected_values = ["INFO", "WARNING", "ERROR", "CRITICAL"]
+        actual_values = [level.value for level in SeverityLevel]
+        
+        self.assertEqual(len(actual_values), 4)
+        for expected in expected_values:
+            self.assertIn(expected, actual_values)
+    
+    def test_severity_level_from_string(self):
+        """Test creating SeverityLevel from string values."""
+        self.assertEqual(SeverityLevel("INFO"), SeverityLevel.INFO)
+        self.assertEqual(SeverityLevel("WARNING"), SeverityLevel.WARNING)
+        self.assertEqual(SeverityLevel("ERROR"), SeverityLevel.ERROR)
+        self.assertEqual(SeverityLevel("CRITICAL"), SeverityLevel.CRITICAL)
+    
+    def test_severity_level_invalid_string(self):
+        """Test creating SeverityLevel from invalid string."""
+        with self.assertRaises(ValueError):
+            SeverityLevel("INVALID")
+        
+        with self.assertRaises(ValueError):
+            SeverityLevel("info")  # lowercase should fail
+        
+        with self.assertRaises(ValueError):
+            SeverityLevel("")
 
 
 if __name__ == '__main__':

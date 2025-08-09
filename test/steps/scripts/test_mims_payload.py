@@ -111,8 +111,8 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         self._create_hyperparameters_tarball(test_hyperparams)
         
         # Patch the module-level constants to use our test directories
-        with patch.object(sys.modules['src.pipeline_scripts.mims_payload'], 'INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch.object(sys.modules['src.pipeline_scripts.mims_payload'], 'WORKING_DIRECTORY', Path(str(self.working_dir))):
+        with patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'INPUT_MODEL_DIR', str(self.input_model_dir)), \
+             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'WORKING_DIRECTORY', Path(str(self.working_dir))):
             
             # Extract the hyperparameters
             hyperparams = extract_hyperparameters_from_tarball()
@@ -397,10 +397,10 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
         }
         
         # Patch the constants and environment variables
-        with patch.object(sys.modules['src.pipeline_scripts.mims_payload'], 'INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch.object(sys.modules['src.pipeline_scripts.mims_payload'], 'OUTPUT_DIR', Path(str(self.output_dir))), \
-             patch.object(sys.modules['src.pipeline_scripts.mims_payload'], 'PAYLOAD_SAMPLE_DIR', Path(str(self.payload_sample_dir))), \
-             patch.object(sys.modules['src.pipeline_scripts.mims_payload'], 'WORKING_DIRECTORY', Path(str(self.working_dir))), \
+        with patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'INPUT_MODEL_DIR', str(self.input_model_dir)), \
+             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'OUTPUT_DIR', Path(str(self.output_dir))), \
+             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'PAYLOAD_SAMPLE_DIR', Path(str(self.payload_sample_dir))), \
+             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'WORKING_DIRECTORY', Path(str(self.working_dir))), \
              patch.dict('os.environ', env_vars, clear=True):
             
             # Run the main function
@@ -424,10 +424,10 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
         # Don't create the model.tar.gz file
         
         # Patch the constants
-        with patch('src.pipeline_scripts.mims_payload.INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch('src.pipeline_scripts.mims_payload.OUTPUT_DIR', str(self.output_dir)), \
-             patch('src.pipeline_scripts.mims_payload.PAYLOAD_SAMPLE_DIR', str(self.payload_sample_dir)), \
-             patch('src.pipeline_scripts.mims_payload.WORKING_DIRECTORY', str(self.working_dir)):
+        with patch('src.cursus.steps.scripts.mims_payload.INPUT_MODEL_DIR', str(self.input_model_dir)), \
+             patch('src.cursus.steps.scripts.mims_payload.OUTPUT_DIR', str(self.output_dir)), \
+             patch('src.cursus.steps.scripts.mims_payload.PAYLOAD_SAMPLE_DIR', str(self.payload_sample_dir)), \
+             patch('src.cursus.steps.scripts.mims_payload.WORKING_DIRECTORY', str(self.working_dir)):
             
             # Run the main function and expect an exception
             with self.assertRaises(FileNotFoundError):
@@ -444,10 +444,10 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
             tar.add(empty_file, arcname="empty.txt")
         
         # Patch the constants
-        with patch('src.pipeline_scripts.mims_payload.INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch('src.pipeline_scripts.mims_payload.OUTPUT_DIR', str(self.output_dir)), \
-             patch('src.pipeline_scripts.mims_payload.PAYLOAD_SAMPLE_DIR', str(self.payload_sample_dir)), \
-             patch('src.pipeline_scripts.mims_payload.WORKING_DIRECTORY', str(self.working_dir)):
+        with patch('src.cursus.steps.scripts.mims_payload.INPUT_MODEL_DIR', str(self.input_model_dir)), \
+             patch('src.cursus.steps.scripts.mims_payload.OUTPUT_DIR', str(self.output_dir)), \
+             patch('src.cursus.steps.scripts.mims_payload.PAYLOAD_SAMPLE_DIR', str(self.payload_sample_dir)), \
+             patch('src.cursus.steps.scripts.mims_payload.WORKING_DIRECTORY', str(self.working_dir)):
             
             # Run the main function and expect an exception
             with self.assertRaises(FileNotFoundError):

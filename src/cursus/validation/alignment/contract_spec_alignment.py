@@ -6,7 +6,8 @@ Ensures logical names, data types, and dependencies are consistent.
 """
 
 import os
-import json
+import sys
+import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
@@ -32,6 +33,11 @@ class ContractSpecificationAlignmentTester:
         """
         self.contracts_dir = Path(contracts_dir)
         self.specs_dir = Path(specs_dir)
+        
+        # Add the project root to Python path for imports
+        project_root = self.contracts_dir.parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
     
     def validate_all_contracts(self, target_scripts: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
@@ -78,10 +84,10 @@ class ContractSpecificationAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        contract_path = self.contracts_dir / f"{contract_name}_contract.json"
-        spec_path = self.specs_dir / f"{contract_name}_spec.json"
+        # Look for Python contract file
+        contract_path = self.contracts_dir / f"{contract_name}_contract.py"
         
-        # Check if files exist
+        # Check if contract file exists
         if not contract_path.exists():
             return {
                 'passed': False,
@@ -89,78 +95,248 @@ class ContractSpecificationAlignmentTester:
                     'severity': 'CRITICAL',
                     'category': 'missing_file',
                     'message': f'Contract file not found: {contract_path}',
-                    'recommendation': f'Create the contract file {contract_name}_contract.json'
+                    'recommendation': f'Create the contract file {contract_name}_contract.py'
                 }]
             }
         
-        if not spec_path.exists():
+        # Load contract from Python file
+        try:
+            contract = self._load_contract_from_python(contract_path, contract_name)
+        except Exception as e:
+            return {
+                'passed': False,
+                'issues': [{
+                    'severity': 'CRITICAL',
+                    'category': 'contract_load_error',
+                    'message': f'Failed to load contract: {str(e)}',
+                    'recommendation': 'Fix Python syntax or contract structure in contract file'
+                }]
+            }
+        
+        # Find specification files (multiple files for different job types)
+        spec_files = self._find_specification_files(contract_name)
+        
+        if not spec_files:
             return {
                 'passed': False,
                 'issues': [{
                     'severity': 'ERROR',
                     'category': 'missing_specification',
-                    'message': f'Specification file not found: {spec_path}',
-                    'recommendation': f'Create specification file {contract_name}_spec.json'
+                    'message': f'No specification files found for {contract_name}',
+                    'recommendation': f'Create specification files like {contract_name}_training_spec.py'
                 }]
             }
         
-        # Load contract and specification
-        try:
-            with open(contract_path, 'r') as f:
-                contract = json.load(f)
-        except Exception as e:
-            return {
-                'passed': False,
-                'issues': [{
-                    'severity': 'CRITICAL',
-                    'category': 'contract_parse_error',
-                    'message': f'Failed to parse contract: {str(e)}',
-                    'recommendation': 'Fix JSON syntax in contract file'
-                }]
-            }
+        # Load specifications from Python files
+        specifications = {}
+        for spec_file in spec_files:
+            try:
+                job_type = self._extract_job_type_from_spec_file(spec_file)
+                spec = self._load_specification_from_python(spec_file, contract_name, job_type)
+                specifications[job_type] = spec
+            except Exception as e:
+                return {
+                    'passed': False,
+                    'issues': [{
+                        'severity': 'CRITICAL',
+                        'category': 'spec_load_error',
+                        'message': f'Failed to load specification from {spec_file}: {str(e)}',
+                        'recommendation': 'Fix Python syntax or specification structure'
+                    }]
+                }
         
-        try:
-            with open(spec_path, 'r') as f:
-                specification = json.load(f)
-        except Exception as e:
-            return {
-                'passed': False,
-                'issues': [{
-                    'severity': 'CRITICAL',
-                    'category': 'spec_parse_error',
-                    'message': f'Failed to parse specification: {str(e)}',
-                    'recommendation': 'Fix JSON syntax in specification file'
-                }]
-            }
+        # Perform alignment validation for each specification
+        all_issues = []
         
-        # Perform alignment validation
-        issues = []
-        
-        # Validate logical name alignment
-        logical_issues = self._validate_logical_names(contract, specification, contract_name)
-        issues.extend(logical_issues)
-        
-        # Validate data type consistency
-        type_issues = self._validate_data_types(contract, specification, contract_name)
-        issues.extend(type_issues)
-        
-        # Validate input/output alignment
-        io_issues = self._validate_input_output_alignment(contract, specification, contract_name)
-        issues.extend(io_issues)
+        for job_type, specification in specifications.items():
+            # Validate logical name alignment
+            logical_issues = self._validate_logical_names(contract, specification, contract_name, job_type)
+            all_issues.extend(logical_issues)
+            
+            # Validate data type consistency
+            type_issues = self._validate_data_types(contract, specification, contract_name)
+            all_issues.extend(type_issues)
+            
+            # Validate input/output alignment
+            io_issues = self._validate_input_output_alignment(contract, specification, contract_name)
+            all_issues.extend(io_issues)
         
         # Determine overall pass/fail status
         has_critical_or_error = any(
-            issue['severity'] in ['CRITICAL', 'ERROR'] for issue in issues
+            issue['severity'] in ['CRITICAL', 'ERROR'] for issue in all_issues
         )
         
         return {
             'passed': not has_critical_or_error,
-            'issues': issues,
+            'issues': all_issues,
             'contract': contract,
-            'specification': specification
+            'specifications': specifications
         }
     
-    def _validate_logical_names(self, contract: Dict[str, Any], specification: Dict[str, Any], contract_name: str) -> List[Dict[str, Any]]:
+    def _load_contract_from_python(self, contract_path: Path, contract_name: str) -> Dict[str, Any]:
+        """Load contract from Python file."""
+        try:
+            # Read the file content and modify the import to be absolute
+            with open(contract_path, 'r') as f:
+                content = f.read()
+            
+            # Replace relative import with absolute import
+            modified_content = content.replace(
+                'from ...core.base.contract_base import ScriptContract',
+                'from src.cursus.core.base.contract_base import ScriptContract'
+            )
+            
+            # Add the project root to sys.path
+            project_root = self.contracts_dir.parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            
+            try:
+                # Create a temporary module from the modified content
+                module_name = f"{contract_name}_contract_temp"
+                spec = importlib.util.spec_from_loader(module_name, loader=None)
+                module = importlib.util.module_from_spec(spec)
+                
+                # Execute the modified content in the module's namespace
+                exec(modified_content, module.__dict__)
+                
+                # Look for the contract constant (uppercase name)
+                contract_var_name = f"{contract_name.upper()}_CONTRACT"
+                if hasattr(module, contract_var_name):
+                    contract_obj = getattr(module, contract_var_name)
+                    # Convert ScriptContract object to dictionary
+                    return {
+                        'entry_point': contract_obj.entry_point,
+                        'inputs': contract_obj.expected_input_paths,
+                        'outputs': contract_obj.expected_output_paths,
+                        'arguments': contract_obj.expected_arguments,
+                        'environment_variables': {
+                            'required': contract_obj.required_env_vars,
+                            'optional': contract_obj.optional_env_vars
+                        },
+                        'framework_requirements': contract_obj.framework_requirements,
+                        'description': contract_obj.description
+                    }
+                else:
+                    raise ValueError(f"Contract constant {contract_var_name} not found in {contract_path}")
+                    
+            finally:
+                # Clean up sys.path
+                if str(project_root) in sys.path:
+                    sys.path.remove(str(project_root))
+                    
+        except Exception as e:
+            # If we still can't load it, provide a more detailed error
+            raise ValueError(f"Failed to load contract from {contract_path}: {str(e)}")
+    
+    def _find_specification_files(self, contract_name: str) -> List[Path]:
+        """Find all specification files for a contract."""
+        spec_files = []
+        if self.specs_dir.exists():
+            # Look for files matching pattern: {contract_name}_{job_type}_spec.py
+            for spec_file in self.specs_dir.glob(f"{contract_name}_*_spec.py"):
+                spec_files.append(spec_file)
+        return spec_files
+    
+    def _extract_job_type_from_spec_file(self, spec_file: Path) -> str:
+        """Extract job type from specification file name."""
+        # Pattern: {contract_name}_{job_type}_spec.py
+        stem = spec_file.stem
+        parts = stem.split('_')
+        if len(parts) >= 3 and parts[-1] == 'spec':
+            return parts[-2]  # job_type is second to last part
+        return 'unknown'
+    
+    def _load_specification_from_python(self, spec_path: Path, contract_name: str, job_type: str) -> Dict[str, Any]:
+        """Load specification from Python file."""
+        try:
+            # Read the file content and modify imports to be absolute
+            with open(spec_path, 'r') as f:
+                content = f.read()
+            
+            # Replace common relative imports with absolute imports
+            modified_content = content.replace(
+                'from ...core.base.step_specification import StepSpecification',
+                'from src.cursus.core.base.step_specification import StepSpecification'
+            ).replace(
+                'from ...core.base.dependency_specification import DependencySpecification',
+                'from src.cursus.core.base.dependency_specification import DependencySpecification'
+            ).replace(
+                'from ...core.base.output_specification import OutputSpecification',
+                'from src.cursus.core.base.output_specification import OutputSpecification'
+            ).replace(
+                'from ...core.base.enums import',
+                'from src.cursus.core.base.enums import'
+            ).replace(
+                'from ...core.base.specification_base import',
+                'from src.cursus.core.base.specification_base import'
+            ).replace(
+                'from ..registry.step_names import',
+                'from src.cursus.steps.registry.step_names import'
+            ).replace(
+                'from ..contracts.',
+                'from src.cursus.steps.contracts.'
+            )
+            
+            # Add the project root to sys.path
+            project_root = self.specs_dir.parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            
+            try:
+                # Create a temporary module from the modified content
+                module_name = f"{contract_name}_{job_type}_spec_temp"
+                spec = importlib.util.spec_from_loader(module_name, loader=None)
+                module = importlib.util.module_from_spec(spec)
+                
+                # Execute the modified content in the module's namespace
+                exec(modified_content, module.__dict__)
+                
+                # Look for the specification constant
+                spec_var_name = f"{contract_name.upper()}_{job_type.upper()}_SPEC"
+                if hasattr(module, spec_var_name):
+                    spec_obj = getattr(module, spec_var_name)
+                    # Convert StepSpecification object to dictionary
+                    dependencies = []
+                    for dep_name, dep_spec in spec_obj.dependencies.items():
+                        dependencies.append({
+                            'logical_name': dep_spec.logical_name,
+                            'dependency_type': dep_spec.dependency_type.value if hasattr(dep_spec.dependency_type, 'value') else str(dep_spec.dependency_type),
+                            'required': dep_spec.required,
+                            'compatible_sources': dep_spec.compatible_sources,
+                            'data_type': dep_spec.data_type,
+                            'description': dep_spec.description
+                        })
+                    
+                    outputs = []
+                    for out_name, out_spec in spec_obj.outputs.items():
+                        outputs.append({
+                            'logical_name': out_spec.logical_name,
+                            'output_type': out_spec.output_type.value if hasattr(out_spec.output_type, 'value') else str(out_spec.output_type),
+                            'property_path': out_spec.property_path,
+                            'data_type': out_spec.data_type,
+                            'description': out_spec.description
+                        })
+                    
+                    return {
+                        'step_type': spec_obj.step_type,
+                        'node_type': spec_obj.node_type.value if hasattr(spec_obj.node_type, 'value') else str(spec_obj.node_type),
+                        'dependencies': dependencies,
+                        'outputs': outputs
+                    }
+                else:
+                    raise ValueError(f"Specification constant {spec_var_name} not found in {spec_path}")
+                    
+            finally:
+                # Clean up sys.path
+                if str(project_root) in sys.path:
+                    sys.path.remove(str(project_root))
+                    
+        except Exception as e:
+            # If we still can't load it, provide a more detailed error
+            raise ValueError(f"Failed to load specification from {spec_path}: {str(e)}")
+
+    def _validate_logical_names(self, contract: Dict[str, Any], specification: Dict[str, Any], contract_name: str, job_type: str = None) -> List[Dict[str, Any]]:
         """Validate that logical names match between contract and specification."""
         issues = []
         
@@ -207,51 +383,13 @@ class ContractSpecificationAlignmentTester:
         """Validate data type consistency between contract and specification."""
         issues = []
         
-        # Compare input data types
-        contract_inputs = contract.get('inputs', {})
-        spec_deps = {dep.get('logical_name'): dep for dep in specification.get('dependencies', [])}
+        # Note: Contract inputs/outputs are typically stored as simple path strings,
+        # while specifications have rich data type information.
+        # For now, we'll skip detailed data type validation since the contract
+        # format doesn't include explicit data type declarations.
         
-        for logical_name, contract_input in contract_inputs.items():
-            if logical_name in spec_deps:
-                contract_type = contract_input.get('data_type')
-                spec_type = spec_deps[logical_name].get('data_type')
-                
-                if contract_type and spec_type and contract_type != spec_type:
-                    issues.append({
-                        'severity': 'WARNING',
-                        'category': 'data_types',
-                        'message': f'Data type mismatch for {logical_name}: contract={contract_type}, spec={spec_type}',
-                        'details': {
-                            'logical_name': logical_name,
-                            'contract_type': contract_type,
-                            'spec_type': spec_type,
-                            'contract': contract_name
-                        },
-                        'recommendation': f'Align data types for {logical_name} between contract and specification'
-                    })
-        
-        # Compare output data types
-        contract_outputs = contract.get('outputs', {})
-        spec_outputs = {out.get('logical_name'): out for out in specification.get('outputs', [])}
-        
-        for logical_name, contract_output in contract_outputs.items():
-            if logical_name in spec_outputs:
-                contract_type = contract_output.get('data_type')
-                spec_type = spec_outputs[logical_name].get('data_type')
-                
-                if contract_type and spec_type and contract_type != spec_type:
-                    issues.append({
-                        'severity': 'WARNING',
-                        'category': 'data_types',
-                        'message': f'Output data type mismatch for {logical_name}: contract={contract_type}, spec={spec_type}',
-                        'details': {
-                            'logical_name': logical_name,
-                            'contract_type': contract_type,
-                            'spec_type': spec_type,
-                            'contract': contract_name
-                        },
-                        'recommendation': f'Align output data types for {logical_name} between contract and specification'
-                    })
+        # This could be enhanced in the future if contracts are extended
+        # to include data type information.
         
         return issues
     
@@ -296,8 +434,9 @@ class ContractSpecificationAlignmentTester:
         contracts = []
         
         if self.contracts_dir.exists():
-            for contract_file in self.contracts_dir.glob("*_contract.json"):
-                contract_name = contract_file.stem.replace('_contract', '')
-                contracts.append(contract_name)
+            for contract_file in self.contracts_dir.glob("*_contract.py"):
+                if not contract_file.name.startswith('__'):
+                    contract_name = contract_file.stem.replace('_contract', '')
+                    contracts.append(contract_name)
         
         return sorted(contracts)

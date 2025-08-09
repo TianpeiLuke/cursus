@@ -49,28 +49,30 @@ args = parser.parse_args()
         script_path = self.scripts_dir / "test_script.py"
         script_path.write_text(script_content)
         
-        # Create matching contract
-        contract = {
-            "inputs": {},
-            "outputs": {},
-            "environment_variables": {"required": [], "optional": []},
-            "arguments": {
-                "model-name": {
-                    "required": True,
-                    "type": "str",
-                    "description": "Name of the model"
-                },
-                "epochs": {
-                    "required": False,
-                    "type": "int",
-                    "default": 10,
-                    "description": "Number of training epochs"
-                }
-            }
-        }
-        
-        contract_path = self.contracts_dir / "test_script_contract.json"
-        contract_path.write_text(json.dumps(contract, indent=2))
+        # Create matching contract as Python module
+        contract_content = '''
+"""Contract for test_script.py"""
+
+from src.cursus.core.base.contract_base import ScriptContract
+
+class TestScriptContract(ScriptContract):
+    def __init__(self):
+        super().__init__(
+            entry_point="test_script.py",
+            expected_input_paths={},
+            expected_output_paths={},
+            expected_arguments={
+                "model-name": None,  # Required
+                "epochs": "10"  # Optional with default
+            },
+            required_env_vars=[],
+            optional_env_vars={}
+        )
+
+TEST_SCRIPT_CONTRACT = TestScriptContract()
+'''
+        contract_path = self.contracts_dir / "test_script_contract.py"
+        contract_path.write_text(contract_content)
         
         # Mock the script analyzer
         with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:
@@ -115,27 +117,30 @@ args = parser.parse_args()
         script_path = self.scripts_dir / "test_script.py"
         script_path.write_text(script_content)
         
-        # Contract requires model-name argument
-        contract = {
-            "inputs": {},
-            "outputs": {},
-            "environment_variables": {"required": [], "optional": []},
-            "arguments": {
-                "model-name": {
-                    "required": True,
-                    "type": "str",
-                    "description": "Name of the model"
-                },
-                "epochs": {
-                    "required": False,
-                    "type": "int",
-                    "default": 10
-                }
-            }
-        }
-        
-        contract_path = self.contracts_dir / "test_script_contract.json"
-        contract_path.write_text(json.dumps(contract, indent=2))
+        # Contract requires model-name argument as Python module
+        contract_content = '''
+"""Contract for test_script.py"""
+
+from src.cursus.core.base.contract_base import ScriptContract
+
+class TestScriptContract(ScriptContract):
+    def __init__(self):
+        super().__init__(
+            entry_point="test_script.py",
+            expected_input_paths={},
+            expected_output_paths={},
+            expected_arguments={
+                "model-name": None,  # Required
+                "epochs": "10"  # Optional with default
+            },
+            required_env_vars=[],
+            optional_env_vars={}
+        )
+
+TEST_SCRIPT_CONTRACT = TestScriptContract()
+'''
+        contract_path = self.contracts_dir / "test_script_contract.py"
+        contract_path.write_text(contract_content)
         
         # Mock the script analyzer
         with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:
@@ -178,22 +183,29 @@ args = parser.parse_args()
         script_path = self.scripts_dir / "test_script.py"
         script_path.write_text(script_content)
         
-        # Contract only has model-name
-        contract = {
-            "inputs": {},
-            "outputs": {},
-            "environment_variables": {"required": [], "optional": []},
-            "arguments": {
-                "model-name": {
-                    "required": True,
-                    "type": "str",
-                    "description": "Name of the model"
-                }
-            }
-        }
-        
-        contract_path = self.contracts_dir / "test_script_contract.json"
-        contract_path.write_text(json.dumps(contract, indent=2))
+        # Contract only has model-name as Python module
+        contract_content = '''
+"""Contract for test_script.py"""
+
+from src.cursus.core.base.contract_base import ScriptContract
+
+class TestScriptContract(ScriptContract):
+    def __init__(self):
+        super().__init__(
+            entry_point="test_script.py",
+            expected_input_paths={},
+            expected_output_paths={},
+            expected_arguments={
+                "model-name": None  # Required
+            },
+            required_env_vars=[],
+            optional_env_vars={}
+        )
+
+TEST_SCRIPT_CONTRACT = TestScriptContract()
+'''
+        contract_path = self.contracts_dir / "test_script_contract.py"
+        contract_path.write_text(contract_content)
         
         # Mock the script analyzer
         with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:
@@ -241,22 +253,29 @@ args = parser.parse_args()
         script_path = self.scripts_dir / "test_script.py"
         script_path.write_text(script_content)
         
-        # Contract expects int type
-        contract = {
-            "inputs": {},
-            "outputs": {},
-            "environment_variables": {"required": [], "optional": []},
-            "arguments": {
-                "epochs": {
-                    "required": True,
-                    "type": "int",
-                    "description": "Number of epochs"
-                }
-            }
-        }
-        
-        contract_path = self.contracts_dir / "test_script_contract.json"
-        contract_path.write_text(json.dumps(contract, indent=2))
+        # Contract expects int type as Python module
+        contract_content = '''
+"""Contract for test_script.py"""
+
+from src.cursus.core.base.contract_base import ScriptContract
+
+class TestScriptContract(ScriptContract):
+    def __init__(self):
+        super().__init__(
+            entry_point="test_script.py",
+            expected_input_paths={},
+            expected_output_paths={},
+            expected_arguments={
+                "epochs": None  # Required
+            },
+            required_env_vars=[],
+            optional_env_vars={}
+        )
+
+TEST_SCRIPT_CONTRACT = TestScriptContract()
+'''
+        contract_path = self.contracts_dir / "test_script_contract.py"
+        contract_path.write_text(contract_content)
         
         # Mock the script analyzer
         with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:

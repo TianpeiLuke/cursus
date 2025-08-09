@@ -264,16 +264,20 @@ class TestCalibrationMethods(unittest.TestCase):
         self.assertTrue(np.all(calibrated_scores <= 1))
 
     @patch('src.cursus.steps.scripts.model_calibration.HAS_PYGAM', True)
-    @patch('src.cursus.steps.scripts.model_calibration.LogisticGAM')
-    def test_train_gam_calibration_with_pygam(self, mock_gam_class):
+    def test_train_gam_calibration_with_pygam(self):
         """Test training GAM calibration when pygam is available."""
         mock_gam = MagicMock()
-        mock_gam_class.return_value = mock_gam
+        mock_gam.statistics_ = {'deviance': 100.0}
+        mock_s = MagicMock()
         
-        result = train_gam_calibration(self.scores, self.labels, self.config)
-        
-        self.assertEqual(result, mock_gam)
-        mock_gam.fit.assert_called_once()
+        # Mock both LogisticGAM and s function from pygam
+        with patch('src.cursus.steps.scripts.model_calibration.LogisticGAM', return_value=mock_gam, create=True) as mock_gam_class, \
+             patch('src.cursus.steps.scripts.model_calibration.s', return_value=mock_s, create=True):
+            result = train_gam_calibration(self.scores, self.labels, self.config)
+            
+            self.assertEqual(result, mock_gam)
+            mock_gam.fit.assert_called_once()
+            mock_gam_class.assert_called_once()
 
     @patch('src.cursus.steps.scripts.model_calibration.HAS_PYGAM', False)
     def test_train_gam_calibration_without_pygam(self):
@@ -578,8 +582,12 @@ class TestCalibrationMain(unittest.TestCase):
             multiclass_df[prob_cols].sum(axis=1), axis=0
         )
         
-        # Save multiclass data
+        # Save multiclass data (remove existing binary data first)
         input_dir = Path(self.config.input_data_path)
+        # Remove existing binary data file
+        existing_files = list(input_dir.glob("*.csv"))
+        for f in existing_files:
+            f.unlink()
         multiclass_df.to_csv(input_dir / "multiclass_data.csv", index=False)
         
         # Update config for multiclass
@@ -591,7 +599,8 @@ class TestCalibrationMain(unittest.TestCase):
             calibration_method="isotonic",
             is_binary=False,
             num_classes=n_classes,
-            multiclass_categories=["0", "1", "2"]
+            multiclass_categories=["0", "1", "2"],
+            score_field_prefix="prob_class_"
         )
         
         mock_plot.return_value = str(self.temp_dir / "plot.png")

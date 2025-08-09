@@ -23,7 +23,6 @@ from src.cursus.steps.scripts.model_evaluation_xgb import (
     plot_and_save_roc_curve,
     plot_and_save_pr_curve,
     evaluate_model,
-    get_script_contract,
     main
 )
 
@@ -487,30 +486,22 @@ class TestModelEvaluationMain(unittest.TestCase):
         with open(model_dir / "hyperparameters.json", "w") as f:
             json.dump({"is_binary": True}, f)
 
-    @patch('src.cursus.steps.scripts.model_evaluation_xgb.ContractEnforcer')
-    @patch('src.cursus.steps.scripts.model_evaluation_xgb.get_script_contract')
     @patch('src.cursus.steps.scripts.model_evaluation_xgb.evaluate_model')
     @patch('src.cursus.steps.scripts.model_evaluation_xgb.preprocess_eval_data')
     @patch('src.cursus.steps.scripts.model_evaluation_xgb.load_eval_data')
     @patch('src.cursus.steps.scripts.model_evaluation_xgb.load_model_artifacts')
     @patch('src.cursus.steps.scripts.model_evaluation_xgb.argparse.ArgumentParser')
     def test_main_function(self, mock_parser, mock_load_artifacts, mock_load_data, 
-                          mock_preprocess, mock_evaluate, mock_get_contract, mock_enforcer):
+                          mock_preprocess, mock_evaluate):
         """Test main function execution."""
         # Mock argument parser
         mock_args = MagicMock()
         mock_args.job_type = "validation"
+        mock_args.model_dir = "/mock/model"
+        mock_args.eval_data_dir = "/mock/eval_data"
+        mock_args.output_eval_dir = "/mock/output/eval"
+        mock_args.output_metrics_dir = "/mock/output/metrics"
         mock_parser.return_value.parse_args.return_value = mock_args
-        
-        # Mock contract
-        mock_contract = MagicMock()
-        mock_get_contract.return_value = mock_contract
-        
-        # Mock contract enforcer
-        mock_enforcer_instance = MagicMock()
-        mock_enforcer_instance.get_input_path.side_effect = lambda x: f"/mock/input/{x}"
-        mock_enforcer_instance.get_output_path.side_effect = lambda x: f"/mock/output/{x}"
-        mock_enforcer.return_value.__enter__.return_value = mock_enforcer_instance
         
         # Mock environment variables
         with patch.dict(os.environ, {
@@ -533,25 +524,16 @@ class TestModelEvaluationMain(unittest.TestCase):
             mock_load_data.return_value = mock_df
             mock_preprocess.return_value = mock_df[['feature1', 'feature2']]
             
-            # Run main function
-            main()
-            
-            # Verify contract enforcer was used
-            mock_enforcer.assert_called_once_with(mock_contract)
+            # Mock os.makedirs to avoid actual directory creation
+            with patch('src.cursus.steps.scripts.model_evaluation_xgb.os.makedirs'):
+                # Run main function
+                main()
             
             # Verify all major functions were called
             mock_load_artifacts.assert_called_once()
             mock_load_data.assert_called_once()
             mock_preprocess.assert_called_once()
             mock_evaluate.assert_called_once()
-
-    @patch('src.cursus.steps.scripts.model_evaluation_xgb.get_script_contract')
-    def test_get_script_contract(self, mock_get_contract):
-        """Test getting script contract."""
-        # This is a simple test to ensure the function exists and can be called
-        get_script_contract()
-        # The actual contract import is mocked, so we just verify it was called
-        # In a real scenario, this would test the actual contract import
 
 
 if __name__ == '__main__':

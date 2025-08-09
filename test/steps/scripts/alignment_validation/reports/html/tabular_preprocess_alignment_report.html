@@ -29,25 +29,25 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: tabular_preprocess</h2>
-        <p>Generated: 2025-08-08T22:12:11.284928</p>
+        <p>Generated: 2025-08-08T23:45:56.237629</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>4</h3>
+            <h3>8</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
-            <h3>3</h3>
+            <h3>2</h3>
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>2</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>0</h3>
+            <h3>3</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -60,8 +60,28 @@
                 <p>Status: FAILED</p>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/tabular_preprocess_contract.json
-                    <br><em>Recommendation: Create contract file tabular_preprocess_contract.json</em>
+                    <strong>ERROR:</strong> Script uses undeclared SageMaker path: /opt/ml/processing/input
+                    <br><em>Recommendation: Add path /opt/ml/processing/input to contract inputs or outputs</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/data
+                    <br><em>Recommendation: Either use path /opt/ml/processing/input/data in script or remove from contract</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script defines argument not in contract: job_type
+                    <br><em>Recommendation: Add job_type to contract arguments or remove from script</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/data
+                    <br><em>Recommendation: Either read /opt/ml/processing/input/data in script or remove from contract inputs</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output
+                    <br><em>Recommendation: Either write to /opt/ml/processing/output in script or remove from contract outputs</em>
                 </div>
                 
             </div>
@@ -70,9 +90,9 @@
                 <h4>Level 2: Contract ↔ Specification</h4>
                 <p>Status: FAILED</p>
                 
-                <div class="issue critical">
-                    <strong>CRITICAL:</strong> Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/tabular_preprocess_contract.json
-                    <br><em>Recommendation: Create the contract file tabular_preprocess_contract.json</em>
+                <div class="issue error">
+                    <strong>ERROR:</strong> No specification files found for tabular_preprocess
+                    <br><em>Recommendation: Create specification files like tabular_preprocess_training_spec.py</em>
                 </div>
                 
             </div>
@@ -93,8 +113,8 @@
                 <p>Status: FAILED</p>
                 
                 <div class="issue critical">
-                    <strong>CRITICAL:</strong> Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/tabular_preprocess_builder.py
-                    <br><em>Recommendation: Create the builder file tabular_preprocess_builder.py</em>
+                    <strong>CRITICAL:</strong> Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/builder_tabular_preprocess_step.py
+                    <br><em>Recommendation: Create the builder file builder_tabular_preprocess_step.py</em>
                 </div>
                 
             </div>
@@ -105,7 +125,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py</p>
         <p><strong>Contract Mapping:</strong> tabular_preprocess_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-08T22:12:11.284928</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-08T23:45:56.237629</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

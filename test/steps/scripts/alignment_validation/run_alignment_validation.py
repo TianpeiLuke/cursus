@@ -22,9 +22,9 @@ from typing import Dict, List, Any
 
 # Add the project root to the Python path
 project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
+sys.path.insert(0, str(project_root))
 
-from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
 
 class ScriptAlignmentValidator:

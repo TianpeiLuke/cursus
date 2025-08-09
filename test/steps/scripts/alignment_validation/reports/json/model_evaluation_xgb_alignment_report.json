@@ -6,8 +6,8 @@
       {
         "severity": "ERROR",
         "category": "missing_contract",
-        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_evaluation_xgb_contract.json",
-        "recommendation": "Create contract file model_evaluation_xgb_contract.json"
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_evaluation_xgb_contract.py",
+        "recommendation": "Create contract file model_evaluation_xgb_contract.py"
       }
     ]
   },
@@ -17,8 +17,8 @@
       {
         "severity": "CRITICAL",
         "category": "missing_file",
-        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_evaluation_xgb_contract.json",
-        "recommendation": "Create the contract file model_evaluation_xgb_contract.json"
+        "message": "Contract file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_evaluation_xgb_contract.py",
+        "recommendation": "Create the contract file model_evaluation_xgb_contract.py"
       }
     ]
   },
@@ -39,8 +39,8 @@
       {
         "severity": "CRITICAL",
         "category": "missing_file",
-        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/model_evaluation_xgb_builder.py",
-        "recommendation": "Create the builder file model_evaluation_xgb_builder.py"
+        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/builder_model_evaluation_xgb_step.py",
+        "recommendation": "Create the builder file builder_model_evaluation_xgb_step.py"
       }
     ]
   },
@@ -48,7 +48,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-08T22:12:11.284527",
+    "validation_timestamp": "2025-08-08T23:45:56.223461",
     "validator_version": "1.0.0"
   }
 }

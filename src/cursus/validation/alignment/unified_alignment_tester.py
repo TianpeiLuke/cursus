@@ -34,7 +34,8 @@ class UnifiedAlignmentTester:
                  scripts_dir: str = "src/cursus/steps/scripts",
                  contracts_dir: str = "src/cursus/steps/contracts",
                  specs_dir: str = "src/cursus/steps/specs",
-                 builders_dir: str = "src/cursus/steps/builders"):
+                 builders_dir: str = "src/cursus/steps/builders",
+                 configs_dir: str = "src/cursus/steps/configs"):
         """
         Initialize the unified alignment tester.
         
@@ -43,17 +44,19 @@ class UnifiedAlignmentTester:
             contracts_dir: Directory containing script contracts
             specs_dir: Directory containing step specifications
             builders_dir: Directory containing step builders
+            configs_dir: Directory containing step configurations
         """
         self.scripts_dir = Path(scripts_dir)
         self.contracts_dir = Path(contracts_dir)
         self.specs_dir = Path(specs_dir)
         self.builders_dir = Path(builders_dir)
+        self.configs_dir = Path(configs_dir)
         
         # Initialize level-specific testers
         self.level1_tester = ScriptContractAlignmentTester(scripts_dir, contracts_dir)
         self.level2_tester = ContractSpecificationAlignmentTester(contracts_dir, specs_dir)
         self.level3_tester = SpecificationDependencyAlignmentTester(specs_dir)
-        self.level4_tester = BuilderConfigurationAlignmentTester(builders_dir, specs_dir)
+        self.level4_tester = BuilderConfigurationAlignmentTester(builders_dir, configs_dir)
         
         self.report = AlignmentReport()
     
