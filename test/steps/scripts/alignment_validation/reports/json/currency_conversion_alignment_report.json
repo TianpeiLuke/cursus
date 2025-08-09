@@ -26,16 +26,6 @@
       {
         "severity": "ERROR",
         "category": "arguments",
-        "message": "Contract declares argument not defined in script: marketplace-id-col",
-        "details": {
-          "argument": "marketplace-id-col",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add argument parser for marketplace-id-col in script"
-      },
-      {
-        "severity": "ERROR",
-        "category": "arguments",
         "message": "Contract declares argument not defined in script: currency-col",
         "details": {
           "argument": "currency-col",
@@ -46,22 +36,22 @@
       {
         "severity": "ERROR",
         "category": "arguments",
-        "message": "Contract declares argument not defined in script: enable-conversion",
-        "details": {
-          "argument": "enable-conversion",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add argument parser for enable-conversion in script"
-      },
-      {
-        "severity": "ERROR",
-        "category": "arguments",
         "message": "Contract declares argument not defined in script: n-workers",
         "details": {
           "argument": "n-workers",
           "script": "currency_conversion"
         },
         "recommendation": "Add argument parser for n-workers in script"
+      },
+      {
+        "severity": "ERROR",
+        "category": "arguments",
+        "message": "Contract declares argument not defined in script: enable-conversion",
+        "details": {
+          "argument": "enable-conversion",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add argument parser for enable-conversion in script"
       },
       {
         "severity": "ERROR",
@@ -84,6 +74,16 @@
         "recommendation": "Add argument parser for skip-invalid-currencies in script"
       },
       {
+        "severity": "ERROR",
+        "category": "arguments",
+        "message": "Contract declares argument not defined in script: marketplace-id-col",
+        "details": {
+          "argument": "marketplace-id-col",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add argument parser for marketplace-id-col in script"
+      },
+      {
         "severity": "WARNING",
         "category": "arguments",
         "message": "Script defines argument not in contract: default_currency",
@@ -96,12 +96,12 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: enable_conversion",
+        "message": "Script defines argument not in contract: currency_col",
         "details": {
-          "argument": "enable_conversion",
+          "argument": "currency_col",
           "script": "currency_conversion"
         },
-        "recommendation": "Add enable_conversion to contract arguments or remove from script"
+        "recommendation": "Add currency_col to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -112,46 +112,6 @@
           "script": "currency_conversion"
         },
         "recommendation": "Add test_val_ratio to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: marketplace_id_col",
-        "details": {
-          "argument": "marketplace_id_col",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add marketplace_id_col to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: skip_invalid_currencies",
-        "details": {
-          "argument": "skip_invalid_currencies",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add skip_invalid_currencies to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: n_workers",
-        "details": {
-          "argument": "n_workers",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add n_workers to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: currency_col",
-        "details": {
-          "argument": "currency_col",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add currency_col to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -172,6 +132,46 @@
           "script": "currency_conversion"
         },
         "recommendation": "Add job_type to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: enable_conversion",
+        "details": {
+          "argument": "enable_conversion",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add enable_conversion to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: skip_invalid_currencies",
+        "details": {
+          "argument": "skip_invalid_currencies",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add skip_invalid_currencies to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: marketplace_id_col",
+        "details": {
+          "argument": "marketplace_id_col",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add marketplace_id_col to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: n_workers",
+        "details": {
+          "argument": "n_workers",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add n_workers to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -358,7 +358,7 @@
       "description": "\n    Currency conversion script that:\n    1. Loads processed data from input splits (train/test/val or single split)\n    2. Applies currency conversion to specified monetary variables\n    3. Uses marketplace information to determine currency codes\n    4. Supports parallel processing for performance\n    5. Handles two modes: per-split conversion or conversion before re-splitting\n    \n    Input Structure:\n    - /opt/ml/processing/input/data/{split}/{split}_processed_data.csv: Input data files\n    - /opt/ml/processing/input/data/{split}/{split}_full_data.csv: Optional full data files\n    \n    Output Structure:\n    - /opt/ml/processing/output/{split}/{split}_processed_data.csv: Converted processed data\n    - /opt/ml/processing/output/{split}/{split}_full_data.csv: Converted full data (if exists)\n    \n    Environment Variables:\n    - CURRENCY_CONVERSION_VARS: JSON list of variables requiring currency conversion\n    - CURRENCY_CONVERSION_DICT: JSON dict mapping currency codes to exchange rates\n    - MARKETPLACE_INFO: JSON dict mapping marketplace IDs to currency information\n    - LABEL_FIELD: Name of the label column for stratified splitting\n    - TRAIN_RATIO: Training data ratio (default: 0.7)\n    - TEST_VAL_RATIO: Test/validation split ratio (default: 0.5)\n    \n    Command Line Arguments:\n    - --job-type: Type of job (training, validation, testing, calibration)\n    - --mode: Conversion mode (per_split or split_after_conversion)\n    - --marketplace-id-col: Column containing marketplace IDs\n    - --currency-col: Optional existing currency column\n    - --default-currency: Default currency code (default: USD)\n    - --skip-invalid-currencies: Skip rows with invalid currencies\n    - --enable-conversion: Enable/disable conversion (default: true)\n    - --n-workers: Number of parallel workers (default: 50)\n    "
     },
     "specifications": {
-      "training": {
+      "currency_conversion_training_spec": {
         "step_type": "CurrencyConversion_Training",
         "node_type": "internal",
         "dependencies": [
@@ -368,8 +368,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -385,7 +385,7 @@
           }
         ]
       },
-      "calibration": {
+      "currency_conversion_calibration_spec": {
         "step_type": "CurrencyConversion_Calibration",
         "node_type": "internal",
         "dependencies": [
@@ -395,8 +395,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -412,7 +412,7 @@
           }
         ]
       },
-      "validation": {
+      "currency_conversion_validation_spec": {
         "step_type": "CurrencyConversion_Validation",
         "node_type": "internal",
         "dependencies": [
@@ -422,8 +422,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -439,7 +439,7 @@
           }
         ]
       },
-      "testing": {
+      "currency_conversion_testing_spec": {
         "step_type": "CurrencyConversion_Testing",
         "node_type": "internal",
         "dependencies": [
@@ -449,8 +449,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -492,8 +492,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Processed training data requiring currency conversion"
@@ -511,21 +511,241 @@
     }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "missing_configuration",
-        "message": "Configuration file not found: src/cursus/steps/configs/config_currency_conversion_step.py",
-        "recommendation": "Create configuration file config_currency_conversion_step.py"
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_info",
+        "details": {
+          "field_name": "marketplace_info",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_info in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: label_field",
+        "details": {
+          "field_name": "label_field",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field label_field in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_id_col",
+        "details": {
+          "field_name": "marketplace_id_col",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
+        "details": {
+          "field_name": "currency_conversion_dict",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
+      },
+      {
+        "severity": "INFO",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
+        "details": {
+          "required_fields": [
+            "marketplace_info",
+            "label_field",
+            "marketplace_id_col",
+            "currency_conversion_dict"
+          ],
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "job_type",
+          "line_number": 67
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "CurrencyConversionStepBuilder",
+          "line_number": 31
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 39
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 100
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 130
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 150
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 170
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 222
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 277
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 301
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "CurrencyConversionConfig",
+      "fields": {
+        "job_type": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_entry_point": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "use_large_processing_instance": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "mode": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "train_ratio": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "test_val_ratio": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "label_field": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "marketplace_id_col": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "currency_col": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "currency_conversion_var_list": {
+          "type": "typing.List[str]",
+          "required": false
+        },
+        "currency_conversion_dict": {
+          "type": "typing.Dict[str, float]",
+          "required": true
+        },
+        "marketplace_info": {
+          "type": "typing.Dict[str, typing.Dict[str, str]]",
+          "required": true
+        },
+        "enable_currency_conversion": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "default_currency": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "skip_invalid_currencies": {
+          "type": "<class 'bool'>",
+          "required": false
+        }
+      },
+      "required_fields": "{'marketplace_info', 'label_field', 'marketplace_id_col', 'currency_conversion_dict'}",
+      "optional_fields": "{'use_large_processing_instance', 'default_currency', 'test_val_ratio', 'train_ratio', 'job_type', 'currency_col', 'skip_invalid_currencies', 'mode', 'enable_currency_conversion', 'processing_entry_point', 'currency_conversion_var_list'}",
+      "default_values": {
+        "aws_region": "<property object at 0x1064c5580>",
+        "effective_instance_type": "<property object at 0x30fbe5760>",
+        "effective_source_dir": "<property object at 0x30fbe5710>",
+        "model_computed_fields": {},
+        "model_config": {
+          "arbitrary_types_allowed": true,
+          "extra": "allow",
+          "protected_namespaces": [],
+          "validate_assignment": true
+        },
+        "model_extra": "<property object at 0x105e03970>",
+        "model_fields": {
+          "author": "annotation=str required=True description='Author or owner of the pipeline.'",
+          "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
+          "role": "annotation=str required=True description='IAM role for pipeline execution.'",
+          "region": "annotation=str required=True description='Custom region code (NA, EU, FE) for internal logic.'",
+          "service_name": "annotation=str required=True description='Service name for the pipeline.'",
+          "pipeline_version": "annotation=str required=True description='Version string for the SageMaker Pipeline.'",
+          "model_class": "annotation=str required=False default='xgboost' description='Model class (e.g., XGBoost, PyTorch).'",
+          "current_date": "annotation=str required=False default_factory=<lambda> description='Current date, typically used for versioning or pathing.'",
+          "framework_version": "annotation=str required=False default='2.1.0' description='Default framework version (e.g., PyTorch).'",
+          "py_version": "annotation=str required=False default='py310' description='Default Python version.'",
+          "source_dir": "annotation=Union[str, NoneType] required=False default=None description='Common source directory for scripts if applicable. Can be overridden by step configs.'",
+          "processing_instance_count": "annotation=int required=False default=1 description='Instance count for processing jobs' metadata=[Ge(ge=1), Le(le=10)]",
+          "processing_volume_size": "annotation=int required=False default=500 description='Volume size for processing jobs in GB' metadata=[Ge(ge=10), Le(le=1000)]",
+          "processing_instance_type_large": "annotation=str required=False default='ml.m5.4xlarge' description='Large instance type for processing step.'",
+          "processing_instance_type_small": "annotation=str required=False default='ml.m5.2xlarge' description='Small instance type for processing step.'",
+          "use_large_processing_instance": "annotation=bool required=False default=False description='Whether to use large instance type.'",
+          "processing_source_dir": "annotation=Union[str, NoneType] required=False default=None description='Source directory for processing scripts. Falls back to base source_dir if not provided.'",
+          "processing_entry_point": "annotation=str required=False default='currency_conversion.py' description='Entry point script for currency conversion.'",
+          "processing_script_arguments": "annotation=Union[List[str], NoneType] required=False default=None description='Optional arguments for the processing script.'",
+          "processing_framework_version": "annotation=str required=False default='1.2-1' description=\"Version of the scikit-learn framework to use in SageMaker Processing. Format: '<sklearn-version>-<build-number>'\"",
+          "job_type": "annotation=str required=False default='training' description=\"One of ['training','validation','testing','calibration']\"",
+          "mode": "annotation=str required=False default='per_split' description=\"One of ['per_split','split_after_conversion']\"",
+          "train_ratio": "annotation=float required=False default=0.7 description='Train fraction when split_after_conversion' metadata=[Ge(ge=0.0), Le(le=1.0)]",
+          "test_val_ratio": "annotation=float required=False default=0.5 description='Test vs val split within holdout' metadata=[Ge(ge=0.0), Le(le=1.0)]",
+          "label_field": "annotation=str required=True description='Label column name for stratified splitting'",
+          "marketplace_id_col": "annotation=str required=True description='Column with marketplace IDs'",
+          "currency_col": "annotation=Union[str, NoneType] required=False default=None description='Optional column with currency codes; else infer from marketplace_info'",
+          "currency_conversion_var_list": "annotation=List[str] required=False default_factory=list description='Which numeric columns to convert'",
+          "currency_conversion_dict": "annotation=Dict[str, float] required=True description='Map currency code \u2192 conversion rate'",
+          "marketplace_info": "annotation=Dict[str, Dict[str, str]] required=True description=\"Map marketplace ID \u2192 {'currency_code':...}\"",
+          "enable_currency_conversion": "annotation=bool required=False default=True description='Turn off conversion if False'",
+          "default_currency": "annotation=str required=False default='USD' description='Fallback currency code'",
+          "skip_invalid_currencies": "annotation=bool required=False default=False description='If True, fill invalid codes with default_currency'"
+        },
+        "model_fields_set": "<property object at 0x105e039c0>",
+        "pipeline_description": "<property object at 0x1064c5620>",
+        "pipeline_name": "<property object at 0x1064c55d0>",
+        "pipeline_s3_loc": "<property object at 0x1064c5670>",
+        "script_contract": "<property object at 0x1064c5710>",
+        "script_path": "<property object at 0x30fbe57b0>"
+      }
+    }
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-08T23:56:12.845811",
+    "validation_timestamp": "2025-08-09T00:12:36.518935",
     "validator_version": "1.0.0"
   }
 }

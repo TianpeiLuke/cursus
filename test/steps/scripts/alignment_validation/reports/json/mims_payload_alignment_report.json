@@ -112,15 +112,59 @@
     }
   },
   "level2": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "missing_specification",
-        "message": "No specification files found for mims_payload",
-        "recommendation": "Create specification files like mims_payload_training_spec.py"
+    "passed": true,
+    "issues": [],
+    "contract": {
+      "entry_point": "mims_payload.py",
+      "inputs": {
+        "model_input": "/opt/ml/processing/input/model"
+      },
+      "outputs": {
+        "payload_sample": "/opt/ml/processing/output"
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {
+          "CONTENT_TYPES": "application/json",
+          "DEFAULT_NUMERIC_VALUE": "0.0",
+          "DEFAULT_TEXT_VALUE": "DEFAULT_TEXT"
+        }
+      },
+      "framework_requirements": {
+        "python": ">=3.7"
+      },
+      "description": "\n    MIMS payload generation script that:\n    1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)\n    2. Creates model variable list from field information\n    3. Generates sample payloads in multiple formats (JSON, CSV)\n    4. Archives payload files for deployment\n    \n    Note: This script extracts pipeline name, version, and model objective from hyperparameters,\n    not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or \n    BUCKET_NAME environment variables.\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json\n    \n    Output Structure:\n    - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)\n    - /opt/ml/processing/output/: Output directory containing payload.tar.gz file\n    \n    Environment Variables:\n    - CONTENT_TYPES: Comma-separated list of content types (default: \"application/json\")\n    - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: \"0.0\")\n    - DEFAULT_TEXT_VALUE: Default value for text fields (default: \"DEFAULT_TEXT\")\n    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields\n    \n    Arguments:\n    - mode: Operating mode for the script (default: \"standard\")\n    "
+    },
+    "specifications": {
+      "payload_spec": {
+        "step_type": "Payload",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "ModelStep",
+              "XGBoostTraining",
+              "TrainingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts for payload generation"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "payload_sample",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Generated payload samples archive (payload.tar.gz)"
+          }
+        ]
       }
-    ]
+    }
   },
   "level3": {
     "passed": false,
@@ -148,7 +192,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
     "contract_mapping": "mims_payload_contract",
-    "validation_timestamp": "2025-08-08T23:56:12.865992",
+    "validation_timestamp": "2025-08-09T00:12:36.550151",
     "validator_version": "1.0.0"
   }
 }

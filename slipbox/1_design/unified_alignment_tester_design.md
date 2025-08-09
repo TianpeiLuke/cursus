@@ -36,6 +36,7 @@ date of note: 2025-08-08
 - [Universal Step Builder Test](universal_step_builder_test.md) - Step builder validation framework
 - [Validation Engine](validation_engine.md) - Core validation framework design
 - [Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md) - Enhanced step builder testing
+- [Enhanced Dependency Validation Design](enhanced_dependency_validation_design.md) - Pattern-aware dependency validation system
 
 ### Configuration and Contract Documents
 - [Config Field Categorization](config_field_categorization.md) - Configuration field classification
@@ -363,12 +364,23 @@ class AlignmentIssue:
 
 **Purpose**: Ensures processing scripts use paths, environment variables, and arguments exactly as declared in their contracts.
 
+> **🚨 CRITICAL ISSUE IDENTIFIED**: Level 1 validation is currently producing systematic false positives across all scripts. See [Level 1 Alignment Validation Failure Analysis](../test/level1_alignment_validation_failure_analysis.md) for detailed analysis and fix recommendations.
+>
+> **Status**: All 8 scripts failing validation due to:
+> - File operations detection failure (missing tarfile, shutil, pathlib operations)
+> - Incorrect logical name extraction from paths
+> - Path usage vs file operations correlation issues
+>
+> **Impact**: 100% false positive rate making Level 1 validation unusable
+> **Priority**: CRITICAL - Requires immediate fix
+
 **Validation Areas**:
 
 1. **Path Usage Validation**
    - Scripts use only paths declared in contract inputs/outputs
    - No hardcoded SageMaker paths outside of contract
    - Logical name consistency between script usage and contract
+   - **⚠️ ISSUE**: Logical name extraction incorrectly derives "config"/"model" from paths instead of using contract mappings
 
 2. **Environment Variable Validation**
    - Scripts access all required environment variables
@@ -384,15 +396,28 @@ class AlignmentIssue:
    - File read operations align with contract input declarations
    - File write operations align with contract output declarations
    - No undeclared file system access
+   - **⚠️ ISSUE**: Only detects `open()` calls, missing `tarfile.open()`, `shutil.copy2()`, `Path.mkdir()`, etc.
 
 **Example Issues**:
 - `ERROR: Script accesses undeclared environment variable: CUSTOM_VAR`
 - `WARNING: Contract declares path not used in script: /opt/ml/processing/validation`
 - `ERROR: Contract requires argument job-type but script makes it optional`
 
+**Current False Positive Examples** *(Need to be fixed)*:
+- `WARNING: Script uses logical name not in contract: config` ← **FALSE POSITIVE**: Script correctly uses contract path
+- `INFO: Contract declares input not read by script: /opt/ml/processing/input/model/model.tar.gz` ← **FALSE POSITIVE**: Script does read via tarfile operations
+- `WARNING: Contract declares output not written by script: /opt/ml/processing/output/model` ← **FALSE POSITIVE**: Script does write via create_tarfile()
+
 ### Level 2: Contract ↔ Specification Alignment
 
 **Purpose**: Verifies that script contracts align with step specifications for inputs, outputs, and dependencies.
+
+> **🚨 CRITICAL ISSUE IDENTIFIED**: Level 2 validation is currently producing false positives, incorrectly reporting "PASSED" when critical misalignments exist. See [Level 2 Alignment Validation Failure Analysis](../test/level2_alignment_validation_failure_analysis.md) for detailed analysis and fix recommendations.
+>
+> **Status**: False positive detected in currency_conversion validation
+> **Root Cause**: Missing specification pattern validation - system finds multiple job-specific specs instead of expected unified spec but incorrectly reports as valid
+> **Impact**: Critical misalignments go undetected, leading to false confidence in system integrity
+> **Priority**: CRITICAL - Requires immediate implementation of pattern validation logic
 
 **Validation Areas**:
 
@@ -416,14 +441,34 @@ class AlignmentIssue:
    - Version compatibility is maintained
    - No conflicting requirements
 
+5. **Specification Pattern Validation** *(Missing - Needs Implementation)*
+   - **⚠️ CRITICAL GAP**: Validate specification pattern matches contract design intent
+   - Detect unified vs job-specific specification patterns
+   - Flag specification fragmentation when unified spec expected
+   - Ensure contract-specification pattern consistency
+
 **Example Issues**:
 - `ERROR: Specification dependency 'processed_data' has no corresponding contract input`
 - `WARNING: Contract input 'raw_data' not used by any specification dependency`
 - `ERROR: Framework version mismatch: contract requires pandas>=1.3.0, spec needs >=1.4.0`
 
+**Current False Positive Examples** *(Need to be fixed)*:
+- `"passed": true` for currency_conversion ← **FALSE POSITIVE**: Should fail due to specification pattern mismatch
+- Multiple job-specific specs found but no error raised ← **MISSING VALIDATION**: Should detect unified vs job-specific pattern mismatch
+- No pattern validation issues reported ← **CRITICAL GAP**: Specification fragmentation goes undetected
+
 ### Level 3: Specification ↔ Dependencies Alignment
 
 **Purpose**: Validates that specification dependencies are properly resolved and consistent across the pipeline.
+
+> **🚨 CRITICAL ISSUE IDENTIFIED**: Level 3 validation is currently producing systematic false positives across all scripts. See [Level 3 Alignment Validation Failure Analysis](../test/level3_alignment_validation_failure_analysis.md) for detailed analysis and fix recommendations.
+>
+> **Status**: All 8 scripts failing validation due to external dependency design pattern not being recognized
+> **Root Cause**: Validation logic incorrectly treats external dependencies (direct S3 uploads) as internal pipeline dependencies that must be resolved from other steps
+> **Impact**: 100% false positive rate making Level 3 validation unusable
+> **Priority**: CRITICAL - Requires immediate implementation of external dependency classification
+
+> **📋 Enhanced Implementation**: Level 3 validation has been significantly enhanced with pattern-aware dependency validation. See [Enhanced Dependency Validation Design](enhanced_dependency_validation_design.md) for the comprehensive design that addresses false positive validation failures for local-to-S3 patterns.
 
 **Validation Areas**:
 
@@ -431,6 +476,8 @@ class AlignmentIssue:
    - All dependencies can be resolved to actual pipeline steps
    - Dependency types match expected input types
    - No missing or unresolvable dependencies
+   - **Enhanced**: Pattern-aware validation distinguishes between pipeline dependencies and external inputs
+   - **⚠️ ISSUE**: Current logic assumes ALL dependencies must be internal pipeline dependencies, missing external dependency pattern
 
 2. **Property Path Consistency**
    - Property paths are valid and accessible
@@ -447,14 +494,33 @@ class AlignmentIssue:
    - Dependency chains are finite and resolvable
    - No self-referencing dependencies
 
+5. **Dependency Pattern Recognition** *(Enhanced)*
+   - Automatic detection of dependency patterns (pipeline, external input, configuration, environment)
+   - Pattern-specific validation logic
+   - Elimination of false positives for local-to-S3 patterns
+   - **⚠️ CRITICAL GAP**: External dependency pattern not recognized by current validation logic
+
 **Example Issues**:
 - `CRITICAL: Circular dependency detected: StepA -> StepB -> StepA`
 - `ERROR: Dependency 'model_artifacts' resolves to incompatible step type`
 - `WARNING: Property path 'Properties.ModelArtifacts.S3ModelArtifacts' may not be accessible`
+- **Enhanced**: `INFO: Dependency 'pretrained_model_path' detected as EXTERNAL_INPUT pattern - no pipeline resolution required`
+
+**Current False Positive Examples** *(Need to be fixed)*:
+- `ERROR: Cannot resolve dependency: pretrained_model_path` ← **FALSE POSITIVE**: This is an external dependency (direct S3 upload), not a pipeline dependency
+- `ERROR: Cannot resolve dependency: hyperparameters_s3_uri` ← **FALSE POSITIVE**: This follows the direct S3 upload design pattern
+- All dependency resolution failures for external dependencies ← **SYSTEMATIC ISSUE**: External dependency pattern not supported
 
 ### Level 4: Builder ↔ Configuration Alignment
 
 **Purpose**: Ensures step builders correctly implement configuration requirements and specifications.
+
+> **⚠️ FALSE POSITIVE ISSUE IDENTIFIED**: Level 4 validation is currently producing systematic false positive warnings for configuration fields that builders don't directly access. See [Level 4 Alignment Validation False Positive Analysis](../test/level4_alignment_validation_false_positive_analysis.md) for detailed analysis and fix recommendations.
+>
+> **Status**: 2 out of 8 scripts generating false positive warnings despite correct architecture
+> **Root Cause**: Validation incorrectly flags required fields not accessed in builders, even when this is valid (fields used via environment variables)
+> **Impact**: Creates noise and undermines confidence in validation system
+> **Priority**: HIGH - Requires removal of false positive check
 
 **Validation Areas**:
 
@@ -462,6 +528,7 @@ class AlignmentIssue:
    - Builders use all required configuration fields
    - Configuration field types match expectations
    - No unused or undefined configuration access
+   - **⚠️ ISSUE**: Currently generates false positive warnings for fields used via environment variables
 
 2. **Hyperparameter Handling**
    - Hyperparameters are properly extracted and validated
@@ -482,6 +549,11 @@ class AlignmentIssue:
 - `ERROR: Builder does not use required configuration field 'training_instance_type'`
 - `WARNING: Hyperparameter 'max_depth' has no default value but is optional in config`
 - `ERROR: Created step type 'ProcessingStep' does not match specification type 'TrainingStep'`
+
+**Current False Positive Examples** *(Need to be fixed)*:
+- `WARNING: Required configuration field not accessed in builder: label_field` ← **FALSE POSITIVE**: Field correctly used via environment variables
+- `WARNING: Required configuration field not accessed in builder: marketplace_info` ← **FALSE POSITIVE**: Field correctly used via environment variables
+- All warnings about unaccessed required fields ← **SYSTEMATIC ISSUE**: Valid architectural pattern not recognized
 
 ## Severity Levels
 

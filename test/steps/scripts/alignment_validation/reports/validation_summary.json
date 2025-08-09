@@ -3,39 +3,39 @@
   "passed_scripts": 0,
   "failed_scripts": 8,
   "error_scripts": 0,
-  "validation_timestamp": "2025-08-08T23:56:12.835321",
+  "validation_timestamp": "2025-08-09T00:12:36.501830",
   "script_results": {
     "currency_conversion": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.845811"
+      "timestamp": "2025-08-09T00:12:36.518935"
     },
     "dummy_training": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.852537"
+      "timestamp": "2025-08-09T00:12:36.532319"
     },
     "mims_package": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.858602"
+      "timestamp": "2025-08-09T00:12:36.542247"
     },
     "mims_payload": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.865992"
+      "timestamp": "2025-08-09T00:12:36.550151"
     },
     "model_calibration": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.881570"
+      "timestamp": "2025-08-09T00:12:36.570011"
     },
     "model_evaluation_xgb": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.890410"
+      "timestamp": "2025-08-09T00:12:36.579183"
     },
     "risk_table_mapping": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.901069"
+      "timestamp": "2025-08-09T00:12:36.593755"
     },
     "tabular_preprocess": {
       "status": "FAILING",
-      "timestamp": "2025-08-08T23:56:12.906183"
+      "timestamp": "2025-08-09T00:12:36.599696"
     }
   }
 }

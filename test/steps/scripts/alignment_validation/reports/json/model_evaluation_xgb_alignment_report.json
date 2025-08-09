@@ -6,16 +6,6 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
-        "details": {
-          "path": "/opt/ml/processing/output/metrics",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
         "details": {
           "path": "/opt/ml/processing/output/eval",
@@ -36,6 +26,16 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
           "path": "/opt/ml/processing/input/model",
@@ -46,12 +46,12 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: eval_data_dir",
+        "message": "Script defines argument not in contract: output_metrics_dir",
         "details": {
-          "argument": "eval_data_dir",
+          "argument": "output_metrics_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add eval_data_dir to contract arguments or remove from script"
+        "recommendation": "Add output_metrics_dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -66,22 +66,22 @@
       {
         "severity": "WARNING",
         "category": "arguments",
+        "message": "Script defines argument not in contract: eval_data_dir",
+        "details": {
+          "argument": "eval_data_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add eval_data_dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
         "message": "Script defines argument not in contract: model_dir",
         "details": {
           "argument": "model_dir",
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Add model_dir to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: output_metrics_dir",
-        "details": {
-          "argument": "output_metrics_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add output_metrics_dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -118,17 +118,6 @@
       {
         "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
-        "details": {
-          "path": "/opt/ml/processing/output/metrics",
-          "operation": "write",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
         "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
         "details": {
           "path": "/opt/ml/processing/output/eval",
@@ -136,6 +125,17 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "operation": "write",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -309,7 +309,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-08T23:56:12.890410",
+    "validation_timestamp": "2025-08-09T00:12:36.579183",
     "validator_version": "1.0.0"
   }
 }

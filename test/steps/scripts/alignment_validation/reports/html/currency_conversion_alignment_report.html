@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: currency_conversion</h2>
-        <p>Generated: 2025-08-08T23:56:12.845811</p>
+        <p>Generated: 2025-08-09T00:12:36.518935</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>21</h3>
+            <h3>25</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -43,11 +43,11 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>9</h3>
+            <h3>8</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>11</h3>
+            <h3>15</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -70,23 +70,18 @@
                 </div>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Contract declares argument not defined in script: marketplace-id-col
-                    <br><em>Recommendation: Add argument parser for marketplace-id-col in script</em>
-                </div>
-                
-                <div class="issue error">
                     <strong>ERROR:</strong> Contract declares argument not defined in script: currency-col
                     <br><em>Recommendation: Add argument parser for currency-col in script</em>
                 </div>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Contract declares argument not defined in script: enable-conversion
-                    <br><em>Recommendation: Add argument parser for enable-conversion in script</em>
+                    <strong>ERROR:</strong> Contract declares argument not defined in script: n-workers
+                    <br><em>Recommendation: Add argument parser for n-workers in script</em>
                 </div>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Contract declares argument not defined in script: n-workers
-                    <br><em>Recommendation: Add argument parser for n-workers in script</em>
+                    <strong>ERROR:</strong> Contract declares argument not defined in script: enable-conversion
+                    <br><em>Recommendation: Add argument parser for enable-conversion in script</em>
                 </div>
                 
                 <div class="issue error">
@@ -99,39 +94,24 @@
                     <br><em>Recommendation: Add argument parser for skip-invalid-currencies in script</em>
                 </div>
                 
+                <div class="issue error">
+                    <strong>ERROR:</strong> Contract declares argument not defined in script: marketplace-id-col
+                    <br><em>Recommendation: Add argument parser for marketplace-id-col in script</em>
+                </div>
+                
                 <div class="issue warning">
                     <strong>WARNING:</strong> Script defines argument not in contract: default_currency
                     <br><em>Recommendation: Add default_currency to contract arguments or remove from script</em>
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: enable_conversion
-                    <br><em>Recommendation: Add enable_conversion to contract arguments or remove from script</em>
+                    <strong>WARNING:</strong> Script defines argument not in contract: currency_col
+                    <br><em>Recommendation: Add currency_col to contract arguments or remove from script</em>
                 </div>
                 
                 <div class="issue warning">
                     <strong>WARNING:</strong> Script defines argument not in contract: test_val_ratio
                     <br><em>Recommendation: Add test_val_ratio to contract arguments or remove from script</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: marketplace_id_col
-                    <br><em>Recommendation: Add marketplace_id_col to contract arguments or remove from script</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: skip_invalid_currencies
-                    <br><em>Recommendation: Add skip_invalid_currencies to contract arguments or remove from script</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: n_workers
-                    <br><em>Recommendation: Add n_workers to contract arguments or remove from script</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: currency_col
-                    <br><em>Recommendation: Add currency_col to contract arguments or remove from script</em>
                 </div>
                 
                 <div class="issue warning">
@@ -142,6 +122,26 @@
                 <div class="issue warning">
                     <strong>WARNING:</strong> Script defines argument not in contract: job_type
                     <br><em>Recommendation: Add job_type to contract arguments or remove from script</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script defines argument not in contract: enable_conversion
+                    <br><em>Recommendation: Add enable_conversion to contract arguments or remove from script</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script defines argument not in contract: skip_invalid_currencies
+                    <br><em>Recommendation: Add skip_invalid_currencies to contract arguments or remove from script</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script defines argument not in contract: marketplace_id_col
+                    <br><em>Recommendation: Add marketplace_id_col to contract arguments or remove from script</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script defines argument not in contract: n_workers
+                    <br><em>Recommendation: Add n_workers to contract arguments or remove from script</em>
                 </div>
                 
                 <div class="issue info">
@@ -173,13 +173,33 @@
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 4: Builder ↔ Configuration</h4>
-                <p>Status: FAILED</p>
+                <p>Status: PASSED</p>
                 
-                <div class="issue error">
-                    <strong>ERROR:</strong> Configuration file not found: src/cursus/steps/configs/config_currency_conversion_step.py
-                    <br><em>Recommendation: Create configuration file config_currency_conversion_step.py</em>
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: marketplace_info
+                    <br><em>Recommendation: Access required field marketplace_info in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: label_field
+                    <br><em>Recommendation: Access required field label_field in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: marketplace_id_col
+                    <br><em>Recommendation: Access required field marketplace_id_col in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: currency_conversion_dict
+                    <br><em>Recommendation: Access required field currency_conversion_dict in builder or make it optional</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
                 </div>
                 
             </div>
@@ -190,7 +210,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py</p>
         <p><strong>Contract Mapping:</strong> currency_conversion_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-08T23:56:12.845811</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-09T00:12:36.518935</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

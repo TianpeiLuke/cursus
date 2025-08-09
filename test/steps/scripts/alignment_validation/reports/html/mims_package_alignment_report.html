@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: mims_package</h2>
-        <p>Generated: 2025-08-08T23:56:12.858602</p>
+        <p>Generated: 2025-08-09T00:12:36.542247</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>10</h3>
+            <h3>9</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -43,7 +43,7 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>0</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
@@ -65,13 +65,18 @@
                 </div>
                 
                 <div class="issue warning">
+                    <strong>WARNING:</strong> Script uses logical name not in contract: script
+                    <br><em>Recommendation: Add logical name script to contract or update script</em>
+                </div>
+                
+                <div class="issue warning">
                     <strong>WARNING:</strong> Script uses logical name not in contract: model
                     <br><em>Recommendation: Add logical name model to contract or update script</em>
                 </div>
                 
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script uses logical name not in contract: script
-                    <br><em>Recommendation: Add logical name script to contract or update script</em>
+                <div class="issue info">
+                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/model
+                    <br><em>Recommendation: Either read /opt/ml/processing/input/model in script or remove from contract inputs</em>
                 </div>
                 
                 <div class="issue info">
@@ -84,11 +89,6 @@
                     <br><em>Recommendation: Either read /opt/ml/processing/input/calibration in script or remove from contract inputs</em>
                 </div>
                 
-                <div class="issue info">
-                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/model
-                    <br><em>Recommendation: Either read /opt/ml/processing/input/model in script or remove from contract inputs</em>
-                </div>
-                
                 <div class="issue warning">
                     <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output
                     <br><em>Recommendation: Either write to /opt/ml/processing/output in script or remove from contract outputs</em>
@@ -96,14 +96,9 @@
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 2: Contract ↔ Specification</h4>
-                <p>Status: FAILED</p>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> No specification files found for mims_package
-                    <br><em>Recommendation: Create specification files like mims_package_training_spec.py</em>
-                </div>
+                <p>Status: PASSED</p>
                 
             </div>
             
@@ -135,7 +130,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py</p>
         <p><strong>Contract Mapping:</strong> mims_package_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-08T23:56:12.858602</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-09T00:12:36.542247</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

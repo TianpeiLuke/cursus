@@ -16,6 +16,16 @@
       {
         "severity": "WARNING",
         "category": "logical_names",
+        "message": "Script uses logical name not in contract: script",
+        "details": {
+          "logical_name": "script",
+          "script": "mims_package"
+        },
+        "recommendation": "Add logical name script to contract or update script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "logical_names",
         "message": "Script uses logical name not in contract: model",
         "details": {
           "logical_name": "model",
@@ -24,14 +34,15 @@
         "recommendation": "Add logical name model to contract or update script"
       },
       {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses logical name not in contract: script",
+        "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
         "details": {
-          "logical_name": "script",
+          "path": "/opt/ml/processing/input/model",
+          "operation": "read",
           "script": "mims_package"
         },
-        "recommendation": "Add logical name script to contract or update script"
+        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
       },
       {
         "severity": "INFO",
@@ -54,17 +65,6 @@
           "script": "mims_package"
         },
         "recommendation": "Either read /opt/ml/processing/input/calibration in script or remove from contract inputs"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
-        "details": {
-          "path": "/opt/ml/processing/input/model",
-          "operation": "read",
-          "script": "mims_package"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
       },
       {
         "severity": "WARNING",
@@ -156,15 +156,78 @@
     }
   },
   "level2": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "missing_specification",
-        "message": "No specification files found for mims_package",
-        "recommendation": "Create specification files like mims_package_training_spec.py"
+    "passed": true,
+    "issues": [],
+    "contract": {
+      "entry_point": "mims_package.py",
+      "inputs": {
+        "model_input": "/opt/ml/processing/input/model",
+        "inference_scripts_input": "/opt/ml/processing/input/script",
+        "calibration_model": "/opt/ml/processing/input/calibration"
+      },
+      "outputs": {
+        "packaged_model": "/opt/ml/processing/output"
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {}
+      },
+      "framework_requirements": {
+        "python": ">=3.7"
+      },
+      "description": "\n    MIMS packaging script that:\n    1. Extracts model artifacts from input model directory or model.tar.gz\n    2. Includes calibration model if available\n    3. Copies inference scripts to code directory\n    4. Creates a packaged model.tar.gz file for deployment\n    4. Provides detailed logging of the packaging process\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts (files or model.tar.gz)\n    - /opt/ml/processing/input/script: Inference scripts to include\n    - /opt/ml/processing/input/calibration: Optional calibration model artifacts\n    \n    Output Structure:\n    - /opt/ml/processing/output/model.tar.gz: Packaged model ready for deployment\n    "
+    },
+    "specifications": {
+      "packaging_spec": {
+        "step_type": "Package",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "ModelStep",
+              "XGBoostTraining",
+              "TrainingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts to be packaged"
+          },
+          {
+            "logical_name": "inference_scripts_input",
+            "dependency_type": "custom_property",
+            "required": false,
+            "compatible_sources": [
+              "ProcessingStep",
+              "ScriptStep"
+            ],
+            "data_type": "String",
+            "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+          },
+          {
+            "logical_name": "calibration_model",
+            "dependency_type": "processing_output",
+            "required": false,
+            "compatible_sources": [
+              "ModelCalibration"
+            ],
+            "data_type": "S3Uri",
+            "description": "Calibration model and artifacts for probability calibration (optional)"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "packaged_model",
+            "output_type": "model_artifacts",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Packaged model ready for deployment"
+          }
+        ]
       }
-    ]
+    }
   },
   "level3": {
     "passed": false,
@@ -192,7 +255,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py",
     "contract_mapping": "mims_package_contract",
-    "validation_timestamp": "2025-08-08T23:56:12.858602",
+    "validation_timestamp": "2025-08-09T00:12:36.542247",
     "validator_version": "1.0.0"
   }
 }
