@@ -13,7 +13,7 @@ Our agentic ML pipeline development system employs **four specialized AI agents*
 | Agent | Role | Color Code | Primary Function |
 |-------|------|------------|------------------|
 | 🎯 **Planner Agent** | Blue | Plan Creation & Revision | Creates and revises implementation plans |
-| 🔍 **Validator Agent** | Purple | Quality Assurance | Validates plans and code using two-level validation |
+| 🔍 **Validator Agent** | Purple | Quality Assurance | Validates plans and code with adaptive approaches:<br/>• **Plan Validation**: Level 1 only (LLM analysis)<br/>• **Code Validation**: Two-level (LLM + tools) |
 | 💻 **Programmer Agent** | Green | Code Implementation | Generates and refines production-ready code |
 | 👤 **Human-in-the-Loop** | Orange | Oversight & Guidance | Provides requirements, reviews, and approvals |
 
@@ -100,7 +100,8 @@ flowchart TD
 **Agent**: Validator | **Template**: `plan_validator_prompt_template.md`
 - **Input**: Implementation plan from Step 1
 - **Output**: Validation report with scored assessment
-- **Key Features**: Two-level validation, compatibility analysis, standardization compliance
+- **Key Features**: **Level 1 validation only** (LLM-based analysis), compatibility analysis, standardization compliance
+- **Important Note**: Plan validation uses Level 1 only because code-based validation tools cannot be applied without actual program code
 
 ### Step 3: Plan Revision 🎯
 **Agent**: Planner | **Template**: `revision_planner_prompt_template.md`
@@ -111,6 +112,7 @@ flowchart TD
 ### Step 4: Iterative Validation 🔍
 **Agent**: Validator | **Template**: `plan_validator_prompt_template.md` (repeat)
 - **Process**: Repeat validation until convergence criteria met
+- **Key Features**: **Level 1 validation only** (same as Step 2 - LLM-based analysis)
 - **Convergence**: Alignment ≥9/10, Standardization ≥8/10, Compatibility ≥8/10
 
 ### Step 5: Plan Convergence ✅

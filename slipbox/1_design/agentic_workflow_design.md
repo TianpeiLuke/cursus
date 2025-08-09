@@ -36,7 +36,9 @@ This document defines a comprehensive agentic workflow system for automated pipe
 The agentic workflow consists of **four primary roles**:
 
 1. **Planner Agent**: Proposes and revises implementation plans for complex pipeline step development tasks
-2. **Validator Agent**: Reviews plans and code using two-level validation (LLM analysis + deterministic tools)
+2. **Validator Agent**: Reviews plans and code with adaptive validation approaches:
+   - **Plan Validation** (Steps 2, 4): Level 1 validation only (LLM-based analysis)
+   - **Code Validation** (Steps 7, 9): Two-level validation (LLM analysis + deterministic tools)
 3. **Programmer Agent**: Executes validated plans to generate production-ready code
 4. **User (Human-in-the-Loop)**: Provides requirements, guidance, and final approval
 
@@ -184,6 +186,8 @@ The Planner agent creates the initial implementation plan using the enhanced `in
 
 The Validator agent reviews the plan using the enhanced `plan_validator_prompt_template.md`:
 
+**Important Note**: Plan validation uses **Level 1 validation only** (LLM-based analysis) because code-based validation tools cannot be applied to plans without actual program code. Two-level validation is reserved for Step 7 (Code Validation).
+
 **Template Enhancement Requirements**:
 - Fill knowledge blanks by referencing:
   
@@ -205,8 +209,8 @@ The Validator agent reviews the plan using the enhanced `plan_validator_prompt_t
   - `slipbox/1_design/enhanced_dependency_validation_design.md` - Dependency validation patterns
   
   **Validation Framework Documents**:
-  - `slipbox/1_design/two_level_alignment_validation_system_design.md` - Two-level validation system
-  - `slipbox/1_design/universal_step_builder_test.md` - Universal testing framework
+  - `slipbox/1_design/two_level_alignment_validation_system_design.md` - Two-level validation system (for reference)
+  - `slipbox/1_design/universal_step_builder_test.md` - Universal testing framework (for reference)
   - `slipbox/1_design/sagemaker_step_type_classification_design.md` - Step type validation
   
   **Implementation Examples**:
@@ -216,17 +220,21 @@ The Validator agent reviews the plan using the enhanced `plan_validator_prompt_t
   - `src/cursus/steps/contracts/` - Contract validation examples
 
 - Add user input field for validation report location
-- Implement two-level validation process:
+- Implement **Level 1 validation process only**:
   - **Level 1**: LLM-based architectural analysis and pattern recognition
-  - **Level 2**: Pattern-aware validation focusing on alignment rules and standardization compliance
+  - Focus on design coherence, architectural soundness, and pattern compliance
+  - Assess alignment rule adherence at the design level
+  - Evaluate standardization compliance in the planned approach
 
 **Validation Focus Areas**:
 - Specification design validation
 - Contract design validation  
 - Builder design validation
 - Cross-component compatibility
-- Alignment rules adherence
-- Standardization rules compliance
+- Alignment rules adherence (design level)
+- Standardization rules compliance (design level)
+- Architectural pattern consistency
+- Integration feasibility assessment
 
 ### Step 3: Plan Revision
 
