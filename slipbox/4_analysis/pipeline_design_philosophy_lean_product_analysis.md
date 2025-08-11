@@ -219,7 +219,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 
 ### Critical MVP Components (Must Have)
 
-#### 1. **Dependency Resolver** ([dependency_resolver.md](./dependency_resolver.md))
+#### 1. **Dependency Resolver** ([dependency_resolver.md](../1_design/dependency_resolver.md))
 **Customer Need**: Automatic robust pipeline generation with dependency resolution
 **Relevance**: ⭐⭐⭐⭐⭐ (Critical)
 **Pain Point Addressed**: Manual dependency management, mismatched input/output naming
@@ -230,7 +230,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 - Enables automatic pipeline generation for users
 - Eliminates template proliferation and duplicate logic
 
-#### 2. **Step Builder Architecture** ([step_builder.md](./step_builder.md))
+#### 2. **Step Builder Architecture** ([step_builder.md](../1_design/step_builder.md))
 **Customer Need**: Robust, extensible system for adding new pipeline steps
 **Relevance**: ⭐⭐⭐⭐⭐ (Critical)
 **Pain Point Addressed**: System extensibility, fragile integration points
@@ -241,7 +241,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 - Enables safe extension without breaking existing functionality
 - Addresses configuration complexity and validation issues
 
-#### 3. **Step Specification System** ([step_specification.md](./step_specification.md))
+#### 3. **Step Specification System** ([step_specification.md](../1_design/step_specification.md))
 **Customer Need**: Declarative pipeline definition with business focus
 **Relevance**: ⭐⭐⭐⭐⭐ (Critical)
 **Pain Point Addressed**: Infrastructure complexity, business-focused interface
@@ -254,7 +254,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 
 ### Important MVP Components (Should Have)
 
-#### 4. **Configuration Management** ([config.md](./config.md))
+#### 4. **Configuration Management** ([config.md](../1_design/config.md))
 **Customer Need**: Flexible configuration with intelligent defaults
 **Relevance**: ⭐⭐⭐⭐ (Important)
 **Pain Point Addressed**: Configuration complexity, redundant validation
@@ -265,7 +265,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 - Provides detailed control when needed
 - Addresses configuration loading/saving inconsistencies
 
-#### 5. **Pipeline DAG Management** ([pipeline_dag.md](./pipeline_dag.md))
+#### 5. **Pipeline DAG Management** ([pipeline_dag.md](../1_design/pipeline_dag.md))
 **Relevance**: ⭐⭐⭐⭐ (Important)
 **Pain Point Addressed**: Manual pipeline orchestration, dependency management
 **Implementation Priority**: Phase 1 - Foundation
@@ -275,7 +275,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 - Enables validation and optimization of pipeline structure
 - Foundation for automatic dependency resolution
 
-#### 6. **Registry Management** ([registry_manager.md](./registry_manager.md))
+#### 6. **Registry Management** ([registry_manager.md](../1_design/registry_manager.md))
 **Customer Need**: Extensible system for managing pipeline components
 **Relevance**: ⭐⭐⭐⭐ (Important)
 **Pain Point Addressed**: System extensibility, component discovery
@@ -288,7 +288,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 
 ### Valuable MVP Components (Could Have)
 
-#### 7. **Smart Proxy System** ([smart_proxy.md](./smart_proxy.md))
+#### 7. **Smart Proxy System** ([smart_proxy.md](../1_design/smart_proxy.md))
 **Customer Need**: Intelligent automation and optimization
 **Relevance**: ⭐⭐⭐ (Valuable)
 **Pain Point Addressed**: Manual parameter optimization, context awareness
@@ -299,7 +299,7 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 - Reduces cognitive load for users
 - Enables context-aware pipeline generation
 
-#### 8. **Fluent API** ([fluent_api.md](./fluent_api.md))
+#### 8. **Fluent API** ([fluent_api.md](../1_design/fluent_api.md))
 **Customer Need**: Intuitive, progressive interface
 **Relevance**: ⭐⭐⭐ (Valuable)
 **Pain Point Addressed**: User experience, learning curve
@@ -312,15 +312,15 @@ Based on customer needs and existing design components in `slipbox/pipeline_desi
 
 ### Supporting MVP Components (Nice to Have)
 
-#### 9. **Standardization Rules** ([standardization_rules.md](./standardization_rules.md))
+#### 9. **Standardization Rules** ([standardization_rules.md](../1_design/standardization_rules.md))
 **Relevance**: ⭐⭐ (Supporting)
 **Implementation Priority**: Phase 3 - Optimization
 
-#### 10. **Design Evolution Documentation** ([design_evolution.md](./design_evolution.md))
+#### 10. **Design Evolution Documentation** ([design_evolution.md](../1_design/design_evolution.md))
 **Relevance**: ⭐⭐ (Supporting)
 **Implementation Priority**: Ongoing
 
-#### 11. **Design Principles** ([design_principles.md](./design_principles.md))
+#### 11. **Design Principles** ([design_principles.md](../1_design/design_principles.md))
 **Relevance**: ⭐⭐ (Supporting)
 **Implementation Priority**: Ongoing
 
