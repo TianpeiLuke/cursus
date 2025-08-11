@@ -163,8 +163,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed testing data from tabular preprocessing step"
@@ -175,12 +175,12 @@
             "required": false,
             "compatible_sources": [
               "ProcessingStep",
-              "ModelTraining",
               "DataQuality",
               "DataPrep",
               "FeatureEngineering",
-              "HyperparameterPrep",
-              "ConfigurationStep"
+              "ModelTraining",
+              "ConfigurationStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -222,8 +222,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -234,12 +234,12 @@
             "required": false,
             "compatible_sources": [
               "ProcessingStep",
-              "ModelTraining",
               "DataQuality",
               "DataPrep",
               "FeatureEngineering",
-              "HyperparameterPrep",
-              "ConfigurationStep"
+              "ModelTraining",
+              "ConfigurationStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -281,8 +281,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed validation data from tabular preprocessing step"
@@ -293,12 +293,12 @@
             "required": false,
             "compatible_sources": [
               "ProcessingStep",
-              "ModelTraining",
               "DataQuality",
               "DataPrep",
               "FeatureEngineering",
-              "HyperparameterPrep",
-              "ConfigurationStep"
+              "ModelTraining",
+              "ConfigurationStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -340,8 +340,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -352,12 +352,12 @@
             "required": false,
             "compatible_sources": [
               "ProcessingStep",
-              "ModelTraining",
               "DataQuality",
               "DataPrep",
               "FeatureEngineering",
-              "HyperparameterPrep",
-              "ConfigurationStep"
+              "ModelTraining",
+              "ConfigurationStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -391,8 +391,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -403,12 +403,12 @@
             "required": false,
             "compatible_sources": [
               "ProcessingStep",
-              "ModelTraining",
               "DataQuality",
               "DataPrep",
               "FeatureEngineering",
-              "HyperparameterPrep",
-              "ConfigurationStep"
+              "ModelTraining",
+              "ConfigurationStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -441,8 +441,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed training data from tabular preprocessing step"
@@ -453,12 +453,12 @@
               "required": false,
               "compatible_sources": [
                 "ProcessingStep",
-                "ModelTraining",
                 "DataQuality",
                 "DataPrep",
                 "FeatureEngineering",
-                "HyperparameterPrep",
-                "ConfigurationStep"
+                "ModelTraining",
+                "ConfigurationStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -490,8 +490,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed testing data from tabular preprocessing step"
@@ -502,12 +502,12 @@
               "required": false,
               "compatible_sources": [
                 "ProcessingStep",
-                "ModelTraining",
                 "DataQuality",
                 "DataPrep",
                 "FeatureEngineering",
-                "HyperparameterPrep",
-                "ConfigurationStep"
+                "ModelTraining",
+                "ConfigurationStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -549,8 +549,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed validation data from tabular preprocessing step"
@@ -561,12 +561,12 @@
               "required": false,
               "compatible_sources": [
                 "ProcessingStep",
-                "ModelTraining",
                 "DataQuality",
                 "DataPrep",
                 "FeatureEngineering",
-                "HyperparameterPrep",
-                "ConfigurationStep"
+                "ModelTraining",
+                "ConfigurationStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -608,8 +608,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -620,12 +620,12 @@
               "required": false,
               "compatible_sources": [
                 "ProcessingStep",
-                "ModelTraining",
                 "DataQuality",
                 "DataPrep",
                 "FeatureEngineering",
-                "HyperparameterPrep",
-                "ConfigurationStep"
+                "ModelTraining",
+                "ConfigurationStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -665,8 +665,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -677,12 +677,12 @@
           "required": false,
           "compatible_sources": [
             "ProcessingStep",
-            "ModelTraining",
             "DataQuality",
             "DataPrep",
             "FeatureEngineering",
-            "HyperparameterPrep",
-            "ConfigurationStep"
+            "ModelTraining",
+            "ConfigurationStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -762,8 +762,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Preprocessed training data from tabular preprocessing step"
@@ -774,12 +774,12 @@
           "required": false,
           "compatible_sources": [
             "ProcessingStep",
-            "ModelTraining",
             "DataQuality",
             "DataPrep",
             "FeatureEngineering",
-            "HyperparameterPrep",
-            "ConfigurationStep"
+            "ModelTraining",
+            "ConfigurationStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -804,29 +804,155 @@
     }
   },
   "level4": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "missing_configuration",
-        "message": "Configuration file not found for risk_table_mapping",
-        "details": {
-          "searched_patterns": [
-            "config_risk_table_mapping_step.py",
-            "FlexibleFileResolver patterns",
-            "Fuzzy matching"
-          ],
-          "search_directory": "src/cursus/steps/configs"
+    "passed": true,
+    "issues": [],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "job_type",
+          "line_number": 74
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "RiskTableMappingStepBuilder",
+          "line_number": 37
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 46
         },
-        "recommendation": "Create configuration file config_risk_table_mapping_step.py"
+        {
+          "method_name": "validate_configuration",
+          "line_number": 107
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 138
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 158
+        },
+        {
+          "method_name": "_prepare_hyperparameters_file",
+          "line_number": 179
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 276
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 372
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 424
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 440
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "RiskTableMappingConfig",
+      "fields": {
+        "processing_entry_point": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "job_type": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "cat_field_list": {
+          "type": "typing.List[str]",
+          "required": false
+        },
+        "label_name": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "smooth_factor": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "count_threshold": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "hyperparameters_s3_uri": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "hyperparameters": {
+          "type": "typing.Optional[src.cursus.core.base.hyperparameters_base.ModelHyperparameters]",
+          "required": false
+        }
+      },
+      "required_fields": "set()",
+      "optional_fields": "{'job_type', 'smooth_factor', 'processing_entry_point', 'cat_field_list', 'hyperparameters_s3_uri', 'hyperparameters', 'label_name', 'count_threshold'}",
+      "default_values": {
+        "aws_region": "<property object at 0x106925620>",
+        "effective_instance_type": "<property object at 0x30e6e5800>",
+        "effective_source_dir": "<property object at 0x30e6e57b0>",
+        "model_computed_fields": {},
+        "model_config": {
+          "arbitrary_types_allowed": true,
+          "extra": "allow",
+          "protected_namespaces": [],
+          "validate_assignment": true
+        },
+        "model_extra": "<property object at 0x104737a60>",
+        "model_fields": {
+          "author": "annotation=str required=True description='Author or owner of the pipeline.'",
+          "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
+          "role": "annotation=str required=True description='IAM role for pipeline execution.'",
+          "region": "annotation=str required=True description='Custom region code (NA, EU, FE) for internal logic.'",
+          "service_name": "annotation=str required=True description='Service name for the pipeline.'",
+          "pipeline_version": "annotation=str required=True description='Version string for the SageMaker Pipeline.'",
+          "model_class": "annotation=str required=False default='xgboost' description='Model class (e.g., XGBoost, PyTorch).'",
+          "current_date": "annotation=str required=False default_factory=<lambda> description='Current date, typically used for versioning or pathing.'",
+          "framework_version": "annotation=str required=False default='2.1.0' description='Default framework version (e.g., PyTorch).'",
+          "py_version": "annotation=str required=False default='py310' description='Default Python version.'",
+          "source_dir": "annotation=Union[str, NoneType] required=False default=None description='Common source directory for scripts if applicable. Can be overridden by step configs.'",
+          "processing_instance_count": "annotation=int required=False default=1 description='Instance count for processing jobs' metadata=[Ge(ge=1), Le(le=10)]",
+          "processing_volume_size": "annotation=int required=False default=500 description='Volume size for processing jobs in GB' metadata=[Ge(ge=10), Le(le=1000)]",
+          "processing_instance_type_large": "annotation=str required=False default='ml.m5.4xlarge' description='Large instance type for processing step.'",
+          "processing_instance_type_small": "annotation=str required=False default='ml.m5.2xlarge' description='Small instance type for processing step.'",
+          "use_large_processing_instance": "annotation=bool required=False default=False description='Set to True to use large instance type, False for small instance type.'",
+          "processing_source_dir": "annotation=Union[str, NoneType] required=False default=None description='Source directory for processing scripts. Falls back to base source_dir if not provided.'",
+          "processing_entry_point": "annotation=str required=False default='risk_table_mapping.py' description='Script for risk table mapping'",
+          "processing_script_arguments": "annotation=Union[List[str], NoneType] required=False default=None description='Optional arguments for the processing script.'",
+          "processing_framework_version": "annotation=str required=False default='1.2-1' description=\"Version of the scikit-learn framework to use in SageMaker Processing. Format: '<sklearn-version>-<build-number>'\"",
+          "job_type": "annotation=str required=False default='training' description=\"Type of job to perform. One of 'training', 'validation', 'testing', 'calibration'\"",
+          "cat_field_list": "annotation=List[str] required=False default=[] description='List of categorical fields to apply risk table mapping to'",
+          "label_name": "annotation=str required=False default='target' description='Name of the target/label column'",
+          "smooth_factor": "annotation=float required=False default=0.01 description='Smoothing factor for risk table calculation'",
+          "count_threshold": "annotation=int required=False default=5 description='Minimum count threshold for risk table calculation'",
+          "hyperparameters_s3_uri": "annotation=Union[str, NoneType] required=False default=None description='S3 URI prefix for uploading hyperparameters.json'",
+          "hyperparameters": "annotation=Union[ModelHyperparameters, NoneType] required=False default=None description='Optional model hyperparameters for advanced configuration'"
+        },
+        "model_fields_set": "<property object at 0x104737ab0>",
+        "pipeline_description": "<property object at 0x1069256c0>",
+        "pipeline_name": "<property object at 0x106925670>",
+        "pipeline_s3_loc": "<property object at 0x106925710>",
+        "script_contract": "<property object at 0x1069257b0>",
+        "script_path": "<property object at 0x30e6e5850>"
       }
-    ]
+    }
   },
-  "overall_status": "FAILING",
+  "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-08-11T09:40:27.357888",
+    "validation_timestamp": "2025-08-11T09:56:56.957051",
     "validator_version": "1.0.0"
   }
 }

@@ -6,26 +6,6 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
-        "details": {
-          "path": "/opt/ml/processing/input/eval_data",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either use path /opt/ml/processing/input/eval_data in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
           "path": "/opt/ml/processing/input/model",
@@ -45,25 +25,23 @@
       },
       {
         "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
         "details": {
-          "cli_argument": "model-dir",
-          "python_attribute": "model_dir",
+          "path": "/opt/ml/processing/input/eval_data",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add --model-dir to contract arguments or remove from script"
+        "recommendation": "Either use path /opt/ml/processing/input/eval_data in script or remove from contract"
       },
       {
         "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
         "details": {
-          "cli_argument": "eval-data-dir",
-          "python_attribute": "eval_data_dir",
+          "path": "/opt/ml/processing/output/eval",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add --eval-data-dir to contract arguments or remove from script"
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -79,13 +57,13 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
+        "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
         "details": {
-          "cli_argument": "output-eval-dir",
-          "python_attribute": "output_eval_dir",
+          "cli_argument": "model-dir",
+          "python_attribute": "model_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
+        "recommendation": "Add --model-dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -99,15 +77,26 @@
         "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
       },
       {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/eval_data",
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
         "details": {
-          "path": "/opt/ml/processing/input/eval_data",
-          "operation": "read",
+          "cli_argument": "eval-data-dir",
+          "python_attribute": "eval_data_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
+        "recommendation": "Add --eval-data-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
+        "details": {
+          "cli_argument": "output-eval-dir",
+          "python_attribute": "output_eval_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -121,15 +110,15 @@
         "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
       },
       {
-        "severity": "WARNING",
+        "severity": "INFO",
         "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/eval_data",
         "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "operation": "write",
+          "path": "/opt/ml/processing/input/eval_data",
+          "operation": "read",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
+        "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
       },
       {
         "severity": "WARNING",
@@ -141,6 +130,17 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "operation": "write",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -330,8 +330,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
               "XGBoostTraining",
+              "TrainingStep",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -342,9 +342,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
               "DataLoad",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -378,8 +378,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
               "XGBoostTraining",
+              "TrainingStep",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -390,9 +390,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
               "DataLoad",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -425,8 +425,8 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "TrainingStep",
                 "XGBoostTraining",
+                "TrainingStep",
                 "ModelStep"
               ],
               "data_type": "S3Uri",
@@ -437,9 +437,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
+                "TabularPreprocessing",
                 "DataLoad",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset for model assessment"
@@ -469,8 +469,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
             "XGBoostTraining",
+            "TrainingStep",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -481,9 +481,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
+            "TabularPreprocessing",
             "DataLoad",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -535,8 +535,8 @@
           "logical_name": "model_input",
           "specification": "model_evaluation_xgb",
           "compatible_sources": [
-            "TrainingStep",
             "XGBoostTraining",
+            "TrainingStep",
             "ModelStep"
           ],
           "dependency_type": "model_artifacts",
@@ -568,9 +568,9 @@
           "logical_name": "processed_data",
           "specification": "model_evaluation_xgb",
           "compatible_sources": [
+            "TabularPreprocessing",
             "DataLoad",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "ProcessingStep"
           ],
           "dependency_type": "processing_output",
           "available_steps": [
@@ -603,8 +603,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
             "XGBoostTraining",
+            "TrainingStep",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -615,9 +615,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
+            "TabularPreprocessing",
             "DataLoad",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -663,7 +663,7 @@
   "overall_status": "FAILING",
   "metadata": {
     "script_name": "model_evaluation_xgb",
-    "validation_timestamp": "2025-08-11T09:46:00.792777",
+    "validation_timestamp": "2025-08-11T09:47:13.857500",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py"
   }

@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: model_calibration</h2>
-        <p>Generated: 2025-08-11T09:40:27.328368</p>
+        <p>Generated: 2025-08-11T09:56:56.911055</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>2</h3>
+            <h3>3</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -43,11 +43,11 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>2</h3>
+            <h3>1</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>0</h3>
+            <h3>1</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -78,13 +78,18 @@
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 4: Builder ↔ Configuration</h4>
-                <p>Status: FAILED</p>
+                <p>Status: PASSED</p>
                 
-                <div class="issue error">
-                    <strong>ERROR:</strong> Configuration file not found for model_calibration
-                    <br><em>Recommendation: Create configuration file config_model_calibration_step.py</em>
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: label_field
+                    <br><em>Recommendation: Access required field label_field in builder or make it optional</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
                 </div>
                 
             </div>
@@ -95,7 +100,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py</p>
         <p><strong>Contract Mapping:</strong> model_calibration_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T09:40:27.328368</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T09:56:56.911055</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

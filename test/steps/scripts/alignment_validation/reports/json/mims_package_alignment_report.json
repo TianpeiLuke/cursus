@@ -144,8 +144,8 @@
             "required": true,
             "compatible_sources": [
               "TrainingStep",
-              "XGBoostTraining",
-              "ModelStep"
+              "ModelStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -155,8 +155,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -194,8 +194,8 @@
             "required": true,
             "compatible_sources": [
               "TrainingStep",
-              "XGBoostTraining",
-              "ModelStep"
+              "ModelStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -205,8 +205,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -243,8 +243,8 @@
               "required": true,
               "compatible_sources": [
                 "TrainingStep",
-                "XGBoostTraining",
-                "ModelStep"
+                "ModelStep",
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be packaged"
@@ -254,8 +254,8 @@
               "dependency_type": "custom_property",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "ScriptStep"
+                "ScriptStep",
+                "ProcessingStep"
               ],
               "data_type": "String",
               "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -289,8 +289,8 @@
           "required": true,
           "compatible_sources": [
             "TrainingStep",
-            "XGBoostTraining",
-            "ModelStep"
+            "ModelStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -300,8 +300,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -357,8 +357,8 @@
           "specification": "mims_package",
           "compatible_sources": [
             "TrainingStep",
-            "XGBoostTraining",
-            "ModelStep"
+            "ModelStep",
+            "XGBoostTraining"
           ],
           "dependency_type": "model_artifacts",
           "available_steps": [
@@ -392,8 +392,8 @@
           "required": true,
           "compatible_sources": [
             "TrainingStep",
-            "XGBoostTraining",
-            "ModelStep"
+            "ModelStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -403,8 +403,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -432,29 +432,78 @@
     }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "missing_configuration",
-        "message": "Configuration file not found for mims_package",
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class mims_packageConfig",
         "details": {
-          "searched_patterns": [
-            "config_mims_package_step.py",
-            "FlexibleFileResolver patterns",
-            "Fuzzy matching"
-          ],
-          "search_directory": "src/cursus/steps/configs"
+          "config_class": "mims_packageConfig",
+          "builder": "mims_package"
         },
-        "recommendation": "Create configuration file config_mims_package_step.py"
+        "recommendation": "Ensure builder imports and uses mims_packageConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "PackageStepBuilder",
+          "line_number": 27
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 75
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 104
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 130
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 160
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 260
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 315
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 326
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "mims_packageConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "Configuration class not found in src/cursus/steps/configs/config_package_step.py. Available classes: ['Any', 'PackageConfig', 'Path', 'ProcessingStepConfigBase']"
+    }
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py",
     "contract_mapping": "mims_package_contract",
-    "validation_timestamp": "2025-08-11T09:40:27.286713",
+    "validation_timestamp": "2025-08-11T09:56:56.840533",
     "validator_version": "1.0.0"
   }
 }

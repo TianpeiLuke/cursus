@@ -39,8 +39,11 @@ class BuilderConfigurationAlignmentTester:
         self.builders_dir = Path(builders_dir)
         self.configs_dir = Path(configs_dir)
         
-        # Initialize the flexible file resolver with relative paths
+        # Initialize the flexible file resolver with ALL required base directories
+        # FlexibleFileResolver expects 4 base directories: contracts, specs, builders, configs
         base_directories = {
+            'contracts': str(self.builders_dir.parent / 'contracts'),
+            'specs': str(self.builders_dir.parent / 'specs'),
             'builders': str(self.builders_dir),
             'configs': str(self.configs_dir)
         }

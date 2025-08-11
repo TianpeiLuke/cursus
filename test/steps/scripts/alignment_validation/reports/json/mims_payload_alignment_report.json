@@ -120,8 +120,8 @@
             "required": true,
             "compatible_sources": [
               "TrainingStep",
-              "XGBoostTraining",
-              "ModelStep"
+              "ModelStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts for payload generation"
@@ -149,8 +149,8 @@
             "required": true,
             "compatible_sources": [
               "TrainingStep",
-              "XGBoostTraining",
-              "ModelStep"
+              "ModelStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts for payload generation"
@@ -177,8 +177,8 @@
               "required": true,
               "compatible_sources": [
                 "TrainingStep",
-                "XGBoostTraining",
-                "ModelStep"
+                "ModelStep",
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts for payload generation"
@@ -202,8 +202,8 @@
           "required": true,
           "compatible_sources": [
             "TrainingStep",
-            "XGBoostTraining",
-            "ModelStep"
+            "ModelStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts for payload generation"
@@ -243,8 +243,8 @@
           "specification": "mims_payload",
           "compatible_sources": [
             "TrainingStep",
-            "XGBoostTraining",
-            "ModelStep"
+            "ModelStep",
+            "XGBoostTraining"
           ],
           "dependency_type": "model_artifacts",
           "available_steps": [
@@ -278,8 +278,8 @@
           "required": true,
           "compatible_sources": [
             "TrainingStep",
-            "XGBoostTraining",
-            "ModelStep"
+            "ModelStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts for payload generation"
@@ -297,29 +297,78 @@
     }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "missing_configuration",
-        "message": "Configuration file not found for mims_payload",
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class mims_payloadConfig",
         "details": {
-          "searched_patterns": [
-            "config_mims_payload_step.py",
-            "FlexibleFileResolver patterns",
-            "Fuzzy matching"
-          ],
-          "search_directory": "src/cursus/steps/configs"
+          "config_class": "mims_payloadConfig",
+          "builder": "mims_payload"
         },
-        "recommendation": "Create configuration file config_mims_payload_step.py"
+        "recommendation": "Ensure builder imports and uses mims_payloadConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "PayloadStepBuilder",
+          "line_number": 27
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 75
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 105
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 132
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 167
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 220
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 275
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 292
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "mims_payloadConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "Configuration class not found in src/cursus/steps/configs/config_payload_step.py. Available classes: ['Any', 'BaseModel', 'Enum', 'Path', 'PayloadConfig', 'ProcessingStepConfigBase', 'VariableType', 'datetime']"
+    }
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
     "contract_mapping": "mims_payload_contract",
-    "validation_timestamp": "2025-08-11T09:40:27.305839",
+    "validation_timestamp": "2025-08-11T09:56:56.863669",
     "validator_version": "1.0.0"
   }
 }
