@@ -120,8 +120,8 @@
             "required": true,
             "compatible_sources": [
               "XGBoostTraining",
-              "ModelStep",
-              "TrainingStep"
+              "TrainingStep",
+              "ModelStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts for payload generation"
@@ -149,8 +149,8 @@
             "required": true,
             "compatible_sources": [
               "XGBoostTraining",
-              "ModelStep",
-              "TrainingStep"
+              "TrainingStep",
+              "ModelStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts for payload generation"
@@ -177,8 +177,8 @@
               "required": true,
               "compatible_sources": [
                 "XGBoostTraining",
-                "ModelStep",
-                "TrainingStep"
+                "TrainingStep",
+                "ModelStep"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts for payload generation"
@@ -202,8 +202,8 @@
           "required": true,
           "compatible_sources": [
             "XGBoostTraining",
-            "ModelStep",
-            "TrainingStep"
+            "TrainingStep",
+            "ModelStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts for payload generation"
@@ -243,8 +243,8 @@
           "specification": "mims_payload",
           "compatible_sources": [
             "XGBoostTraining",
-            "ModelStep",
-            "TrainingStep"
+            "TrainingStep",
+            "ModelStep"
           ],
           "dependency_type": "model_artifacts",
           "available_steps": [
@@ -278,8 +278,8 @@
           "required": true,
           "compatible_sources": [
             "XGBoostTraining",
-            "ModelStep",
-            "TrainingStep"
+            "TrainingStep",
+            "ModelStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts for payload generation"
@@ -319,7 +319,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
     "contract_mapping": "mims_payload_contract",
-    "validation_timestamp": "2025-08-11T08:17:50.276709",
+    "validation_timestamp": "2025-08-11T08:52:16.926109",
     "validator_version": "1.0.0"
   }
 }

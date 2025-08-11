@@ -14,6 +14,7 @@ from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
 from .alignment_utils import FlexibleFileResolver
+from ...steps.registry.step_names import CONFIG_STEP_REGISTRY, STEP_NAMES, get_step_name_from_spec_type
 
 
 class BuilderConfigurationAlignmentTester:
@@ -38,7 +39,7 @@ class BuilderConfigurationAlignmentTester:
         self.builders_dir = Path(builders_dir)
         self.configs_dir = Path(configs_dir)
         
-        # Initialize the flexible file resolver
+        # Initialize the flexible file resolver with relative paths
         base_directories = {
             'builders': str(self.builders_dir),
             'configs': str(self.configs_dir)
@@ -731,8 +732,7 @@ class BuilderConfigurationAlignmentTester:
         
         Priority:
         1. Standard pattern: builder_{builder_name}_step.py
-        2. FlexibleFileResolver patterns
-        3. Fuzzy matching for similar names
+        2. FlexibleFileResolver patterns (includes fuzzy matching)
         
         Args:
             builder_name: Name of the builder to find
@@ -745,27 +745,102 @@ class BuilderConfigurationAlignmentTester:
         if standard_path.exists():
             return str(standard_path)
         
-        # Strategy 2: Use FlexibleFileResolver for known patterns
+        # Strategy 2: Use FlexibleFileResolver for known patterns and fuzzy matching
         flexible_path = self.file_resolver.find_builder_file(builder_name)
         if flexible_path and Path(flexible_path).exists():
             return flexible_path
         
-        # Strategy 3: Fuzzy matching for similar names
-        fuzzy_path = self._fuzzy_find_builder(builder_name)
-        if fuzzy_path:
-            return fuzzy_path
-        
-        # Strategy 4: Return None if nothing found
+        # Strategy 3: Return None if nothing found
         return None
     
+    def _get_canonical_step_name(self, script_name: str) -> str:
+        """
+        Convert script name to canonical step name using production registry logic.
+        
+        This uses the same approach as Level-3 validator to ensure consistency
+        with the production system's mapping logic.
+        
+        Args:
+            script_name: Script name (e.g., 'mims_package', 'model_evaluation_xgb')
+            
+        Returns:
+            Canonical step name (e.g., 'Package', 'XGBoostModelEval')
+        """
+        # Convert script name to spec_type format (same as Level-3)
+        parts = script_name.split('_')
+        
+        # Handle job type variants
+        job_type_suffixes = ['training', 'validation', 'testing', 'calibration']
+        job_type = None
+        base_parts = parts
+        
+        if len(parts) > 1 and parts[-1] in job_type_suffixes:
+            job_type = parts[-1]
+            base_parts = parts[:-1]
+        
+        # Convert to PascalCase for spec_type
+        spec_type_base = ''.join(word.capitalize() for word in base_parts)
+        
+        if job_type:
+            spec_type = f"{spec_type_base}_{job_type.capitalize()}"
+        else:
+            spec_type = spec_type_base
+        
+        # Use production function to get canonical name (strips job type suffix)
+        try:
+            canonical_name = get_step_name_from_spec_type(spec_type)
+            return canonical_name
+        except Exception:
+            # Fallback: return the base spec_type without job type suffix
+            return spec_type_base
+    
+    def _get_config_name_from_canonical(self, canonical_name: str) -> str:
+        """
+        Get config file base name from canonical step name using production registry.
+        
+        Uses the STEP_NAMES registry to find the config class name,
+        then derives the config file name from that.
+        
+        Args:
+            canonical_name: Canonical step name (e.g., 'Package', 'XGBoostModelEval')
+            
+        Returns:
+            Config file base name (e.g., 'package', 'model_eval_step_xgboost')
+        """
+        # Get config class name from STEP_NAMES registry
+        if canonical_name in STEP_NAMES:
+            config_class = STEP_NAMES[canonical_name]['config_class']
+            
+            # Convert config class name to file name
+            # e.g., 'PackageConfig' -> 'package'
+            # e.g., 'XGBoostModelEvalConfig' -> 'model_eval_step_xgboost'
+            
+            # Remove 'Config' suffix
+            if config_class.endswith('Config'):
+                base_name = config_class[:-6]  # Remove 'Config'
+            else:
+                base_name = config_class
+            
+            # Convert CamelCase to snake_case
+            import re
+            snake_case = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', base_name)
+            snake_case = re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake_case).lower()
+            return snake_case
+        
+        # Fallback if not in registry
+        import re
+        snake_case = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', canonical_name)
+        snake_case = re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake_case).lower()
+        return snake_case
+
     def _find_config_file_hybrid(self, builder_name: str) -> Optional[str]:
         """
-        Hybrid config file resolution with multiple fallback strategies.
+        Hybrid config file resolution with production registry integration.
         
         Priority:
-        1. Standard pattern: config_{builder_name}_step.py
-        2. FlexibleFileResolver patterns
-        3. Fuzzy matching for similar names
+        1. Production registry mapping: script_name -> canonical_name -> config_name
+        2. Standard pattern: config_{builder_name}_step.py
+        3. FlexibleFileResolver patterns (includes fuzzy matching)
         
         Args:
             builder_name: Name of the builder to find config for
@@ -773,93 +848,29 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             Path to the config file or None if not found
         """
-        # Strategy 1: Try standard naming convention first
+        # Strategy 1: Use production registry mapping
+        try:
+            canonical_name = self._get_canonical_step_name(builder_name)
+            config_base_name = self._get_config_name_from_canonical(canonical_name)
+            registry_path = self.configs_dir / f"config_{config_base_name}_step.py"
+            if registry_path.exists():
+                return str(registry_path)
+        except Exception:
+            # Continue with other strategies if registry mapping fails
+            pass
+        
+        # Strategy 2: Try standard naming convention
         standard_path = self.configs_dir / f"config_{builder_name}_step.py"
         if standard_path.exists():
             return str(standard_path)
         
-        # Strategy 2: Use FlexibleFileResolver for known patterns
+        # Strategy 3: Use FlexibleFileResolver for known patterns and fuzzy matching
         flexible_path = self.file_resolver.find_config_file(builder_name)
         if flexible_path and Path(flexible_path).exists():
             return flexible_path
         
-        # Strategy 3: Fuzzy matching for similar names
-        fuzzy_path = self._fuzzy_find_config(builder_name)
-        if fuzzy_path:
-            return fuzzy_path
-        
         # Strategy 4: Return None if nothing found
         return None
-    
-    def _fuzzy_find_builder(self, builder_name: str) -> Optional[str]:
-        """
-        Fuzzy file matching for builder files with similar names.
-        
-        Args:
-            builder_name: Target builder name
-            
-        Returns:
-            Path to the best matching builder file or None
-        """
-        if not self.builders_dir.exists():
-            return None
-            
-        target_pattern = f"builder_{builder_name}_step"
-        
-        best_match = None
-        best_similarity = 0.0
-        
-        for file_path in self.builders_dir.glob("builder_*_step.py"):
-            file_base = file_path.stem.lower()
-            similarity = self._calculate_similarity(target_pattern.lower(), file_base)
-            
-            if similarity > 0.8 and similarity > best_similarity:
-                best_similarity = similarity
-                best_match = str(file_path)
-        
-        return best_match
-    
-    def _fuzzy_find_config(self, builder_name: str) -> Optional[str]:
-        """
-        Fuzzy file matching for config files with similar names.
-        
-        Args:
-            builder_name: Target builder name
-            
-        Returns:
-            Path to the best matching config file or None
-        """
-        if not self.configs_dir.exists():
-            return None
-            
-        target_pattern = f"config_{builder_name}_step"
-        
-        best_match = None
-        best_similarity = 0.0
-        
-        for file_path in self.configs_dir.glob("config_*_step.py"):
-            file_base = file_path.stem.lower()
-            similarity = self._calculate_similarity(target_pattern.lower(), file_base)
-            
-            if similarity > 0.8 and similarity > best_similarity:
-                best_similarity = similarity
-                best_match = str(file_path)
-        
-        return best_match
-    
-    def _calculate_similarity(self, str1: str, str2: str) -> float:
-        """
-        Calculate similarity between two strings using difflib.
-        
-        Args:
-            str1: First string
-            str2: Second string
-            
-        Returns:
-            Similarity ratio between 0.0 and 1.0
-        """
-        import difflib
-        return difflib.SequenceMatcher(None, str1, str2).ratio()
 
     def _discover_builders(self) -> List[str]:
         """Discover all builder files in the builders directory."""

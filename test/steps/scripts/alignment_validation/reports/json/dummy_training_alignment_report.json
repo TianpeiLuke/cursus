@@ -109,10 +109,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "ProcessingStep",
-              "PytorchTraining",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "XGBoostTraining",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -150,10 +150,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "ProcessingStep",
-              "PytorchTraining",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "XGBoostTraining",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -190,10 +190,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
                 "ProcessingStep",
-                "PytorchTraining",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "XGBoostTraining",
+                "PytorchTraining"
               ],
               "data_type": "S3Uri",
               "description": "Path to pretrained model.tar.gz file"
@@ -227,10 +227,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "ProcessingStep",
-            "PytorchTraining",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "XGBoostTraining",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -283,10 +283,10 @@
           "logical_name": "pretrained_model_path",
           "specification": "dummy_training",
           "compatible_sources": [
-            "XGBoostTraining",
             "ProcessingStep",
-            "PytorchTraining",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "XGBoostTraining",
+            "PytorchTraining"
           ],
           "dependency_type": "processing_output",
           "available_steps": [
@@ -351,10 +351,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "ProcessingStep",
-            "PytorchTraining",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "XGBoostTraining",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -405,7 +405,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T08:17:50.251380",
+    "validation_timestamp": "2025-08-11T08:52:16.900857",
     "validator_version": "1.0.0"
   }
 }
