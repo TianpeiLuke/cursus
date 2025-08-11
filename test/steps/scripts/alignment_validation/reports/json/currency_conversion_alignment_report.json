@@ -555,22 +555,22 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_id_col",
-        "details": {
-          "field_name": "marketplace_id_col",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: marketplace_info",
         "details": {
           "field_name": "marketplace_info",
           "builder": "currency_conversion"
         },
         "recommendation": "Access required field marketplace_info in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_id_col",
+        "details": {
+          "field_name": "marketplace_id_col",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -598,10 +598,10 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
+            "currency_conversion_dict",
             "marketplace_info",
-            "label_field",
             "marketplace_id_col",
-            "currency_conversion_dict"
+            "label_field"
           ],
           "builder": "currency_conversion"
         },
@@ -722,12 +722,12 @@
           "required": false
         }
       },
-      "required_fields": "{'marketplace_info', 'label_field', 'marketplace_id_col', 'currency_conversion_dict'}",
-      "optional_fields": "{'skip_invalid_currencies', 'mode', 'job_type', 'default_currency', 'test_val_ratio', 'currency_conversion_var_list', 'train_ratio', 'processing_entry_point', 'use_large_processing_instance', 'currency_col', 'enable_currency_conversion'}",
+      "required_fields": "{'currency_conversion_dict', 'marketplace_info', 'marketplace_id_col', 'label_field'}",
+      "optional_fields": "{'processing_entry_point', 'train_ratio', 'currency_col', 'skip_invalid_currencies', 'default_currency', 'enable_currency_conversion', 'currency_conversion_var_list', 'job_type', 'use_large_processing_instance', 'test_val_ratio', 'mode'}",
       "default_values": {
-        "aws_region": "<property object at 0x106925620>",
-        "effective_instance_type": "<property object at 0x30e6e5800>",
-        "effective_source_dir": "<property object at 0x30e6e57b0>",
+        "aws_region": "<property object at 0x1071255d0>",
+        "effective_instance_type": "<property object at 0x3308e5990>",
+        "effective_source_dir": "<property object at 0x3308e5940>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -735,7 +735,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x104737a60>",
+        "model_extra": "<property object at 0x106197a10>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -771,12 +771,12 @@
           "default_currency": "annotation=str required=False default='USD' description='Fallback currency code'",
           "skip_invalid_currencies": "annotation=bool required=False default=False description='If True, fill invalid codes with default_currency'"
         },
-        "model_fields_set": "<property object at 0x104737ab0>",
-        "pipeline_description": "<property object at 0x1069256c0>",
-        "pipeline_name": "<property object at 0x106925670>",
-        "pipeline_s3_loc": "<property object at 0x106925710>",
-        "script_contract": "<property object at 0x1069257b0>",
-        "script_path": "<property object at 0x30e6e5850>"
+        "model_fields_set": "<property object at 0x106197a60>",
+        "pipeline_description": "<property object at 0x107125670>",
+        "pipeline_name": "<property object at 0x107125620>",
+        "pipeline_s3_loc": "<property object at 0x1071256c0>",
+        "script_contract": "<property object at 0x107125760>",
+        "script_path": "<property object at 0x3308e59e0>"
       }
     }
   },
@@ -784,7 +784,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-11T09:56:56.801242",
+    "validation_timestamp": "2025-08-11T10:42:21.779177",
     "validator_version": "1.0.0"
   }
 }

@@ -172,6 +172,7 @@ SPEC_STEP_TYPES = {
     for step_name, info in STEP_NAMES.items()
 }
 
+
 # Helper functions
 def get_config_class_name(step_name: str) -> str:
     """Get config class name for a step."""
@@ -264,3 +265,58 @@ def get_sagemaker_step_type_mapping() -> Dict[str, List[str]]:
             mapping[sagemaker_type] = []
         mapping[sagemaker_type].append(step_name)
     return mapping
+
+def get_canonical_name_from_file_name(file_name: str) -> str:
+    """
+    Get canonical step name from file name using algorithmic conversion and registry lookup.
+    
+    Args:
+        file_name: File-based name (e.g., "model_evaluation_xgb", "dummy_training")
+        
+    Returns:
+        Canonical step name (e.g., "XGBoostModelEval", "DummyTraining")
+        
+    Raises:
+        ValueError: If file name cannot be mapped to a canonical name
+    """
+    # Handle special cases first
+    special_cases = {
+        "model_evaluation_xgb": "XGBoostModelEval",
+        "tabular_preprocess": "TabularPreprocessing", 
+        "mims_package": "Package",
+        "mims_payload": "Payload",
+    }
+    
+    if file_name in special_cases:
+        return special_cases[file_name]
+    
+    # Algorithmic conversion for standard cases
+    try:
+        # Convert file name to spec_type format and try registry lookup
+        parts = file_name.split('_')
+        
+        # Handle job type variants
+        job_type_suffixes = ['training', 'validation', 'testing', 'calibration']
+        base_parts = parts
+        
+        if len(parts) > 1 and parts[-1] in job_type_suffixes:
+            base_parts = parts[:-1]
+        
+        # Convert to PascalCase for spec_type
+        spec_type_base = ''.join(word.capitalize() for word in base_parts)
+        
+        # Try to get canonical name from spec_type
+        canonical_name = get_step_name_from_spec_type(spec_type_base)
+        return canonical_name
+    except Exception:
+        pass
+    
+    raise ValueError(f"Unknown file name: {file_name}. Cannot derive canonical name algorithmically.")
+
+def validate_file_name(file_name: str) -> bool:
+    """Validate that a file name can be mapped to a canonical name."""
+    try:
+        get_canonical_name_from_file_name(file_name)
+        return True
+    except ValueError:
+        return False

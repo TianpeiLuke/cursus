@@ -8,7 +8,7 @@ cleaning, and splitting for training/validation/testing.
 from ...core.base.contract_base import ScriptContract
 
 TABULAR_PREPROCESS_CONTRACT = ScriptContract(
-    entry_point="tabular_preprocess.py",
+    entry_point="tabular_preprocessing.py",
     expected_input_paths={
         "DATA": "/opt/ml/processing/input/data"
     },

@@ -26,7 +26,7 @@ class PackageConfig(ProcessingStepConfigBase):
     # These are fields with reasonable defaults that users can override
     
     processing_entry_point: str = Field(
-        default="mims_package.py",
+        default="package.py",
         description="Entry point script for packaging."
     )
     

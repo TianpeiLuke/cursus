@@ -8,7 +8,7 @@ and inference scripts into a deployable tar.gz file.
 from ...core.base.contract_base import ScriptContract
 
 MIMS_PACKAGE_CONTRACT = ScriptContract(
-    entry_point="mims_package.py",
+    entry_point="package.py",
     expected_input_paths={
         "model_input": "/opt/ml/processing/input/model",
         "inference_scripts_input": "/opt/ml/processing/input/script",

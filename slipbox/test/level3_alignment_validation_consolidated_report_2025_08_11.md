@@ -245,69 +245,95 @@ The remaining failures are **specific issues**, not systemic problems:
 - Edge cases in name conversion can cause widespread failures
 - Registry functions provide authoritative name mapping logic
 
-## 📋 Latest Comprehensive Validation Results (August 11, 2025 - 9:56 AM)
+## 📋 Latest Comprehensive Validation Results (August 11, 2025 - 10:42 AM)
 
-### 🔄 UPDATED: Latest Full Validation Run Results
+### 🔄 UPDATED: Latest Full Validation Run Results (Post-Environment Fix)
+
+**🎉 BREAKTHROUGH: Python Environment Issue Resolved!**
+
+**Root Cause Discovered**: The validation failures were caused by a **Python environment mismatch**:
+- `pip` was using Anaconda environment (`/opt/anaconda3/bin/pip`) 
+- `python3` was using system Python (`/usr/bin/python3`)
+- Pydantic was installed in Anaconda but not accessible to system Python
+
+**Solution Applied**: Using correct Python environment (`/opt/anaconda3/bin/python`) resolved import issues.
 
 ### Complete 8-Script Validation Summary
 | Script | Level 3 Status | Issues | Key Findings |
 |--------|---------------|--------|--------------|
-| currency_conversion | ✅ PASS | 0 | Dependencies resolved successfully |
-| dummy_training | ❌ FAIL | 2 | Missing specification: `Dummy_Training` |
-| mims_package | ❌ FAIL | 1 | Missing specification: `MimsPackage` |
-| mims_payload | ❌ FAIL | 1 | Missing specification: `MimsPayload` |
-| model_calibration | ❌ FAIL | 1 | Missing specification: `Model_Calibration` |
-| model_evaluation_xgb | ❌ FAIL | 2 | Cannot resolve `model_input` and `processed_data` |
-| risk_table_mapping | ✅ PASS | 0 | Multiple dependencies resolved successfully |
-| tabular_preprocess | ❌ FAIL | 1 | Missing specification: `TabularPreprocess` |
+| currency_conversion | ✅ PASS | 0 | Dependencies resolved: `data_input` → `RiskTableMapping.processed_data` (confidence: 0.749) |
+| dummy_training | ❌ FAIL | 1 | Cannot resolve `Dummy.hyperparameters_s3_uri` |
+| model_calibration | ✅ PASS | 0 | Dependencies resolved: `evaluation_data` → `RiskTableMapping.processed_data` (confidence: 0.730) |
+| package | ❌ FAIL | 1 | No specification found for step: `Package` |
+| payload | ❌ FAIL | 1 | Cannot resolve `Payload.model_input` |
+| risk_table_mapping | ✅ PASS | 0 | Dependencies resolved: `data_input` → `CurrencyConversion.converted_data` (confidence: 0.724), `risk_tables` → `CurrencyConversion.converted_data` (confidence: 0.624) |
+| tabular_preprocessing | ❌ FAIL | 1 | No specification found for step: `TabularPreprocessing` |
+| xgboost_model_evaluation | ❌ FAIL | 2 | No specification found for step: `XgboostModelEvaluation` |
 
 ### Detailed Analysis of Latest Results
 
-#### ✅ Confirmed Success Cases (2/8 - 25% Success Rate)
-**Validation confirms our fixes are working correctly:**
+#### ✅ Confirmed Success Cases (3/8 - 37.5% Success Rate)
+**Environment fix confirmed - dependency resolution working correctly:**
 
 1. **currency_conversion**: 
-   - ✅ `data_input` → `Pytorch.data_output` (confidence: 0.756)
-   - **Evidence**: `INFO:src.cursus.validation.alignment.spec_dependency_alignment:✅ Resolved currency_conversion.data_input -> Pytorch.data_output`
+   - ✅ `data_input` → `RiskTableMapping.processed_data` (confidence: 0.749)
+   - **Evidence**: `INFO:src.cursus.core.deps.dependency_resolver:Best match for data_input: RiskTableMapping.processed_data (confidence: 0.749)`
+   - **Evidence**: `INFO:src.cursus.validation.alignment.spec_dependency_alignment:✅ Resolved currency_conversion.data_input -> RiskTableMapping.processed_data`
 
-2. **risk_table_mapping**:
-   - ✅ `data_input` → `Pytorch.data_output` (confidence: 0.756)  
-   - ✅ `risk_tables` → `Preprocessing.processed_data` (confidence: 0.630)
-   - **Evidence**: Both dependencies resolved with detailed logging
+2. **model_calibration**:
+   - ✅ `evaluation_data` → `RiskTableMapping.processed_data` (confidence: 0.730)
+   - **Evidence**: `INFO:src.cursus.core.deps.dependency_resolver:Best match for evaluation_data: RiskTableMapping.processed_data (confidence: 0.730)`
+   - **Evidence**: `INFO:src.cursus.validation.alignment.spec_dependency_alignment:✅ Resolved model_calibration.evaluation_data -> RiskTableMapping.processed_data`
 
-#### ❌ Systematic Pattern in Failures (6/8)
-**Root Cause Confirmed**: Missing specification mappings in registry
+3. **risk_table_mapping**:
+   - ✅ `data_input` → `CurrencyConversion.converted_data` (confidence: 0.724)  
+   - ✅ `risk_tables` → `CurrencyConversion.converted_data` (confidence: 0.624)
+   - **Evidence**: `INFO:src.cursus.core.deps.dependency_resolver:Best match for data_input: CurrencyConversion.converted_data (confidence: 0.724)`
+   - **Evidence**: `INFO:src.cursus.validation.alignment.spec_dependency_alignment:✅ Resolved risk_table_mapping.data_input -> CurrencyConversion.converted_data`
+   - **Evidence**: `INFO:src.cursus.validation.alignment.spec_dependency_alignment:✅ Resolved risk_table_mapping.risk_tables -> CurrencyConversion.converted_data`
 
-**Pattern Analysis:**
-- 5 scripts fail due to missing canonical name mappings
-- 1 script (`model_evaluation_xgb`) fails due to incompatible source types
-- All failures show consistent error: `WARNING:src.cursus.core.deps.dependency_resolver:No specification found for step: [StepName]`
+#### ❌ Systematic Pattern in Failures (5/8)
+**Root Cause Analysis Updated**: Two distinct failure patterns identified:
+
+**Pattern 1: Missing Specification Registration (4/5 failures)**
+- Scripts: `dummy_training`, `package`, `tabular_preprocessing`, `xgboost_model_evaluation`
+- Error: `WARNING:src.cursus.core.deps.dependency_resolver:No specification found for step: [StepName]`
+- **Root Cause**: Canonical names not found in dependency resolver registry
+- **Available Steps in Registry**: `['DataLoading', 'Preprocessing', 'CurrencyConversion', 'XgboostModel', 'Registration', 'XgboostModelEval', 'RiskTableMapping', 'BatchTransform', 'Dummy', 'Model', 'Payload', 'Xgboost', 'Pytorch', 'Packaging', 'PytorchModel']`
+
+**Pattern 2: Dependency Resolution Failure (1/5 failures)**
+- Script: `payload`
+- Error: `WARNING:src.cursus.core.deps.dependency_resolver:Could not resolve required dependency: Payload.model_input`
+- **Root Cause**: No available step produces `model_input` output
+
+**Key Discovery**: The registry shows steps are available but with different canonical names:
+- `dummy_training` looks for `Dummy` but has unresolvable dependency `hyperparameters_s3_uri`
+- `package` looks for `Package` but registry has `Packaging`
+- `tabular_preprocessing` looks for `TabularPreprocessing` but registry has `Preprocessing`
+- `xgboost_model_evaluation` looks for `XgboostModelEvaluation` but registry has `XgboostModelEval`
+
+#### 🔍 Critical Discovery: Canonical Name Mismatch
+
+**Key Finding**: The dependency resolver registry shows canonical names but with different casing/format:
+
+**Registry Names vs Expected Names:**
+- `dummy_training` expects `DummyTraining` → Registry has `Dummy`
+- `model_evaluation_xgb` expects `XGBoostModelEval` → Registry has `XgboostModelEval` 
+- `tabular_preprocess` expects `TabularPreprocessing` → Registry has `Preprocessing`
+- `mims_package` expects `Package` → Registry has `Packaging`
+- `model_calibration` expects `ModelCalibration` → Registry has `Model`
 
 #### 🔍 Specific Case Analysis: model_evaluation_xgb
 
-**Unique Issue Pattern:**
+**Updated Analysis Based on Latest Run:**
 ```
-Cannot resolve required dependency: model_input
-Compatible sources: ["TrainingStep", "ModelStep", "XGBoostTraining"]  
-Available steps: ["DataLoading", "Preprocessing", "CurrencyConversion", "XgboostModel", ...]
+Registry Available: ['XgboostModelEval']  # lowercase 'g'
+Lookup Expected: 'XGBoostModelEval'       # uppercase 'G'
+Error: WARNING:src.cursus.core.deps.dependency_resolver:No specification found for step: XGBoostModelEval
 ```
 
-**Root Cause**: Specification declares compatibility with step types that don't exist in current registry:
-- Expects: `XGBoostTraining`
-- Available: `Xgboost` (different naming convention)
-
-### Registry Integration Status
-**✅ Production Resolver Working**: Evidence from successful resolutions shows:
-- Confidence scoring operational
-- Semantic matching functional  
-- Registry lookup working for aligned names
-- Detailed logging providing actionable diagnostics
-
-### Next Actions Based on Latest Results
-1. **Fix Canonical Name Mapping**: Address the 5 missing specification mappings
-2. **Update Specification Compatibility**: Fix `model_evaluation_xgb` source type references
-3. **Verify Registry Population**: Ensure all expected step types are registered
-4. **Test Edge Cases**: Validate complex name conversion scenarios
+**Root Cause**: Case sensitivity and naming convention mismatch between:
+1. **Registry Population
 
 ## 🎉 Conclusion
 
@@ -325,7 +351,7 @@ The dependency resolution system is now working as designed, and the remaining L
 ---
 **Report Generated**: August 11, 2025, 9:49 AM PST  
 **Latest Validation Run**: Complete 8-script comprehensive validation  
-**Success Rate**: 25% (2/8 scripts passing Level 3)  
+**Success Rate**: 37.5% (3/8 scripts passing Level 3)  
 **Next Milestone**: Address remaining name mapping edge cases for 100% success rate
 
 ---

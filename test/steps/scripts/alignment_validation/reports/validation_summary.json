@@ -1,41 +1,42 @@
 {
   "total_scripts": 8,
-  "passed_scripts": 2,
-  "failed_scripts": 6,
-  "error_scripts": 0,
-  "validation_timestamp": "2025-08-11T09:56:56.778502",
+  "passed_scripts": 3,
+  "failed_scripts": 4,
+  "error_scripts": 1,
+  "validation_timestamp": "2025-08-11T10:42:21.750794",
   "script_results": {
     "currency_conversion": {
       "status": "PASSING",
-      "timestamp": "2025-08-11T09:56:56.801242"
+      "timestamp": "2025-08-11T10:42:21.779177"
     },
     "dummy_training": {
       "status": "FAILING",
-      "timestamp": "2025-08-11T09:56:56.821603"
-    },
-    "mims_package": {
-      "status": "FAILING",
-      "timestamp": "2025-08-11T09:56:56.840533"
-    },
-    "mims_payload": {
-      "status": "FAILING",
-      "timestamp": "2025-08-11T09:56:56.863669"
+      "timestamp": "2025-08-11T10:42:21.828353"
     },
     "model_calibration": {
-      "status": "FAILING",
-      "timestamp": "2025-08-11T09:56:56.911055"
+      "status": "PASSING",
+      "timestamp": "2025-08-11T10:42:21.857179"
     },
-    "model_evaluation_xgb": {
+    "package": {
       "status": "FAILING",
-      "timestamp": "2025-08-11T09:56:56.936467"
+      "timestamp": "2025-08-11T10:42:21.875959"
+    },
+    "payload": {
+      "status": "ERROR",
+      "error": "keys must be str, int, float, bool or None, not type",
+      "timestamp": "2025-08-11T10:42:21.895255"
     },
     "risk_table_mapping": {
       "status": "PASSING",
-      "timestamp": "2025-08-11T09:56:56.957051"
+      "timestamp": "2025-08-11T10:42:21.914785"
     },
-    "tabular_preprocess": {
+    "tabular_preprocessing": {
       "status": "FAILING",
-      "timestamp": "2025-08-11T09:56:57.034377"
+      "timestamp": "2025-08-11T10:42:21.979383"
+    },
+    "xgboost_model_evaluation": {
+      "status": "FAILING",
+      "timestamp": "2025-08-11T10:42:22.001776"
     }
   }
 }

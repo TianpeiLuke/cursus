@@ -8,7 +8,7 @@ sample payloads and metadata for model inference testing.
 from ...core.base.contract_base import ScriptContract
 
 MIMS_PAYLOAD_CONTRACT = ScriptContract(
-    entry_point="mims_payload.py",
+    entry_point="payload.py",
     expected_input_paths={
         "model_input": "/opt/ml/processing/input/model"
     },

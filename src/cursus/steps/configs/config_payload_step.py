@@ -84,7 +84,7 @@ class PayloadConfig(ProcessingStepConfigBase):
     
     # Entry point script
     processing_entry_point: str = Field(
-        default="mims_payload.py",
+        default="payload.py",
         description="Entry point script for payload generation"
     )
     

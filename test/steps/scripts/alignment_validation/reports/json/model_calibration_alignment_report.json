@@ -186,10 +186,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "TrainingEvaluation",
               "XGBoostTraining",
               "ModelEvaluation",
+              "TrainingEvaluation",
+              "CrossValidation",
               "XGBoostModelEval"
             ],
             "data_type": "S3Uri",
@@ -231,10 +231,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "TrainingEvaluation",
               "XGBoostTraining",
               "ModelEvaluation",
+              "TrainingEvaluation",
+              "CrossValidation",
               "XGBoostModelEval"
             ],
             "data_type": "S3Uri",
@@ -275,10 +275,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CrossValidation",
-                "TrainingEvaluation",
                 "XGBoostTraining",
                 "ModelEvaluation",
+                "TrainingEvaluation",
+                "CrossValidation",
                 "XGBoostModelEval"
               ],
               "data_type": "S3Uri",
@@ -316,10 +316,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
-            "TrainingEvaluation",
             "XGBoostTraining",
             "ModelEvaluation",
+            "TrainingEvaluation",
+            "CrossValidation",
             "XGBoostModelEval"
           ],
           "data_type": "S3Uri",
@@ -369,44 +369,8 @@
     }
   },
   "level3": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve required dependency: evaluation_data",
-        "details": {
-          "logical_name": "evaluation_data",
-          "specification": "model_calibration",
-          "compatible_sources": [
-            "CrossValidation",
-            "TrainingEvaluation",
-            "XGBoostTraining",
-            "ModelEvaluation",
-            "XGBoostModelEval"
-          ],
-          "dependency_type": "processing_output",
-          "available_steps": [
-            "DataLoading",
-            "Preprocessing",
-            "CurrencyConversion",
-            "XgboostModel",
-            "Registration",
-            "XgboostModelEval",
-            "RiskTableMapping",
-            "BatchTransform",
-            "Dummy",
-            "Model",
-            "Payload",
-            "Xgboost",
-            "Pytorch",
-            "Packaging",
-            "PytorchModel"
-          ]
-        },
-        "recommendation": "Ensure a step exists that produces output evaluation_data"
-      }
-    ],
+    "passed": true,
+    "issues": [],
     "specification": {
       "step_type": "ModelCalibration",
       "node_type": "internal",
@@ -416,10 +380,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
-            "TrainingEvaluation",
             "XGBoostTraining",
             "ModelEvaluation",
+            "TrainingEvaluation",
+            "CrossValidation",
             "XGBoostModelEval"
           ],
           "data_type": "S3Uri",
@@ -595,11 +559,11 @@
         }
       },
       "required_fields": "{'label_field'}",
-      "optional_fields": "{'score_field', 'is_binary', 'gam_splines', 'score_field_prefix', 'error_threshold', 'processing_entry_point', 'calibration_method', 'multiclass_categories', 'monotonic_constraint', 'num_classes', 'processing_source_dir'}",
+      "optional_fields": "{'num_classes', 'monotonic_constraint', 'processing_entry_point', 'error_threshold', 'score_field', 'score_field_prefix', 'processing_source_dir', 'calibration_method', 'multiclass_categories', 'is_binary', 'gam_splines'}",
       "default_values": {
-        "aws_region": "<property object at 0x106925620>",
-        "effective_instance_type": "<property object at 0x30e6e5800>",
-        "effective_source_dir": "<property object at 0x30e6e57b0>",
+        "aws_region": "<property object at 0x1071255d0>",
+        "effective_instance_type": "<property object at 0x3308e5990>",
+        "effective_source_dir": "<property object at 0x3308e5940>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -607,7 +571,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x104737a60>",
+        "model_extra": "<property object at 0x106197a10>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -640,20 +604,20 @@
           "score_field_prefix": "annotation=str required=False default='prob_class_' description='Prefix for probability columns in multi-class scenario'",
           "multiclass_categories": "annotation=List[Union[str, int]] required=False default_factory=<lambda> description='List of class names/values for multi-class calibration'"
         },
-        "model_fields_set": "<property object at 0x104737ab0>",
-        "pipeline_description": "<property object at 0x1069256c0>",
-        "pipeline_name": "<property object at 0x106925670>",
-        "pipeline_s3_loc": "<property object at 0x106925710>",
-        "script_contract": "<property object at 0x1069257b0>",
-        "script_path": "<property object at 0x30e6e5850>"
+        "model_fields_set": "<property object at 0x106197a60>",
+        "pipeline_description": "<property object at 0x107125670>",
+        "pipeline_name": "<property object at 0x107125620>",
+        "pipeline_s3_loc": "<property object at 0x1071256c0>",
+        "script_contract": "<property object at 0x107125760>",
+        "script_path": "<property object at 0x3308e59e0>"
       }
     }
   },
-  "overall_status": "FAILING",
+  "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-11T09:56:56.911055",
+    "validation_timestamp": "2025-08-11T10:42:21.857179",
     "validator_version": "1.0.0"
   }
 }

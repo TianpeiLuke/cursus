@@ -1,5 +1,5 @@
 {
-  "script_name": "tabular_preprocess",
+  "script_name": "tabular_preprocessing",
   "level1": {
     "passed": true,
     "issues": [
@@ -10,14 +10,14 @@
         "details": {
           "cli_argument": "job-type",
           "python_attribute": "job_type",
-          "script": "tabular_preprocess",
+          "script": "tabular_preprocessing",
           "source": "builder"
         },
         "recommendation": "Argument --job-type is provided by builder - no action needed"
       }
     ],
     "script_analysis": {
-      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
       "path_references": [
         "path='.gz' line_number=18 context='\\ndef _is_gzipped(path: str) -> bool:\\n>>>     return path.lower().endswith(\".gz\")\\n\\ndef _detect_separator_from_sample(sample_lines: str) -> str:' is_hardcoded=True construction_method=None",
         "path='Use csv.Sniffer to detect a delimiter, defaulting to comma.' line_number=21 context='\\ndef _detect_separator_from_sample(sample_lines: str) -> str:\\n>>>     \"\"\"Use csv.Sniffer to detect a delimiter, defaulting to comma.\"\"\"\\n    try:\\n        dialect = csv.Sniffer().sniff(sample_lines)' is_hardcoded=True construction_method=None",
@@ -73,7 +73,7 @@
       ]
     },
     "contract": {
-      "entry_point": "tabular_preprocess.py",
+      "entry_point": "tabular_preprocessing.py",
       "inputs": {
         "DATA": {
           "path": "/opt/ml/processing/input/data"
@@ -110,7 +110,7 @@
     "passed": true,
     "issues": [],
     "contract": {
-      "entry_point": "tabular_preprocess.py",
+      "entry_point": "tabular_preprocessing.py",
       "inputs": {
         "DATA": {
           "path": "/opt/ml/processing/input/data"
@@ -152,8 +152,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -181,8 +181,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -209,8 +209,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "DataLoad",
+                "CradleDataLoading",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -234,8 +234,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "DataLoad",
+            "CradleDataLoading",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -273,10 +273,10 @@
         "message": "Cannot resolve required dependency: DATA",
         "details": {
           "logical_name": "DATA",
-          "specification": "tabular_preprocess",
+          "specification": "tabular_preprocessing",
           "compatible_sources": [
-            "CradleDataLoading",
             "DataLoad",
+            "CradleDataLoading",
             "ProcessingStep"
           ],
           "dependency_type": "processing_output",
@@ -313,12 +313,12 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "DataLoad",
+            "CradleDataLoading",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
-          "description": "Raw training data for preprocessing"
+          "description": "Raw tabular data for preprocessing"
         }
       ],
       "outputs": [
@@ -327,33 +327,35 @@
           "output_type": "processing_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "Processed training data with train/val/test splits"
+          "description": "Processed tabular data with train/val/test splits"
         }
       ]
     }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
+        "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Builder accesses undeclared configuration field: job_type",
+        "message": "Required configuration field not accessed in builder: label_name",
         "details": {
-          "field_name": "job_type",
-          "builder": "tabular_preprocess"
+          "field_name": "label_name",
+          "builder": "tabular_preprocessing"
         },
-        "recommendation": "Add job_type to configuration class or remove from builder"
+        "recommendation": "Access required field label_name in builder or make it optional"
       },
       {
         "severity": "INFO",
-        "category": "config_import",
-        "message": "Builder may not be properly importing configuration class tabular_preprocessConfig",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
-          "config_class": "tabular_preprocessConfig",
-          "builder": "tabular_preprocess"
+          "required_fields": [
+            "label_name"
+          ],
+          "builder": "tabular_preprocessing"
         },
-        "recommendation": "Ensure builder imports and uses tabular_preprocessConfig"
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
       }
     ],
     "builder_analysis": {
@@ -407,19 +409,88 @@
       ]
     },
     "config_analysis": {
-      "class_name": "tabular_preprocessConfig",
-      "fields": {},
-      "required_fields": "set()",
-      "optional_fields": "set()",
-      "default_values": {},
-      "load_error": "Configuration class not found in src/cursus/steps/configs/config_tabular_preprocessing_step.py. Available classes: ['Any', 'BaseModel', 'Path', 'ProcessingStepConfigBase', 'TabularPreprocessingConfig']"
+      "class_name": "TabularPreprocessingConfig",
+      "fields": {
+        "label_name": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "processing_entry_point": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "job_type": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "train_ratio": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "test_val_ratio": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "_full_script_path": {
+          "type": "typing.Optional[str]",
+          "required": false
+        }
+      },
+      "required_fields": "{'label_name'}",
+      "optional_fields": "{'_full_script_path', 'processing_entry_point', 'train_ratio', 'job_type', 'test_val_ratio'}",
+      "default_values": {
+        "aws_region": "<property object at 0x1071255d0>",
+        "effective_instance_type": "<property object at 0x3308e5990>",
+        "effective_source_dir": "<property object at 0x3308e5940>",
+        "full_script_path": "<property object at 0x3320648b0>",
+        "model_computed_fields": {},
+        "model_config": {
+          "arbitrary_types_allowed": true,
+          "extra": "allow",
+          "protected_namespaces": [],
+          "validate_assignment": true
+        },
+        "model_extra": "<property object at 0x106197a10>",
+        "model_fields": {
+          "author": "annotation=str required=True description='Author or owner of the pipeline.'",
+          "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
+          "role": "annotation=str required=True description='IAM role for pipeline execution.'",
+          "region": "annotation=str required=True description='Custom region code (NA, EU, FE) for internal logic.'",
+          "service_name": "annotation=str required=True description='Service name for the pipeline.'",
+          "pipeline_version": "annotation=str required=True description='Version string for the SageMaker Pipeline.'",
+          "model_class": "annotation=str required=False default='xgboost' description='Model class (e.g., XGBoost, PyTorch).'",
+          "current_date": "annotation=str required=False default_factory=<lambda> description='Current date, typically used for versioning or pathing.'",
+          "framework_version": "annotation=str required=False default='2.1.0' description='Default framework version (e.g., PyTorch).'",
+          "py_version": "annotation=str required=False default='py310' description='Default Python version.'",
+          "source_dir": "annotation=Union[str, NoneType] required=False default=None description='Common source directory for scripts if applicable. Can be overridden by step configs.'",
+          "processing_instance_count": "annotation=int required=False default=1 description='Instance count for processing jobs' metadata=[Ge(ge=1), Le(le=10)]",
+          "processing_volume_size": "annotation=int required=False default=500 description='Volume size for processing jobs in GB' metadata=[Ge(ge=10), Le(le=1000)]",
+          "processing_instance_type_large": "annotation=str required=False default='ml.m5.4xlarge' description='Large instance type for processing step.'",
+          "processing_instance_type_small": "annotation=str required=False default='ml.m5.2xlarge' description='Small instance type for processing step.'",
+          "use_large_processing_instance": "annotation=bool required=False default=False description='Set to True to use large instance type, False for small instance type.'",
+          "processing_source_dir": "annotation=Union[str, NoneType] required=False default=None description='Source directory for processing scripts. Falls back to base source_dir if not provided.'",
+          "processing_entry_point": "annotation=str required=False default='tabular_preprocessing.py' description='Relative path (within processing_source_dir) to the tabular preprocessing script.'",
+          "processing_script_arguments": "annotation=Union[List[str], NoneType] required=False default=None description='Optional arguments for the processing script.'",
+          "processing_framework_version": "annotation=str required=False default='1.2-1' description=\"Version of the scikit-learn framework to use in SageMaker Processing. Format: '<sklearn-version>-<build-number>'\"",
+          "label_name": "annotation=str required=True description='Label field name for the target variable.'",
+          "job_type": "annotation=str required=False default='training' description=\"One of ['training','validation','testing','calibration']\"",
+          "train_ratio": "annotation=float required=False default=0.7 description=\"Fraction of data to allocate to the training set (only used if job_type=='training').\" metadata=[Ge(ge=0.0), Le(le=1.0)]",
+          "test_val_ratio": "annotation=float required=False default=0.5 description=\"Fraction of the holdout to allocate to the test set vs. validation (only if job_type=='training').\" metadata=[Ge(ge=0.0), Le(le=1.0)]"
+        },
+        "model_fields_set": "<property object at 0x106197a60>",
+        "pipeline_description": "<property object at 0x107125670>",
+        "pipeline_name": "<property object at 0x107125620>",
+        "pipeline_s3_loc": "<property object at 0x1071256c0>",
+        "script_contract": "<property object at 0x107125760>",
+        "script_path": "<property object at 0x3308e59e0>"
+      }
     }
   },
   "overall_status": "FAILING",
   "metadata": {
-    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
-    "contract_mapping": "tabular_preprocess_contract",
-    "validation_timestamp": "2025-08-11T10:34:01.278998",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
+    "contract_mapping": "tabular_preprocessing_contract",
+    "validation_timestamp": "2025-08-11T10:42:21.979383",
     "validator_version": "1.0.0"
   }
 }

@@ -8,7 +8,7 @@ processes evaluation data, and generates performance metrics and visualizations.
 from ...core.base.contract_base import ScriptContract
 
 XGBOOST_MODEL_EVAL_CONTRACT = ScriptContract(
-    entry_point="model_evaluation_xgb.py",
+    entry_point="xgboost_model_evaluation.py",
     expected_input_paths={
         "model_input": "/opt/ml/processing/input/model",
         "processed_data": "/opt/ml/processing/input/eval_data"

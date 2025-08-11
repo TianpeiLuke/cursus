@@ -48,7 +48,7 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
     # These are fields with reasonable defaults that users can override
     
     processing_entry_point: str = Field(
-        default="tabular_preprocess.py",
+        default="tabular_preprocessing.py",
         description="Relative path (within processing_source_dir) to the tabular preprocessing script."
     )
     
