@@ -36,6 +36,7 @@ This document analyzes how the proposed two-level alignment validation system (c
 
 ### Core Analysis Documents
 - **[Unified Alignment Tester Pain Points Analysis](unified_alignment_tester_pain_points_analysis.md)**: Comprehensive analysis of systematic false positives across all validation levels (87.5% to 100% failure rates)
+- **[Alignment Tester Robustness Analysis](alignment_tester_robustness_analysis.md)**: Analysis of current system limitations and robustness issues in alignment validation
 - **[Level 1 Alignment Validation Failure Analysis](../test/level1_alignment_validation_failure_analysis.md)**: Detailed technical analysis of script-contract alignment failures
 - **[Level 2 Alignment Validation Failure Analysis](../test/level2_alignment_validation_failure_analysis.md)**: Analysis of contract-specification alignment false positives
 - **[Level 3 Alignment Validation Failure Analysis](../test/level3_alignment_validation_failure_analysis.md)**: External dependency pattern recognition failures
