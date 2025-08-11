@@ -14,7 +14,7 @@ from pathlib import Path
 # Add src to path for imports
 project_root = os.path.join(os.path.dirname(__file__), '..', '..', '..')
 src_path = os.path.join(project_root, 'src')
-sys.path.insert(0, src_path)
+sys.path.insert(0, project_root)
 
 from src.cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
 from src.cursus.validation.alignment.static_analysis.builder_analyzer import BuilderArgumentExtractor, extract_builder_arguments

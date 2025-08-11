@@ -95,22 +95,31 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        # Look for Python builder file with actual naming convention
-        builder_path = self.builders_dir / f"builder_{builder_name}_step.py"
-        config_path = self.configs_dir / f"config_{builder_name}_step.py"
+        # Use FlexibleFileResolver to find builder file with flexible naming patterns
+        builder_path_str = self.file_resolver.find_builder_file(builder_name)
+        config_path_str = self.file_resolver.find_config_file(builder_name)
         
-        # Check if files exist
-        if not builder_path.exists():
+        # Check if builder file exists
+        if not builder_path_str:
             return {
                 'passed': False,
                 'issues': [{
                     'severity': 'CRITICAL',
                     'category': 'missing_file',
-                    'message': f'Builder file not found: {builder_path}',
+                    'message': f'Builder file not found: {self.builders_dir}/builder_{builder_name}_step.py',
                     'recommendation': f'Create the builder file builder_{builder_name}_step.py'
                 }]
             }
         
+        builder_path = Path(builder_path_str)
+        
+        # Check if config file exists
+        if not config_path_str:
+            config_path = self.configs_dir / f"config_{builder_name}_step.py"
+        else:
+            config_path = Path(config_path_str)
+        
+        # Check if config file exists
         if not config_path.exists():
             return {
                 'passed': False,

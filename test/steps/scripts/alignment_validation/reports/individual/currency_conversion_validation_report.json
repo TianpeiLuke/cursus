@@ -1,0 +1,247 @@
+{
+  "script_name": "currency_conversion",
+  "level1": {
+    "passed": true,
+    "issues": [],
+    "script_analysis": {
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
+      "path_references": [
+        "path='Get currency code for a given marketplace ID.' line_number=23 context='    default_currency: str\\n) -> str:\\n>>>     \"\"\"Get currency code for a given marketplace ID.\"\"\"\\n    try:\\n        if pd.isna(marketplace_id) or str(int(marketplace_id)) not in marketplace_info:' is_hardcoded=True construction_method=None",
+        "path='Combine currency codes from marketplace ID and existing currency column.' line_number=40 context='    skip_invalid_currencies: bool\\n) -> Tuple[pd.DataFrame, str]:\\n>>>     \"\"\"Combine currency codes from marketplace ID and existing currency column.\"\"\"\\n    df[\"currency_code_from_marketplace_id\"] = df[marketplace_id_col].apply(\\n        lambda x: get_currency_code(x, marketplace_info, default_currency)' is_hardcoded=True construction_method=None",
+        "path=\"Convert single variable's currency values.\" line_number=64 context='    args: Tuple[pd.DataFrame, str, pd.Series]\\n) -> pd.Series:\\n>>>     \"\"\"Convert single variable\\'s currency values.\"\"\"\\n    df, variable, exchange_rate_series = args\\n    return df[variable] / exchange_rate_series.values' is_hardcoded=True construction_method=None",
+        "path='Perform parallel currency conversion on multiple variables.' line_number=76 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Perform parallel currency conversion on multiple variables.\"\"\"\\n    exchange_rate_series = df[currency_col].apply(lambda x: currency_conversion_dict.get(x, 1.0))\\n    processes = min(cpu_count(), len(currency_conversion_vars), n_workers)' is_hardcoded=True construction_method=None",
+        "path='Process currency conversion.' line_number=101 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Process currency conversion.\"\"\"\\n    # Drop rows with missing marketplace IDs\\n    df = df.dropna(subset=[marketplace_id_col]).reset_index(drop=True)' is_hardcoded=True construction_method=None",
+        "path='\\n    Main function to execute the currency conversion logic.\\n    Refactored for improved testability.\\n    ' line_number=137 context='\\ndef main(args: argparse.Namespace, currency_vars: List[str], currency_dict: Dict[str, float], marketplace_info: Dict[str, Any]):\\n>>>     \"\"\"\\n    Main function to execute the currency conversion logic.\\n    Refactored for improved testability.' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=143 context='    job_type = args.job_type\\n    mode = args.mode\\n>>>     input_base = Path(\"/opt/ml/processing/input/data\")\\n    output_base = Path(\"/opt/ml/processing/output\")\\n    output_base.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=144 context='    mode = args.mode\\n    input_base = Path(\"/opt/ml/processing/input/data\")\\n>>>     output_base = Path(\"/opt/ml/processing/output\")\\n    output_base.mkdir(parents=True, exist_ok=True)\\n    ' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=171 context='        dfs = []\\n        for sp in splits:\\n>>>             fpath = input_base / sp / f\"{sp}_processed_data.csv\"\\n            logger.info(f\"  Reading split {sp} from {fpath}\")\\n            dfs.append(pd.read_csv(fpath))' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=197 context='            # processed\\n            proc = split_df.copy()\\n>>>             proc_path = out_dir / f\"{split_name}_processed_data.csv\"\\n            proc.to_csv(proc_path, index=False)\\n            logger.info(f\"Wrote converted processed: {proc_path} (shape={proc.shape})\")' is_hardcoded=True construction_method=None",
+        "path='_full_data.csv' line_number=203 context='            # full (just alias here\u2014but you could re-read your full_data.csv if needed)\\n            full = proc.copy()\\n>>>             full_path = out_dir / f\"{split_name}_full_data.csv\"\\n            full.to_csv(full_path, index=False)\\n            logger.info(f\"Wrote converted full: {full_path} (shape={full.shape})\")' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=216 context='        for sp in splits:\\n            in_dir = input_base / sp\\n>>>             proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n            full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n' is_hardcoded=True construction_method=None",
+        "path='_full_data.csv' line_number=217 context='            in_dir = input_base / sp\\n            proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n>>>             full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n\\n            df_proc = pd.read_csv(proc_in_path)' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=226 context='\\n            # write processed\\n>>>             proc_out = out_dir / f\"{sp}_processed_data.csv\"\\n            df_conv.to_csv(proc_out, index=False)\\n            logger.info(f\"Converted processed for \\'{sp}\\' \u2192 {proc_out} (shape={df_conv.shape})\")' is_hardcoded=True construction_method=None",
+        "path='_full_data.csv' line_number=234 context='                df_full = pd.read_csv(full_in_path)\\n                df_full_conv = apply_conversion(df_full)\\n>>>                 full_out = out_dir / f\"{sp}_full_data.csv\"\\n                df_full_conv.to_csv(full_out, index=False)\\n                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")' is_hardcoded=True construction_method=None",
+        "path='Currency conversion step complete.' line_number=238 context='                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")\\n\\n>>>     logger.info(\"Currency conversion step complete.\")\\n\\n' is_hardcoded=True construction_method=None"
+      ],
+      "env_var_accesses": [
+        "variable_name='LABEL_FIELD' line_number=182 context='            train_size=args.train_ratio,\\n            random_state=42,\\n>>>             stratify=df_conv[os.environ[\"LABEL_FIELD\"]]\\n        )\\n        test_df, val_df = train_test_split(' access_method='os.environ' has_default=False default_value=None",
+        "variable_name='LABEL_FIELD' line_number=188 context='            test_size=args.test_val_ratio,\\n            random_state=42,\\n>>>             stratify=holdout_df[os.environ[\"LABEL_FIELD\"]]\\n        )\\n' access_method='os.environ' has_default=False default_value=None",
+        "variable_name='TRAIN_RATIO' line_number=260 context='        )\\n    )\\n>>>     parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n    parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n    parser.add_argument(\"--n-workers\", type=int, default=50)' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='TEST_VAL_RATIO' line_number=261 context='    )\\n    parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n>>>     parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n    parser.add_argument(\"--n-workers\", type=int, default=50)\\n    parser.add_argument(\"--marketplace-id-col\", required=True)' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='CURRENCY_CONVERSION_VARS' line_number=271 context='    \\n    # load JSON env vars\\n>>>     currency_vars = json.loads(os.environ[\"CURRENCY_CONVERSION_VARS\"])\\n    currency_dict = json.loads(os.environ[\"CURRENCY_CONVERSION_DICT\"])\\n    marketplace_info = json.loads(os.environ[\"MARKETPLACE_INFO\"])' access_method='os.environ' has_default=False default_value=None",
+        "variable_name='CURRENCY_CONVERSION_DICT' line_number=272 context='    # load JSON env vars\\n    currency_vars = json.loads(os.environ[\"CURRENCY_CONVERSION_VARS\"])\\n>>>     currency_dict = json.loads(os.environ[\"CURRENCY_CONVERSION_DICT\"])\\n    marketplace_info = json.loads(os.environ[\"MARKETPLACE_INFO\"])\\n    ' access_method='os.environ' has_default=False default_value=None",
+        "variable_name='MARKETPLACE_INFO' line_number=273 context='    currency_vars = json.loads(os.environ[\"CURRENCY_CONVERSION_VARS\"])\\n    currency_dict = json.loads(os.environ[\"CURRENCY_CONVERSION_DICT\"])\\n>>>     marketplace_info = json.loads(os.environ[\"MARKETPLACE_INFO\"])\\n    \\n    logging.basicConfig(level=logging.INFO)' access_method='os.environ' has_default=False default_value=None"
+      ],
+      "imports": [
+        "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
+        "module_name='json' import_alias=None line_number=3 is_from_import=False imported_items=[]",
+        "module_name='argparse' import_alias=None line_number=4 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=5 is_from_import=True imported_items=['Path']",
+        "module_name='typing' import_alias=None line_number=6 is_from_import=True imported_items=['Tuple', 'List', 'Dict', 'Any', 'Union', 'Optional']",
+        "module_name='pandas' import_alias='pd' line_number=7 is_from_import=False imported_items=[]",
+        "module_name='numpy' import_alias='np' line_number=8 is_from_import=False imported_items=[]",
+        "module_name='multiprocessing' import_alias=None line_number=9 is_from_import=True imported_items=['Pool', 'cpu_count']",
+        "module_name='logging' import_alias=None line_number=10 is_from_import=False imported_items=[]",
+        "module_name='sklearn.model_selection' import_alias=None line_number=11 is_from_import=True imported_items=['train_test_split']"
+      ],
+      "argument_definitions": [
+        "argument_name='job_type' line_number=243 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']",
+        "argument_name='mode' line_number=250 is_required=False has_default=True default_value='per_split' argument_type='str' choices=['per_split', 'split_after_conversion']",
+        "argument_name='train_ratio' line_number=260 is_required=False has_default=True default_value=None argument_type='float' choices=None",
+        "argument_name='test_val_ratio' line_number=261 is_required=False has_default=True default_value=None argument_type='float' choices=None",
+        "argument_name='n_workers' line_number=262 is_required=False has_default=True default_value=50 argument_type='int' choices=None",
+        "argument_name='marketplace_id_col' line_number=263 is_required=True has_default=False default_value=None argument_type=None choices=None",
+        "argument_name='currency_col' line_number=264 is_required=False has_default=True default_value=None argument_type=None choices=None",
+        "argument_name='default_currency' line_number=265 is_required=False has_default=True default_value='USD' argument_type=None choices=None",
+        "argument_name='skip_invalid_currencies' line_number=266 is_required=False has_default=False default_value=None argument_type=None choices=None",
+        "argument_name='enable_conversion' line_number=267 is_required=False has_default=True default_value=True argument_type=None choices=None"
+      ],
+      "file_operations": []
+    },
+    "contract": {
+      "entry_point": "currency_conversion.py",
+      "inputs": {
+        "data_input": {
+          "path": "/opt/ml/processing/input/data"
+        }
+      },
+      "outputs": {
+        "converted_data": {
+          "path": "/opt/ml/processing/output"
+        }
+      },
+      "arguments": {
+        "job-type": {
+          "default": "training",
+          "required": false
+        },
+        "mode": {
+          "default": "per_split",
+          "required": false
+        },
+        "train-ratio": {
+          "default": "0.7",
+          "required": false
+        },
+        "test-val-ratio": {
+          "default": "0.5",
+          "required": false
+        },
+        "marketplace-id-col": {
+          "default": "marketplace_id",
+          "required": false
+        },
+        "currency-col": {
+          "default": "",
+          "required": false
+        },
+        "default-currency": {
+          "default": "USD",
+          "required": false
+        },
+        "skip-invalid-currencies": {
+          "default": "false",
+          "required": false
+        },
+        "enable-conversion": {
+          "default": "true",
+          "required": false
+        },
+        "n-workers": {
+          "default": "50",
+          "required": false
+        }
+      },
+      "environment_variables": {
+        "required": [
+          "CURRENCY_CONVERSION_VARS",
+          "CURRENCY_CONVERSION_DICT",
+          "MARKETPLACE_INFO",
+          "LABEL_FIELD"
+        ],
+        "optional": {
+          "TRAIN_RATIO": "0.7",
+          "TEST_VAL_RATIO": "0.5"
+        }
+      },
+      "description": "\n    Currency conversion script that:\n    1. Loads processed data from input splits (train/test/val or single split)\n    2. Applies currency conversion to specified monetary variables\n    3. Uses marketplace information to determine currency codes\n    4. Supports parallel processing for performance\n    5. Handles two modes: per-split conversion or conversion before re-splitting\n    \n    Input Structure:\n    - /opt/ml/processing/input/data/{split}/{split}_processed_data.csv: Input data files\n    - /opt/ml/processing/input/data/{split}/{split}_full_data.csv: Optional full data files\n    \n    Output Structure:\n    - /opt/ml/processing/output/{split}/{split}_processed_data.csv: Converted processed data\n    - /opt/ml/processing/output/{split}/{split}_full_data.csv: Converted full data (if exists)\n    \n    Environment Variables:\n    - CURRENCY_CONVERSION_VARS: JSON list of variables requiring currency conversion\n    - CURRENCY_CONVERSION_DICT: JSON dict mapping currency codes to exchange rates\n    - MARKETPLACE_INFO: JSON dict mapping marketplace IDs to currency information\n    - LABEL_FIELD: Name of the label column for stratified splitting\n    - TRAIN_RATIO: Training data ratio (default: 0.7)\n    - TEST_VAL_RATIO: Test/validation split ratio (default: 0.5)\n    \n    Command Line Arguments:\n    - --job-type: Type of job (training, validation, testing, calibration)\n    - --mode: Conversion mode (per_split or split_after_conversion)\n    - --marketplace-id-col: Column containing marketplace IDs\n    - --currency-col: Optional existing currency column\n    - --default-currency: Default currency code (default: USD)\n    - --skip-invalid-currencies: Skip rows with invalid currencies\n    - --enable-conversion: Enable/disable conversion (default: true)\n    - --n-workers: Number of parallel workers (default: 50)\n    ",
+      "framework_requirements": {
+        "pandas": ">=1.3.0",
+        "numpy": ">=1.21.0",
+        "scikit-learn": ">=1.0.0"
+      }
+    }
+  },
+  "level2": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "contract_load_error",
+        "message": "Failed to load contract: Failed to load contract from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/currency_conversion_contract.py: No module named 'src'",
+        "recommendation": "Fix Python syntax or contract structure in contract file"
+      }
+    ]
+  },
+  "level3": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "spec_parse_error",
+        "message": "Failed to parse specification from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/currency_conversion_training_spec.py: Failed to load specification from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/currency_conversion_training_spec.py: No module named 'src'",
+        "recommendation": "Fix Python syntax or specification structure"
+      }
+    ]
+  },
+  "level4": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: job_type",
+        "details": {
+          "field_name": "job_type",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add job_type to configuration class or remove from builder"
+      },
+      {
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class currency_conversionConfig",
+        "details": {
+          "config_class": "currency_conversionConfig",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Ensure builder imports and uses currency_conversionConfig"
+      }
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "job_type",
+          "line_number": 67
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "CurrencyConversionStepBuilder",
+          "line_number": 31
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 39
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 100
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 130
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 150
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 170
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 222
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 277
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 301
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "currency_conversionConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "No module named 'src'"
+    }
+  },
+  "overall_status": "FAILING",
+  "metadata": {
+    "script_name": "currency_conversion",
+    "validation_timestamp": "2025-08-10T23:09:11.797343",
+    "validator_version": "1.0.0",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py"
+  }
+}

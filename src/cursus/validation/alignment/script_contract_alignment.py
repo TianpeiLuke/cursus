@@ -289,7 +289,7 @@ class ScriptContractAlignmentTester:
                 for arg_name, default_value in contract_obj.expected_arguments.items():
                     contract_dict['arguments'][arg_name] = {
                         'default': default_value,
-                        'required': default_value is None or default_value == ""
+                        'required': default_value is None
                     }
             
             return contract_dict
@@ -505,7 +505,8 @@ class ScriptContractAlignmentTester:
             python_arg_name = cli_arg_name.replace('-', '_')
             
             # Check if this argument is provided by the builder
-            if cli_arg_name in builder_args:
+            # Builder args are returned as Python attribute names (underscores), so compare with python_arg_name
+            if python_arg_name in builder_args:
                 # Argument is provided by builder - this is expected for config-driven arguments
                 issues.append({
                     'severity': 'INFO',

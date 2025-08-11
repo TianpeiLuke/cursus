@@ -149,66 +149,15 @@
     }
   },
   "level2": {
-    "passed": true,
-    "issues": [],
-    "contract": {
-      "entry_point": "tabular_preprocess.py",
-      "inputs": {
-        "DATA": "/opt/ml/processing/input/data"
-      },
-      "outputs": {
-        "processed_data": "/opt/ml/processing/output"
-      },
-      "arguments": {},
-      "environment_variables": {
-        "required": [
-          "LABEL_FIELD",
-          "TRAIN_RATIO",
-          "TEST_VAL_RATIO"
-        ],
-        "optional": {
-          "CATEGORICAL_COLUMNS": "",
-          "NUMERICAL_COLUMNS": "",
-          "TEXT_COLUMNS": "",
-          "DATE_COLUMNS": ""
-        }
-      },
-      "framework_requirements": {
-        "pandas": ">=1.3.0",
-        "numpy": ">=1.21.0",
-        "scikit-learn": ">=1.0.0"
-      },
-      "description": "\n    Tabular preprocessing script that:\n    1. Combines data shards from input directory\n    2. Cleans and processes label field\n    3. Splits data into train/test/val for training jobs\n    4. Outputs processed CSV files by split\n    \n    Contract aligned with actual script implementation:\n    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data\n    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output\n    - Arguments: job_type (required) - defines processing mode (training/validation/testing)\n    \n    Script Implementation Details:\n    - Reads data shards (CSV, JSON, Parquet) from input/data directory\n    - Supports gzipped files and various formats\n    - Processes labels (converts categorical to numeric if needed)\n    - Splits data based on job_type (training creates train/test/val splits)\n    - Outputs processed files to split subdirectories under /opt/ml/processing/output\n    "
-    },
-    "specifications": {
-      "preprocessing_training_spec": {
-        "step_type": "TabularPreprocessing_Training",
-        "node_type": "internal",
-        "dependencies": [
-          {
-            "logical_name": "DATA",
-            "dependency_type": "processing_output",
-            "required": true,
-            "compatible_sources": [
-              "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
-            ],
-            "data_type": "S3Uri",
-            "description": "Raw training data for preprocessing"
-          }
-        ],
-        "outputs": [
-          {
-            "logical_name": "processed_data",
-            "output_type": "processing_output",
-            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
-            "data_type": "S3Uri",
-            "description": "Processed training data with train/val/test splits"
-          }
-        ]
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "contract_load_error",
+        "message": "Failed to load contract: Failed to load contract from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/tabular_preprocess_contract.py: No module named 'src'",
+        "recommendation": "Fix Python syntax or contract structure in contract file"
       }
-    }
+    ]
   },
   "level3": {
     "passed": false,
@@ -225,18 +174,90 @@
     "passed": false,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/builder_tabular_preprocess_step.py",
-        "recommendation": "Create the builder file builder_tabular_preprocess_step.py"
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: job_type",
+        "details": {
+          "field_name": "job_type",
+          "builder": "tabular_preprocess"
+        },
+        "recommendation": "Add job_type to configuration class or remove from builder"
+      },
+      {
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class tabular_preprocessConfig",
+        "details": {
+          "config_class": "tabular_preprocessConfig",
+          "builder": "tabular_preprocess"
+        },
+        "recommendation": "Ensure builder imports and uses tabular_preprocessConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "job_type",
+          "line_number": 65
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "TabularPreprocessingStepBuilder",
+          "line_number": 29
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 37
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 98
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 125
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 145
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 173
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 226
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 281
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 301
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "tabular_preprocessConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "No module named 'src'"
+    }
   },
   "overall_status": "FAILING",
   "metadata": {
-    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
-    "contract_mapping": "tabular_preprocess_contract",
-    "validation_timestamp": "2025-08-10T22:45:19.514994",
-    "validator_version": "1.0.0"
+    "script_name": "tabular_preprocess",
+    "validation_timestamp": "2025-08-10T23:12:50.428580",
+    "validator_version": "1.0.0",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py"
   }
 }

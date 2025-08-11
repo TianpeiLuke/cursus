@@ -106,12 +106,11 @@ def combine_shards(input_dir: str) -> pd.DataFrame:
 
 # --- Main Processing Logic ---
 
-def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_base_dir: str, output_dir: str):
+def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_data_dir: str, output_dir: str):
     """
     Main logic for preprocessing data, now refactored for testability.
     """
     # 1. Setup paths
-    input_data_dir = os.path.join(input_base_dir, "data")
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -168,8 +167,8 @@ if __name__ == "__main__":
     TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
     TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
     
-    # Define standard SageMaker paths
-    INPUT_BASE_DIR = "/opt/ml/processing/input"
+    # Define standard SageMaker paths - use contract-declared paths directly
+    INPUT_DATA_DIR = "/opt/ml/processing/input/data"  # Direct path from contract
     OUTPUT_DIR = "/opt/ml/processing/output"
 
     # Execute the main processing logic by calling the refactored main function
@@ -178,6 +177,6 @@ if __name__ == "__main__":
         label_field=LABEL_FIELD,
         train_ratio=TRAIN_RATIO,
         test_val_ratio=TEST_VAL_RATIO,
-        input_base_dir=INPUT_BASE_DIR,
+        input_data_dir=INPUT_DATA_DIR,
         output_dir=OUTPUT_DIR,
     )

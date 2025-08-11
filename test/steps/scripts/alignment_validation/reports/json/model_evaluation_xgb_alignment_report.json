@@ -26,22 +26,22 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
           "path": "/opt/ml/processing/input/model",
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -68,17 +68,6 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
-        "details": {
-          "cli_argument": "output-eval-dir",
-          "python_attribute": "output_eval_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
         "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
         "details": {
           "cli_argument": "eval-data-dir",
@@ -97,6 +86,17 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Add --model-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
+        "details": {
+          "cli_argument": "output-eval-dir",
+          "python_attribute": "output_eval_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -319,7 +319,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-10T21:52:04.447925",
+    "validation_timestamp": "2025-08-10T22:45:19.491149",
     "validator_version": "1.0.0"
   }
 }

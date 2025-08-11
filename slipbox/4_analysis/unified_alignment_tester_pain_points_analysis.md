@@ -255,7 +255,84 @@ def _get_environment_variables(self):
 
 ## Critical Pain Points
 
-### 1. File Resolution Failures (Primary Issue)
+### 1. Naming Convention Mismatches (Primary Systematic Issue)
+
+#### Problem Description
+**Naming mismatches between file names and constant names that do not follow common naming conventions have become the most critical pain point for the tester system.** The validation framework assumes strict naming correspondence across all layers, but the real codebase uses diverse, legitimate naming patterns that evolved organically.
+
+#### Systematic Impact Analysis
+This single issue affects **ALL validation levels** and is responsible for the majority of false positives:
+
+**Level 1**: Argparse hyphen-to-underscore convention misunderstanding
+- Contract: `job-type`, `marketplace-id-col` (CLI convention)
+- Script: `args.job_type`, `args.marketplace_id_col` (Python convention)
+- **Impact**: 100% false positive rate for argument validation
+
+**Level 2**: Contract-specification file name mismatches
+- Expected: `model_evaluation_xgb_contract.py`
+- Actual: `model_evaluation_contract.py`
+- **Impact**: 100% file resolution failure rate
+
+**Level 3**: Specification constant name mismatches ✅ **FIXED (2025-08-10)**
+- Expected: `TABULAR_PREPROCESS_TRAINING_SPEC`
+- Actual: `PREPROCESSING_TRAINING_SPEC`
+- **Impact**: 100% false positive rate → **0% (RESOLVED with job type-aware loading)**
+
+**Level 4**: Builder file name pattern variations
+- Expected: `builder_model_evaluation_xgb_step.py`
+- Actual: `builder_model_eval_step_xgboost.py`
+- **Impact**: High false positive rate for builder resolution
+
+#### Root Cause: Evolutionary Naming Patterns
+The codebase exhibits **legitimate naming evolution** that reflects:
+
+1. **Historical Development**: Different naming conventions from different development phases
+2. **Domain Conventions**: ML-specific abbreviations (`eval` for `evaluation`, `preprocess` for `preprocessing`)
+3. **Team Preferences**: Different teams using different naming styles
+4. **Legacy Compatibility**: Maintaining existing names to avoid breaking changes
+5. **Readability Optimization**: Shorter names in frequently-used files
+
+#### Evidence of Legitimate Naming Variations
+
+**Script to Contract Patterns**:
+```
+model_evaluation_xgb.py → model_evaluation_contract.py (drops variant suffix)
+tabular_preprocess.py → tabular_preprocessing_contract.py (adds 'ing' suffix)
+currency_conversion.py → currency_conversion_contract.py (exact match)
+```
+
+**Contract to Specification Patterns**:
+```
+model_evaluation_contract.py → model_eval_spec.py (abbreviation)
+dummy_training_contract.py → dummy_training_spec.py (exact match)
+pytorch_training_contract.py → pytorch_train_spec.py (abbreviation)
+```
+
+**Specification to Constant Patterns** ✅ **NOW HANDLED**:
+```
+preprocessing_training_spec.py → PREPROCESSING_TRAINING_SPEC (job type variant)
+model_eval_spec.py → MODEL_EVAL_SPEC (abbreviation preserved)
+currency_conversion_spec.py → CURRENCY_CONVERSION_SPEC (exact match)
+```
+
+#### Why This Is Not a "Bug" to Fix
+These naming variations are **architecturally valid** because:
+
+1. **Semantic Equivalence**: `model_eval` and `model_evaluation` refer to the same concept
+2. **Context Clarity**: Within their respective layers, names are clear and unambiguous
+3. **Maintenance Stability**: Changing names would break existing dependencies
+4. **Developer Productivity**: Shorter names improve code readability and typing efficiency
+
+#### Impact on Validation System
+The naming mismatch issue has **cascading effects**:
+
+1. **File Resolution Failures**: Cannot find existing files due to name variations
+2. **False Positive Explosion**: Every naming variation generates false error reports
+3. **Developer Confusion**: Recommendations to create files that already exist
+4. **System Distrust**: High false positive rate undermines confidence in validation
+5. **Maintenance Burden**: Constant updates needed to handle new naming patterns
+
+### 2. File Resolution Failures (Secondary Issue)
 
 #### Problem Description
 The `FlexibleFileResolver` fails to match existing files due to naming convention variations that are legitimate and necessary in the codebase.

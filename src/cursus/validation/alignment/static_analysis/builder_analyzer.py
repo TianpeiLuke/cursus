@@ -184,6 +184,7 @@ class BuilderRegistry:
         1. Builder file naming conventions (builder_<script_name>_step.py)
         2. Config class imports and usage
         3. Entry point references in the code
+        4. Common naming variations (preprocess/preprocessing, eval/evaluation, etc.)
         
         Args:
             builder_file: Path to the builder file
@@ -199,6 +200,9 @@ class BuilderRegistry:
             # Extract middle part: builder_<script_name>_step -> <script_name>
             middle_part = filename[8:-5]  # Remove 'builder_' and '_step'
             script_names.append(middle_part)
+            
+            # Add common naming variations
+            script_names.extend(self._generate_name_variations(middle_part))
         
         # Additional extraction from file content (config imports, etc.)
         try:
@@ -221,6 +225,37 @@ class BuilderRegistry:
         
         # Remove duplicates and return
         return list(set(script_names))
+    
+    def _generate_name_variations(self, name: str) -> List[str]:
+        """
+        Generate common naming variations for a script name.
+        
+        Args:
+            name: Original script name
+            
+        Returns:
+            List of possible naming variations
+        """
+        variations = []
+        
+        # Handle specific common variations
+        # Use more precise matching to avoid substring conflicts
+        if 'preprocessing' in name:
+            variations.append(name.replace('preprocessing', 'preprocess'))
+        if 'preprocess' in name and 'preprocessing' not in name:
+            variations.append(name.replace('preprocess', 'preprocessing'))
+        
+        if 'evaluation' in name:
+            variations.append(name.replace('evaluation', 'eval'))
+        if 'eval' in name and 'evaluation' not in name:
+            variations.append(name.replace('eval', 'evaluation'))
+        
+        if 'xgboost' in name:
+            variations.append(name.replace('xgboost', 'xgb'))
+        if 'xgb' in name and 'xgboost' not in name:
+            variations.append(name.replace('xgb', 'xgboost'))
+        
+        return variations
     
     def get_builder_for_script(self, script_name: str) -> Optional[str]:
         """

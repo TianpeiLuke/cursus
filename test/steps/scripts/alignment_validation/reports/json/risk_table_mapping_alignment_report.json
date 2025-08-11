@@ -155,12 +155,12 @@
             "required": false,
             "compatible_sources": [
               "DataQuality",
-              "HyperparameterPrep",
               "ProcessingStep",
-              "ConfigurationStep",
+              "HyperparameterPrep",
+              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
-              "ModelTraining"
+              "ConfigurationStep",
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -214,12 +214,12 @@
             "required": false,
             "compatible_sources": [
               "DataQuality",
-              "HyperparameterPrep",
               "ProcessingStep",
-              "ConfigurationStep",
+              "HyperparameterPrep",
+              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
-              "ModelTraining"
+              "ConfigurationStep",
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -273,12 +273,12 @@
             "required": false,
             "compatible_sources": [
               "DataQuality",
-              "HyperparameterPrep",
               "ProcessingStep",
-              "ConfigurationStep",
+              "HyperparameterPrep",
+              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
-              "ModelTraining"
+              "ConfigurationStep",
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -332,12 +332,12 @@
             "required": false,
             "compatible_sources": [
               "DataQuality",
-              "HyperparameterPrep",
               "ProcessingStep",
-              "ConfigurationStep",
+              "HyperparameterPrep",
+              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
-              "ModelTraining"
+              "ConfigurationStep",
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -409,12 +409,12 @@
           "required": false,
           "compatible_sources": [
             "DataQuality",
-            "HyperparameterPrep",
             "ProcessingStep",
-            "ConfigurationStep",
+            "HyperparameterPrep",
+            "ModelTraining",
             "FeatureEngineering",
-            "DataPrep",
-            "ModelTraining"
+            "ConfigurationStep",
+            "DataPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -542,11 +542,11 @@
         }
       },
       "required_fields": "set()",
-      "optional_fields": "{'count_threshold', 'label_name', 'cat_field_list', 'job_type', 'processing_entry_point', 'smooth_factor', 'hyperparameters_s3_uri', 'hyperparameters'}",
+      "optional_fields": "{'processing_entry_point', 'hyperparameters_s3_uri', 'count_threshold', 'cat_field_list', 'job_type', 'smooth_factor', 'hyperparameters', 'label_name'}",
       "default_values": {
-        "aws_region": "<property object at 0x102fe9580>",
-        "effective_instance_type": "<property object at 0x31cbe5710>",
-        "effective_source_dir": "<property object at 0x31cbe56c0>",
+        "aws_region": "<property object at 0x106025620>",
+        "effective_instance_type": "<property object at 0x3275e58f0>",
+        "effective_source_dir": "<property object at 0x3275e58a0>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -554,7 +554,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x102897970>",
+        "model_extra": "<property object at 0x105097a60>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -584,12 +584,12 @@
           "hyperparameters_s3_uri": "annotation=Union[str, NoneType] required=False default=None description='S3 URI prefix for uploading hyperparameters.json'",
           "hyperparameters": "annotation=Union[ModelHyperparameters, NoneType] required=False default=None description='Optional model hyperparameters for advanced configuration'"
         },
-        "model_fields_set": "<property object at 0x1028979c0>",
-        "pipeline_description": "<property object at 0x102fe9620>",
-        "pipeline_name": "<property object at 0x102fe95d0>",
-        "pipeline_s3_loc": "<property object at 0x102fe9670>",
-        "script_contract": "<property object at 0x102fe9710>",
-        "script_path": "<property object at 0x31cbe5760>"
+        "model_fields_set": "<property object at 0x105097ab0>",
+        "pipeline_description": "<property object at 0x1060256c0>",
+        "pipeline_name": "<property object at 0x106025670>",
+        "pipeline_s3_loc": "<property object at 0x106025710>",
+        "script_contract": "<property object at 0x1060257b0>",
+        "script_path": "<property object at 0x3275e5940>"
       }
     }
   },
@@ -597,7 +597,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-08-10T21:52:04.462777",
+    "validation_timestamp": "2025-08-10T22:45:19.508090",
     "validator_version": "1.0.0"
   }
 }

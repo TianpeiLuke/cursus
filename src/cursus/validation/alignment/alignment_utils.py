@@ -577,14 +577,22 @@ class FlexibleFileResolver:
         Returns:
             Path to the builder file or None if not found
         """
-        patterns = [
-            f"builder_{script_name}_step.py",
-            f"builder_{self._normalize_name(script_name)}_step.py",
-        ]
+        # Generate all possible name variations
+        name_variations = self._generate_name_variations(script_name)
         
-        # Add known pattern if available
+        patterns = []
+        
+        # Add known pattern if available (highest priority)
         if script_name in self.naming_patterns['builders']:
-            patterns.insert(0, self.naming_patterns['builders'][script_name])
+            patterns.append(self.naming_patterns['builders'][script_name])
+        
+        # Add patterns for all name variations
+        for name_var in name_variations:
+            patterns.extend([
+                f"builder_{name_var}_step.py",
+                f"{name_var}_step_builder.py",  # Alternative pattern
+                f"builder_{name_var}.py",       # Simplified pattern
+            ])
         
         return self._find_file_by_patterns(self.base_dirs.get('builders', ''), patterns)
     
@@ -694,7 +702,7 @@ class FlexibleFileResolver:
         normalized = name.replace('_step', '').replace('step_', '')
         normalized = normalized.replace('_script', '').replace('script_', '')
         
-        # Handle common abbreviations
+        # Handle common abbreviations and variations
         abbreviations = {
             'xgb': 'xgboost',
             'eval': 'evaluation',
@@ -706,6 +714,41 @@ class FlexibleFileResolver:
                 normalized = normalized.replace(abbrev, full)
         
         return normalized
+    
+    def _generate_name_variations(self, name: str) -> List[str]:
+        """
+        Generate common naming variations for a script name.
+        
+        Args:
+            name: Original script name
+            
+        Returns:
+            List of possible naming variations
+        """
+        variations = [name]
+        
+        # Add normalized version
+        normalized = self._normalize_name(name)
+        if normalized != name:
+            variations.append(normalized)
+        
+        # Handle specific common variations
+        if 'preprocess' in name and 'preprocessing' not in name:
+            variations.append(name.replace('preprocess', 'preprocessing'))
+        elif 'preprocessing' in name and 'preprocess' not in name:
+            variations.append(name.replace('preprocessing', 'preprocess'))
+        
+        if 'eval' in name and 'evaluation' not in name:
+            variations.append(name.replace('eval', 'evaluation'))
+        elif 'evaluation' in name and 'eval' not in name:
+            variations.append(name.replace('evaluation', 'eval'))
+        
+        if 'xgb' in name and 'xgboost' not in name:
+            variations.append(name.replace('xgb', 'xgboost'))
+        elif 'xgboost' in name and 'xgb' not in name:
+            variations.append(name.replace('xgboost', 'xgb'))
+        
+        return list(set(variations))  # Remove duplicates
     
     def find_all_component_files(self, script_name: str) -> Dict[str, Optional[str]]:
         """
@@ -723,3 +766,59 @@ class FlexibleFileResolver:
             'builder': self.find_builder_file(script_name),
             'config': self.find_config_file(script_name),
         }
+    
+    def extract_base_name_from_spec(self, spec_path: Path) -> str:
+        """
+        Extract the base name from a specification file path.
+        
+        For job type variant specifications like 'preprocessing_training_spec.py',
+        this extracts 'preprocessing'.
+        
+        Args:
+            spec_path: Path to the specification file
+            
+        Returns:
+            Base name for the specification
+        """
+        stem = spec_path.stem  # Remove .py extension
+        
+        # Remove '_spec' suffix
+        if stem.endswith('_spec'):
+            stem = stem[:-5]
+        
+        # Remove job type suffix if present
+        job_types = ['training', 'validation', 'testing', 'calibration']
+        for job_type in job_types:
+            if stem.endswith(f'_{job_type}'):
+                return stem[:-len(job_type)-1]  # Remove _{job_type}
+        
+        return stem
+    
+    def find_spec_constant_name(self, script_name: str, job_type: str = 'training') -> Optional[str]:
+        """
+        Find the expected specification constant name for a script and job type.
+        
+        Args:
+            script_name: Name of the script
+            job_type: Job type variant (training, validation, testing, calibration)
+            
+        Returns:
+            Expected constant name or None
+        """
+        # Check if we have a known mapping
+        if script_name in self.naming_patterns.get('spec_constants', {}):
+            constants_map = self.naming_patterns['spec_constants'][script_name]
+            if job_type in constants_map:
+                return constants_map[job_type]
+            elif 'default' in constants_map:
+                return constants_map['default']
+        
+        # Generate based on patterns
+        # First try the FlexibleFileResolver spec mapping
+        spec_file = self.find_spec_file(script_name)
+        if spec_file:
+            base_name = self.extract_base_name_from_spec(Path(spec_file))
+            return f"{base_name.upper()}_{job_type.upper()}_SPEC"
+        
+        # Fallback to script name
+        return f"{script_name.upper()}_{job_type.upper()}_SPEC"

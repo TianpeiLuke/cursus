@@ -324,17 +324,23 @@ class SpecificationDependencyAlignmentTester:
         return issues
     
     def _find_specification_files(self, spec_name: str) -> List[Path]:
-        """Find all specification files for a specification."""
+        """Find all specification files for a specification using FlexibleFileResolver."""
         spec_files = []
-        if self.specs_dir.exists():
-            # Look for files matching pattern: {spec_name}_{job_type}_spec.py or {spec_name}_spec.py
-            for spec_file in self.specs_dir.glob(f"{spec_name}_*_spec.py"):
-                spec_files.append(spec_file)
+        
+        # Use the flexible resolver to find the primary spec file
+        primary_spec = self.file_resolver.find_spec_file(spec_name)
+        if primary_spec:
+            spec_files.append(Path(primary_spec))
             
-            # Also look for simple pattern: {spec_name}_spec.py
-            simple_spec = self.specs_dir / f"{spec_name}_spec.py"
-            if simple_spec.exists() and simple_spec not in spec_files:
-                spec_files.append(simple_spec)
+            # Look for job type variants in the same directory
+            spec_dir = Path(primary_spec).parent
+            base_name = Path(primary_spec).stem.replace('_spec', '')
+            
+            # Find all variants: {base_name}_{job_type}_spec.py
+            for job_type in ['training', 'validation', 'testing', 'calibration']:
+                variant_file = spec_dir / f"{base_name}_{job_type}_spec.py"
+                if variant_file.exists() and variant_file not in spec_files:
+                    spec_files.append(variant_file)
         
         return spec_files
     
@@ -392,12 +398,25 @@ class SpecificationDependencyAlignmentTester:
                 # Execute the modified content in the module's namespace
                 exec(modified_content, module.__dict__)
                 
-                # Look for the specification constant
-                possible_names = [
+                # Use job type-aware constant name resolution
+                expected_constant = self.file_resolver.find_spec_constant_name(spec_name, job_type)
+                
+                # Try the expected constant name first
+                possible_names = []
+                if expected_constant:
+                    possible_names.append(expected_constant)
+                
+                # Add fallback patterns
+                possible_names.extend([
                     f"{spec_name.upper()}_{job_type.upper()}_SPEC",
                     f"{spec_name.upper()}_SPEC",
                     f"{job_type.upper()}_SPEC"
-                ]
+                ])
+                
+                # Add dynamic discovery - scan for any constants ending with _SPEC
+                spec_constants = [name for name in dir(module) 
+                                if name.endswith('_SPEC') and not name.startswith('_')]
+                possible_names.extend(spec_constants)
                 
                 spec_obj = None
                 for spec_var_name in possible_names:

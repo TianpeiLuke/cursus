@@ -6,22 +6,22 @@
       {
         "severity": "ERROR",
         "category": "environment_variables",
-        "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATED_DATA_PATH",
-        "details": {
-          "variable": "OUTPUT_CALIBRATED_DATA_PATH",
-          "script": "model_calibration"
-        },
-        "recommendation": "Add OUTPUT_CALIBRATED_DATA_PATH to contract environment_variables"
-      },
-      {
-        "severity": "ERROR",
-        "category": "environment_variables",
         "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH",
         "details": {
           "variable": "OUTPUT_CALIBRATION_PATH",
           "script": "model_calibration"
         },
         "recommendation": "Add OUTPUT_CALIBRATION_PATH to contract environment_variables"
+      },
+      {
+        "severity": "ERROR",
+        "category": "environment_variables",
+        "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATED_DATA_PATH",
+        "details": {
+          "variable": "OUTPUT_CALIBRATED_DATA_PATH",
+          "script": "model_calibration"
+        },
+        "recommendation": "Add OUTPUT_CALIBRATED_DATA_PATH to contract environment_variables"
       },
       {
         "severity": "ERROR",
@@ -223,11 +223,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ModelEvaluation",
-              "CrossValidation",
-              "XGBoostModelEval",
               "XGBoostTraining",
-              "TrainingEvaluation"
+              "ModelEvaluation",
+              "TrainingEvaluation",
+              "CrossValidation",
+              "XGBoostModelEval"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -283,11 +283,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ModelEvaluation",
-            "CrossValidation",
-            "XGBoostModelEval",
             "XGBoostTraining",
-            "TrainingEvaluation"
+            "ModelEvaluation",
+            "TrainingEvaluation",
+            "CrossValidation",
+            "XGBoostModelEval"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -462,11 +462,11 @@
         }
       },
       "required_fields": "{'label_field'}",
-      "optional_fields": "{'gam_splines', 'is_binary', 'score_field', 'score_field_prefix', 'calibration_method', 'multiclass_categories', 'processing_entry_point', 'monotonic_constraint', 'processing_source_dir', 'num_classes', 'error_threshold'}",
+      "optional_fields": "{'calibration_method', 'processing_entry_point', 'processing_source_dir', 'num_classes', 'score_field', 'is_binary', 'multiclass_categories', 'error_threshold', 'score_field_prefix', 'monotonic_constraint', 'gam_splines'}",
       "default_values": {
-        "aws_region": "<property object at 0x102fe9580>",
-        "effective_instance_type": "<property object at 0x31cbe5710>",
-        "effective_source_dir": "<property object at 0x31cbe56c0>",
+        "aws_region": "<property object at 0x106025620>",
+        "effective_instance_type": "<property object at 0x3275e58f0>",
+        "effective_source_dir": "<property object at 0x3275e58a0>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -474,7 +474,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x102897970>",
+        "model_extra": "<property object at 0x105097a60>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -507,12 +507,12 @@
           "score_field_prefix": "annotation=str required=False default='prob_class_' description='Prefix for probability columns in multi-class scenario'",
           "multiclass_categories": "annotation=List[Union[str, int]] required=False default_factory=<lambda> description='List of class names/values for multi-class calibration'"
         },
-        "model_fields_set": "<property object at 0x1028979c0>",
-        "pipeline_description": "<property object at 0x102fe9620>",
-        "pipeline_name": "<property object at 0x102fe95d0>",
-        "pipeline_s3_loc": "<property object at 0x102fe9670>",
-        "script_contract": "<property object at 0x102fe9710>",
-        "script_path": "<property object at 0x31cbe5760>"
+        "model_fields_set": "<property object at 0x105097ab0>",
+        "pipeline_description": "<property object at 0x1060256c0>",
+        "pipeline_name": "<property object at 0x106025670>",
+        "pipeline_s3_loc": "<property object at 0x106025710>",
+        "script_contract": "<property object at 0x1060257b0>",
+        "script_path": "<property object at 0x3275e5940>"
       }
     }
   },
@@ -520,7 +520,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-10T21:52:04.438195",
+    "validation_timestamp": "2025-08-10T22:45:19.479906",
     "validator_version": "1.0.0"
   }
 }

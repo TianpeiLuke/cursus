@@ -1,42 +1,8 @@
 {
   "script_name": "currency_conversion",
   "level1": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --test-val-ratio (accessed as args.test_val_ratio)",
-        "details": {
-          "cli_argument": "test-val-ratio",
-          "python_attribute": "test_val_ratio",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add --test-val-ratio to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --train-ratio (accessed as args.train_ratio)",
-        "details": {
-          "cli_argument": "train-ratio",
-          "python_attribute": "train_ratio",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add --train-ratio to contract arguments or remove from script"
-      },
-      {
-        "severity": "ERROR",
-        "category": "arguments",
-        "message": "Contract requires argument --currency-col but script makes it optional (args.currency_col)",
-        "details": {
-          "contract_argument": "currency-col",
-          "python_attribute": "currency_col",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Make argument --currency-col required in script"
-      }
-    ],
+    "passed": true,
+    "issues": [],
     "script_analysis": {
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
       "path_references": [
@@ -113,13 +79,21 @@
           "default": "per_split",
           "required": false
         },
+        "train-ratio": {
+          "default": "0.7",
+          "required": false
+        },
+        "test-val-ratio": {
+          "default": "0.5",
+          "required": false
+        },
         "marketplace-id-col": {
           "default": "marketplace_id",
           "required": false
         },
         "currency-col": {
           "default": "",
-          "required": true
+          "required": false
         },
         "default-currency": {
           "default": "USD",
@@ -172,6 +146,8 @@
       "arguments": {
         "job-type": "training",
         "mode": "per_split",
+        "train-ratio": "0.7",
+        "test-val-ratio": "0.5",
         "marketplace-id-col": "marketplace_id",
         "currency-col": "",
         "default-currency": "USD",
@@ -208,9 +184,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing",
-              "CradleDataLoading"
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -235,9 +211,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing",
-              "CradleDataLoading"
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -262,9 +238,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing",
-              "CradleDataLoading"
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -289,9 +265,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing",
-              "CradleDataLoading"
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -333,9 +309,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
+            "CradleDataLoading",
             "ProcessingStep",
-            "TabularPreprocessing",
-            "CradleDataLoading"
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Processed training data requiring currency conversion"
@@ -358,16 +334,6 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: label_field",
-        "details": {
-          "field_name": "label_field",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field label_field in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: currency_conversion_dict",
         "details": {
           "field_name": "currency_conversion_dict",
@@ -384,6 +350,16 @@
           "builder": "currency_conversion"
         },
         "recommendation": "Access required field marketplace_info in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: label_field",
+        "details": {
+          "field_name": "label_field",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field label_field in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -526,11 +502,11 @@
         }
       },
       "required_fields": "{'currency_conversion_dict', 'marketplace_info', 'label_field', 'marketplace_id_col'}",
-      "optional_fields": "{'test_val_ratio', 'default_currency', 'use_large_processing_instance', 'job_type', 'processing_entry_point', 'enable_currency_conversion', 'mode', 'currency_conversion_var_list', 'currency_col', 'train_ratio', 'skip_invalid_currencies'}",
+      "optional_fields": "{'processing_entry_point', 'currency_col', 'use_large_processing_instance', 'job_type', 'enable_currency_conversion', 'default_currency', 'train_ratio', 'currency_conversion_var_list', 'mode', 'test_val_ratio', 'skip_invalid_currencies'}",
       "default_values": {
-        "aws_region": "<property object at 0x102fe9580>",
-        "effective_instance_type": "<property object at 0x31cbe5710>",
-        "effective_source_dir": "<property object at 0x31cbe56c0>",
+        "aws_region": "<property object at 0x106025620>",
+        "effective_instance_type": "<property object at 0x3275e58f0>",
+        "effective_source_dir": "<property object at 0x3275e58a0>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -538,7 +514,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x102897970>",
+        "model_extra": "<property object at 0x105097a60>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -574,12 +550,12 @@
           "default_currency": "annotation=str required=False default='USD' description='Fallback currency code'",
           "skip_invalid_currencies": "annotation=bool required=False default=False description='If True, fill invalid codes with default_currency'"
         },
-        "model_fields_set": "<property object at 0x1028979c0>",
-        "pipeline_description": "<property object at 0x102fe9620>",
-        "pipeline_name": "<property object at 0x102fe95d0>",
-        "pipeline_s3_loc": "<property object at 0x102fe9670>",
-        "script_contract": "<property object at 0x102fe9710>",
-        "script_path": "<property object at 0x31cbe5760>"
+        "model_fields_set": "<property object at 0x105097ab0>",
+        "pipeline_description": "<property object at 0x1060256c0>",
+        "pipeline_name": "<property object at 0x106025670>",
+        "pipeline_s3_loc": "<property object at 0x106025710>",
+        "script_contract": "<property object at 0x1060257b0>",
+        "script_path": "<property object at 0x3275e5940>"
       }
     }
   },
@@ -587,7 +563,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-10T21:52:04.388478",
+    "validation_timestamp": "2025-08-10T22:45:19.421359",
     "validator_version": "1.0.0"
   }
 }
