@@ -13,7 +13,7 @@ from sagemaker.xgboost import XGBoost
 from sagemaker.s3 import S3Uploader
 from sagemaker.workflow.functions import Join
 
-from ..configs.config_training_step_xgboost import XGBoostTrainingConfig
+from ..configs.config_xgboost_training_step import XGBoostTrainingConfig
 from ...core.base.builder_base import StepBuilderBase
 from .s3_utils import S3PathHandler
 from ...core.deps.registry_manager import RegistryManager

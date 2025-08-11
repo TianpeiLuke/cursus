@@ -10,7 +10,7 @@ from ..registry.step_names import get_spec_step_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_pytorch_train_contract():
-    from ..contracts.pytorch_train_contract import PYTORCH_TRAIN_CONTRACT
+    from ..contracts.pytorch_training_contract import PYTORCH_TRAIN_CONTRACT
     return PYTORCH_TRAIN_CONTRACT
 
 # PyTorch Training Step Specification

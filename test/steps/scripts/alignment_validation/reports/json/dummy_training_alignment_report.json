@@ -109,9 +109,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "ProcessingStep",
               "XGBoostTraining",
               "PytorchTraining",
-              "ProcessingStep",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -150,9 +150,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "ProcessingStep",
               "XGBoostTraining",
               "PytorchTraining",
-              "ProcessingStep",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -190,9 +190,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
+                "ProcessingStep",
                 "XGBoostTraining",
                 "PytorchTraining",
-                "ProcessingStep",
                 "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
@@ -227,9 +227,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
+            "ProcessingStep",
             "XGBoostTraining",
             "PytorchTraining",
-            "ProcessingStep",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -295,9 +295,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
+            "ProcessingStep",
             "XGBoostTraining",
             "PytorchTraining",
-            "ProcessingStep",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -353,7 +353,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T11:41:07.800094",
+    "validation_timestamp": "2025-08-11T11:48:48.555371",
     "validator_version": "1.0.0"
   }
 }

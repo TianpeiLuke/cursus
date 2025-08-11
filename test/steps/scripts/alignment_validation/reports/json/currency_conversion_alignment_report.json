@@ -238,9 +238,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -265,9 +265,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -292,9 +292,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -319,9 +319,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -348,9 +348,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -376,9 +376,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Processed training data requiring currency conversion"
@@ -403,9 +403,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Processed testing data requiring currency conversion"
@@ -430,9 +430,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Processed validation data requiring currency conversion"
@@ -457,9 +457,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Processed calibration data requiring currency conversion"
@@ -482,9 +482,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Processed calibration data requiring currency conversion"
@@ -530,9 +530,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Processed testing data requiring currency conversion"
@@ -576,7 +576,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-11T11:41:07.787609",
+    "validation_timestamp": "2025-08-11T11:48:48.527590",
     "validator_version": "1.0.0"
   }
 }

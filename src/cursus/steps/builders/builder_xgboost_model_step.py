@@ -7,7 +7,7 @@ from sagemaker.xgboost import XGBoostModel
 from sagemaker.model import Model
 from sagemaker import image_uris
 
-from ..configs.config_model_step_xgboost import XGBoostModelStepConfig
+from ..configs.config_xgboost_model_step import XGBoostModelStepConfig
 from ...core.base.builder_base import StepBuilderBase
 from ..specs.xgboost_model_spec import XGBOOST_MODEL_SPEC
 from ..registry.builder_registry import register_builder

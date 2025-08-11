@@ -10,7 +10,7 @@ from ..registry.step_names import get_spec_step_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_xgboost_train_contract():
-    from ..contracts.xgboost_train_contract import XGBOOST_TRAIN_CONTRACT
+    from ..contracts.xgboost_training_contract import XGBOOST_TRAIN_CONTRACT
     return XGBOOST_TRAIN_CONTRACT
 
 # XGBoost Training Step Specification

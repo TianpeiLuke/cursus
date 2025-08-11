@@ -155,8 +155,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ScriptStep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ScriptStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -205,8 +205,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ScriptStep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ScriptStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -254,8 +254,8 @@
               "dependency_type": "custom_property",
               "required": false,
               "compatible_sources": [
-                "ScriptStep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "ScriptStep"
               ],
               "data_type": "String",
               "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -300,8 +300,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ScriptStep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "ScriptStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -383,7 +383,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T11:41:07.834958",
+    "validation_timestamp": "2025-08-11T11:48:48.622096",
     "validator_version": "1.0.0"
   }
 }

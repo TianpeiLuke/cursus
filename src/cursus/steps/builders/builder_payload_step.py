@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, TYPE_CHECKING
 from pathlib import Path
 import logging
 
@@ -6,11 +6,14 @@ from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn import SKLearnProcessor
 
-from ..configs.config_payload_step import PayloadConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 from ..registry.builder_registry import register_builder
+
+# Use TYPE_CHECKING to avoid circular imports
+if TYPE_CHECKING:
+    from ..configs.config_payload_step import PayloadConfig
 
 # Import the payload specification
 try:
@@ -34,7 +37,7 @@ class PayloadStepBuilder(StepBuilderBase):
 
     def __init__(
         self,
-        config: PayloadConfig,
+        config: "PayloadConfig",
         sagemaker_session=None,
         role: Optional[str] = None,
         notebook_root: Optional[Path] = None,
@@ -53,6 +56,9 @@ class PayloadStepBuilder(StepBuilderBase):
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
         """
+        # Import at runtime to avoid circular imports
+        from ..configs.config_payload_step import PayloadConfig
+        
         if not isinstance(config, PayloadConfig):
             raise ValueError(
                 "PayloadStepBuilder requires a PayloadConfig instance."

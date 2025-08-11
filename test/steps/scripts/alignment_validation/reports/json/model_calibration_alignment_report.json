@@ -187,9 +187,9 @@
             "required": true,
             "compatible_sources": [
               "XGBoostTraining",
-              "CrossValidation",
-              "TrainingEvaluation",
               "XGBoostModelEval",
+              "TrainingEvaluation",
+              "CrossValidation",
               "ModelEvaluation"
             ],
             "data_type": "S3Uri",
@@ -232,9 +232,9 @@
             "required": true,
             "compatible_sources": [
               "XGBoostTraining",
-              "CrossValidation",
-              "TrainingEvaluation",
               "XGBoostModelEval",
+              "TrainingEvaluation",
+              "CrossValidation",
               "ModelEvaluation"
             ],
             "data_type": "S3Uri",
@@ -276,9 +276,9 @@
               "required": true,
               "compatible_sources": [
                 "XGBoostTraining",
-                "CrossValidation",
-                "TrainingEvaluation",
                 "XGBoostModelEval",
+                "TrainingEvaluation",
+                "CrossValidation",
                 "ModelEvaluation"
               ],
               "data_type": "S3Uri",
@@ -317,9 +317,9 @@
           "required": true,
           "compatible_sources": [
             "XGBoostTraining",
-            "CrossValidation",
-            "TrainingEvaluation",
             "XGBoostModelEval",
+            "TrainingEvaluation",
+            "CrossValidation",
             "ModelEvaluation"
           ],
           "data_type": "S3Uri",
@@ -381,9 +381,9 @@
           "required": true,
           "compatible_sources": [
             "XGBoostTraining",
-            "CrossValidation",
-            "TrainingEvaluation",
             "XGBoostModelEval",
+            "TrainingEvaluation",
+            "CrossValidation",
             "ModelEvaluation"
           ],
           "data_type": "S3Uri",
@@ -442,7 +442,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-11T11:41:07.824740",
+    "validation_timestamp": "2025-08-11T11:48:48.585267",
     "validator_version": "1.0.0"
   }
 }

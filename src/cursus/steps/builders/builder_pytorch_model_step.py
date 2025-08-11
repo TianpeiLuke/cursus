@@ -7,7 +7,7 @@ from sagemaker.pytorch import PyTorchModel
 from sagemaker.model import Model
 from sagemaker import image_uris
 
-from ..configs.config_model_step_pytorch import PyTorchModelStepConfig
+from ..configs.config_pytorch_model_step import PyTorchModelStepConfig
 from ...core.base.builder_base import StepBuilderBase
 from ..specs.pytorch_model_spec import PYTORCH_MODEL_SPEC
 from ...core.deps.registry_manager import RegistryManager

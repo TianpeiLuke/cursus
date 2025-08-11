@@ -7,7 +7,7 @@ from sagemaker.pytorch import PyTorch
 from sagemaker.inputs import TrainingInput
 from sagemaker.workflow.functions import Join
 
-from ..configs.config_training_step_pytorch import PyTorchTrainingConfig
+from ..configs.config_pytorch_training_step import PyTorchTrainingConfig
 from ...core.base.builder_base import StepBuilderBase
 from .s3_utils import S3PathHandler
 from ...core.deps.registry_manager import RegistryManager
