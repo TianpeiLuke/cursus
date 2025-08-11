@@ -29,7 +29,7 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: mims_package</h2>
-        <p>Generated: 2025-08-11T01:14:45.932889</p>
+        <p>Generated: 2025-08-11T08:17:50.263841</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
@@ -43,7 +43,7 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>2</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
@@ -88,13 +88,13 @@
                 
             </div>
             
-            <div class="test-result test-passed">
+            <div class="test-result test-failed">
                 <h4>Level 4: Builder ↔ Configuration</h4>
-                <p>Status: PASSED</p>
+                <p>Status: FAILED</p>
                 
-                <div class="issue info">
-                    <strong>INFO:</strong> Builder may not be properly importing configuration class mims_packageConfig
-                    <br><em>Recommendation: Ensure builder imports and uses mims_packageConfig</em>
+                <div class="issue error">
+                    <strong>ERROR:</strong> Configuration file not found for mims_package
+                    <br><em>Recommendation: Create configuration file config_mims_package_step.py</em>
                 </div>
                 
             </div>
@@ -105,7 +105,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py</p>
         <p><strong>Contract Mapping:</strong> mims_package_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T01:14:45.932889</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T08:17:50.263841</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

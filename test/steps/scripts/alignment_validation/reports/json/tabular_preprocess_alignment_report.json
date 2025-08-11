@@ -281,21 +281,21 @@
           ],
           "dependency_type": "processing_output",
           "available_steps": [
-            "data_loading",
-            "preprocessing",
-            "currency_conversion",
-            "model_eval",
-            "xgboost_model",
-            "registration",
-            "risk_table_mapping",
-            "batch_transform",
-            "dummy",
-            "model",
-            "payload",
-            "xgboost",
-            "pytorch",
-            "packaging",
-            "pytorch_model"
+            "DataLoading",
+            "Preprocessing",
+            "CurrencyConversion",
+            "ModelEval",
+            "XgboostModel",
+            "Registration",
+            "RiskTableMapping",
+            "BatchTransform",
+            "Dummy",
+            "Model",
+            "Payload",
+            "Xgboost",
+            "Pytorch",
+            "Packaging",
+            "PytorchModel"
           ]
         },
         "recommendation": "Ensure a step exists that produces output DATA"
@@ -334,89 +334,25 @@
     "issues": [
       {
         "severity": "ERROR",
-        "category": "configuration_fields",
-        "message": "Builder accesses undeclared configuration field: job_type",
+        "category": "missing_configuration",
+        "message": "Configuration file not found for tabular_preprocess",
         "details": {
-          "field_name": "job_type",
-          "builder": "tabular_preprocess"
+          "searched_patterns": [
+            "config_tabular_preprocess_step.py",
+            "FlexibleFileResolver patterns",
+            "Fuzzy matching"
+          ],
+          "search_directory": "src/cursus/steps/configs"
         },
-        "recommendation": "Add job_type to configuration class or remove from builder"
-      },
-      {
-        "severity": "INFO",
-        "category": "config_import",
-        "message": "Builder may not be properly importing configuration class tabular_preprocessConfig",
-        "details": {
-          "config_class": "tabular_preprocessConfig",
-          "builder": "tabular_preprocess"
-        },
-        "recommendation": "Ensure builder imports and uses tabular_preprocessConfig"
+        "recommendation": "Create configuration file config_tabular_preprocess_step.py"
       }
-    ],
-    "builder_analysis": {
-      "config_accesses": [
-        {
-          "field_name": "job_type",
-          "line_number": 65
-        }
-      ],
-      "validation_calls": [],
-      "default_assignments": [],
-      "class_definitions": [
-        {
-          "class_name": "TabularPreprocessingStepBuilder",
-          "line_number": 29
-        }
-      ],
-      "method_definitions": [
-        {
-          "method_name": "__init__",
-          "line_number": 37
-        },
-        {
-          "method_name": "validate_configuration",
-          "line_number": 98
-        },
-        {
-          "method_name": "_create_processor",
-          "line_number": 125
-        },
-        {
-          "method_name": "_get_environment_variables",
-          "line_number": 145
-        },
-        {
-          "method_name": "_get_inputs",
-          "line_number": 173
-        },
-        {
-          "method_name": "_get_outputs",
-          "line_number": 226
-        },
-        {
-          "method_name": "_get_job_arguments",
-          "line_number": 281
-        },
-        {
-          "method_name": "create_step",
-          "line_number": 301
-        }
-      ]
-    },
-    "config_analysis": {
-      "class_name": "tabular_preprocessConfig",
-      "fields": {},
-      "required_fields": "set()",
-      "optional_fields": "set()",
-      "default_values": {},
-      "load_error": "Configuration class not found in src/cursus/steps/configs/config_tabular_preprocessing_step.py. Available classes: ['Any', 'BaseModel', 'Path', 'ProcessingStepConfigBase', 'TabularPreprocessingConfig']"
-    }
+    ]
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
     "contract_mapping": "tabular_preprocess_contract",
-    "validation_timestamp": "2025-08-11T01:14:46.077112",
+    "validation_timestamp": "2025-08-11T08:17:50.341330",
     "validator_version": "1.0.0"
   }
 }

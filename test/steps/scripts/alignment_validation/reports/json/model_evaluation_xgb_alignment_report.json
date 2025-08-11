@@ -6,22 +6,22 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
           "path": "/opt/ml/processing/input/model",
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -42,17 +42,6 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
-        "details": {
-          "cli_argument": "output-metrics-dir",
-          "python_attribute": "output_metrics_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -79,17 +68,6 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
-        "details": {
-          "cli_argument": "model-dir",
-          "python_attribute": "model_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add --model-dir to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
         "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
         "details": {
           "cli_argument": "eval-data-dir",
@@ -97,6 +75,28 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Add --eval-data-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
+        "details": {
+          "cli_argument": "output-metrics-dir",
+          "python_attribute": "output_metrics_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
+        "details": {
+          "cli_argument": "model-dir",
+          "python_attribute": "model_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add --model-dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -331,8 +331,8 @@
             "required": true,
             "compatible_sources": [
               "XGBoostTraining",
-              "TrainingStep",
-              "ModelStep"
+              "ModelStep",
+              "TrainingStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -342,9 +342,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "DataLoad",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -379,8 +379,8 @@
             "required": true,
             "compatible_sources": [
               "XGBoostTraining",
-              "TrainingStep",
-              "ModelStep"
+              "ModelStep",
+              "TrainingStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -390,9 +390,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "DataLoad",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -426,8 +426,8 @@
               "required": true,
               "compatible_sources": [
                 "XGBoostTraining",
-                "TrainingStep",
-                "ModelStep"
+                "ModelStep",
+                "TrainingStep"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -437,9 +437,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
                 "DataLoad",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset for model assessment"
@@ -470,8 +470,8 @@
           "required": true,
           "compatible_sources": [
             "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
+            "ModelStep",
+            "TrainingStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -481,9 +481,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
             "DataLoad",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -536,26 +536,26 @@
           "specification": "model_evaluation_xgb",
           "compatible_sources": [
             "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
+            "ModelStep",
+            "TrainingStep"
           ],
           "dependency_type": "model_artifacts",
           "available_steps": [
-            "data_loading",
-            "preprocessing",
-            "currency_conversion",
-            "model_eval",
-            "xgboost_model",
-            "registration",
-            "risk_table_mapping",
-            "batch_transform",
-            "dummy",
-            "model",
-            "payload",
-            "xgboost",
-            "pytorch",
-            "packaging",
-            "pytorch_model"
+            "DataLoading",
+            "Preprocessing",
+            "CurrencyConversion",
+            "ModelEval",
+            "XgboostModel",
+            "Registration",
+            "RiskTableMapping",
+            "BatchTransform",
+            "Dummy",
+            "Model",
+            "Payload",
+            "Xgboost",
+            "Pytorch",
+            "Packaging",
+            "PytorchModel"
           ]
         },
         "recommendation": "Ensure a step exists that produces output model_input"
@@ -568,27 +568,27 @@
           "logical_name": "processed_data",
           "specification": "model_evaluation_xgb",
           "compatible_sources": [
-            "TabularPreprocessing",
             "DataLoad",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "dependency_type": "processing_output",
           "available_steps": [
-            "data_loading",
-            "preprocessing",
-            "currency_conversion",
-            "model_eval",
-            "xgboost_model",
-            "registration",
-            "risk_table_mapping",
-            "batch_transform",
-            "dummy",
-            "model",
-            "payload",
-            "xgboost",
-            "pytorch",
-            "packaging",
-            "pytorch_model"
+            "DataLoading",
+            "Preprocessing",
+            "CurrencyConversion",
+            "ModelEval",
+            "XgboostModel",
+            "Registration",
+            "RiskTableMapping",
+            "BatchTransform",
+            "Dummy",
+            "Model",
+            "Payload",
+            "Xgboost",
+            "Pytorch",
+            "Packaging",
+            "PytorchModel"
           ]
         },
         "recommendation": "Ensure a step exists that produces output processed_data"
@@ -604,8 +604,8 @@
           "required": true,
           "compatible_sources": [
             "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
+            "ModelStep",
+            "TrainingStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -615,9 +615,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
             "DataLoad",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -642,78 +642,29 @@
     }
   },
   "level4": {
-    "passed": true,
+    "passed": false,
     "issues": [
       {
-        "severity": "INFO",
-        "category": "config_import",
-        "message": "Builder may not be properly importing configuration class model_evaluation_xgbConfig",
+        "severity": "ERROR",
+        "category": "missing_configuration",
+        "message": "Configuration file not found for model_evaluation_xgb",
         "details": {
-          "config_class": "model_evaluation_xgbConfig",
-          "builder": "model_evaluation_xgb"
+          "searched_patterns": [
+            "config_model_evaluation_xgb_step.py",
+            "FlexibleFileResolver patterns",
+            "Fuzzy matching"
+          ],
+          "search_directory": "src/cursus/steps/configs"
         },
-        "recommendation": "Ensure builder imports and uses model_evaluation_xgbConfig"
+        "recommendation": "Create configuration file config_model_evaluation_xgb_step.py"
       }
-    ],
-    "builder_analysis": {
-      "config_accesses": [],
-      "validation_calls": [],
-      "default_assignments": [],
-      "class_definitions": [
-        {
-          "class_name": "XGBoostModelEvalStepBuilder",
-          "line_number": 27
-        }
-      ],
-      "method_definitions": [
-        {
-          "method_name": "__init__",
-          "line_number": 35
-        },
-        {
-          "method_name": "validate_configuration",
-          "line_number": 75
-        },
-        {
-          "method_name": "_create_processor",
-          "line_number": 111
-        },
-        {
-          "method_name": "_get_environment_variables",
-          "line_number": 134
-        },
-        {
-          "method_name": "_get_inputs",
-          "line_number": 156
-        },
-        {
-          "method_name": "_get_outputs",
-          "line_number": 209
-        },
-        {
-          "method_name": "_get_job_arguments",
-          "line_number": 264
-        },
-        {
-          "method_name": "create_step",
-          "line_number": 284
-        }
-      ]
-    },
-    "config_analysis": {
-      "class_name": "model_evaluation_xgbConfig",
-      "fields": {},
-      "required_fields": "set()",
-      "optional_fields": "set()",
-      "default_values": {},
-      "load_error": "Configuration class not found in src/cursus/steps/configs/config_model_eval_step_xgboost.py. Available classes: ['Any', 'Path', 'ProcessingStepConfigBase', 'XGBoostModelEvalConfig', 'XGBoostModelHyperparameters']"
-    }
+    ]
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-11T01:14:45.996843",
+    "validation_timestamp": "2025-08-11T08:17:50.313010",
     "validator_version": "1.0.0"
   }
 }

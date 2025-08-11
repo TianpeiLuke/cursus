@@ -16,7 +16,8 @@ from .alignment_utils import (
     FlexibleFileResolver, DependencyPatternClassifier, DependencyPattern
 )
 from ...steps.registry.step_names import (
-    get_step_name_from_spec_type, get_spec_step_type_with_job_type, validate_spec_type
+    get_step_name_from_spec_type, get_spec_step_type_with_job_type, validate_spec_type,
+    STEP_NAMES, CONFIG_STEP_REGISTRY
 )
 from ...core.deps.factory import create_pipeline_components
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
@@ -181,12 +182,15 @@ class SpecificationDependencyAlignmentTester:
         # Populate the resolver registry with all specifications
         self._populate_resolver_registry(all_specs)
         
-        # Get available step names
-        available_steps = list(all_specs.keys())
+        # Get available step names using canonical names (same as registry)
+        available_steps = [self._get_canonical_step_name(spec_name) for spec_name in all_specs.keys()]
         
         try:
-            # Use the production dependency resolver
-            resolved_deps = self.dependency_resolver.resolve_step_dependencies(spec_name, available_steps)
+            # Convert spec_name to canonical name for dependency resolution
+            canonical_spec_name = self._get_canonical_step_name(spec_name)
+            
+            # Use the production dependency resolver with canonical name
+            resolved_deps = self.dependency_resolver.resolve_step_dependencies(canonical_spec_name, available_steps)
             
             # Check for unresolved required dependencies
             spec_dependencies = {dep['logical_name']: dep for dep in dependencies}
@@ -222,13 +226,65 @@ class SpecificationDependencyAlignmentTester:
         
         return issues
     
+    def _get_canonical_step_name(self, spec_file_name: str) -> str:
+        """
+        Convert specification file name to canonical step name using production logic.
+        
+        This aligns with the production system's approach in step_names.py where:
+        - File names like "dummy_training" map to canonical names like "DummyTraining"
+        - Job type suffixes are stripped to get the base canonical name
+        
+        Args:
+            spec_file_name: File-based specification name (e.g., "dummy_training", "model_calibration")
+            
+        Returns:
+            Canonical step name (e.g., "DummyTraining", "ModelCalibration")
+        """
+        # Convert file name to spec_type format
+        # e.g., "dummy_training" -> "DummyTraining_Training"
+        parts = spec_file_name.split('_')
+        
+        # Handle job type variants
+        job_type_suffixes = ['training', 'validation', 'testing', 'calibration']
+        job_type = None
+        base_parts = parts
+        
+        if len(parts) > 1 and parts[-1] in job_type_suffixes:
+            job_type = parts[-1]
+            base_parts = parts[:-1]
+        
+        # Convert to PascalCase for spec_type
+        spec_type_base = ''.join(word.capitalize() for word in base_parts)
+        
+        if job_type:
+            spec_type = f"{spec_type_base}_{job_type.capitalize()}"
+        else:
+            spec_type = spec_type_base
+        
+        # Use production function to get canonical name (strips job type suffix)
+        try:
+            canonical_name = get_step_name_from_spec_type(spec_type)
+            logger.debug(f"Mapped spec file '{spec_file_name}' -> spec_type '{spec_type}' -> canonical '{canonical_name}'")
+            return canonical_name
+        except Exception as e:
+            # Fallback: return the base spec_type without job type suffix
+            logger.warning(f"Failed to get canonical name for '{spec_file_name}' via production logic: {e}")
+            return spec_type_base
+    
     def _populate_resolver_registry(self, all_specs: Dict[str, Dict[str, Any]]):
-        """Populate the dependency resolver registry with all specifications."""
+        """Populate the dependency resolver registry with all specifications using canonical names."""
         for spec_name, spec_dict in all_specs.items():
             try:
+                # Convert file-based spec name to canonical step name
+                canonical_name = self._get_canonical_step_name(spec_name)
+                
                 # Convert dict back to StepSpecification object
                 step_spec = self._dict_to_step_specification(spec_dict)
-                self.dependency_resolver.register_specification(spec_name, step_spec)
+                
+                # Register with canonical name
+                self.dependency_resolver.register_specification(canonical_name, step_spec)
+                logger.debug(f"Registered specification: '{spec_name}' as canonical '{canonical_name}'")
+                
             except Exception as e:
                 logger.warning(f"Failed to register {spec_name} with resolver: {e}")
     
