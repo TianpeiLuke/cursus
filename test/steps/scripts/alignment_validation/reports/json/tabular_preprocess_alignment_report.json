@@ -153,8 +153,8 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -182,8 +182,8 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -210,8 +210,8 @@
               "required": true,
               "compatible_sources": [
                 "ProcessingStep",
-                "CradleDataLoading",
-                "DataLoad"
+                "DataLoad",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Raw training data for preprocessing"
@@ -235,8 +235,8 @@
           "required": true,
           "compatible_sources": [
             "ProcessingStep",
-            "CradleDataLoading",
-            "DataLoad"
+            "DataLoad",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Raw training data for preprocessing"
@@ -276,17 +276,17 @@
           "specification": "tabular_preprocess",
           "compatible_sources": [
             "ProcessingStep",
-            "CradleDataLoading",
-            "DataLoad"
+            "DataLoad",
+            "CradleDataLoading"
           ],
           "dependency_type": "processing_output",
           "available_steps": [
             "DataLoading",
             "Preprocessing",
             "CurrencyConversion",
-            "ModelEval",
             "XgboostModel",
             "Registration",
+            "XgboostModelEval",
             "RiskTableMapping",
             "BatchTransform",
             "Dummy",
@@ -311,8 +311,8 @@
           "required": true,
           "compatible_sources": [
             "ProcessingStep",
-            "CradleDataLoading",
-            "DataLoad"
+            "DataLoad",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Raw training data for preprocessing"
@@ -352,7 +352,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
     "contract_mapping": "tabular_preprocess_contract",
-    "validation_timestamp": "2025-08-11T08:52:16.989232",
+    "validation_timestamp": "2025-08-11T09:40:27.370790",
     "validator_version": "1.0.0"
   }
 }

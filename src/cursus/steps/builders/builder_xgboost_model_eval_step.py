@@ -6,7 +6,7 @@ from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.xgboost import XGBoostProcessor
 
-from ..configs.config_model_eval_step_xgboost import XGBoostModelEvalConfig
+from ..configs.config_xgboost_model_eval_step import XGBoostModelEvalConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
@@ -14,7 +14,7 @@ from ..registry.builder_registry import register_builder
 
 # Import the model evaluation specification
 try:
-    from ..specs.model_eval_spec import MODEL_EVAL_SPEC
+    from ..specs.xgboost_model_eval_spec import MODEL_EVAL_SPEC
     SPEC_AVAILABLE = True
 except ImportError:
     MODEL_EVAL_SPEC = None

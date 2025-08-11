@@ -186,11 +186,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "XGBoostTraining",
               "ModelEvaluation",
               "TrainingEvaluation",
-              "XGBoostModelEval"
+              "XGBoostModelEval",
+              "XGBoostTraining",
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -231,11 +231,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "XGBoostTraining",
               "ModelEvaluation",
               "TrainingEvaluation",
-              "XGBoostModelEval"
+              "XGBoostModelEval",
+              "XGBoostTraining",
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -275,11 +275,11 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CrossValidation",
-                "XGBoostTraining",
                 "ModelEvaluation",
                 "TrainingEvaluation",
-                "XGBoostModelEval"
+                "XGBoostModelEval",
+                "XGBoostTraining",
+                "CrossValidation"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -316,11 +316,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
-            "XGBoostTraining",
             "ModelEvaluation",
             "TrainingEvaluation",
-            "XGBoostModelEval"
+            "XGBoostModelEval",
+            "XGBoostTraining",
+            "CrossValidation"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -379,20 +379,20 @@
           "logical_name": "evaluation_data",
           "specification": "model_calibration",
           "compatible_sources": [
-            "CrossValidation",
-            "XGBoostTraining",
             "ModelEvaluation",
             "TrainingEvaluation",
-            "XGBoostModelEval"
+            "XGBoostModelEval",
+            "XGBoostTraining",
+            "CrossValidation"
           ],
           "dependency_type": "processing_output",
           "available_steps": [
             "DataLoading",
             "Preprocessing",
             "CurrencyConversion",
-            "ModelEval",
             "XgboostModel",
             "Registration",
+            "XgboostModelEval",
             "RiskTableMapping",
             "BatchTransform",
             "Dummy",
@@ -416,11 +416,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
-            "XGBoostTraining",
             "ModelEvaluation",
             "TrainingEvaluation",
-            "XGBoostModelEval"
+            "XGBoostModelEval",
+            "XGBoostTraining",
+            "CrossValidation"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -474,7 +474,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-11T08:52:16.946698",
+    "validation_timestamp": "2025-08-11T09:40:27.328368",
     "validator_version": "1.0.0"
   }
 }

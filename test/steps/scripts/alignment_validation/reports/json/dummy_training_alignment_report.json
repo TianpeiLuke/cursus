@@ -110,9 +110,9 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "TabularPreprocessing",
+              "PytorchTraining",
               "XGBoostTraining",
-              "PytorchTraining"
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -122,8 +122,8 @@
             "dependency_type": "hyperparameters",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -151,9 +151,9 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "TabularPreprocessing",
+              "PytorchTraining",
               "XGBoostTraining",
-              "PytorchTraining"
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -163,8 +163,8 @@
             "dependency_type": "hyperparameters",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -191,9 +191,9 @@
               "required": true,
               "compatible_sources": [
                 "ProcessingStep",
-                "TabularPreprocessing",
+                "PytorchTraining",
                 "XGBoostTraining",
-                "PytorchTraining"
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Path to pretrained model.tar.gz file"
@@ -203,8 +203,8 @@
               "dependency_type": "hyperparameters",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
-                "HyperparameterPrep"
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -228,9 +228,9 @@
           "required": true,
           "compatible_sources": [
             "ProcessingStep",
-            "TabularPreprocessing",
+            "PytorchTraining",
             "XGBoostTraining",
-            "PytorchTraining"
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -240,8 +240,8 @@
           "dependency_type": "hyperparameters",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -284,18 +284,18 @@
           "specification": "dummy_training",
           "compatible_sources": [
             "ProcessingStep",
-            "TabularPreprocessing",
+            "PytorchTraining",
             "XGBoostTraining",
-            "PytorchTraining"
+            "TabularPreprocessing"
           ],
           "dependency_type": "processing_output",
           "available_steps": [
             "DataLoading",
             "Preprocessing",
             "CurrencyConversion",
-            "ModelEval",
             "XgboostModel",
             "Registration",
+            "XgboostModelEval",
             "RiskTableMapping",
             "BatchTransform",
             "Dummy",
@@ -317,17 +317,17 @@
           "logical_name": "hyperparameters_s3_uri",
           "specification": "dummy_training",
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "dependency_type": "hyperparameters",
           "available_steps": [
             "DataLoading",
             "Preprocessing",
             "CurrencyConversion",
-            "ModelEval",
             "XgboostModel",
             "Registration",
+            "XgboostModelEval",
             "RiskTableMapping",
             "BatchTransform",
             "Dummy",
@@ -352,9 +352,9 @@
           "required": true,
           "compatible_sources": [
             "ProcessingStep",
-            "TabularPreprocessing",
+            "PytorchTraining",
             "XGBoostTraining",
-            "PytorchTraining"
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -364,8 +364,8 @@
           "dependency_type": "hyperparameters",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -405,7 +405,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T08:52:16.900857",
+    "validation_timestamp": "2025-08-11T09:40:27.249340",
     "validator_version": "1.0.0"
   }
 }

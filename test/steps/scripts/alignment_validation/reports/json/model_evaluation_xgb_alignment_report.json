@@ -6,12 +6,12 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
         "details": {
-          "path": "/opt/ml/processing/input/model",
+          "path": "/opt/ml/processing/output/eval",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -36,34 +36,12 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
-          "path": "/opt/ml/processing/output/eval",
+          "path": "/opt/ml/processing/input/model",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
-        "details": {
-          "cli_argument": "output-eval-dir",
-          "python_attribute": "output_eval_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
-        "details": {
-          "cli_argument": "output-metrics-dir",
-          "python_attribute": "output_metrics_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
+        "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -79,6 +57,28 @@
       {
         "severity": "WARNING",
         "category": "arguments",
+        "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
+        "details": {
+          "cli_argument": "eval-data-dir",
+          "python_attribute": "eval_data_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add --eval-data-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
+        "details": {
+          "cli_argument": "output-eval-dir",
+          "python_attribute": "output_eval_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
         "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
         "details": {
           "cli_argument": "model-dir",
@@ -90,13 +90,13 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
+        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
         "details": {
-          "cli_argument": "eval-data-dir",
-          "python_attribute": "eval_data_dir",
+          "cli_argument": "output-metrics-dir",
+          "python_attribute": "output_metrics_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add --eval-data-dir to contract arguments or remove from script"
+        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -123,17 +123,6 @@
       {
         "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
-        "details": {
-          "path": "/opt/ml/processing/output/metrics",
-          "operation": "write",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
         "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
         "details": {
           "path": "/opt/ml/processing/output/eval",
@@ -141,6 +130,17 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "operation": "write",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -283,45 +283,175 @@
     }
   },
   "level2": {
-    "passed": true,
-    "issues": [],
-    "contract": {
-      "entry_point": "model_evaluation_xgb.py",
-      "inputs": {
-        "model_input": {
-          "path": "/opt/ml/processing/input/model"
+    "passed": false,
+    "issues": [
+      {
+        "severity": "ERROR",
+        "category": "logical_names",
+        "message": "Contract input evaluation_data not declared in any specification variant",
+        "details": {
+          "logical_name": "evaluation_data",
+          "contract": "model_evaluation_xgb",
+          "available_variants": [
+            "generic"
+          ],
+          "available_dependencies": [
+            "processed_data",
+            "model_input"
+          ]
         },
-        "processed_data": {
+        "recommendation": "Add evaluation_data to specification dependencies or remove from contract"
+      },
+      {
+        "severity": "ERROR",
+        "category": "logical_names",
+        "message": "Contract missing required dependency processed_data",
+        "details": {
+          "logical_name": "processed_data",
+          "contract": "model_evaluation_xgb",
+          "requiring_variants": [
+            "generic"
+          ]
+        },
+        "recommendation": "Add processed_data to contract inputs (required by variants: generic)"
+      },
+      {
+        "severity": "ERROR",
+        "category": "logical_names",
+        "message": "Contract missing required dependency model_input",
+        "details": {
+          "logical_name": "model_input",
+          "contract": "model_evaluation_xgb",
+          "requiring_variants": [
+            "generic"
+          ]
+        },
+        "recommendation": "Add model_input to contract inputs (required by variants: generic)"
+      },
+      {
+        "severity": "ERROR",
+        "category": "logical_names",
+        "message": "Contract output calibration_output not declared in any specification variant",
+        "details": {
+          "logical_name": "calibration_output",
+          "contract": "model_evaluation_xgb",
+          "available_variants": [
+            "generic"
+          ],
+          "available_outputs": [
+            "eval_output",
+            "metrics_output"
+          ]
+        },
+        "recommendation": "Add calibration_output to specification outputs or remove from contract"
+      },
+      {
+        "severity": "ERROR",
+        "category": "logical_names",
+        "message": "Contract output calibrated_data not declared in any specification variant",
+        "details": {
+          "logical_name": "calibrated_data",
+          "contract": "model_evaluation_xgb",
+          "available_variants": [
+            "generic"
+          ],
+          "available_outputs": [
+            "eval_output",
+            "metrics_output"
+          ]
+        },
+        "recommendation": "Add calibrated_data to specification outputs or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "logical_names",
+        "message": "Contract missing output eval_output",
+        "details": {
+          "logical_name": "eval_output",
+          "contract": "model_evaluation_xgb",
+          "producing_variants": [
+            "generic"
+          ]
+        },
+        "recommendation": "Add eval_output to contract outputs (produced by variants: generic)"
+      },
+      {
+        "severity": "WARNING",
+        "category": "input_output_alignment",
+        "message": "Specification dependency processed_data has no corresponding contract input",
+        "details": {
+          "logical_name": "processed_data",
+          "contract": "model_evaluation_xgb"
+        },
+        "recommendation": "Add processed_data to contract inputs or remove from specification dependencies"
+      },
+      {
+        "severity": "WARNING",
+        "category": "input_output_alignment",
+        "message": "Specification dependency model_input has no corresponding contract input",
+        "details": {
+          "logical_name": "model_input",
+          "contract": "model_evaluation_xgb"
+        },
+        "recommendation": "Add model_input to contract inputs or remove from specification dependencies"
+      },
+      {
+        "severity": "WARNING",
+        "category": "input_output_alignment",
+        "message": "Specification output eval_output has no corresponding contract output",
+        "details": {
+          "logical_name": "eval_output",
+          "contract": "model_evaluation_xgb"
+        },
+        "recommendation": "Add eval_output to contract outputs or remove from specification outputs"
+      }
+    ],
+    "contract": {
+      "entry_point": "model_calibration.py",
+      "inputs": {
+        "evaluation_data": {
           "path": "/opt/ml/processing/input/eval_data"
         }
       },
       "outputs": {
-        "eval_output": {
-          "path": "/opt/ml/processing/output/eval"
+        "calibration_output": {
+          "path": "/opt/ml/processing/output/calibration"
         },
         "metrics_output": {
           "path": "/opt/ml/processing/output/metrics"
+        },
+        "calibrated_data": {
+          "path": "/opt/ml/processing/output/calibrated_data"
         }
       },
       "arguments": {},
       "environment_variables": {
         "required": [
-          "ID_FIELD",
-          "LABEL_FIELD"
+          "CALIBRATION_METHOD",
+          "LABEL_FIELD",
+          "SCORE_FIELD",
+          "IS_BINARY"
         ],
-        "optional": {}
+        "optional": {
+          "MONOTONIC_CONSTRAINT": "True",
+          "GAM_SPLINES": "10",
+          "ERROR_THRESHOLD": "0.05",
+          "NUM_CLASSES": "2",
+          "SCORE_FIELD_PREFIX": "prob_class_",
+          "MULTICLASS_CATEGORIES": "[0, 1]"
+        }
       },
-      "description": "\n    XGBoost model evaluation script that:\n    1. Loads trained XGBoost model and preprocessing artifacts\n    2. Loads and preprocesses evaluation data using risk tables and imputation\n    3. Generates predictions and computes performance metrics\n    4. Creates ROC and Precision-Recall curve visualizations\n    5. Saves predictions, metrics, and plots\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts directory containing:\n      - xgboost_model.bst: Trained XGBoost model\n      - risk_table_map.pkl: Risk table mappings for categorical features\n      - impute_dict.pkl: Imputation dictionary for numerical features\n      - feature_columns.txt: Feature column names and order\n      - hyperparameters.json: Model hyperparameters and metadata\n    - /opt/ml/processing/input/eval_data: Evaluation data (CSV or Parquet files)\n    \n    Output Structure:\n    - /opt/ml/processing/output/eval/eval_predictions.csv: Model predictions with probabilities\n    - /opt/ml/processing/output/metrics/metrics.json: Performance metrics\n    - /opt/ml/processing/output/metrics/roc_curve.jpg: ROC curve visualization\n    - /opt/ml/processing/output/metrics/pr_curve.jpg: Precision-Recall curve visualization\n    \n    Environment Variables:\n    - ID_FIELD: Name of the ID column in evaluation data\n    - LABEL_FIELD: Name of the label column in evaluation data\n    \n    Arguments:\n    - job_type: Type of evaluation job to perform (e.g., \"evaluation\", \"validation\")\n    \n    Supports both binary and multiclass classification with appropriate metrics for each.\n    ",
+      "description": "Contract for model calibration processing step.\n    \n    The model calibration step takes a trained model's raw prediction scores and\n    calibrates them to better reflect true probabilities, which is essential for\n    risk-based decision-making, threshold setting, and confidence in model outputs.\n    Supports both binary and multi-class classification scenarios.\n    \n    Input Structure:\n    - /opt/ml/processing/input/eval_data: Evaluation dataset with ground truth labels and model predictions\n    \n    Output Structure:\n    - /opt/ml/processing/output/calibration: Calibration mapping and artifacts\n    - /opt/ml/processing/output/metrics: Calibration quality metrics\n    - /opt/ml/processing/output/calibrated_data: Dataset with calibrated probabilities\n    \n    Environment Variables:\n    - CALIBRATION_METHOD: Method to use for calibration (gam, isotonic, platt)\n    - LABEL_FIELD: Name of the label column\n    - SCORE_FIELD: Name of the prediction score column (for binary classification)\n    - IS_BINARY: Whether this is a binary classification task (true/false)\n    - MONOTONIC_CONSTRAINT: Whether to enforce monotonicity in GAM (optional)\n    - GAM_SPLINES: Number of splines for GAM (optional)\n    - ERROR_THRESHOLD: Acceptable calibration error threshold (optional)\n    - NUM_CLASSES: Number of classes for multi-class classification (optional, default=2)\n    - SCORE_FIELD_PREFIX: Prefix for probability columns in multi-class scenario (optional)\n    - MULTICLASS_CATEGORIES: JSON string of class names/values for multi-class (optional)\n    ",
       "framework_requirements": {
-        "pandas": ">=1.3.0",
-        "numpy": ">=1.21.0",
-        "scikit-learn": ">=1.0.0",
-        "xgboost": ">=1.6.0",
-        "matplotlib": ">=3.5.0"
+        "scikit-learn": ">=0.23.2,<1.0.0",
+        "pandas": ">=1.2.0,<2.0.0",
+        "numpy": ">=1.20.0",
+        "pygam": ">=0.8.0",
+        "matplotlib": ">=3.3.0"
       }
     },
     "specifications": {
-      "model_eval_spec": {
+      "xgboost_model_eval_spec": {
         "step_type": "XGBoostModelEval",
         "node_type": "internal",
         "dependencies": [
@@ -330,8 +460,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -343,8 +473,8 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "TabularPreprocessing",
-              "DataLoad"
+              "DataLoad",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -378,8 +508,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -391,8 +521,8 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "TabularPreprocessing",
-              "DataLoad"
+              "DataLoad",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -425,8 +555,8 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
                 "TrainingStep",
+                "XGBoostTraining",
                 "ModelStep"
               ],
               "data_type": "S3Uri",
@@ -438,8 +568,8 @@
               "required": true,
               "compatible_sources": [
                 "ProcessingStep",
-                "TabularPreprocessing",
-                "DataLoad"
+                "DataLoad",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset for model assessment"
@@ -469,8 +599,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -482,8 +612,8 @@
           "required": true,
           "compatible_sources": [
             "ProcessingStep",
-            "TabularPreprocessing",
-            "DataLoad"
+            "DataLoad",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -528,118 +658,12 @@
     "passed": false,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve required dependency: model_input",
-        "details": {
-          "logical_name": "model_input",
-          "specification": "model_evaluation_xgb",
-          "compatible_sources": [
-            "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
-          ],
-          "dependency_type": "model_artifacts",
-          "available_steps": [
-            "DataLoading",
-            "Preprocessing",
-            "CurrencyConversion",
-            "ModelEval",
-            "XgboostModel",
-            "Registration",
-            "RiskTableMapping",
-            "BatchTransform",
-            "Dummy",
-            "Model",
-            "Payload",
-            "Xgboost",
-            "Pytorch",
-            "Packaging",
-            "PytorchModel"
-          ]
-        },
-        "recommendation": "Ensure a step exists that produces output model_input"
-      },
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve required dependency: processed_data",
-        "details": {
-          "logical_name": "processed_data",
-          "specification": "model_evaluation_xgb",
-          "compatible_sources": [
-            "ProcessingStep",
-            "TabularPreprocessing",
-            "DataLoad"
-          ],
-          "dependency_type": "processing_output",
-          "available_steps": [
-            "DataLoading",
-            "Preprocessing",
-            "CurrencyConversion",
-            "ModelEval",
-            "XgboostModel",
-            "Registration",
-            "RiskTableMapping",
-            "BatchTransform",
-            "Dummy",
-            "Model",
-            "Payload",
-            "Xgboost",
-            "Pytorch",
-            "Packaging",
-            "PytorchModel"
-          ]
-        },
-        "recommendation": "Ensure a step exists that produces output processed_data"
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/model_evaluation_xgb_spec.py",
+        "recommendation": "Create the specification file model_evaluation_xgb_spec.py"
       }
-    ],
-    "specification": {
-      "step_type": "XGBoostModelEval",
-      "node_type": "internal",
-      "dependencies": [
-        {
-          "logical_name": "model_input",
-          "dependency_type": "model_artifacts",
-          "required": true,
-          "compatible_sources": [
-            "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
-          ],
-          "data_type": "S3Uri",
-          "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
-        },
-        {
-          "logical_name": "processed_data",
-          "dependency_type": "processing_output",
-          "required": true,
-          "compatible_sources": [
-            "ProcessingStep",
-            "TabularPreprocessing",
-            "DataLoad"
-          ],
-          "data_type": "S3Uri",
-          "description": "Evaluation dataset for model assessment"
-        }
-      ],
-      "outputs": [
-        {
-          "logical_name": "eval_output",
-          "output_type": "processing_output",
-          "property_path": "properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri",
-          "data_type": "S3Uri",
-          "description": "Model evaluation results including predictions"
-        },
-        {
-          "logical_name": "metrics_output",
-          "output_type": "processing_output",
-          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
-          "data_type": "S3Uri",
-          "description": "Model evaluation metrics (AUC, precision, recall, etc.)"
-        }
-      ]
-    }
+    ]
   },
   "level4": {
     "passed": false,
@@ -664,7 +688,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-11T08:52:16.962006",
+    "validation_timestamp": "2025-08-11T09:40:27.341131",
     "validator_version": "1.0.0"
   }
 }

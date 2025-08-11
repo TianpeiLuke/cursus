@@ -36,7 +36,7 @@ from .xgboost_model_spec import XGBOOST_MODEL_SPEC
 
 # Model operations specifications
 from .model_calibration_spec import MODEL_CALIBRATION_SPEC
-from .model_eval_spec import MODEL_EVAL_SPEC
+from .xgboost_model_eval_spec import MODEL_EVAL_SPEC
 
 # Packaging and deployment specifications
 from .packaging_spec import PACKAGING_SPEC

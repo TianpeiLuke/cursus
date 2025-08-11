@@ -25,7 +25,7 @@ from .config_data_load_step_cradle import (
 )
 from .config_dummy_training_step import DummyTrainingConfig
 from .config_model_calibration_step import ModelCalibrationConfig
-from .config_model_eval_step_xgboost import XGBoostModelEvalConfig
+from .config_xgboost_model_eval_step import XGBoostModelEvalConfig
 from .config_model_step_pytorch import PyTorchModelStepConfig
 from .config_model_step_xgboost import XGBoostModelStepConfig
 from .config_package_step import PackageConfig

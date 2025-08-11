@@ -193,7 +193,7 @@ class StepBuilderRegistry:
         from ..builders.builder_data_load_step_cradle import CradleDataLoadingStepBuilder
         from ..builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
         from ..builders.builder_training_step_xgboost import XGBoostTrainingStepBuilder
-        from ..builders.builder_model_eval_step_xgboost import XGBoostModelEvalStepBuilder
+        from ..builders.builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
         from ..builders.builder_package_step import PackageStepBuilder
         from ..builders.builder_payload_step import PayloadStepBuilder
         from ..builders.builder_registration_step import RegistrationStepBuilder

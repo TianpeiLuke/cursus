@@ -572,7 +572,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-11T08:52:16.888638",
+    "validation_timestamp": "2025-08-11T09:40:27.230717",
     "validator_version": "1.0.0"
   }
 }

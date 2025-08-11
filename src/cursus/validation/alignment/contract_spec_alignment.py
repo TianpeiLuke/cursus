@@ -249,7 +249,8 @@ class ContractSpecificationAlignmentTester:
                 f"{contract_name.upper()}_CONTRACT",
                 f"{contract_name}_CONTRACT", 
                 f"{contract_name}_contract",
-                "MODEL_EVALUATION_CONTRACT",  # Specific for model_evaluation_xgb
+                "XGBOOST_MODEL_EVAL_CONTRACT",  # Specific for model_evaluation_xgb
+                "MODEL_EVALUATION_CONTRACT",  # Legacy fallback
                 "CONTRACT",
                 "contract"
             ]

@@ -484,7 +484,7 @@ class FlexibleFileResolver:
         """
         return {
             'contracts': {
-                'model_evaluation_xgb': 'model_evaluation_contract.py',
+                'model_evaluation_xgb': 'xgboost_model_eval_contract.py',
                 'dummy_training': 'dummy_training_contract.py',
                 'currency_conversion': 'currency_conversion_contract.py',
                 'mims_package': 'mims_package_contract.py',
@@ -494,7 +494,7 @@ class FlexibleFileResolver:
                 'tabular_preprocess': 'tabular_preprocess_contract.py',
             },
             'specs': {
-                'model_evaluation_xgb': 'model_eval_spec.py',
+                'model_evaluation_xgb': 'xgboost_model_eval_spec.py',
                 'dummy_training': 'dummy_training_spec.py',
                 'currency_conversion': 'currency_conversion_training_spec.py',  # Has variants
                 'mims_package': 'packaging_spec.py',
@@ -504,7 +504,7 @@ class FlexibleFileResolver:
                 'tabular_preprocess': 'preprocessing_training_spec.py',  # Has variants
             },
             'builders': {
-                'model_evaluation_xgb': 'builder_model_eval_step_xgboost.py',
+                'model_evaluation_xgb': 'builder_xgboost_model_eval_step.py',
                 'dummy_training': 'builder_dummy_training_step.py',
                 'currency_conversion': 'builder_currency_conversion_step.py',
                 'mims_package': 'builder_package_step.py',
@@ -514,7 +514,7 @@ class FlexibleFileResolver:
                 'tabular_preprocess': 'builder_tabular_preprocessing_step.py',
             },
             'configs': {
-                'model_evaluation_xgb': 'config_model_eval_step_xgboost.py',
+                'model_evaluation_xgb': 'config_xgboost_model_eval_step.py',
                 'dummy_training': 'config_dummy_training_step.py',
                 'currency_conversion': 'config_currency_conversion_step.py',
                 'mims_package': 'config_package_step.py',
@@ -566,6 +566,18 @@ class FlexibleFileResolver:
             patterns.insert(0, self.naming_patterns['specs'][script_name])
         
         return self._find_file_by_patterns(self.base_dirs.get('specs', ''), patterns)
+    
+    def find_specification_file(self, script_name: str) -> Optional[str]:
+        """
+        Alias for find_spec_file to maintain compatibility with existing code.
+        
+        Args:
+            script_name: Name of the script (without .py extension)
+            
+        Returns:
+            Path to the specification file or None if not found
+        """
+        return self.find_spec_file(script_name)
     
     def find_builder_file(self, script_name: str) -> Optional[str]:
         """

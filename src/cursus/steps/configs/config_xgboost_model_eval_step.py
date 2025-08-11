@@ -18,7 +18,7 @@ from .config_processing_step_base import ProcessingStepConfigBase
 from ..hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
 
 # Import the script contract
-from ..contracts.model_evaluation_contract import MODEL_EVALUATION_CONTRACT
+from ..contracts.xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -160,7 +160,7 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         Returns:
             The model evaluation script contract
         """
-        return MODEL_EVALUATION_CONTRACT
+        return XGBOOST_MODEL_EVAL_CONTRACT
         
     def get_script_path(self) -> str:
         """

@@ -12,7 +12,7 @@ from .builder_batch_transform_step import BatchTransformStepBuilder
 from .builder_currency_conversion_step import CurrencyConversionStepBuilder
 from .builder_dummy_training_step import DummyTrainingStepBuilder
 from .builder_model_calibration_step import ModelCalibrationStepBuilder
-from .builder_model_eval_step_xgboost import XGBoostModelEvalStepBuilder
+from .builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
 from .builder_model_step_pytorch import PyTorchModelStepBuilder
 from .builder_model_step_xgboost import XGBoostModelStepBuilder
 from .builder_package_step import PackageStepBuilder

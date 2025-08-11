@@ -10,12 +10,12 @@ from ..registry.step_names import get_spec_step_type
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..contracts.model_evaluation_contract import MODEL_EVALUATION_CONTRACT
+    from ..contracts.xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
 
 # Import the contract at runtime to avoid circular imports
 def _get_model_evaluation_contract():
-    from ..contracts.model_evaluation_contract import MODEL_EVALUATION_CONTRACT
-    return MODEL_EVALUATION_CONTRACT
+    from ..contracts.xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
+    return XGBOOST_MODEL_EVAL_CONTRACT
 
 # XGBoost Model Evaluation Step Specification
 MODEL_EVAL_SPEC = StepSpecification(

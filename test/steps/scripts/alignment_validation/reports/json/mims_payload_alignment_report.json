@@ -119,8 +119,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -148,8 +148,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -176,8 +176,8 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
                 "TrainingStep",
+                "XGBoostTraining",
                 "ModelStep"
               ],
               "data_type": "S3Uri",
@@ -201,8 +201,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -242,8 +242,8 @@
           "logical_name": "model_input",
           "specification": "mims_payload",
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "dependency_type": "model_artifacts",
@@ -251,9 +251,9 @@
             "DataLoading",
             "Preprocessing",
             "CurrencyConversion",
-            "ModelEval",
             "XgboostModel",
             "Registration",
+            "XgboostModelEval",
             "RiskTableMapping",
             "BatchTransform",
             "Dummy",
@@ -277,8 +277,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -319,7 +319,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
     "contract_mapping": "mims_payload_contract",
-    "validation_timestamp": "2025-08-11T08:52:16.926109",
+    "validation_timestamp": "2025-08-11T09:40:27.305839",
     "validator_version": "1.0.0"
   }
 }

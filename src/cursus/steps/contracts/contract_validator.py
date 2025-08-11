@@ -14,7 +14,7 @@ from ...core.base.contract_base import ScriptContract, ValidationResult
 from .tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
 from .mims_package_contract import MIMS_PACKAGE_CONTRACT
 from .mims_payload_contract import MIMS_PAYLOAD_CONTRACT
-from .model_evaluation_contract import MODEL_EVALUATION_CONTRACT
+from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
 from .currency_conversion_contract import CURRENCY_CONVERSION_CONTRACT
 from .risk_table_mapping_contract import RISK_TABLE_MAPPING_CONTRACT
 from .pytorch_train_contract import PYTORCH_TRAIN_CONTRACT
@@ -50,7 +50,7 @@ class ScriptContractValidator:
         "tabular_preprocess.py": TABULAR_PREPROCESS_CONTRACT,
         "mims_package.py": MIMS_PACKAGE_CONTRACT,
         "mims_payload.py": MIMS_PAYLOAD_CONTRACT,
-        "model_evaluation_xgb.py": MODEL_EVALUATION_CONTRACT,
+        "model_evaluation_xgb.py": XGBOOST_MODEL_EVAL_CONTRACT,
         "currency_conversion.py": CURRENCY_CONVERSION_CONTRACT,
         "risk_table_mapping.py": RISK_TABLE_MAPPING_CONTRACT,
         "train.py": PYTORCH_TRAIN_CONTRACT,
