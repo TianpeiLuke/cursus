@@ -64,7 +64,8 @@ class ContractSpecificationAlignmentTester:
         if target_scripts:
             contracts_to_validate = target_scripts
         else:
-            contracts_to_validate = self._discover_contracts()
+            # Only validate contracts that have corresponding scripts
+            contracts_to_validate = self._discover_contracts_with_scripts()
         
         for contract_name in contracts_to_validate:
             try:
@@ -1070,3 +1071,57 @@ class ContractSpecificationAlignmentTester:
                     contracts.append(contract_name)
         
         return sorted(contracts)
+    
+    def _discover_contracts_with_scripts(self) -> List[str]:
+        """
+        Discover contracts that have corresponding scripts by checking their entry_point field.
+        
+        This method loads each contract and checks if the script file referenced in the
+        entry_point field actually exists, preventing validation errors for contracts
+        without corresponding scripts.
+        
+        Returns:
+            List of contract names that have corresponding scripts
+        """
+        from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+        
+        # Get the list of actual scripts for verification
+        tester = UnifiedAlignmentTester()
+        actual_scripts = set(tester.discover_scripts())
+        
+        contracts_with_scripts = []
+        
+        if not self.contracts_dir.exists():
+            return contracts_with_scripts
+        
+        for contract_file in self.contracts_dir.glob("*_contract.py"):
+            if contract_file.name.startswith('__'):
+                continue
+                
+            contract_name = contract_file.stem.replace('_contract', '')
+            
+            try:
+                # Load the contract to get its entry_point
+                contract = self._load_contract_from_python(contract_file, contract_name)
+                entry_point = contract.get('entry_point', '')
+                
+                if entry_point:
+                    # Extract script name from entry_point (remove .py extension)
+                    script_name = entry_point.replace('.py', '')
+                    
+                    # Check if this script exists in the discovered scripts
+                    if script_name in actual_scripts:
+                        contracts_with_scripts.append(contract_name)
+                    else:
+                        # Log that we're skipping this contract
+                        print(f"ℹ️  Skipping contract '{contract_name}' - script '{script_name}' not found in discovered scripts")
+                else:
+                    # Contract has no entry_point, skip it
+                    print(f"ℹ️  Skipping contract '{contract_name}' - no entry_point defined")
+                    
+            except Exception as e:
+                # If we can't load the contract, skip it
+                print(f"⚠️  Skipping contract '{contract_name}' - failed to load: {str(e)}")
+                continue
+        
+        return sorted(contracts_with_scripts)

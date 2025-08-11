@@ -682,20 +682,22 @@ class SpecificationDependencyAlignmentTester:
         return all_specs
     
     def _discover_specifications(self) -> List[str]:
-        """Discover all specification files in the specifications directory."""
+        """
+        Discover all specification files in the specifications directory.
+        
+        Only includes specifications that have actual files (not derived base names).
+        This prevents validation errors for non-existent specification files.
+        """
         specifications = set()
         
         if self.specs_dir.exists():
             for spec_file in self.specs_dir.glob("*_spec.py"):
+                if spec_file.name.startswith('__'):
+                    continue
+                    
+                # Use the actual file name (without .py extension) as the spec name
+                # This ensures we only validate specifications that actually exist
                 spec_name = spec_file.stem.replace('_spec', '')
-                # Remove job type suffix if present
-                parts = spec_name.split('_')
-                if len(parts) > 1:
-                    # Try to identify if last part is a job type
-                    potential_job_types = ['training', 'validation', 'testing', 'calibration']
-                    if parts[-1] in potential_job_types:
-                        spec_name = '_'.join(parts[:-1])
-                
                 specifications.add(spec_name)
         
         return sorted(list(specifications))
