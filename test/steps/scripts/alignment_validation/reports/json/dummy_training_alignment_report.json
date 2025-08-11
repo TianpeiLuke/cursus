@@ -2,61 +2,7 @@
   "script_name": "dummy_training",
   "level1": {
     "passed": true,
-    "issues": [
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses logical name not in contract: model",
-        "details": {
-          "logical_name": "model",
-          "script": "dummy_training"
-        },
-        "recommendation": "Add logical name model to contract or update script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses logical name not in contract: config",
-        "details": {
-          "logical_name": "config",
-          "script": "dummy_training"
-        },
-        "recommendation": "Add logical name config to contract or update script"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/model/model.tar.gz",
-        "details": {
-          "path": "/opt/ml/processing/input/model/model.tar.gz",
-          "operation": "read",
-          "script": "dummy_training"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/model/model.tar.gz in script or remove from contract inputs"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/config/hyperparameters.json",
-        "details": {
-          "path": "/opt/ml/processing/input/config/hyperparameters.json",
-          "operation": "read",
-          "script": "dummy_training"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/config/hyperparameters.json in script or remove from contract inputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/model",
-        "details": {
-          "path": "/opt/ml/processing/output/model",
-          "operation": "write",
-          "script": "dummy_training"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/model in script or remove from contract outputs"
-      }
-    ],
+    "issues": [],
     "script_analysis": {
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
       "path_references": [
@@ -157,10 +103,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing",
+              "XGBoostTraining",
               "PytorchTraining",
-              "XGBoostTraining"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -170,8 +116,8 @@
             "dependency_type": "hyperparameters",
             "required": true,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -201,10 +147,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "TabularPreprocessing",
+            "XGBoostTraining",
             "PytorchTraining",
-            "XGBoostTraining"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -214,8 +160,8 @@
           "dependency_type": "hyperparameters",
           "required": true,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -321,11 +267,11 @@
         }
       },
       "required_fields": "set()",
-      "optional_fields": "{'processing_entry_point', 'hyperparameters_s3_uri', 'pretrained_model_path', 'hyperparameters'}",
+      "optional_fields": "{'hyperparameters', 'processing_entry_point', 'hyperparameters_s3_uri', 'pretrained_model_path'}",
       "default_values": {
-        "aws_region": "<property object at 0x102975580>",
-        "effective_instance_type": "<property object at 0x30eae5850>",
-        "effective_source_dir": "<property object at 0x30eae5800>",
+        "aws_region": "<property object at 0x102fe9580>",
+        "effective_instance_type": "<property object at 0x31cbe5710>",
+        "effective_source_dir": "<property object at 0x31cbe56c0>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -333,7 +279,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x1022b3970>",
+        "model_extra": "<property object at 0x102897970>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -359,12 +305,12 @@
           "hyperparameters": "annotation=ModelHyperparameters required=False default_factory=ModelHyperparameters description='Model hyperparameters to be included in the model package.'",
           "hyperparameters_s3_uri": "annotation=Union[str, NoneType] required=False default=None description='S3 URI where hyperparameters.json will be saved.'"
         },
-        "model_fields_set": "<property object at 0x1022b39c0>",
-        "pipeline_description": "<property object at 0x102975620>",
-        "pipeline_name": "<property object at 0x1029755d0>",
-        "pipeline_s3_loc": "<property object at 0x102975670>",
-        "script_contract": "<property object at 0x102975710>",
-        "script_path": "<property object at 0x30eae58a0>"
+        "model_fields_set": "<property object at 0x1028979c0>",
+        "pipeline_description": "<property object at 0x102fe9620>",
+        "pipeline_name": "<property object at 0x102fe95d0>",
+        "pipeline_s3_loc": "<property object at 0x102fe9670>",
+        "script_contract": "<property object at 0x102fe9710>",
+        "script_path": "<property object at 0x31cbe5760>"
       }
     }
   },
@@ -372,7 +318,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-10T19:46:35.248190",
+    "validation_timestamp": "2025-08-10T21:52:04.401886",
     "validator_version": "1.0.0"
   }
 }

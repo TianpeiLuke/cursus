@@ -78,7 +78,38 @@ This document analyzes the critical pain points discovered during the implementa
 
 **Impact**: Validator incorrectly reports "config" and "model" as undeclared logical names.
 
-#### 3. Path Usage vs File Operations Mismatch
+#### 3. Argparse Hyphen-to-Underscore Convention Misunderstanding
+**Problem**: The validator doesn't understand standard Python argparse behavior where command-line flags use hyphens but script attributes use underscores.
+
+**Standard Argparse Pattern**:
+```python
+# Contract declares command-line arguments with hyphens
+"arguments": {
+    "job-type": {"required": true},
+    "marketplace-id-col": {"required": false}
+}
+
+# Script defines argparse with hyphens (standard CLI convention)
+parser.add_argument("--job-type", required=True)
+parser.add_argument("--marketplace-id-col", required=False)
+
+# Script accesses with underscores (automatic argparse conversion)
+args.job_type  # argparse automatically converts job-type → job_type
+args.marketplace_id_col  # argparse automatically converts marketplace-id-col → marketplace_id_col
+```
+
+**Current (Broken) Validation Logic**:
+- Contract declares: `job-type`, `marketplace-id-col`, `default-currency`
+- Script accesses: `job_type`, `marketplace_id_col`, `default_currency`
+- Validator reports: "Contract declares argument not defined in script: job-type"
+- **Reality**: This is normal, correct argparse behavior!
+
+**Impact**: 
+- **currency_conversion**: 16 false positive argument mismatch errors
+- **tabular_preprocess**: Multiple false positive argument errors
+- **Systematic false positives** across any script using standard CLI argument patterns
+
+#### 4. Path Usage vs File Operations Mismatch
 **Problem**: The validator checks path references separately from file operations without correlating them properly.
 
 **Script Pattern**:

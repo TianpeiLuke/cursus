@@ -25,13 +25,25 @@
       },
       {
         "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: job_type",
+        "category": "logical_names",
+        "message": "Script uses path not mapped to contract logical name: /opt/ml/processing/input",
         "details": {
-          "argument": "job_type",
+          "path": "/opt/ml/processing/input",
+          "inferred_logical_name": null,
           "script": "tabular_preprocess"
         },
-        "recommendation": "Add job_type to contract arguments or remove from script"
+        "recommendation": "Add path /opt/ml/processing/input to contract inputs/outputs with appropriate logical name"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --job-type (accessed as args.job_type)",
+        "details": {
+          "cli_argument": "job-type",
+          "python_attribute": "job_type",
+          "script": "tabular_preprocess"
+        },
+        "recommendation": "Add --job-type to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -43,17 +55,6 @@
           "script": "tabular_preprocess"
         },
         "recommendation": "Either read /opt/ml/processing/input/data in script or remove from contract inputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output",
-        "details": {
-          "path": "/opt/ml/processing/output",
-          "operation": "write",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -189,8 +190,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "CradleDataLoading",
+              "DataLoad",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -235,7 +236,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
     "contract_mapping": "tabular_preprocess_contract",
-    "validation_timestamp": "2025-08-10T19:46:35.313022",
+    "validation_timestamp": "2025-08-10T21:52:04.469123",
     "validator_version": "1.0.0"
   }
 }

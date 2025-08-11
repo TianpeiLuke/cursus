@@ -13,6 +13,7 @@ from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
 from .static_analysis.script_analyzer import ScriptAnalyzer
+from .static_analysis.builder_analyzer import extract_builder_arguments
 from .alignment_utils import (
     SeverityLevel, create_alignment_issue, normalize_path,
     extract_logical_name_from_path, is_sagemaker_path
@@ -30,16 +31,18 @@ class ScriptContractAlignmentTester:
     - File operations match declared inputs/outputs
     """
     
-    def __init__(self, scripts_dir: str, contracts_dir: str):
+    def __init__(self, scripts_dir: str, contracts_dir: str, builders_dir: Optional[str] = None):
         """
         Initialize the script-contract alignment tester.
         
         Args:
             scripts_dir: Directory containing processing scripts
             contracts_dir: Directory containing script contracts
+            builders_dir: Optional directory containing step builders for enhanced validation
         """
         self.scripts_dir = Path(scripts_dir)
         self.contracts_dir = Path(contracts_dir)
+        self.builders_dir = Path(builders_dir) if builders_dir else None
         
         # Build entry_point to contract file mapping
         self._entry_point_to_contract = self._build_entry_point_mapping()
@@ -340,29 +343,41 @@ class ScriptContractAlignmentTester:
                 'recommendation': f'Either use path {path} in script or remove from contract'
             })
         
-        # Check for logical name consistency
+        # Check for logical name consistency using contract mappings
+        # This fixes the critical issue of incorrect path-based logical name extraction
         script_logical_names = set()
-        for path in script_paths:
-            logical_name = extract_logical_name_from_path(path)
-            if logical_name:
-                script_logical_names.add(logical_name)
-        
         contract_logical_names = set()
+        
+        # Build contract logical names
         for input_name in contract_inputs.keys():
             contract_logical_names.add(input_name)
         for output_name in contract_outputs.keys():
             contract_logical_names.add(output_name)
         
-        # Check for logical name mismatches
-        script_only_names = script_logical_names - contract_logical_names
-        for name in script_only_names:
-            issues.append({
-                'severity': 'WARNING',
-                'category': 'logical_names',
-                'message': f'Script uses logical name not in contract: {name}',
-                'details': {'logical_name': name, 'script': script_name},
-                'recommendation': f'Add logical name {name} to contract or update script'
-            })
+        # Resolve logical names from script paths using contract mappings
+        for path in script_paths:
+            logical_name = self._resolve_logical_name_from_contract(path, contract)
+            if logical_name:
+                script_logical_names.add(logical_name)
+        
+        # Check for logical name mismatches - only flag if path is used but not in contract
+        for path in script_paths:
+            if is_sagemaker_path(path):
+                logical_name = self._resolve_logical_name_from_contract(path, contract)
+                if logical_name is None:
+                    # Path is used but not mapped to any contract logical name
+                    fallback_name = extract_logical_name_from_path(path)
+                    issues.append({
+                        'severity': 'WARNING',
+                        'category': 'logical_names',
+                        'message': f'Script uses path not mapped to contract logical name: {path}',
+                        'details': {
+                            'path': path, 
+                            'inferred_logical_name': fallback_name,
+                            'script': script_name
+                        },
+                        'recommendation': f'Add path {path} to contract inputs/outputs with appropriate logical name'
+                    })
         
         return issues
     
@@ -431,43 +446,99 @@ class ScriptContractAlignmentTester:
         
         # Get contract arguments
         contract_args = contract.get('arguments', {})
-        expected_args = set(contract_args.keys())
         
         # Get script arguments
-        script_args = set()
+        script_args = {}
         for arg_def in analysis.get('argument_definitions', []):
-            script_args.add(arg_def.argument_name)
+            script_args[arg_def.argument_name] = arg_def
+        
+        # Normalize argument names for argparse hyphen-to-underscore conversion
+        # Contract uses CLI convention (hyphens), script uses Python convention (underscores)
+        normalized_contract_args = {}
+        for contract_arg_name, contract_spec in contract_args.items():
+            # Convert contract argument name (with hyphens) to Python attribute name (with underscores)
+            python_arg_name = contract_arg_name.replace('-', '_')
+            normalized_contract_args[python_arg_name] = {
+                'contract_name': contract_arg_name,  # Keep original for error messages
+                'spec': contract_spec
+            }
+        
+        expected_args = set(normalized_contract_args.keys())
+        actual_script_args = set(script_args.keys())
         
         # Check for missing arguments
-        missing_args = expected_args - script_args
-        for arg_name in missing_args:
+        missing_args = expected_args - actual_script_args
+        for python_arg_name in missing_args:
+            contract_arg_name = normalized_contract_args[python_arg_name]['contract_name']
             issues.append({
                 'severity': 'ERROR',
                 'category': 'arguments',
-                'message': f'Contract declares argument not defined in script: {arg_name}',
-                'details': {'argument': arg_name, 'script': script_name},
-                'recommendation': f'Add argument parser for {arg_name} in script'
+                'message': f'Contract declares argument not defined in script: {contract_arg_name} (should be accessed as args.{python_arg_name})',
+                'details': {
+                    'contract_argument': contract_arg_name,
+                    'python_attribute': python_arg_name,
+                    'script': script_name
+                },
+                'recommendation': f'Add argument parser for --{contract_arg_name} in script (accessed as args.{python_arg_name})'
             })
         
-        # Check for extra arguments
-        extra_args = script_args - expected_args
-        for arg_name in extra_args:
-            issues.append({
-                'severity': 'WARNING',
-                'category': 'arguments',
-                'message': f'Script defines argument not in contract: {arg_name}',
-                'details': {'argument': arg_name, 'script': script_name},
-                'recommendation': f'Add {arg_name} to contract arguments or remove from script'
-            })
+        # Get builder arguments if builders directory is available
+        builder_args = set()
+        if self.builders_dir:
+            try:
+                builder_args = extract_builder_arguments(script_name, str(self.builders_dir))
+            except Exception as e:
+                # Log warning but continue validation
+                pass
         
-        # Validate argument properties
-        script_args_dict = {}
-        for arg_def in analysis.get('argument_definitions', []):
-            script_args_dict[arg_def.argument_name] = arg_def
+        # Enhanced check for extra arguments - check builder before declaring failure
+        script_cli_args = set()
+        for script_arg_name in actual_script_args:
+            # Convert Python attribute name back to CLI argument name
+            cli_arg_name = script_arg_name.replace('_', '-')
+            script_cli_args.add(cli_arg_name)
         
-        for arg_name, contract_spec in contract_args.items():
-            if arg_name in script_args_dict:
-                script_arg = script_args_dict[arg_name]
+        contract_cli_args = set(contract_args.keys())
+        extra_cli_args = script_cli_args - contract_cli_args
+        
+        for cli_arg_name in extra_cli_args:
+            python_arg_name = cli_arg_name.replace('-', '_')
+            
+            # Check if this argument is provided by the builder
+            if cli_arg_name in builder_args:
+                # Argument is provided by builder - this is expected for config-driven arguments
+                issues.append({
+                    'severity': 'INFO',
+                    'category': 'arguments',
+                    'message': f'Script defines config-driven argument provided by builder: --{cli_arg_name} (accessed as args.{python_arg_name})',
+                    'details': {
+                        'cli_argument': cli_arg_name,
+                        'python_attribute': python_arg_name,
+                        'script': script_name,
+                        'source': 'builder'
+                    },
+                    'recommendation': f'Argument --{cli_arg_name} is provided by builder - no action needed'
+                })
+            else:
+                # Argument is not in contract or builder - this is a real issue
+                issues.append({
+                    'severity': 'WARNING',
+                    'category': 'arguments',
+                    'message': f'Script defines argument not in contract: --{cli_arg_name} (accessed as args.{python_arg_name})',
+                    'details': {
+                        'cli_argument': cli_arg_name,
+                        'python_attribute': python_arg_name,
+                        'script': script_name
+                    },
+                    'recommendation': f'Add --{cli_arg_name} to contract arguments or remove from script'
+                })
+        
+        # Validate argument properties using normalized names
+        for contract_arg_name, contract_spec in contract_args.items():
+            python_arg_name = contract_arg_name.replace('-', '_')
+            
+            if python_arg_name in script_args:
+                script_arg = script_args[python_arg_name]
                 
                 # Check required vs optional
                 contract_required = contract_spec.get('required', False)
@@ -477,9 +548,13 @@ class ScriptContractAlignmentTester:
                     issues.append({
                         'severity': 'ERROR',
                         'category': 'arguments',
-                        'message': f'Contract requires argument {arg_name} but script makes it optional',
-                        'details': {'argument': arg_name, 'script': script_name},
-                        'recommendation': f'Make argument {arg_name} required in script'
+                        'message': f'Contract requires argument --{contract_arg_name} but script makes it optional (args.{python_arg_name})',
+                        'details': {
+                            'contract_argument': contract_arg_name,
+                            'python_attribute': python_arg_name,
+                            'script': script_name
+                        },
+                        'recommendation': f'Make argument --{contract_arg_name} required in script'
                     })
                 
                 # Check type consistency
@@ -490,14 +565,15 @@ class ScriptContractAlignmentTester:
                     issues.append({
                         'severity': 'WARNING',
                         'category': 'arguments',
-                        'message': f'Argument {arg_name} type mismatch: contract={contract_type}, script={script_type}',
+                        'message': f'Argument --{contract_arg_name} type mismatch: contract={contract_type}, script={script_type} (accessed as args.{python_arg_name})',
                         'details': {
-                            'argument': arg_name,
+                            'contract_argument': contract_arg_name,
+                            'python_attribute': python_arg_name,
                             'contract_type': contract_type,
                             'script_type': script_type,
                             'script': script_name
                         },
-                        'recommendation': f'Align argument {arg_name} type between contract and script'
+                        'recommendation': f'Align argument --{contract_arg_name} type between contract and script'
                     })
         
         return issues
@@ -522,10 +598,11 @@ class ScriptContractAlignmentTester:
             if 'path' in output_spec:
                 expected_writes.add(normalize_path(output_spec['path']))
         
-        # Get script file operations
+        # Get script file operations with enhanced detection
         script_reads = set()
         script_writes = set()
         
+        # Process detected file operations
         for file_op in analysis.get('file_operations', []):
             normalized_path = normalize_path(file_op.file_path)
             
@@ -533,6 +610,14 @@ class ScriptContractAlignmentTester:
                 script_reads.add(normalized_path)
             elif file_op.operation_type == 'write':
                 script_writes.add(normalized_path)
+        
+        # Enhanced file operation detection from path references
+        # This addresses the critical issue where file operations are missed
+        script_reads_enhanced, script_writes_enhanced = self._detect_file_operations_from_paths(
+            analysis, contract_inputs, contract_outputs
+        )
+        script_reads.update(script_reads_enhanced)
+        script_writes.update(script_writes_enhanced)
         
         # Check for reads not declared as inputs
         undeclared_reads = script_reads - expected_reads
@@ -558,16 +643,27 @@ class ScriptContractAlignmentTester:
                     'recommendation': f'Add {path} to contract outputs'
                 })
         
-        # Check for declared inputs not read
-        unread_inputs = expected_reads - script_reads
-        for path in unread_inputs:
+        # Check for declared inputs not read (only if no file operations detected at all)
+        if not script_reads and not script_writes:
+            # If no file operations detected, this is likely a detection issue, not a real problem
             issues.append({
                 'severity': 'INFO',
                 'category': 'file_operations',
-                'message': f'Contract declares input not read by script: {path}',
-                'details': {'path': path, 'operation': 'read', 'script': script_name},
-                'recommendation': f'Either read {path} in script or remove from contract inputs'
+                'message': f'No file operations detected - this may indicate incomplete static analysis',
+                'details': {'script': script_name},
+                'recommendation': 'Review script for file operations that may not be detected by static analysis'
             })
+        else:
+            # Only flag unread inputs if we detected some file operations
+            unread_inputs = expected_reads - script_reads
+            for path in unread_inputs:
+                issues.append({
+                    'severity': 'INFO',
+                    'category': 'file_operations',
+                    'message': f'Contract declares input not read by script: {path}',
+                    'details': {'path': path, 'operation': 'read', 'script': script_name},
+                    'recommendation': f'Either read {path} in script or remove from contract inputs'
+                })
         
         # Check for declared outputs not written
         unwritten_outputs = expected_writes - script_writes
@@ -581,6 +677,97 @@ class ScriptContractAlignmentTester:
             })
         
         return issues
+    
+    def _detect_file_operations_from_paths(self, analysis: Dict[str, Any], contract_inputs: Dict[str, Any], contract_outputs: Dict[str, Any]) -> tuple[set, set]:
+        """
+        Enhanced file operation detection from path references and context.
+        
+        This addresses the critical issue where basic file operation detection
+        misses tarfile, shutil, pathlib, and framework-specific operations.
+        """
+        script_reads = set()
+        script_writes = set()
+        
+        # Get path references from analysis
+        path_references = analysis.get('path_references', [])
+        
+        # Analyze path usage context to infer file operations
+        for path_ref in path_references:
+            normalized_path = normalize_path(path_ref.path)
+            context = getattr(path_ref, 'context', '').lower()
+            
+            # Infer operation type from context
+            if any(keyword in context for keyword in [
+                'read', 'load', 'open', 'extract', 'copy', 'move', 'glob', 'listdir',
+                'tarfile.open', 'pd.read', 'json.load', 'pickle.load', 'np.load',
+                'cv2.imread', 'PIL.Image.open', 'torch.load', 'joblib.load'
+            ]):
+                # Check if this path matches a contract input
+                for input_spec in contract_inputs.values():
+                    if 'path' in input_spec and normalize_path(input_spec['path']) == normalized_path:
+                        script_reads.add(normalized_path)
+                        break
+            
+            if any(keyword in context for keyword in [
+                'write', 'save', 'dump', 'create', 'mkdir', 'copy', 'move',
+                'tarfile.open', 'pd.to_', 'json.dump', 'pickle.dump', 'np.save',
+                'cv2.imwrite', 'torch.save', 'joblib.dump'
+            ]):
+                # Check if this path matches a contract output
+                for output_spec in contract_outputs.values():
+                    if 'path' in output_spec and normalize_path(output_spec['path']) == normalized_path:
+                        script_writes.add(normalized_path)
+                        break
+        
+        # Additional heuristic: if a path appears in contract inputs/outputs and is referenced in script,
+        # assume it's being used for its intended purpose
+        for input_spec in contract_inputs.values():
+            if 'path' in input_spec:
+                contract_path = normalize_path(input_spec['path'])
+                for path_ref in path_references:
+                    if normalize_path(path_ref.path) == contract_path:
+                        script_reads.add(contract_path)
+                        break
+        
+        for output_spec in contract_outputs.values():
+            if 'path' in output_spec:
+                contract_path = normalize_path(output_spec['path'])
+                for path_ref in path_references:
+                    if normalize_path(path_ref.path) == contract_path:
+                        script_writes.add(contract_path)
+                        break
+        
+        return script_reads, script_writes
+    
+    def _resolve_logical_name_from_contract(self, path: str, contract: Dict[str, Any]) -> Optional[str]:
+        """
+        Resolve logical name from contract mappings instead of path parsing.
+        
+        This fixes the critical issue where logical names were incorrectly extracted
+        from path patterns instead of using the actual contract mappings.
+        
+        Args:
+            path: The file path to resolve
+            contract: The contract dictionary
+            
+        Returns:
+            Logical name if found in contract, None otherwise
+        """
+        normalized_path = normalize_path(path)
+        
+        # Check contract inputs
+        for logical_name, input_spec in contract.get('inputs', {}).items():
+            if 'path' in input_spec:
+                if normalize_path(input_spec['path']) == normalized_path:
+                    return logical_name
+        
+        # Check contract outputs
+        for logical_name, output_spec in contract.get('outputs', {}).items():
+            if 'path' in output_spec:
+                if normalize_path(output_spec['path']) == normalized_path:
+                    return logical_name
+        
+        return None  # Only return None if truly not in contract
     
     def _build_entry_point_mapping(self) -> Dict[str, str]:
         """

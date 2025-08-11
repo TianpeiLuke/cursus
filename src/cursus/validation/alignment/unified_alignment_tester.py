@@ -53,7 +53,7 @@ class UnifiedAlignmentTester:
         self.configs_dir = Path(configs_dir)
         
         # Initialize level-specific testers
-        self.level1_tester = ScriptContractAlignmentTester(scripts_dir, contracts_dir)
+        self.level1_tester = ScriptContractAlignmentTester(scripts_dir, contracts_dir, builders_dir)
         self.level2_tester = ContractSpecificationAlignmentTester(contracts_dir, specs_dir)
         self.level3_tester = SpecificationDependencyAlignmentTester(specs_dir)
         self.level4_tester = BuilderConfigurationAlignmentTester(builders_dir, configs_dir)

@@ -69,10 +69,11 @@ class ScriptContract(BaseModel):
     entry_point: str                                   # Primary script file
     expected_input_paths: Dict[str, str]               # Logical name -> physical path
     expected_output_paths: Dict[str, str]              # Logical name -> physical path
+    expected_arguments: Dict[str, str] = Field(default_factory=dict)  # CLI argument name -> default value
     required_env_vars: List[str] = Field(default_factory=list)  # Required environment variables
-    optional_env_vars: List[str] = Field(default_factory=list)  # Optional environment variables
+    optional_env_vars: Dict[str, str] = Field(default_factory=dict)  # Optional env vars -> default values
     framework_requirements: Dict[str, str] = Field(default_factory=dict)  # Framework -> version
-    description: Optional[str] = None                  # Human-readable description
+    description: str = Field(default="")              # Human-readable description
 ```
 
 ### 2. Validation Component
@@ -129,7 +130,54 @@ ENV_VAR_PATTERNS = {
 }
 ```
 
-### 3. Framework Version Specification
+### 3. Argument Standardization (Standard CLI + Argparse Behavior)
+
+**This is normal SageMaker + Python argparse behavior, not a special case.**
+
+In SageMaker ProcessingStep (and TrainingStep/TransformStep), `job_arguments` are passed verbatim to your script as command-line flags. Python argparse follows standard CLI conventions where CLI flags use hyphens but Python attributes use underscores:
+
+```python
+# Contract Argument Definition (Current Implementation)
+CURRENCY_CONVERSION_CONTRACT = ScriptContract(
+    entry_point="currency_conversion.py",
+    expected_arguments={
+        "job-type": "training",              # CLI argument with hyphen
+        "marketplace-id-col": "marketplace_id",  # Maps to default value
+        "default-currency": "USD",           # Default value for argument
+        "n-workers": "50"                    # Numeric argument as string
+    }
+)
+
+# Script Implementation (Python Convention)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--job-type", required=True)  # CLI uses hyphens
+    parser.add_argument("--marketplace-id-col", required=False)
+    parser.add_argument("--default-currency", required=False, default="USD")
+    parser.add_argument("--n-workers", type=int, default=50)
+    
+    args = parser.parse_args()
+    
+    # Script accesses with underscores (automatic argparse conversion)
+    job_type = args.job_type  # job-type → job_type
+    marketplace_col = args.marketplace_id_col  # marketplace-id-col → marketplace_id_col
+    currency = args.default_currency  # default-currency → default_currency
+    workers = args.n_workers  # n-workers → n_workers
+```
+
+**This is standard behavior across the entire Python ecosystem:**
+- Every argparse-based CLI tool works this way
+- Documentation shows hyphenated flags (`--job-type`)
+- Code accesses underscore attributes (`args.job_type`)
+- Both are the same argument from argparse's perspective
+
+**Current Structure**: `expected_arguments: Dict[str, str]` maps CLI argument names (with hyphens) to default values.
+
+**Validation Rule**: Arguments are considered aligned when contract hyphens match script underscores after normalization. The contract documents the CLI interface (what users/SageMaker see) while the script implements the Python interface (what the code uses). Both are correct and necessary parts of the same system.
+
+**Key Insight**: The "mismatch" between `"job-type"` in contract and `args.job_type` in script is actually **perfect alignment** - it's exactly how SageMaker + argparse is designed to work.
+
+### 4. Framework Version Specification
 
 ```python
 # Framework Version Specification Format

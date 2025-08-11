@@ -7,6 +7,7 @@ This document centralizes all alignment guidance for pipeline step development. 
 1. **Script ↔ Contract**  
    - Scripts must use exactly the paths defined in their Script Contract.  
    - Environment variable names, input/output directory structures, and file patterns must match the contract.
+   - **Argument Naming Convention**: Contract arguments use CLI-style hyphens, scripts use Python-style underscores (standard argparse behavior).
 
 2. **Contract ↔ Specification**  
    - Logical names in the Script Contract (`expected_input_paths`, `expected_output_paths`) must match dependency names in the Step Specification.  
@@ -23,6 +24,33 @@ This document centralizes all alignment guidance for pipeline step development. 
 ## Examples
 
 ### Script ↔ Contract
+
+#### Argument Naming Convention (Argparse Pattern)
+
+**Standard Pattern**: Contract arguments use CLI-style hyphens, scripts use Python-style underscores.
+
+```python
+# Contract Declaration (CLI convention)
+"arguments": {
+    "job-type": {"required": true},
+    "marketplace-id-col": {"required": false},
+    "default-currency": {"required": false}
+}
+
+# Script Implementation (Python convention)
+parser.add_argument("--job-type", required=True)
+parser.add_argument("--marketplace-id-col", required=False)
+parser.add_argument("--default-currency", required=False)
+
+# Script Usage (automatic argparse conversion)
+args.job_type  # argparse converts job-type → job_type
+args.marketplace_id_col  # argparse converts marketplace-id-col → marketplace_id_col
+args.default_currency  # argparse converts default-currency → default_currency
+```
+
+**Validation Rule**: Arguments are considered aligned when contract hyphens match script underscores after normalization.
+
+#### Path Usage
 
 ```python
 from src.pipeline_script_contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT

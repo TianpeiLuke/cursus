@@ -14,48 +14,6 @@
         "recommendation": "Either use path /opt/ml/processing/input/calibration in script or remove from contract"
       },
       {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses logical name not in contract: model",
-        "details": {
-          "logical_name": "model",
-          "script": "mims_package"
-        },
-        "recommendation": "Add logical name model to contract or update script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses logical name not in contract: script",
-        "details": {
-          "logical_name": "script",
-          "script": "mims_package"
-        },
-        "recommendation": "Add logical name script to contract or update script"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/script",
-        "details": {
-          "path": "/opt/ml/processing/input/script",
-          "operation": "read",
-          "script": "mims_package"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/script in script or remove from contract inputs"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
-        "details": {
-          "path": "/opt/ml/processing/input/model",
-          "operation": "read",
-          "script": "mims_package"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
-      },
-      {
         "severity": "INFO",
         "category": "file_operations",
         "message": "Contract declares input not read by script: /opt/ml/processing/input/calibration",
@@ -65,17 +23,6 @@
           "script": "mims_package"
         },
         "recommendation": "Either read /opt/ml/processing/input/calibration in script or remove from contract inputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output",
-        "details": {
-          "path": "/opt/ml/processing/output",
-          "operation": "write",
-          "script": "mims_package"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -188,9 +135,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
+              "XGBoostTraining",
               "TrainingStep",
-              "ModelStep",
-              "XGBoostTraining"
+              "ModelStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -200,8 +147,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -255,7 +202,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py",
     "contract_mapping": "mims_package_contract",
-    "validation_timestamp": "2025-08-10T19:46:35.255977",
+    "validation_timestamp": "2025-08-10T21:52:04.409657",
     "validator_version": "1.0.0"
   }
 }

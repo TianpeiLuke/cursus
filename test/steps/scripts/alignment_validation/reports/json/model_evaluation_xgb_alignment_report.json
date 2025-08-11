@@ -6,6 +6,16 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
         "details": {
           "path": "/opt/ml/processing/input/eval_data",
@@ -35,63 +45,58 @@
       },
       {
         "severity": "WARNING",
-        "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
         "details": {
-          "path": "/opt/ml/processing/output/metrics",
+          "cli_argument": "output-metrics-dir",
+          "python_attribute": "output_metrics_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
+        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: output_eval_dir",
+        "message": "Script defines argument not in contract: --job-type (accessed as args.job_type)",
         "details": {
-          "argument": "output_eval_dir",
+          "cli_argument": "job-type",
+          "python_attribute": "job_type",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add output_eval_dir to contract arguments or remove from script"
+        "recommendation": "Add --job-type to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: eval_data_dir",
+        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
         "details": {
-          "argument": "eval_data_dir",
+          "cli_argument": "output-eval-dir",
+          "python_attribute": "output_eval_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add eval_data_dir to contract arguments or remove from script"
+        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: job_type",
+        "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
         "details": {
-          "argument": "job_type",
+          "cli_argument": "eval-data-dir",
+          "python_attribute": "eval_data_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add job_type to contract arguments or remove from script"
+        "recommendation": "Add --eval-data-dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: output_metrics_dir",
+        "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
         "details": {
-          "argument": "output_metrics_dir",
+          "cli_argument": "model-dir",
+          "python_attribute": "model_dir",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add output_metrics_dir to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: model_dir",
-        "details": {
-          "argument": "model_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add model_dir to contract arguments or remove from script"
+        "recommendation": "Add --model-dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -118,17 +123,6 @@
       {
         "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "operation": "write",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
         "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
         "details": {
           "path": "/opt/ml/processing/output/metrics",
@@ -136,6 +130,17 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "operation": "write",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -314,7 +319,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-10T19:46:35.293114",
+    "validation_timestamp": "2025-08-10T21:52:04.447925",
     "validator_version": "1.0.0"
   }
 }
