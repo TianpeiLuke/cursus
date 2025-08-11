@@ -48,7 +48,7 @@ The [Config Resolver](../1_design/dynamic_template_resolution.md) exemplifies th
 - The resolution process itself uses composition of multiple resolution strategies
 - Services are injected rather than inherited
 
-This is evident in how `StepConfigResolver` implements multiple independent matching strategies that can be composed together, rather than using inheritance hierarchies for different matching approaches. This follows the [Composition Over Inheritance principle](design_principles.md#2-composition-over-inheritance) from the design documentation.
+This is evident in how `StepConfigResolver` implements multiple independent matching strategies that can be composed together, rather than using inheritance hierarchies for different matching approaches. This follows the [Composition Over Inheritance principle](../1_design/design_principles.md#2-composition-over-inheritance) from the design documentation.
 
 ### 3. Fail Fast and Explicit ✅
 
@@ -68,7 +68,7 @@ raise ConfigurationError(
 )
 ```
 
-This approach directly implements the [Fail Fast and Explicit principle](design_principles.md#3-fail-fast-and-explicit), ensuring errors are caught early with actionable messages.
+This approach directly implements the [Fail Fast and Explicit principle](../1_design/design_principles.md#3-fail-fast-and-explicit), ensuring errors are caught early with actionable messages.
 
 ### 4. Single Responsibility Principle ✅
 
@@ -79,7 +79,7 @@ This approach directly implements the [Fail Fast and Explicit principle](design_
 - Each resolution strategy (`_direct_name_matching`, `_job_type_matching`, etc.) has a single focused responsibility
 - Support classes have specific roles (validation, class detection, etc.)
 
-The resolver's methods like `_calculate_config_type_confidence()` and `_calculate_semantic_similarity()` demonstrate this principle by focusing on specific aspects of the resolution process, aligning well with the [Single Responsibility Principle](design_principles.md#4-single-responsibility-principle).
+The resolver's methods like `_calculate_config_type_confidence()` and `_calculate_semantic_similarity()` demonstrate this principle by focusing on specific aspects of the resolution process, aligning well with the [Single Responsibility Principle](../1_design/design_principles.md#4-single-responsibility-principle).
 
 ### 5. Open/Closed Principle ✅
 
@@ -98,7 +98,7 @@ STEP_TYPE_PATTERNS = {
 }
 ```
 
-This implementation directly follows the [Open/Closed Principle](design_principles.md#5-openclosed-principle) by allowing extension without modification.
+This implementation directly follows the [Open/Closed Principle](../1_design/design_principles.md#5-openclosed-principle) by allowing extension without modification.
 
 ### 6. Dependency Inversion Principle ✅
 
@@ -118,7 +118,7 @@ def __init__(self, confidence_threshold: float = 0.7):
         confidence_threshold: Minimum confidence score for automatic resolution
     """
 ```
-The resolver doesn't depend on concrete implementations but rather focuses on its interface, following the [Dependency Inversion Principle](design_principles.md#6-dependency-inversion-principle).
+The resolver doesn't depend on concrete implementations but rather focuses on its interface, following the [Dependency Inversion Principle](../1_design/design_principles.md#6-dependency-inversion-principle).
 
 ### 7. Convention Over Configuration ✅
 
@@ -135,7 +135,7 @@ def _config_class_to_step_type(self, config_class_name: str) -> str:
     # Automatically convert config class names to step types using conventions
 ```
 
-The implementation aligns with the [Convention Over Configuration principle](design_principles.md#7-convention-over-configuration), reducing cognitive load through sensible defaults.
+The implementation aligns with the [Convention Over Configuration principle](../1_design/design_principles.md#7-convention-over-configuration), reducing cognitive load through sensible defaults.
 
 ### 8. Explicit Dependencies ✓
 
@@ -145,14 +145,14 @@ The implementation aligns with the [Convention Over Configuration principle](des
 - Optional dependencies are properly marked
 - Some implicit dependencies exist on naming conventions and patterns
 
-The constructor for the `StepConfigResolver` could be more explicit about its dependencies on the pattern and semantic mappings, which are currently defined as class attributes. This relates to the [Explicit Dependencies principle](design_principles.md#8-explicit-dependencies) in the design documentation.
+The constructor for the `StepConfigResolver` could be more explicit about its dependencies on the pattern and semantic mappings, which are currently defined as class attributes. This relates to the [Explicit Dependencies principle](../1_design/design_principles.md#8-explicit-dependencies) in the design documentation.
 
 ## Integration with Architecture
 
-The Dynamic Pipeline Template and Config Resolver integrate seamlessly with the broader architecture described in the [README](README.md), particularly with:
+The Dynamic Pipeline Template and Config Resolver integrate seamlessly with the broader architecture described in the [README](../README.md), particularly with:
 
-1. The [Registry Manager](registry_manager.md) for step type registration and discovery
-2. The [Dependency Resolver](dependency_resolver.md) for intelligent connection of pipeline steps
+1. The [Registry Manager](../1_design/registry_manager.md) for step type registration and discovery
+2. The [Dependency Resolver](../1_design/dependency_resolver.md) for intelligent connection of pipeline steps
 3. The [Pipeline DAG](../1_design/pipeline_dag.md) for structural representation of the pipeline
 4. The [DAG to Template](../1_design/pipeline_compiler.md) system for visual and programmatic pipeline creation
 
@@ -176,7 +176,7 @@ While the implementation strongly adheres to the design principles, some areas c
 
 ## Conclusion
 
-The [Dynamic Pipeline Template](dynamic_template.md) and [Config Resolver](dynamic_template_resolution.md) demonstrate strong adherence to the established [Design Principles](design_principles.md). They represent a sophisticated solution that transforms pipeline construction from an imperative, error-prone process to a declarative, intelligent system.
+The [Dynamic Pipeline Template](../1_design/dynamic_template.md) and [Config Resolver](../1_design/dynamic_template_resolution.md) demonstrate strong adherence to the established [Design Principles](../1_design/design_principles.md). They represent a sophisticated solution that transforms pipeline construction from an imperative, error-prone process to a declarative, intelligent system.
 
 The implementation successfully balances flexibility with convention, providing intelligent automation while maintaining explicit control when needed. The multi-strategy resolution approach exemplifies composition over inheritance and enables adaptation to various pipeline structures without custom code.
 
