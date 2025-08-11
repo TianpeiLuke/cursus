@@ -16,16 +16,6 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
-        "details": {
-          "path": "/opt/ml/processing/input/model",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
         "details": {
           "path": "/opt/ml/processing/input/eval_data",
@@ -45,14 +35,13 @@
       },
       {
         "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
-          "cli_argument": "output-metrics-dir",
-          "python_attribute": "output_metrics_dir",
+          "path": "/opt/ml/processing/input/model",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
+        "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -64,6 +53,17 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Add --job-type to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
+        "details": {
+          "cli_argument": "output-metrics-dir",
+          "python_attribute": "output_metrics_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -101,17 +101,6 @@
       {
         "severity": "INFO",
         "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
-        "details": {
-          "path": "/opt/ml/processing/input/model",
-          "operation": "read",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
         "message": "Contract declares input not read by script: /opt/ml/processing/input/eval_data",
         "details": {
           "path": "/opt/ml/processing/input/eval_data",
@@ -119,6 +108,17 @@
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
+      },
+      {
+        "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
+        "details": {
+          "path": "/opt/ml/processing/input/model",
+          "operation": "read",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
       },
       {
         "severity": "WARNING",
@@ -330,9 +330,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
+              "ModelStep",
               "XGBoostTraining",
-              "TrainingStep",
-              "ModelStep"
+              "TrainingStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -342,8 +342,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "DataLoad",
+              "TabularPreprocessing",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -367,233 +367,11 @@
           }
         ]
       }
-    },
-    "unified_specification": {
-      "primary_spec": {
-        "step_type": "XGBoostModelEval",
-        "node_type": "internal",
-        "dependencies": [
-          {
-            "logical_name": "model_input",
-            "dependency_type": "model_artifacts",
-            "required": true,
-            "compatible_sources": [
-              "XGBoostTraining",
-              "TrainingStep",
-              "ModelStep"
-            ],
-            "data_type": "S3Uri",
-            "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
-          },
-          {
-            "logical_name": "processed_data",
-            "dependency_type": "processing_output",
-            "required": true,
-            "compatible_sources": [
-              "TabularPreprocessing",
-              "DataLoad",
-              "ProcessingStep"
-            ],
-            "data_type": "S3Uri",
-            "description": "Evaluation dataset for model assessment"
-          }
-        ],
-        "outputs": [
-          {
-            "logical_name": "eval_output",
-            "output_type": "processing_output",
-            "property_path": "properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri",
-            "data_type": "S3Uri",
-            "description": "Model evaluation results including predictions"
-          },
-          {
-            "logical_name": "metrics_output",
-            "output_type": "processing_output",
-            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
-            "data_type": "S3Uri",
-            "description": "Model evaluation metrics (AUC, precision, recall, etc.)"
-          }
-        ]
-      },
-      "variants": {
-        "generic": {
-          "step_type": "XGBoostModelEval",
-          "node_type": "internal",
-          "dependencies": [
-            {
-              "logical_name": "model_input",
-              "dependency_type": "model_artifacts",
-              "required": true,
-              "compatible_sources": [
-                "XGBoostTraining",
-                "TrainingStep",
-                "ModelStep"
-              ],
-              "data_type": "S3Uri",
-              "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
-            },
-            {
-              "logical_name": "processed_data",
-              "dependency_type": "processing_output",
-              "required": true,
-              "compatible_sources": [
-                "TabularPreprocessing",
-                "DataLoad",
-                "ProcessingStep"
-              ],
-              "data_type": "S3Uri",
-              "description": "Evaluation dataset for model assessment"
-            }
-          ],
-          "outputs": [
-            {
-              "logical_name": "eval_output",
-              "output_type": "processing_output",
-              "property_path": "properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri",
-              "data_type": "S3Uri",
-              "description": "Model evaluation results including predictions"
-            },
-            {
-              "logical_name": "metrics_output",
-              "output_type": "processing_output",
-              "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
-              "data_type": "S3Uri",
-              "description": "Model evaluation metrics (AUC, precision, recall, etc.)"
-            }
-          ]
-        }
-      },
-      "unified_dependencies": {
-        "model_input": {
-          "logical_name": "model_input",
-          "dependency_type": "model_artifacts",
-          "required": true,
-          "compatible_sources": [
-            "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
-          ],
-          "data_type": "S3Uri",
-          "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
-        },
-        "processed_data": {
-          "logical_name": "processed_data",
-          "dependency_type": "processing_output",
-          "required": true,
-          "compatible_sources": [
-            "TabularPreprocessing",
-            "DataLoad",
-            "ProcessingStep"
-          ],
-          "data_type": "S3Uri",
-          "description": "Evaluation dataset for model assessment"
-        }
-      },
-      "unified_outputs": {
-        "eval_output": {
-          "logical_name": "eval_output",
-          "output_type": "processing_output",
-          "property_path": "properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri",
-          "data_type": "S3Uri",
-          "description": "Model evaluation results including predictions"
-        },
-        "metrics_output": {
-          "logical_name": "metrics_output",
-          "output_type": "processing_output",
-          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
-          "data_type": "S3Uri",
-          "description": "Model evaluation metrics (AUC, precision, recall, etc.)"
-        }
-      },
-      "dependency_sources": {
-        "model_input": [
-          "generic"
-        ],
-        "processed_data": [
-          "generic"
-        ]
-      },
-      "output_sources": {
-        "eval_output": [
-          "generic"
-        ],
-        "metrics_output": [
-          "generic"
-        ]
-      },
-      "variant_count": 1
     }
   },
   "level3": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve required dependency: model_input",
-        "details": {
-          "logical_name": "model_input",
-          "specification": "model_evaluation_xgb",
-          "compatible_sources": [
-            "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
-          ],
-          "dependency_type": "model_artifacts",
-          "available_steps": [
-            "data_loading",
-            "preprocessing",
-            "currency_conversion",
-            "model_eval",
-            "xgboost_model",
-            "registration",
-            "risk_table_mapping",
-            "batch_transform",
-            "dummy",
-            "model",
-            "payload",
-            "xgboost",
-            "pytorch",
-            "packaging",
-            "pytorch_model"
-          ]
-        },
-        "recommendation": "Ensure a step exists that produces output model_input"
-      },
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve required dependency: processed_data",
-        "details": {
-          "logical_name": "processed_data",
-          "specification": "model_evaluation_xgb",
-          "compatible_sources": [
-            "TabularPreprocessing",
-            "DataLoad",
-            "ProcessingStep"
-          ],
-          "dependency_type": "processing_output",
-          "available_steps": [
-            "data_loading",
-            "preprocessing",
-            "currency_conversion",
-            "model_eval",
-            "xgboost_model",
-            "registration",
-            "risk_table_mapping",
-            "batch_transform",
-            "dummy",
-            "model",
-            "payload",
-            "xgboost",
-            "pytorch",
-            "packaging",
-            "pytorch_model"
-          ]
-        },
-        "recommendation": "Ensure a step exists that produces output processed_data"
-      }
-    ],
+    "passed": true,
+    "issues": [],
     "specification": {
       "step_type": "XGBoostModelEval",
       "node_type": "internal",
@@ -603,9 +381,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
+            "ModelStep",
             "XGBoostTraining",
-            "TrainingStep",
-            "ModelStep"
+            "TrainingStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -615,8 +393,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
             "DataLoad",
+            "TabularPreprocessing",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -706,14 +484,14 @@
       "required_fields": "set()",
       "optional_fields": "set()",
       "default_values": {},
-      "load_error": "Configuration class not found in src/cursus/steps/configs/config_model_eval_step_xgboost.py. Available classes: ['Any', 'Path', 'ProcessingStepConfigBase', 'XGBoostModelEvalConfig', 'XGBoostModelHyperparameters']"
+      "load_error": "No module named 'src'"
     }
   },
-  "overall_status": "FAILING",
+  "overall_status": "PASSING",
   "metadata": {
-    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
-    "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-11T01:14:45.996843",
-    "validator_version": "1.0.0"
+    "script_name": "model_evaluation_xgb",
+    "validation_timestamp": "2025-08-11T00:27:20.245263",
+    "validator_version": "1.0.0",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py"
   }
 }

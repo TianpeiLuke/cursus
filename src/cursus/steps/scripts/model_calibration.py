@@ -102,12 +102,12 @@ class CalibrationConfig:
                     # Fallback to simple parsing if not valid JSON
                     multiclass_categories = multiclass_cats.split(",")
         
-        # Use global path variables for input/output paths
+        # Use global path variables for input/output paths (fixed paths from contract)
         return cls(
-            input_data_path=os.environ.get("INPUT_DATA_PATH", INPUT_DATA_PATH),
-            output_calibration_path=os.environ.get("OUTPUT_CALIBRATION_PATH", OUTPUT_CALIBRATION_PATH),
-            output_metrics_path=os.environ.get("OUTPUT_METRICS_PATH", OUTPUT_METRICS_PATH),
-            output_calibrated_data_path=os.environ.get("OUTPUT_CALIBRATED_DATA_PATH", OUTPUT_CALIBRATED_DATA_PATH),
+            input_data_path=INPUT_DATA_PATH,
+            output_calibration_path=OUTPUT_CALIBRATION_PATH,
+            output_metrics_path=OUTPUT_METRICS_PATH,
+            output_calibrated_data_path=OUTPUT_CALIBRATED_DATA_PATH,
             calibration_method=os.environ.get("CALIBRATION_METHOD", "gam"),
             label_field=os.environ.get("LABEL_FIELD", "label"),
             score_field=os.environ.get("SCORE_FIELD", "prob_class_1"),

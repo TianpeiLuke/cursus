@@ -76,22 +76,28 @@
     "contract": {
       "entry_point": "dummy_training.py",
       "inputs": {
-        "pretrained_model_path": "/opt/ml/processing/input/model/model.tar.gz",
-        "hyperparameters_s3_uri": "/opt/ml/processing/input/config/hyperparameters.json"
+        "pretrained_model_path": {
+          "path": "/opt/ml/processing/input/model/model.tar.gz"
+        },
+        "hyperparameters_s3_uri": {
+          "path": "/opt/ml/processing/input/config/hyperparameters.json"
+        }
       },
       "outputs": {
-        "model_input": "/opt/ml/processing/output/model"
+        "model_input": {
+          "path": "/opt/ml/processing/output/model"
+        }
       },
       "arguments": {},
       "environment_variables": {
         "required": [],
         "optional": {}
       },
+      "description": "Contract for dummy training step that processes a pretrained model.tar.gz by unpacking it, adding a hyperparameters.json file inside, and repacking it for downstream steps",
       "framework_requirements": {
         "boto3": ">=1.26.0",
         "pathlib": ">=1.0.0"
-      },
-      "description": "Contract for dummy training step that processes a pretrained model.tar.gz by unpacking it, adding a hyperparameters.json file inside, and repacking it for downstream steps"
+      }
     },
     "specifications": {
       "dummy_training_spec": {
@@ -103,10 +109,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
               "XGBoostTraining",
               "PytorchTraining",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -116,8 +122,8 @@
             "dependency_type": "hyperparameters",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -133,11 +139,209 @@
           }
         ]
       }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "DummyTraining",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "pretrained_model_path",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "TabularPreprocessing",
+              "XGBoostTraining",
+              "PytorchTraining",
+              "ProcessingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Path to pretrained model.tar.gz file"
+          },
+          {
+            "logical_name": "hyperparameters_s3_uri",
+            "dependency_type": "hyperparameters",
+            "required": true,
+            "compatible_sources": [
+              "HyperparameterPrep",
+              "ProcessingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Hyperparameters configuration file for inclusion in the model package"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "model_input",
+            "output_type": "model_artifacts",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "S3 path to model artifacts with integrated hyperparameters"
+          }
+        ]
+      },
+      "variants": {
+        "training": {
+          "step_type": "DummyTraining",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "pretrained_model_path",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "TabularPreprocessing",
+                "XGBoostTraining",
+                "PytorchTraining",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Path to pretrained model.tar.gz file"
+            },
+            {
+              "logical_name": "hyperparameters_s3_uri",
+              "dependency_type": "hyperparameters",
+              "required": true,
+              "compatible_sources": [
+                "HyperparameterPrep",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Hyperparameters configuration file for inclusion in the model package"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "model_input",
+              "output_type": "model_artifacts",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "S3 path to model artifacts with integrated hyperparameters"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "pretrained_model_path": {
+          "logical_name": "pretrained_model_path",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "TabularPreprocessing",
+            "XGBoostTraining",
+            "PytorchTraining",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Path to pretrained model.tar.gz file"
+        },
+        "hyperparameters_s3_uri": {
+          "logical_name": "hyperparameters_s3_uri",
+          "dependency_type": "hyperparameters",
+          "required": true,
+          "compatible_sources": [
+            "HyperparameterPrep",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Hyperparameters configuration file for inclusion in the model package"
+        }
+      },
+      "unified_outputs": {
+        "model_input": {
+          "logical_name": "model_input",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "S3 path to model artifacts with integrated hyperparameters"
+        }
+      },
+      "dependency_sources": {
+        "pretrained_model_path": [
+          "training"
+        ],
+        "hyperparameters_s3_uri": [
+          "training"
+        ]
+      },
+      "output_sources": {
+        "model_input": [
+          "training"
+        ]
+      },
+      "variant_count": 1
     }
   },
   "level3": {
-    "passed": true,
-    "issues": [],
+    "passed": false,
+    "issues": [
+      {
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve required dependency: pretrained_model_path",
+        "details": {
+          "logical_name": "pretrained_model_path",
+          "specification": "dummy_training",
+          "compatible_sources": [
+            "TabularPreprocessing",
+            "XGBoostTraining",
+            "PytorchTraining",
+            "ProcessingStep"
+          ],
+          "dependency_type": "processing_output",
+          "available_steps": [
+            "data_loading",
+            "preprocessing",
+            "currency_conversion",
+            "model_eval",
+            "xgboost_model",
+            "registration",
+            "risk_table_mapping",
+            "batch_transform",
+            "dummy",
+            "model",
+            "payload",
+            "xgboost",
+            "pytorch",
+            "packaging",
+            "pytorch_model"
+          ]
+        },
+        "recommendation": "Ensure a step exists that produces output pretrained_model_path"
+      },
+      {
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve required dependency: hyperparameters_s3_uri",
+        "details": {
+          "logical_name": "hyperparameters_s3_uri",
+          "specification": "dummy_training",
+          "compatible_sources": [
+            "HyperparameterPrep",
+            "ProcessingStep"
+          ],
+          "dependency_type": "hyperparameters",
+          "available_steps": [
+            "data_loading",
+            "preprocessing",
+            "currency_conversion",
+            "model_eval",
+            "xgboost_model",
+            "registration",
+            "risk_table_mapping",
+            "batch_transform",
+            "dummy",
+            "model",
+            "payload",
+            "xgboost",
+            "pytorch",
+            "packaging",
+            "pytorch_model"
+          ]
+        },
+        "recommendation": "Ensure a step exists that produces output hyperparameters_s3_uri"
+      }
+    ],
     "specification": {
       "step_type": "DummyTraining",
       "node_type": "internal",
@@ -147,10 +351,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
+            "TabularPreprocessing",
             "XGBoostTraining",
             "PytorchTraining",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -160,8 +364,8 @@
           "dependency_type": "hyperparameters",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -267,11 +471,11 @@
         }
       },
       "required_fields": "set()",
-      "optional_fields": "{'processing_entry_point', 'hyperparameters_s3_uri', 'hyperparameters', 'pretrained_model_path'}",
+      "optional_fields": "{'hyperparameters', 'hyperparameters_s3_uri', 'pretrained_model_path', 'processing_entry_point'}",
       "default_values": {
-        "aws_region": "<property object at 0x106025620>",
-        "effective_instance_type": "<property object at 0x3275e58f0>",
-        "effective_source_dir": "<property object at 0x3275e58a0>",
+        "aws_region": "<property object at 0x107391580>",
+        "effective_instance_type": "<property object at 0x16d2e5760>",
+        "effective_source_dir": "<property object at 0x16d2e5710>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -279,7 +483,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x105097a60>",
+        "model_extra": "<property object at 0x103ba7970>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -305,20 +509,20 @@
           "hyperparameters": "annotation=ModelHyperparameters required=False default_factory=ModelHyperparameters description='Model hyperparameters to be included in the model package.'",
           "hyperparameters_s3_uri": "annotation=Union[str, NoneType] required=False default=None description='S3 URI where hyperparameters.json will be saved.'"
         },
-        "model_fields_set": "<property object at 0x105097ab0>",
-        "pipeline_description": "<property object at 0x1060256c0>",
-        "pipeline_name": "<property object at 0x106025670>",
-        "pipeline_s3_loc": "<property object at 0x106025710>",
-        "script_contract": "<property object at 0x1060257b0>",
-        "script_path": "<property object at 0x3275e5940>"
+        "model_fields_set": "<property object at 0x103ba79c0>",
+        "pipeline_description": "<property object at 0x107391620>",
+        "pipeline_name": "<property object at 0x1073915d0>",
+        "pipeline_s3_loc": "<property object at 0x107391670>",
+        "script_contract": "<property object at 0x107391710>",
+        "script_path": "<property object at 0x16d2e57b0>"
       }
     }
   },
-  "overall_status": "PASSING",
+  "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-10T22:45:19.438874",
+    "validation_timestamp": "2025-08-11T01:14:45.917510",
     "validator_version": "1.0.0"
   }
 }

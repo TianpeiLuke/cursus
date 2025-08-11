@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: model_calibration</h2>
-        <p>Generated: 2025-08-10T22:45:19.479906</p>
+        <p>Generated: 2025-08-11T01:14:45.977838</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>7</h3>
+            <h3>3</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -43,7 +43,7 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>5</h3>
+            <h3>1</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
@@ -55,29 +55,9 @@
     <div class="level-section">
         <div class="level-header">Alignment Validation Results</div>
         
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 1: Script ↔ Contract</h4>
-                <p>Status: FAILED</p>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH
-                    <br><em>Recommendation: Add OUTPUT_CALIBRATION_PATH to contract environment_variables</em>
-                </div>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_CALIBRATED_DATA_PATH
-                    <br><em>Recommendation: Add OUTPUT_CALIBRATED_DATA_PATH to contract environment_variables</em>
-                </div>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_METRICS_PATH
-                    <br><em>Recommendation: Add OUTPUT_METRICS_PATH to contract environment_variables</em>
-                </div>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Script accesses undeclared environment variable: INPUT_DATA_PATH
-                    <br><em>Recommendation: Add INPUT_DATA_PATH to contract environment_variables</em>
-                </div>
+                <p>Status: PASSED</p>
                 
             </div>
             
@@ -92,8 +72,8 @@
                 <p>Status: FAILED</p>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Cannot resolve pipeline dependency: evaluation_data
-                    <br><em>Recommendation: Create a step that produces output evaluation_data or change to external dependency</em>
+                    <strong>ERROR:</strong> Cannot resolve required dependency: evaluation_data
+                    <br><em>Recommendation: Ensure a step exists that produces output evaluation_data</em>
                 </div>
                 
             </div>
@@ -120,7 +100,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py</p>
         <p><strong>Contract Mapping:</strong> model_calibration_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-10T22:45:19.479906</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T01:14:45.977838</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

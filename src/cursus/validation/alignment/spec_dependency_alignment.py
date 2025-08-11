@@ -8,12 +8,20 @@ Ensures dependency chains are consistent and resolvable.
 import os
 import sys
 import importlib.util
+import logging
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
 from .alignment_utils import (
     FlexibleFileResolver, DependencyPatternClassifier, DependencyPattern
 )
+from ...steps.registry.step_names import (
+    get_step_name_from_spec_type, get_spec_step_type_with_job_type, validate_spec_type
+)
+from ...core.deps.factory import create_pipeline_components
+from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
+
+logger = logging.getLogger(__name__)
 
 
 class SpecificationDependencyAlignmentTester:
@@ -44,6 +52,11 @@ class SpecificationDependencyAlignmentTester:
             'specs': str(self.specs_dir)
         }
         self.file_resolver = FlexibleFileResolver(base_directories)
+        
+        # Initialize dependency resolver components
+        self.pipeline_components = create_pipeline_components("level3_validation")
+        self.dependency_resolver = self.pipeline_components["resolver"]
+        self.spec_registry = self.pipeline_components["registry"]
     
     def validate_all_specifications(self, target_scripts: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
@@ -155,75 +168,143 @@ class SpecificationDependencyAlignmentTester:
         }
     
     def _validate_dependency_resolution(self, specification: Dict[str, Any], all_specs: Dict[str, Dict[str, Any]], spec_name: str) -> List[Dict[str, Any]]:
-        """Validate that all dependencies can be resolved."""
+        """Validate dependencies using the production dependency resolver."""
         issues = []
         
+        # Handle case where step has no dependencies
         dependencies = specification.get('dependencies', [])
+        if not dependencies:
+            # No dependencies to validate - this is valid for some steps (e.g., data loading, external inputs)
+            logger.info(f"✅ {spec_name} has no dependencies - validation passed")
+            return issues
         
-        for dep in dependencies:
-            logical_name = dep.get('logical_name')
-            if not logical_name:
-                continue
+        # Populate the resolver registry with all specifications
+        self._populate_resolver_registry(all_specs)
+        
+        # Get available step names
+        available_steps = list(all_specs.keys())
+        
+        try:
+            # Use the production dependency resolver
+            resolved_deps = self.dependency_resolver.resolve_step_dependencies(spec_name, available_steps)
             
-            # Use the new dependency pattern classifier
-            dependency_pattern = self.dependency_classifier.classify_dependency(dep)
+            # Check for unresolved required dependencies
+            spec_dependencies = {dep['logical_name']: dep for dep in dependencies}
             
-            # Check if dependency can be resolved based on pattern
-            if dependency_pattern == DependencyPattern.EXTERNAL_INPUT:
-                # External dependencies don't need to be resolved within pipeline
-                continue
-            elif dependency_pattern == DependencyPattern.CONFIGURATION:
-                # Configuration dependencies are handled by the config system
-                continue
-            elif dependency_pattern == DependencyPattern.ENVIRONMENT:
-                # Environment dependencies are handled by environment variables
-                continue
-            elif dependency_pattern == DependencyPattern.PIPELINE_DEPENDENCY:
-                # Pipeline dependencies must be resolved by other steps
-                resolved = False
-                for other_spec_name, other_spec in all_specs.items():
-                    if other_spec_name == spec_name:
-                        continue
-                    
-                    # Check if other spec produces this logical name
-                    for output in other_spec.get('outputs', []):
-                        if output.get('logical_name') == logical_name:
-                            resolved = True
-                            break
-                    
-                    if resolved:
-                        break
-                
-                if not resolved:
+            for dep_name, dep_spec in spec_dependencies.items():
+                if dep_spec['required'] and dep_name not in resolved_deps:
                     issues.append({
                         'severity': 'ERROR',
                         'category': 'dependency_resolution',
-                        'message': f'Cannot resolve pipeline dependency: {logical_name}',
+                        'message': f'Cannot resolve required dependency: {dep_name}',
                         'details': {
-                            'logical_name': logical_name, 
+                            'logical_name': dep_name,
                             'specification': spec_name,
-                            'pattern': dependency_pattern.value
+                            'compatible_sources': dep_spec.get('compatible_sources', []),
+                            'dependency_type': dep_spec.get('dependency_type'),
+                            'available_steps': available_steps
                         },
-                        'recommendation': f'Create a step that produces output {logical_name} or change to external dependency'
+                        'recommendation': f'Ensure a step exists that produces output {dep_name}'
                     })
-            else:
-                # This shouldn't happen with the new classifier, but handle gracefully
-                issues.append({
-                    'severity': 'WARNING',
-                    'category': 'dependency_classification',
-                    'message': f'Unknown dependency pattern for: {logical_name}',
-                    'details': {
-                        'logical_name': logical_name,
-                        'specification': spec_name,
-                        'dependency_type': dep.get('dependency_type'),
-                        'compatible_sources': dep.get('compatible_sources'),
-                        'pattern': str(dependency_pattern)
-                    },
-                    'recommendation': f'Review dependency configuration for {logical_name}'
-                })
+            
+            # Log successful resolutions
+            for dep_name, prop_ref in resolved_deps.items():
+                logger.info(f"✅ Resolved {spec_name}.{dep_name} -> {prop_ref}")
+                
+        except Exception as e:
+            issues.append({
+                'severity': 'ERROR',
+                'category': 'resolver_error',
+                'message': f'Dependency resolver failed: {str(e)}',
+                'details': {'specification': spec_name, 'error': str(e)},
+                'recommendation': 'Check specification format and dependency resolver configuration'
+            })
         
         return issues
     
+    def _populate_resolver_registry(self, all_specs: Dict[str, Dict[str, Any]]):
+        """Populate the dependency resolver registry with all specifications."""
+        for spec_name, spec_dict in all_specs.items():
+            try:
+                # Convert dict back to StepSpecification object
+                step_spec = self._dict_to_step_specification(spec_dict)
+                self.dependency_resolver.register_specification(spec_name, step_spec)
+            except Exception as e:
+                logger.warning(f"Failed to register {spec_name} with resolver: {e}")
+    
+    def _dict_to_step_specification(self, spec_dict: Dict[str, Any]) -> StepSpecification:
+        """Convert specification dictionary back to StepSpecification object."""
+        # Convert dependencies
+        dependencies = {}
+        for dep in spec_dict.get('dependencies', []):
+            dep_spec = DependencySpec(
+                logical_name=dep['logical_name'],
+                dependency_type=DependencyType(dep['dependency_type']),
+                required=dep['required'],
+                compatible_sources=dep.get('compatible_sources', []),
+                data_type=dep['data_type'],
+                description=dep.get('description', ''),
+                semantic_keywords=dep.get('semantic_keywords', [])
+            )
+            dependencies[dep['logical_name']] = dep_spec
+        
+        # Convert outputs
+        outputs = {}
+        for out in spec_dict.get('outputs', []):
+            out_spec = OutputSpec(
+                logical_name=out['logical_name'],
+                output_type=DependencyType(out['output_type']),
+                property_path=out['property_path'],
+                data_type=out['data_type'],
+                description=out.get('description', ''),
+                aliases=out.get('aliases', [])
+            )
+            outputs[out['logical_name']] = out_spec
+        
+        return StepSpecification(
+            step_type=spec_dict['step_type'],
+            node_type=NodeType(spec_dict['node_type']),
+            dependencies=dependencies,
+            outputs=outputs
+        )
+    
+    def get_dependency_resolution_report(self, all_specs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate detailed dependency resolution report using production resolver."""
+        self._populate_resolver_registry(all_specs)
+        available_steps = list(all_specs.keys())
+        
+        return self.dependency_resolver.get_resolution_report(available_steps)
+    
+    def _is_compatible_output(self, required_logical_name: str, output_logical_name: str) -> bool:
+        """Check if an output logical name is compatible with a required logical name using flexible matching."""
+        if not required_logical_name or not output_logical_name:
+            return False
+        
+        # Exact match
+        if required_logical_name == output_logical_name:
+            return True
+        
+        # Common data input/output patterns
+        data_patterns = {
+            'data_input': ['processed_data', 'training_data', 'input_data', 'data', 'model_input_data'],
+            'input_data': ['processed_data', 'training_data', 'data_input', 'data', 'model_input_data'],
+            'training_data': ['processed_data', 'data_input', 'input_data', 'data', 'model_input_data'],
+            'processed_data': ['data_input', 'input_data', 'training_data', 'data', 'model_input_data'],
+            'model_input_data': ['processed_data', 'data_input', 'input_data', 'training_data', 'data'],
+            'data': ['processed_data', 'data_input', 'input_data', 'training_data', 'model_input_data']
+        }
+        
+        # Check if required name has compatible patterns
+        compatible_outputs = data_patterns.get(required_logical_name.lower(), [])
+        if output_logical_name.lower() in compatible_outputs:
+            return True
+        
+        # Check reverse mapping
+        for pattern_key, pattern_values in data_patterns.items():
+            if output_logical_name.lower() == pattern_key and required_logical_name.lower() in pattern_values:
+                return True
+        
+        return False
     
     def _validate_circular_dependencies(self, specification: Dict[str, Any], all_specs: Dict[str, Dict[str, Any]], spec_name: str) -> List[Dict[str, Any]]:
         """Validate that no circular dependencies exist."""
@@ -324,23 +405,38 @@ class SpecificationDependencyAlignmentTester:
         return issues
     
     def _find_specification_files(self, spec_name: str) -> List[Path]:
-        """Find all specification files for a specification using FlexibleFileResolver."""
+        """
+        Find all specification files for a specification using hybrid approach.
+        PRIMARY: Direct file matching, FALLBACK: FlexibleFileResolver for fuzzy name matching.
+        """
         spec_files = []
         
-        # Use the flexible resolver to find the primary spec file
-        primary_spec = self.file_resolver.find_spec_file(spec_name)
-        if primary_spec:
-            spec_files.append(Path(primary_spec))
+        # PRIMARY METHOD: Direct file matching
+        direct_spec_file = self.specs_dir / f"{spec_name}_spec.py"
+        if direct_spec_file.exists():
+            spec_files.append(direct_spec_file)
             
             # Look for job type variants in the same directory
-            spec_dir = Path(primary_spec).parent
-            base_name = Path(primary_spec).stem.replace('_spec', '')
-            
-            # Find all variants: {base_name}_{job_type}_spec.py
             for job_type in ['training', 'validation', 'testing', 'calibration']:
-                variant_file = spec_dir / f"{base_name}_{job_type}_spec.py"
+                variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
                 if variant_file.exists() and variant_file not in spec_files:
                     spec_files.append(variant_file)
+        
+        # FALLBACK METHOD: Use FlexibleFileResolver for fuzzy name matching
+        if not spec_files:
+            primary_spec = self.file_resolver.find_spec_file(spec_name)
+            if primary_spec:
+                spec_files.append(Path(primary_spec))
+                
+                # Look for job type variants in the same directory
+                spec_dir = Path(primary_spec).parent
+                base_name = Path(primary_spec).stem.replace('_spec', '')
+                
+                # Find all variants: {base_name}_{job_type}_spec.py
+                for job_type in ['training', 'validation', 'testing', 'calibration']:
+                    variant_file = spec_dir / f"{base_name}_{job_type}_spec.py"
+                    if variant_file.exists() and variant_file not in spec_files:
+                        spec_files.append(variant_file)
         
         return spec_files
     
@@ -354,113 +450,98 @@ class SpecificationDependencyAlignmentTester:
         return 'default'
     
     def _load_specification_from_python(self, spec_path: Path, spec_name: str, job_type: str) -> Dict[str, Any]:
-        """Load specification from Python file."""
+        """Load specification from Python file using robust sys.path management (same approach as Level 1 & 2)."""
         try:
-            # Read the file content and modify imports to be absolute
-            with open(spec_path, 'r') as f:
-                content = f.read()
+            # Add the project root to sys.path temporarily to handle relative imports
+            # Go up to the project root (where src/ is located)
+            project_root = str(spec_path.parent.parent.parent.parent)  # Go up to project root
+            src_root = str(spec_path.parent.parent.parent)  # Go up to src/ level
+            specs_dir = str(spec_path.parent)
             
-            # Replace common relative imports with absolute imports
-            modified_content = content.replace(
-                'from ...core.base.step_specification import StepSpecification',
-                'from src.cursus.core.base.step_specification import StepSpecification'
-            ).replace(
-                'from ...core.base.dependency_specification import DependencySpecification',
-                'from src.cursus.core.base.dependency_specification import DependencySpecification'
-            ).replace(
-                'from ...core.base.output_specification import OutputSpecification',
-                'from src.cursus.core.base.output_specification import OutputSpecification'
-            ).replace(
-                'from ...core.base.enums import',
-                'from src.cursus.core.base.enums import'
-            ).replace(
-                'from ...core.base.specification_base import',
-                'from src.cursus.core.base.specification_base import'
-            ).replace(
-                'from ..registry.step_names import',
-                'from src.cursus.steps.registry.step_names import'
-            ).replace(
-                'from ..contracts.',
-                'from src.cursus.steps.contracts.'
-            )
+            paths_to_add = [project_root, src_root, specs_dir]
+            added_paths = []
             
-            # Add the project root to sys.path
-            project_root = self.specs_dir.parent.parent.parent
-            if str(project_root) not in sys.path:
-                sys.path.insert(0, str(project_root))
+            for path in paths_to_add:
+                if path not in sys.path:
+                    sys.path.insert(0, path)
+                    added_paths.append(path)
             
             try:
-                # Create a temporary module from the modified content
-                module_name = f"{spec_name}_{job_type}_spec_temp"
-                spec = importlib.util.spec_from_loader(module_name, loader=None)
+                # Load the module
+                spec = importlib.util.spec_from_file_location(f"{spec_path.stem}", spec_path)
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Could not load specification module from {spec_path}")
+                
                 module = importlib.util.module_from_spec(spec)
                 
-                # Execute the modified content in the module's namespace
-                exec(modified_content, module.__dict__)
+                # Set the module's package to handle relative imports
+                module.__package__ = 'cursus.steps.specs'
                 
-                # Use job type-aware constant name resolution
-                expected_constant = self.file_resolver.find_spec_constant_name(spec_name, job_type)
-                
-                # Try the expected constant name first
-                possible_names = []
-                if expected_constant:
-                    possible_names.append(expected_constant)
-                
-                # Add fallback patterns
-                possible_names.extend([
-                    f"{spec_name.upper()}_{job_type.upper()}_SPEC",
-                    f"{spec_name.upper()}_SPEC",
-                    f"{job_type.upper()}_SPEC"
-                ])
-                
-                # Add dynamic discovery - scan for any constants ending with _SPEC
-                spec_constants = [name for name in dir(module) 
-                                if name.endswith('_SPEC') and not name.startswith('_')]
-                possible_names.extend(spec_constants)
-                
-                spec_obj = None
-                for spec_var_name in possible_names:
-                    if hasattr(module, spec_var_name):
-                        spec_obj = getattr(module, spec_var_name)
-                        break
-                
-                if spec_obj is None:
-                    raise ValueError(f"No specification constant found in {spec_path}. Tried: {possible_names}")
-                
-                # Convert StepSpecification object to dictionary
-                dependencies = []
-                for dep_name, dep_spec in spec_obj.dependencies.items():
-                    dependencies.append({
-                        'logical_name': dep_spec.logical_name,
-                        'dependency_type': dep_spec.dependency_type.value if hasattr(dep_spec.dependency_type, 'value') else str(dep_spec.dependency_type),
-                        'required': dep_spec.required,
-                        'compatible_sources': dep_spec.compatible_sources,
-                        'data_type': dep_spec.data_type,
-                        'description': dep_spec.description
-                    })
-                
-                outputs = []
-                for out_name, out_spec in spec_obj.outputs.items():
-                    outputs.append({
-                        'logical_name': out_spec.logical_name,
-                        'output_type': out_spec.output_type.value if hasattr(out_spec.output_type, 'value') else str(out_spec.output_type),
-                        'property_path': out_spec.property_path,
-                        'data_type': out_spec.data_type,
-                        'description': out_spec.description
-                    })
-                
-                return {
-                    'step_type': spec_obj.step_type,
-                    'node_type': spec_obj.node_type.value if hasattr(spec_obj.node_type, 'value') else str(spec_obj.node_type),
-                    'dependencies': dependencies,
-                    'outputs': outputs
-                }
-                
+                spec.loader.exec_module(module)
             finally:
-                # Clean up sys.path
-                if str(project_root) in sys.path:
-                    sys.path.remove(str(project_root))
-                    
+                # Remove added paths from sys.path
+                for path in added_paths:
+                    if path in sys.path:
+                        sys.path.remove(path)
+            
+            # Use job type-aware constant name resolution
+            expected_constant = self.file_resolver.find_spec_constant_name(spec_name, job_type)
+            
+            # Try the expected constant name first
+            possible_names = []
+            if expected_constant:
+                possible_names.append(expected_constant)
+            
+            # Add fallback patterns
+            possible_names.extend([
+                f"{spec_name.upper()}_{job_type.upper()}_SPEC",
+                f"{spec_name.upper()}_SPEC",
+                f"{job_type.upper()}_SPEC"
+            ])
+            
+            # Add dynamic discovery - scan for any constants ending with _SPEC
+            spec_constants = [name for name in dir(module) 
+                            if name.endswith('_SPEC') and not name.startswith('_')]
+            possible_names.extend(spec_constants)
+            
+            spec_obj = None
+            for spec_var_name in possible_names:
+                if hasattr(module, spec_var_name):
+                    spec_obj = getattr(module, spec_var_name)
+                    break
+            
+            if spec_obj is None:
+                raise ValueError(f"No specification constant found in {spec_path}. Tried: {possible_names}")
+            
+            # Convert StepSpecification object to dictionary
+            dependencies = []
+            for dep_name, dep_spec in spec_obj.dependencies.items():
+                dependencies.append({
+                    'logical_name': dep_spec.logical_name,
+                    'dependency_type': dep_spec.dependency_type.value if hasattr(dep_spec.dependency_type, 'value') else str(dep_spec.dependency_type),
+                    'required': dep_spec.required,
+                    'compatible_sources': dep_spec.compatible_sources,
+                    'data_type': dep_spec.data_type,
+                    'description': dep_spec.description
+                })
+            
+            outputs = []
+            for out_name, out_spec in spec_obj.outputs.items():
+                outputs.append({
+                    'logical_name': out_spec.logical_name,
+                    'output_type': out_spec.output_type.value if hasattr(out_spec.output_type, 'value') else str(out_spec.output_type),
+                    'property_path': out_spec.property_path,
+                    'data_type': out_spec.data_type,
+                    'description': out_spec.description
+                })
+            
+            return {
+                'step_type': spec_obj.step_type,
+                'node_type': spec_obj.node_type.value if hasattr(spec_obj.node_type, 'value') else str(spec_obj.node_type),
+                'dependencies': dependencies,
+                'outputs': outputs
+            }
+                
         except Exception as e:
             # If we still can't load it, provide a more detailed error
             raise ValueError(f"Failed to load specification from {spec_path}: {str(e)}")

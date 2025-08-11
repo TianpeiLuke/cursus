@@ -108,22 +108,30 @@
     "contract": {
       "entry_point": "mims_package.py",
       "inputs": {
-        "model_input": "/opt/ml/processing/input/model",
-        "inference_scripts_input": "/opt/ml/processing/input/script",
-        "calibration_model": "/opt/ml/processing/input/calibration"
+        "model_input": {
+          "path": "/opt/ml/processing/input/model"
+        },
+        "inference_scripts_input": {
+          "path": "/opt/ml/processing/input/script"
+        },
+        "calibration_model": {
+          "path": "/opt/ml/processing/input/calibration"
+        }
       },
       "outputs": {
-        "packaged_model": "/opt/ml/processing/output"
+        "packaged_model": {
+          "path": "/opt/ml/processing/output"
+        }
       },
       "arguments": {},
       "environment_variables": {
         "required": [],
         "optional": {}
       },
+      "description": "\n    MIMS packaging script that:\n    1. Extracts model artifacts from input model directory or model.tar.gz\n    2. Includes calibration model if available\n    3. Copies inference scripts to code directory\n    4. Creates a packaged model.tar.gz file for deployment\n    4. Provides detailed logging of the packaging process\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts (files or model.tar.gz)\n    - /opt/ml/processing/input/script: Inference scripts to include\n    - /opt/ml/processing/input/calibration: Optional calibration model artifacts\n    \n    Output Structure:\n    - /opt/ml/processing/output/model.tar.gz: Packaged model ready for deployment\n    ",
       "framework_requirements": {
         "python": ">=3.7"
-      },
-      "description": "\n    MIMS packaging script that:\n    1. Extracts model artifacts from input model directory or model.tar.gz\n    2. Includes calibration model if available\n    3. Copies inference scripts to code directory\n    4. Creates a packaged model.tar.gz file for deployment\n    4. Provides detailed logging of the packaging process\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts (files or model.tar.gz)\n    - /opt/ml/processing/input/script: Inference scripts to include\n    - /opt/ml/processing/input/calibration: Optional calibration model artifacts\n    \n    Output Structure:\n    - /opt/ml/processing/output/model.tar.gz: Packaged model ready for deployment\n    "
+      }
     },
     "specifications": {
       "packaging_spec": {
@@ -174,35 +182,328 @@
           }
         ]
       }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "Package",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "XGBoostTraining",
+              "TrainingStep",
+              "ModelStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts to be packaged"
+          },
+          {
+            "logical_name": "inference_scripts_input",
+            "dependency_type": "custom_property",
+            "required": false,
+            "compatible_sources": [
+              "ScriptStep",
+              "ProcessingStep"
+            ],
+            "data_type": "String",
+            "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+          },
+          {
+            "logical_name": "calibration_model",
+            "dependency_type": "processing_output",
+            "required": false,
+            "compatible_sources": [
+              "ModelCalibration"
+            ],
+            "data_type": "S3Uri",
+            "description": "Calibration model and artifacts for probability calibration (optional)"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "packaged_model",
+            "output_type": "model_artifacts",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Packaged model ready for deployment"
+          }
+        ]
+      },
+      "variants": {
+        "generic": {
+          "step_type": "Package",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "model_input",
+              "dependency_type": "model_artifacts",
+              "required": true,
+              "compatible_sources": [
+                "XGBoostTraining",
+                "TrainingStep",
+                "ModelStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Trained model artifacts to be packaged"
+            },
+            {
+              "logical_name": "inference_scripts_input",
+              "dependency_type": "custom_property",
+              "required": false,
+              "compatible_sources": [
+                "ScriptStep",
+                "ProcessingStep"
+              ],
+              "data_type": "String",
+              "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+            },
+            {
+              "logical_name": "calibration_model",
+              "dependency_type": "processing_output",
+              "required": false,
+              "compatible_sources": [
+                "ModelCalibration"
+              ],
+              "data_type": "S3Uri",
+              "description": "Calibration model and artifacts for probability calibration (optional)"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "packaged_model",
+              "output_type": "model_artifacts",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Packaged model ready for deployment"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "model_input": {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "XGBoostTraining",
+            "TrainingStep",
+            "ModelStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts to be packaged"
+        },
+        "inference_scripts_input": {
+          "logical_name": "inference_scripts_input",
+          "dependency_type": "custom_property",
+          "required": false,
+          "compatible_sources": [
+            "ScriptStep",
+            "ProcessingStep"
+          ],
+          "data_type": "String",
+          "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+        },
+        "calibration_model": {
+          "logical_name": "calibration_model",
+          "dependency_type": "processing_output",
+          "required": false,
+          "compatible_sources": [
+            "ModelCalibration"
+          ],
+          "data_type": "S3Uri",
+          "description": "Calibration model and artifacts for probability calibration (optional)"
+        }
+      },
+      "unified_outputs": {
+        "packaged_model": {
+          "logical_name": "packaged_model",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Packaged model ready for deployment"
+        }
+      },
+      "dependency_sources": {
+        "model_input": [
+          "generic"
+        ],
+        "inference_scripts_input": [
+          "generic"
+        ],
+        "calibration_model": [
+          "generic"
+        ]
+      },
+      "output_sources": {
+        "packaged_model": [
+          "generic"
+        ]
+      },
+      "variant_count": 1
     }
   },
   "level3": {
     "passed": false,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/mims_package_spec.py",
-        "recommendation": "Create the specification file mims_package_spec.py"
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve required dependency: model_input",
+        "details": {
+          "logical_name": "model_input",
+          "specification": "mims_package",
+          "compatible_sources": [
+            "XGBoostTraining",
+            "TrainingStep",
+            "ModelStep"
+          ],
+          "dependency_type": "model_artifacts",
+          "available_steps": [
+            "data_loading",
+            "preprocessing",
+            "currency_conversion",
+            "model_eval",
+            "xgboost_model",
+            "registration",
+            "risk_table_mapping",
+            "batch_transform",
+            "dummy",
+            "model",
+            "payload",
+            "xgboost",
+            "pytorch",
+            "packaging",
+            "pytorch_model"
+          ]
+        },
+        "recommendation": "Ensure a step exists that produces output model_input"
       }
-    ]
+    ],
+    "specification": {
+      "step_type": "Package",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "XGBoostTraining",
+            "TrainingStep",
+            "ModelStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts to be packaged"
+        },
+        {
+          "logical_name": "inference_scripts_input",
+          "dependency_type": "custom_property",
+          "required": false,
+          "compatible_sources": [
+            "ScriptStep",
+            "ProcessingStep"
+          ],
+          "data_type": "String",
+          "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+        },
+        {
+          "logical_name": "calibration_model",
+          "dependency_type": "processing_output",
+          "required": false,
+          "compatible_sources": [
+            "ModelCalibration"
+          ],
+          "data_type": "S3Uri",
+          "description": "Calibration model and artifacts for probability calibration (optional)"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "packaged_model",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Packaged model ready for deployment"
+        }
+      ]
+    }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/builder_mims_package_step.py",
-        "recommendation": "Create the builder file builder_mims_package_step.py"
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class mims_packageConfig",
+        "details": {
+          "config_class": "mims_packageConfig",
+          "builder": "mims_package"
+        },
+        "recommendation": "Ensure builder imports and uses mims_packageConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "PackageStepBuilder",
+          "line_number": 27
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 75
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 104
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 130
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 160
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 260
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 315
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 326
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "mims_packageConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "Configuration class not found in src/cursus/steps/configs/config_package_step.py. Available classes: ['Any', 'PackageConfig', 'Path', 'ProcessingStepConfigBase']"
+    }
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py",
     "contract_mapping": "mims_package_contract",
-    "validation_timestamp": "2025-08-10T22:45:19.447582",
+    "validation_timestamp": "2025-08-11T01:14:45.932889",
     "validator_version": "1.0.0"
   }
 }

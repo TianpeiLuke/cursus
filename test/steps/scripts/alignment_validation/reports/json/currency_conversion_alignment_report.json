@@ -134,26 +134,80 @@
   },
   "level2": {
     "passed": true,
-    "issues": [],
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "multi_variant_validation",
+        "message": "Smart Specification Selection: validated against 4 variants",
+        "details": {
+          "contract": "currency_conversion",
+          "variants": [
+            "training",
+            "testing",
+            "validation",
+            "calibration"
+          ],
+          "total_dependencies": 1,
+          "total_outputs": 1,
+          "contract_inputs": 1,
+          "contract_outputs": 1
+        },
+        "recommendation": "Multi-variant validation completed successfully"
+      }
+    ],
     "contract": {
       "entry_point": "currency_conversion.py",
       "inputs": {
-        "data_input": "/opt/ml/processing/input/data"
+        "data_input": {
+          "path": "/opt/ml/processing/input/data"
+        }
       },
       "outputs": {
-        "converted_data": "/opt/ml/processing/output"
+        "converted_data": {
+          "path": "/opt/ml/processing/output"
+        }
       },
       "arguments": {
-        "job-type": "training",
-        "mode": "per_split",
-        "train-ratio": "0.7",
-        "test-val-ratio": "0.5",
-        "marketplace-id-col": "marketplace_id",
-        "currency-col": "",
-        "default-currency": "USD",
-        "skip-invalid-currencies": "false",
-        "enable-conversion": "true",
-        "n-workers": "50"
+        "job-type": {
+          "default": "training",
+          "required": false
+        },
+        "mode": {
+          "default": "per_split",
+          "required": false
+        },
+        "train-ratio": {
+          "default": "0.7",
+          "required": false
+        },
+        "test-val-ratio": {
+          "default": "0.5",
+          "required": false
+        },
+        "marketplace-id-col": {
+          "default": "marketplace_id",
+          "required": false
+        },
+        "currency-col": {
+          "default": "",
+          "required": false
+        },
+        "default-currency": {
+          "default": "USD",
+          "required": false
+        },
+        "skip-invalid-currencies": {
+          "default": "false",
+          "required": false
+        },
+        "enable-conversion": {
+          "default": "true",
+          "required": false
+        },
+        "n-workers": {
+          "default": "50",
+          "required": false
+        }
       },
       "environment_variables": {
         "required": [
@@ -167,12 +221,12 @@
           "TEST_VAL_RATIO": "0.5"
         }
       },
+      "description": "\n    Currency conversion script that:\n    1. Loads processed data from input splits (train/test/val or single split)\n    2. Applies currency conversion to specified monetary variables\n    3. Uses marketplace information to determine currency codes\n    4. Supports parallel processing for performance\n    5. Handles two modes: per-split conversion or conversion before re-splitting\n    \n    Input Structure:\n    - /opt/ml/processing/input/data/{split}/{split}_processed_data.csv: Input data files\n    - /opt/ml/processing/input/data/{split}/{split}_full_data.csv: Optional full data files\n    \n    Output Structure:\n    - /opt/ml/processing/output/{split}/{split}_processed_data.csv: Converted processed data\n    - /opt/ml/processing/output/{split}/{split}_full_data.csv: Converted full data (if exists)\n    \n    Environment Variables:\n    - CURRENCY_CONVERSION_VARS: JSON list of variables requiring currency conversion\n    - CURRENCY_CONVERSION_DICT: JSON dict mapping currency codes to exchange rates\n    - MARKETPLACE_INFO: JSON dict mapping marketplace IDs to currency information\n    - LABEL_FIELD: Name of the label column for stratified splitting\n    - TRAIN_RATIO: Training data ratio (default: 0.7)\n    - TEST_VAL_RATIO: Test/validation split ratio (default: 0.5)\n    \n    Command Line Arguments:\n    - --job-type: Type of job (training, validation, testing, calibration)\n    - --mode: Conversion mode (per_split or split_after_conversion)\n    - --marketplace-id-col: Column containing marketplace IDs\n    - --currency-col: Optional existing currency column\n    - --default-currency: Default currency code (default: USD)\n    - --skip-invalid-currencies: Skip rows with invalid currencies\n    - --enable-conversion: Enable/disable conversion (default: true)\n    - --n-workers: Number of parallel workers (default: 50)\n    ",
       "framework_requirements": {
         "pandas": ">=1.3.0",
         "numpy": ">=1.21.0",
         "scikit-learn": ">=1.0.0"
-      },
-      "description": "\n    Currency conversion script that:\n    1. Loads processed data from input splits (train/test/val or single split)\n    2. Applies currency conversion to specified monetary variables\n    3. Uses marketplace information to determine currency codes\n    4. Supports parallel processing for performance\n    5. Handles two modes: per-split conversion or conversion before re-splitting\n    \n    Input Structure:\n    - /opt/ml/processing/input/data/{split}/{split}_processed_data.csv: Input data files\n    - /opt/ml/processing/input/data/{split}/{split}_full_data.csv: Optional full data files\n    \n    Output Structure:\n    - /opt/ml/processing/output/{split}/{split}_processed_data.csv: Converted processed data\n    - /opt/ml/processing/output/{split}/{split}_full_data.csv: Converted full data (if exists)\n    \n    Environment Variables:\n    - CURRENCY_CONVERSION_VARS: JSON list of variables requiring currency conversion\n    - CURRENCY_CONVERSION_DICT: JSON dict mapping currency codes to exchange rates\n    - MARKETPLACE_INFO: JSON dict mapping marketplace IDs to currency information\n    - LABEL_FIELD: Name of the label column for stratified splitting\n    - TRAIN_RATIO: Training data ratio (default: 0.7)\n    - TEST_VAL_RATIO: Test/validation split ratio (default: 0.5)\n    \n    Command Line Arguments:\n    - --job-type: Type of job (training, validation, testing, calibration)\n    - --mode: Conversion mode (per_split or split_after_conversion)\n    - --marketplace-id-col: Column containing marketplace IDs\n    - --currency-col: Optional existing currency column\n    - --default-currency: Default currency code (default: USD)\n    - --skip-invalid-currencies: Skip rows with invalid currencies\n    - --enable-conversion: Enable/disable conversion (default: true)\n    - --n-workers: Number of parallel workers (default: 50)\n    "
+      }
     },
     "specifications": {
       "currency_conversion_training_spec": {
@@ -184,9 +238,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -211,9 +265,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -238,9 +292,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -265,9 +319,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -283,23 +337,190 @@
           }
         ]
       }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "CurrencyConversion_Training",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "data_input",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "TabularPreprocessing",
+              "CradleDataLoading",
+              "ProcessingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Processed training data requiring currency conversion"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "converted_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Currency-converted training data with standardized monetary values"
+          }
+        ]
+      },
+      "variants": {
+        "training": {
+          "step_type": "CurrencyConversion_Training",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "data_input",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "TabularPreprocessing",
+                "CradleDataLoading",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Processed training data requiring currency conversion"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "converted_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Currency-converted training data with standardized monetary values"
+            }
+          ]
+        },
+        "testing": {
+          "step_type": "CurrencyConversion_Testing",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "data_input",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "TabularPreprocessing",
+                "CradleDataLoading",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Processed testing data requiring currency conversion"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "converted_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Currency-converted testing data with standardized monetary values"
+            }
+          ]
+        },
+        "validation": {
+          "step_type": "CurrencyConversion_Validation",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "data_input",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "TabularPreprocessing",
+                "CradleDataLoading",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Processed validation data requiring currency conversion"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "converted_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Currency-converted validation data with standardized monetary values"
+            }
+          ]
+        },
+        "calibration": {
+          "step_type": "CurrencyConversion_Calibration",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "data_input",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "TabularPreprocessing",
+                "CradleDataLoading",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Processed calibration data requiring currency conversion"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "converted_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Currency-converted calibration data with standardized monetary values"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "data_input": {
+          "logical_name": "data_input",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "TabularPreprocessing",
+            "CradleDataLoading",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Processed calibration data requiring currency conversion"
+        }
+      },
+      "unified_outputs": {
+        "converted_data": {
+          "logical_name": "converted_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Currency-converted calibration data with standardized monetary values"
+        }
+      },
+      "dependency_sources": {
+        "data_input": [
+          "training",
+          "testing",
+          "validation",
+          "calibration"
+        ]
+      },
+      "output_sources": {
+        "converted_data": [
+          "training",
+          "testing",
+          "validation",
+          "calibration"
+        ]
+      },
+      "variant_count": 4
     }
   },
   "level3": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve pipeline dependency: data_input",
-        "details": {
-          "logical_name": "data_input",
-          "specification": "currency_conversion",
-          "pattern": "pipeline"
-        },
-        "recommendation": "Create a step that produces output data_input or change to external dependency"
-      }
-    ],
+    "passed": true,
+    "issues": [],
     "specification": {
       "step_type": "CurrencyConversion_Training",
       "node_type": "internal",
@@ -309,9 +530,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
+            "TabularPreprocessing",
             "CradleDataLoading",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Processed training data requiring currency conversion"
@@ -344,22 +565,22 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_info",
-        "details": {
-          "field_name": "marketplace_info",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_info in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: label_field",
         "details": {
           "field_name": "label_field",
           "builder": "currency_conversion"
         },
         "recommendation": "Access required field label_field in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_info",
+        "details": {
+          "field_name": "marketplace_info",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_info in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -378,8 +599,8 @@
         "details": {
           "required_fields": [
             "currency_conversion_dict",
-            "marketplace_info",
             "label_field",
+            "marketplace_info",
             "marketplace_id_col"
           ],
           "builder": "currency_conversion"
@@ -501,12 +722,12 @@
           "required": false
         }
       },
-      "required_fields": "{'currency_conversion_dict', 'marketplace_info', 'label_field', 'marketplace_id_col'}",
-      "optional_fields": "{'processing_entry_point', 'currency_col', 'use_large_processing_instance', 'job_type', 'enable_currency_conversion', 'default_currency', 'train_ratio', 'currency_conversion_var_list', 'mode', 'test_val_ratio', 'skip_invalid_currencies'}",
+      "required_fields": "{'currency_conversion_dict', 'label_field', 'marketplace_info', 'marketplace_id_col'}",
+      "optional_fields": "{'job_type', 'mode', 'processing_entry_point', 'default_currency', 'use_large_processing_instance', 'test_val_ratio', 'currency_col', 'currency_conversion_var_list', 'skip_invalid_currencies', 'train_ratio', 'enable_currency_conversion'}",
       "default_values": {
-        "aws_region": "<property object at 0x106025620>",
-        "effective_instance_type": "<property object at 0x3275e58f0>",
-        "effective_source_dir": "<property object at 0x3275e58a0>",
+        "aws_region": "<property object at 0x107391580>",
+        "effective_instance_type": "<property object at 0x16d2e5760>",
+        "effective_source_dir": "<property object at 0x16d2e5710>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -514,7 +735,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x105097a60>",
+        "model_extra": "<property object at 0x103ba7970>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -550,20 +771,20 @@
           "default_currency": "annotation=str required=False default='USD' description='Fallback currency code'",
           "skip_invalid_currencies": "annotation=bool required=False default=False description='If True, fill invalid codes with default_currency'"
         },
-        "model_fields_set": "<property object at 0x105097ab0>",
-        "pipeline_description": "<property object at 0x1060256c0>",
-        "pipeline_name": "<property object at 0x106025670>",
-        "pipeline_s3_loc": "<property object at 0x106025710>",
-        "script_contract": "<property object at 0x1060257b0>",
-        "script_path": "<property object at 0x3275e5940>"
+        "model_fields_set": "<property object at 0x103ba79c0>",
+        "pipeline_description": "<property object at 0x107391620>",
+        "pipeline_name": "<property object at 0x1073915d0>",
+        "pipeline_s3_loc": "<property object at 0x107391670>",
+        "script_contract": "<property object at 0x107391710>",
+        "script_path": "<property object at 0x16d2e57b0>"
       }
     }
   },
-  "overall_status": "FAILING",
+  "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-10T22:45:19.421359",
+    "validation_timestamp": "2025-08-11T01:14:45.897038",
     "validator_version": "1.0.0"
   }
 }

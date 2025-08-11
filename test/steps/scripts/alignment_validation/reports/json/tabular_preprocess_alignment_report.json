@@ -1,60 +1,19 @@
 {
   "script_name": "tabular_preprocess",
   "level1": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "path_usage",
-        "message": "Script uses undeclared SageMaker path: /opt/ml/processing/input",
-        "details": {
-          "path": "/opt/ml/processing/input",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Add path /opt/ml/processing/input to contract inputs or outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/data",
-        "details": {
-          "path": "/opt/ml/processing/input/data",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Either use path /opt/ml/processing/input/data in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses path not mapped to contract logical name: /opt/ml/processing/input",
-        "details": {
-          "path": "/opt/ml/processing/input",
-          "inferred_logical_name": null,
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Add path /opt/ml/processing/input to contract inputs/outputs with appropriate logical name"
-      },
-      {
-        "severity": "WARNING",
+        "severity": "INFO",
         "category": "arguments",
-        "message": "Script defines argument not in contract: --job-type (accessed as args.job_type)",
+        "message": "Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)",
         "details": {
           "cli_argument": "job-type",
           "python_attribute": "job_type",
-          "script": "tabular_preprocess"
+          "script": "tabular_preprocess",
+          "source": "builder"
         },
-        "recommendation": "Add --job-type to contract arguments or remove from script"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/data",
-        "details": {
-          "path": "/opt/ml/processing/input/data",
-          "operation": "read",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/data in script or remove from contract inputs"
+        "recommendation": "Argument --job-type is provided by builder - no action needed"
       }
     ],
     "script_analysis": {
@@ -79,19 +38,18 @@
         "path='part-*.json.gz' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
         "path='part-*.parquet.gz' line_number=96 context='    patterns = [\\n        \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n>>>         \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]\\n    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])' is_hardcoded=True construction_method=None",
         "path='No CSV/JSON/Parquet shards found under ' line_number=100 context='    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])\\n    if not all_shards:\\n>>>         raise RuntimeError(f\"No CSV/JSON/Parquet shards found under {input_dir}\")\\n    try:\\n        dfs = [_read_file_to_df(shard) for shard in all_shards]' is_hardcoded=True construction_method=None",
-        "path='\\n    Main logic for preprocessing data, now refactored for testability.\\n    ' line_number=110 context='\\ndef main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_base_dir: str, output_dir: str):\\n>>>     \"\"\"\\n    Main logic for preprocessing data, now refactored for testability.\\n    \"\"\"' is_hardcoded=True construction_method=None",
-        "path='data' line_number=114 context='    \"\"\"\\n    # 1. Setup paths\\n>>>     input_data_dir = os.path.join(input_base_dir, \"data\")\\n    output_path = Path(output_dir)\\n    output_path.mkdir(parents=True, exist_ok=True)' is_hardcoded=False construction_method='os.path.join'",
-        "path='.' line_number=124 context='\\n    # 3. Process columns and labels\\n>>>     df.columns = [col.replace(\"__DOT__\", \".\") for col in df.columns]\\n    if label_field not in df.columns:\\n        raise RuntimeError(f\"Label field \\'{label_field}\\' not found in columns: {df.columns.tolist()}\")' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=152 context='        \\n        # Only output processed_data.csv\\n>>>         proc_path = subfolder / f\"{split_name}_processed_data.csv\"\\n        split_df.to_csv(proc_path, index=False)\\n        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")' is_hardcoded=True construction_method=None",
-        "path='[INFO] Preprocessing complete.' line_number=156 context='        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")\\n\\n>>>     print(\"[INFO] Preprocessing complete.\")\\n\\n' is_hardcoded=True construction_method=None",
-        "path='LABEL_FIELD environment variable must be set.' line_number=167 context='    LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n>>>         raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input' line_number=172 context='    \\n    # Define standard SageMaker paths\\n>>>     INPUT_BASE_DIR = \"/opt/ml/processing/input\"\\n    OUTPUT_DIR = \"/opt/ml/processing/output\"\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=173 context='    # Define standard SageMaker paths\\n    INPUT_BASE_DIR = \"/opt/ml/processing/input\"\\n>>>     OUTPUT_DIR = \"/opt/ml/processing/output\"\\n\\n    # Execute the main processing logic by calling the refactored main function' is_hardcoded=True construction_method=None"
+        "path='\\n    Main logic for preprocessing data, now refactored for testability.\\n    ' line_number=110 context='\\ndef main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_data_dir: str, output_dir: str):\\n>>>     \"\"\"\\n    Main logic for preprocessing data, now refactored for testability.\\n    \"\"\"' is_hardcoded=True construction_method=None",
+        "path='.' line_number=123 context='\\n    # 3. Process columns and labels\\n>>>     df.columns = [col.replace(\"__DOT__\", \".\") for col in df.columns]\\n    if label_field not in df.columns:\\n        raise RuntimeError(f\"Label field \\'{label_field}\\' not found in columns: {df.columns.tolist()}\")' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=151 context='        \\n        # Only output processed_data.csv\\n>>>         proc_path = subfolder / f\"{split_name}_processed_data.csv\"\\n        split_df.to_csv(proc_path, index=False)\\n        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")' is_hardcoded=True construction_method=None",
+        "path='[INFO] Preprocessing complete.' line_number=155 context='        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")\\n\\n>>>     print(\"[INFO] Preprocessing complete.\")\\n\\n' is_hardcoded=True construction_method=None",
+        "path='LABEL_FIELD environment variable must be set.' line_number=166 context='    LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n>>>         raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=171 context='    \\n    # Define standard SageMaker paths - use contract-declared paths directly\\n>>>     INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"  # Direct path from contract\\n    OUTPUT_DIR = \"/opt/ml/processing/output\"\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=172 context='    # Define standard SageMaker paths - use contract-declared paths directly\\n    INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"  # Direct path from contract\\n>>>     OUTPUT_DIR = \"/opt/ml/processing/output\"\\n\\n    # Execute the main processing logic by calling the refactored main function' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [
-        "variable_name='LABEL_FIELD' line_number=165 context='\\n    # Read configuration from environment variables\\n>>>     LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")' access_method='os.environ.get' has_default=False default_value=None",
-        "variable_name='TRAIN_RATIO' line_number=168 context='    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n>>>     TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    ' access_method='os.environ.get' has_default=True default_value=None",
-        "variable_name='TEST_VAL_RATIO' line_number=169 context='        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n>>>     TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    \\n    # Define standard SageMaker paths' access_method='os.environ.get' has_default=True default_value=None"
+        "variable_name='LABEL_FIELD' line_number=164 context='\\n    # Read configuration from environment variables\\n>>>     LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")' access_method='os.environ.get' has_default=False default_value=None",
+        "variable_name='TRAIN_RATIO' line_number=167 context='    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n>>>     TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    ' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='TEST_VAL_RATIO' line_number=168 context='        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n>>>     TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    \\n    # Define standard SageMaker paths - use contract-declared paths directly' access_method='os.environ.get' has_default=True default_value=None"
       ],
       "imports": [
         "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
@@ -108,7 +66,7 @@
         "module_name='sklearn.model_selection' import_alias=None line_number=13 is_from_import=True imported_items=['train_test_split']"
       ],
       "argument_definitions": [
-        "argument_name='job_type' line_number=161 is_required=True has_default=False default_value=None argument_type='str' choices=None"
+        "argument_name='job_type' line_number=160 is_required=True has_default=False default_value=None argument_type='str' choices=None"
       ],
       "file_operations": [
         "file_path='<file_object>' operation_type='read' line_number=55 context='    else:\\n        with open_func(str(file_path), \"rt\") as f:\\n>>>             data = json.load(f)\\n        return pd.json_normalize(data if isinstance(data, list) else [data])\\n' mode=None method='json.load'"
@@ -154,10 +112,14 @@
     "contract": {
       "entry_point": "tabular_preprocess.py",
       "inputs": {
-        "DATA": "/opt/ml/processing/input/data"
+        "DATA": {
+          "path": "/opt/ml/processing/input/data"
+        }
       },
       "outputs": {
-        "processed_data": "/opt/ml/processing/output"
+        "processed_data": {
+          "path": "/opt/ml/processing/output"
+        }
       },
       "arguments": {},
       "environment_variables": {
@@ -173,12 +135,12 @@
           "DATE_COLUMNS": ""
         }
       },
+      "description": "\n    Tabular preprocessing script that:\n    1. Combines data shards from input directory\n    2. Cleans and processes label field\n    3. Splits data into train/test/val for training jobs\n    4. Outputs processed CSV files by split\n    \n    Contract aligned with actual script implementation:\n    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data\n    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output\n    - Arguments: job_type (required) - defines processing mode (training/validation/testing)\n    \n    Script Implementation Details:\n    - Reads data shards (CSV, JSON, Parquet) from input/data directory\n    - Supports gzipped files and various formats\n    - Processes labels (converts categorical to numeric if needed)\n    - Splits data based on job_type (training creates train/test/val splits)\n    - Outputs processed files to split subdirectories under /opt/ml/processing/output\n    ",
       "framework_requirements": {
         "pandas": ">=1.3.0",
         "numpy": ">=1.21.0",
         "scikit-learn": ">=1.0.0"
-      },
-      "description": "\n    Tabular preprocessing script that:\n    1. Combines data shards from input directory\n    2. Cleans and processes label field\n    3. Splits data into train/test/val for training jobs\n    4. Outputs processed CSV files by split\n    \n    Contract aligned with actual script implementation:\n    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data\n    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output\n    - Arguments: job_type (required) - defines processing mode (training/validation/testing)\n    \n    Script Implementation Details:\n    - Reads data shards (CSV, JSON, Parquet) from input/data directory\n    - Supports gzipped files and various formats\n    - Processes labels (converts categorical to numeric if needed)\n    - Splits data based on job_type (training creates train/test/val splits)\n    - Outputs processed files to split subdirectories under /opt/ml/processing/output\n    "
+      }
     },
     "specifications": {
       "preprocessing_training_spec": {
@@ -190,9 +152,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
+              "DataLoad",
               "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -208,35 +170,253 @@
           }
         ]
       }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "TabularPreprocessing_Training",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "DATA",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "DataLoad",
+              "CradleDataLoading",
+              "ProcessingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Raw training data for preprocessing"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "processed_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Processed training data with train/val/test splits"
+          }
+        ]
+      },
+      "variants": {
+        "training": {
+          "step_type": "TabularPreprocessing_Training",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "DATA",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "DataLoad",
+                "CradleDataLoading",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Raw training data for preprocessing"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "processed_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Processed training data with train/val/test splits"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "DATA": {
+          "logical_name": "DATA",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "DataLoad",
+            "CradleDataLoading",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Raw training data for preprocessing"
+        }
+      },
+      "unified_outputs": {
+        "processed_data": {
+          "logical_name": "processed_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Processed training data with train/val/test splits"
+        }
+      },
+      "dependency_sources": {
+        "DATA": [
+          "training"
+        ]
+      },
+      "output_sources": {
+        "processed_data": [
+          "training"
+        ]
+      },
+      "variant_count": 1
     }
   },
   "level3": {
     "passed": false,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/tabular_preprocess_spec.py",
-        "recommendation": "Create the specification file tabular_preprocess_spec.py"
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve required dependency: DATA",
+        "details": {
+          "logical_name": "DATA",
+          "specification": "tabular_preprocess",
+          "compatible_sources": [
+            "DataLoad",
+            "CradleDataLoading",
+            "ProcessingStep"
+          ],
+          "dependency_type": "processing_output",
+          "available_steps": [
+            "data_loading",
+            "preprocessing",
+            "currency_conversion",
+            "model_eval",
+            "xgboost_model",
+            "registration",
+            "risk_table_mapping",
+            "batch_transform",
+            "dummy",
+            "model",
+            "payload",
+            "xgboost",
+            "pytorch",
+            "packaging",
+            "pytorch_model"
+          ]
+        },
+        "recommendation": "Ensure a step exists that produces output DATA"
       }
-    ]
+    ],
+    "specification": {
+      "step_type": "TabularPreprocessing_Training",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "DATA",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "DataLoad",
+            "CradleDataLoading",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Raw training data for preprocessing"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "processed_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Processed training data with train/val/test splits"
+        }
+      ]
+    }
   },
   "level4": {
     "passed": false,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/builder_tabular_preprocess_step.py",
-        "recommendation": "Create the builder file builder_tabular_preprocess_step.py"
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: job_type",
+        "details": {
+          "field_name": "job_type",
+          "builder": "tabular_preprocess"
+        },
+        "recommendation": "Add job_type to configuration class or remove from builder"
+      },
+      {
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class tabular_preprocessConfig",
+        "details": {
+          "config_class": "tabular_preprocessConfig",
+          "builder": "tabular_preprocess"
+        },
+        "recommendation": "Ensure builder imports and uses tabular_preprocessConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "job_type",
+          "line_number": 65
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "TabularPreprocessingStepBuilder",
+          "line_number": 29
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 37
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 98
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 125
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 145
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 173
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 226
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 281
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 301
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "tabular_preprocessConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "Configuration class not found in src/cursus/steps/configs/config_tabular_preprocessing_step.py. Available classes: ['Any', 'BaseModel', 'Path', 'ProcessingStepConfigBase', 'TabularPreprocessingConfig']"
+    }
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
     "contract_mapping": "tabular_preprocess_contract",
-    "validation_timestamp": "2025-08-10T22:45:19.514994",
+    "validation_timestamp": "2025-08-11T01:14:46.077112",
     "validator_version": "1.0.0"
   }
 }

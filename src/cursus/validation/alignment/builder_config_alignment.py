@@ -95,9 +95,8 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        # Use FlexibleFileResolver to find builder file with flexible naming patterns
-        builder_path_str = self.file_resolver.find_builder_file(builder_name)
-        config_path_str = self.file_resolver.find_config_file(builder_name)
+        # Use hybrid approach for builder file resolution
+        builder_path_str = self._find_builder_file_hybrid(builder_name)
         
         # Check if builder file exists
         if not builder_path_str:
@@ -106,30 +105,45 @@ class BuilderConfigurationAlignmentTester:
                 'issues': [{
                     'severity': 'CRITICAL',
                     'category': 'missing_file',
-                    'message': f'Builder file not found: {self.builders_dir}/builder_{builder_name}_step.py',
-                    'recommendation': f'Create the builder file builder_{builder_name}_step.py'
+                    'message': f'Builder file not found for {builder_name}',
+                    'details': {
+                        'searched_patterns': [
+                            f'builder_{builder_name}_step.py',
+                            'FlexibleFileResolver patterns',
+                            'Fuzzy matching'
+                        ],
+                        'search_directory': str(self.builders_dir)
+                    },
+                    'recommendation': f'Create builder file builder_{builder_name}_step.py'
                 }]
             }
         
         builder_path = Path(builder_path_str)
         
-        # Check if config file exists
-        if not config_path_str:
-            config_path = self.configs_dir / f"config_{builder_name}_step.py"
-        else:
-            config_path = Path(config_path_str)
+        # Use hybrid approach for config file resolution
+        config_path_str = self._find_config_file_hybrid(builder_name)
         
         # Check if config file exists
-        if not config_path.exists():
+        if not config_path_str:
             return {
                 'passed': False,
                 'issues': [{
                     'severity': 'ERROR',
                     'category': 'missing_configuration',
-                    'message': f'Configuration file not found: {config_path}',
+                    'message': f'Configuration file not found for {builder_name}',
+                    'details': {
+                        'searched_patterns': [
+                            f'config_{builder_name}_step.py',
+                            'FlexibleFileResolver patterns',
+                            'Fuzzy matching'
+                        ],
+                        'search_directory': str(self.configs_dir)
+                    },
                     'recommendation': f'Create configuration file config_{builder_name}_step.py'
                 }]
             }
+        
+        config_path = Path(config_path_str)
         
         # Load configuration from Python file
         try:
@@ -710,6 +724,142 @@ class BuilderConfigurationAlignmentTester:
             })
         
         return issues
+
+    def _find_builder_file_hybrid(self, builder_name: str) -> Optional[str]:
+        """
+        Hybrid builder file resolution with multiple fallback strategies.
+        
+        Priority:
+        1. Standard pattern: builder_{builder_name}_step.py
+        2. FlexibleFileResolver patterns
+        3. Fuzzy matching for similar names
+        
+        Args:
+            builder_name: Name of the builder to find
+            
+        Returns:
+            Path to the builder file or None if not found
+        """
+        # Strategy 1: Try standard naming convention first
+        standard_path = self.builders_dir / f"builder_{builder_name}_step.py"
+        if standard_path.exists():
+            return str(standard_path)
+        
+        # Strategy 2: Use FlexibleFileResolver for known patterns
+        flexible_path = self.file_resolver.find_builder_file(builder_name)
+        if flexible_path and Path(flexible_path).exists():
+            return flexible_path
+        
+        # Strategy 3: Fuzzy matching for similar names
+        fuzzy_path = self._fuzzy_find_builder(builder_name)
+        if fuzzy_path:
+            return fuzzy_path
+        
+        # Strategy 4: Return None if nothing found
+        return None
+    
+    def _find_config_file_hybrid(self, builder_name: str) -> Optional[str]:
+        """
+        Hybrid config file resolution with multiple fallback strategies.
+        
+        Priority:
+        1. Standard pattern: config_{builder_name}_step.py
+        2. FlexibleFileResolver patterns
+        3. Fuzzy matching for similar names
+        
+        Args:
+            builder_name: Name of the builder to find config for
+            
+        Returns:
+            Path to the config file or None if not found
+        """
+        # Strategy 1: Try standard naming convention first
+        standard_path = self.configs_dir / f"config_{builder_name}_step.py"
+        if standard_path.exists():
+            return str(standard_path)
+        
+        # Strategy 2: Use FlexibleFileResolver for known patterns
+        flexible_path = self.file_resolver.find_config_file(builder_name)
+        if flexible_path and Path(flexible_path).exists():
+            return flexible_path
+        
+        # Strategy 3: Fuzzy matching for similar names
+        fuzzy_path = self._fuzzy_find_config(builder_name)
+        if fuzzy_path:
+            return fuzzy_path
+        
+        # Strategy 4: Return None if nothing found
+        return None
+    
+    def _fuzzy_find_builder(self, builder_name: str) -> Optional[str]:
+        """
+        Fuzzy file matching for builder files with similar names.
+        
+        Args:
+            builder_name: Target builder name
+            
+        Returns:
+            Path to the best matching builder file or None
+        """
+        if not self.builders_dir.exists():
+            return None
+            
+        target_pattern = f"builder_{builder_name}_step"
+        
+        best_match = None
+        best_similarity = 0.0
+        
+        for file_path in self.builders_dir.glob("builder_*_step.py"):
+            file_base = file_path.stem.lower()
+            similarity = self._calculate_similarity(target_pattern.lower(), file_base)
+            
+            if similarity > 0.8 and similarity > best_similarity:
+                best_similarity = similarity
+                best_match = str(file_path)
+        
+        return best_match
+    
+    def _fuzzy_find_config(self, builder_name: str) -> Optional[str]:
+        """
+        Fuzzy file matching for config files with similar names.
+        
+        Args:
+            builder_name: Target builder name
+            
+        Returns:
+            Path to the best matching config file or None
+        """
+        if not self.configs_dir.exists():
+            return None
+            
+        target_pattern = f"config_{builder_name}_step"
+        
+        best_match = None
+        best_similarity = 0.0
+        
+        for file_path in self.configs_dir.glob("config_*_step.py"):
+            file_base = file_path.stem.lower()
+            similarity = self._calculate_similarity(target_pattern.lower(), file_base)
+            
+            if similarity > 0.8 and similarity > best_similarity:
+                best_similarity = similarity
+                best_match = str(file_path)
+        
+        return best_match
+    
+    def _calculate_similarity(self, str1: str, str2: str) -> float:
+        """
+        Calculate similarity between two strings using difflib.
+        
+        Args:
+            str1: First string
+            str2: Second string
+            
+        Returns:
+            Similarity ratio between 0.0 and 1.0
+        """
+        import difflib
+        return difflib.SequenceMatcher(None, str1, str2).ratio()
 
     def _discover_builders(self) -> List[str]:
         """Discover all builder files in the builders directory."""

@@ -16,7 +16,8 @@ from .static_analysis.script_analyzer import ScriptAnalyzer
 from .static_analysis.builder_analyzer import extract_builder_arguments
 from .alignment_utils import (
     SeverityLevel, create_alignment_issue, normalize_path,
-    extract_logical_name_from_path, is_sagemaker_path
+    extract_logical_name_from_path, is_sagemaker_path,
+    FlexibleFileResolver
 )
 
 
@@ -44,7 +45,15 @@ class ScriptContractAlignmentTester:
         self.contracts_dir = Path(contracts_dir)
         self.builders_dir = Path(builders_dir) if builders_dir else None
         
-        # Build entry_point to contract file mapping
+        # Initialize FlexibleFileResolver for robust file discovery
+        base_directories = {
+            'contracts': str(self.contracts_dir),
+            'builders': str(self.builders_dir) if self.builders_dir else '',
+            'scripts': str(self.scripts_dir)
+        }
+        self.file_resolver = FlexibleFileResolver(base_directories)
+        
+        # Build entry_point to contract file mapping (kept as fallback)
         self._entry_point_to_contract = self._build_entry_point_mapping()
     
     def validate_all_scripts(self, target_scripts: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
@@ -94,15 +103,8 @@ class ScriptContractAlignmentTester:
         """
         script_path = self.scripts_dir / f"{script_name}.py"
         
-        # Use entry_point mapping to find the correct contract file
-        script_filename = f"{script_name}.py"
-        contract_file = self._entry_point_to_contract.get(script_filename)
-        
-        if contract_file:
-            contract_path = self.contracts_dir / contract_file
-        else:
-            # Fallback to naming convention
-            contract_path = self.contracts_dir / f"{script_name}_contract.py"
+        # Hybrid approach: Try entry_point mapping first, then FlexibleFileResolver as fallback
+        contract_file_path = self._find_contract_file_hybrid(script_name)
         
         # Check if files exist
         if not script_path.exists():
@@ -116,6 +118,26 @@ class ScriptContractAlignmentTester:
                 }]
             }
         
+        if not contract_file_path:
+            return {
+                'passed': False,
+                'issues': [{
+                    'severity': 'ERROR',
+                    'category': 'missing_contract',
+                    'message': f'Contract file not found for script: {script_name}',
+                    'details': {
+                        'script': script_name,
+                        'searched_methods': [
+                            'Entry point mapping from contract files',
+                            'FlexibleFileResolver pattern matching',
+                            f'Naming convention: {script_name}_contract.py'
+                        ]
+                    },
+                    'recommendation': f'Create contract file for {script_name} or check naming patterns'
+                }]
+            }
+        
+        contract_path = Path(contract_file_path)
         if not contract_path.exists():
             return {
                 'passed': False,
@@ -123,7 +145,7 @@ class ScriptContractAlignmentTester:
                     'severity': 'ERROR',
                     'category': 'missing_contract',
                     'message': f'Contract file not found: {contract_path}',
-                    'recommendation': f'Create contract file {contract_file or f"{script_name}_contract.py"}'
+                    'recommendation': f'Create contract file {contract_path.name}'
                 }]
             }
         
@@ -739,6 +761,37 @@ class ScriptContractAlignmentTester:
                         break
         
         return script_reads, script_writes
+    
+    def _find_contract_file_hybrid(self, script_name: str) -> Optional[str]:
+        """
+        Hybrid approach to find contract file: try entry_point mapping first, then FlexibleFileResolver as fallback.
+        
+        Args:
+            script_name: Name of the script to find contract for
+            
+        Returns:
+            Path to contract file or None if not found
+        """
+        script_filename = f"{script_name}.py"
+        
+        # Method 1: Try entry_point mapping (authoritative source)
+        if script_filename in self._entry_point_to_contract:
+            contract_filename = self._entry_point_to_contract[script_filename]
+            contract_path = self.contracts_dir / contract_filename
+            if contract_path.exists():
+                return str(contract_path)
+        
+        # Method 2: Try FlexibleFileResolver as fallback (pattern matching)
+        flexible_path = self.file_resolver.find_contract_file(script_name)
+        if flexible_path and Path(flexible_path).exists():
+            return flexible_path
+        
+        # Method 3: Try naming convention as final fallback
+        conventional_path = self.contracts_dir / f"{script_name}_contract.py"
+        if conventional_path.exists():
+            return str(conventional_path)
+        
+        return None
     
     def _resolve_logical_name_from_contract(self, path: str, contract: Dict[str, Any]) -> Optional[str]:
         """

@@ -86,10 +86,14 @@
     "contract": {
       "entry_point": "mims_payload.py",
       "inputs": {
-        "model_input": "/opt/ml/processing/input/model"
+        "model_input": {
+          "path": "/opt/ml/processing/input/model"
+        }
       },
       "outputs": {
-        "payload_sample": "/opt/ml/processing/output"
+        "payload_sample": {
+          "path": "/opt/ml/processing/output"
+        }
       },
       "arguments": {},
       "environment_variables": {
@@ -100,10 +104,10 @@
           "DEFAULT_TEXT_VALUE": "DEFAULT_TEXT"
         }
       },
+      "description": "\n    MIMS payload generation script that:\n    1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)\n    2. Creates model variable list from field information\n    3. Generates sample payloads in multiple formats (JSON, CSV)\n    4. Archives payload files for deployment\n    \n    Note: This script extracts pipeline name, version, and model objective from hyperparameters,\n    not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or \n    BUCKET_NAME environment variables.\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json\n    \n    Output Structure:\n    - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)\n    - /opt/ml/processing/output/: Output directory containing payload.tar.gz file\n    \n    Environment Variables:\n    - CONTENT_TYPES: Comma-separated list of content types (default: \"application/json\")\n    - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: \"0.0\")\n    - DEFAULT_TEXT_VALUE: Default value for text fields (default: \"DEFAULT_TEXT\")\n    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields\n    \n    Arguments:\n    - mode: Operating mode for the script (default: \"standard\")\n    ",
       "framework_requirements": {
         "python": ">=3.7"
-      },
-      "description": "\n    MIMS payload generation script that:\n    1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)\n    2. Creates model variable list from field information\n    3. Generates sample payloads in multiple formats (JSON, CSV)\n    4. Archives payload files for deployment\n    \n    Note: This script extracts pipeline name, version, and model objective from hyperparameters,\n    not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or \n    BUCKET_NAME environment variables.\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json\n    \n    Output Structure:\n    - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)\n    - /opt/ml/processing/output/: Output directory containing payload.tar.gz file\n    \n    Environment Variables:\n    - CONTENT_TYPES: Comma-separated list of content types (default: \"application/json\")\n    - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: \"0.0\")\n    - DEFAULT_TEXT_VALUE: Default value for text fields (default: \"DEFAULT_TEXT\")\n    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields\n    \n    Arguments:\n    - mode: Operating mode for the script (default: \"standard\")\n    "
+      }
     },
     "specifications": {
       "payload_spec": {
@@ -133,35 +137,238 @@
           }
         ]
       }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "Payload",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "XGBoostTraining",
+              "TrainingStep",
+              "ModelStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts for payload generation"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "payload_sample",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Generated payload samples archive (payload.tar.gz)"
+          }
+        ]
+      },
+      "variants": {
+        "generic": {
+          "step_type": "Payload",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "model_input",
+              "dependency_type": "model_artifacts",
+              "required": true,
+              "compatible_sources": [
+                "XGBoostTraining",
+                "TrainingStep",
+                "ModelStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Trained model artifacts for payload generation"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "payload_sample",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Generated payload samples archive (payload.tar.gz)"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "model_input": {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "XGBoostTraining",
+            "TrainingStep",
+            "ModelStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts for payload generation"
+        }
+      },
+      "unified_outputs": {
+        "payload_sample": {
+          "logical_name": "payload_sample",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Generated payload samples archive (payload.tar.gz)"
+        }
+      },
+      "dependency_sources": {
+        "model_input": [
+          "generic"
+        ]
+      },
+      "output_sources": {
+        "payload_sample": [
+          "generic"
+        ]
+      },
+      "variant_count": 1
     }
   },
   "level3": {
     "passed": false,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/mims_payload_spec.py",
-        "recommendation": "Create the specification file mims_payload_spec.py"
+        "severity": "ERROR",
+        "category": "dependency_resolution",
+        "message": "Cannot resolve required dependency: model_input",
+        "details": {
+          "logical_name": "model_input",
+          "specification": "mims_payload",
+          "compatible_sources": [
+            "XGBoostTraining",
+            "TrainingStep",
+            "ModelStep"
+          ],
+          "dependency_type": "model_artifacts",
+          "available_steps": [
+            "data_loading",
+            "preprocessing",
+            "currency_conversion",
+            "model_eval",
+            "xgboost_model",
+            "registration",
+            "risk_table_mapping",
+            "batch_transform",
+            "dummy",
+            "model",
+            "payload",
+            "xgboost",
+            "pytorch",
+            "packaging",
+            "pytorch_model"
+          ]
+        },
+        "recommendation": "Ensure a step exists that produces output model_input"
       }
-    ]
+    ],
+    "specification": {
+      "step_type": "Payload",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "XGBoostTraining",
+            "TrainingStep",
+            "ModelStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts for payload generation"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "payload_sample",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Generated payload samples archive (payload.tar.gz)"
+        }
+      ]
+    }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Builder file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders/builder_mims_payload_step.py",
-        "recommendation": "Create the builder file builder_mims_payload_step.py"
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class mims_payloadConfig",
+        "details": {
+          "config_class": "mims_payloadConfig",
+          "builder": "mims_payload"
+        },
+        "recommendation": "Ensure builder imports and uses mims_payloadConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "PayloadStepBuilder",
+          "line_number": 27
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 75
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 105
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 132
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 167
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 220
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 275
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 292
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "mims_payloadConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "Configuration class not found in src/cursus/steps/configs/config_payload_step.py. Available classes: ['Any', 'BaseModel', 'Enum', 'Path', 'PayloadConfig', 'ProcessingStepConfigBase', 'VariableType', 'datetime']"
+    }
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
     "contract_mapping": "mims_payload_contract",
-    "validation_timestamp": "2025-08-10T22:45:19.456603",
+    "validation_timestamp": "2025-08-11T01:14:45.951028",
     "validator_version": "1.0.0"
   }
 }
