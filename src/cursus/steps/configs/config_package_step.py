@@ -5,7 +5,7 @@ from pathlib import Path
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import the script contract
-from ..contracts.mims_package_contract import MIMS_PACKAGE_CONTRACT
+from ..contracts.package_contract import PACKAGE_CONTRACT
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -69,9 +69,9 @@ class PackageConfig(ProcessingStepConfigBase):
         Get script contract for this configuration.
         
         Returns:
-            The MIMS package script contract
+            The package script contract
         """
-        return MIMS_PACKAGE_CONTRACT
+        return PACKAGE_CONTRACT
         
     def get_script_path(self) -> str:
         """

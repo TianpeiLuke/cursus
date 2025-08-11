@@ -47,6 +47,7 @@ class BuilderConfigurationAlignmentTester:
             'builders': str(self.builders_dir),
             'configs': str(self.configs_dir)
         }
+        
         self.file_resolver = FlexibleFileResolver(base_directories)
         
         # Add the project root to Python path for imports
@@ -129,6 +130,10 @@ class BuilderConfigurationAlignmentTester:
         
         # Check if config file exists
         if not config_path_str:
+            # Get detailed diagnostics from FlexibleFileResolver
+            available_files_report = self.file_resolver.get_available_files_report()
+            config_report = available_files_report.get('configs', {})
+            
             return {
                 'passed': False,
                 'issues': [{
@@ -136,14 +141,18 @@ class BuilderConfigurationAlignmentTester:
                     'category': 'missing_configuration',
                     'message': f'Configuration file not found for {builder_name}',
                     'details': {
-                        'searched_patterns': [
-                            f'config_{builder_name}_step.py',
-                            'FlexibleFileResolver patterns',
-                            'Fuzzy matching'
-                        ],
-                        'search_directory': str(self.configs_dir)
+                        'builder_name': builder_name,
+                        'search_directory': str(self.configs_dir),
+                        'available_config_files': config_report.get('discovered_files', []),
+                        'available_base_names': config_report.get('base_names', []),
+                        'total_configs_found': config_report.get('count', 0),
+                        'resolver_strategies': [
+                            'Exact match',
+                            'Normalized matching (preprocess↔preprocessing, eval↔evaluation, xgb↔xgboost)',
+                            'Fuzzy matching (80% similarity threshold)'
+                        ]
                     },
-                    'recommendation': f'Create configuration file config_{builder_name}_step.py'
+                    'recommendation': f'Check if config file exists with correct naming pattern, or create config_{builder_name}_step.py'
                 }]
             }
         

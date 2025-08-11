@@ -13,14 +13,14 @@ from .builder_currency_conversion_step import CurrencyConversionStepBuilder
 from .builder_dummy_training_step import DummyTrainingStepBuilder
 from .builder_model_calibration_step import ModelCalibrationStepBuilder
 from .builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
-from .builder_model_step_pytorch import PyTorchModelStepBuilder
-from .builder_model_step_xgboost import XGBoostModelStepBuilder
+from .builder_pytorch_model_step import PyTorchModelStepBuilder
+from .builder_xgboost_model_step import XGBoostModelStepBuilder
 from .builder_package_step import PackageStepBuilder
 from .builder_payload_step import PayloadStepBuilder
 from .builder_risk_table_mapping_step import RiskTableMappingStepBuilder
 from .builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-from .builder_training_step_pytorch import PyTorchTrainingStepBuilder
-from .builder_training_step_xgboost import XGBoostTrainingStepBuilder
+from .builder_pytorch_training_step import PyTorchTrainingStepBuilder
+from .builder_xgboost_training_step import XGBoostTrainingStepBuilder
 from .s3_utils import S3PathHandler
 
 __all__ = [

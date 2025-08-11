@@ -190,16 +190,16 @@ class StepBuilderRegistry:
     def _register_known_builders(cls, builder_map: Dict[str, Type[StepBuilderBase]]) -> None:
         """Register known step builders to ensure backward compatibility."""
         # Import all step builders
-        from ..builders.builder_data_load_step_cradle import CradleDataLoadingStepBuilder
+        from ..builders.builder_cradle_data_loading_step import CradleDataLoadingStepBuilder
         from ..builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-        from ..builders.builder_training_step_xgboost import XGBoostTrainingStepBuilder
+        from ..builders.builder_xgboost_training_step import XGBoostTrainingStepBuilder
         from ..builders.builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
         from ..builders.builder_package_step import PackageStepBuilder
         from ..builders.builder_payload_step import PayloadStepBuilder
         from ..builders.builder_registration_step import RegistrationStepBuilder
-        from ..builders.builder_training_step_pytorch import PyTorchTrainingStepBuilder
-        from ..builders.builder_model_step_pytorch import PyTorchModelStepBuilder
-        from ..builders.builder_model_step_xgboost import XGBoostModelStepBuilder
+        from ..builders.builder_pytorch_training_step import PyTorchTrainingStepBuilder
+        from ..builders.builder_pytorch_model_step import PyTorchModelStepBuilder
+        from ..builders.builder_xgboost_model_step import XGBoostModelStepBuilder
         from ..builders.builder_batch_transform_step import BatchTransformStepBuilder
         from ..builders.builder_model_calibration_step import ModelCalibrationStepBuilder
         from ..builders.builder_currency_conversion_step import CurrencyConversionStepBuilder

@@ -399,7 +399,7 @@ class TestUniversalStepBuilder(unittest.TestCase):
         """Test UniversalStepBuilderTest with XGBoostTrainingStepBuilder."""
         try:
             # Import the builder class
-            from ...steps.builders.builder_training_step_xgboost import XGBoostTrainingStepBuilder
+            from ...steps.builders.builder_xgboost_training_step import XGBoostTrainingStepBuilder
             
             # Create tester
             tester = UniversalStepBuilderTest(XGBoostTrainingStepBuilder)

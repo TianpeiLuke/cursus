@@ -1,0 +1,69 @@
+{
+  "script_name": "mims_package",
+  "level1": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Script file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py",
+        "recommendation": "Create the script file mims_package.py"
+      }
+    ]
+  },
+  "level2": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Contract file not found for script: mims_package",
+        "details": {
+          "script": "mims_package",
+          "searched_patterns": [
+            "mims_package_contract.py",
+            "Known naming patterns from FlexibleFileResolver"
+          ]
+        },
+        "recommendation": "Create contract file for mims_package or check naming patterns"
+      }
+    ]
+  },
+  "level3": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/mims_package_spec.py",
+        "recommendation": "Create the specification file mims_package_spec.py"
+      }
+    ]
+  },
+  "level4": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Builder file not found for mims_package",
+        "details": {
+          "searched_patterns": [
+            "builder_mims_package_step.py",
+            "FlexibleFileResolver patterns",
+            "Fuzzy matching"
+          ],
+          "search_directory": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders"
+        },
+        "recommendation": "Create builder file builder_mims_package_step.py"
+      }
+    ]
+  },
+  "overall_status": "FAILING",
+  "metadata": {
+    "script_name": "mims_package",
+    "validation_timestamp": "2025-08-11T11:41:00.238033",
+    "validator_version": "1.0.0",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_package.py"
+  }
+}

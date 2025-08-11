@@ -12,13 +12,13 @@ import logging
 
 from ...core.base.contract_base import ScriptContract, ValidationResult
 from .tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
-from .mims_package_contract import MIMS_PACKAGE_CONTRACT
-from .mims_payload_contract import MIMS_PAYLOAD_CONTRACT
+from .package_contract import PACKAGE_CONTRACT
+from .payload_contract import PAYLOAD_CONTRACT
 from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
 from .currency_conversion_contract import CURRENCY_CONVERSION_CONTRACT
 from .risk_table_mapping_contract import RISK_TABLE_MAPPING_CONTRACT
-from .pytorch_train_contract import PYTORCH_TRAIN_CONTRACT
-from .xgboost_train_contract import XGBOOST_TRAIN_CONTRACT
+from .pytorch_training_contract import PYTORCH_TRAIN_CONTRACT
+from .xgboost_training_contract import XGBOOST_TRAIN_CONTRACT
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +48,8 @@ class ScriptContractValidator:
     # Registry of all available contracts
     CONTRACTS = {
         "tabular_preprocess.py": TABULAR_PREPROCESS_CONTRACT,
-        "mims_package.py": MIMS_PACKAGE_CONTRACT,
-        "mims_payload.py": MIMS_PAYLOAD_CONTRACT,
+        "package.py": PACKAGE_CONTRACT,
+        "payload.py": PAYLOAD_CONTRACT,
         "model_evaluation_xgb.py": XGBOOST_MODEL_EVAL_CONTRACT,
         "currency_conversion.py": CURRENCY_CONVERSION_CONTRACT,
         "risk_table_mapping.py": RISK_TABLE_MAPPING_CONTRACT,

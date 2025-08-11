@@ -132,7 +132,7 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
             # If no specific type-based spec is found, try to use the generic one
             if spec is None:
                 try:
-                    from ..specs.data_loading_spec import DATA_LOADING_SPEC
+                    from ..specs.cradle_data_loading_spec import DATA_LOADING_SPEC
                     spec = DATA_LOADING_SPEC
                     self.log_info("Using generic DATA_LOADING_SPEC for job type: %s", job_type)
                 except ImportError:

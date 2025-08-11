@@ -457,11 +457,11 @@ class DependencyPatternClassifier:
 
 class FlexibleFileResolver:
     """
-    Flexible file resolution with multiple naming pattern support.
+    Dynamic file resolution with file-system-driven discovery.
     
-    This resolver addresses the critical false positive issue where the alignment
-    testers look for files with incorrect naming patterns. It provides fuzzy
-    matching and handles the actual naming conventions used in the codebase.
+    This resolver discovers actual files in the filesystem and matches them
+    to script names using intelligent pattern matching, eliminating the need
+    for hardcoded mappings that become stale.
     """
     
     def __init__(self, base_directories: Dict[str, str]):
@@ -472,62 +472,146 @@ class FlexibleFileResolver:
             base_directories: Dictionary mapping component types to their base directories
                              e.g., {'contracts': 'src/cursus/steps/contracts', ...}
         """
-        self.base_dirs = base_directories
-        self.naming_patterns = self._load_naming_patterns()
+        self.base_dirs = {k: Path(v) for k, v in base_directories.items()}
+        self.file_cache = {}  # Cache discovered files
+        self._discover_all_files()
     
-    def _load_naming_patterns(self) -> Dict[str, Dict[str, str]]:
+    def _discover_all_files(self):
+        """Discover all actual files in each directory and extract base names."""
+        for component_type, directory in self.base_dirs.items():
+            self.file_cache[component_type] = self._scan_directory(directory, component_type)
+    
+    def _scan_directory(self, directory: Path, component_type: str) -> Dict[str, str]:
         """
-        Load known naming pattern mappings for common scripts.
+        Scan directory and extract base names from actual files.
         
+        Args:
+            directory: Directory path to scan
+            component_type: Type of component (contracts, specs, builders, configs)
+            
         Returns:
-            Dictionary mapping script names to their actual file names
+            Dict mapping base_names to actual filenames
         """
-        return {
-            'contracts': {
-                'model_evaluation_xgb': 'xgboost_model_eval_contract.py',
-                'dummy_training': 'dummy_training_contract.py',
-                'currency_conversion': 'currency_conversion_contract.py',
-                'mims_package': 'mims_package_contract.py',
-                'mims_payload': 'mims_payload_contract.py',
-                'model_calibration': 'model_calibration_contract.py',
-                'risk_table_mapping': 'risk_table_mapping_contract.py',
-                'tabular_preprocess': 'tabular_preprocess_contract.py',
-            },
-            'specs': {
-                'model_evaluation_xgb': 'xgboost_model_eval_spec.py',
-                'dummy_training': 'dummy_training_spec.py',
-                'currency_conversion': 'currency_conversion_training_spec.py',  # Has variants
-                'mims_package': 'packaging_spec.py',
-                'mims_payload': 'payload_spec.py',
-                'model_calibration': 'model_calibration_spec.py',
-                'risk_table_mapping': 'risk_table_mapping_training_spec.py',  # Has variants
-                'tabular_preprocess': 'preprocessing_training_spec.py',  # Has variants
-            },
-            'builders': {
-                'model_evaluation_xgb': 'builder_xgboost_model_eval_step.py',
-                'dummy_training': 'builder_dummy_training_step.py',
-                'currency_conversion': 'builder_currency_conversion_step.py',
-                'mims_package': 'builder_package_step.py',
-                'mims_payload': 'builder_payload_step.py',
-                'model_calibration': 'builder_model_calibration_step.py',
-                'risk_table_mapping': 'builder_risk_table_mapping_step.py',
-                'tabular_preprocess': 'builder_tabular_preprocessing_step.py',
-            },
-            'configs': {
-                'model_evaluation_xgb': 'config_xgboost_model_eval_step.py',
-                'dummy_training': 'config_dummy_training_step.py',
-                'currency_conversion': 'config_currency_conversion_step.py',
-                'mims_package': 'config_package_step.py',
-                'mims_payload': 'config_payload_step.py',
-                'model_calibration': 'config_model_calibration_step.py',
-                'risk_table_mapping': 'config_risk_table_mapping_step.py',
-                'tabular_preprocess': 'config_tabular_preprocessing_step.py',
-            }
+        file_map = {}
+        
+        if not directory.exists():
+            return file_map
+        
+        # Define patterns for each component type
+        patterns = {
+            'contracts': r'^(.+)_contract\.py$',
+            'specs': r'^(.+)_spec\.py$', 
+            'builders': r'^builder_(.+)_step\.py$',
+            'configs': r'^config_(.+)_step\.py$'
         }
+        
+        pattern = patterns.get(component_type)
+        if not pattern:
+            return file_map
+        
+        import re
+        regex = re.compile(pattern)
+        
+        for file_path in directory.glob('*.py'):
+            if file_path.name.startswith('__'):
+                continue
+                
+            match = regex.match(file_path.name)
+            if match:
+                base_name = match.group(1)
+                file_map[base_name] = file_path.name
+        
+        return file_map
+    
+    def _find_best_match(self, script_name: str, component_type: str) -> Optional[str]:
+        """
+        Find best matching file for script name using multiple strategies.
+        
+        Args:
+            script_name: Name of the script to find files for
+            component_type: Type of component to search for
+            
+        Returns:
+            Full path to the best matching file or None
+        """
+        available_files = self.file_cache.get(component_type, {})
+        
+        if not available_files:
+            return None
+        
+        # Strategy 1: Exact match
+        if script_name in available_files:
+            return str(self.base_dirs[component_type] / available_files[script_name])
+        
+        # Strategy 2: Normalized matching
+        normalized_script = self._normalize_name(script_name)
+        for base_name, filename in available_files.items():
+            if self._normalize_name(base_name) == normalized_script:
+                return str(self.base_dirs[component_type] / filename)
+        
+        # Strategy 3: Fuzzy matching
+        best_match = None
+        best_score = 0.0
+        
+        for base_name, filename in available_files.items():
+            score = self._calculate_similarity(script_name, base_name)
+            if score > 0.8 and score > best_score:  # 80% similarity threshold
+                best_score = score
+                best_match = str(self.base_dirs[component_type] / filename)
+        
+        return best_match
+    
+    def _normalize_name(self, name: str) -> str:
+        """
+        Normalize names for better matching.
+        
+        Handles common variations:
+        - preprocess vs preprocessing
+        - eval vs evaluation  
+        - xgb vs xgboost
+        
+        Args:
+            name: Name to normalize
+            
+        Returns:
+            Normalized name
+        """
+        # Convert to lowercase
+        normalized = name.lower()
+        
+        # Handle common word variations
+        variations = {
+            'preprocess': 'preprocessing',
+            'eval': 'evaluation',
+            'xgb': 'xgboost',
+        }
+        
+        for short, long in variations.items():
+            # Handle both directions
+            if short in normalized and long not in normalized:
+                normalized = normalized.replace(short, long)
+        
+        return normalized
+    
+    def refresh_cache(self):
+        """Refresh file cache to pick up new files."""
+        self._discover_all_files()
+    
+    def get_available_files_report(self) -> Dict[str, Dict[str, Any]]:
+        """Get report of all discovered files for debugging."""
+        report = {}
+        for component_type, file_map in self.file_cache.items():
+            report[component_type] = {
+                'directory': str(self.base_dirs[component_type]),
+                'discovered_files': list(file_map.values()),
+                'base_names': list(file_map.keys()),
+                'count': len(file_map)
+            }
+        return report
     
     def find_contract_file(self, script_name: str) -> Optional[str]:
         """
-        Find contract file using flexible naming patterns.
+        Find contract file using dynamic discovery.
         
         Args:
             script_name: Name of the script (without .py extension)
@@ -535,20 +619,11 @@ class FlexibleFileResolver:
         Returns:
             Path to the contract file or None if not found
         """
-        patterns = [
-            f"{script_name}_contract.py",
-            f"{self._normalize_name(script_name)}_contract.py",
-        ]
-        
-        # Add known pattern if available
-        if script_name in self.naming_patterns['contracts']:
-            patterns.insert(0, self.naming_patterns['contracts'][script_name])
-        
-        return self._find_file_by_patterns(self.base_dirs.get('contracts', ''), patterns)
+        return self._find_best_match(script_name, 'contracts')
     
     def find_spec_file(self, script_name: str) -> Optional[str]:
         """
-        Find specification file using flexible naming patterns.
+        Find specification file using dynamic discovery.
         
         Args:
             script_name: Name of the script (without .py extension)
@@ -556,16 +631,7 @@ class FlexibleFileResolver:
         Returns:
             Path to the specification file or None if not found
         """
-        patterns = [
-            f"{script_name}_spec.py",
-            f"{self._normalize_name(script_name)}_spec.py",
-        ]
-        
-        # Add known pattern if available
-        if script_name in self.naming_patterns['specs']:
-            patterns.insert(0, self.naming_patterns['specs'][script_name])
-        
-        return self._find_file_by_patterns(self.base_dirs.get('specs', ''), patterns)
+        return self._find_best_match(script_name, 'specs')
     
     def find_specification_file(self, script_name: str) -> Optional[str]:
         """
@@ -581,7 +647,7 @@ class FlexibleFileResolver:
     
     def find_builder_file(self, script_name: str) -> Optional[str]:
         """
-        Find builder file using flexible naming patterns.
+        Find builder file using dynamic discovery.
         
         Args:
             script_name: Name of the script (without .py extension)
@@ -589,28 +655,11 @@ class FlexibleFileResolver:
         Returns:
             Path to the builder file or None if not found
         """
-        # Generate all possible name variations
-        name_variations = self._generate_name_variations(script_name)
-        
-        patterns = []
-        
-        # Add known pattern if available (highest priority)
-        if script_name in self.naming_patterns['builders']:
-            patterns.append(self.naming_patterns['builders'][script_name])
-        
-        # Add patterns for all name variations
-        for name_var in name_variations:
-            patterns.extend([
-                f"builder_{name_var}_step.py",
-                f"{name_var}_step_builder.py",  # Alternative pattern
-                f"builder_{name_var}.py",       # Simplified pattern
-            ])
-        
-        return self._find_file_by_patterns(self.base_dirs.get('builders', ''), patterns)
+        return self._find_best_match(script_name, 'builders')
     
     def find_config_file(self, script_name: str) -> Optional[str]:
         """
-        Find config file using flexible naming patterns.
+        Find config file using dynamic discovery.
         
         Args:
             script_name: Name of the script (without .py extension)
@@ -618,74 +667,7 @@ class FlexibleFileResolver:
         Returns:
             Path to the config file or None if not found
         """
-        patterns = [
-            f"config_{script_name}_step.py",
-            f"config_{self._normalize_name(script_name)}_step.py",
-        ]
-        
-        # Add known pattern if available
-        if script_name in self.naming_patterns['configs']:
-            patterns.insert(0, self.naming_patterns['configs'][script_name])
-        
-        return self._find_file_by_patterns(self.base_dirs.get('configs', ''), patterns)
-    
-    def _find_file_by_patterns(self, directory: str, patterns: List[str]) -> Optional[str]:
-        """
-        Find file using multiple patterns, return first match.
-        
-        Args:
-            directory: Directory to search in
-            patterns: List of filename patterns to try
-            
-        Returns:
-            Full path to the file or None if not found
-        """
-        if not directory:
-            return None
-            
-        dir_path = Path(directory)
-        if not dir_path.exists():
-            return None
-        
-        for pattern in patterns:
-            if pattern is None:
-                continue
-            file_path = dir_path / pattern
-            if file_path.exists():
-                return str(file_path)
-        
-        # If no exact match, try fuzzy matching
-        return self._fuzzy_find_file(directory, patterns[0])
-    
-    def _fuzzy_find_file(self, directory: str, target_pattern: str) -> Optional[str]:
-        """
-        Fuzzy file matching for similar names.
-        
-        Args:
-            directory: Directory to search in
-            target_pattern: Target filename pattern
-            
-        Returns:
-            Path to the best matching file or None
-        """
-        dir_path = Path(directory)
-        if not dir_path.exists():
-            return None
-            
-        target_base = target_pattern.replace('.py', '').lower()
-        
-        best_match = None
-        best_similarity = 0.0
-        
-        for file_path in dir_path.glob('*.py'):
-            file_base = file_path.stem.lower()
-            similarity = self._calculate_similarity(target_base, file_base)
-            
-            if similarity > 0.8 and similarity > best_similarity:
-                best_similarity = similarity
-                best_match = str(file_path)
-        
-        return best_match
+        return self._find_best_match(script_name, 'configs')
     
     def _calculate_similarity(self, str1: str, str2: str) -> float:
         """
@@ -699,68 +681,6 @@ class FlexibleFileResolver:
             Similarity ratio between 0.0 and 1.0
         """
         return difflib.SequenceMatcher(None, str1, str2).ratio()
-    
-    def _normalize_name(self, name: str) -> str:
-        """
-        Normalize a script name for pattern matching.
-        
-        Args:
-            name: Script name to normalize
-            
-        Returns:
-            Normalized name
-        """
-        # Remove common suffixes and prefixes
-        normalized = name.replace('_step', '').replace('step_', '')
-        normalized = normalized.replace('_script', '').replace('script_', '')
-        
-        # Handle common abbreviations and variations
-        abbreviations = {
-            'xgb': 'xgboost',
-            'eval': 'evaluation',
-            'preprocess': 'preprocessing',
-        }
-        
-        for abbrev, full in abbreviations.items():
-            if abbrev in normalized:
-                normalized = normalized.replace(abbrev, full)
-        
-        return normalized
-    
-    def _generate_name_variations(self, name: str) -> List[str]:
-        """
-        Generate common naming variations for a script name.
-        
-        Args:
-            name: Original script name
-            
-        Returns:
-            List of possible naming variations
-        """
-        variations = [name]
-        
-        # Add normalized version
-        normalized = self._normalize_name(name)
-        if normalized != name:
-            variations.append(normalized)
-        
-        # Handle specific common variations
-        if 'preprocess' in name and 'preprocessing' not in name:
-            variations.append(name.replace('preprocess', 'preprocessing'))
-        elif 'preprocessing' in name and 'preprocess' not in name:
-            variations.append(name.replace('preprocessing', 'preprocess'))
-        
-        if 'eval' in name and 'evaluation' not in name:
-            variations.append(name.replace('eval', 'evaluation'))
-        elif 'evaluation' in name and 'eval' not in name:
-            variations.append(name.replace('evaluation', 'eval'))
-        
-        if 'xgb' in name and 'xgboost' not in name:
-            variations.append(name.replace('xgb', 'xgboost'))
-        elif 'xgboost' in name and 'xgb' not in name:
-            variations.append(name.replace('xgboost', 'xgb'))
-        
-        return list(set(variations))  # Remove duplicates
     
     def find_all_component_files(self, script_name: str) -> Dict[str, Optional[str]]:
         """
@@ -817,16 +737,7 @@ class FlexibleFileResolver:
         Returns:
             Expected constant name or None
         """
-        # Check if we have a known mapping
-        if script_name in self.naming_patterns.get('spec_constants', {}):
-            constants_map = self.naming_patterns['spec_constants'][script_name]
-            if job_type in constants_map:
-                return constants_map[job_type]
-            elif 'default' in constants_map:
-                return constants_map['default']
-        
-        # Generate based on patterns
-        # First try the FlexibleFileResolver spec mapping
+        # Generate based on discovered spec file patterns
         spec_file = self.find_spec_file(script_name)
         if spec_file:
             base_name = self.extract_base_name_from_spec(Path(spec_file))

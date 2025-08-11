@@ -26,7 +26,8 @@ def main():
         scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
         contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
         specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
-        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders")
+        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
+        configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
     )
     
     # Run validation for currency_conversion script

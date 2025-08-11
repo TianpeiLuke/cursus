@@ -9,15 +9,15 @@ from ...core.base.specification_base import StepSpecification, DependencySpec, O
 from ..registry.step_names import get_spec_step_type
 
 # Import the contract at runtime to avoid circular imports
-def _get_mims_package_contract():
-    from ..contracts.mims_package_contract import MIMS_PACKAGE_CONTRACT
-    return MIMS_PACKAGE_CONTRACT
+def _get_package_contract():
+    from ..contracts.package_contract import PACKAGE_CONTRACT
+    return PACKAGE_CONTRACT
 
 # MIMS Packaging Step Specification
 PACKAGING_SPEC = StepSpecification(
     step_type=get_spec_step_type("Package"),
     node_type=NodeType.INTERNAL,
-    script_contract=_get_mims_package_contract(),
+    script_contract=_get_package_contract(),
     dependencies=[
         DependencySpec(
             logical_name="model_input",

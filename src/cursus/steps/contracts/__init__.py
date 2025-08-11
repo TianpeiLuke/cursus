@@ -14,8 +14,8 @@ from .contract_validator import ContractValidationReport, ScriptContractValidato
 # Processing script contracts
 from .currency_conversion_contract import CURRENCY_CONVERSION_CONTRACT
 from .dummy_training_contract import DUMMY_TRAINING_CONTRACT
-from .mims_package_contract import MIMS_PACKAGE_CONTRACT
-from .mims_payload_contract import MIMS_PAYLOAD_CONTRACT
+from .package_contract import PACKAGE_CONTRACT
+from .payload_contract import PAYLOAD_CONTRACT
 from .mims_registration_contract import MIMS_REGISTRATION_CONTRACT
 from .model_calibration_contract import MODEL_CALIBRATION_CONTRACT
 from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
@@ -23,8 +23,8 @@ from .risk_table_mapping_contract import RISK_TABLE_MAPPING_CONTRACT
 from .tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
 
 # Training script contracts
-from .pytorch_train_contract import PYTORCH_TRAIN_CONTRACT
-from .xgboost_train_contract import XGBOOST_TRAIN_CONTRACT
+from .pytorch_training_contract import PYTORCH_TRAIN_CONTRACT
+from .xgboost_training_contract import XGBOOST_TRAIN_CONTRACT
 
 # Data loading contracts
 from .cradle_data_loading_contract import CRADLE_DATA_LOADING_CONTRACT
@@ -42,8 +42,8 @@ __all__ = [
     # Processing contracts
     "CURRENCY_CONVERSION_CONTRACT",
     "DUMMY_TRAINING_CONTRACT",
-    "MIMS_PACKAGE_CONTRACT",
-    "MIMS_PAYLOAD_CONTRACT",
+    "PACKAGE_CONTRACT",
+    "PAYLOAD_CONTRACT",
     "MIMS_REGISTRATION_CONTRACT",
     "MODEL_CALIBRATION_CONTRACT",
     "XGBOOST_MODEL_EVAL_CONTRACT",

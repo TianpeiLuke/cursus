@@ -46,17 +46,17 @@ class UnifiedAlignmentTester:
             builders_dir: Directory containing step builders
             configs_dir: Directory containing step configurations
         """
-        self.scripts_dir = Path(scripts_dir)
-        self.contracts_dir = Path(contracts_dir)
-        self.specs_dir = Path(specs_dir)
-        self.builders_dir = Path(builders_dir)
-        self.configs_dir = Path(configs_dir)
+        self.scripts_dir = Path(scripts_dir).resolve()
+        self.contracts_dir = Path(contracts_dir).resolve()
+        self.specs_dir = Path(specs_dir).resolve()
+        self.builders_dir = Path(builders_dir).resolve()
+        self.configs_dir = Path(configs_dir).resolve()
         
         # Initialize level-specific testers
         self.level1_tester = ScriptContractAlignmentTester(scripts_dir, contracts_dir, builders_dir)
         self.level2_tester = ContractSpecificationAlignmentTester(contracts_dir, specs_dir)
         self.level3_tester = SpecificationDependencyAlignmentTester(specs_dir)
-        self.level4_tester = BuilderConfigurationAlignmentTester(str(builders_dir), str(configs_dir))
+        self.level4_tester = BuilderConfigurationAlignmentTester(str(self.builders_dir), str(self.configs_dir))
         
         self.report = AlignmentReport()
     

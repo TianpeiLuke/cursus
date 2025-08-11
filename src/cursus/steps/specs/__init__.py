@@ -19,7 +19,7 @@ from .currency_conversion_training_spec import CURRENCY_CONVERSION_TRAINING_SPEC
 from .currency_conversion_validation_spec import CURRENCY_CONVERSION_VALIDATION_SPEC
 
 # Data Loading specifications
-from .data_loading_spec import DATA_LOADING_SPEC
+from .cradle_data_loading_spec import DATA_LOADING_SPEC
 from .data_loading_calibration_spec import DATA_LOADING_CALIBRATION_SPEC
 from .data_loading_testing_spec import DATA_LOADING_TESTING_SPEC
 from .data_loading_training_spec import DATA_LOADING_TRAINING_SPEC

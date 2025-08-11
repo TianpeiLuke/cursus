@@ -17,7 +17,7 @@ from .config_processing_step_base import ProcessingStepConfigBase
 from .config_registration_step import VariableType
 
 # Import the script contract
-from ..contracts.mims_payload_contract import MIMS_PAYLOAD_CONTRACT
+from ..contracts.payload_contract import PAYLOAD_CONTRACT
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -537,9 +537,9 @@ class PayloadConfig(ProcessingStepConfigBase):
         Get script contract for this configuration.
         
         Returns:
-            The MIMS payload script contract
+            The payload script contract
         """
-        return MIMS_PAYLOAD_CONTRACT
+        return PAYLOAD_CONTRACT
 
     def get_script_path(self) -> str:
         """
