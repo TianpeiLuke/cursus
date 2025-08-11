@@ -6,16 +6,6 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
         "details": {
           "path": "/opt/ml/processing/input/eval_data",
@@ -26,12 +16,12 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
         "details": {
-          "path": "/opt/ml/processing/output/metrics",
+          "path": "/opt/ml/processing/output/eval",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -45,13 +35,13 @@
       },
       {
         "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: output_metrics_dir",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
         "details": {
-          "argument": "output_metrics_dir",
+          "path": "/opt/ml/processing/output/metrics",
           "script": "model_evaluation_xgb"
         },
-        "recommendation": "Add output_metrics_dir to contract arguments or remove from script"
+        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -76,22 +66,32 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: model_dir",
-        "details": {
-          "argument": "model_dir",
-          "script": "model_evaluation_xgb"
-        },
-        "recommendation": "Add model_dir to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
         "message": "Script defines argument not in contract: job_type",
         "details": {
           "argument": "job_type",
           "script": "model_evaluation_xgb"
         },
         "recommendation": "Add job_type to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: output_metrics_dir",
+        "details": {
+          "argument": "output_metrics_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add output_metrics_dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: model_dir",
+        "details": {
+          "argument": "model_dir",
+          "script": "model_evaluation_xgb"
+        },
+        "recommendation": "Add model_dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -234,7 +234,12 @@
         "argument_name='output_eval_dir' line_number=353 is_required=True has_default=False default_value=None argument_type='str' choices=None",
         "argument_name='output_metrics_dir' line_number=354 is_required=True has_default=False default_value=None argument_type='str' choices=None"
       ],
-      "file_operations": []
+      "file_operations": [
+        "file_path='<file_object>' operation_type='read' line_number=31 context='    logger.info(\"Loaded xgboost_model.bst\")\\n    with open(os.path.join(model_dir, \"risk_table_map.pkl\"), \"rb\") as f:\\n>>>         risk_tables = pkl.load(f)\\n    logger.info(\"Loaded risk_table_map.pkl\")\\n    with open(os.path.join(model_dir, \"impute_dict.pkl\"), \"rb\") as f:' mode=None method='pickle.load'",
+        "file_path='<file_object>' operation_type='read' line_number=34 context='    logger.info(\"Loaded risk_table_map.pkl\")\\n    with open(os.path.join(model_dir, \"impute_dict.pkl\"), \"rb\") as f:\\n>>>         impute_dict = pkl.load(f)\\n    logger.info(\"Loaded impute_dict.pkl\")\\n    with open(os.path.join(model_dir, \"feature_columns.txt\"), \"r\") as f:' mode=None method='pickle.load'",
+        "file_path='<file_object>' operation_type='read' line_number=40 context='    logger.info(f\"Loaded feature_columns.txt: {feature_columns}\")\\n    with open(os.path.join(model_dir, \"hyperparameters.json\"), \"r\") as f:\\n>>>         hyperparams = json.load(f)\\n    logger.info(\"Loaded hyperparameters.json\")\\n    return model, risk_tables, impute_dict, feature_columns, hyperparams' mode=None method='json.load'",
+        "file_path='<file_object>' operation_type='write' line_number=232 context='    out_path = os.path.join(output_metrics_dir, \"metrics.json\")\\n    with open(out_path, \"w\") as f:\\n>>>         json.dump(metrics, f, indent=2)\\n    logger.info(f\"Saved metrics to {out_path}\")\\n    ' mode=None method='json.dump'"
+      ]
     },
     "contract": {
       "entry_point": "model_evaluation_xgb.py",
@@ -309,7 +314,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py",
     "contract_mapping": "model_evaluation_contract",
-    "validation_timestamp": "2025-08-09T00:12:36.579183",
+    "validation_timestamp": "2025-08-10T19:46:35.293114",
     "validator_version": "1.0.0"
   }
 }

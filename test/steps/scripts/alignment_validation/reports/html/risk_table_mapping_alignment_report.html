@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: risk_table_mapping</h2>
-        <p>Generated: 2025-08-09T00:12:36.593755</p>
+        <p>Generated: 2025-08-10T19:46:35.307099</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>11</h3>
+            <h3>10</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -43,7 +43,7 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>4</h3>
+            <h3>3</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
@@ -112,18 +112,13 @@
                 <p>Status: FAILED</p>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Cannot resolve dependency: data_input
-                    <br><em>Recommendation: Create a step that produces output data_input or remove dependency</em>
+                    <strong>ERROR:</strong> Cannot resolve pipeline dependency: data_input
+                    <br><em>Recommendation: Create a step that produces output data_input or change to external dependency</em>
                 </div>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Cannot resolve dependency: hyperparameters_s3_uri
-                    <br><em>Recommendation: Create a step that produces output hyperparameters_s3_uri or remove dependency</em>
-                </div>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Cannot resolve dependency: risk_tables
-                    <br><em>Recommendation: Create a step that produces output risk_tables or remove dependency</em>
+                    <strong>ERROR:</strong> Cannot resolve pipeline dependency: risk_tables
+                    <br><em>Recommendation: Create a step that produces output risk_tables or change to external dependency</em>
                 </div>
                 
             </div>
@@ -140,7 +135,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py</p>
         <p><strong>Contract Mapping:</strong> risk_table_mapping_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-09T00:12:36.593755</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-10T19:46:35.307099</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

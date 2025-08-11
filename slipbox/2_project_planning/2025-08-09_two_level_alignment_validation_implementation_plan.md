@@ -32,6 +32,9 @@ date of note: 2025-08-09
 ### Current Implementation Analysis
 - [Alignment Tester Robustness Analysis](../1_design/alignment_tester_robustness_analysis.md) - Analysis of current system limitations and false positives
 
+### Refactoring and Migration Plans
+- [Alignment Validation System Refactoring Plan](2025-08-10_alignment_validation_refactoring_plan.md) - Comprehensive refactoring strategy for transforming current validation system
+
 ### LLM Integration
 - [Two-Level Validation Agent Prompt Template](../3_llm_developer/developer_prompt_templates/two_level_validation_agent_prompt_template.md) - Enhanced LLM prompt for hybrid validation
 - [Two-Level Validation Report Format](../3_llm_developer/developer_prompt_templates/two_level_validation_report_format.md) - Expected output format specification
@@ -405,3 +408,9 @@ The two-level alignment validation system implementation represents a strategic 
 - **Reduced Maintenance Costs**: 50% reduction in validation system maintenance
 
 The implementation plan provides a clear path to achieving these outcomes while managing risks and ensuring successful adoption across the development organization.
+
+## Supporting Analysis
+
+This implementation plan is informed by comprehensive real-world testing and analysis that validates the necessity of the two-level approach:
+
+- **[Unified Alignment Tester Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)**: Detailed analysis of pain points discovered during real-world implementation, demonstrating 87.5% failure rate due to file resolution issues and naming convention mismatches, providing concrete evidence for the architectural decisions and implementation priorities outlined in this plan.

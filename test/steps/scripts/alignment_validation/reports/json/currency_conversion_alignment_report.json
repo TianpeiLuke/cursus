@@ -16,32 +16,12 @@
       {
         "severity": "ERROR",
         "category": "arguments",
-        "message": "Contract declares argument not defined in script: job-type",
+        "message": "Contract declares argument not defined in script: skip-invalid-currencies",
         "details": {
-          "argument": "job-type",
+          "argument": "skip-invalid-currencies",
           "script": "currency_conversion"
         },
-        "recommendation": "Add argument parser for job-type in script"
-      },
-      {
-        "severity": "ERROR",
-        "category": "arguments",
-        "message": "Contract declares argument not defined in script: currency-col",
-        "details": {
-          "argument": "currency-col",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add argument parser for currency-col in script"
-      },
-      {
-        "severity": "ERROR",
-        "category": "arguments",
-        "message": "Contract declares argument not defined in script: n-workers",
-        "details": {
-          "argument": "n-workers",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add argument parser for n-workers in script"
+        "recommendation": "Add argument parser for skip-invalid-currencies in script"
       },
       {
         "severity": "ERROR",
@@ -56,6 +36,26 @@
       {
         "severity": "ERROR",
         "category": "arguments",
+        "message": "Contract declares argument not defined in script: job-type",
+        "details": {
+          "argument": "job-type",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add argument parser for job-type in script"
+      },
+      {
+        "severity": "ERROR",
+        "category": "arguments",
+        "message": "Contract declares argument not defined in script: n-workers",
+        "details": {
+          "argument": "n-workers",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add argument parser for n-workers in script"
+      },
+      {
+        "severity": "ERROR",
+        "category": "arguments",
         "message": "Contract declares argument not defined in script: default-currency",
         "details": {
           "argument": "default-currency",
@@ -66,22 +66,22 @@
       {
         "severity": "ERROR",
         "category": "arguments",
-        "message": "Contract declares argument not defined in script: skip-invalid-currencies",
-        "details": {
-          "argument": "skip-invalid-currencies",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add argument parser for skip-invalid-currencies in script"
-      },
-      {
-        "severity": "ERROR",
-        "category": "arguments",
         "message": "Contract declares argument not defined in script: marketplace-id-col",
         "details": {
           "argument": "marketplace-id-col",
           "script": "currency_conversion"
         },
         "recommendation": "Add argument parser for marketplace-id-col in script"
+      },
+      {
+        "severity": "ERROR",
+        "category": "arguments",
+        "message": "Contract declares argument not defined in script: currency-col",
+        "details": {
+          "argument": "currency-col",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add argument parser for currency-col in script"
       },
       {
         "severity": "WARNING",
@@ -96,32 +96,22 @@
       {
         "severity": "WARNING",
         "category": "arguments",
+        "message": "Script defines argument not in contract: n_workers",
+        "details": {
+          "argument": "n_workers",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add n_workers to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
         "message": "Script defines argument not in contract: currency_col",
         "details": {
           "argument": "currency_col",
           "script": "currency_conversion"
         },
         "recommendation": "Add currency_col to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: test_val_ratio",
-        "details": {
-          "argument": "test_val_ratio",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add test_val_ratio to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: train_ratio",
-        "details": {
-          "argument": "train_ratio",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add train_ratio to contract arguments or remove from script"
       },
       {
         "severity": "WARNING",
@@ -136,16 +126,6 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: enable_conversion",
-        "details": {
-          "argument": "enable_conversion",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add enable_conversion to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
         "message": "Script defines argument not in contract: skip_invalid_currencies",
         "details": {
           "argument": "skip_invalid_currencies",
@@ -156,22 +136,42 @@
       {
         "severity": "WARNING",
         "category": "arguments",
+        "message": "Script defines argument not in contract: train_ratio",
+        "details": {
+          "argument": "train_ratio",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add train_ratio to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: test_val_ratio",
+        "details": {
+          "argument": "test_val_ratio",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add test_val_ratio to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: enable_conversion",
+        "details": {
+          "argument": "enable_conversion",
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add enable_conversion to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
         "message": "Script defines argument not in contract: marketplace_id_col",
         "details": {
           "argument": "marketplace_id_col",
           "script": "currency_conversion"
         },
         "recommendation": "Add marketplace_id_col to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: n_workers",
-        "details": {
-          "argument": "n_workers",
-          "script": "currency_conversion"
-        },
-        "recommendation": "Add n_workers to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -474,12 +474,13 @@
       {
         "severity": "ERROR",
         "category": "dependency_resolution",
-        "message": "Cannot resolve dependency: data_input",
+        "message": "Cannot resolve pipeline dependency: data_input",
         "details": {
           "logical_name": "data_input",
-          "specification": "currency_conversion"
+          "specification": "currency_conversion",
+          "pattern": "pipeline"
         },
-        "recommendation": "Create a step that produces output data_input or remove dependency"
+        "recommendation": "Create a step that produces output data_input or change to external dependency"
       }
     ],
     "specification": {
@@ -516,22 +517,22 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_info",
-        "details": {
-          "field_name": "marketplace_info",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_info in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: label_field",
         "details": {
           "field_name": "label_field",
           "builder": "currency_conversion"
         },
         "recommendation": "Access required field label_field in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
+        "details": {
+          "field_name": "currency_conversion_dict",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -546,12 +547,12 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
+        "message": "Required configuration field not accessed in builder: marketplace_info",
         "details": {
-          "field_name": "currency_conversion_dict",
+          "field_name": "marketplace_info",
           "builder": "currency_conversion"
         },
-        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
+        "recommendation": "Access required field marketplace_info in builder or make it optional"
       },
       {
         "severity": "INFO",
@@ -559,8 +560,8 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "marketplace_info",
             "label_field",
+            "marketplace_info",
             "marketplace_id_col",
             "currency_conversion_dict"
           ],
@@ -683,12 +684,12 @@
           "required": false
         }
       },
-      "required_fields": "{'marketplace_info', 'label_field', 'marketplace_id_col', 'currency_conversion_dict'}",
-      "optional_fields": "{'use_large_processing_instance', 'default_currency', 'test_val_ratio', 'train_ratio', 'job_type', 'currency_col', 'skip_invalid_currencies', 'mode', 'enable_currency_conversion', 'processing_entry_point', 'currency_conversion_var_list'}",
+      "required_fields": "{'label_field', 'marketplace_info', 'marketplace_id_col', 'currency_conversion_dict'}",
+      "optional_fields": "{'use_large_processing_instance', 'enable_currency_conversion', 'mode', 'currency_conversion_var_list', 'default_currency', 'test_val_ratio', 'currency_col', 'job_type', 'skip_invalid_currencies', 'train_ratio', 'processing_entry_point'}",
       "default_values": {
-        "aws_region": "<property object at 0x1064c5580>",
-        "effective_instance_type": "<property object at 0x30fbe5760>",
-        "effective_source_dir": "<property object at 0x30fbe5710>",
+        "aws_region": "<property object at 0x102975580>",
+        "effective_instance_type": "<property object at 0x30eae5850>",
+        "effective_source_dir": "<property object at 0x30eae5800>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -696,7 +697,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x105e03970>",
+        "model_extra": "<property object at 0x1022b3970>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -732,12 +733,12 @@
           "default_currency": "annotation=str required=False default='USD' description='Fallback currency code'",
           "skip_invalid_currencies": "annotation=bool required=False default=False description='If True, fill invalid codes with default_currency'"
         },
-        "model_fields_set": "<property object at 0x105e039c0>",
-        "pipeline_description": "<property object at 0x1064c5620>",
-        "pipeline_name": "<property object at 0x1064c55d0>",
-        "pipeline_s3_loc": "<property object at 0x1064c5670>",
-        "script_contract": "<property object at 0x1064c5710>",
-        "script_path": "<property object at 0x30fbe57b0>"
+        "model_fields_set": "<property object at 0x1022b39c0>",
+        "pipeline_description": "<property object at 0x102975620>",
+        "pipeline_name": "<property object at 0x1029755d0>",
+        "pipeline_s3_loc": "<property object at 0x102975670>",
+        "script_contract": "<property object at 0x102975710>",
+        "script_path": "<property object at 0x30eae58a0>"
       }
     }
   },
@@ -745,7 +746,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-09T00:12:36.518935",
+    "validation_timestamp": "2025-08-10T19:46:35.236971",
     "validator_version": "1.0.0"
   }
 }

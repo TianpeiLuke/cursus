@@ -11,6 +11,10 @@ import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
+from .alignment_utils import (
+    FlexibleFileResolver, DependencyPatternClassifier, DependencyPattern
+)
+
 
 class SpecificationDependencyAlignmentTester:
     """
@@ -31,6 +35,15 @@ class SpecificationDependencyAlignmentTester:
             specs_dir: Directory containing step specifications
         """
         self.specs_dir = Path(specs_dir)
+        
+        # Initialize the dependency pattern classifier
+        self.dependency_classifier = DependencyPatternClassifier()
+        
+        # Initialize the file resolver for finding specification files
+        base_directories = {
+            'specs': str(self.specs_dir)
+        }
+        self.file_resolver = FlexibleFileResolver(base_directories)
     
     def validate_all_specifications(self, target_scripts: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
@@ -152,31 +165,65 @@ class SpecificationDependencyAlignmentTester:
             if not logical_name:
                 continue
             
-            # Check if dependency can be resolved
-            resolved = False
-            for other_spec_name, other_spec in all_specs.items():
-                if other_spec_name == spec_name:
-                    continue
-                
-                # Check if other spec produces this logical name
-                for output in other_spec.get('outputs', []):
-                    if output.get('logical_name') == logical_name:
-                        resolved = True
+            # Use the new dependency pattern classifier
+            dependency_pattern = self.dependency_classifier.classify_dependency(dep)
+            
+            # Check if dependency can be resolved based on pattern
+            if dependency_pattern == DependencyPattern.EXTERNAL_INPUT:
+                # External dependencies don't need to be resolved within pipeline
+                continue
+            elif dependency_pattern == DependencyPattern.CONFIGURATION:
+                # Configuration dependencies are handled by the config system
+                continue
+            elif dependency_pattern == DependencyPattern.ENVIRONMENT:
+                # Environment dependencies are handled by environment variables
+                continue
+            elif dependency_pattern == DependencyPattern.PIPELINE_DEPENDENCY:
+                # Pipeline dependencies must be resolved by other steps
+                resolved = False
+                for other_spec_name, other_spec in all_specs.items():
+                    if other_spec_name == spec_name:
+                        continue
+                    
+                    # Check if other spec produces this logical name
+                    for output in other_spec.get('outputs', []):
+                        if output.get('logical_name') == logical_name:
+                            resolved = True
+                            break
+                    
+                    if resolved:
                         break
                 
-                if resolved:
-                    break
-            
-            if not resolved:
+                if not resolved:
+                    issues.append({
+                        'severity': 'ERROR',
+                        'category': 'dependency_resolution',
+                        'message': f'Cannot resolve pipeline dependency: {logical_name}',
+                        'details': {
+                            'logical_name': logical_name, 
+                            'specification': spec_name,
+                            'pattern': dependency_pattern.value
+                        },
+                        'recommendation': f'Create a step that produces output {logical_name} or change to external dependency'
+                    })
+            else:
+                # This shouldn't happen with the new classifier, but handle gracefully
                 issues.append({
-                    'severity': 'ERROR',
-                    'category': 'dependency_resolution',
-                    'message': f'Cannot resolve dependency: {logical_name}',
-                    'details': {'logical_name': logical_name, 'specification': spec_name},
-                    'recommendation': f'Create a step that produces output {logical_name} or remove dependency'
+                    'severity': 'WARNING',
+                    'category': 'dependency_classification',
+                    'message': f'Unknown dependency pattern for: {logical_name}',
+                    'details': {
+                        'logical_name': logical_name,
+                        'specification': spec_name,
+                        'dependency_type': dep.get('dependency_type'),
+                        'compatible_sources': dep.get('compatible_sources'),
+                        'pattern': str(dependency_pattern)
+                    },
+                    'recommendation': f'Review dependency configuration for {logical_name}'
                 })
         
         return issues
+    
     
     def _validate_circular_dependencies(self, specification: Dict[str, Any], all_specs: Dict[str, Dict[str, Any]], spec_name: str) -> List[Dict[str, Any]]:
         """Validate that no circular dependencies exist."""

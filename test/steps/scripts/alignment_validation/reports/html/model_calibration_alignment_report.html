@@ -29,7 +29,7 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: model_calibration</h2>
-        <p>Generated: 2025-08-09T00:12:36.570011</p>
+        <p>Generated: 2025-08-10T19:46:35.283895</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
@@ -60,13 +60,13 @@
                 <p>Status: FAILED</p>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Script uses logical name not in contract: calibration
-                    <br><em>Recommendation: Add logical name calibration to contract or update script</em>
+                    <strong>WARNING:</strong> Script uses logical name not in contract: eval_data
+                    <br><em>Recommendation: Add logical name eval_data to contract or update script</em>
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Script uses logical name not in contract: eval_data
-                    <br><em>Recommendation: Add logical name eval_data to contract or update script</em>
+                    <strong>WARNING:</strong> Script uses logical name not in contract: calibration
+                    <br><em>Recommendation: Add logical name calibration to contract or update script</em>
                 </div>
                 
                 <div class="issue warning">
@@ -75,13 +75,13 @@
                 </div>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_METRICS_PATH
-                    <br><em>Recommendation: Add OUTPUT_METRICS_PATH to contract environment_variables</em>
+                    <strong>ERROR:</strong> Script accesses undeclared environment variable: INPUT_DATA_PATH
+                    <br><em>Recommendation: Add INPUT_DATA_PATH to contract environment_variables</em>
                 </div>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH
-                    <br><em>Recommendation: Add OUTPUT_CALIBRATION_PATH to contract environment_variables</em>
+                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_METRICS_PATH
+                    <br><em>Recommendation: Add OUTPUT_METRICS_PATH to contract environment_variables</em>
                 </div>
                 
                 <div class="issue error">
@@ -90,8 +90,8 @@
                 </div>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Script accesses undeclared environment variable: INPUT_DATA_PATH
-                    <br><em>Recommendation: Add INPUT_DATA_PATH to contract environment_variables</em>
+                    <strong>ERROR:</strong> Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH
+                    <br><em>Recommendation: Add OUTPUT_CALIBRATION_PATH to contract environment_variables</em>
                 </div>
                 
                 <div class="issue info">
@@ -100,8 +100,8 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/calibrated_data
-                    <br><em>Recommendation: Either write to /opt/ml/processing/output/calibrated_data in script or remove from contract outputs</em>
+                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/metrics
+                    <br><em>Recommendation: Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs</em>
                 </div>
                 
                 <div class="issue warning">
@@ -110,8 +110,8 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/metrics
-                    <br><em>Recommendation: Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs</em>
+                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/calibrated_data
+                    <br><em>Recommendation: Either write to /opt/ml/processing/output/calibrated_data in script or remove from contract outputs</em>
                 </div>
                 
             </div>
@@ -127,8 +127,8 @@
                 <p>Status: FAILED</p>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Cannot resolve dependency: evaluation_data
-                    <br><em>Recommendation: Create a step that produces output evaluation_data or remove dependency</em>
+                    <strong>ERROR:</strong> Cannot resolve pipeline dependency: evaluation_data
+                    <br><em>Recommendation: Create a step that produces output evaluation_data or change to external dependency</em>
                 </div>
                 
             </div>
@@ -155,7 +155,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py</p>
         <p><strong>Contract Mapping:</strong> model_calibration_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-09T00:12:36.570011</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-10T19:46:35.283895</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

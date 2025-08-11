@@ -405,26 +405,66 @@ class ScriptAnalyzer:
                 self.analyzer = analyzer
                 
             def visit_Call(self, node):
-                # Check for open() calls
+                # Check for standard open() calls
                 if isinstance(node.func, ast.Name) and node.func.id == 'open':
+                    self._handle_open_call(node)
+                
+                # Check for tarfile operations
+                elif isinstance(node.func, ast.Attribute):
+                    self._handle_attribute_call(node)
+                
+                self.generic_visit(node)
+            
+            def _handle_open_call(self, node):
+                """Handle standard open() calls."""
+                if node.args:
+                    file_path = self._extract_string_value(node.args[0])
+                    mode = 'r'  # default mode
+                    
+                    if len(node.args) > 1:
+                        mode_value = self._extract_string_value(node.args[1])
+                        if mode_value:
+                            mode = mode_value
+                    
+                    # Check keywords for mode
+                    for keyword in node.keywords:
+                        if keyword.arg == 'mode':
+                            mode_value = self._extract_string_value(keyword.value)
+                            if mode_value:
+                                mode = mode_value
+                    
+                    if file_path:
+                        operation_type = self._determine_operation_type(mode)
+                        context = self.analyzer._get_line_context(node.lineno)
+                        
+                        file_op = FileOperation(
+                            file_path=file_path,
+                            operation_type=operation_type,
+                            line_number=node.lineno,
+                            context=context,
+                            mode=mode,
+                            method='open'
+                        )
+                        file_operations.append(file_op)
+            
+            def _handle_attribute_call(self, node):
+                """Handle attribute-based file operations."""
+                # tarfile.open() calls
+                if (isinstance(node.func.value, ast.Name) and 
+                    node.func.value.id == 'tarfile' and 
+                    node.func.attr == 'open'):
+                    
                     if node.args:
                         file_path = self._extract_string_value(node.args[0])
-                        mode = 'r'  # default mode
+                        mode = 'r'
                         
                         if len(node.args) > 1:
                             mode_value = self._extract_string_value(node.args[1])
                             if mode_value:
                                 mode = mode_value
                         
-                        # Check keywords for mode
-                        for keyword in node.keywords:
-                            if keyword.arg == 'mode':
-                                mode_value = self._extract_string_value(keyword.value)
-                                if mode_value:
-                                    mode = mode_value
-                        
                         if file_path:
-                            operation_type = self._determine_operation_type(mode)
+                            operation_type = 'read' if 'r' in mode else 'write'
                             context = self.analyzer._get_line_context(node.lineno)
                             
                             file_op = FileOperation(
@@ -432,11 +472,207 @@ class ScriptAnalyzer:
                                 operation_type=operation_type,
                                 line_number=node.lineno,
                                 context=context,
-                                mode=mode
+                                mode=mode,
+                                method='tarfile.open'
                             )
                             file_operations.append(file_op)
                 
-                self.generic_visit(node)
+                # shutil operations
+                elif (isinstance(node.func.value, ast.Name) and 
+                      node.func.value.id == 'shutil'):
+                    
+                    if node.func.attr in ['copy', 'copy2', 'copyfile', 'move']:
+                        # These operations read from source and write to destination
+                        if len(node.args) >= 2:
+                            src_path = self._extract_string_value(node.args[0])
+                            dst_path = self._extract_string_value(node.args[1])
+                            context = self.analyzer._get_line_context(node.lineno)
+                            
+                            if src_path:
+                                file_op = FileOperation(
+                                    file_path=src_path,
+                                    operation_type='read',
+                                    line_number=node.lineno,
+                                    context=context,
+                                    method=f'shutil.{node.func.attr}'
+                                )
+                                file_operations.append(file_op)
+                            
+                            if dst_path:
+                                file_op = FileOperation(
+                                    file_path=dst_path,
+                                    operation_type='write',
+                                    line_number=node.lineno,
+                                    context=context,
+                                    method=f'shutil.{node.func.attr}'
+                                )
+                                file_operations.append(file_op)
+                
+                # pathlib Path operations
+                elif (hasattr(node.func, 'attr') and 
+                      node.func.attr in ['mkdir', 'write_text', 'write_bytes', 'read_text', 'read_bytes']):
+                    
+                    # Try to extract the path from the object
+                    path_obj = self._extract_path_from_pathlib(node.func.value)
+                    if path_obj:
+                        operation_type = 'write' if 'write' in node.func.attr or 'mkdir' in node.func.attr else 'read'
+                        context = self.analyzer._get_line_context(node.lineno)
+                        
+                        file_op = FileOperation(
+                            file_path=path_obj,
+                            operation_type=operation_type,
+                            line_number=node.lineno,
+                            context=context,
+                            method=f'pathlib.{node.func.attr}'
+                        )
+                        file_operations.append(file_op)
+                
+                # pandas operations
+                elif (isinstance(node.func.value, ast.Name) and 
+                      node.func.value.id == 'pd' and 
+                      node.func.attr in ['read_csv', 'read_json', 'read_parquet']):
+                    
+                    if node.args:
+                        file_path = self._extract_string_value(node.args[0])
+                        if file_path:
+                            context = self.analyzer._get_line_context(node.lineno)
+                            file_op = FileOperation(
+                                file_path=file_path,
+                                operation_type='read',
+                                line_number=node.lineno,
+                                context=context,
+                                method=f'pandas.{node.func.attr}'
+                            )
+                            file_operations.append(file_op)
+                
+                # DataFrame.to_* operations
+                elif (hasattr(node.func, 'attr') and 
+                      node.func.attr.startswith('to_') and 
+                      node.func.attr in ['to_csv', 'to_json', 'to_parquet']):
+                    
+                    if node.args:
+                        file_path = self._extract_string_value(node.args[0])
+                        if file_path:
+                            context = self.analyzer._get_line_context(node.lineno)
+                            file_op = FileOperation(
+                                file_path=file_path,
+                                operation_type='write',
+                                line_number=node.lineno,
+                                context=context,
+                                method=f'dataframe.{node.func.attr}'
+                            )
+                            file_operations.append(file_op)
+                
+                # pickle operations
+                elif (isinstance(node.func.value, ast.Name) and 
+                      node.func.value.id in ['pkl', 'pickle'] and 
+                      node.func.attr in ['load', 'dump']):
+                    
+                    # pkl.load(f) or pkl.dump(obj, f)
+                    file_arg_index = 0 if node.func.attr == 'load' else 1
+                    if len(node.args) > file_arg_index:
+                        # Note: pickle operations typically use file objects, not paths
+                        # But we can still track the operation
+                        context = self.analyzer._get_line_context(node.lineno)
+                        operation_type = 'read' if node.func.attr == 'load' else 'write'
+                        file_op = FileOperation(
+                            file_path='<file_object>',  # Placeholder for file object
+                            operation_type=operation_type,
+                            line_number=node.lineno,
+                            context=context,
+                            method=f'pickle.{node.func.attr}'
+                        )
+                        file_operations.append(file_op)
+                
+                # json operations
+                elif (isinstance(node.func.value, ast.Name) and 
+                      node.func.value.id == 'json' and 
+                      node.func.attr in ['load', 'dump']):
+                    
+                    # json.load(f) or json.dump(obj, f)
+                    file_arg_index = 0 if node.func.attr == 'load' else 1
+                    if len(node.args) > file_arg_index:
+                        context = self.analyzer._get_line_context(node.lineno)
+                        operation_type = 'read' if node.func.attr == 'load' else 'write'
+                        file_op = FileOperation(
+                            file_path='<file_object>',  # Placeholder for file object
+                            operation_type=operation_type,
+                            line_number=node.lineno,
+                            context=context,
+                            method=f'json.{node.func.attr}'
+                        )
+                        file_operations.append(file_op)
+                
+                # XGBoost model operations
+                elif (hasattr(node.func, 'attr') and 
+                      node.func.attr in ['load_model', 'save_model']):
+                    
+                    if node.args:
+                        file_path = self._extract_string_value(node.args[0])
+                        if file_path:
+                            context = self.analyzer._get_line_context(node.lineno)
+                            operation_type = 'read' if 'load' in node.func.attr else 'write'
+                            file_op = FileOperation(
+                                file_path=file_path,
+                                operation_type=operation_type,
+                                line_number=node.lineno,
+                                context=context,
+                                method=f'model.{node.func.attr}'
+                            )
+                            file_operations.append(file_op)
+                
+                # matplotlib/pyplot save operations
+                elif (isinstance(node.func.value, ast.Name) and 
+                      node.func.value.id == 'plt' and 
+                      node.func.attr == 'savefig'):
+                    
+                    if node.args:
+                        file_path = self._extract_string_value(node.args[0])
+                        if file_path:
+                            context = self.analyzer._get_line_context(node.lineno)
+                            file_op = FileOperation(
+                                file_path=file_path,
+                                operation_type='write',
+                                line_number=node.lineno,
+                                context=context,
+                                method='matplotlib.savefig'
+                            )
+                            file_operations.append(file_op)
+                
+                # Path.glob() operations (directory traversal)
+                elif (hasattr(node.func, 'attr') and 
+                      node.func.attr == 'glob'):
+                    
+                    # Extract the path from the Path object
+                    path_obj = self._extract_path_from_pathlib(node.func.value)
+                    if path_obj:
+                        context = self.analyzer._get_line_context(node.lineno)
+                        file_op = FileOperation(
+                            file_path=path_obj,
+                            operation_type='read',
+                            line_number=node.lineno,
+                            context=context,
+                            method='pathlib.glob'
+                        )
+                        file_operations.append(file_op)
+            
+            def _extract_path_from_pathlib(self, node) -> Optional[str]:
+                """Extract path string from pathlib Path construction."""
+                # Handle Path(string) construction
+                if (isinstance(node, ast.Call) and 
+                    isinstance(node.func, ast.Name) and 
+                    node.func.id == 'Path' and 
+                    node.args):
+                    return self._extract_string_value(node.args[0])
+                
+                # Handle path / "subpath" operations
+                elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+                    left_path = self._extract_path_from_pathlib(node.left)
+                    right_path = self._extract_string_value(node.right)
+                    if left_path and right_path:
+                        return f"{left_path}/{right_path}"
+                
+                return None
             
             def _extract_string_value(self, node) -> Optional[str]:
                 """Extract string value from AST node."""

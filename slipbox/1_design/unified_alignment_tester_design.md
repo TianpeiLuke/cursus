@@ -824,8 +824,16 @@ The framework is designed to handle:
 4. **Security Validation**: Security-focused alignment checking
 5. **Compliance Validation**: Regulatory compliance checking
 
+## Real-World Implementation Analysis
+
+The unified alignment tester approach has been tested against real production scripts, revealing critical limitations that validate the need for alternative approaches:
+
+- **[Unified Alignment Tester Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)**: Comprehensive analysis of pain points discovered during real-world implementation, demonstrating 87.5% failure rate due to file resolution issues and naming convention mismatches, providing strong evidence for the necessity of the two-level validation approach.
+
 ## Conclusion
 
-The Unified Alignment Tester provides a comprehensive, multi-level validation framework that ensures consistency and maintainability across the entire pipeline architecture. With Level 1 fully implemented and working, it already provides significant value in maintaining script-contract alignment. The framework is designed for extensibility and can be enhanced with additional validation levels and capabilities as needed.
+The Unified Alignment Tester provides a comprehensive, multi-level validation framework that ensures consistency and maintainability across the entire pipeline architecture. However, real-world testing has revealed fundamental limitations in the unified approach, particularly around file resolution and naming convention handling.
 
-The current implementation demonstrates the power of systematic alignment validation and provides a solid foundation for maintaining architectural integrity across complex ML pipeline systems.
+While Level 1 is fully implemented and demonstrates the technical feasibility of systematic alignment validation, the high false positive rate (87.5% of scripts failing due to naming issues rather than actual alignment problems) indicates that a more sophisticated approach is needed.
+
+The framework provides a solid foundation for understanding alignment validation requirements and has informed the design of more advanced validation approaches that can handle the complexity of real-world codebases while maintaining architectural integrity across complex ML pipeline systems.

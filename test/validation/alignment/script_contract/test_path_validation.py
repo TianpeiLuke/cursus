@@ -109,14 +109,20 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             mock_path_ref2 = MagicMock()
             mock_path_ref2.path = "/opt/ml/processing/output/processed.csv"
             
-            # Mock file operations that match the paths
+            # Mock file operations that match the paths with enhanced method tracking
             mock_file_op1 = MagicMock()
             mock_file_op1.file_path = "/opt/ml/processing/input/train/data.csv"
             mock_file_op1.operation_type = "read"
+            mock_file_op1.method = "pandas.read_csv"  # Enhanced method tracking
+            mock_file_op1.line_number = 5
+            mock_file_op1.context = "data = pd.read_csv(\"/opt/ml/processing/input/train/data.csv\")"
             
             mock_file_op2 = MagicMock()
             mock_file_op2.file_path = "/opt/ml/processing/output/processed.csv"
             mock_file_op2.operation_type = "write"
+            mock_file_op2.method = "dataframe.to_csv"  # Enhanced method tracking
+            mock_file_op2.line_number = 8
+            mock_file_op2.context = "data.to_csv(\"/opt/ml/processing/output/processed.csv\", index=False)"
             
             mock_instance.get_all_analysis_results.return_value = {
                 'path_references': [mock_path_ref1, mock_path_ref2],
@@ -235,6 +241,100 @@ print("Hello, world!")
         missing_contract_issues = [issue for issue in result['issues'] 
                                   if issue['category'] == 'missing_contract']
         self.assertGreater(len(missing_contract_issues), 0)
+    
+    def test_enhanced_file_operations_detection(self):
+        """Test that enhanced file operations are properly detected and tracked."""
+        # Create test script with various file operations
+        script_content = '''
+import pandas as pd
+import tarfile
+import shutil
+from pathlib import Path
+
+# Pandas operations
+df = pd.read_csv("/opt/ml/input/data.csv")
+df.to_parquet("/opt/ml/output/data.parquet")
+
+# Tarfile operations
+with tarfile.open("/opt/ml/input/model.tar.gz", "r:gz") as tar:
+    tar.extractall("/tmp/model")
+
+# Shutil operations
+shutil.copy("/tmp/source.txt", "/opt/ml/output/dest.txt")
+
+# Pathlib operations
+output_path = Path("/opt/ml/output")
+output_path.mkdir(exist_ok=True)
+'''
+        script_path = self.scripts_dir / "enhanced_ops.py"
+        script_path.write_text(script_content)
+        
+        # Create contract with all paths
+        contract_content = '''
+"""Contract for enhanced_ops.py"""
+
+from src.cursus.core.base.contract_base import ScriptContract
+
+class EnhancedOpsContract(ScriptContract):
+    def __init__(self):
+        super().__init__(
+            entry_point="enhanced_ops.py",
+            expected_input_paths={
+                "data": "/opt/ml/input/data.csv",
+                "model": "/opt/ml/input/model.tar.gz",
+                "source": "/tmp/source.txt"
+            },
+            expected_output_paths={
+                "parquet_data": "/opt/ml/output/data.parquet",
+                "dest": "/opt/ml/output/dest.txt",
+                "output_dir": "/opt/ml/output"
+            },
+            expected_arguments={},
+            required_env_vars=[],
+            optional_env_vars={}
+        )
+
+ENHANCED_OPS_CONTRACT = EnhancedOpsContract()
+'''
+        contract_path = self.contracts_dir / "enhanced_ops_contract.py"
+        contract_path.write_text(contract_content)
+        
+        # Mock the script analyzer with enhanced file operations
+        with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:
+            mock_instance = MagicMock()
+            mock_analyzer.return_value = mock_instance
+            
+            # Mock enhanced file operations with method tracking
+            mock_ops = [
+                MagicMock(file_path="/opt/ml/input/data.csv", operation_type="read", 
+                         method="pandas.read_csv", line_number=6),
+                MagicMock(file_path="/opt/ml/output/data.parquet", operation_type="write", 
+                         method="dataframe.to_parquet", line_number=7),
+                MagicMock(file_path="/opt/ml/input/model.tar.gz", operation_type="read", 
+                         method="tarfile.open", line_number=10),
+                MagicMock(file_path="/tmp/source.txt", operation_type="read", 
+                         method="shutil.copy", line_number=14),
+                MagicMock(file_path="/opt/ml/output/dest.txt", operation_type="write", 
+                         method="shutil.copy", line_number=14),
+                MagicMock(file_path="/opt/ml/output", operation_type="write", 
+                         method="pathlib.mkdir", line_number=18)
+            ]
+            
+            mock_instance.get_all_analysis_results.return_value = {
+                'path_references': [],
+                'env_var_accesses': [],
+                'argument_definitions': [],
+                'file_operations': mock_ops
+            }
+            
+            result = self.tester.validate_script("enhanced_ops")
+            
+            # Should pass since all operations match contract paths
+            self.assertTrue(result['passed'], f"Enhanced operations validation failed: {result.get('issues', [])}")
+            
+            # Verify that enhanced methods were tracked
+            # This is implicit in the successful validation - the enhanced detection
+            # allows the validator to properly match file operations to contract paths
 
 
 if __name__ == '__main__':

@@ -118,7 +118,12 @@
       "argument_definitions": [
         "argument_name='job_type' line_number=410 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']"
       ],
-      "file_operations": []
+      "file_operations": [
+        "file_path='<file_object>' operation_type='read' line_number=54 context='    try:\\n        with open(config_path, \"r\") as file:\\n>>>             return json.load(file)\\n    except FileNotFoundError as e:\\n        logger.error(f\"Configuration file not found at {config_path}: {str(e)}\")' mode=None method='json.load'",
+        "file_path='<file_object>' operation_type='write' line_number=306 context='    bin_output_path = output_path / RISK_TABLE_FILENAME\\n    with open(bin_output_path, \"wb\") as f:\\n>>>         pkl.dump(binner.risk_tables, f)\\n    logger.info(f\"Saved binning mapping to {bin_output_path}\")\\n    logger.info(f\"This file can be used as input for non-training jobs\")' mode=None method='pickle.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=313 context='    hyperparams_output_path = output_path / HYPERPARAMS_FILENAME\\n    with open(hyperparams_output_path, \"w\") as f:\\n>>>         json.dump(hyperparams, f, indent=2)\\n    logger.info(f\"Saved hyperparameters to {hyperparams_output_path}\")\\n' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='read' line_number=332 context='    logger.info(f\"Loading risk tables from {risk_table_path}\")    \\n    with open(risk_table_path, \"rb\") as f:\\n>>>         risk_tables = pkl.load(f)\\n        \\n    logger.info(f\"Successfully loaded risk tables with {len(risk_tables)} mappings\")' mode=None method='pickle.load'"
+      ]
     },
     "contract": {
       "entry_point": "risk_table_mapping.py",
@@ -212,13 +217,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "DataQuality",
-              "ConfigurationStep",
-              "ModelTraining",
               "DataPrep",
               "HyperparameterPrep",
-              "FeatureEngineering"
+              "ConfigurationStep",
+              "ModelTraining",
+              "ProcessingStep",
+              "FeatureEngineering",
+              "DataQuality"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -271,13 +276,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "DataQuality",
-              "ConfigurationStep",
-              "ModelTraining",
               "DataPrep",
               "HyperparameterPrep",
-              "FeatureEngineering"
+              "ConfigurationStep",
+              "ModelTraining",
+              "ProcessingStep",
+              "FeatureEngineering",
+              "DataQuality"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -330,13 +335,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "DataQuality",
-              "ConfigurationStep",
-              "ModelTraining",
               "DataPrep",
               "HyperparameterPrep",
-              "FeatureEngineering"
+              "ConfigurationStep",
+              "ModelTraining",
+              "ProcessingStep",
+              "FeatureEngineering",
+              "DataQuality"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -389,13 +394,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "DataQuality",
-              "ConfigurationStep",
-              "ModelTraining",
               "DataPrep",
               "HyperparameterPrep",
-              "FeatureEngineering"
+              "ConfigurationStep",
+              "ModelTraining",
+              "ProcessingStep",
+              "FeatureEngineering",
+              "DataQuality"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -426,32 +431,24 @@
       {
         "severity": "ERROR",
         "category": "dependency_resolution",
-        "message": "Cannot resolve dependency: data_input",
+        "message": "Cannot resolve pipeline dependency: data_input",
         "details": {
           "logical_name": "data_input",
-          "specification": "risk_table_mapping"
+          "specification": "risk_table_mapping",
+          "pattern": "pipeline"
         },
-        "recommendation": "Create a step that produces output data_input or remove dependency"
+        "recommendation": "Create a step that produces output data_input or change to external dependency"
       },
       {
         "severity": "ERROR",
         "category": "dependency_resolution",
-        "message": "Cannot resolve dependency: hyperparameters_s3_uri",
-        "details": {
-          "logical_name": "hyperparameters_s3_uri",
-          "specification": "risk_table_mapping"
-        },
-        "recommendation": "Create a step that produces output hyperparameters_s3_uri or remove dependency"
-      },
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve dependency: risk_tables",
+        "message": "Cannot resolve pipeline dependency: risk_tables",
         "details": {
           "logical_name": "risk_tables",
-          "specification": "risk_table_mapping"
+          "specification": "risk_table_mapping",
+          "pattern": "pipeline"
         },
-        "recommendation": "Create a step that produces output risk_tables or remove dependency"
+        "recommendation": "Create a step that produces output risk_tables or change to external dependency"
       }
     ],
     "specification": {
@@ -474,13 +471,13 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "DataQuality",
-            "ConfigurationStep",
-            "ModelTraining",
             "DataPrep",
             "HyperparameterPrep",
-            "FeatureEngineering"
+            "ConfigurationStep",
+            "ModelTraining",
+            "ProcessingStep",
+            "FeatureEngineering",
+            "DataQuality"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -608,11 +605,11 @@
         }
       },
       "required_fields": "set()",
-      "optional_fields": "{'hyperparameters', 'smooth_factor', 'label_name', 'job_type', 'hyperparameters_s3_uri', 'count_threshold', 'cat_field_list', 'processing_entry_point'}",
+      "optional_fields": "{'cat_field_list', 'label_name', 'hyperparameters_s3_uri', 'smooth_factor', 'count_threshold', 'hyperparameters', 'job_type', 'processing_entry_point'}",
       "default_values": {
-        "aws_region": "<property object at 0x1064c5580>",
-        "effective_instance_type": "<property object at 0x30fbe5760>",
-        "effective_source_dir": "<property object at 0x30fbe5710>",
+        "aws_region": "<property object at 0x102975580>",
+        "effective_instance_type": "<property object at 0x30eae5850>",
+        "effective_source_dir": "<property object at 0x30eae5800>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -620,7 +617,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x105e03970>",
+        "model_extra": "<property object at 0x1022b3970>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -650,12 +647,12 @@
           "hyperparameters_s3_uri": "annotation=Union[str, NoneType] required=False default=None description='S3 URI prefix for uploading hyperparameters.json'",
           "hyperparameters": "annotation=Union[ModelHyperparameters, NoneType] required=False default=None description='Optional model hyperparameters for advanced configuration'"
         },
-        "model_fields_set": "<property object at 0x105e039c0>",
-        "pipeline_description": "<property object at 0x1064c5620>",
-        "pipeline_name": "<property object at 0x1064c55d0>",
-        "pipeline_s3_loc": "<property object at 0x1064c5670>",
-        "script_contract": "<property object at 0x1064c5710>",
-        "script_path": "<property object at 0x30fbe57b0>"
+        "model_fields_set": "<property object at 0x1022b39c0>",
+        "pipeline_description": "<property object at 0x102975620>",
+        "pipeline_name": "<property object at 0x1029755d0>",
+        "pipeline_s3_loc": "<property object at 0x102975670>",
+        "script_contract": "<property object at 0x102975710>",
+        "script_path": "<property object at 0x30eae58a0>"
       }
     }
   },
@@ -663,7 +660,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-08-09T00:12:36.593755",
+    "validation_timestamp": "2025-08-10T19:46:35.307099",
     "validator_version": "1.0.0"
   }
 }

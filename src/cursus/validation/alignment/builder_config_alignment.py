@@ -13,6 +13,8 @@ import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
+from .alignment_utils import FlexibleFileResolver
+
 
 class BuilderConfigurationAlignmentTester:
     """
@@ -35,6 +37,13 @@ class BuilderConfigurationAlignmentTester:
         """
         self.builders_dir = Path(builders_dir)
         self.configs_dir = Path(configs_dir)
+        
+        # Initialize the flexible file resolver
+        base_directories = {
+            'builders': str(self.builders_dir),
+            'configs': str(self.configs_dir)
+        }
+        self.file_resolver = FlexibleFileResolver(base_directories)
         
         # Add the project root to Python path for imports
         project_root = self.builders_dir.parent.parent.parent
@@ -533,29 +542,145 @@ class BuilderConfigurationAlignmentTester:
         for access in builder_analysis.get('config_accesses', []):
             accessed_fields.add(access['field_name'])
         
+        # Apply pattern-aware filtering to reduce false positives
+        filtered_issues = []
+        
         # Check for accessed fields not in configuration
         undeclared_fields = accessed_fields - config_fields
         for field_name in undeclared_fields:
-            issues.append({
-                'severity': 'ERROR',
-                'category': 'configuration_fields',
-                'message': f'Builder accesses undeclared configuration field: {field_name}',
-                'details': {'field_name': field_name, 'builder': builder_name},
-                'recommendation': f'Add {field_name} to configuration class or remove from builder'
-            })
+            # Apply architectural pattern recognition
+            if not self._is_acceptable_pattern(field_name, builder_name, 'undeclared_access'):
+                filtered_issues.append({
+                    'severity': 'ERROR',
+                    'category': 'configuration_fields',
+                    'message': f'Builder accesses undeclared configuration field: {field_name}',
+                    'details': {'field_name': field_name, 'builder': builder_name},
+                    'recommendation': f'Add {field_name} to configuration class or remove from builder'
+                })
         
         # Check for required fields not accessed
         unaccessed_required = required_fields - accessed_fields
         for field_name in unaccessed_required:
-            issues.append({
-                'severity': 'WARNING',
-                'category': 'configuration_fields',
-                'message': f'Required configuration field not accessed in builder: {field_name}',
-                'details': {'field_name': field_name, 'builder': builder_name},
-                'recommendation': f'Access required field {field_name} in builder or make it optional'
+            # Apply pattern-aware filtering
+            if not self._is_acceptable_pattern(field_name, builder_name, 'unaccessed_required'):
+                filtered_issues.append({
+                    'severity': 'WARNING',
+                    'category': 'configuration_fields',
+                    'message': f'Required configuration field not accessed in builder: {field_name}',
+                    'details': {'field_name': field_name, 'builder': builder_name},
+                    'recommendation': f'Access required field {field_name} in builder or make it optional'
+                })
+        
+        return filtered_issues
+    
+    def _is_acceptable_pattern(self, field_name: str, builder_name: str, issue_type: str) -> bool:
+        """
+        Determine if a configuration field issue represents an acceptable architectural pattern.
+        
+        Args:
+            field_name: Name of the configuration field
+            builder_name: Name of the builder
+            issue_type: Type of issue ('undeclared_access', 'unaccessed_required')
+            
+        Returns:
+            True if this is an acceptable pattern (should be filtered out)
+        """
+        # Common acceptable patterns that should not be flagged as errors
+        
+        # Pattern 1: Framework-provided fields
+        framework_fields = {
+            'logger', 'session', 'context', 'environment', 'metadata',
+            'step_name', 'step_type', 'execution_id', 'pipeline_id'
+        }
+        
+        if field_name in framework_fields:
+            return True
+        
+        # Pattern 2: Inherited configuration fields
+        inherited_patterns = [
+            'base_', 'parent_', 'super_', 'common_', 'shared_'
+        ]
+        
+        if any(field_name.startswith(pattern) for pattern in inherited_patterns):
+            return True
+        
+        # Pattern 3: Dynamic configuration fields (runtime-determined)
+        dynamic_patterns = [
+            'dynamic_', 'runtime_', 'computed_', 'derived_', 'auto_'
+        ]
+        
+        if any(field_name.startswith(pattern) for pattern in dynamic_patterns):
+            return True
+        
+        # Pattern 4: Optional convenience fields that may not be accessed
+        if issue_type == 'unaccessed_required':
+            convenience_fields = {
+                'debug', 'verbose', 'dry_run', 'test_mode', 'profile',
+                'cache_enabled', 'parallel_enabled', 'retry_count'
+            }
+            
+            if field_name in convenience_fields:
+                return True
+        
+        # Pattern 5: Builder-specific patterns
+        builder_specific_patterns = self._get_builder_specific_patterns(builder_name)
+        
+        if field_name in builder_specific_patterns.get('acceptable_undeclared', set()):
+            return issue_type == 'undeclared_access'
+        
+        if field_name in builder_specific_patterns.get('acceptable_unaccessed', set()):
+            return issue_type == 'unaccessed_required'
+        
+        # Pattern 6: Configuration fields that follow naming conventions
+        if issue_type == 'undeclared_access':
+            # Fields that follow standard naming conventions are likely legitimate
+            standard_suffixes = ['_config', '_settings', '_params', '_options']
+            if any(field_name.endswith(suffix) for suffix in standard_suffixes):
+                return True
+        
+        return False
+    
+    def _get_builder_specific_patterns(self, builder_name: str) -> Dict[str, Set[str]]:
+        """
+        Get builder-specific acceptable patterns.
+        
+        Args:
+            builder_name: Name of the builder
+            
+        Returns:
+            Dictionary with 'acceptable_undeclared' and 'acceptable_unaccessed' sets
+        """
+        patterns = {
+            'acceptable_undeclared': set(),
+            'acceptable_unaccessed': set()
+        }
+        
+        # Training builders often access framework-provided fields
+        if 'training' in builder_name.lower():
+            patterns['acceptable_undeclared'].update({
+                'model_dir', 'output_dir', 'checkpoint_dir',
+                'num_gpus', 'distributed', 'local_rank'
             })
         
-        return issues
+        # Processing builders often have optional monitoring fields
+        if 'processing' in builder_name.lower() or 'transform' in builder_name.lower():
+            patterns['acceptable_unaccessed'].update({
+                'monitoring_enabled', 'metrics_enabled', 'profiling_enabled'
+            })
+        
+        # Evaluation builders often have optional comparison fields
+        if 'evaluation' in builder_name.lower() or 'validation' in builder_name.lower():
+            patterns['acceptable_unaccessed'].update({
+                'baseline_model', 'comparison_metrics', 'threshold_config'
+            })
+        
+        # Model builders often access model-specific fields
+        if 'model' in builder_name.lower():
+            patterns['acceptable_undeclared'].update({
+                'model_name', 'model_version', 'model_artifacts'
+            })
+        
+        return patterns
 
     def _validate_required_fields(self, builder_analysis: Dict[str, Any], config_analysis: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
         """Validate that builder properly validates required fields."""

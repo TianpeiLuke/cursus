@@ -6,22 +6,22 @@
       {
         "severity": "WARNING",
         "category": "logical_names",
-        "message": "Script uses logical name not in contract: calibration",
-        "details": {
-          "logical_name": "calibration",
-          "script": "model_calibration"
-        },
-        "recommendation": "Add logical name calibration to contract or update script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
         "message": "Script uses logical name not in contract: eval_data",
         "details": {
           "logical_name": "eval_data",
           "script": "model_calibration"
         },
         "recommendation": "Add logical name eval_data to contract or update script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "logical_names",
+        "message": "Script uses logical name not in contract: calibration",
+        "details": {
+          "logical_name": "calibration",
+          "script": "model_calibration"
+        },
+        "recommendation": "Add logical name calibration to contract or update script"
       },
       {
         "severity": "WARNING",
@@ -36,22 +36,22 @@
       {
         "severity": "ERROR",
         "category": "environment_variables",
+        "message": "Script accesses undeclared environment variable: INPUT_DATA_PATH",
+        "details": {
+          "variable": "INPUT_DATA_PATH",
+          "script": "model_calibration"
+        },
+        "recommendation": "Add INPUT_DATA_PATH to contract environment_variables"
+      },
+      {
+        "severity": "ERROR",
+        "category": "environment_variables",
         "message": "Script accesses undeclared environment variable: OUTPUT_METRICS_PATH",
         "details": {
           "variable": "OUTPUT_METRICS_PATH",
           "script": "model_calibration"
         },
         "recommendation": "Add OUTPUT_METRICS_PATH to contract environment_variables"
-      },
-      {
-        "severity": "ERROR",
-        "category": "environment_variables",
-        "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH",
-        "details": {
-          "variable": "OUTPUT_CALIBRATION_PATH",
-          "script": "model_calibration"
-        },
-        "recommendation": "Add OUTPUT_CALIBRATION_PATH to contract environment_variables"
       },
       {
         "severity": "ERROR",
@@ -66,12 +66,12 @@
       {
         "severity": "ERROR",
         "category": "environment_variables",
-        "message": "Script accesses undeclared environment variable: INPUT_DATA_PATH",
+        "message": "Script accesses undeclared environment variable: OUTPUT_CALIBRATION_PATH",
         "details": {
-          "variable": "INPUT_DATA_PATH",
+          "variable": "OUTPUT_CALIBRATION_PATH",
           "script": "model_calibration"
         },
-        "recommendation": "Add INPUT_DATA_PATH to contract environment_variables"
+        "recommendation": "Add OUTPUT_CALIBRATION_PATH to contract environment_variables"
       },
       {
         "severity": "INFO",
@@ -87,13 +87,13 @@
       {
         "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/calibrated_data",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
         "details": {
-          "path": "/opt/ml/processing/output/calibrated_data",
+          "path": "/opt/ml/processing/output/metrics",
           "operation": "write",
           "script": "model_calibration"
         },
-        "recommendation": "Either write to /opt/ml/processing/output/calibrated_data in script or remove from contract outputs"
+        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
       },
       {
         "severity": "WARNING",
@@ -109,13 +109,13 @@
       {
         "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/calibrated_data",
         "details": {
-          "path": "/opt/ml/processing/output/metrics",
+          "path": "/opt/ml/processing/output/calibrated_data",
           "operation": "write",
           "script": "model_calibration"
         },
-        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
+        "recommendation": "Either write to /opt/ml/processing/output/calibrated_data in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -196,7 +196,12 @@
         "module_name='pygam' import_alias=None line_number=29 is_from_import=True imported_items=['LogisticGAM', 's']"
       ],
       "argument_definitions": [],
-      "file_operations": []
+      "file_operations": [
+        "file_path='<file_object>' operation_type='write' line_number=787 context='            metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n>>>                 json.dump(metrics_report, f, indent=2)\\n            \\n            # Save calibrator model' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=815 context='            summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n>>>                 json.dump(summary, f, indent=2)\\n            \\n            # Check if calibration improved by error threshold' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=876 context='            metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n>>>                 json.dump(metrics_report, f, indent=2)\\n            \\n            # Save calibrator models' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=918 context='            summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n>>>                 json.dump(summary, f, indent=2)\\n            \\n            # Check if calibration improved by error threshold' mode=None method='json.dump'"
+      ]
     },
     "contract": {
       "entry_point": "model_calibration.py",
@@ -294,8 +299,8 @@
             "compatible_sources": [
               "XGBoostTraining",
               "XGBoostModelEval",
-              "ModelEvaluation",
               "TrainingEvaluation",
+              "ModelEvaluation",
               "CrossValidation"
             ],
             "data_type": "S3Uri",
@@ -334,12 +339,13 @@
       {
         "severity": "ERROR",
         "category": "dependency_resolution",
-        "message": "Cannot resolve dependency: evaluation_data",
+        "message": "Cannot resolve pipeline dependency: evaluation_data",
         "details": {
           "logical_name": "evaluation_data",
-          "specification": "model_calibration"
+          "specification": "model_calibration",
+          "pattern": "pipeline"
         },
-        "recommendation": "Create a step that produces output evaluation_data or remove dependency"
+        "recommendation": "Create a step that produces output evaluation_data or change to external dependency"
       }
     ],
     "specification": {
@@ -353,8 +359,8 @@
           "compatible_sources": [
             "XGBoostTraining",
             "XGBoostModelEval",
-            "ModelEvaluation",
             "TrainingEvaluation",
+            "ModelEvaluation",
             "CrossValidation"
           ],
           "data_type": "S3Uri",
@@ -530,11 +536,11 @@
         }
       },
       "required_fields": "{'label_field'}",
-      "optional_fields": "{'multiclass_categories', 'gam_splines', 'is_binary', 'num_classes', 'score_field_prefix', 'score_field', 'error_threshold', 'processing_entry_point', 'processing_source_dir', 'calibration_method', 'monotonic_constraint'}",
+      "optional_fields": "{'is_binary', 'monotonic_constraint', 'error_threshold', 'num_classes', 'multiclass_categories', 'processing_source_dir', 'score_field', 'processing_entry_point', 'score_field_prefix', 'calibration_method', 'gam_splines'}",
       "default_values": {
-        "aws_region": "<property object at 0x1064c5580>",
-        "effective_instance_type": "<property object at 0x30fbe5760>",
-        "effective_source_dir": "<property object at 0x30fbe5710>",
+        "aws_region": "<property object at 0x102975580>",
+        "effective_instance_type": "<property object at 0x30eae5850>",
+        "effective_source_dir": "<property object at 0x30eae5800>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -542,7 +548,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property object at 0x105e03970>",
+        "model_extra": "<property object at 0x1022b3970>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -575,12 +581,12 @@
           "score_field_prefix": "annotation=str required=False default='prob_class_' description='Prefix for probability columns in multi-class scenario'",
           "multiclass_categories": "annotation=List[Union[str, int]] required=False default_factory=<lambda> description='List of class names/values for multi-class calibration'"
         },
-        "model_fields_set": "<property object at 0x105e039c0>",
-        "pipeline_description": "<property object at 0x1064c5620>",
-        "pipeline_name": "<property object at 0x1064c55d0>",
-        "pipeline_s3_loc": "<property object at 0x1064c5670>",
-        "script_contract": "<property object at 0x1064c5710>",
-        "script_path": "<property object at 0x30fbe57b0>"
+        "model_fields_set": "<property object at 0x1022b39c0>",
+        "pipeline_description": "<property object at 0x102975620>",
+        "pipeline_name": "<property object at 0x1029755d0>",
+        "pipeline_s3_loc": "<property object at 0x102975670>",
+        "script_contract": "<property object at 0x102975710>",
+        "script_path": "<property object at 0x30eae58a0>"
       }
     }
   },
@@ -588,7 +594,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-09T00:12:36.570011",
+    "validation_timestamp": "2025-08-10T19:46:35.283895",
     "validator_version": "1.0.0"
   }
 }

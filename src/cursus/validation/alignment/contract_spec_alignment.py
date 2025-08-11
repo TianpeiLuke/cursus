@@ -11,6 +11,8 @@ import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
+from .alignment_utils import FlexibleFileResolver
+
 
 class ContractSpecificationAlignmentTester:
     """

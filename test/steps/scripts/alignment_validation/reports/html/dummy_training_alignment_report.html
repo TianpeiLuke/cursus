@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: dummy_training</h2>
-        <p>Generated: 2025-08-09T00:12:36.532319</p>
-        <p>Overall Status: <span class="failing">FAILING</span></p>
+        <p>Generated: 2025-08-10T19:46:35.248190</p>
+        <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>7</h3>
+            <h3>5</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -43,7 +43,7 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>2</h3>
+            <h3>0</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
@@ -60,23 +60,23 @@
                 <p>Status: PASSED</p>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Script uses logical name not in contract: config
-                    <br><em>Recommendation: Add logical name config to contract or update script</em>
-                </div>
-                
-                <div class="issue warning">
                     <strong>WARNING:</strong> Script uses logical name not in contract: model
                     <br><em>Recommendation: Add logical name model to contract or update script</em>
                 </div>
                 
-                <div class="issue info">
-                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/config/hyperparameters.json
-                    <br><em>Recommendation: Either read /opt/ml/processing/input/config/hyperparameters.json in script or remove from contract inputs</em>
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Script uses logical name not in contract: config
+                    <br><em>Recommendation: Add logical name config to contract or update script</em>
                 </div>
                 
                 <div class="issue info">
                     <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/model/model.tar.gz
                     <br><em>Recommendation: Either read /opt/ml/processing/input/model/model.tar.gz in script or remove from contract inputs</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/config/hyperparameters.json
+                    <br><em>Recommendation: Either read /opt/ml/processing/input/config/hyperparameters.json in script or remove from contract inputs</em>
                 </div>
                 
                 <div class="issue warning">
@@ -92,19 +92,9 @@
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 3: Specification ↔ Dependencies</h4>
-                <p>Status: FAILED</p>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Cannot resolve dependency: pretrained_model_path
-                    <br><em>Recommendation: Create a step that produces output pretrained_model_path or remove dependency</em>
-                </div>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Cannot resolve dependency: hyperparameters_s3_uri
-                    <br><em>Recommendation: Create a step that produces output hyperparameters_s3_uri or remove dependency</em>
-                </div>
+                <p>Status: PASSED</p>
                 
             </div>
             
@@ -120,7 +110,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py</p>
         <p><strong>Contract Mapping:</strong> dummy_training_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-09T00:12:36.532319</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-10T19:46:35.248190</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

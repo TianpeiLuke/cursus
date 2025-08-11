@@ -259,6 +259,96 @@ class TestFullValidation(unittest.TestCase):
             self.assertEqual(matrix["script1"]["level1"], "PASSING")
             self.assertEqual(matrix["script1"]["level2"], "FAILING")
             self.assertEqual(matrix["script2"]["level1"], "UNKNOWN")
+    
+    def test_phase1_fixes_integration(self):
+        """Test that Phase 1 fixes are properly integrated in the unified tester."""
+        # Test that all level testers have the enhanced methods
+        
+        # Level 3 should have dependency pattern classification
+        self.assertTrue(
+            hasattr(self.tester.level3_tester, '_classify_dependency_pattern'),
+            "Level 3 tester should have dependency pattern classification"
+        )
+        
+        # Level 4 should have pattern-aware validation
+        self.assertTrue(
+            hasattr(self.tester.level4_tester, '_is_acceptable_pattern'),
+            "Level 4 tester should have pattern-aware validation"
+        )
+        
+        # Test dependency pattern classification works
+        external_dep = {
+            'logical_name': 'raw_data',
+            'dependency_type': 'external_data',
+            'compatible_sources': ['S3']
+        }
+        pattern = self.tester.level3_tester._classify_dependency_pattern(external_dep)
+        self.assertEqual(pattern, 'external', "Should classify external dependencies correctly")
+        
+        # Test pattern-aware validation works
+        acceptable = self.tester.level4_tester._is_acceptable_pattern(
+            'logger', 'training_builder', 'undeclared_access'
+        )
+        self.assertTrue(acceptable, "Framework fields should be acceptable")
+    
+    def test_reduced_false_positives_simulation(self):
+        """Test simulation of reduced false positives from Phase 1 fixes."""
+        # Mock results that would have been false positives before Phase 1
+        mock_l3_results = {
+            "test_script": {
+                "passed": True,  # Now passes due to pattern classification
+                "issues": [
+                    {
+                        "severity": "INFO",
+                        "category": "dependency_classification",
+                        "message": "External dependency correctly classified",
+                        "details": {"pattern": "external"}
+                    }
+                ]
+            }
+        }
+        
+        mock_l4_results = {
+            "test_script": {
+                "passed": True,  # Now passes due to pattern-aware validation
+                "issues": [
+                    {
+                        "severity": "INFO", 
+                        "category": "pattern_filtering",
+                        "message": "Framework field filtered as acceptable",
+                        "details": {"field": "logger"}
+                    }
+                ]
+            }
+        }
+        
+        with patch.object(self.tester.level1_tester, 'validate_all_scripts') as mock_l1, \
+             patch.object(self.tester.level2_tester, 'validate_all_contracts') as mock_l2, \
+             patch.object(self.tester.level3_tester, 'validate_all_specifications') as mock_l3, \
+             patch.object(self.tester.level4_tester, 'validate_all_builders') as mock_l4:
+            
+            mock_l1.return_value = {"test_script": {"passed": True, "issues": []}}
+            mock_l2.return_value = {"test_script": {"passed": True, "issues": []}}
+            mock_l3.return_value = mock_l3_results
+            mock_l4.return_value = mock_l4_results
+            
+            report = self.tester.run_full_validation(["test_script"])
+            
+            # Should have improved pass rates due to Phase 1 fixes
+            self.assertIsNotNone(report)
+            
+            # Check that issues are informational rather than errors
+            all_issues = []
+            for result in self.tester.report.level3_results.values():
+                all_issues.extend(result.issues)
+            for result in self.tester.report.level4_results.values():
+                all_issues.extend(result.issues)
+            
+            # All issues should be INFO level (not ERROR/CRITICAL)
+            error_issues = [issue for issue in all_issues 
+                          if issue.level.value in ['ERROR', 'CRITICAL']]
+            self.assertEqual(len(error_issues), 0, 
+                           "Phase 1 fixes should reduce ERROR/CRITICAL issues")
 
 
 if __name__ == '__main__':

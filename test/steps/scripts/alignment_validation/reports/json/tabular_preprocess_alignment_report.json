@@ -109,7 +109,9 @@
       "argument_definitions": [
         "argument_name='job_type' line_number=161 is_required=True has_default=False default_value=None argument_type='str' choices=None"
       ],
-      "file_operations": []
+      "file_operations": [
+        "file_path='<file_object>' operation_type='read' line_number=55 context='    else:\\n        with open_func(str(file_path), \"rt\") as f:\\n>>>             data = json.load(f)\\n        return pd.json_normalize(data if isinstance(data, list) else [data])\\n' mode=None method='json.load'"
+      ]
     },
     "contract": {
       "entry_point": "tabular_preprocess.py",
@@ -187,9 +189,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
               "DataLoad",
-              "CradleDataLoading"
+              "CradleDataLoading",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -233,7 +235,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
     "contract_mapping": "tabular_preprocess_contract",
-    "validation_timestamp": "2025-08-09T00:12:36.599696",
+    "validation_timestamp": "2025-08-10T19:46:35.313022",
     "validator_version": "1.0.0"
   }
 }

@@ -82,7 +82,9 @@
         "module_name='shutil' import_alias=None line_number=169 is_from_import=False imported_items=[]"
       ],
       "argument_definitions": [],
-      "file_operations": []
+      "file_operations": [
+        "file_path='<file_object>' operation_type='read' line_number=165 context=\"    # Load the hyperparameters\\n    with open(hyperparams_path, 'r') as f:\\n>>>         hyperparams = json.load(f)\\n    \\n    # Copy to working directory if not already there\" mode=None method='json.load'"
+      ]
     },
     "contract": {
       "entry_point": "mims_payload.py",
@@ -146,9 +148,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
+              "TrainingStep",
               "ModelStep",
-              "XGBoostTraining",
-              "TrainingStep"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts for payload generation"
@@ -192,7 +194,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
     "contract_mapping": "mims_payload_contract",
-    "validation_timestamp": "2025-08-09T00:12:36.550151",
+    "validation_timestamp": "2025-08-10T19:46:35.263853",
     "validator_version": "1.0.0"
   }
 }
