@@ -264,7 +264,7 @@ The Planner agent revises the plan using the enhanced `revision_planner_prompt_t
   
   **Revision-Specific Documents**:
   - `slipbox/1_design/dependency_resolution_improvement.md` - Dependency resolution improvements
-  - `slipbox/1_design/design_principles_compliance_analysis.md` - Compliance analysis patterns
+  - `slipbox/4_analysis/dynamic_pipeline_template_design_principles_compliance_analysis.md` - Compliance analysis patterns
   - `slipbox/1_design/enhanced_dependency_validation_design.md` - Enhanced validation approaches
 
 - Add user input field for revised plan location (same as original plan)
@@ -470,7 +470,7 @@ The Programmer agent fixes identified issues using the enhanced `code_refinement
   
   **Implementation Reference Documents**:
   - `slipbox/1_design/dependency_resolution_improvement.md` - Dependency resolution fixes
-  - `slipbox/1_design/design_principles_compliance_analysis.md` - Compliance improvement strategies
+  - `slipbox/4_analysis/dynamic_pipeline_template_design_principles_compliance_analysis.md` - Compliance improvement strategies
   - `slipbox/1_design/config_field_categorization_three_tier.md` - Configuration refinement patterns
   
   **Code Implementation Examples**:

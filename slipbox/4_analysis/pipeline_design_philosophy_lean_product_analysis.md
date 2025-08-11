@@ -1,3 +1,26 @@
+---
+tags:
+  - analysis
+  - lean_product
+  - pipeline_design
+  - philosophy_comparison
+  - customer_analysis
+keywords:
+  - lean product analysis
+  - pipeline design philosophy
+  - customer needs analysis
+  - value proposition
+  - MVP analysis
+  - target customers
+topics:
+  - lean product methodology
+  - customer analysis
+  - design philosophy comparison
+  - product strategy
+language: python
+date of note: 2025-08-10
+---
+
 # Lean Product Analysis: Pipeline Design Philosophy Comparison
 
 ## Overview
@@ -5,11 +28,11 @@
 This document applies the Lean Product Playbook principles to analyze the three pipeline design philosophies, focusing on target customers, their needs, value propositions, and minimum viable product (MVP) components. The analysis is informed by real debugging experience and production challenges.
 
 ## Related Documents
-- **[Config-Driven Design](./config_driven_design.md)** - Current production implementation
-- **[Specification-Driven Design](./specification_driven_design.md)** - Pure declarative approach
-- **[Hybrid Design](./hybrid_design.md)** - **RECOMMENDED**: Best of both worlds approach
-- **[Developer Perspective Comparison](./developer_perspective_comparison.md)** - Developer-focused analysis
-- **[User Perspective Comparison](./user_perspective_comparison.md)** - User experience analysis
+- **[Config-Driven Design](../1_design/config_driven_design.md)** - Current production implementation
+- **[Specification-Driven Design](../1_design/specification_driven_design.md)** - Pure declarative approach
+- **[Hybrid Design](../1_design/hybrid_design.md)** - **RECOMMENDED**: Best of both worlds approach
+- **[Developer Perspective Comparison](./pipeline_design_philosophy_developer_perspective_comparison.md)** - Developer-focused analysis
+- **[User Perspective Comparison](./pipeline_design_philosophy_user_perspective_comparison.md)** - User experience analysis
 
 ## 1. Target Customers
 

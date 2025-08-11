@@ -163,7 +163,7 @@ Based on the provided implementation plan and validation report, create a revise
 - Integration validation improvements
 
 ### Design Principles Compliance Analysis
-**Source**: `slipbox/1_design/design_principles_compliance_analysis.md`
+**Source**: `slipbox/4_analysis/dynamic_pipeline_template_design_principles_compliance_analysis.md`
 - Compliance analysis patterns and approaches
 - Architectural integrity validation methods
 - Design principle adherence verification

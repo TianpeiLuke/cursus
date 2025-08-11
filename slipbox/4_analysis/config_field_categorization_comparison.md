@@ -1,3 +1,26 @@
+---
+tags:
+  - analysis
+  - configuration
+  - field_categorization
+  - design_comparison
+  - architectural_sophistication
+keywords:
+  - configuration field categorization
+  - sophisticated design
+  - naive approach
+  - type-aware serialization
+  - circular reference handling
+  - job type variants
+topics:
+  - configuration management
+  - design pattern comparison
+  - architectural analysis
+  - system sophistication
+language: python
+date of note: 2025-08-10
+---
+
 # Configuration Field Categorization: Sophisticated Design vs. Naive Approach
 
 ## Overview

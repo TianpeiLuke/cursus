@@ -1,3 +1,26 @@
+---
+tags:
+  - analysis
+  - configuration
+  - field_dependency
+  - xgboost_evaluation
+  - notebook_analysis
+keywords:
+  - XGBoost evaluation notebook
+  - field dependency analysis
+  - configuration fields
+  - essential user inputs
+  - system inputs
+  - derived inputs
+topics:
+  - configuration management
+  - field categorization
+  - dependency analysis
+  - notebook configuration
+language: python
+date of note: 2025-08-10
+---
+
 # XGBoost Evaluation Notebook Field Dependency Analysis
 
 This document provides a comprehensive analysis of the fields required in the `template_config_xgb_eval_v2.ipynb` notebook, identifying which fields are essential for user input, which ones are system inputs with fixed values, and which ones can be derived from other fields.
@@ -349,8 +372,8 @@ Here are key derivation rules that could be implemented:
    - Apply consistent configuration patterns across steps
 
 For detailed technical implementations of these derivation rules, see:
-- [DefaultValuesProvider Design](./default_values_provider_design.md) - Complete design for system input defaults
-- [FieldDerivationEngine Design](./field_derivation_engine_design.md) - Complete design for derivation logic
+- [DefaultValuesProvider Design](../1_design/default_values_provider_revised.md) - Complete design for system input defaults
+- [FieldDerivationEngine Design](../1_design/field_derivation_engine_revised.md) - Complete design for derivation logic
 
 ## Conclusion
 

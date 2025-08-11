@@ -1,3 +1,26 @@
+---
+tags:
+  - analysis
+  - developer_perspective
+  - pipeline_design
+  - philosophy_comparison
+  - development_experience
+keywords:
+  - developer perspective
+  - pipeline design philosophy
+  - config-driven design
+  - specification-driven design
+  - hybrid design
+  - development experience
+topics:
+  - pipeline architecture
+  - developer experience
+  - design philosophy comparison
+  - development workflow
+language: python
+date of note: 2025-08-10
+---
+
 # Developer Perspective: Pipeline Design Philosophy Comparison
 
 ## Overview
@@ -5,9 +28,9 @@
 This document provides a developer-focused analysis of the three pipeline design philosophies, examining their impact on development velocity, maintainability, and adaptability to new requirements. Special emphasis is placed on the developer experience when adding new pipeline steps.
 
 ## Related Documents
-- **[Config-Driven Design](./config_driven_design.md)** - Current production implementation
-- **[Specification-Driven Design](./specification_driven_design.md)** - Pure declarative approach
-- **[Hybrid Design](./hybrid_design.md)** - **RECOMMENDED**: Best of both worlds approach
+- **[Config-Driven Design](../1_design/config_driven_design.md)** - Current production implementation
+- **[Specification-Driven Design](../1_design/specification_driven_design.md)** - Pure declarative approach
+- **[Hybrid Design](../1_design/hybrid_design.md)** - **RECOMMENDED**: Best of both worlds approach
 
 ## Executive Summary
 

@@ -1,3 +1,26 @@
+---
+tags:
+  - analysis
+  - user_perspective
+  - pipeline_design
+  - philosophy_comparison
+  - user_experience
+keywords:
+  - user perspective
+  - pipeline design philosophy
+  - user experience
+  - config-driven design
+  - specification-driven design
+  - hybrid design
+topics:
+  - pipeline architecture
+  - user experience
+  - design philosophy comparison
+  - user workflow
+language: python
+date of note: 2025-08-10
+---
+
 # User Perspective: Pipeline Design Philosophy Comparison
 
 ## Overview
@@ -5,10 +28,10 @@
 This document provides a user-focused analysis of the three pipeline design philosophies, examining their impact on user experience, learning curve, input requirements, and overall usability. The analysis considers different user personas from data scientists to ML engineers to business analysts.
 
 ## Related Documents
-- **[Config-Driven Design](./config_driven_design.md)** - Current production implementation
-- **[Specification-Driven Design](./specification_driven_design.md)** - Pure declarative approach
-- **[Hybrid Design](./hybrid_design.md)** - **RECOMMENDED**: Best of both worlds approach
-- **[Developer Perspective Comparison](./developer_perspective_comparison.md)** - Developer-focused analysis
+- **[Config-Driven Design](../1_design/config_driven_design.md)** - Current production implementation
+- **[Specification-Driven Design](../1_design/specification_driven_design.md)** - Pure declarative approach
+- **[Hybrid Design](../1_design/hybrid_design.md)** - **RECOMMENDED**: Best of both worlds approach
+- **[Developer Perspective Comparison](./pipeline_design_philosophy_developer_perspective_comparison.md)** - Developer-focused analysis
 
 ## Executive Summary
 

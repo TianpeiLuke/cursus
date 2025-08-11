@@ -1,3 +1,26 @@
+---
+tags:
+  - analysis
+  - configuration
+  - field_dependency
+  - xgboost_pipeline
+  - dependency_table
+keywords:
+  - XGBoost pipeline configuration
+  - field dependency table
+  - configuration analysis
+  - essential user inputs
+  - derived fields
+  - system inputs
+topics:
+  - configuration management
+  - field categorization
+  - dependency analysis
+  - pipeline configuration
+language: python
+date of note: 2025-08-10
+---
+
 # XGBoost Pipeline Configuration Field Dependency Table
 
 This document provides a comprehensive analysis of all fields in the `template_config_xgb_eval_v2.ipynb` notebook, detailing their relationships, dependencies, and identifying which ones are essential user inputs versus derived fields.

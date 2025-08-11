@@ -28,8 +28,8 @@ date of note: 2025-08-09
 ## Related Documents
 
 ### Core Design Documents
-- [Unified Alignment Tester Design](unified_alignment_tester_design.md) - Main alignment validation framework
-- [Enhanced Dependency Validation Design](enhanced_dependency_validation_design.md) - Pattern-aware dependency validation system
+- [Unified Alignment Tester Design](../1_design/unified_alignment_tester_design.md) - Main alignment validation framework
+- [Enhanced Dependency Validation Design](../1_design/enhanced_dependency_validation_design.md) - Pattern-aware dependency validation system
 
 ### Failure Analysis Reports
 - [Level 1 Alignment Validation Failure Analysis](../test/level1_alignment_validation_failure_analysis.md) - Script-contract alignment false positives
@@ -38,9 +38,9 @@ date of note: 2025-08-09
 - [Level 4 Alignment Validation False Positive Analysis](../test/level4_alignment_validation_false_positive_analysis.md) - Builder-configuration alignment false positives
 
 ### Supporting Architecture Documents
-- [Script Contract](script_contract.md) - Script contract specifications
-- [Step Specification](step_specification.md) - Step specification system design
-- [Specification Driven Design](specification_driven_design.md) - Specification-driven architecture
+- [Script Contract](../1_design/script_contract.md) - Script contract specifications
+- [Step Specification](../1_design/step_specification.md) - Step specification system design
+- [Specification Driven Design](../1_design/specification_driven_design.md) - Specification-driven architecture
 
 ## Executive Summary
 

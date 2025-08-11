@@ -46,7 +46,7 @@ This document analyzes how the proposed two-level alignment validation system (c
 - **[Two-Level Alignment Validation System Design](../1_design/two_level_alignment_validation_system_design.md)**: Complete architectural design for the hybrid LLM + strict tool approach
 - **[Unified Alignment Tester Design](../1_design/unified_alignment_tester_design.md)**: Original four-level validation framework that this analysis identifies as fundamentally flawed
 - **[Enhanced Dependency Validation Design](../1_design/enhanced_dependency_validation_design.md)**: Pattern-aware dependency validation system
-- **[Alignment Tester Robustness Analysis](../1_design/alignment_tester_robustness_analysis.md)**: Analysis of current system limitations
+- **[Alignment Tester Robustness Analysis](./alignment_tester_robustness_analysis.md)**: Analysis of current system limitations
 
 ### Planning Documents
 - **[2025-08-10 Alignment Validation Refactoring Plan](../2_project_planning/2025-08-10_alignment_validation_refactoring_plan.md)**: Comprehensive refactoring plan based on pain point identification
