@@ -503,8 +503,7 @@
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
-    "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.446150",
+    "validation_timestamp": "2025-08-11T22:58:19.730980",
     "validator_version": "1.0.0"
   }
 }

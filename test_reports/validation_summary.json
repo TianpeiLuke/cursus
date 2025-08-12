@@ -1,0 +1,42 @@
+{
+  "total_scripts": 8,
+  "passed_scripts": 7,
+  "failed_scripts": 0,
+  "error_scripts": 1,
+  "validation_timestamp": "2025-08-11T22:47:21.604918",
+  "script_results": {
+    "currency_conversion": {
+      "status": "PASSING",
+      "timestamp": "2025-08-11T22:47:21.623776"
+    },
+    "dummy_training": {
+      "status": "PASSING",
+      "timestamp": "2025-08-11T22:47:21.640425"
+    },
+    "model_calibration": {
+      "status": "PASSING",
+      "timestamp": "2025-08-11T22:47:21.665468"
+    },
+    "package": {
+      "status": "PASSING",
+      "timestamp": "2025-08-11T22:47:21.686330"
+    },
+    "payload": {
+      "status": "ERROR",
+      "error": "keys must be str, int, float, bool or None, not type",
+      "timestamp": "2025-08-11T22:47:21.708254"
+    },
+    "risk_table_mapping": {
+      "status": "PASSING",
+      "timestamp": "2025-08-11T22:47:21.742148"
+    },
+    "tabular_preprocessing": {
+      "status": "PASSING",
+      "timestamp": "2025-08-11T22:47:21.799882"
+    },
+    "xgboost_model_evaluation": {
+      "status": "PASSING",
+      "timestamp": "2025-08-11T22:47:21.819252"
+    }
+  }
+}

@@ -186,10 +186,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ModelEvaluation",
-              "XGBoostTraining",
               "XGBoostModelEval",
               "TrainingEvaluation",
+              "ModelEvaluation",
+              "XGBoostTraining",
               "CrossValidation"
             ],
             "data_type": "S3Uri",
@@ -231,10 +231,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ModelEvaluation",
-              "XGBoostTraining",
               "XGBoostModelEval",
               "TrainingEvaluation",
+              "ModelEvaluation",
+              "XGBoostTraining",
               "CrossValidation"
             ],
             "data_type": "S3Uri",
@@ -275,10 +275,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ModelEvaluation",
-                "XGBoostTraining",
                 "XGBoostModelEval",
                 "TrainingEvaluation",
+                "ModelEvaluation",
+                "XGBoostTraining",
                 "CrossValidation"
               ],
               "data_type": "S3Uri",
@@ -316,10 +316,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ModelEvaluation",
-            "XGBoostTraining",
             "XGBoostModelEval",
             "TrainingEvaluation",
+            "ModelEvaluation",
+            "XGBoostTraining",
             "CrossValidation"
           ],
           "data_type": "S3Uri",
@@ -380,10 +380,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ModelEvaluation",
-            "XGBoostTraining",
             "XGBoostModelEval",
             "TrainingEvaluation",
+            "ModelEvaluation",
+            "XGBoostTraining",
             "CrossValidation"
           ],
           "data_type": "S3Uri",
@@ -558,26 +558,12 @@
           "required": false
         }
       },
-      "required_fields": [
-        "label_field"
-      ],
-      "optional_fields": [
-        "calibration_method",
-        "error_threshold",
-        "gam_splines",
-        "is_binary",
-        "monotonic_constraint",
-        "multiclass_categories",
-        "num_classes",
-        "processing_entry_point",
-        "processing_source_dir",
-        "score_field",
-        "score_field_prefix"
-      ],
+      "required_fields": "{'label_field'}",
+      "optional_fields": "{'score_field_prefix', 'processing_source_dir', 'monotonic_constraint', 'calibration_method', 'error_threshold', 'num_classes', 'is_binary', 'processing_entry_point', 'multiclass_categories', 'gam_splines', 'score_field'}",
       "default_values": {
-        "aws_region": "<property>",
-        "effective_instance_type": "<property>",
-        "effective_source_dir": "<property>",
+        "aws_region": "<property object at 0x1078c30b0>",
+        "effective_instance_type": "<property object at 0x3299c71a0>",
+        "effective_source_dir": "<property object at 0x3299c7150>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -585,7 +571,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property>",
+        "model_extra": "<property object at 0x1072ac220>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -618,20 +604,19 @@
           "score_field_prefix": "annotation=str required=False default='prob_class_' description='Prefix for probability columns in multi-class scenario'",
           "multiclass_categories": "annotation=List[Union[str, int]] required=False default_factory=<lambda> description='List of class names/values for multi-class calibration'"
         },
-        "model_fields_set": "<property>",
-        "pipeline_description": "<property>",
-        "pipeline_name": "<property>",
-        "pipeline_s3_loc": "<property>",
-        "script_contract": "<property>",
-        "script_path": "<property>"
+        "model_fields_set": "<property object at 0x1072ac270>",
+        "pipeline_description": "<property object at 0x1078c3150>",
+        "pipeline_name": "<property object at 0x1078c3100>",
+        "pipeline_s3_loc": "<property object at 0x1078c31a0>",
+        "script_contract": "<property object at 0x1078c1b70>",
+        "script_path": "<property object at 0x3299c71f0>"
       }
     }
   },
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
-    "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.429042",
+    "validation_timestamp": "2025-08-11T22:47:21.665468",
     "validator_version": "1.0.0"
   }
 }

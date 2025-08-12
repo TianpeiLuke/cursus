@@ -187,10 +187,10 @@
             "required": true,
             "compatible_sources": [
               "ModelEvaluation",
-              "XGBoostTraining",
               "XGBoostModelEval",
               "TrainingEvaluation",
-              "CrossValidation"
+              "CrossValidation",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -232,10 +232,10 @@
             "required": true,
             "compatible_sources": [
               "ModelEvaluation",
-              "XGBoostTraining",
               "XGBoostModelEval",
               "TrainingEvaluation",
-              "CrossValidation"
+              "CrossValidation",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -276,10 +276,10 @@
               "required": true,
               "compatible_sources": [
                 "ModelEvaluation",
-                "XGBoostTraining",
                 "XGBoostModelEval",
                 "TrainingEvaluation",
-                "CrossValidation"
+                "CrossValidation",
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -317,10 +317,10 @@
           "required": true,
           "compatible_sources": [
             "ModelEvaluation",
-            "XGBoostTraining",
             "XGBoostModelEval",
             "TrainingEvaluation",
-            "CrossValidation"
+            "CrossValidation",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -381,10 +381,10 @@
           "required": true,
           "compatible_sources": [
             "ModelEvaluation",
-            "XGBoostTraining",
             "XGBoostModelEval",
             "TrainingEvaluation",
-            "CrossValidation"
+            "CrossValidation",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -630,8 +630,7 @@
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
-    "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.429042",
+    "validation_timestamp": "2025-08-11T22:58:19.709505",
     "validator_version": "1.0.0"
   }
 }

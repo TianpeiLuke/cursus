@@ -224,6 +224,11 @@ def list_steps(ctx):
         sys.exit(1)
 
 
+# Add alignment validation commands
+from .alignment_cli import alignment
+main.add_command(alignment)
+
+
 @main.group()
 @click.pass_context
 def test(ctx):

@@ -109,9 +109,9 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
-              "ProcessingStep",
               "XGBoostTraining",
+              "ProcessingStep",
+              "PytorchTraining",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -150,9 +150,9 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
-              "ProcessingStep",
               "XGBoostTraining",
+              "ProcessingStep",
+              "PytorchTraining",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -190,9 +190,9 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "PytorchTraining",
-                "ProcessingStep",
                 "XGBoostTraining",
+                "ProcessingStep",
+                "PytorchTraining",
                 "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
@@ -227,9 +227,9 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
-            "ProcessingStep",
             "XGBoostTraining",
+            "ProcessingStep",
+            "PytorchTraining",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -337,9 +337,9 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
-            "ProcessingStep",
             "XGBoostTraining",
+            "ProcessingStep",
+            "PytorchTraining",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -456,17 +456,12 @@
           "required": false
         }
       },
-      "required_fields": [],
-      "optional_fields": [
-        "hyperparameters",
-        "hyperparameters_s3_uri",
-        "pretrained_model_path",
-        "processing_entry_point"
-      ],
+      "required_fields": "set()",
+      "optional_fields": "{'hyperparameters', 'pretrained_model_path', 'hyperparameters_s3_uri', 'processing_entry_point'}",
       "default_values": {
-        "aws_region": "<property>",
-        "effective_instance_type": "<property>",
-        "effective_source_dir": "<property>",
+        "aws_region": "<property object at 0x1078c30b0>",
+        "effective_instance_type": "<property object at 0x3299c71a0>",
+        "effective_source_dir": "<property object at 0x3299c7150>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -474,7 +469,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property>",
+        "model_extra": "<property object at 0x1072ac220>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -500,20 +495,19 @@
           "hyperparameters": "annotation=ModelHyperparameters required=False default_factory=ModelHyperparameters description='Model hyperparameters to be included in the model package.'",
           "hyperparameters_s3_uri": "annotation=Union[str, NoneType] required=False default=None description='S3 URI where hyperparameters.json will be saved.'"
         },
-        "model_fields_set": "<property>",
-        "pipeline_description": "<property>",
-        "pipeline_name": "<property>",
-        "pipeline_s3_loc": "<property>",
-        "script_contract": "<property>",
-        "script_path": "<property>"
+        "model_fields_set": "<property object at 0x1072ac270>",
+        "pipeline_description": "<property object at 0x1078c3150>",
+        "pipeline_name": "<property object at 0x1078c3100>",
+        "pipeline_s3_loc": "<property object at 0x1078c31a0>",
+        "script_contract": "<property object at 0x1078c1b70>",
+        "script_path": "<property object at 0x3299c71f0>"
       }
     }
   },
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
-    "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.405138",
+    "validation_timestamp": "2025-08-11T22:47:21.640425",
     "validator_version": "1.0.0"
   }
 }

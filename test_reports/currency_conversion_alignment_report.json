@@ -238,8 +238,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
+              "CradleDataLoading",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -265,8 +265,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
+              "CradleDataLoading",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -292,8 +292,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
+              "CradleDataLoading",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -319,8 +319,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
+              "CradleDataLoading",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -348,8 +348,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "ProcessingStep",
+              "CradleDataLoading",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -376,8 +376,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
+                "CradleDataLoading",
                 "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
@@ -403,8 +403,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
+                "CradleDataLoading",
                 "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
@@ -430,8 +430,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
+                "CradleDataLoading",
                 "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
@@ -457,8 +457,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "ProcessingStep",
+                "CradleDataLoading",
                 "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
@@ -482,8 +482,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "ProcessingStep",
+            "CradleDataLoading",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -530,8 +530,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "ProcessingStep",
+            "CradleDataLoading",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -555,26 +555,6 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_info",
-        "details": {
-          "field_name": "marketplace_info",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_info in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_id_col",
-        "details": {
-          "field_name": "marketplace_id_col",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: label_field",
         "details": {
           "field_name": "label_field",
@@ -593,14 +573,34 @@
         "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
       },
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_info",
+        "details": {
+          "field_name": "marketplace_info",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_info in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_id_col",
+        "details": {
+          "field_name": "marketplace_id_col",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
+            "label_field",
             "currency_conversion_dict",
             "marketplace_info",
-            "label_field",
             "marketplace_id_col"
           ],
           "builder": "currency_conversion"
@@ -722,29 +722,12 @@
           "required": false
         }
       },
-      "required_fields": [
-        "currency_conversion_dict",
-        "label_field",
-        "marketplace_id_col",
-        "marketplace_info"
-      ],
-      "optional_fields": [
-        "currency_col",
-        "currency_conversion_var_list",
-        "default_currency",
-        "enable_currency_conversion",
-        "job_type",
-        "mode",
-        "processing_entry_point",
-        "skip_invalid_currencies",
-        "test_val_ratio",
-        "train_ratio",
-        "use_large_processing_instance"
-      ],
+      "required_fields": "{'label_field', 'currency_conversion_dict', 'marketplace_info', 'marketplace_id_col'}",
+      "optional_fields": "{'mode', 'skip_invalid_currencies', 'job_type', 'currency_conversion_var_list', 'currency_col', 'test_val_ratio', 'processing_entry_point', 'train_ratio', 'enable_currency_conversion', 'default_currency', 'use_large_processing_instance'}",
       "default_values": {
-        "aws_region": "<property>",
-        "effective_instance_type": "<property>",
-        "effective_source_dir": "<property>",
+        "aws_region": "<property object at 0x1078c30b0>",
+        "effective_instance_type": "<property object at 0x3299c71a0>",
+        "effective_source_dir": "<property object at 0x3299c7150>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -752,7 +735,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property>",
+        "model_extra": "<property object at 0x1072ac220>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -788,20 +771,19 @@
           "default_currency": "annotation=str required=False default='USD' description='Fallback currency code'",
           "skip_invalid_currencies": "annotation=bool required=False default=False description='If True, fill invalid codes with default_currency'"
         },
-        "model_fields_set": "<property>",
-        "pipeline_description": "<property>",
-        "pipeline_name": "<property>",
-        "pipeline_s3_loc": "<property>",
-        "script_contract": "<property>",
-        "script_path": "<property>"
+        "model_fields_set": "<property object at 0x1072ac270>",
+        "pipeline_description": "<property object at 0x1078c3150>",
+        "pipeline_name": "<property object at 0x1078c3100>",
+        "pipeline_s3_loc": "<property object at 0x1078c31a0>",
+        "script_contract": "<property object at 0x1078c1b70>",
+        "script_path": "<property object at 0x3299c71f0>"
       }
     }
   },
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
-    "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.383343",
+    "validation_timestamp": "2025-08-11T22:47:21.623776",
     "validator_version": "1.0.0"
   }
 }

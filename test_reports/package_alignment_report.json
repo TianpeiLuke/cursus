@@ -143,8 +143,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
               "ModelStep",
+              "TrainingStep",
               "XGBoostTraining"
             ],
             "data_type": "S3Uri",
@@ -155,8 +155,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -193,8 +193,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
               "ModelStep",
+              "TrainingStep",
               "XGBoostTraining"
             ],
             "data_type": "S3Uri",
@@ -205,8 +205,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -242,8 +242,8 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "TrainingStep",
                 "ModelStep",
+                "TrainingStep",
                 "XGBoostTraining"
               ],
               "data_type": "S3Uri",
@@ -254,8 +254,8 @@
               "dependency_type": "custom_property",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "ScriptStep"
+                "ScriptStep",
+                "ProcessingStep"
               ],
               "data_type": "String",
               "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -288,8 +288,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
             "ModelStep",
+            "TrainingStep",
             "XGBoostTraining"
           ],
           "data_type": "S3Uri",
@@ -300,8 +300,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -357,8 +357,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
             "ModelStep",
+            "TrainingStep",
             "XGBoostTraining"
           ],
           "data_type": "S3Uri",
@@ -369,8 +369,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -453,14 +453,12 @@
           "required": false
         }
       },
-      "required_fields": [],
-      "optional_fields": [
-        "processing_entry_point"
-      ],
+      "required_fields": "set()",
+      "optional_fields": "{'processing_entry_point'}",
       "default_values": {
-        "aws_region": "<property>",
-        "effective_instance_type": "<property>",
-        "effective_source_dir": "<property>",
+        "aws_region": "<property object at 0x1078c30b0>",
+        "effective_instance_type": "<property object at 0x3299c71a0>",
+        "effective_source_dir": "<property object at 0x3299c7150>",
         "model_computed_fields": {},
         "model_config": {
           "arbitrary_types_allowed": true,
@@ -468,7 +466,7 @@
           "protected_namespaces": [],
           "validate_assignment": true
         },
-        "model_extra": "<property>",
+        "model_extra": "<property object at 0x1072ac220>",
         "model_fields": {
           "author": "annotation=str required=True description='Author or owner of the pipeline.'",
           "bucket": "annotation=str required=True description='S3 bucket name for pipeline artifacts and data.'",
@@ -491,20 +489,19 @@
           "processing_script_arguments": "annotation=Union[List[str], NoneType] required=False default=None description='Optional arguments for the processing script.'",
           "processing_framework_version": "annotation=str required=False default='1.2-1' description=\"Version of the scikit-learn framework to use in SageMaker Processing. Format: '<sklearn-version>-<build-number>'\""
         },
-        "model_fields_set": "<property>",
-        "pipeline_description": "<property>",
-        "pipeline_name": "<property>",
-        "pipeline_s3_loc": "<property>",
-        "script_contract": "<property>",
-        "script_path": "<property>"
+        "model_fields_set": "<property object at 0x1072ac270>",
+        "pipeline_description": "<property object at 0x1078c3150>",
+        "pipeline_name": "<property object at 0x1078c3100>",
+        "pipeline_s3_loc": "<property object at 0x1078c31a0>",
+        "script_contract": "<property object at 0x1078c1b70>",
+        "script_path": "<property object at 0x3299c71f0>"
       }
     }
   },
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
-    "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.446150",
+    "validation_timestamp": "2025-08-11T22:47:21.686330",
     "validator_version": "1.0.0"
   }
 }
