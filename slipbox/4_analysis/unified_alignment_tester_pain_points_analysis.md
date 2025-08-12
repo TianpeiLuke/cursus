@@ -873,6 +873,7 @@ This analysis builds upon and informs several key design and planning documents:
 
 ### Core Design Documents
 - **[Alignment Rules](../0_developer_guide/alignment_rules.md)**: Centralized alignment guidance and principles that address the naming convention issues identified in this analysis
+- **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - **FOUNDATIONAL SOLUTION** - Comprehensive standardization rules that directly address the systematic naming convention pain points identified in this analysis. The standardization rules provide the definitive solution to the naming convention chaos, interface standardization issues, and architectural constraint violations documented here. The revolutionary breakthroughs achieved were enabled by implementing validation of these standardization rules.
 - **[Two-Level Alignment Validation System Design](../1_design/two_level_alignment_validation_system_design.md)**: Original architectural design for the two-level validation approach that this analysis validates as necessary
 - **[Unified Alignment Tester Design](../1_design/unified_alignment_tester_design.md)**: Design document for the unified tester approach that this analysis identifies as fundamentally flawed
 

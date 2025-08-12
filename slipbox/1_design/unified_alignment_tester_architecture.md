@@ -25,6 +25,7 @@ date of note: 2025-08-11
 - **[Master Design](unified_alignment_tester_master_design.md)** - Complete system overview
 - **[Data Structures](alignment_validation_data_structures.md)** - Core data structure designs
 - **[Implementation Guide](unified_alignment_tester_implementation.md)** - Production implementation details
+- **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - **FOUNDATIONAL** - Comprehensive standardization rules that define the naming conventions, interface standards, and architectural constraints that this four-tier validation pyramid enforces. The architectural breakthroughs documented here directly implement validation of these standardization rules.
 - **[Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)** - Comprehensive analysis of validation challenges that informed the architectural breakthroughs documented here
 
 ## Overview

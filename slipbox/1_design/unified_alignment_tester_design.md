@@ -37,6 +37,7 @@ The master design document provides:
 ### Core Architecture
 - **[Architecture](unified_alignment_tester_architecture.md)** - Four-tier validation pyramid and cross-level integration patterns
 - **[Data Structures](alignment_validation_data_structures.md)** - Critical data structures and breakthrough implementations
+- **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - Foundational standardization rules that define what the validation system validates
 
 ### Level-Specific Designs
 - **[Level 1 Design](level1_script_contract_alignment_design.md)** - Script ↔ Contract validation (100% success rate)

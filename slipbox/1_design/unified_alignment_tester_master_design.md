@@ -174,6 +174,7 @@ This master document coordinates the following focused design documents:
 
 ### Core Alignment Documents
 - **[Alignment Rules](../0_developer_guide/alignment_rules.md)** - Centralized alignment guidance and principles for all validation levels
+- **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - **FOUNDATIONAL** - Comprehensive standardization rules that define the naming conventions, interface standards, and architectural constraints that this validation system enforces. The revolutionary breakthroughs documented in this master design directly implement validation of these standardization rules across all four levels.
 - **[Unified Alignment Tester Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)** - Comprehensive analysis of validation challenges and systematic solutions that informed the revolutionary breakthroughs documented in this master design
 - [Script Contract Alignment](script_contract.md) - Script contract specifications
 - [Step Contract](step_contract.md) - Step contract definitions
