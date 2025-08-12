@@ -113,19 +113,19 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
         if hasattr(config, 'job_type'):
             job_type = config.job_type.lower()
             if job_type == "training":
-                from ..specs.data_loading_training_spec import DATA_LOADING_TRAINING_SPEC
+                from ..specs.cradle_data_loading_training_spec import DATA_LOADING_TRAINING_SPEC
                 spec = DATA_LOADING_TRAINING_SPEC
                 self.log_info("Using training-specific DATA_LOADING_TRAINING_SPEC")
             elif job_type == "validation":
-                from ..specs.data_loading_validation_spec import DATA_LOADING_VALIDATION_SPEC
+                from ..specs.cradle_data_loading_validation_spec import DATA_LOADING_VALIDATION_SPEC
                 spec = DATA_LOADING_VALIDATION_SPEC
                 self.log_info("Using validation-specific DATA_LOADING_VALIDATION_SPEC")
             elif job_type == "testing":
-                from ..specs.data_loading_testing_spec import DATA_LOADING_TESTING_SPEC
+                from ..specs.cradle_data_loading_testing_spec import DATA_LOADING_TESTING_SPEC
                 spec = DATA_LOADING_TESTING_SPEC
                 self.log_info("Using testing-specific DATA_LOADING_TESTING_SPEC")
             elif job_type == "calibration":
-                from ..specs.data_loading_calibration_spec import DATA_LOADING_CALIBRATION_SPEC
+                from ..specs.cradle_data_loading_calibration_spec import DATA_LOADING_CALIBRATION_SPEC
                 spec = DATA_LOADING_CALIBRATION_SPEC
                 self.log_info("Using calibration-specific DATA_LOADING_CALIBRATION_SPEC")
             

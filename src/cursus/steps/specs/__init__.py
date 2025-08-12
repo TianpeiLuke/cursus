@@ -20,10 +20,10 @@ from .currency_conversion_validation_spec import CURRENCY_CONVERSION_VALIDATION_
 
 # Data Loading specifications
 from .cradle_data_loading_spec import DATA_LOADING_SPEC
-from .data_loading_calibration_spec import DATA_LOADING_CALIBRATION_SPEC
-from .data_loading_testing_spec import DATA_LOADING_TESTING_SPEC
-from .data_loading_training_spec import DATA_LOADING_TRAINING_SPEC
-from .data_loading_validation_spec import DATA_LOADING_VALIDATION_SPEC
+from .cradle_data_loading_calibration_spec import DATA_LOADING_CALIBRATION_SPEC
+from .cradle_data_loading_testing_spec import DATA_LOADING_TESTING_SPEC
+from .cradle_data_loading_training_spec import DATA_LOADING_TRAINING_SPEC
+from .cradle_data_loading_validation_spec import DATA_LOADING_VALIDATION_SPEC
 
 # Training specifications
 from .dummy_training_spec import DUMMY_TRAINING_SPEC
