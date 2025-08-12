@@ -14,7 +14,7 @@ def _get_tabular_preprocess_contract():
     return TABULAR_PREPROCESS_CONTRACT
 
 # Tabular Preprocessing Training Step Specification
-PREPROCESSING_TRAINING_SPEC = StepSpecification(
+TABULAR_PREPROCESSING_TRAINING_SPEC = StepSpecification(
     step_type=get_spec_step_type("TabularPreprocessing") + "_Training",
     node_type=NodeType.INTERNAL,
     script_contract=_get_tabular_preprocess_contract(),

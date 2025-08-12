@@ -436,7 +436,7 @@ class TestUniversalStepBuilder(unittest.TestCase):
         try:
             # Import the builder class
             from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-            from ...steps.specs.preprocessing_training_spec import PREPROCESSING_TRAINING_SPEC
+            from ...steps.specs.tabular_preprocessing_training_spec import TABULAR_PREPROCESSING_TRAINING_SPEC
             
             # Create a custom configuration
             config = SimpleNamespace()
@@ -448,7 +448,7 @@ class TestUniversalStepBuilder(unittest.TestCase):
             tester = UniversalStepBuilderTest(
                 TabularPreprocessingStepBuilder,
                 config=config,
-                spec=PREPROCESSING_TRAINING_SPEC,
+                spec=TABULAR_PREPROCESSING_TRAINING_SPEC,
                 step_name='CustomPreprocessingStep'
             )
             
@@ -458,7 +458,7 @@ class TestUniversalStepBuilder(unittest.TestCase):
             # Check that key tests passed
             self.assertTrue(results["test_inheritance"]["passed"])
         except ImportError:
-            self.skipTest("TabularPreprocessingStepBuilder or PREPROCESSING_TRAINING_SPEC not available")
+            self.skipTest("TabularPreprocessingStepBuilder or TABULAR_PREPROCESSING_TRAINING_SPEC not available")
 
 
 if __name__ == '__main__':

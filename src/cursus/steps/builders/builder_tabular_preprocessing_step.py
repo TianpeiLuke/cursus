@@ -13,13 +13,13 @@ from ..registry.builder_registry import register_builder
 
 # Import specifications based on job type
 try:
-    from ..specs.preprocessing_training_spec import PREPROCESSING_TRAINING_SPEC
-    from ..specs.preprocessing_calibration_spec import PREPROCESSING_CALIBRATION_SPEC
-    from ..specs.preprocessing_validation_spec import PREPROCESSING_VALIDATION_SPEC
-    from ..specs.preprocessing_testing_spec import PREPROCESSING_TESTING_SPEC
+    from ..specs.tabular_preprocessing_training_spec import TABULAR_PREPROCESSING_TRAINING_SPEC
+    from ..specs.tabular_preprocessing_calibration_spec import TABULAR_PREPROCESSING_CALIBRATION_SPEC
+    from ..specs.tabular_preprocessing_validation_spec import TABULAR_PREPROCESSING_VALIDATION_SPEC
+    from ..specs.tabular_preprocessing_testing_spec import TABULAR_PREPROCESSING_TESTING_SPEC
     SPECS_AVAILABLE = True
 except ImportError:
-    PREPROCESSING_TRAINING_SPEC = PREPROCESSING_CALIBRATION_SPEC = PREPROCESSING_VALIDATION_SPEC = PREPROCESSING_TESTING_SPEC = None
+    TABULAR_PREPROCESSING_TRAINING_SPEC = TABULAR_PREPROCESSING_CALIBRATION_SPEC = TABULAR_PREPROCESSING_VALIDATION_SPEC = TABULAR_PREPROCESSING_TESTING_SPEC = None
     SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -65,14 +65,14 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         job_type = config.job_type.lower()
         
         # Get specification based on job type
-        if job_type == "training" and PREPROCESSING_TRAINING_SPEC is not None:
-            spec = PREPROCESSING_TRAINING_SPEC
-        elif job_type == "calibration" and PREPROCESSING_CALIBRATION_SPEC is not None:
-            spec = PREPROCESSING_CALIBRATION_SPEC
-        elif job_type == "validation" and PREPROCESSING_VALIDATION_SPEC is not None:
-            spec = PREPROCESSING_VALIDATION_SPEC
-        elif job_type == "testing" and PREPROCESSING_TESTING_SPEC is not None:
-            spec = PREPROCESSING_TESTING_SPEC
+        if job_type == "training" and TABULAR_PREPROCESSING_TRAINING_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_TRAINING_SPEC
+        elif job_type == "calibration" and TABULAR_PREPROCESSING_CALIBRATION_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_CALIBRATION_SPEC
+        elif job_type == "validation" and TABULAR_PREPROCESSING_VALIDATION_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_VALIDATION_SPEC
+        elif job_type == "testing" and TABULAR_PREPROCESSING_TESTING_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_TESTING_SPEC
         else:
             # Try dynamic import
             try:

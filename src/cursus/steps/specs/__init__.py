@@ -44,11 +44,11 @@ from .payload_spec import PAYLOAD_SPEC
 from .registration_spec import REGISTRATION_SPEC
 
 # Preprocessing specifications
-from .preprocessing_spec import PREPROCESSING_SPEC
-from .preprocessing_calibration_spec import PREPROCESSING_CALIBRATION_SPEC
-from .preprocessing_testing_spec import PREPROCESSING_TESTING_SPEC
-from .preprocessing_training_spec import PREPROCESSING_TRAINING_SPEC
-from .preprocessing_validation_spec import PREPROCESSING_VALIDATION_SPEC
+from .tabular_preprocessing_spec import TABULAR_PREPROCESSING_SPEC
+from .tabular_preprocessing_calibration_spec import TABULAR_PREPROCESSING_CALIBRATION_SPEC
+from .tabular_preprocessing_testing_spec import TABULAR_PREPROCESSING_TESTING_SPEC
+from .tabular_preprocessing_training_spec import TABULAR_PREPROCESSING_TRAINING_SPEC
+from .tabular_preprocessing_validation_spec import TABULAR_PREPROCESSING_VALIDATION_SPEC
 
 # Risk Table Mapping specifications
 from .risk_table_mapping_calibration_spec import RISK_TABLE_MAPPING_CALIBRATION_SPEC
@@ -95,11 +95,11 @@ __all__ = [
     "REGISTRATION_SPEC",
     
     # Preprocessing specifications
-    "PREPROCESSING_SPEC",
-    "PREPROCESSING_CALIBRATION_SPEC",
-    "PREPROCESSING_TESTING_SPEC",
-    "PREPROCESSING_TRAINING_SPEC",
-    "PREPROCESSING_VALIDATION_SPEC",
+    "TABULAR_PREPROCESSING_SPEC",
+    "TABULAR_PREPROCESSING_CALIBRATION_SPEC",
+    "TABULAR_PREPROCESSING_TESTING_SPEC",
+    "TABULAR_PREPROCESSING_TRAINING_SPEC",
+    "TABULAR_PREPROCESSING_VALIDATION_SPEC",
     
     # Risk Table Mapping specifications
     "RISK_TABLE_MAPPING_CALIBRATION_SPEC",
