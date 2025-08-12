@@ -102,10 +102,18 @@ The developer guide defines **4 main alignment principles** with specific valida
 
 #### 1. **SageMaker Component Parameter Validation (Level 4)**
 - **Rule**: "Step Builders must pass configuration parameters to SageMaker components according to the config class"
-- **Current Implementation**: Validates config field access but doesn't validate parameter passing to SageMaker components
-- **Gap**: Missing validation of actual parameter mapping in SageMaker step creation
-- **Impact**: Could miss parameter mapping issues in SageMaker step creation
-- **Recommendation**: Add SageMaker component parameter mapping validation
+- **Current Implementation**: ✅ **FULLY IMPLEMENTED** in Universal Step Builder Test system
+- **Implementation Location**: `src/cursus/validation/builders/sagemaker_step_type_validator.py`
+- **Design Document**: **[Universal Step Builder Test](../1_design/universal_step_builder_test.md)** - Comprehensive design for step type-aware testing with specialized variants
+- **Planning Document**: **[2025-08-07 Universal Step Builder Test Enhancement Plan](../2_project_planning/2025-08-07_universal_step_builder_test_enhancement_plan.md)** - Enhancement plan for universal step builder testing framework
+- **Details**: The `SageMakerStepTypeValidator` validates step type-specific parameter passing:
+  - **Processing Steps**: Validates processor creation methods (`_create_processor`, `_get_processor`) and input/output handling
+  - **Training Steps**: Validates estimator creation methods (`_create_estimator`, `_get_estimator`) and hyperparameter handling
+  - **Transform Steps**: Validates transformer creation methods (`_create_transformer`, `_get_transformer`)
+  - **CreateModel Steps**: Validates model creation methods (`_create_model`, `_get_model`)
+  - **RegisterModel Steps**: Validates model package methods (`_create_model_package`, `_get_model_package_args`)
+- **Status**: ✅ **FULLY IMPLEMENTED** - This validation is handled by the Universal Step Builder Test, not the Unified Alignment Tester
+- **Note**: This rule is **outside the scope** of the Unified Alignment Tester as it's architectural compliance rather than alignment validation
 
 #### 2. **Alias Support Validation (Level 3)**
 - **Rule**: "Dependencies declared in Step Specification must match upstream step outputs by logical name **or alias**"
@@ -185,24 +193,19 @@ The developer guide defines **4 main alignment principles** with specific valida
 
 ### Medium Priority Gaps (Quality Improvements)
 
-4. **SageMaker Component Parameter Validation (Level 4)**
-   - **Priority**: 🟡 **MEDIUM**
-   - **Effort**: High
-   - **Impact**: Medium - Parameter mapping issues
-
-5. **File Pattern Validation (Level 1)**
+4. **File Pattern Validation (Level 1)**
    - **Priority**: 🟡 **MEDIUM**
    - **Effort**: Medium
    - **Impact**: Medium - Pattern-based file access issues
 
 ### Low Priority Gaps (Enhancement Opportunities)
 
-6. **Framework Requirements Validation (Level 1)**
+5. **Framework Requirements Validation (Level 1)**
    - **Priority**: 🟢 **LOW**
    - **Effort**: Medium
    - **Impact**: Low - Framework version mismatches
 
-7. **Enhanced Alias Support Reporting (Level 3)**
+6. **Enhanced Alias Support Reporting (Level 3)**
    - **Priority**: 🟢 **LOW**
    - **Effort**: Low
    - **Impact**: Low - Improved user experience
@@ -228,22 +231,22 @@ The developer guide defines **4 main alignment principles** with specific valida
    - Implement consistency checks across all 4 levels
    - Provide unified consistency reporting
 
-4. **Enhance SageMaker Component Parameter Validation**
-   - Add SageMaker component parameter mapping validation
-   - Validate parameter passing from config to SageMaker components
-   - Provide detailed parameter mapping reports
-
 ### Long-term Actions (Next Quarter)
 
-5. **Enhance File Pattern Validation**
+4. **Enhance File Pattern Validation**
    - Add pattern-based file access validation to static analysis
    - Support glob patterns and regex patterns
    - Integrate with existing file operations validation
 
-6. **Implement Framework Requirements Validation**
+5. **Implement Framework Requirements Validation**
    - Add framework requirements validation against script imports
    - Validate version compatibility
    - Provide framework dependency reports
+
+6. **Enhance Alias Support Reporting (Level 3)**
+   - Improve validation reporting to clearly indicate when alias matching is used
+   - Provide detailed feedback about alias-based dependency resolution
+   - Enhance user experience with clearer validation messages
 
 ## Success Metrics
 
