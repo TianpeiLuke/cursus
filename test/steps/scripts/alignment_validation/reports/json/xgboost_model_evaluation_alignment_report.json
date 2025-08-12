@@ -6,16 +6,6 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
           "path": "/opt/ml/processing/input/model",
@@ -26,22 +16,32 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
-        "details": {
-          "path": "/opt/ml/processing/input/eval_data",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either use path /opt/ml/processing/input/eval_data in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
         "details": {
           "path": "/opt/ml/processing/output/metrics",
           "script": "xgboost_model_evaluation"
         },
         "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
+        "details": {
+          "path": "/opt/ml/processing/input/eval_data",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Either use path /opt/ml/processing/input/eval_data in script or remove from contract"
       },
       {
         "severity": "WARNING",
@@ -68,6 +68,17 @@
       {
         "severity": "WARNING",
         "category": "arguments",
+        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
+        "details": {
+          "cli_argument": "output-metrics-dir",
+          "python_attribute": "output_metrics_dir",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
         "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
         "details": {
           "cli_argument": "output-eval-dir",
@@ -87,17 +98,6 @@
           "source": "builder"
         },
         "recommendation": "Argument --job-type is provided by builder - no action needed"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
-        "details": {
-          "cli_argument": "output-metrics-dir",
-          "python_attribute": "output_metrics_dir",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Add --output-metrics-dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -124,17 +124,6 @@
       {
         "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "operation": "write",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
         "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
         "details": {
           "path": "/opt/ml/processing/output/metrics",
@@ -142,6 +131,17 @@
           "script": "xgboost_model_evaluation"
         },
         "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
+      },
+      {
+        "severity": "WARNING",
+        "category": "file_operations",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "operation": "write",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -331,10 +331,10 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "DummyTraining",
-              "XGBoostModel",
-              "XGBoostTraining",
               "PyTorchTraining",
+              "DummyTraining",
+              "XGBoostTraining",
+              "XGBoostModel",
               "PyTorchModel"
             ],
             "data_type": "S3Uri",
@@ -346,8 +346,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "CurrencyConversion",
               "TabularPreprocessing",
+              "CurrencyConversion",
               "RiskTableMapping"
             ],
             "data_type": "S3Uri",
@@ -382,10 +382,10 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "DummyTraining",
-              "XGBoostModel",
-              "XGBoostTraining",
               "PyTorchTraining",
+              "DummyTraining",
+              "XGBoostTraining",
+              "XGBoostModel",
               "PyTorchModel"
             ],
             "data_type": "S3Uri",
@@ -397,8 +397,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "CurrencyConversion",
               "TabularPreprocessing",
+              "CurrencyConversion",
               "RiskTableMapping"
             ],
             "data_type": "S3Uri",
@@ -432,10 +432,10 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "DummyTraining",
-                "XGBoostModel",
-                "XGBoostTraining",
                 "PyTorchTraining",
+                "DummyTraining",
+                "XGBoostTraining",
+                "XGBoostModel",
                 "PyTorchModel"
               ],
               "data_type": "S3Uri",
@@ -447,8 +447,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "CurrencyConversion",
                 "TabularPreprocessing",
+                "CurrencyConversion",
                 "RiskTableMapping"
               ],
               "data_type": "S3Uri",
@@ -479,10 +479,10 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "DummyTraining",
-            "XGBoostModel",
-            "XGBoostTraining",
             "PyTorchTraining",
+            "DummyTraining",
+            "XGBoostTraining",
+            "XGBoostModel",
             "PyTorchModel"
           ],
           "data_type": "S3Uri",
@@ -494,8 +494,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "CurrencyConversion",
             "TabularPreprocessing",
+            "CurrencyConversion",
             "RiskTableMapping"
           ],
           "data_type": "S3Uri",
@@ -549,10 +549,10 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "DummyTraining",
-            "XGBoostModel",
-            "XGBoostTraining",
             "PyTorchTraining",
+            "DummyTraining",
+            "XGBoostTraining",
+            "XGBoostModel",
             "PyTorchModel"
           ],
           "data_type": "S3Uri",
@@ -564,8 +564,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "CurrencyConversion",
             "TabularPreprocessing",
+            "CurrencyConversion",
             "RiskTableMapping"
           ],
           "data_type": "S3Uri",
@@ -662,7 +662,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py",
     "contract_mapping": "xgboost_model_evaluation_contract",
-    "validation_timestamp": "2025-08-11T21:51:24.855655",
+    "validation_timestamp": "2025-08-11T22:28:14.569992",
     "validator_version": "1.0.0"
   }
 }

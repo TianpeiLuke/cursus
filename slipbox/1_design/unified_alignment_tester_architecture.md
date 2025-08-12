@@ -25,6 +25,7 @@ date of note: 2025-08-11
 - **[Master Design](unified_alignment_tester_master_design.md)** - Complete system overview
 - **[Data Structures](alignment_validation_data_structures.md)** - Core data structure designs
 - **[Implementation Guide](unified_alignment_tester_implementation.md)** - Production implementation details
+- **[Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)** - Comprehensive analysis of validation challenges that informed the architectural breakthroughs documented here
 
 ## Overview
 

@@ -575,22 +575,22 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: label_field",
-        "details": {
-          "field_name": "label_field",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field label_field in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: marketplace_id_col",
         "details": {
           "field_name": "marketplace_id_col",
           "builder": "currency_conversion"
         },
         "recommendation": "Access required field marketplace_id_col in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: label_field",
+        "details": {
+          "field_name": "label_field",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field label_field in builder or make it optional"
       },
       {
         "severity": "INFO",
@@ -600,8 +600,8 @@
           "required_fields": [
             "currency_conversion_dict",
             "marketplace_info",
-            "label_field",
-            "marketplace_id_col"
+            "marketplace_id_col",
+            "label_field"
           ],
           "builder": "currency_conversion"
         },
@@ -801,7 +801,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-11T21:51:24.653988",
+    "validation_timestamp": "2025-08-11T22:28:14.384550",
     "validator_version": "1.0.0"
   }
 }

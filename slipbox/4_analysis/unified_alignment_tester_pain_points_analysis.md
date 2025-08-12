@@ -840,9 +840,21 @@ This analysis strongly supports the evolution toward a two-level alignment valid
 
 This analysis builds upon and informs several key design and planning documents:
 
-### Design Documents
+### Core Design Documents
+- **[Alignment Rules](../0_developer_guide/alignment_rules.md)**: Centralized alignment guidance and principles that address the naming convention issues identified in this analysis
 - **[Two-Level Alignment Validation System Design](../1_design/two_level_alignment_validation_system_design.md)**: Original architectural design for the two-level validation approach that this analysis validates as necessary
 - **[Unified Alignment Tester Design](../1_design/unified_alignment_tester_design.md)**: Design document for the unified tester approach that this analysis identifies as fundamentally flawed
+
+### Revolutionary Solution Design Documents
+- **[Unified Alignment Tester Master Design](../1_design/unified_alignment_tester_master_design.md)**: Master design document showing the production-ready validation system that addresses all pain points identified in this analysis
+- **[Unified Alignment Tester Architecture](../1_design/unified_alignment_tester_architecture.md)**: Core architectural patterns that solve the systematic issues documented here
+- **[Alignment Validation Data Structures](../1_design/alignment_validation_data_structures.md)**: Critical data structures for the breakthrough implementations
+
+### Level-Specific Solution Designs
+- **[Level 1: Script Contract Alignment Design](../1_design/level1_script_contract_alignment_design.md)**: Enhanced static analysis and hybrid sys.path management that achieved 100% success rate, solving the file operations detection failures documented here
+- **[Level 2: Contract Specification Alignment Design](../1_design/level2_contract_specification_alignment_design.md)**: Smart Specification Selection breakthrough that solved the multi-variant specification handling issues identified in this analysis
+- **[Level 3: Specification Dependency Alignment Design](../1_design/level3_specification_dependency_alignment_design.md)**: Production dependency resolver integration and canonical name mapping that addressed the systematic dependency resolution failures
+- **[Level 4: Builder Configuration Alignment Design](../1_design/level4_builder_configuration_alignment_design.md)**: Hybrid file resolution system that solved the configuration alignment issues while maintaining architectural validity
 
 ### Level-Specific Analysis Documents
 

@@ -144,8 +144,8 @@
             "required": true,
             "compatible_sources": [
               "TrainingStep",
-              "ModelStep",
-              "XGBoostTraining"
+              "XGBoostTraining",
+              "ModelStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -194,8 +194,8 @@
             "required": true,
             "compatible_sources": [
               "TrainingStep",
-              "ModelStep",
-              "XGBoostTraining"
+              "XGBoostTraining",
+              "ModelStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -243,8 +243,8 @@
               "required": true,
               "compatible_sources": [
                 "TrainingStep",
-                "ModelStep",
-                "XGBoostTraining"
+                "XGBoostTraining",
+                "ModelStep"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be packaged"
@@ -289,8 +289,8 @@
           "required": true,
           "compatible_sources": [
             "TrainingStep",
-            "ModelStep",
-            "XGBoostTraining"
+            "XGBoostTraining",
+            "ModelStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -358,8 +358,8 @@
           "required": true,
           "compatible_sources": [
             "TrainingStep",
-            "ModelStep",
-            "XGBoostTraining"
+            "XGBoostTraining",
+            "ModelStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -504,7 +504,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T21:51:24.732063",
+    "validation_timestamp": "2025-08-11T22:28:14.445437",
     "validator_version": "1.0.0"
   }
 }
