@@ -23,12 +23,14 @@ from pathlib import Path
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow.steps import ProcessingStep
 
-from ..pipeline_deps.base_specifications import StepSpecification
-from ..pipeline_script_contracts.base_script_contract import ScriptContract
-from .builder_step_base import StepBuilderBase
-from .config_your_step import YourStepConfig
-from ..pipeline_step_specs.your_step_spec import YOUR_STEP_SPEC
+from ...core.base.specification_base import StepSpecification
+from ...core.base.contract_base import ScriptContract
+from ...core.base.builder_base import StepBuilderBase
+from ..configs.config_your_step import YourStepConfig
+from ..specs.your_step_spec import YOUR_STEP_SPEC
+from ..registry.builder_registry import register_builder
 
+@register_builder()
 class YourStepBuilder(StepBuilderBase):
     """Builder for YourStep processing step."""
     
@@ -139,31 +141,204 @@ class YourStepBuilder(StepBuilderBase):
 
 ## How to Develop a Step Builder
 
-### 1. Choose the Right Base Class
+### 1. Choose the Right Base Class and Design Pattern
 
-Select the appropriate base builder for your step type:
+Select the appropriate base builder for your step type. **Important**: Different SageMaker step types require different design patterns and implementation approaches. Refer to the detailed design documents for step-type-specific patterns:
 
+#### Base Classes
 - **StepBuilderBase**: Base class for all step builders
 - **ProcessingStepBuilder**: For processing steps
 - **TrainingStepBuilder**: For training steps
 - **ModelStepBuilder**: For model steps
 - **TransformStepBuilder**: For transform steps
 
+#### Step-Type-Specific Design Patterns
+
+Each SageMaker step type has unique characteristics and requirements. Consult these design documents for detailed implementation patterns:
+
+- **Processing Steps**: See [`slipbox/1_design/processing_step_builder_patterns.md`](../1_design/processing_step_builder_patterns.md)
+  - ProcessingStep creation patterns
+  - Input/output handling for processing jobs
+  - Environment variable management
+  - Container and script configuration
+
+- **Training Steps**: See [`slipbox/1_design/training_step_builder_patterns.md`](../1_design/training_step_builder_patterns.md)
+  - TrainingStep and estimator patterns
+  - Hyperparameter handling
+  - Training input channels
+  - Model artifact management
+
+- **Transform Steps**: See [`slipbox/1_design/transform_step_builder_patterns.md`](../1_design/transform_step_builder_patterns.md)
+  - TransformStep creation patterns
+  - Batch transform configuration
+  - Input/output data handling
+  - Transform job parameters
+
+- **Model Creation Steps**: See [`slipbox/1_design/createmodel_step_builder_patterns.md`](../1_design/createmodel_step_builder_patterns.md)
+  - CreateModelStep patterns
+  - Model registration and deployment
+  - Container image configuration
+  - Model artifact handling
+
+- **Comprehensive Overview**: See [`slipbox/1_design/step_builder_patterns_summary.md`](../1_design/step_builder_patterns_summary.md)
+  - Summary of all step builder patterns
+  - Comparison of different approaches
+  - Best practices across step types
+
+#### Why Step-Type-Specific Patterns Matter
+
+Different SageMaker step types have fundamentally different:
+- **SDK Integration**: Different SageMaker SDK classes (ProcessingStep, TrainingStep, TransformStep, etc.)
+- **Resource Configuration**: Different resource types (processors, estimators, transformers, models)
+- **Input/Output Handling**: Different data flow patterns and requirements
+- **Parameter Management**: Different ways to pass parameters (environment variables, hyperparameters, etc.)
+- **Dependency Patterns**: Different ways steps connect and share data
+
+**Always consult the appropriate design pattern document** before implementing a step builder for a specific SageMaker step type.
+
 ### 2. Handle Job Type Variants
 
-If your step supports multiple job types (training, calibration, etc.), implement the logic to select the appropriate specification:
+Many steps in the pipeline support different job types (e.g., "training", "calibration", "validation", "testing") that require different specifications and behaviors. Here's how to implement this pattern:
+
+#### Understanding Job Type Variants
+
+Job type variants allow the same step builder to handle different use cases:
+- **Training**: Process data for model training
+- **Calibration**: Process data for model calibration
+- **Validation**: Process data for model validation
+- **Testing**: Process data for final testing
+
+Each job type may have:
+- Different input/output requirements
+- Different processing logic
+- Different specifications
+
+#### Implementation Pattern
 
 ```python
-def _get_spec_for_job_type(self, job_type: str) -> StepSpecification:
-    """Get the appropriate specification based on job type."""
-    job_type = job_type.lower()
+from typing import Dict, Optional, Any, List
+from pathlib import Path
+import logging
+import importlib
+
+from sagemaker.workflow.steps import ProcessingStep, Step
+from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.sklearn import SKLearnProcessor
+
+from ..configs.config_your_step import YourStepConfig
+from ...core.base.builder_base import StepBuilderBase
+from ..registry.builder_registry import register_builder
+
+# Import different specifications for different job types
+try:
+    from ..specs.your_step_training_spec import YOUR_STEP_TRAINING_SPEC
+    from ..specs.your_step_calibration_spec import YOUR_STEP_CALIBRATION_SPEC
+    from ..specs.your_step_validation_spec import YOUR_STEP_VALIDATION_SPEC
+    from ..specs.your_step_testing_spec import YOUR_STEP_TESTING_SPEC
+    SPECS_AVAILABLE = True
+except ImportError:
+    YOUR_STEP_TRAINING_SPEC = YOUR_STEP_CALIBRATION_SPEC = YOUR_STEP_VALIDATION_SPEC = YOUR_STEP_TESTING_SPEC = None
+    SPECS_AVAILABLE = False
+
+@register_builder()
+class YourStepBuilder(StepBuilderBase):
+    """Builder that supports multiple job type variants."""
     
-    if job_type == "calibration":
-        return CALIBRATION_SPEC
-    elif job_type == "validation":
-        return VALIDATION_SPEC
-    else:
-        return TRAINING_SPEC  # Default
+    def __init__(self, config, **kwargs):
+        # Get job type from config
+        if not hasattr(config, 'job_type'):
+            raise ValueError("config.job_type must be specified")
+            
+        job_type = config.job_type.lower()
+        
+        # Select appropriate specification based on job type
+        spec = self._get_spec_for_job_type(job_type)
+        
+        super().__init__(config=config, spec=spec, **kwargs)
+        self.config: YourStepConfig = config
+    
+    def _get_spec_for_job_type(self, job_type: str):
+        """Get the appropriate specification for the given job type."""
+        if job_type == "training" and YOUR_STEP_TRAINING_SPEC is not None:
+            return YOUR_STEP_TRAINING_SPEC
+        elif job_type == "calibration" and YOUR_STEP_CALIBRATION_SPEC is not None:
+            return YOUR_STEP_CALIBRATION_SPEC
+        elif job_type == "validation" and YOUR_STEP_VALIDATION_SPEC is not None:
+            return YOUR_STEP_VALIDATION_SPEC
+        elif job_type == "testing" and YOUR_STEP_TESTING_SPEC is not None:
+            return YOUR_STEP_TESTING_SPEC
+        else:
+            # Try dynamic import as fallback
+            try:
+                module_path = f"..specs.your_step_{job_type}_spec"
+                module = importlib.import_module(module_path, package=__package__)
+                spec_var_name = f"YOUR_STEP_{job_type.upper()}_SPEC"
+                if hasattr(module, spec_var_name):
+                    return getattr(module, spec_var_name)
+            except (ImportError, AttributeError):
+                self.log_warning("Could not import specification for job type: %s", job_type)
+                
+        raise ValueError(f"No specification found for job type: {job_type}")
+```
+
+#### Real Example from TabularPreprocessingStepBuilder
+
+Here's how the actual `TabularPreprocessingStepBuilder` handles job type variants:
+
+```python
+@register_builder()
+class TabularPreprocessingStepBuilder(StepBuilderBase):
+    def __init__(self, config, **kwargs):
+        # Get job type from config
+        if not hasattr(config, 'job_type'):
+            raise ValueError("config.job_type must be specified")
+            
+        job_type = config.job_type.lower()
+        
+        # Get specification based on job type
+        if job_type == "training" and TABULAR_PREPROCESSING_TRAINING_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_TRAINING_SPEC
+        elif job_type == "calibration" and TABULAR_PREPROCESSING_CALIBRATION_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_CALIBRATION_SPEC
+        elif job_type == "validation" and TABULAR_PREPROCESSING_VALIDATION_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_VALIDATION_SPEC
+        elif job_type == "testing" and TABULAR_PREPROCESSING_TESTING_SPEC is not None:
+            spec = TABULAR_PREPROCESSING_TESTING_SPEC
+        else:
+            raise ValueError(f"No specification found for job type: {job_type}")
+                
+        super().__init__(config=config, spec=spec, **kwargs)
+        self.config: TabularPreprocessingConfig = config
+```
+
+#### Key Benefits of Job Type Variants
+
+1. **Single Builder Class**: One builder handles multiple use cases
+2. **Specification-Driven**: Different specifications define different behaviors
+3. **Flexible Dependencies**: Each job type can have different input requirements
+4. **Consistent Interface**: Same configuration class, different specifications
+
+#### When to Use Job Type Variants
+
+Use job type variants when:
+- The same processing logic applies to different data types (training vs validation data)
+- Different specifications are needed for different pipeline phases
+- You want to reuse the same step builder for multiple purposes
+- The core processing remains the same but inputs/outputs differ
+
+#### Alternative: Separate Builders
+
+If job types are very different, consider separate builders:
+```python
+@register_builder()
+class YourStepTrainingBuilder(StepBuilderBase):
+    """Dedicated builder for training job type."""
+    pass
+
+@register_builder()
+class YourStepCalibrationBuilder(StepBuilderBase):
+    """Dedicated builder for calibration job type."""
+    pass
 ```
 
 ### 3. Implement Input/Output Handling
@@ -235,42 +410,119 @@ def _get_processor(self):
 
 ### 6. Implement Step Creation
 
-Override the `create_step` method to create the actual SageMaker step:
+Override the `create_step` method to create the actual SageMaker step. Here's the proper implementation pattern based on the actual `PackageStepBuilder`:
 
 ```python
 def create_step(self, **kwargs) -> ProcessingStep:
-    """Create the processing step."""
-    # Extract inputs from dependencies using the resolver
+    """
+    Create the processing step using the specification-driven approach.
+
+    Args:
+        **kwargs: Keyword arguments for configuring the step, including:
+            - inputs: Input data sources keyed by logical name
+            - outputs: Output destinations keyed by logical name
+            - dependencies: Optional list of steps that this step depends on
+            - enable_caching: A boolean indicating whether to cache the results of this step
+
+    Returns:
+        A configured sagemaker.workflow.steps.ProcessingStep instance.
+    """
+    self.log_info("Creating ProcessingStep...")
+
+    # Extract parameters from kwargs
+    inputs_raw = kwargs.get('inputs', {})
+    outputs = kwargs.get('outputs', {})
     dependencies = kwargs.get('dependencies', [])
-    extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+    enable_caching = kwargs.get('enable_caching', True)
     
-    # Get processor inputs and outputs
-    inputs = self._get_inputs(extracted_inputs)
-    outputs = self._get_outputs({})
+    # Handle inputs - combine dependency-extracted and explicitly provided inputs
+    inputs = {}
     
-    # Create processor
-    processor = self._get_processor()
+    # If dependencies are provided, extract inputs from them
+    if dependencies:
+        try:
+            extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+            inputs.update(extracted_inputs)
+        except Exception as e:
+            self.log_warning("Failed to extract inputs from dependencies: %s", e)
+            
+    # Add explicitly provided inputs (overriding any extracted ones)
+    inputs.update(inputs_raw)
     
-    # Set environment variables
-    env_vars = self._get_processor_env_vars()
+    # Add direct keyword arguments (e.g., DATA, METADATA from template)
+    for key in ["DATA", "METADATA", "SIGNATURE"]:
+        if key in kwargs and key not in inputs:
+            inputs[key] = kwargs[key]
     
-    # Create and return the step
-    # Use automatic step naming - no parameter needed for _get_step_name()
-    step = processor.run(
-        inputs=inputs,
-        outputs=outputs,
-        container_arguments=[],
-        container_entrypoint=["python", self.config.get_script_path()],
-        job_name=self._generate_job_name(),  # Automatic step type detection - no parameter needed
-        wait=False,
-        environment=env_vars
+    # Create processor and get inputs/outputs using specification-driven methods
+    processor = self._create_processor()
+    proc_inputs = self._get_inputs(inputs)
+    proc_outputs = self._get_outputs(outputs)
+    job_args = self._get_job_arguments()
+
+    # Get step name using standardized method with auto-detection
+    step_name = self._get_step_name()
+    
+    # Get script path from config or contract
+    script_path = self.config.get_script_path()
+    if not script_path and self.contract:
+        script_path = self.contract.entry_point
+    
+    # Create the ProcessingStep using SageMaker SDK
+    step = ProcessingStep(
+        name=step_name,
+        processor=processor,
+        inputs=proc_inputs,
+        outputs=proc_outputs,
+        code=script_path,
+        job_arguments=job_args,
+        depends_on=dependencies,
+        cache_config=self._get_cache_config(enable_caching)
     )
     
-    # Store specification in step for future reference
-    setattr(step, '_spec', self.spec)
-    
+    # Attach specification to the step for future reference
+    if hasattr(self, 'spec') and self.spec:
+        setattr(step, '_spec', self.spec)
+        
+    self.log_info("Created ProcessingStep with name: %s", step.name)
     return step
 ```
+
+#### Key Implementation Details
+
+1. **Parameter Extraction**: Extract all parameters from `**kwargs` including inputs, outputs, dependencies, and caching settings
+
+2. **Input Handling**: 
+   - Extract inputs from dependencies using the dependency resolver
+   - Merge with explicitly provided inputs
+   - Handle special keyword arguments like DATA, METADATA, SIGNATURE
+
+3. **Processor Creation**: Use the `_create_processor()` method to create the SageMaker processor
+
+4. **Specification-Driven I/O**: Use `_get_inputs()` and `_get_outputs()` methods that leverage the step specification and script contract
+
+5. **Step Configuration**: 
+   - Use `_get_step_name()` for automatic step naming
+   - Get script path from config or contract
+   - Configure caching with `_get_cache_config()`
+
+6. **ProcessingStep Creation**: Create the actual SageMaker `ProcessingStep` with all configured parameters
+
+7. **Specification Attachment**: Attach the specification to the step for future reference
+
+#### Error Handling
+
+The implementation includes proper error handling:
+- Graceful handling of dependency extraction failures
+- Logging of warnings and information
+- Fallback mechanisms for script paths
+
+#### Flexibility
+
+The method supports various input sources:
+- Dependency-extracted inputs (automatic)
+- Explicitly provided inputs (override)
+- Direct keyword arguments (template support)
 
 ## Dependency Resolution
 
@@ -670,15 +922,125 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         return step
 ```
 
+## Step Builder Registration
+
+> **📖 For comprehensive information about the step builder registry system, see:**
+> - **[Step Builder Registry Guide](step_builder_registry_guide.md)** - Complete guide to the registry architecture and implementation
+> - **[Step Builder Registry Usage](step_builder_registry_usage.md)** - Practical usage examples and best practices
+
+### Automatic Registration with Decorator
+
+The most important step when creating a new step builder is to register it with the system using the `@register_builder()` decorator:
+
+```python
+from ..registry.builder_registry import register_builder
+
+@register_builder()
+class YourNewStepBuilder(StepBuilderBase):
+    """Builder for your new step type."""
+    pass
+```
+
+The `@register_builder()` decorator:
+
+1. **Automatically discovers the step type** from the class name using the centralized `STEP_NAMES` registry
+2. **Registers the builder** in the global registry for automatic discovery
+3. **Enables pipeline assembly** to find and use your builder
+4. **Supports step type variants** for different job types
+
+### Manual Registration (Alternative)
+
+If you need more control over the registration process:
+
+```python
+from ..registry.builder_registry import register_global_builder
+
+# Register manually with explicit step type
+register_global_builder("YourStepType", YourStepBuilder)
+```
+
+### Registration Requirements
+
+For successful registration, ensure:
+
+1. **Class Name Convention**: Your builder class should end with `StepBuilder` (e.g., `TabularPreprocessingStepBuilder`)
+2. **Step Names Registry**: Add your step to the `STEP_NAMES` registry in `src/cursus/steps/registry/step_names.py`
+3. **Module Import**: Your builder module should be importable from the builders package
+4. **Base Class**: Your builder must extend `StepBuilderBase`
+
+### Adding to Step Names Registry
+
+Add your step to the centralized registry:
+
+```python
+# In src/cursus/steps/registry/step_names.py
+STEP_NAMES = {
+    # ... existing entries ...
+    "YourStepType": {
+        "builder_step_name": "YourStepTypeStepBuilder",
+        "config_class": "YourStepTypeConfig",
+        "step_name_template": "your-step-{job_type}",
+        "description": "Description of your step type"
+    }
+}
+```
+
+### Module Structure for New Step Builder
+
+When creating a new step builder, follow this structure:
+
+```
+src/cursus/steps/builders/
+├── __init__.py                          # Import and export your builder
+├── builder_your_step_type.py           # Your step builder implementation
+└── ...
+```
+
+Update `__init__.py` to include your builder:
+
+```python
+# In src/cursus/steps/builders/__init__.py
+from .builder_your_step_type import YourStepTypeStepBuilder
+
+__all__ = [
+    # ... existing builders ...
+    "YourStepTypeStepBuilder",
+]
+```
+
+### Verification
+
+To verify your step builder is properly registered:
+
+```python
+from cursus.steps.registry.builder_registry import get_global_registry
+
+registry = get_global_registry()
+
+# Check if your step type is supported
+print(registry.is_step_type_supported("YourStepType"))
+
+# List all supported step types
+print(registry.list_supported_step_types())
+
+# Get validation results
+validation_results = registry.validate_registry()
+print(validation_results)
+```
+
 ## Best Practices
 
-1. **Use Specification-Driven Methods**: Leverage built-in methods for input/output handling
-2. **Handle Job Type Variants**: Implement proper selection of specifications for different job types
-3. **Validate Configuration**: Add validation to ensure configuration is complete and valid
-4. **Provide Meaningful Errors**: Include helpful error messages when validation fails
-5. **Log Key Information**: Log important information for debugging
-6. **Follow SageMaker Best Practices**: Adhere to SageMaker's conventions for resource creation
-7. **Use Strong Typing**: Add type hints to improve code quality
-8. **Test Edge Cases**: Write unit tests for various configuration scenarios
+1. **Always Use the Registration Decorator**: Use `@register_builder()` on every step builder class
+2. **Follow Naming Conventions**: End class names with `StepBuilder` and use PascalCase
+3. **Update Central Registry**: Add entries to `STEP_NAMES` registry for proper integration
+4. **Use Specification-Driven Methods**: Leverage built-in methods for input/output handling
+5. **Handle Job Type Variants**: Implement proper selection of specifications for different job types
+6. **Validate Configuration**: Add validation to ensure configuration is complete and valid
+7. **Provide Meaningful Errors**: Include helpful error messages when validation fails
+8. **Log Key Information**: Log important information for debugging
+9. **Follow SageMaker Best Practices**: Adhere to SageMaker's conventions for resource creation
+10. **Use Strong Typing**: Add type hints to improve code quality
+11. **Test Edge Cases**: Write unit tests for various configuration scenarios
+12. **Export from Module**: Always add new builders to the `__init__.py` exports
 
-By following these guidelines, your step builders will provide a robust implementation that connects specifications to SageMaker steps while maintaining separation of concerns.
+By following these guidelines, your step builders will provide a robust implementation that connects specifications to SageMaker steps while maintaining separation of concerns and proper integration with the pipeline system.

@@ -375,6 +375,14 @@ The PropertyReference design provides several key benefits:
 - [Dependency Resolver](dependency_resolver.md): Creates PropertyReference objects during resolution
 - [Pipeline Assembler](../pipeline_builder/pipeline_assembler.md): Uses PropertyReference objects for step wiring
 
+## Related Documents
+
+- **[SageMaker Property Path Reference Database](../../0_developer_guide/sagemaker_property_path_reference_database.md)** - Comprehensive database of valid property paths for all SageMaker step types with validation patterns and examples, essential for understanding the property paths that PropertyReference must parse
+- **[SageMaker Step Type Classification Design](../../1_design/sagemaker_step_type_classification_design.md)** - Step type classification system that determines which property path patterns are valid for each step builder type
+- **[Step Specification Development Guide](../../0_developer_guide/step_specification.md)** - Practical guide for developing step specifications that define the OutputSpec objects used by PropertyReference
+- **[Alignment Rules](../../0_developer_guide/alignment_rules.md)** - Centralized alignment guidance including Property Path Validation rules that PropertyReference must comply with
+- **[Property Path Validation (Level 2) Implementation Plan](../../2_project_planning/2025-08-12_property_path_validation_level2_implementation_plan.md)** - Implementation plan for enhancing property path validation that directly impacts PropertyReference functionality
+
 ## SageMaker Step Properties Reference
 
 The following is a comprehensive list of SageMaker step properties organized by step type. This reference is valuable for understanding the property paths that need to be parsed by the PropertyReference class.
@@ -548,3 +556,15 @@ These examples confirm that property path parsing must support:
 - Array indexing with numeric indices (e.g., `Containers[0]`)
 - Mixed patterns with both types of access (e.g., `TrainingJobSummaries[0].TrainingJobName`)
 - Multiple levels of nesting (e.g., `BestTrainingJob.FinalHyperParameterTuningJobObjectiveMetric.Value`)
+
+### Reference
+
+For the most comprehensive and up-to-date property path validation patterns and examples, refer to the **[SageMaker Property Path Reference Database](../../0_developer_guide/sagemaker_property_path_reference_database.md)**, which provides:
+
+- Complete validation patterns for all SageMaker step types
+- Official AWS API documentation references for each property path
+- Common output examples and usage patterns
+- Step type to SageMaker step mapping
+- Validation rules and error handling guidance
+
+The property paths listed in this section are maintained for historical reference and PropertyReference implementation context, but the comprehensive database should be considered the authoritative source for property path validation and patterns.

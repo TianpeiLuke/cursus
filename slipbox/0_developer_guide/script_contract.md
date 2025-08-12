@@ -19,7 +19,7 @@ A script contract is defined using the `ScriptContract` class and includes the f
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 
-from .base_script_contract import ScriptContract
+from ...core.base.contract_base import ScriptContract
 
 YOUR_SCRIPT_CONTRACT = ScriptContract(
     entry_point="your_script.py",
@@ -149,8 +149,8 @@ This can cause issues if your script expects to create a file at a path where Sa
 Define your contract in a new file:
 
 ```python
-# src/pipeline_script_contracts/your_script_contract.py
-from .base_script_contract import ScriptContract
+# src/cursus/steps/contracts/your_script_contract.py
+from ...core.base.contract_base import ScriptContract
 
 YOUR_SCRIPT_CONTRACT = ScriptContract(
     entry_point="your_script.py",

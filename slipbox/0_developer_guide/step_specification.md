@@ -241,7 +241,7 @@ Property paths follow a standardized format based on output type:
 | ModelArtifacts | `properties.ModelArtifacts.S3ModelArtifacts` | `properties.ModelArtifacts.S3ModelArtifacts` |
 | TransformOutput | `properties.TransformOutput.S3OutputPath` | `properties.TransformOutput.S3OutputPath` |
 
-For detailed information on SageMaker property reference paths and formats, refer to the [SageMaker Data Dependency Property Reference Documentation](https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference).
+For detailed information on SageMaker property reference paths and formats, refer to the [SageMaker Data Dependency Property Reference Documentation](https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference) and the comprehensive [SageMaker Property Path Reference Database](sagemaker_property_path_reference_database.md).
 
 ## DependencySpec Creation Guidelines
 

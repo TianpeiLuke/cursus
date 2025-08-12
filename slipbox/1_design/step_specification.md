@@ -249,3 +249,6 @@ Step Specifications are the **architectural foundation** that enables all higher
 ## References
 
 1. [SageMaker Data Dependency Property Reference Documentation](https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference) - Official SageMaker documentation on property references for pipeline steps, essential for understanding the format of property paths used in OutputSpec.
+2. [SageMaker Property Path Reference Database](../0_developer_guide/sagemaker_property_path_reference_database.md) - Comprehensive database of valid property paths for all SageMaker step types with validation patterns and examples.
+3. [Step Specification Development Guide](../0_developer_guide/step_specification.md) - Practical guide for developing step specifications with examples and best practices.
+4. [Alignment Rules](../0_developer_guide/alignment_rules.md) - Centralized alignment guidance including Property Path Validation rules for ensuring SageMaker compatibility.

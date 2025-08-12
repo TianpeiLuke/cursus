@@ -1,15 +1,24 @@
 ---
-title: "SageMaker Step Type Classification Design"
-date: "2025-01-08"
-author: "System Architect"
-status: "Draft"
-version: "1.0"
 tags:
-  - "design"
-  - "step-registry"
-  - "sagemaker"
-  - "testing"
-  - "automation"
+  - design
+  - step_registry
+  - sagemaker_integration
+  - step_type_classification
+  - testing_framework
+keywords:
+  - SageMaker step types
+  - step builder classification
+  - registry enhancement
+  - automated testing
+  - step type validation
+  - universal test framework
+topics:
+  - step builder registry
+  - SageMaker integration
+  - testing automation
+  - step type validation
+language: python
+date of note: 2025-01-08
 ---
 
 # SageMaker Step Type Classification Design
@@ -476,3 +485,4 @@ The proposed implementation maintains backward compatibility while adding powerf
 - [step_builder_registry_design.md](step_builder_registry_design.md)
 - [universal_step_builder_test.md](universal_step_builder_test.md)
 - [standardization_rules.md](standardization_rules.md)
+- [SageMaker Property Path Reference Database](../0_developer_guide/sagemaker_property_path_reference_database.md) - Comprehensive property path validation patterns for all SageMaker step types, essential for property path validation based on step type classification

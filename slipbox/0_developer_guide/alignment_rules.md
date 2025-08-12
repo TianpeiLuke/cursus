@@ -17,7 +17,12 @@ This document centralizes all alignment guidance for pipeline step development. 
    - Dependencies declared in the Step Specification must match upstream step outputs by logical name or alias.  
    - `DependencySpec.compatible_sources` must list all steps that produce the required output.
 
-4. **Builder ↔ Configuration**  
+4. **Specification ↔ SageMaker Property Paths**  
+   - Property paths in `OutputSpec` must be valid for the corresponding SageMaker step type.  
+   - Property paths must follow SageMaker API patterns as defined in the [SageMaker Property Path Reference Database](sagemaker_property_path_reference_database.md).  
+   - Step type classification must align with SageMaker step types (TrainingStep, ProcessingStep, TransformStep, etc.).
+
+5. **Builder ↔ Configuration**  
    - Step Builders must pass configuration parameters to SageMaker components according to the config class.  
    - Environment variables set in the builder (`_get_processor_env_vars`) must cover all `required_env_vars` from the contract.
 
@@ -53,7 +58,7 @@ args.default_currency  # argparse converts default-currency → default_currency
 #### Path Usage
 
 ```python
-from src.pipeline_script_contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+from ...core.base.contract_base import ScriptContract
 
 # Script path must match contract exactly
 input_path = TABULAR_PREPROCESS_CONTRACT.expected_input_paths["DATA"] + "/file.csv"
@@ -63,7 +68,7 @@ assert "/opt/ml/processing/input/data" in input_path
 ### Contract ↔ Specification
 
 ```python
-from src.pipeline_step_specs.step_specification import StepSpecification, DependencySpec
+from ...core.base.specification_base import StepSpecification, DependencySpec
 
 spec = StepSpecification(
     step_type="TabularPreprocessing",
@@ -81,8 +86,8 @@ assert "DATA" in spec.dependencies
 ### Specification ↔ Dependencies
 
 ```python
-from src.pipeline_step_specs.step_specification import StepSpecification, DependencySpec, OutputSpec
-from src.pipeline_deps.dependency_resolver import UnifiedDependencyResolver
+from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec
+from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
 # Define a spec with dependency and output
 spec = StepSpecification(
@@ -109,14 +114,158 @@ matches = resolver.find_compatible_sources(
 assert any(m.step.step_type == "TabularPreprocessing" for m in matches)
 ```
 
+### Specification ↔ SageMaker Property Paths
+
+**Reference**: [SageMaker Property Path Reference Database](sagemaker_property_path_reference_database.md)
+
+#### Valid Property Path Examples by Step Type
+
+```python
+# TrainingStep - Valid property paths
+training_spec = StepSpecification(
+    step_type="PyTorchTraining",  # Maps to SageMaker TrainingStep
+    outputs={
+        "model_artifacts": OutputSpec(
+            logical_name="model_artifacts",
+            property_path="properties.ModelArtifacts.S3ModelArtifacts"  # ✅ Valid for TrainingStep
+        ),
+        "training_metrics": OutputSpec(
+            logical_name="training_metrics", 
+            property_path="properties.FinalMetricDataList['val:acc'].Value"  # ✅ Valid for TrainingStep
+        )
+    }
+)
+
+# ProcessingStep - Valid property paths
+processing_spec = StepSpecification(
+    step_type="TabularPreprocessing",  # Maps to SageMaker ProcessingStep
+    outputs={
+        "processed_data": OutputSpec(
+            logical_name="processed_data",
+            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri"  # ✅ Valid for ProcessingStep
+        ),
+        "train_data": OutputSpec(
+            logical_name="train_data",
+            property_path="properties.ProcessingOutputConfig.Outputs['train'].S3Output.S3Uri"  # ✅ Valid for ProcessingStep
+        )
+    }
+)
+
+# TransformStep - Valid property paths
+transform_spec = StepSpecification(
+    step_type="BatchTransform",  # Maps to SageMaker TransformStep
+    outputs={
+        "transform_output": OutputSpec(
+            logical_name="transform_output",
+            property_path="properties.TransformOutput.S3OutputPath"  # ✅ Valid for TransformStep
+        )
+    }
+)
+
+# CreateModelStep - Valid property paths
+model_spec = StepSpecification(
+    step_type="PyTorchModel",  # Maps to SageMaker CreateModelStep
+    outputs={
+        "model_name": OutputSpec(
+            logical_name="model_name",
+            property_path="properties.ModelName"  # ✅ Valid for CreateModelStep
+        )
+    }
+)
+```
+
+#### Invalid Property Path Examples (Common Mistakes)
+
+```python
+# ❌ INVALID: Using ProcessingStep property path for TrainingStep
+invalid_training_spec = StepSpecification(
+    step_type="PyTorchTraining",  # Maps to SageMaker TrainingStep
+    outputs={
+        "model_artifacts": OutputSpec(
+            logical_name="model_artifacts",
+            property_path="properties.ProcessingOutputConfig.Outputs['model'].S3Output.S3Uri"  # ❌ ProcessingStep pattern
+        )
+    }
+)
+
+# ❌ INVALID: Using TrainingStep property path for ProcessingStep
+invalid_processing_spec = StepSpecification(
+    step_type="TabularPreprocessing",  # Maps to SageMaker ProcessingStep
+    outputs={
+        "processed_data": OutputSpec(
+            logical_name="processed_data",
+            property_path="properties.ModelArtifacts.S3ModelArtifacts"  # ❌ TrainingStep pattern
+        )
+    }
+)
+
+# ❌ INVALID: Missing 'properties.' prefix
+invalid_prefix_spec = StepSpecification(
+    step_type="PyTorchTraining",
+    outputs={
+        "model_artifacts": OutputSpec(
+            logical_name="model_artifacts",
+            property_path="ModelArtifacts.S3ModelArtifacts"  # ❌ Missing 'properties.' prefix
+        )
+    }
+)
+
+# ❌ INVALID: Incorrect array access syntax
+invalid_syntax_spec = StepSpecification(
+    step_type="TabularPreprocessing",
+    outputs={
+        "processed_data": OutputSpec(
+            logical_name="processed_data",
+            property_path="properties.ProcessingOutputConfig.Outputs.train.S3Output.S3Uri"  # ❌ Should use ['train']
+        )
+    }
+)
+```
+
+#### Property Path Validation Rules
+
+```python
+from ...validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+
+# Validate property paths against SageMaker step types using the unified alignment tester
+tester = UnifiedAlignmentTester()
+
+# This will pass validation
+valid_spec = StepSpecification(
+    step_type="PyTorchTraining",
+    outputs={
+        "model_artifacts": OutputSpec(
+            logical_name="model_artifacts",
+            property_path="properties.ModelArtifacts.S3ModelArtifacts"
+        )
+    }
+)
+issues = tester.validate_specification_property_paths(valid_spec)
+assert not any(issue.severity == "ERROR" for issue in issues)
+
+# This will fail validation with helpful suggestions
+invalid_spec = StepSpecification(
+    step_type="PyTorchTraining",
+    outputs={
+        "model_artifacts": OutputSpec(
+            logical_name="model_artifacts", 
+            property_path="properties.ProcessingOutputConfig.Outputs['model'].S3Output.S3Uri"
+        )
+    }
+)
+issues = tester.validate_specification_property_paths(invalid_spec)
+error_issues = [issue for issue in issues if issue.severity == "ERROR"]
+assert len(error_issues) > 0, "Should have validation errors for incorrect property path"
+```
+
 ### Builder ↔ Configuration
 
 ```python
-from src.pipeline_steps.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-from src.pipeline_script_contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+from ...steps.contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
 
 builder = TabularPreprocessingStepBuilder(config_instance)
-env_vars = builder._get_processor_env_vars()
+env_vars = builder._get_environment_variables()
 for var in TABULAR_PREPROCESS_CONTRACT.required_env_vars:
     assert var in env_vars
 ```
@@ -127,7 +276,7 @@ for var in TABULAR_PREPROCESS_CONTRACT.required_env_vars:
 
 ```python
 # nlp-pipeline/dockers/xgboost_atoz/pipeline_scripts/tabular_preprocess.py
-from src.pipeline_script_contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+from ...steps.contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
 
 def main():
     # Use contract paths
@@ -140,9 +289,9 @@ def main():
 #### Step Specification Example
 
 ```python
-# src/pipeline_step_specs/tabular_preprocess_spec.py
-from src.pipeline_deps.base_specifications import StepSpecification, DependencySpec, OutputSpec
-from src.pipeline_script_contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+# src/cursus/steps/specs/tabular_preprocess_spec.py
+from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec
+from ...steps.contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
 
 TABULAR_PREPROCESS_SPEC = StepSpecification(
     step_type="TabularPreprocessing",
@@ -166,8 +315,8 @@ assert "DATA" in TABULAR_PREPROCESS_SPEC.dependencies
 #### Builder Implementation Example
 
 ```python
-# src/pipeline_steps/builder_tabular_preprocessing_step.py
-from src.pipeline_steps.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+# src/cursus/steps/builders/builder_tabular_preprocessing_step.py
+from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
 
 builder = TabularPreprocessingStepBuilder(config_instance)
 inputs = builder._get_inputs({"DATA": "s3://bucket/data"})
@@ -177,9 +326,9 @@ assert inputs[0].destination == "/opt/ml/processing/input/data"
 #### Model Evaluation Builder Example
 
 ```python
-# src/pipeline_steps/builder_model_eval_step_xgboost.py
-from src.pipeline_steps.builder_model_eval_step_xgboost import XGBoostModelEvalStepBuilder
-from src.pipeline_steps.config_model_eval_step_xgboost import XGBoostModelEvalConfig
+# src/cursus/steps/builders/builder_xgboost_model_eval_step.py
+from ...steps.builders.builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
+from ...steps.configs.config_xgboost_model_eval_step import XGBoostModelEvalConfig
 
 # Instantiate config with required fields
 config = XGBoostModelEvalConfig(
@@ -205,8 +354,8 @@ assert "LABEL_FIELD" in env_vars and "ID_FIELD" in env_vars
 #### XGBoost Training Script Contract Example
 
 ```python
-# src/pipeline_script_contracts/xgboost_train_contract.py
-from src.pipeline_script_contracts.xgboost_train_contract import XGBOOST_TRAIN_CONTRACT
+# src/cursus/steps/contracts/xgboost_train_contract.py
+from ...steps.contracts.xgboost_train_contract import XGBOOST_TRAIN_CONTRACT
 
 # Verify entry point and input paths
 assert XGBOOST_TRAIN_CONTRACT.entry_point == "train_xgb.py"

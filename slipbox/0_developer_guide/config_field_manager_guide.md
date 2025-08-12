@@ -86,7 +86,7 @@ The system categorizes fields using these rules (in order of precedence):
 ### Registering Configuration Classes
 
 ```python
-from src.config_field_manager import ConfigClassStore, register_config_class
+from ...core.config_fields import ConfigClassStore, register_config_class
 
 # Option 1: Using ConfigClassStore directly as a decorator
 @ConfigClassStore.register
@@ -110,7 +110,7 @@ class AnotherConfig:
 ### Serializing and Deserializing Configurations
 
 ```python
-from src.config_field_manager import serialize_config, deserialize_config
+from ...core.config_fields import serialize_config, deserialize_config
 
 # Create a config object
 config = MyConfig(field1="custom_value", field3="extra_field")
@@ -133,7 +133,7 @@ deserialized = deserialize_config(serialized)
 ### Merging and Saving Configurations
 
 ```python
-from src.config_field_manager import merge_and_save_configs
+from ...core.config_fields import merge_and_save_configs
 
 # Create multiple config objects
 config1 = MyConfig(step_name_override="step1", shared_field="shared_value")
@@ -175,7 +175,7 @@ The output file will have this structure:
 ### Loading Configurations
 
 ```python
-from src.config_field_manager import load_configs
+from ...core.config_fields import load_configs
 
 # Load configs from a file
 loaded_configs = load_configs("output.json")
@@ -313,12 +313,12 @@ If you're migrating from the old system in `src.pipeline_steps.utils`, follow th
    from src.pipeline_steps.utils import merge_and_save_configs, load_configs
 
    # New approach
-   from src.config_field_manager import merge_and_save_configs, load_configs
+   from ...core.config_fields import merge_and_save_configs, load_configs
    ```
 
 2. **Register Your Config Classes**
    ```python
-   from src.config_field_manager import register_config_class
+   from ...core.config_fields import register_config_class
 
    @register_config_class
    class MyConfig:
