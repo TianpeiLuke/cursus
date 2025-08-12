@@ -1,3 +1,28 @@
+---
+tags:
+  - entry_point
+  - code
+  - core
+  - pipeline_builder
+  - specification_driven
+keywords:
+  - pipeline builder
+  - specification driven
+  - dependency resolution
+  - template system
+  - declarative approach
+  - automatic connection
+  - SageMaker pipelines
+  - DAG structure
+topics:
+  - pipeline builder system
+  - specification-driven development
+  - template architecture
+  - dependency resolution
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Builder
 
 ## Overview

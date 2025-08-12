@@ -1,3 +1,28 @@
+---
+tags:
+  - examples
+  - core
+  - pipeline_examples
+  - template_usage
+  - specification_driven
+keywords:
+  - pipeline examples
+  - template usage
+  - specification driven
+  - XGBoost pipeline
+  - PyTorch pipeline
+  - end-to-end pipeline
+  - model registration
+  - data loading
+topics:
+  - pipeline examples
+  - template implementations
+  - specification-driven pipelines
+  - machine learning workflows
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Examples
 
 ## Overview

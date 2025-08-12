@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - specification_registry
+  - context_aware
+  - storage_retrieval
+keywords:
+  - specification registry
+  - context aware
+  - step specifications
+  - storage retrieval
+  - compatibility checking
+  - context isolation
+  - type organization
+  - dependency matching
+topics:
+  - specification management
+  - context isolation
+  - compatibility scoring
+  - registry operations
+language: python
+date of note: 2025-08-12
+---
+
 # Specification Registry
 
 ## Overview

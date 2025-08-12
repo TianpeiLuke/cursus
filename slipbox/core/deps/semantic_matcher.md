@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - semantic_matcher
+  - similarity_calculation
+  - nlp
+keywords:
+  - semantic matcher
+  - similarity calculation
+  - multi-metric matching
+  - domain knowledge
+  - synonym recognition
+  - name normalization
+  - dependency matching
+  - alias support
+topics:
+  - semantic similarity
+  - name matching algorithms
+  - dependency resolution
+  - natural language processing
+language: python
+date of note: 2025-08-12
+---
+
 # Semantic Matcher
 
 ## Overview

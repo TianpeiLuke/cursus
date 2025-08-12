@@ -1,3 +1,28 @@
+---
+tags:
+  - entry_point
+  - code
+  - core
+  - pipeline_dependencies
+  - specification_driven
+keywords:
+  - pipeline dependencies
+  - dependency resolution
+  - specification driven
+  - automatic wiring
+  - semantic matching
+  - property reference
+  - registry management
+  - thread safety
+topics:
+  - dependency resolution
+  - pipeline architecture
+  - specification system
+  - component overview
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Dependencies
 
 This module provides dependency resolution and specification management for pipeline components. It enables automatic dependency resolution between pipeline steps based on their input/output specifications.

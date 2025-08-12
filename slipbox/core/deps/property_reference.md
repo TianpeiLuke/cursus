@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - property_reference
+  - sagemaker_integration
+  - lazy_evaluation
+keywords:
+  - property reference
+  - SageMaker properties
+  - lazy evaluation
+  - property path parsing
+  - runtime bridging
+  - pipeline wiring
+  - specification driven
+  - property navigation
+topics:
+  - property reference system
+  - SageMaker integration
+  - pipeline architecture
+  - runtime property resolution
+language: python
+date of note: 2025-08-12
+---
+
 # Property Reference
 
 ## Overview

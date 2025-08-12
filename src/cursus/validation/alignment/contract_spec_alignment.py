@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
 from .alignment_utils import FlexibleFileResolver
+from .property_path_validator import SageMakerPropertyPathValidator
 
 
 class ContractSpecificationAlignmentTester:
@@ -42,6 +43,9 @@ class ContractSpecificationAlignmentTester:
             'specs': str(self.specs_dir)
         }
         self.file_resolver = FlexibleFileResolver(base_directories)
+        
+        # Initialize property path validator
+        self.property_path_validator = SageMakerPropertyPathValidator()
         
         # Add the project root to Python path for imports
         project_root = self.contracts_dir.parent.parent.parent
@@ -193,6 +197,10 @@ class ContractSpecificationAlignmentTester:
         # Validate input/output alignment
         io_issues = self._validate_input_output_alignment(contract, unified_spec['primary_spec'], contract_name)
         all_issues.extend(io_issues)
+        
+        # NEW: Validate property path references (Level 2 enhancement)
+        property_path_issues = self._validate_property_paths(unified_spec['primary_spec'], contract_name)
+        all_issues.extend(property_path_issues)
         
         # Determine overall pass/fail status
         has_critical_or_error = any(
@@ -1125,3 +1133,21 @@ class ContractSpecificationAlignmentTester:
                 continue
         
         return sorted(contracts_with_scripts)
+    
+    def _validate_property_paths(self, specification: Dict[str, Any], contract_name: str) -> List[Dict[str, Any]]:
+        """
+        Validate SageMaker Step Property Path References (Level 2 Enhancement).
+        
+        Uses the dedicated SageMakerPropertyPathValidator to validate that property paths
+        used in specification outputs are valid for the specified SageMaker step type.
+        
+        Args:
+            specification: Specification dictionary
+            contract_name: Name of the contract being validated
+            
+        Returns:
+            List of validation issues
+        """
+        return self.property_path_validator.validate_specification_property_paths(
+            specification, contract_name
+        )

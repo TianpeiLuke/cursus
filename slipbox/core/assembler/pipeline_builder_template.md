@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - pipeline_builder_template
+  - template_pattern
+  - specification_driven
+keywords:
+  - pipeline builder template
+  - template pattern
+  - specification driven
+  - dependency resolution
+  - declarative approach
+  - pipeline assembly
+  - context management
+  - thread safety
+topics:
+  - pipeline template architecture
+  - specification-driven development
+  - dependency resolution system
+  - pipeline assembly process
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Builder Template
 
 ## Overview

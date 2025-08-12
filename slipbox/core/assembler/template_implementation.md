@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - template_implementation
+  - specification_driven
+  - pipeline_framework
+keywords:
+  - template implementation
+  - specification driven
+  - pipeline framework
+  - dependency resolution
+  - step connection
+  - DAG-based propagation
+  - property reference
+  - automatic wiring
+topics:
+  - template-based implementation
+  - specification-driven development
+  - pipeline assembly process
+  - dependency resolution system
+language: python
+date of note: 2025-08-12
+---
+
 # Template-Based Pipeline Implementation
 
 This document explains the template-based implementation of pipelines in the MODS Pipeline framework and how they use specification-driven dependency resolution to connect pipeline steps.

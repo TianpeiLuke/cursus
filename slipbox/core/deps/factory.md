@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - factory
+  - component_creation
+  - dependency_management
+keywords:
+  - factory module
+  - component creation
+  - thread management
+  - context management
+  - pipeline components
+  - dependency resolution
+  - thread safety
+  - component wiring
+topics:
+  - component factory
+  - thread management
+  - dependency resolution
+  - pipeline architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Factory Module
 
 ## Overview

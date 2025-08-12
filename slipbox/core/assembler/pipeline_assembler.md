@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - pipeline_assembler
+  - step_assembly
+  - dependency_resolution
+keywords:
+  - pipeline assembler
+  - step assembly
+  - dependency resolution
+  - specification driven
+  - DAG structure
+  - step instantiation
+  - property reference
+  - message propagation
+topics:
+  - pipeline assembly
+  - step connection
+  - dependency matching
+  - SageMaker pipeline
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Assembler
 
 ## Overview

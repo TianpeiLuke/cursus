@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - registry_manager
+  - context_isolation
+  - multi_tenant
+keywords:
+  - registry manager
+  - context isolation
+  - multi-tenant
+  - specification registry
+  - context management
+  - pipeline isolation
+  - registry coordination
+  - context statistics
+topics:
+  - registry management
+  - context isolation
+  - multi-tenant architecture
+  - pipeline coordination
+language: python
+date of note: 2025-08-12
+---
+
 # Registry Manager
 
 ## Overview

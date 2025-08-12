@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - dependency_resolver
+  - specification_driven
+  - pipeline_building
+keywords:
+  - dependency resolver
+  - specification driven
+  - pipeline automation
+  - semantic matching
+  - multi-factor scoring
+  - property reference
+  - step dependencies
+  - compatibility scoring
+topics:
+  - dependency resolution
+  - pipeline architecture
+  - specification system
+  - automated wiring
+language: python
+date of note: 2025-08-12
+---
+
 # Dependency Resolver
 
 ## Overview

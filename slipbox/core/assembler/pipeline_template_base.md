@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - core
+  - pipeline_template_base
+  - abstract_base_class
+  - template_pattern
+keywords:
+  - pipeline template base
+  - abstract base class
+  - template pattern
+  - configuration loading
+  - component lifecycle
+  - pipeline generation
+  - factory methods
+  - execution document
+topics:
+  - pipeline template architecture
+  - template pattern implementation
+  - configuration management
+  - component initialization
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Template Base
 
 ## Overview
