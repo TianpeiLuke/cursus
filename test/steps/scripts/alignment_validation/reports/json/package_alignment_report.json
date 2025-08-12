@@ -143,8 +143,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
               "XGBoostTraining",
+              "TrainingStep",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -193,8 +193,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
               "XGBoostTraining",
+              "TrainingStep",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -242,8 +242,8 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "TrainingStep",
                 "XGBoostTraining",
+                "TrainingStep",
                 "ModelStep"
               ],
               "data_type": "S3Uri",
@@ -288,8 +288,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
             "XGBoostTraining",
+            "TrainingStep",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -357,8 +357,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
             "XGBoostTraining",
+            "TrainingStep",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -504,7 +504,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T22:28:14.445437",
+    "validation_timestamp": "2025-08-11T22:41:05.149559",
     "validator_version": "1.0.0"
   }
 }
