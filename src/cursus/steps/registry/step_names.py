@@ -268,50 +268,160 @@ def get_sagemaker_step_type_mapping() -> Dict[str, List[str]]:
 
 def get_canonical_name_from_file_name(file_name: str) -> str:
     """
-    Get canonical step name from file name using algorithmic conversion and registry lookup.
+    Get canonical step name from file name using registry-first algorithmic conversion.
+    
+    This function uses a deterministic algorithm that tries multiple interpretations
+    of the file name against the registry, eliminating the need for hard-coded mappings.
     
     Args:
-        file_name: File-based name (e.g., "model_evaluation_xgb", "dummy_training")
+        file_name: File-based name (e.g., "model_evaluation_xgb", "dummy_training", "xgboost_training")
         
     Returns:
-        Canonical step name (e.g., "XGBoostModelEval", "DummyTraining")
+        Canonical step name (e.g., "XGBoostModelEval", "DummyTraining", "XGBoostTraining")
         
     Raises:
         ValueError: If file name cannot be mapped to a canonical name
     """
-    # Handle special cases first
-    special_cases = {
-        "model_evaluation_xgb": "XGBoostModelEval",
-        "tabular_preprocess": "TabularPreprocessing", 
-        "mims_package": "Package",
-        "mims_payload": "Payload",
+    if not file_name:
+        raise ValueError("File name cannot be empty")
+    
+    parts = file_name.split('_')
+    job_type_suffixes = ['training', 'validation', 'testing', 'calibration']
+    
+    # Strategy 1: Try full name as PascalCase (handles cases like "xgboost_training" -> "XGBoostTraining")
+    full_pascal = ''.join(word.capitalize() for word in parts)
+    if full_pascal in STEP_NAMES:
+        return full_pascal
+    
+    # Strategy 2: Try without last part if it's a job type suffix
+    if len(parts) > 1 and parts[-1] in job_type_suffixes:
+        base_parts = parts[:-1]
+        base_pascal = ''.join(word.capitalize() for word in base_parts)
+        if base_pascal in STEP_NAMES:
+            return base_pascal
+    
+    # Strategy 3: Handle special abbreviations and patterns
+    # Convert known abbreviations to full names
+    abbreviation_map = {
+        'xgb': 'XGBoost',
+        'pytorch': 'PyTorch',
+        'mims': '',  # Remove MIMS prefix
+        'tabular': 'Tabular',
+        'preprocess': 'Preprocessing'
     }
     
-    if file_name in special_cases:
-        return special_cases[file_name]
+    # Apply abbreviation expansion
+    expanded_parts = []
+    for part in parts:
+        if part in abbreviation_map:
+            expansion = abbreviation_map[part]
+            if expansion:  # Only add non-empty expansions
+                expanded_parts.append(expansion)
+        else:
+            expanded_parts.append(part.capitalize())
     
-    # Algorithmic conversion for standard cases
-    try:
-        # Convert file name to spec_type format and try registry lookup
-        parts = file_name.split('_')
+    # Try expanded version
+    if expanded_parts:
+        expanded_pascal = ''.join(expanded_parts)
+        if expanded_pascal in STEP_NAMES:
+            return expanded_pascal
         
-        # Handle job type variants
-        job_type_suffixes = ['training', 'validation', 'testing', 'calibration']
-        base_parts = parts
-        
-        if len(parts) > 1 and parts[-1] in job_type_suffixes:
-            base_parts = parts[:-1]
-        
-        # Convert to PascalCase for spec_type
-        spec_type_base = ''.join(word.capitalize() for word in base_parts)
-        
-        # Try to get canonical name from spec_type
-        canonical_name = get_step_name_from_spec_type(spec_type_base)
-        return canonical_name
-    except Exception:
-        pass
+        # Try expanded version without job type suffix
+        if len(expanded_parts) > 1 and parts[-1] in job_type_suffixes:
+            expanded_base = ''.join(expanded_parts[:-1])
+            if expanded_base in STEP_NAMES:
+                return expanded_base
     
-    raise ValueError(f"Unknown file name: {file_name}. Cannot derive canonical name algorithmically.")
+    # Strategy 4: Handle compound names (like "model_evaluation_xgb")
+    if len(parts) >= 3:
+        # Try different combinations for compound names
+        combinations_to_try = [
+            # For "model_evaluation_xgb" -> "XGBoostModelEval"
+            (parts[-1], parts[0], parts[1]),  # xgb, model, evaluation -> XGBoost, Model, Eval
+            # For other patterns
+            (parts[0], parts[1], parts[-1]),  # model, evaluation, xgb
+        ]
+        
+        for combo in combinations_to_try:
+            # Apply abbreviation expansion to combination
+            expanded_combo = []
+            for part in combo:
+                if part in abbreviation_map:
+                    expansion = abbreviation_map[part]
+                    if expansion:
+                        expanded_combo.append(expansion)
+                else:
+                    # Special handling for "evaluation" -> "Eval"
+                    if part == 'evaluation':
+                        expanded_combo.append('Eval')
+                    else:
+                        expanded_combo.append(part.capitalize())
+            
+            combo_pascal = ''.join(expanded_combo)
+            if combo_pascal in STEP_NAMES:
+                return combo_pascal
+    
+    # Strategy 5: Fuzzy matching against registry entries
+    # Calculate similarity scores for all registry entries
+    best_match = None
+    best_score = 0.0
+    
+    for canonical_name in STEP_NAMES.keys():
+        score = _calculate_name_similarity(file_name, canonical_name)
+        if score > best_score and score >= 0.8:  # High threshold for fuzzy matching
+            best_score = score
+            best_match = canonical_name
+    
+    if best_match:
+        return best_match
+    
+    # If all strategies fail, provide detailed error message
+    tried_variations = [
+        full_pascal,
+        ''.join(word.capitalize() for word in parts[:-1]) if len(parts) > 1 and parts[-1] in job_type_suffixes else None,
+        ''.join(expanded_parts) if expanded_parts else None
+    ]
+    tried_variations = [v for v in tried_variations if v]  # Remove None values
+    
+    raise ValueError(
+        f"Cannot map file name '{file_name}' to canonical name. "
+        f"Tried variations: {tried_variations}. "
+        f"Available canonical names: {sorted(STEP_NAMES.keys())}"
+    )
+
+def _calculate_name_similarity(file_name: str, canonical_name: str) -> float:
+    """
+    Calculate similarity score between file name and canonical name.
+    
+    Args:
+        file_name: File-based name (e.g., "xgboost_training")
+        canonical_name: Canonical name (e.g., "XGBoostTraining")
+        
+    Returns:
+        Similarity score between 0.0 and 1.0
+    """
+    # Convert both to lowercase for comparison
+    file_lower = file_name.lower().replace('_', '')
+    canonical_lower = canonical_name.lower()
+    
+    # Exact match after normalization
+    if file_lower == canonical_lower:
+        return 1.0
+    
+    # Check if file name is contained in canonical name
+    if file_lower in canonical_lower:
+        return 0.9
+    
+    # Check if canonical name contains most of the file name parts
+    file_parts = file_name.lower().split('_')
+    matches = sum(1 for part in file_parts if part in canonical_lower)
+    
+    if matches == len(file_parts):
+        return 0.85
+    elif matches >= len(file_parts) * 0.8:
+        return 0.8
+    else:
+        return matches / len(file_parts) * 0.7
 
 def validate_file_name(file_name: str) -> bool:
     """Validate that a file name can be mapped to a canonical name."""

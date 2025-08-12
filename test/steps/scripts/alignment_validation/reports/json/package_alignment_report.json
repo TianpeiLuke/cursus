@@ -134,7 +134,7 @@
       }
     },
     "specifications": {
-      "packaging_spec": {
+      "package_spec": {
         "step_type": "Package",
         "node_type": "internal",
         "dependencies": [
@@ -143,9 +143,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
+              "ModelStep",
               "TrainingStep",
-              "ModelStep"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -193,9 +193,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
+              "ModelStep",
               "TrainingStep",
-              "ModelStep"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -242,9 +242,9 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
+                "ModelStep",
                 "TrainingStep",
-                "ModelStep"
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be packaged"
@@ -288,9 +288,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
+            "ModelStep",
             "TrainingStep",
-            "ModelStep"
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -346,15 +346,56 @@
     }
   },
   "level3": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/package_spec.py",
-        "recommendation": "Create the specification file package_spec.py"
-      }
-    ]
+    "passed": true,
+    "issues": [],
+    "specification": {
+      "step_type": "Package",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "ModelStep",
+            "TrainingStep",
+            "XGBoostTraining"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts to be packaged"
+        },
+        {
+          "logical_name": "inference_scripts_input",
+          "dependency_type": "custom_property",
+          "required": false,
+          "compatible_sources": [
+            "ScriptStep",
+            "ProcessingStep"
+          ],
+          "data_type": "String",
+          "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+        },
+        {
+          "logical_name": "calibration_model",
+          "dependency_type": "processing_output",
+          "required": false,
+          "compatible_sources": [
+            "ModelCalibration"
+          ],
+          "data_type": "S3Uri",
+          "description": "Calibration model and artifacts for probability calibration (optional)"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "packaged_model",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Packaged model ready for deployment"
+        }
+      ]
+    }
   },
   "level4": {
     "passed": true,
@@ -459,11 +500,11 @@
       }
     }
   },
-  "overall_status": "FAILING",
+  "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T20:40:42.400876",
+    "validation_timestamp": "2025-08-11T21:12:34.214328",
     "validator_version": "1.0.0"
   }
 }

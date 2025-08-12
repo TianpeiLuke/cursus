@@ -29,17 +29,17 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: payload</h2>
-        <p>Generated: 2025-08-11T20:40:42.418982</p>
-        <p>Overall Status: <span class="failing">FAILING</span></p>
+        <p>Generated: 2025-08-11T21:12:34.232260</p>
+        <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>9</h3>
+            <h3>8</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>0</h3>
             <p>Critical Issues</p>
         </div>
         <div class="metric">
@@ -67,25 +67,15 @@
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 3: Specification ↔ Dependencies</h4>
-                <p>Status: FAILED</p>
-                
-                <div class="issue critical">
-                    <strong>CRITICAL:</strong> No compatible candidates found for required dependency: model_input
-                    <br><em>Recommendation: Ensure a step exists that produces output compatible with model_input</em>
-                </div>
+                <p>Status: PASSED</p>
                 
             </div>
             
             <div class="test-result test-passed">
                 <h4>Level 4: Builder ↔ Configuration</h4>
                 <p>Status: PASSED</p>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_objective
-                    <br><em>Recommendation: Access required field model_registration_objective in builder or make it optional</em>
-                </div>
                 
                 <div class="issue warning">
                     <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_output_variable_list
@@ -98,8 +88,13 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_owner
-                    <br><em>Recommendation: Access required field model_owner in builder or make it optional</em>
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_objective
+                    <br><em>Recommendation: Access required field model_registration_objective in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
+                    <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
                 </div>
                 
                 <div class="issue warning">
@@ -108,13 +103,13 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
-                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_owner
+                    <br><em>Recommendation: Access required field model_owner in builder or make it optional</em>
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
-                    <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
+                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
                 </div>
                 
                 <div class="issue info">
@@ -130,7 +125,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py</p>
         <p><strong>Contract Mapping:</strong> payload_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T20:40:42.418982</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T21:12:34.232260</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

@@ -6,26 +6,6 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
-        "details": {
-          "path": "/opt/ml/processing/input/eval_data",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either use path /opt/ml/processing/input/eval_data in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
-        "details": {
-          "path": "/opt/ml/processing/output/metrics",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
         "details": {
           "path": "/opt/ml/processing/input/model",
@@ -42,6 +22,38 @@
           "script": "xgboost_model_evaluation"
         },
         "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/metrics",
+        "details": {
+          "path": "/opt/ml/processing/output/metrics",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/metrics in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
+        "details": {
+          "path": "/opt/ml/processing/input/eval_data",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Either use path /opt/ml/processing/input/eval_data in script or remove from contract"
+      },
+      {
+        "severity": "INFO",
+        "category": "arguments",
+        "message": "Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)",
+        "details": {
+          "cli_argument": "job-type",
+          "python_attribute": "job_type",
+          "script": "xgboost_model_evaluation",
+          "source": "builder"
+        },
+        "recommendation": "Argument --job-type is provided by builder - no action needed"
       },
       {
         "severity": "WARNING",
@@ -89,15 +101,14 @@
       },
       {
         "severity": "INFO",
-        "category": "arguments",
-        "message": "Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
         "details": {
-          "cli_argument": "job-type",
-          "python_attribute": "job_type",
-          "script": "xgboost_model_evaluation",
-          "source": "builder"
+          "path": "/opt/ml/processing/input/model",
+          "operation": "read",
+          "script": "xgboost_model_evaluation"
         },
-        "recommendation": "Argument --job-type is provided by builder - no action needed"
+        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
       },
       {
         "severity": "INFO",
@@ -111,15 +122,15 @@
         "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
       },
       {
-        "severity": "INFO",
+        "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/model",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
         "details": {
-          "path": "/opt/ml/processing/input/model",
-          "operation": "read",
+          "path": "/opt/ml/processing/output/eval",
+          "operation": "write",
           "script": "xgboost_model_evaluation"
         },
-        "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
+        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
       },
       {
         "severity": "WARNING",
@@ -131,17 +142,6 @@
           "script": "xgboost_model_evaluation"
         },
         "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "operation": "write",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -331,10 +331,10 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "PyTorchModel",
-              "XGBoostModel",
-              "DummyTraining",
               "PyTorchTraining",
+              "XGBoostModel",
+              "PyTorchModel",
+              "DummyTraining",
               "XGBoostTraining"
             ],
             "data_type": "S3Uri",
@@ -345,10 +345,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
+              "CradleDataLoading",
               "TabularPreprocessing",
               "CurrencyConversion",
-              "CradleDataLoading"
+              "RiskTableMapping"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -382,10 +382,10 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "PyTorchModel",
-              "XGBoostModel",
-              "DummyTraining",
               "PyTorchTraining",
+              "XGBoostModel",
+              "PyTorchModel",
+              "DummyTraining",
               "XGBoostTraining"
             ],
             "data_type": "S3Uri",
@@ -396,10 +396,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
+              "CradleDataLoading",
               "TabularPreprocessing",
               "CurrencyConversion",
-              "CradleDataLoading"
+              "RiskTableMapping"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -432,10 +432,10 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "PyTorchModel",
-                "XGBoostModel",
-                "DummyTraining",
                 "PyTorchTraining",
+                "XGBoostModel",
+                "PyTorchModel",
+                "DummyTraining",
                 "XGBoostTraining"
               ],
               "data_type": "S3Uri",
@@ -446,10 +446,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "RiskTableMapping",
+                "CradleDataLoading",
                 "TabularPreprocessing",
                 "CurrencyConversion",
-                "CradleDataLoading"
+                "RiskTableMapping"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset for model assessment"
@@ -479,10 +479,10 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "PyTorchModel",
-            "XGBoostModel",
-            "DummyTraining",
             "PyTorchTraining",
+            "XGBoostModel",
+            "PyTorchModel",
+            "DummyTraining",
             "XGBoostTraining"
           ],
           "data_type": "S3Uri",
@@ -493,10 +493,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
+            "CradleDataLoading",
             "TabularPreprocessing",
             "CurrencyConversion",
-            "CradleDataLoading"
+            "RiskTableMapping"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -549,10 +549,10 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "PyTorchModel",
-            "XGBoostModel",
-            "DummyTraining",
             "PyTorchTraining",
+            "XGBoostModel",
+            "PyTorchModel",
+            "DummyTraining",
             "XGBoostTraining"
           ],
           "data_type": "S3Uri",
@@ -563,10 +563,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
+            "CradleDataLoading",
             "TabularPreprocessing",
             "CurrencyConversion",
-            "CradleDataLoading"
+            "RiskTableMapping"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -662,7 +662,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py",
     "contract_mapping": "xgboost_model_evaluation_contract",
-    "validation_timestamp": "2025-08-11T20:40:42.516185",
+    "validation_timestamp": "2025-08-11T21:12:34.327683",
     "validator_version": "1.0.0"
   }
 }

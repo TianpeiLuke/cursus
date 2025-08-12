@@ -29,7 +29,7 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: xgboost_model_evaluation</h2>
-        <p>Generated: 2025-08-11T20:40:42.516185</p>
+        <p>Generated: 2025-08-11T21:12:34.327683</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
@@ -60,8 +60,13 @@
                 <p>Status: PASSED</p>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/eval_data
-                    <br><em>Recommendation: Either use path /opt/ml/processing/input/eval_data in script or remove from contract</em>
+                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/model
+                    <br><em>Recommendation: Either use path /opt/ml/processing/input/model in script or remove from contract</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/output/eval
+                    <br><em>Recommendation: Either use path /opt/ml/processing/output/eval in script or remove from contract</em>
                 </div>
                 
                 <div class="issue warning">
@@ -70,13 +75,13 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/model
-                    <br><em>Recommendation: Either use path /opt/ml/processing/input/model in script or remove from contract</em>
+                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/eval_data
+                    <br><em>Recommendation: Either use path /opt/ml/processing/input/eval_data in script or remove from contract</em>
                 </div>
                 
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/output/eval
-                    <br><em>Recommendation: Either use path /opt/ml/processing/output/eval in script or remove from contract</em>
+                <div class="issue info">
+                    <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
+                    <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
                 </div>
                 
                 <div class="issue warning">
@@ -100,8 +105,8 @@
                 </div>
                 
                 <div class="issue info">
-                    <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
-                    <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
+                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/model
+                    <br><em>Recommendation: Either read /opt/ml/processing/input/model in script or remove from contract inputs</em>
                 </div>
                 
                 <div class="issue info">
@@ -109,19 +114,14 @@
                     <br><em>Recommendation: Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs</em>
                 </div>
                 
-                <div class="issue info">
-                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/model
-                    <br><em>Recommendation: Either read /opt/ml/processing/input/model in script or remove from contract inputs</em>
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/eval
+                    <br><em>Recommendation: Either write to /opt/ml/processing/output/eval in script or remove from contract outputs</em>
                 </div>
                 
                 <div class="issue warning">
                     <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/metrics
                     <br><em>Recommendation: Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/eval
-                    <br><em>Recommendation: Either write to /opt/ml/processing/output/eval in script or remove from contract outputs</em>
                 </div>
                 
             </div>
@@ -155,7 +155,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py</p>
         <p><strong>Contract Mapping:</strong> xgboost_model_evaluation_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T20:40:42.516185</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T21:12:34.327683</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

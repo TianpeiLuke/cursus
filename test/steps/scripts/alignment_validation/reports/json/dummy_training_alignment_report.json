@@ -109,10 +109,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
-              "ProcessingStep",
               "TabularPreprocessing",
-              "PytorchTraining"
+              "PytorchTraining",
+              "ProcessingStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -122,8 +122,8 @@
             "dependency_type": "hyperparameters",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -150,10 +150,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
-              "ProcessingStep",
               "TabularPreprocessing",
-              "PytorchTraining"
+              "PytorchTraining",
+              "ProcessingStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Path to pretrained model.tar.gz file"
@@ -163,8 +163,8 @@
             "dependency_type": "hyperparameters",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -190,10 +190,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
-                "ProcessingStep",
                 "TabularPreprocessing",
-                "PytorchTraining"
+                "PytorchTraining",
+                "ProcessingStep",
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Path to pretrained model.tar.gz file"
@@ -203,8 +203,8 @@
               "dependency_type": "hyperparameters",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
-                "HyperparameterPrep"
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -227,10 +227,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
-            "ProcessingStep",
             "TabularPreprocessing",
-            "PytorchTraining"
+            "PytorchTraining",
+            "ProcessingStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -240,8 +240,8 @@
           "dependency_type": "hyperparameters",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -312,6 +312,16 @@
               "provider": "BatchTransform",
               "output": "transform_output",
               "score": 0.4197368421052632
+            },
+            {
+              "provider": "PyTorchModel",
+              "output": "model_name",
+              "score": 0.31875000000000003
+            },
+            {
+              "provider": "XGBoostModel",
+              "output": "model_name",
+              "score": 0.31875000000000003
             }
           ]
         },
@@ -327,10 +337,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
-            "ProcessingStep",
             "TabularPreprocessing",
-            "PytorchTraining"
+            "PytorchTraining",
+            "ProcessingStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Path to pretrained model.tar.gz file"
@@ -340,8 +350,8 @@
           "dependency_type": "hyperparameters",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file for inclusion in the model package"
@@ -503,7 +513,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T20:40:42.359635",
+    "validation_timestamp": "2025-08-11T21:12:34.172740",
     "validator_version": "1.0.0"
   }
 }
