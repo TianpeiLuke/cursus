@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alignment Validation Report - xgboost_model_evaluation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
+        .summary { display: flex; justify-content: space-around; margin: 20px 0; }
+        .metric { text-align: center; padding: 10px; }
+        .metric h3 { margin: 0; font-size: 2em; }
+        .metric p { margin: 5px 0; color: #666; }
+        .passing { color: #28a745; }
+        .failing { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .level-section { margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .level-header { background-color: #e9ecef; padding: 10px; font-weight: bold; }
+        .test-result { padding: 10px; border-bottom: 1px solid #eee; }
+        .test-passed { border-left: 4px solid #28a745; }
+        .test-failed { border-left: 4px solid #dc3545; }
+        .issue { margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 3px; }
+        .critical { border-left: 4px solid #dc3545; }
+        .error { border-left: 4px solid #fd7e14; }
+        .warning { border-left: 4px solid #ffc107; }
+        .info { border-left: 4px solid #17a2b8; }
+        .metadata { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Alignment Validation Report</h1>
+        <h2>Script: xgboost_model_evaluation</h2>
+        <p>Generated: 2025-08-11T23:19:48.744845</p>
+        <p>Overall Status: <span class="passing">PASSING</span></p>
+    </div>
+    
+    <div class="summary">
+        <div class="metric">
+            <h3>14</h3>
+            <p>Total Issues</p>
+        </div>
+        <div class="metric">
+            <h3>0</h3>
+            <p>Critical Issues</p>
+        </div>
+        <div class="metric">
+            <h3>0</h3>
+            <p>Error Issues</p>
+        </div>
+        <div class="metric">
+            <h3>10</h3>
+            <p>Warning Issues</p>
+        </div>
+    </div>
+    
+    <div class="level-section">
+        <div class="level-header">Alignment Validation Results</div>
+        
+        <div class="test-result test-passed">
+            <h4>Level 1: Script ↔ Contract</h4>
+            <p>Status: PASSED</p>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/output/eval
+                <br><em>Recommendation: Either use path /opt/ml/processing/output/eval in script or remove from contract</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/eval_data
+                <br><em>Recommendation: Either use path /opt/ml/processing/input/eval_data in script or remove from contract</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/model
+                <br><em>Recommendation: Either use path /opt/ml/processing/input/model in script or remove from contract</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/output/metrics
+                <br><em>Recommendation: Either use path /opt/ml/processing/output/metrics in script or remove from contract</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Script defines argument not in contract: --model-dir (accessed as args.model_dir)
+                <br><em>Recommendation: Add --model-dir to contract arguments or remove from script</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)
+                <br><em>Recommendation: Add --eval-data-dir to contract arguments or remove from script</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)
+                <br><em>Recommendation: Add --output-eval-dir to contract arguments or remove from script</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)
+                <br><em>Recommendation: Add --output-metrics-dir to contract arguments or remove from script</em>
+            </div>
+            
+            <div class="issue info">
+                <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
+                <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
+            </div>
+            
+            <div class="issue info">
+                <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/eval_data
+                <br><em>Recommendation: Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs</em>
+            </div>
+            
+            <div class="issue info">
+                <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/model
+                <br><em>Recommendation: Either read /opt/ml/processing/input/model in script or remove from contract inputs</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/eval
+                <br><em>Recommendation: Either write to /opt/ml/processing/output/eval in script or remove from contract outputs</em>
+            </div>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/metrics
+                <br><em>Recommendation: Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs</em>
+            </div>
+            
+        </div>
+        
+        <div class="test-result test-passed">
+            <h4>Level 2: Contract ↔ Specification</h4>
+            <p>Status: PASSED</p>
+            
+        </div>
+        
+        <div class="test-result test-passed">
+            <h4>Level 3: Specification ↔ Dependencies</h4>
+            <p>Status: PASSED</p>
+            
+        </div>
+        
+        <div class="test-result test-passed">
+            <h4>Level 4: Builder ↔ Configuration</h4>
+            <p>Status: PASSED</p>
+            
+            <div class="issue info">
+                <strong>INFO:</strong> Builder may not be properly importing configuration class xgboost_model_evaluationConfig
+                <br><em>Recommendation: Ensure builder imports and uses xgboost_model_evaluationConfig</em>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="metadata">
+        <h3>Metadata</h3>
+        <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py</p>
+        <p><strong>Contract Mapping:</strong> Unknown</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:48.744845</p>
+        <p><strong>Validator Version:</strong> 1.0.0</p>
+    </div>
+</body>
+</html>

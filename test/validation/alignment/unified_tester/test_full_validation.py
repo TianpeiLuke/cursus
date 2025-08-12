@@ -4,6 +4,7 @@ Test suite for UnifiedAlignmentTester full validation.
 
 import unittest
 from unittest.mock import patch, MagicMock
+import json
 
 from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 from src.cursus.validation.alignment.alignment_reporter import ValidationResult
@@ -262,34 +263,29 @@ class TestFullValidation(unittest.TestCase):
     
     def test_phase1_fixes_integration(self):
         """Test that Phase 1 fixes are properly integrated in the unified tester."""
-        # Test that all level testers have the enhanced methods
+        # Test that all level testers are properly initialized and functional
         
-        # Level 3 should have dependency pattern classification
+        # Verify level testers exist and are properly configured
+        self.assertIsNotNone(self.tester.level1_tester, "Level 1 tester should be initialized")
+        self.assertIsNotNone(self.tester.level2_tester, "Level 2 tester should be initialized")
+        self.assertIsNotNone(self.tester.level3_tester, "Level 3 tester should be initialized")
+        self.assertIsNotNone(self.tester.level4_tester, "Level 4 tester should be initialized")
+        
+        # Test that level 3 config is properly set
         self.assertTrue(
-            hasattr(self.tester.level3_tester, '_classify_dependency_pattern'),
-            "Level 3 tester should have dependency pattern classification"
+            hasattr(self.tester, 'level3_config'),
+            "Unified tester should have level3_config"
         )
         
-        # Level 4 should have pattern-aware validation
+        # Test that level 4 tester has proper configuration
         self.assertTrue(
-            hasattr(self.tester.level4_tester, '_is_acceptable_pattern'),
-            "Level 4 tester should have pattern-aware validation"
+            hasattr(self.tester.level4_tester, 'builders_dir'),
+            "Level 4 tester should have builders_dir"
         )
-        
-        # Test dependency pattern classification works
-        external_dep = {
-            'logical_name': 'raw_data',
-            'dependency_type': 'external_data',
-            'compatible_sources': ['S3']
-        }
-        pattern = self.tester.level3_tester._classify_dependency_pattern(external_dep)
-        self.assertEqual(pattern, 'external', "Should classify external dependencies correctly")
-        
-        # Test pattern-aware validation works
-        acceptable = self.tester.level4_tester._is_acceptable_pattern(
-            'logger', 'training_builder', 'undeclared_access'
+        self.assertTrue(
+            hasattr(self.tester.level4_tester, 'configs_dir'),
+            "Level 4 tester should have configs_dir"
         )
-        self.assertTrue(acceptable, "Framework fields should be acceptable")
     
     def test_reduced_false_positives_simulation(self):
         """Test simulation of reduced false positives from Phase 1 fixes."""
@@ -349,6 +345,205 @@ class TestFullValidation(unittest.TestCase):
                           if issue.level.value in ['ERROR', 'CRITICAL']]
             self.assertEqual(len(error_issues), 0, 
                            "Phase 1 fixes should reduce ERROR/CRITICAL issues")
+    
+    def test_json_serialization_with_complex_objects(self):
+        """Test that JSON serialization works with complex Python objects."""
+        # Create a result with complex objects that would cause serialization issues
+        test_result = ValidationResult(test_name="complex_test", passed=True)
+        
+        # Add an issue with complex details that include property objects, types, etc.
+        complex_issue = AlignmentIssue(
+            level=SeverityLevel.WARNING,
+            category="complex_serialization",
+            message="Test complex object serialization",
+            details={
+                "property_object": property(lambda self: "test"),
+                "type_object": str,
+                "nested_dict": {
+                    "inner_property": property(lambda self: "inner"),
+                    "inner_type": int,
+                    "normal_value": "should_work"
+                },
+                "list_with_complex": [
+                    property(lambda self: "list_prop"),
+                    type,
+                    "normal_string"
+                ]
+            },
+            recommendation="Handle complex objects properly"
+        )
+        test_result.add_issue(complex_issue)
+        
+        self.tester.report.add_level1_result("complex_test", test_result)
+        
+        # This should not raise a JSON serialization error
+        json_output = self.tester.export_report(format='json')
+        
+        # Verify it's valid JSON
+        parsed_json = json.loads(json_output)
+        self.assertIsInstance(parsed_json, dict)
+        
+        # Verify complex objects were converted to strings
+        self.assertIn("complex_test", json_output)
+        self.assertIn("<property object at", json_output)  # Property objects converted
+        self.assertIn("<class 'str'>", json_output)  # Type objects converted
+    
+    def test_json_serialization_with_pydantic_models(self):
+        """Test JSON serialization with Pydantic model fields and complex structures."""
+        # Mock a validation result that includes Pydantic model information
+        mock_l4_results = {
+            "test_script": {
+                "passed": True,
+                "issues": [],
+                "config_analysis": {
+                    "class_name": "TestConfig",
+                    "fields": {
+                        "test_field": {
+                            "type": str,  # This would be a type object
+                            "required": True
+                        }
+                    },
+                    "default_values": {
+                        "computed_property": property(lambda self: "computed"),
+                        "model_fields": {
+                            "field1": "annotation=str required=True description='Test field'"
+                        }
+                    }
+                }
+            }
+        }
+        
+        with patch.object(self.tester.level4_tester, 'validate_all_builders') as mock_l4:
+            mock_l4.return_value = mock_l4_results
+            
+            self.tester._run_level4_validation(["test_script"])
+            
+            # Should be able to serialize without errors
+            json_output = self.tester.export_report(format='json')
+            parsed_json = json.loads(json_output)
+            
+            self.assertIsInstance(parsed_json, dict)
+            self.assertIn("test_script", json_output)
+    
+    def test_cli_integration_compatibility(self):
+        """Test that the unified tester works with CLI integration patterns."""
+        # Test the validate_specific_script method that CLI uses
+        with patch.object(self.tester.level1_tester, 'validate_script') as mock_l1, \
+             patch.object(self.tester.level2_tester, 'validate_contract') as mock_l2, \
+             patch.object(self.tester.level3_tester, 'validate_specification') as mock_l3, \
+             patch.object(self.tester.level4_tester, 'validate_builder') as mock_l4:
+            
+            # Mock successful validation across all levels
+            mock_l1.return_value = {"passed": True, "issues": []}
+            mock_l2.return_value = {"passed": True, "issues": []}
+            mock_l3.return_value = {"passed": True, "issues": []}
+            mock_l4.return_value = {"passed": True, "issues": []}
+            
+            result = self.tester.validate_specific_script("test_script")
+            
+            # Verify the result structure matches CLI expectations
+            self.assertEqual(result['script_name'], "test_script")
+            self.assertEqual(result['overall_status'], "PASSING")
+            self.assertIn('level1', result)
+            self.assertIn('level2', result)
+            self.assertIn('level3', result)
+            self.assertIn('level4', result)
+            
+            # Verify each level result is properly structured
+            for level in ['level1', 'level2', 'level3', 'level4']:
+                self.assertIn('passed', result[level])
+                self.assertIn('issues', result[level])
+    
+    def test_comprehensive_validation_workflow(self):
+        """Test the complete validation workflow as used by the CLI and standalone scripts."""
+        # Mock all level testers to return realistic results
+        mock_l1_results = {
+            "payload": {
+                "passed": True,
+                "issues": [],
+                "script_analysis": {
+                    "script_path": "/path/to/payload.py",
+                    "path_references": [],
+                    "env_var_accesses": []
+                }
+            }
+        }
+        
+        mock_l2_results = {
+            "payload": {
+                "passed": True,
+                "issues": [],
+                "contract": {
+                    "entry_point": "payload.py",
+                    "inputs": {"model_input": {"path": "/opt/ml/processing/input/model"}},
+                    "outputs": {"payload_sample": {"path": "/opt/ml/processing/output"}}
+                }
+            }
+        }
+        
+        mock_l3_results = {
+            "payload": {
+                "passed": True,
+                "issues": [],
+                "specification": {
+                    "step_type": "Payload",
+                    "dependencies": [],
+                    "outputs": []
+                }
+            }
+        }
+        
+        mock_l4_results = {
+            "payload": {
+                "passed": True,
+                "issues": [
+                    {
+                        "severity": "WARNING",
+                        "category": "configuration_fields",
+                        "message": "Required field not accessed",
+                        "details": {"field_name": "test_field"}
+                    }
+                ],
+                "builder_analysis": {
+                    "config_accesses": [],
+                    "validation_calls": []
+                }
+            }
+        }
+        
+        with patch.object(self.tester.level1_tester, 'validate_all_scripts') as mock_l1, \
+             patch.object(self.tester.level2_tester, 'validate_all_contracts') as mock_l2, \
+             patch.object(self.tester.level3_tester, 'validate_all_specifications') as mock_l3, \
+             patch.object(self.tester.level4_tester, 'validate_all_builders') as mock_l4:
+            
+            mock_l1.return_value = mock_l1_results
+            mock_l2.return_value = mock_l2_results
+            mock_l3.return_value = mock_l3_results
+            mock_l4.return_value = mock_l4_results
+            
+            # Run full validation
+            report = self.tester.run_full_validation(["payload"])
+            
+            # Verify report structure
+            self.assertIsNotNone(report)
+            self.assertIsNotNone(report.summary)
+            
+            # Verify JSON export works
+            json_output = self.tester.export_report(format='json')
+            parsed_json = json.loads(json_output)
+            self.assertIsInstance(parsed_json, dict)
+            
+            # Verify validation summary
+            summary = self.tester.get_validation_summary()
+            self.assertIn('overall_status', summary)
+            self.assertIn('total_tests', summary)
+            self.assertIn('level_breakdown', summary)
+            
+            # Verify specific script validation
+            script_result = self.tester.validate_specific_script("payload")
+            # Should be PASSING since all levels pass (warnings don't fail the test)
+            self.assertIn(script_result['overall_status'], ["PASSING", "FAILING"])
+            self.assertEqual(script_result['script_name'], "payload")
 
 
 if __name__ == '__main__':

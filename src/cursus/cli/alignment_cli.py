@@ -365,28 +365,28 @@ def validate(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_d
         cursus alignment validate currency_conversion --verbose
         cursus alignment validate dummy_training --output-dir ./reports --format html
     """
+    # Set default directories if not provided
+    project_root = Path.cwd()
+    if not scripts_dir:
+        scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+    if not contracts_dir:
+        contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
+    if not specs_dir:
+        specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
+    if not builders_dir:
+        builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
+    if not configs_dir:
+        configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
+    
+    if verbose:
+        click.echo(f"🔍 Validating script: {script_name}")
+        click.echo(f"📁 Scripts directory: {scripts_dir}")
+        click.echo(f"📁 Contracts directory: {contracts_dir}")
+        click.echo(f"📁 Specifications directory: {specs_dir}")
+        click.echo(f"📁 Builders directory: {builders_dir}")
+        click.echo(f"📁 Configs directory: {configs_dir}")
+    
     try:
-        # Set default directories if not provided
-        project_root = Path.cwd()
-        if not scripts_dir:
-            scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
-        if not contracts_dir:
-            contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
-        if not specs_dir:
-            specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
-        if not builders_dir:
-            builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
-        if not configs_dir:
-            configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
-        
-        if verbose:
-            click.echo(f"🔍 Validating script: {script_name}")
-            click.echo(f"📁 Scripts directory: {scripts_dir}")
-            click.echo(f"📁 Contracts directory: {contracts_dir}")
-            click.echo(f"📁 Specifications directory: {specs_dir}")
-            click.echo(f"📁 Builders directory: {builders_dir}")
-            click.echo(f"📁 Configs directory: {configs_dir}")
-        
         # Initialize the unified alignment tester
         tester = UnifiedAlignmentTester(
             scripts_dir=str(scripts_dir),
@@ -420,17 +420,17 @@ def validate(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_d
         status = results.get('overall_status', 'UNKNOWN')
         if status == 'PASSING':
             click.echo(f"\n✅ {script_name} passed all alignment validation checks!")
-            return 0
+            ctx.exit(0)
         else:
             click.echo(f"\n❌ {script_name} failed alignment validation. Please review the issues above.")
-            return 1
+            ctx.exit(1)
             
     except Exception as e:
         click.echo(f"❌ Error validating {script_name}: {e}", err=True)
         if verbose:
             import traceback
             traceback.print_exc()
-        return 1
+        ctx.exit(1)
 
 
 @alignment.command()
@@ -626,17 +626,23 @@ def validate_all(ctx, scripts_dir, contracts_dir, specs_dir, builders_dir, confi
         # Return appropriate exit code
         if failed > 0 or errors > 0:
             click.echo(f"\n⚠️  {failed + errors} script(s) failed validation. Please review the issues above.")
-            return 1
+            ctx.exit(1)
         else:
             click.echo(f"\n🎉 All {passed} scripts passed alignment validation!")
-            return 0
+            ctx.exit(0)
             
+    except click.exceptions.Exit:
+        # Re-raise Click's Exit exception to preserve proper exit handling
+        raise
+    except SystemExit:
+        # Re-raise SystemExit to preserve exit codes
+        raise
     except Exception as e:
         click.echo(f"❌ Fatal error during validation: {e}", err=True)
         if verbose:
             import traceback
             traceback.print_exc()
-        return 1
+        ctx.exit(1)
 
 
 @alignment.command()

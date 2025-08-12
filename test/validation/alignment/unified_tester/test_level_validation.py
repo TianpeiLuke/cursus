@@ -163,6 +163,129 @@ class TestLevelValidation(unittest.TestCase):
             self.assertEqual(result['overall_status'], "FAILING")
             self.assertFalse(result['level1']['passed'])
     
+    def test_validate_specific_script_with_exception(self):
+        """Test validating a specific script when an exception occurs."""
+        with patch.object(self.tester.level1_tester, 'validate_script') as mock_l1:
+            mock_l1.side_effect = Exception("Validation error")
+            
+            result = self.tester.validate_specific_script("test_script")
+            
+            self.assertEqual(result['overall_status'], "ERROR")
+            self.assertIn('error', result)
+    
+    def test_level3_validation_mode_configuration(self):
+        """Test that Level 3 validation mode is properly configured."""
+        # Test strict mode
+        strict_tester = UnifiedAlignmentTester(level3_validation_mode="strict")
+        self.assertIsNotNone(strict_tester.level3_config)
+        
+        # Test relaxed mode (default)
+        relaxed_tester = UnifiedAlignmentTester(level3_validation_mode="relaxed")
+        self.assertIsNotNone(relaxed_tester.level3_config)
+        
+        # Test permissive mode
+        permissive_tester = UnifiedAlignmentTester(level3_validation_mode="permissive")
+        self.assertIsNotNone(permissive_tester.level3_config)
+        
+        # Test invalid mode (should default to relaxed)
+        invalid_tester = UnifiedAlignmentTester(level3_validation_mode="invalid")
+        self.assertIsNotNone(invalid_tester.level3_config)
+    
+    def test_json_serialization_in_level_validation(self):
+        """Test that level validation results can be JSON serialized."""
+        import json
+        
+        # Mock results with complex objects
+        mock_results = {
+            "test_script": {
+                "passed": True,
+                "issues": [],
+                "complex_data": {
+                    "type_object": str,
+                    "property_object": property(lambda self: "test"),
+                    "nested": {
+                        "inner_type": int
+                    }
+                }
+            }
+        }
+        
+        with patch.object(self.tester.level1_tester, 'validate_all_scripts') as mock_validate:
+            mock_validate.return_value = mock_results
+            
+            self.tester._run_level1_validation(["test_script"])
+            
+            # Should be able to export to JSON without errors
+            json_output = self.tester.export_report(format='json')
+            parsed_json = json.loads(json_output)
+            
+            self.assertIsInstance(parsed_json, dict)
+    
+    def test_cli_compatibility_methods(self):
+        """Test methods that are specifically used by the CLI."""
+        # Test get_validation_summary
+        test_result = ValidationResult(test_name="cli_test", passed=True)
+        self.tester.report.add_level1_result("cli_test", test_result)
+        
+        summary = self.tester.get_validation_summary()
+        
+        self.assertIn('overall_status', summary)
+        self.assertIn('total_tests', summary)
+        self.assertIn('pass_rate', summary)
+        self.assertIn('level_breakdown', summary)
+        
+        # Test get_critical_issues
+        critical_issue = AlignmentIssue(
+            level=SeverityLevel.CRITICAL,
+            category="cli_test",
+            message="Critical issue for CLI",
+            details={"cli": "test"}
+        )
+        
+        critical_result = ValidationResult(test_name="critical_test", passed=False)
+        critical_result.add_issue(critical_issue)
+        self.tester.report.add_level1_result("critical_test", critical_result)
+        
+        critical_issues = self.tester.get_critical_issues()
+        self.assertGreater(len(critical_issues), 0)
+        self.assertEqual(critical_issues[0]['level'], 'CRITICAL')
+    
+    def test_alignment_status_matrix_with_real_data(self):
+        """Test alignment status matrix with realistic validation data."""
+        with patch.object(self.tester, 'discover_scripts') as mock_discover:
+            mock_discover.return_value = ["payload", "package", "dummy_training"]
+            
+            # Add mixed results
+            passing_result = ValidationResult(test_name="payload_test", passed=True)
+            failing_result = ValidationResult(test_name="package_test", passed=False)
+            
+            self.tester.report.add_level1_result("payload", passing_result)
+            self.tester.report.add_level2_result("payload", failing_result)
+            self.tester.report.add_level3_result("package", passing_result)
+            self.tester.report.add_level4_result("package", failing_result)
+            
+            matrix = self.tester.get_alignment_status_matrix()
+            
+            # Verify structure
+            self.assertIn("payload", matrix)
+            self.assertIn("package", matrix)
+            self.assertIn("dummy_training", matrix)
+            
+            # Verify status values
+            self.assertEqual(matrix["payload"]["level1"], "PASSING")
+            self.assertEqual(matrix["payload"]["level2"], "FAILING")
+            self.assertEqual(matrix["payload"]["level3"], "UNKNOWN")
+            self.assertEqual(matrix["payload"]["level4"], "UNKNOWN")
+            
+            self.assertEqual(matrix["package"]["level1"], "UNKNOWN")
+            self.assertEqual(matrix["package"]["level2"], "UNKNOWN")
+            self.assertEqual(matrix["package"]["level3"], "PASSING")
+            self.assertEqual(matrix["package"]["level4"], "FAILING")
+            
+            # Scripts with no results should be UNKNOWN
+            for level in ["level1", "level2", "level3", "level4"]:
+                self.assertEqual(matrix["dummy_training"][level], "UNKNOWN")
+    
     def test_get_validation_summary(self):
         """Test getting validation summary."""
         # Add some mock results to the report

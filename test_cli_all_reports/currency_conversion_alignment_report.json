@@ -555,32 +555,12 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_id_col",
-        "details": {
-          "field_name": "marketplace_id_col",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: currency_conversion_dict",
         "details": {
           "field_name": "currency_conversion_dict",
           "builder": "currency_conversion"
         },
         "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: label_field",
-        "details": {
-          "field_name": "label_field",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field label_field in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -593,15 +573,35 @@
         "recommendation": "Access required field marketplace_info in builder or make it optional"
       },
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_id_col",
+        "details": {
+          "field_name": "marketplace_id_col",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: label_field",
+        "details": {
+          "field_name": "label_field",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field label_field in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "marketplace_id_col",
             "currency_conversion_dict",
-            "label_field",
-            "marketplace_info"
+            "marketplace_info",
+            "marketplace_id_col",
+            "label_field"
           ],
           "builder": "currency_conversion"
         },
@@ -800,7 +800,7 @@
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
-    "validation_timestamp": "2025-08-11T22:58:19.667570",
+    "validation_timestamp": "2025-08-11T23:19:48.543914",
     "validator_version": "1.0.0"
   }
 }

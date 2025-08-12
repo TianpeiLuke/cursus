@@ -143,9 +143,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
+              "XGBoostTraining",
               "ModelStep",
-              "XGBoostTraining"
+              "TrainingStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -193,9 +193,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "TrainingStep",
+              "XGBoostTraining",
               "ModelStep",
-              "XGBoostTraining"
+              "TrainingStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -242,9 +242,9 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "TrainingStep",
+                "XGBoostTraining",
                 "ModelStep",
-                "XGBoostTraining"
+                "TrainingStep"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be packaged"
@@ -288,9 +288,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
+            "XGBoostTraining",
             "ModelStep",
-            "XGBoostTraining"
+            "TrainingStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -357,9 +357,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "TrainingStep",
+            "XGBoostTraining",
             "ModelStep",
-            "XGBoostTraining"
+            "TrainingStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -504,7 +504,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.446150",
+    "validation_timestamp": "2025-08-11T23:19:40.640979",
     "validator_version": "1.0.0"
   }
 }

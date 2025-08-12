@@ -109,10 +109,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing",
               "XGBoostTraining",
-              "PytorchTraining"
+              "TabularPreprocessing",
+              "PytorchTraining",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -122,8 +122,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -150,10 +150,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "TabularPreprocessing",
               "XGBoostTraining",
-              "PytorchTraining"
+              "TabularPreprocessing",
+              "PytorchTraining",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -163,8 +163,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -190,10 +190,10 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "TabularPreprocessing",
                 "XGBoostTraining",
-                "PytorchTraining"
+                "TabularPreprocessing",
+                "PytorchTraining",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -203,8 +203,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "HyperparameterPrep"
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -227,10 +227,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "TabularPreprocessing",
             "XGBoostTraining",
-            "PytorchTraining"
+            "TabularPreprocessing",
+            "PytorchTraining",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -240,8 +240,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -337,10 +337,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "TabularPreprocessing",
             "XGBoostTraining",
-            "PytorchTraining"
+            "TabularPreprocessing",
+            "PytorchTraining",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -350,8 +350,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -512,7 +512,7 @@
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
-    "validation_timestamp": "2025-08-11T23:19:48.560585",
+    "validation_timestamp": "2025-08-11T23:21:14.477952",
     "validator_version": "1.0.0"
   }
 }

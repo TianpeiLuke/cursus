@@ -155,8 +155,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -205,8 +205,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -254,8 +254,8 @@
               "dependency_type": "custom_property",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "ScriptStep"
+                "ScriptStep",
+                "ProcessingStep"
               ],
               "data_type": "String",
               "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -300,8 +300,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -369,8 +369,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -503,7 +503,7 @@
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
-    "validation_timestamp": "2025-08-11T23:19:48.603870",
+    "validation_timestamp": "2025-08-11T23:21:14.520370",
     "validator_version": "1.0.0"
   }
 }

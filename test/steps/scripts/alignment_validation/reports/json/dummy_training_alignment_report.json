@@ -109,8 +109,8 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
               "ProcessingStep",
+              "PytorchTraining",
               "XGBoostTraining",
               "TabularPreprocessing"
             ],
@@ -122,8 +122,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -150,8 +150,8 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
               "ProcessingStep",
+              "PytorchTraining",
               "XGBoostTraining",
               "TabularPreprocessing"
             ],
@@ -163,8 +163,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -190,8 +190,8 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "PytorchTraining",
                 "ProcessingStep",
+                "PytorchTraining",
                 "XGBoostTraining",
                 "TabularPreprocessing"
               ],
@@ -203,8 +203,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "HyperparameterPrep"
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -227,8 +227,8 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
             "ProcessingStep",
+            "PytorchTraining",
             "XGBoostTraining",
             "TabularPreprocessing"
           ],
@@ -240,8 +240,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -337,8 +337,8 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
             "ProcessingStep",
+            "PytorchTraining",
             "XGBoostTraining",
             "TabularPreprocessing"
           ],
@@ -350,8 +350,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -513,7 +513,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T22:57:06.405138",
+    "validation_timestamp": "2025-08-11T23:19:40.583245",
     "validator_version": "1.0.0"
   }
 }

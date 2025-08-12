@@ -29,7 +29,7 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: tabular_preprocessing</h2>
-        <p>Generated: 2025-08-11T23:19:40.696932</p>
+        <p>Generated: 2025-08-11T23:19:48.725209</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
@@ -55,57 +55,57 @@
     <div class="level-section">
         <div class="level-header">Alignment Validation Results</div>
         
-            <div class="test-result test-passed">
-                <h4>Level 1: Script ↔ Contract</h4>
-                <p>Status: PASSED</p>
-                
-                <div class="issue info">
-                    <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
-                    <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
-                </div>
-                
+        <div class="test-result test-passed">
+            <h4>Level 1: Script ↔ Contract</h4>
+            <p>Status: PASSED</p>
+            
+            <div class="issue info">
+                <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
+                <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
             </div>
             
-            <div class="test-result test-passed">
-                <h4>Level 2: Contract ↔ Specification</h4>
-                <p>Status: PASSED</p>
-                
-                <div class="issue info">
-                    <strong>INFO:</strong> Smart Specification Selection: validated against 5 variants
-                    <br><em>Recommendation: Multi-variant validation completed successfully</em>
-                </div>
-                
+        </div>
+        
+        <div class="test-result test-passed">
+            <h4>Level 2: Contract ↔ Specification</h4>
+            <p>Status: PASSED</p>
+            
+            <div class="issue info">
+                <strong>INFO:</strong> Smart Specification Selection: validated against 5 variants
+                <br><em>Recommendation: Multi-variant validation completed successfully</em>
             </div>
             
-            <div class="test-result test-passed">
-                <h4>Level 3: Specification ↔ Dependencies</h4>
-                <p>Status: PASSED</p>
-                
+        </div>
+        
+        <div class="test-result test-passed">
+            <h4>Level 3: Specification ↔ Dependencies</h4>
+            <p>Status: PASSED</p>
+            
+        </div>
+        
+        <div class="test-result test-passed">
+            <h4>Level 4: Builder ↔ Configuration</h4>
+            <p>Status: PASSED</p>
+            
+            <div class="issue warning">
+                <strong>WARNING:</strong> Required configuration field not accessed in builder: label_name
+                <br><em>Recommendation: Access required field label_name in builder or make it optional</em>
             </div>
             
-            <div class="test-result test-passed">
-                <h4>Level 4: Builder ↔ Configuration</h4>
-                <p>Status: PASSED</p>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: label_name
-                    <br><em>Recommendation: Access required field label_name in builder or make it optional</em>
-                </div>
-                
-                <div class="issue info">
-                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
-                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
-                </div>
-                
+            <div class="issue info">
+                <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
             </div>
             
+        </div>
+        
     </div>
     
     <div class="metadata">
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py</p>
-        <p><strong>Contract Mapping:</strong> tabular_preprocessing_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:40.696932</p>
+        <p><strong>Contract Mapping:</strong> Unknown</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:48.725209</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

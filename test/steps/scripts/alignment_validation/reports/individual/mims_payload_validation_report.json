@@ -62,7 +62,7 @@
   "overall_status": "FAILING",
   "metadata": {
     "script_name": "mims_payload",
-    "validation_timestamp": "2025-08-11T11:40:52.972780",
+    "validation_timestamp": "2025-08-11T23:18:49.515338",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py"
   }
