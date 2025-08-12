@@ -143,9 +143,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
+              "TrainingStep",
               "ModelStep",
-              "XGBoostTraining",
-              "TrainingStep"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -155,8 +155,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -193,9 +193,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
+              "TrainingStep",
               "ModelStep",
-              "XGBoostTraining",
-              "TrainingStep"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -205,8 +205,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -242,9 +242,9 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
+                "TrainingStep",
                 "ModelStep",
-                "XGBoostTraining",
-                "TrainingStep"
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be packaged"
@@ -254,8 +254,8 @@
               "dependency_type": "custom_property",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "ScriptStep"
+                "ScriptStep",
+                "ProcessingStep"
               ],
               "data_type": "String",
               "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -288,9 +288,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
+            "TrainingStep",
             "ModelStep",
-            "XGBoostTraining",
-            "TrainingStep"
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -300,8 +300,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -357,9 +357,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
+            "TrainingStep",
             "ModelStep",
-            "XGBoostTraining",
-            "TrainingStep"
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -369,8 +369,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -504,7 +504,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-11T21:47:39.841458",
+    "validation_timestamp": "2025-08-11T21:51:24.732063",
     "validator_version": "1.0.0"
   }
 }

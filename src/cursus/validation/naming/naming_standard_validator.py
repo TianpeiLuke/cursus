@@ -227,7 +227,7 @@ class NamingStandardValidator:
         return violations
     
     def _validate_canonical_step_name(self, name: str, component: str) -> List[NamingViolation]:
-        """Validate canonical step name follows PascalCase pattern."""
+        """Validate canonical step name follows PascalCase pattern, allowing job type variants."""
         violations = []
         
         if not name:
@@ -238,27 +238,77 @@ class NamingStandardValidator:
             ))
             return violations
         
-        # Check PascalCase pattern
-        if not re.match(r'^[A-Z][A-Za-z0-9]*$', name):
-            violations.append(NamingViolation(
-                component=component,
-                violation_type="pascal_case",
-                message="Canonical step name must be in PascalCase",
-                expected="PascalCase (e.g., CradleDataLoading, XGBoostTraining)",
-                actual=name,
-                suggestions=[self._to_pascal_case(name)]
-            ))
+        # Check if this is a job type variant (e.g., "TabularPreprocessing_Training")
+        valid_job_types = ['Training', 'Testing', 'Validation', 'Calibration']
+        is_job_type_variant = False
+        base_name = name
+        job_type = None
         
-        # Check for common anti-patterns
         if '_' in name:
-            violations.append(NamingViolation(
-                component=component,
-                violation_type="underscore_in_name",
-                message="Canonical step name should not contain underscores",
-                actual=name,
-                suggestions=[name.replace('_', '')]
-            ))
+            parts = name.split('_')
+            if len(parts) == 2:
+                potential_base, potential_job_type = parts
+                if potential_job_type in valid_job_types:
+                    is_job_type_variant = True
+                    base_name = potential_base
+                    job_type = potential_job_type
         
+        if is_job_type_variant:
+            # Validate the base name (should be PascalCase and exist in registry)
+            if not re.match(r'^[A-Z][A-Za-z0-9]*$', base_name):
+                violations.append(NamingViolation(
+                    component=component,
+                    violation_type="pascal_case_base",
+                    message=f"Base step name '{base_name}' in job type variant must be in PascalCase",
+                    expected="PascalCase (e.g., TabularPreprocessing, CurrencyConversion)",
+                    actual=base_name,
+                    suggestions=[self._to_pascal_case(base_name)]
+                ))
+            
+            # Check if base name exists in registry
+            if base_name not in STEP_NAMES:
+                violations.append(NamingViolation(
+                    component=component,
+                    violation_type="unknown_base_step",
+                    message=f"Base step name '{base_name}' not found in STEP_NAMES registry",
+                    actual=base_name,
+                    suggestions=list(STEP_NAMES.keys())[:5]  # Show first 5 as suggestions
+                ))
+            
+            # Validate job type capitalization
+            if job_type and job_type[0].islower():
+                violations.append(NamingViolation(
+                    component=component,
+                    violation_type="job_type_capitalization",
+                    message=f"Job type '{job_type}' should be capitalized",
+                    expected=job_type.capitalize(),
+                    actual=job_type,
+                    suggestions=[job_type.capitalize()]
+                ))
+        else:
+            # Standard validation for non-job-type variants
+            # Check PascalCase pattern
+            if not re.match(r'^[A-Z][A-Za-z0-9]*$', name):
+                violations.append(NamingViolation(
+                    component=component,
+                    violation_type="pascal_case",
+                    message="Canonical step name must be in PascalCase",
+                    expected="PascalCase (e.g., CradleDataLoading, XGBoostTraining)",
+                    actual=name,
+                    suggestions=[self._to_pascal_case(name)]
+                ))
+            
+            # Check for underscores in non-job-type variants
+            if '_' in name:
+                violations.append(NamingViolation(
+                    component=component,
+                    violation_type="underscore_in_name",
+                    message="Canonical step name should not contain underscores (unless it's a job type variant like StepName_Training)",
+                    actual=name,
+                    suggestions=[name.replace('_', '')]
+                ))
+        
+        # Common validation for both variants and non-variants
         if name.lower() == name:
             violations.append(NamingViolation(
                 component=component,

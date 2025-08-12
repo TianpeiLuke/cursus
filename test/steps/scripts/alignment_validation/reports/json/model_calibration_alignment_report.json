@@ -186,10 +186,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TrainingEvaluation",
-              "ModelEvaluation",
-              "XGBoostModelEval",
               "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval",
+              "ModelEvaluation",
               "CrossValidation"
             ],
             "data_type": "S3Uri",
@@ -231,10 +231,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TrainingEvaluation",
-              "ModelEvaluation",
-              "XGBoostModelEval",
               "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval",
+              "ModelEvaluation",
               "CrossValidation"
             ],
             "data_type": "S3Uri",
@@ -275,10 +275,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TrainingEvaluation",
-                "ModelEvaluation",
-                "XGBoostModelEval",
                 "XGBoostTraining",
+                "TrainingEvaluation",
+                "XGBoostModelEval",
+                "ModelEvaluation",
                 "CrossValidation"
               ],
               "data_type": "S3Uri",
@@ -316,10 +316,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TrainingEvaluation",
-            "ModelEvaluation",
-            "XGBoostModelEval",
             "XGBoostTraining",
+            "TrainingEvaluation",
+            "XGBoostModelEval",
+            "ModelEvaluation",
             "CrossValidation"
           ],
           "data_type": "S3Uri",
@@ -380,10 +380,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TrainingEvaluation",
-            "ModelEvaluation",
-            "XGBoostModelEval",
             "XGBoostTraining",
+            "TrainingEvaluation",
+            "XGBoostModelEval",
+            "ModelEvaluation",
             "CrossValidation"
           ],
           "data_type": "S3Uri",
@@ -631,7 +631,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-11T21:47:39.819711",
+    "validation_timestamp": "2025-08-11T21:51:24.714034",
     "validator_version": "1.0.0"
   }
 }

@@ -109,10 +109,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
-              "XGBoostTraining",
+              "TabularPreprocessing",
               "ProcessingStep",
-              "TabularPreprocessing"
+              "XGBoostTraining",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -150,10 +150,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
-              "XGBoostTraining",
+              "TabularPreprocessing",
               "ProcessingStep",
-              "TabularPreprocessing"
+              "XGBoostTraining",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -190,10 +190,10 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "PytorchTraining",
-                "XGBoostTraining",
+                "TabularPreprocessing",
                 "ProcessingStep",
-                "TabularPreprocessing"
+                "XGBoostTraining",
+                "PytorchTraining"
               ],
               "data_type": "S3Uri",
               "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -227,10 +227,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
-            "XGBoostTraining",
+            "TabularPreprocessing",
             "ProcessingStep",
-            "TabularPreprocessing"
+            "XGBoostTraining",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -337,10 +337,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
-            "XGBoostTraining",
+            "TabularPreprocessing",
             "ProcessingStep",
-            "TabularPreprocessing"
+            "XGBoostTraining",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -513,7 +513,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T21:47:39.789399",
+    "validation_timestamp": "2025-08-11T21:51:24.677486",
     "validator_version": "1.0.0"
   }
 }
