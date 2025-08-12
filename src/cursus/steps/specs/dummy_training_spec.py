@@ -21,20 +21,20 @@ DUMMY_TRAINING_SPEC = StepSpecification(
         DependencySpec(
             logical_name="pretrained_model_path",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=True,
+            required=False,  # Optional - step can upload local model file if not provided
             compatible_sources=["ProcessingStep", "XGBoostTraining", "PytorchTraining", "TabularPreprocessing"],
             semantic_keywords=["model", "pretrained", "artifact", "weights", "training_output", "model_data"],
             data_type="S3Uri",
-            description="Path to pretrained model.tar.gz file"
+            description="Optional pretrained model path. If not provided, step uploads local model file from config."
         ),
         DependencySpec(
             logical_name="hyperparameters_s3_uri",
             dependency_type=DependencyType.HYPERPARAMETERS,
-            required=True,  # Now required for integration with downstream steps
+            required=False,  # Optional - step can generate hyperparameters from config if not provided
             compatible_sources=["HyperparameterPrep", "ProcessingStep"],
             semantic_keywords=["config", "params", "hyperparameters", "settings", "hyperparams"],
             data_type="S3Uri",
-            description="Hyperparameters configuration file for inclusion in the model package"
+            description="Optional hyperparameters file. If not provided, step generates hyperparameters from config."
         )
     ],
     outputs=[

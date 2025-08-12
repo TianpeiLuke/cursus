@@ -152,9 +152,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
+              "DataLoad",
               "ProcessingStep",
-              "DataLoad"
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -181,9 +181,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
+              "DataLoad",
               "ProcessingStep",
-              "DataLoad"
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -209,9 +209,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
+                "DataLoad",
                 "ProcessingStep",
-                "DataLoad"
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Raw training data for preprocessing"
@@ -234,9 +234,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
+            "DataLoad",
             "ProcessingStep",
-            "DataLoad"
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Raw training data for preprocessing"
@@ -441,7 +441,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-08-11T21:12:34.264183",
+    "validation_timestamp": "2025-08-11T21:34:37.298930",
     "validator_version": "1.0.0"
   }
 }
