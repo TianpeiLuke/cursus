@@ -37,8 +37,8 @@ The agentic workflow consists of **four primary roles**:
 
 1. **Planner Agent**: Proposes and revises implementation plans for complex pipeline step development tasks
 2. **Validator Agent**: Reviews plans and code with adaptive validation approaches:
-   - **Plan Validation** (Steps 2, 4): Level 1 validation only (LLM-based analysis)
-   - **Code Validation** (Steps 7, 9): Two-level validation (LLM analysis + deterministic tools)
+   - **Plan Validation** (Step 2): Level 1 validation only (LLM-based analysis)
+   - **Code Validation** (Steps 5, 7): Two-level validation (LLM analysis + deterministic tools)
 3. **Programmer Agent**: Executes validated plans to generate production-ready code
 4. **User (Human-in-the-Loop)**: Provides requirements, guidance, and final approval
 
@@ -46,12 +46,12 @@ The agentic workflow consists of **four primary roles**:
 
 The workflow operates in **two main phases**:
 
-**Phase 1: Plan Development and Validation** (Steps 1-5)
-- Iterative plan creation and validation
+**Phase 1: Plan Development and Validation** (Steps 1-3)
+- Iterative plan creation and validation cycle
 - Human guidance on requirements and documentation locations
 - Convergence to a validated, implementable plan
 
-**Phase 2: Code Implementation and Validation** (Steps 6-9)
+**Phase 2: Code Implementation and Validation** (Steps 4-7)
 - Code generation based on validated plan
 - Two-level code validation with tool integration
 - Iterative code refinement until validation passes
@@ -65,38 +65,34 @@ flowchart TD
     
     %% Phase 1: Plan Development and Validation
     subgraph Phase1 ["Phase 1: Plan Development & Validation"]
-        B[Step 1: Initial Planning<br/>Agent: Planner<br/>Template: initial_planner_prompt_template.md] --> C[Step 2: Plan Validation<br/>Agent: Validator<br/>Template: plan_validator_prompt_template.md]
+        B[Step 1: Initial Planning<br/>Agent: Planner<br/>Template: initial_planner_prompt_template.md] --> C[Step 2: Plan Validation Cycle<br/>Agent: Validator<br/>Template: plan_validator_prompt_template.md]
         
         C --> D{Validation<br/>Passed?}
         D -->|No| E[Step 3: Plan Revision<br/>Agent: Planner<br/>Template: revision_planner_prompt_template.md]
-        E --> F[Step 4: Iterative Validation<br/>Agent: Validator<br/>Template: plan_validator_prompt_template.md]
-        F --> G{All Issues<br/>Resolved?}
-        G -->|No| E
-        G -->|Yes| H[Step 5: Plan Convergence<br/>✓ Alignment Score ≥ 9/10<br/>✓ Standardization Score ≥ 8/10<br/>✓ Compatibility Score ≥ 8/10]
-        D -->|Yes| H
+        E --> C
+        D -->|Yes| F[✓ Plan Convergence<br/>✓ Alignment Score ≥ 9/10<br/>✓ Standardization Score ≥ 8/10<br/>✓ Compatibility Score ≥ 8/10]
     end
     
     %% Phase 2: Code Implementation and Validation
     subgraph Phase2 ["Phase 2: Code Implementation & Validation"]
-        H --> I[Step 6: Code Implementation<br/>Agent: Programmer<br/>Template: programmer_prompt_template.md]
+        F --> G[Step 4: Code Implementation<br/>Agent: Programmer<br/>Template: programmer_prompt_template.md]
         
-        I --> J[Step 7: Code Validation<br/>Agent: Validator<br/>Templates:<br/>• two_level_validation_agent_prompt_template.md<br/>• two_level_standardization_validation_agent_prompt_template.md]
+        G --> H[Step 5: Code Validation<br/>Agent: Validator<br/>Templates:<br/>• two_level_validation_agent_prompt_template.md<br/>• two_level_standardization_validation_agent_prompt_template.md]
         
-        J --> K{Validation<br/>Passed?}
-        K -->|No| L[Step 8: Code Refinement<br/>Agent: Programmer<br/>Template: code_refinement_programmer_prompt_template.md]
-        L --> M[Step 9: Validation Convergence<br/>Agent: Validator<br/>Repeat Step 7 Templates]
-        M --> N{All Validations<br/>Pass?}
-        N -->|No| L
-        N -->|Yes| O[✅ Production Ready Implementation]
-        K -->|Yes| O
+        H --> I{Validation<br/>Passed?}
+        I -->|No| J[Step 6: Code Refinement<br/>Agent: Programmer<br/>Template: code_refinement_programmer_prompt_template.md]
+        J --> K[Step 7: Validation Convergence<br/>Agent: Validator<br/>Repeat Step 5 Templates]
+        K --> L{All Validations<br/>Pass?}
+        L -->|No| J
+        L -->|Yes| M[✅ Production Ready Implementation]
+        I -->|Yes| M
     end
     
     %% Human-in-the-Loop Integration
-    P[👤 Human Review & Approval] -.-> C
-    P -.-> F
-    P -.-> J
-    P -.-> M
-    P -.-> O
+    N[👤 Human Review & Approval] -.-> C
+    N -.-> H
+    N -.-> K
+    N -.-> M
     
     %% Styling
     classDef plannerAgent fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -108,11 +104,11 @@ flowchart TD
     classDef phase fill:#f5f5f5,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5
     
     class B,E plannerAgent
-    class C,F,J,M validatorAgent
-    class I,L programmerAgent
-    class A,P userInput
-    class D,G,K,N decision
-    class O success
+    class C,H,K validatorAgent
+    class G,J programmerAgent
+    class A,N userInput
+    class D,I,L decision
+    class M success
 ```
 
 ### Workflow Legend
@@ -178,7 +174,7 @@ The Planner agent creates the initial implementation plan using the enhanced `in
 - Integration with existing pipeline components
 - Dependency resolution compatibility
 
-### Step 2: Plan Validation
+### Step 2: Plan Validation Cycle
 
 **Agent**: Validator  
 **Input**: Initial implementation plan  
@@ -186,7 +182,7 @@ The Planner agent creates the initial implementation plan using the enhanced `in
 
 The Validator agent reviews the plan using the enhanced `plan_validator_prompt_template.md`:
 
-**Important Note**: Plan validation uses **Level 1 validation only** (LLM-based analysis) because code-based validation tools cannot be applied to plans without actual program code. Two-level validation is reserved for Step 7 (Code Validation).
+**Important Note**: Plan validation uses **Level 1 validation only** (LLM-based analysis) because code-based validation tools cannot be applied to plans without actual program code. Two-level validation is reserved for Step 5 (Code Validation).
 
 **Template Enhancement Requirements**:
 - Fill knowledge blanks by referencing:
@@ -277,25 +273,7 @@ The Planner agent revises the plan using the enhanced `revision_planner_prompt_t
 3. Integration compatibility issues
 4. Implementation pattern inconsistencies
 
-### Step 4: Iterative Validation
-
-**Agent**: Validator  
-**Input**: Revised implementation plan  
-**Output**: Updated validation report  
-
-Repeat validation process with same enhanced template and methodology as Step 2.
-
-### Step 5: Plan Convergence
-
-**Process**: Repeat Steps 3-4 until validation passes  
-**Convergence Criteria**: 
-- No critical issues remaining
-- All minor issues resolved or accepted
-- Standardization compliance score ≥ 8/10
-- Alignment rules score ≥ 9/10
-- Cross-component compatibility score ≥ 8/10
-
-### Step 6: Code Implementation
+### Step 4: Code Implementation
 
 **Agent**: Programmer  
 **Input**: Validated implementation plan  
@@ -358,7 +336,7 @@ The Programmer agent implements the code using the enhanced `programmer_prompt_t
 - Ensure alignment between all components
 - Follow standardization rules precisely
 
-### Step 7: Code Validation
+### Step 5: Code Validation
 
 **Agent**: Validator  
 **Input**: Generated code implementation  
@@ -438,7 +416,7 @@ interface_validator = InterfaceStandardValidator()
 interface_results = interface_validator.validate_step_builder_interface(builder_class)
 ```
 
-### Step 8: Code Refinement
+### Step 6: Code Refinement
 
 **Agent**: Programmer  
 **Input**: Validation report and original code  
@@ -487,7 +465,7 @@ The Programmer agent fixes identified issues using the enhanced `code_refinement
 - Include validation-driven refinement strategies
 
 **Refinement Requirements**:
-- Address all critical validation issues identified in Step 7
+- Address all critical validation issues identified in Step 5
 - Maintain architectural integrity while fixing issues
 - Follow standardization rules precisely
 - Preserve validated plan structure and design intent
@@ -502,9 +480,9 @@ The Programmer agent fixes identified issues using the enhanced `code_refinement
 
 The Programmer agent fixes identified issues while maintaining the validated plan structure and ensuring all subsequent validations will pass.
 
-### Step 9: Validation Convergence
+### Step 7: Validation Convergence
 
-**Process**: Repeat Steps 7-8 until all validation passes  
+**Process**: Repeat Steps 5-6 until all validation passes  
 **Convergence Criteria**:
 - All tool-based validations pass
 - No critical alignment violations
