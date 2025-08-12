@@ -1,351 +1,69 @@
 {
   "script_name": "mims_payload",
   "level1": {
-    "passed": true,
-    "issues": [],
-    "script_analysis": {
-      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
-      "path_references": [
-        "path='\\nMIMS Payload Generation Processing Script\\n\\nThis script reads field information from hyperparameters extracted from model.tar.gz,\\nextracts configuration from environment variables,\\nand creates payload files for model inference.\\n' line_number=2 context='#!/usr/bin/env python\\n>>> \"\"\"\\nMIMS Payload Generation Processing Script\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/model' line_number=29 context='\\n# Fixed input/output directories\\n>>> INPUT_MODEL_DIR = \"/opt/ml/processing/input/model\"\\nOUTPUT_DIR = Path(\"/opt/ml/processing/output\")\\nWORKING_DIRECTORY = Path(\"/tmp/mims_payload_work\")' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=30 context='# Fixed input/output directories\\nINPUT_MODEL_DIR = \"/opt/ml/processing/input/model\"\\n>>> OUTPUT_DIR = Path(\"/opt/ml/processing/output\")\\nWORKING_DIRECTORY = Path(\"/tmp/mims_payload_work\")\\nPAYLOAD_SAMPLE_DIR = WORKING_DIRECTORY / \"payload_sample\"' is_hardcoded=True construction_method=None",
-        "path='/tmp/mims_payload_work' line_number=31 context='INPUT_MODEL_DIR = \"/opt/ml/processing/input/model\"\\nOUTPUT_DIR = Path(\"/opt/ml/processing/output\")\\n>>> WORKING_DIRECTORY = Path(\"/tmp/mims_payload_work\")\\nPAYLOAD_SAMPLE_DIR = WORKING_DIRECTORY / \"payload_sample\"\\n' is_hardcoded=True construction_method=None",
-        "path='Ensure a directory exists, creating it if necessary.' line_number=40 context='\\ndef ensure_directory(directory_path):\\n>>>     \"\"\"Ensure a directory exists, creating it if necessary.\"\"\"\\n    try:\\n        if isinstance(directory_path, str):' is_hardcoded=True construction_method=None",
-        "path='model.tar.gz' line_number=96 context='    # The builder step has been updated to use the directory as destination, not model.tar.gz\\n    # But we\\'ll keep the name for backward compatibility and handle both cases\\n>>>     input_model_path = Path(INPUT_MODEL_DIR) / \"model.tar.gz\"\\n    input_model_dir = Path(INPUT_MODEL_DIR)\\n    logger.info(f\"Looking for hyperparameters in model artifacts\")' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=114 context=\"                hyperparams_info = None\\n                for member in tar.getmembers():\\n>>>                     if member.name == 'hyperparameters.json':\\n                        hyperparams_info = member\\n                        break\" is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=126 context='                    # Extract only the hyperparameters file\\n                    tar.extract(hyperparams_info, WORKING_DIRECTORY)\\n>>>                     hyperparams_path = WORKING_DIRECTORY / \"hyperparameters.json\"\\n        except Exception as e:\\n            logger.warning(f\"Error processing model.tar.gz as tarfile: {e}\")' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=134 context='    if hyperparams_path is None and input_model_path.exists() and input_model_path.is_dir():\\n        logger.info(f\"{input_model_path} is a directory, looking for hyperparameters.json inside\")\\n>>>         direct_hyperparams_path = input_model_path / \"hyperparameters.json\"\\n        if direct_hyperparams_path.exists():\\n            logger.info(f\"Found hyperparameters.json directly in the model.tar.gz directory\")' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=142 context='    if hyperparams_path is None:\\n        logger.info(f\"Looking for hyperparameters.json directly in {input_model_dir}\")\\n>>>         direct_hyperparams_path = input_model_dir / \"hyperparameters.json\"\\n        if direct_hyperparams_path.exists():\\n            logger.info(f\"Found hyperparameters.json directly in the input model directory\")' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=150 context='    if hyperparams_path is None:\\n        logger.info(f\"Searching recursively for hyperparameters.json in {input_model_dir}\")\\n>>>         for path in input_model_dir.rglob(\"hyperparameters.json\"):\\n            hyperparams_path = path\\n            logger.info(f\"Found hyperparameters.json at {hyperparams_path}\")' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=170 context='    if not str(hyperparams_path).startswith(str(WORKING_DIRECTORY)):\\n        import shutil\\n>>>         dest_path = WORKING_DIRECTORY / \"hyperparameters.json\"\\n        shutil.copy2(hyperparams_path, dest_path)\\n        ' is_hardcoded=True construction_method=None",
-        "path='Get content types from environment variables.' line_number=177 context='\\ndef get_environment_content_types() -> List[str]:\\n>>>     \"\"\"Get content types from environment variables.\"\"\"\\n    content_types_str = os.environ.get(ENV_CONTENT_TYPES, \"application/json\")\\n    return [ct.strip() for ct in content_types_str.split(\\',\\')]' is_hardcoded=True construction_method=None",
-        "path='Get default numeric value from environment variables.' line_number=182 context='\\ndef get_environment_default_numeric_value() -> float:\\n>>>     \"\"\"Get default numeric value from environment variables.\"\"\"\\n    try:\\n        return float(os.environ.get(ENV_DEFAULT_NUMERIC_VALUE, \"0.0\"))' is_hardcoded=True construction_method=None",
-        "path='0.0' line_number=184 context='    \"\"\"Get default numeric value from environment variables.\"\"\"\\n    try:\\n>>>         return float(os.environ.get(ENV_DEFAULT_NUMERIC_VALUE, \"0.0\"))\\n    except ValueError:\\n        logger.warning(f\"Invalid {ENV_DEFAULT_NUMERIC_VALUE}, using default 0.0\")' is_hardcoded=True construction_method=None",
-        "path=', using default 0.0' line_number=186 context='        return float(os.environ.get(ENV_DEFAULT_NUMERIC_VALUE, \"0.0\"))\\n    except ValueError:\\n>>>         logger.warning(f\"Invalid {ENV_DEFAULT_NUMERIC_VALUE}, using default 0.0\")\\n        return 0.0\\n' is_hardcoded=True construction_method=None",
-        "path='Get default text value from environment variables.' line_number=190 context='\\ndef get_environment_default_text_value() -> str:\\n>>>     \"\"\"Get default text value from environment variables.\"\"\"\\n    return os.environ.get(ENV_DEFAULT_TEXT_VALUE, \"DEFAULT_TEXT\")\\n' is_hardcoded=True construction_method=None",
-        "path='Get special field values from environment variables.' line_number=194 context='\\ndef get_environment_special_fields() -> Dict[str, str]:\\n>>>     \"\"\"Get special field values from environment variables.\"\"\"\\n    special_fields = {}\\n    for env_var, env_value in os.environ.items():' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=356 context='        \\n        # Determine file extension and name\\n>>>         ext = \".csv\" if content_type == \"text/csv\" else \".json\"\\n        file_name = f\"payload_{content_type.replace(\\'/\\', \\'_\\')}_{i}{ext}\"\\n        file_path = output_dir / file_name' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=356 context='        \\n        # Determine file extension and name\\n>>>         ext = \".csv\" if content_type == \"text/csv\" else \".json\"\\n        file_name = f\"payload_{content_type.replace(\\'/\\', \\'_\\')}_{i}{ext}\"\\n        file_path = output_dir / file_name' is_hardcoded=True construction_method=None",
-        "path='payload.tar.gz' line_number=387 context='    \"\"\"\\n    # Create archive in the output directory\\n>>>     archive_path = Path(OUTPUT_DIR) / \"payload.tar.gz\"\\n    \\n    # Ensure parent directory exists (but not the actual archive path)' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=407 context='                total_size += size_mb\\n                files_added += 1\\n>>>                 logger.info(f\"Adding to tar: {file_name} ({size_mb:.2f}MB)\")\\n                tar.add(file_path, arcname=file_name)\\n        ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=412 context='        logger.info(f\"Tar creation summary:\")\\n        logger.info(f\"  Files added: {files_added}\")\\n>>>         logger.info(f\"  Total uncompressed size: {total_size:.2f}MB\")\\n        \\n        # Verify archive was created' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=418 context='            compressed_size = archive_path.stat().st_size / (1024 * 1024)\\n            logger.info(f\"Successfully created payload archive: {archive_path}\")\\n>>>             logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n            logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        else:' is_hardcoded=True construction_method=None",
-        "path='.2%' line_number=419 context='            logger.info(f\"Successfully created payload archive: {archive_path}\")\\n            logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n>>>             logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        else:\\n            logger.error(f\"Archive creation failed - file does not exist: {archive_path}\")' is_hardcoded=True construction_method=None",
-        "path='Main entry point for the script.' line_number=430 context='\\ndef main():\\n>>>     \"\"\"Main entry point for the script.\"\"\"\\n    # Extract hyperparameters from model tarball\\n    hyperparams = extract_hyperparameters_from_tarball()' is_hardcoded=True construction_method=None",
-        "path='1.0.0' line_number=456 context=\"    # Extract pipeline name and version from hyperparams\\n    pipeline_name = hyperparams.get('pipeline_name', 'default_pipeline')\\n>>>     pipeline_version = hyperparams.get('pipeline_version', '1.0.0')\\n    model_objective = hyperparams.get('model_registration_objective', None)\\n    \" is_hardcoded=True construction_method=None",
-        "path='MIMS payload generation complete.' line_number=479 context='    \\n    # Log summary information about the payload generation\\n>>>     logger.info(f\"MIMS payload generation complete.\")\\n    logger.info(f\"Number of payload samples generated: {len(payload_file_paths)}\")\\n    logger.info(f\"Content types: {content_types}\")' is_hardcoded=True construction_method=None"
-      ],
-      "env_var_accesses": [],
-      "imports": [
-        "module_name='json' import_alias=None line_number=9 is_from_import=False imported_items=[]",
-        "module_name='logging' import_alias=None line_number=10 is_from_import=False imported_items=[]",
-        "module_name='os' import_alias=None line_number=11 is_from_import=False imported_items=[]",
-        "module_name='tarfile' import_alias=None line_number=12 is_from_import=False imported_items=[]",
-        "module_name='tempfile' import_alias=None line_number=13 is_from_import=False imported_items=[]",
-        "module_name='pathlib' import_alias=None line_number=14 is_from_import=True imported_items=['Path']",
-        "module_name='enum' import_alias=None line_number=15 is_from_import=True imported_items=['Enum']",
-        "module_name='typing' import_alias=None line_number=16 is_from_import=True imported_items=['List', 'Dict', 'Any', 'Union']",
-        "module_name='datetime' import_alias=None line_number=17 is_from_import=True imported_items=['datetime']",
-        "module_name='shutil' import_alias=None line_number=169 is_from_import=False imported_items=[]"
-      ],
-      "argument_definitions": [],
-      "file_operations": [
-        "file_path='<file_object>' operation_type='read' line_number=165 context=\"    # Load the hyperparameters\\n    with open(hyperparams_path, 'r') as f:\\n>>>         hyperparams = json.load(f)\\n    \\n    # Copy to working directory if not already there\" mode=None method='json.load'"
-      ]
-    },
-    "contract": {
-      "entry_point": "mims_payload.py",
-      "inputs": {
-        "model_input": {
-          "path": "/opt/ml/processing/input/model"
-        }
-      },
-      "outputs": {
-        "payload_sample": {
-          "path": "/opt/ml/processing/output"
-        }
-      },
-      "arguments": {},
-      "environment_variables": {
-        "required": [],
-        "optional": {
-          "CONTENT_TYPES": "application/json",
-          "DEFAULT_NUMERIC_VALUE": "0.0",
-          "DEFAULT_TEXT_VALUE": "DEFAULT_TEXT"
-        }
-      },
-      "description": "\n    MIMS payload generation script that:\n    1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)\n    2. Creates model variable list from field information\n    3. Generates sample payloads in multiple formats (JSON, CSV)\n    4. Archives payload files for deployment\n    \n    Note: This script extracts pipeline name, version, and model objective from hyperparameters,\n    not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or \n    BUCKET_NAME environment variables.\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json\n    \n    Output Structure:\n    - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)\n    - /opt/ml/processing/output/: Output directory containing payload.tar.gz file\n    \n    Environment Variables:\n    - CONTENT_TYPES: Comma-separated list of content types (default: \"application/json\")\n    - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: \"0.0\")\n    - DEFAULT_TEXT_VALUE: Default value for text fields (default: \"DEFAULT_TEXT\")\n    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields\n    \n    Arguments:\n    - mode: Operating mode for the script (default: \"standard\")\n    ",
-      "framework_requirements": {
-        "python": ">=3.7"
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Script file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
+        "recommendation": "Create the script file mims_payload.py"
       }
-    }
+    ]
   },
   "level2": {
-    "passed": true,
-    "issues": [],
-    "contract": {
-      "entry_point": "mims_payload.py",
-      "inputs": {
-        "model_input": {
-          "path": "/opt/ml/processing/input/model"
-        }
-      },
-      "outputs": {
-        "payload_sample": {
-          "path": "/opt/ml/processing/output"
-        }
-      },
-      "arguments": {},
-      "environment_variables": {
-        "required": [],
-        "optional": {
-          "CONTENT_TYPES": "application/json",
-          "DEFAULT_NUMERIC_VALUE": "0.0",
-          "DEFAULT_TEXT_VALUE": "DEFAULT_TEXT"
-        }
-      },
-      "description": "\n    MIMS payload generation script that:\n    1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)\n    2. Creates model variable list from field information\n    3. Generates sample payloads in multiple formats (JSON, CSV)\n    4. Archives payload files for deployment\n    \n    Note: This script extracts pipeline name, version, and model objective from hyperparameters,\n    not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or \n    BUCKET_NAME environment variables.\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json\n    \n    Output Structure:\n    - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)\n    - /opt/ml/processing/output/: Output directory containing payload.tar.gz file\n    \n    Environment Variables:\n    - CONTENT_TYPES: Comma-separated list of content types (default: \"application/json\")\n    - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: \"0.0\")\n    - DEFAULT_TEXT_VALUE: Default value for text fields (default: \"DEFAULT_TEXT\")\n    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields\n    \n    Arguments:\n    - mode: Operating mode for the script (default: \"standard\")\n    ",
-      "framework_requirements": {
-        "python": ">=3.7"
-      }
-    },
-    "specifications": {
-      "payload_spec": {
-        "step_type": "Payload",
-        "node_type": "internal",
-        "dependencies": [
-          {
-            "logical_name": "model_input",
-            "dependency_type": "model_artifacts",
-            "required": true,
-            "compatible_sources": [
-              "TrainingStep",
-              "ModelStep",
-              "XGBoostTraining"
-            ],
-            "data_type": "S3Uri",
-            "description": "Trained model artifacts for payload generation"
-          }
-        ],
-        "outputs": [
-          {
-            "logical_name": "payload_sample",
-            "output_type": "processing_output",
-            "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
-            "data_type": "S3Uri",
-            "description": "Generated payload samples archive (payload.tar.gz)"
-          }
-        ]
-      }
-    },
-    "unified_specification": {
-      "primary_spec": {
-        "step_type": "Payload",
-        "node_type": "internal",
-        "dependencies": [
-          {
-            "logical_name": "model_input",
-            "dependency_type": "model_artifacts",
-            "required": true,
-            "compatible_sources": [
-              "TrainingStep",
-              "ModelStep",
-              "XGBoostTraining"
-            ],
-            "data_type": "S3Uri",
-            "description": "Trained model artifacts for payload generation"
-          }
-        ],
-        "outputs": [
-          {
-            "logical_name": "payload_sample",
-            "output_type": "processing_output",
-            "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
-            "data_type": "S3Uri",
-            "description": "Generated payload samples archive (payload.tar.gz)"
-          }
-        ]
-      },
-      "variants": {
-        "generic": {
-          "step_type": "Payload",
-          "node_type": "internal",
-          "dependencies": [
-            {
-              "logical_name": "model_input",
-              "dependency_type": "model_artifacts",
-              "required": true,
-              "compatible_sources": [
-                "TrainingStep",
-                "ModelStep",
-                "XGBoostTraining"
-              ],
-              "data_type": "S3Uri",
-              "description": "Trained model artifacts for payload generation"
-            }
-          ],
-          "outputs": [
-            {
-              "logical_name": "payload_sample",
-              "output_type": "processing_output",
-              "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
-              "data_type": "S3Uri",
-              "description": "Generated payload samples archive (payload.tar.gz)"
-            }
+    "passed": false,
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Contract file not found for script: mims_payload",
+        "details": {
+          "script": "mims_payload",
+          "searched_patterns": [
+            "mims_payload_contract.py",
+            "Known naming patterns from FlexibleFileResolver"
           ]
-        }
-      },
-      "unified_dependencies": {
-        "model_input": {
-          "logical_name": "model_input",
-          "dependency_type": "model_artifacts",
-          "required": true,
-          "compatible_sources": [
-            "TrainingStep",
-            "ModelStep",
-            "XGBoostTraining"
-          ],
-          "data_type": "S3Uri",
-          "description": "Trained model artifacts for payload generation"
-        }
-      },
-      "unified_outputs": {
-        "payload_sample": {
-          "logical_name": "payload_sample",
-          "output_type": "processing_output",
-          "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
-          "data_type": "S3Uri",
-          "description": "Generated payload samples archive (payload.tar.gz)"
-        }
-      },
-      "dependency_sources": {
-        "model_input": [
-          "generic"
-        ]
-      },
-      "output_sources": {
-        "payload_sample": [
-          "generic"
-        ]
-      },
-      "variant_count": 1
-    }
+        },
+        "recommendation": "Create contract file for mims_payload or check naming patterns"
+      }
+    ]
   },
   "level3": {
     "passed": false,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "resolver_error",
-        "message": "Dependency resolver failed: Step 'Payload' has unresolved required dependencies: ['model_input']",
-        "details": {
-          "specification": "mims_payload",
-          "error": "Step 'Payload' has unresolved required dependencies: ['model_input']"
-        },
-        "recommendation": "Check specification format and dependency resolver configuration"
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/mims_payload_spec.py",
+        "recommendation": "Create the specification file mims_payload_spec.py"
       }
-    ],
-    "specification": {
-      "step_type": "Payload",
-      "node_type": "internal",
-      "dependencies": [
-        {
-          "logical_name": "model_input",
-          "dependency_type": "model_artifacts",
-          "required": true,
-          "compatible_sources": [
-            "TrainingStep",
-            "ModelStep",
-            "XGBoostTraining"
-          ],
-          "data_type": "S3Uri",
-          "description": "Trained model artifacts for payload generation"
-        }
-      ],
-      "outputs": [
-        {
-          "logical_name": "payload_sample",
-          "output_type": "processing_output",
-          "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
-          "data_type": "S3Uri",
-          "description": "Generated payload samples archive (payload.tar.gz)"
-        }
-      ]
-    }
+    ]
   },
   "level4": {
-    "passed": true,
+    "passed": false,
     "issues": [
       {
-        "severity": "INFO",
-        "category": "config_import",
-        "message": "Builder may not be properly importing configuration class mims_payloadConfig",
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Builder file not found for mims_payload",
         "details": {
-          "config_class": "mims_payloadConfig",
-          "builder": "mims_payload"
+          "searched_patterns": [
+            "builder_mims_payload_step.py",
+            "FlexibleFileResolver patterns",
+            "Fuzzy matching"
+          ],
+          "search_directory": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/builders"
         },
-        "recommendation": "Ensure builder imports and uses mims_payloadConfig"
+        "recommendation": "Create builder file builder_mims_payload_step.py"
       }
-    ],
-    "builder_analysis": {
-      "config_accesses": [],
-      "validation_calls": [],
-      "default_assignments": [],
-      "class_definitions": [
-        {
-          "class_name": "PayloadStepBuilder",
-          "line_number": 27
-        }
-      ],
-      "method_definitions": [
-        {
-          "method_name": "__init__",
-          "line_number": 35
-        },
-        {
-          "method_name": "validate_configuration",
-          "line_number": 75
-        },
-        {
-          "method_name": "_create_processor",
-          "line_number": 105
-        },
-        {
-          "method_name": "_get_environment_variables",
-          "line_number": 132
-        },
-        {
-          "method_name": "_get_inputs",
-          "line_number": 167
-        },
-        {
-          "method_name": "_get_outputs",
-          "line_number": 220
-        },
-        {
-          "method_name": "_get_job_arguments",
-          "line_number": 275
-        },
-        {
-          "method_name": "create_step",
-          "line_number": 292
-        }
-      ]
-    },
-    "config_analysis": {
-      "class_name": "mims_payloadConfig",
-      "fields": {},
-      "required_fields": "set()",
-      "optional_fields": "set()",
-      "default_values": {},
-      "load_error": "Configuration class not found in src/cursus/steps/configs/config_payload_step.py. Available classes: ['Any', 'BaseModel', 'Enum', 'Path', 'PayloadConfig', 'ProcessingStepConfigBase', 'VariableType', 'datetime']"
-    }
+    ]
   },
   "overall_status": "FAILING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/mims_payload.py",
     "contract_mapping": "mims_payload_contract",
-    "validation_timestamp": "2025-08-11T10:34:01.145560",
+    "validation_timestamp": "2025-08-11T20:38:04.349745",
     "validator_version": "1.0.0"
   }
 }

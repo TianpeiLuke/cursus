@@ -216,6 +216,371 @@ Transform the system through three phases: immediate false positive fixes, patte
 
 **Impact:** Estimated 2 out of 8 scripts may still have issues (major improvement from 8/8)
 
+## Level 3 Compatibility Score Enhancement Plan (2025-08-11)
+
+### Problem Analysis
+
+The Level 3 tester (Specification ↔ Dependencies Alignment) currently uses the production-level dependency resolution system from `cursus/core/deps`, which includes sophisticated compatibility scoring. However, the tester treats any unresolved dependency as a hard failure, even when there might be partial matches with reasonable compatibility scores.
+
+**Current Behavior:**
+- Uses `UnifiedDependencyResolver` with 0.5 compatibility threshold for resolution
+- Fails validation if any required dependency cannot be resolved above threshold
+- Does not expose compatibility scores for failed resolutions
+- Treats near-misses (0.4-0.49 compatibility) the same as complete mismatches (0.0-0.1)
+
+**Production Dependency Resolution System Analysis:**
+The system already includes sophisticated compatibility scoring:
+- **Dependency type compatibility** (40% weight)
+- **Data type compatibility** (20% weight) 
+- **Semantic name matching with aliases** (25% weight)
+- **Compatible source check** (10% weight)
+- **Keyword matching** (5% weight)
+
+### Proposed Solution: Threshold-Based Validation
+
+#### 1. Configurable Compatibility Thresholds
+
+Add configurable thresholds for different validation severity levels:
+
+```python
+class Level3ValidationConfig:
+    """Configuration for Level 3 validation thresholds."""
+    
+    # Compatibility score thresholds
+    PASS_THRESHOLD = 0.8      # ≥ 0.8: PASS
+    WARNING_THRESHOLD = 0.6   # 0.6-0.79: WARNING  
+    ERROR_THRESHOLD = 0.3     # 0.3-0.59: ERROR
+    # < 0.3: CRITICAL
+    
+    # Validation modes
+    STRICT_MODE = 0.8         # Current behavior (exact resolution required)
+    RELAXED_MODE = 0.6        # Allow dependencies with reasonable compatibility
+    PERMISSIVE_MODE = 0.3     # Allow dependencies with minimal compatibility
+```
+
+#### 2. Enhanced Dependency Resolver Reporting
+
+Modify `UnifiedDependencyResolver` to expose detailed compatibility scores:
+
+```python
+class UnifiedDependencyResolver:
+    """Enhanced resolver with detailed compatibility reporting."""
+    
+    def resolve_with_scoring(self, consumer_step: str, available_steps: List[str]) -> Dict[str, Any]:
+        """Resolve dependencies with detailed compatibility scoring."""
+        resolved = {}
+        failed_with_scores = {}
+        
+        for dep_name, dep_spec in consumer_spec.dependencies.items():
+            candidates = self._get_all_candidates_with_scores(dep_spec, available_steps)
+            
+            if candidates:
+                best_match = candidates[0]  # Highest scoring candidate
+                
+                if best_match['score'] >= self.resolution_threshold:
+                    resolved[dep_name] = best_match['property_reference']
+                else:
+                    # Store failed resolution with scoring details
+                    failed_with_scores[dep_name] = {
+                        'best_candidate': best_match,
+                        'all_candidates': candidates[:3],  # Top 3 candidates
+                        'required': dep_spec.required
+                    }
+            else:
+                failed_with_scores[dep_name] = {
+                    'best_candidate': None,
+                    'all_candidates': [],
+                    'required': dep_spec.required
+                }
+        
+        return {
+            'resolved': resolved,
+            'failed_with_scores': failed_with_scores,
+            'resolution_details': self._generate_resolution_details(consumer_step, available_steps)
+        }
+    
+    def _get_all_candidates_with_scores(self, dep_spec: DependencySpec, available_steps: List[str]) -> List[Dict]:
+        """Get all candidates with their compatibility scores."""
+        candidates = []
+        
+        for provider_step in available_steps:
+            provider_spec = self.registry.get_specification(provider_step)
+            if not provider_spec:
+                continue
+            
+            for output_name, output_spec in provider_spec.outputs.items():
+                score = self._calculate_compatibility(dep_spec, output_spec, provider_spec)
+                if score > 0.0:  # Include all non-zero matches
+                    candidates.append({
+                        'provider_step': provider_step,
+                        'output_name': output_name,
+                        'output_spec': output_spec,
+                        'score': score,
+                        'property_reference': PropertyReference(provider_step, output_spec),
+                        'score_breakdown': self._get_score_breakdown(dep_spec, output_spec, provider_spec)
+                    })
+        
+        # Sort by score (highest first)
+        candidates.sort(key=lambda x: x['score'], reverse=True)
+        return candidates
+```
+
+#### 3. Enhanced Level 3 Tester with Threshold-Based Validation
+
+Update `SpecificationDependencyAlignmentTester` to use compatibility scores:
+
+```python
+class SpecificationDependencyAlignmentTester:
+    """Enhanced Level 3 tester with compatibility score validation."""
+    
+    def __init__(self, specs_dir: str, validation_config: Level3ValidationConfig = None):
+        self.specs_dir = Path(specs_dir)
+        self.config = validation_config or Level3ValidationConfig()
+        # ... existing initialization
+    
+    def _validate_dependency_resolution(self, specification: Dict[str, Any], 
+                                      all_specs: Dict[str, Dict[str, Any]], 
+                                      spec_name: str) -> List[Dict[str, Any]]:
+        """Enhanced dependency validation with compatibility scoring."""
+        issues = []
+        
+        dependencies = specification.get('dependencies', [])
+        if not dependencies:
+            logger.info(f"✅ {spec_name} has no dependencies - validation passed")
+            return issues
+        
+        # Populate resolver registry
+        self._populate_resolver_registry(all_specs)
+        available_steps = self._get_available_canonical_step_names(all_specs)
+        
+        try:
+            canonical_spec_name = self._get_canonical_step_name(spec_name)
+            
+            # Use enhanced resolution with scoring
+            resolution_result = self.dependency_resolver.resolve_with_scoring(
+                canonical_spec_name, available_steps
+            )
+            
+            resolved_deps = resolution_result['resolved']
+            failed_deps = resolution_result['failed_with_scores']
+            
+            # Process resolved dependencies
+            for dep_name, prop_ref in resolved_deps.items():
+                logger.info(f"✅ Resolved {spec_name}.{dep_name} -> {prop_ref}")
+            
+            # Process failed dependencies with scoring
+            for dep_name, failure_info in failed_deps.items():
+                best_candidate = failure_info['best_candidate']
+                is_required = failure_info['required']
+                
+                if best_candidate is None:
+                    # No candidates found at all
+                    if is_required:
+                        issues.append({
+                            'severity': 'CRITICAL',
+                            'category': 'dependency_resolution',
+                            'message': f'No compatible candidates found for required dependency: {dep_name}',
+                            'details': {
+                                'logical_name': dep_name,
+                                'specification': spec_name,
+                                'available_steps': available_steps,
+                                'candidates_found': 0
+                            },
+                            'recommendation': f'Ensure a step exists that produces output compatible with {dep_name}'
+                        })
+                else:
+                    # Candidates found but below resolution threshold
+                    score = best_candidate['score']
+                    severity = self._determine_severity_from_score(score, is_required)
+                    
+                    issues.append({
+                        'severity': severity,
+                        'category': 'dependency_compatibility',
+                        'message': f'Dependency {dep_name} has low compatibility score: {score:.3f}',
+                        'details': {
+                            'logical_name': dep_name,
+                            'specification': spec_name,
+                            'best_match': {
+                                'provider': best_candidate['provider_step'],
+                                'output': best_candidate['output_name'],
+                                'score': score,
+                                'score_breakdown': best_candidate['score_breakdown']
+                            },
+                            'all_candidates': [
+                                {
+                                    'provider': c['provider_step'],
+                                    'output': c['output_name'], 
+                                    'score': c['score']
+                                } for c in failure_info['all_candidates']
+                            ],
+                            'required': is_required
+                        },
+                        'recommendation': self._generate_compatibility_recommendation(dep_name, best_candidate)
+                    })
+                    
+                    # Log the best attempt for transparency
+                    logger.info(f"🔍 Best match for {spec_name}.{dep_name}: "
+                              f"{best_candidate['provider_step']}.{best_candidate['output_name']} "
+                              f"(score: {score:.3f})")
+                              
+        except Exception as e:
+            issues.append({
+                'severity': 'ERROR',
+                'category': 'resolver_error',
+                'message': f'Dependency resolver failed: {str(e)}',
+                'details': {'specification': spec_name, 'error': str(e)},
+                'recommendation': 'Check specification format and dependency resolver configuration'
+            })
+        
+        return issues
+    
+    def _determine_severity_from_score(self, score: float, is_required: bool) -> str:
+        """Determine issue severity based on compatibility score and requirement."""
+        if score >= self.config.PASS_THRESHOLD:
+            return 'INFO'  # Should not happen in failed deps, but just in case
+        elif score >= self.config.WARNING_THRESHOLD:
+            return 'WARNING' if not is_required else 'ERROR'
+        elif score >= self.config.ERROR_THRESHOLD:
+            return 'ERROR'
+        else:
+            return 'CRITICAL'
+    
+    def _generate_compatibility_recommendation(self, dep_name: str, best_candidate: Dict) -> str:
+        """Generate specific recommendations based on compatibility analysis."""
+        score_breakdown = best_candidate['score_breakdown']
+        recommendations = []
+        
+        if score_breakdown['type_compatibility'] < 0.2:
+            recommendations.append(f"Consider changing dependency type or output type for better compatibility")
+        
+        if score_breakdown['semantic_similarity'] < 0.15:
+            recommendations.append(f"Consider renaming '{dep_name}' or adding aliases to improve semantic matching")
+        
+        if score_breakdown['source_compatibility'] < 0.05:
+            recommendations.append(f"Add '{best_candidate['provider_step']}' to compatible_sources for {dep_name}")
+        
+        if not recommendations:
+            recommendations.append(f"Review dependency specification for {dep_name} and output specification for {best_candidate['output_name']}")
+        
+        return "; ".join(recommendations)
+```
+
+#### 4. Validation Mode Configuration
+
+Add support for different validation modes:
+
+```python
+class UnifiedAlignmentTester:
+    """Enhanced unified tester with configurable Level 3 validation."""
+    
+    def __init__(self, 
+                 scripts_dir: str = "src/cursus/steps/scripts",
+                 contracts_dir: str = "src/cursus/steps/contracts", 
+                 specs_dir: str = "src/cursus/steps/specs",
+                 builders_dir: str = "src/cursus/steps/builders",
+                 configs_dir: str = "src/cursus/steps/configs",
+                 level3_validation_mode: str = "relaxed"):
+        """Initialize with configurable Level 3 validation mode."""
+        
+        # Configure Level 3 validation based on mode
+        if level3_validation_mode == "strict":
+            level3_config = Level3ValidationConfig()
+            level3_config.PASS_THRESHOLD = 0.8
+        elif level3_validation_mode == "relaxed":
+            level3_config = Level3ValidationConfig()
+            level3_config.PASS_THRESHOLD = 0.6
+        elif level3_validation_mode == "permissive":
+            level3_config = Level3ValidationConfig()
+            level3_config.PASS_THRESHOLD = 0.3
+        else:
+            level3_config = Level3ValidationConfig()  # Default
+        
+        # Initialize testers with configuration
+        self.level3_tester = SpecificationDependencyAlignmentTester(specs_dir, level3_config)
+        # ... other initializations
+```
+
+#### 5. Enhanced Reporting
+
+Update reporting to include compatibility score details:
+
+```python
+def _generate_html_report(self, script_name: str, results: Dict[str, Any]) -> str:
+    """Enhanced HTML report with compatibility score visualization."""
+    
+    # Add compatibility score section for Level 3 results
+    level3_result = results.get('level3', {})
+    compatibility_section = ""
+    
+    if 'issues' in level3_result:
+        compatibility_issues = [
+            issue for issue in level3_result['issues'] 
+            if issue.get('category') == 'dependency_compatibility'
+        ]
+        
+        if compatibility_issues:
+            compatibility_section = f"""
+            <div class="compatibility-analysis">
+                <h4>Dependency Compatibility Analysis</h4>
+                <div class="compatibility-chart">
+                    <!-- Compatibility score visualization -->
+                    {self._generate_compatibility_chart(compatibility_issues)}
+                </div>
+                <div class="compatibility-details">
+                    {self._generate_compatibility_details(compatibility_issues)}
+                </div>
+            </div>
+            """
+    
+    # ... rest of HTML generation with compatibility_section included
+```
+
+### Implementation Plan
+
+#### Phase 1: Enhanced Dependency Resolver (Week 1)
+- [ ] Add `resolve_with_scoring()` method to `UnifiedDependencyResolver`
+- [ ] Implement `_get_all_candidates_with_scores()` for comprehensive candidate analysis
+- [ ] Add detailed score breakdown functionality
+- [ ] Create comprehensive unit tests for scoring logic
+
+#### Phase 2: Level 3 Tester Enhancement (Week 2)
+- [ ] Update `SpecificationDependencyAlignmentTester` with threshold-based validation
+- [ ] Implement `Level3ValidationConfig` class
+- [ ] Add severity determination based on compatibility scores
+- [ ] Create recommendation generation based on score breakdown
+
+#### Phase 3: Integration and Configuration (Week 3)
+- [ ] Update `UnifiedAlignmentTester` with configurable validation modes
+- [ ] Add command-line options for threshold configuration in test runners
+- [ ] Update HTML/JSON report generation to include compatibility details
+- [ ] Create comprehensive integration tests
+
+#### Phase 4: Testing and Validation (Week 4)
+- [ ] Test with all existing scripts to validate threshold effectiveness
+- [ ] Fine-tune threshold values based on real-world results
+- [ ] Performance testing and optimization
+- [ ] Documentation updates and examples
+
+### Expected Outcomes
+
+**Immediate Benefits:**
+- **Reduced false positives**: Dependencies with reasonable compatibility (0.6-0.79) show as warnings instead of failures
+- **Better transparency**: Developers can see why dependencies failed and how close they were to matching
+- **Actionable feedback**: Specific recommendations based on compatibility score breakdown
+
+**Validation Results Improvement:**
+- **Current**: 8/8 scripts failing Level 3 (100% failure rate)
+- **Expected**: 6-7/8 scripts passing Level 3 with relaxed mode (75-85% pass rate)
+- **Strict mode**: Maintains current behavior for production validation
+- **Permissive mode**: Allows exploration of architectural changes with minimal compatibility
+
+**Developer Experience:**
+- Clear understanding of dependency matching process
+- Specific guidance on how to improve compatibility scores
+- Flexible validation modes for different development phases
+
+This enhancement maintains the sophisticated compatibility scoring already built into the production dependency resolution system while making the Level 3 tester much more flexible and informative for developers.
+
 ## Refactoring Strategy
 
 ### Phase 1: Immediate False Positive Elimination - **~95% COMPLETE** ✅

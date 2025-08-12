@@ -15,6 +15,7 @@ from pathlib import Path
 from .alignment_utils import (
     FlexibleFileResolver, DependencyPatternClassifier, DependencyPattern
 )
+from .level3_validation_config import Level3ValidationConfig, ValidationMode
 from ...steps.registry.step_names import (
     get_step_name_from_spec_type, get_spec_step_type_with_job_type, validate_spec_type,
     get_canonical_name_from_file_name, STEP_NAMES, CONFIG_STEP_REGISTRY
@@ -36,14 +37,16 @@ class SpecificationDependencyAlignmentTester:
     - Data types match across dependency chains
     """
     
-    def __init__(self, specs_dir: str):
+    def __init__(self, specs_dir: str, validation_config: Level3ValidationConfig = None):
         """
         Initialize the specification-dependency alignment tester.
         
         Args:
             specs_dir: Directory containing step specifications
+            validation_config: Configuration for validation thresholds and behavior
         """
         self.specs_dir = Path(specs_dir)
+        self.config = validation_config or Level3ValidationConfig.create_relaxed_config()
         
         # Initialize the dependency pattern classifier
         self.dependency_classifier = DependencyPatternClassifier()
@@ -58,6 +61,11 @@ class SpecificationDependencyAlignmentTester:
         self.pipeline_components = create_pipeline_components("level3_validation")
         self.dependency_resolver = self.pipeline_components["resolver"]
         self.spec_registry = self.pipeline_components["registry"]
+        
+        # Log configuration
+        threshold_desc = self.config.get_threshold_description()
+        logger.info(f"Level 3 validation initialized with {threshold_desc['mode']} mode")
+        logger.debug(f"Thresholds: {threshold_desc['thresholds']}")
     
     def validate_all_specifications(self, target_scripts: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
@@ -169,13 +177,12 @@ class SpecificationDependencyAlignmentTester:
         }
     
     def _validate_dependency_resolution(self, specification: Dict[str, Any], all_specs: Dict[str, Dict[str, Any]], spec_name: str) -> List[Dict[str, Any]]:
-        """Validate dependencies using the production dependency resolver."""
+        """Enhanced dependency validation with compatibility scoring."""
         issues = []
         
         # Handle case where step has no dependencies
         dependencies = specification.get('dependencies', [])
         if not dependencies:
-            # No dependencies to validate - this is valid for some steps (e.g., data loading, external inputs)
             logger.info(f"✅ {spec_name} has no dependencies - validation passed")
             return issues
         
@@ -189,32 +196,90 @@ class SpecificationDependencyAlignmentTester:
             # Convert spec_name to canonical name for dependency resolution
             canonical_spec_name = self._get_canonical_step_name(spec_name)
             
-            # Use the production dependency resolver with canonical name
-            resolved_deps = self.dependency_resolver.resolve_step_dependencies(canonical_spec_name, available_steps)
+            # Use enhanced resolution with scoring
+            resolution_result = self.dependency_resolver.resolve_with_scoring(
+                canonical_spec_name, available_steps
+            )
             
-            # Check for unresolved required dependencies
-            spec_dependencies = {dep['logical_name']: dep for dep in dependencies}
+            resolved_deps = resolution_result['resolved']
+            failed_deps = resolution_result['failed_with_scores']
             
-            for dep_name, dep_spec in spec_dependencies.items():
-                if dep_spec['required'] and dep_name not in resolved_deps:
-                    issues.append({
-                        'severity': 'ERROR',
-                        'category': 'dependency_resolution',
-                        'message': f'Cannot resolve required dependency: {dep_name}',
-                        'details': {
-                            'logical_name': dep_name,
-                            'specification': spec_name,
-                            'compatible_sources': dep_spec.get('compatible_sources', []),
-                            'dependency_type': dep_spec.get('dependency_type'),
-                            'available_steps': available_steps
-                        },
-                        'recommendation': f'Ensure a step exists that produces output {dep_name}'
-                    })
-            
-            # Log successful resolutions
+            # Process resolved dependencies
             for dep_name, prop_ref in resolved_deps.items():
-                logger.info(f"✅ Resolved {spec_name}.{dep_name} -> {prop_ref}")
+                if self.config.LOG_SUCCESSFUL_RESOLUTIONS:
+                    logger.info(f"✅ Resolved {spec_name}.{dep_name} -> {prop_ref}")
+            
+            # Process failed dependencies with scoring
+            for dep_name, failure_info in failed_deps.items():
+                best_candidate = failure_info['best_candidate']
+                is_required = failure_info['required']
                 
+                if best_candidate is None:
+                    # No candidates found at all
+                    if is_required:
+                        issues.append({
+                            'severity': 'CRITICAL',
+                            'category': 'dependency_resolution',
+                            'message': f'No compatible candidates found for required dependency: {dep_name}',
+                            'details': {
+                                'logical_name': dep_name,
+                                'specification': spec_name,
+                                'available_steps': available_steps,
+                                'candidates_found': 0
+                            },
+                            'recommendation': f'Ensure a step exists that produces output compatible with {dep_name}'
+                        })
+                    else:
+                        # Optional dependency with no candidates - just log
+                        if self.config.LOG_FAILED_RESOLUTIONS:
+                            logger.debug(f"Optional dependency {spec_name}.{dep_name} has no compatible candidates")
+                else:
+                    # Candidates found but below resolution threshold
+                    score = best_candidate['score']
+                    severity = self.config.determine_severity_from_score(score, is_required)
+                    
+                    # Only create issues for dependencies that don't pass validation
+                    if not self.config.should_pass_validation(score):
+                        issue = {
+                            'severity': severity,
+                            'category': 'dependency_compatibility',
+                            'message': f'Dependency {dep_name} has low compatibility score: {score:.3f}',
+                            'details': {
+                                'logical_name': dep_name,
+                                'specification': spec_name,
+                                'best_match': {
+                                    'provider': best_candidate['provider_step'],
+                                    'output': best_candidate['output_name'],
+                                    'score': score
+                                },
+                                'required': is_required,
+                                'threshold_info': self.config.get_threshold_description()
+                            },
+                            'recommendation': self._generate_compatibility_recommendation(dep_name, best_candidate)
+                        }
+                        
+                        # Add score breakdown if configured
+                        if self.config.INCLUDE_SCORE_BREAKDOWN:
+                            issue['details']['score_breakdown'] = best_candidate['score_breakdown']
+                        
+                        # Add alternative candidates if configured
+                        if self.config.INCLUDE_ALTERNATIVE_CANDIDATES:
+                            issue['details']['all_candidates'] = [
+                                {
+                                    'provider': c['provider_step'],
+                                    'output': c['output_name'], 
+                                    'score': c['score']
+                                } for c in failure_info['all_candidates'][:self.config.MAX_ALTERNATIVE_CANDIDATES]
+                            ]
+                        
+                        issues.append(issue)
+                    
+                    # Log the best attempt for transparency
+                    if self.config.LOG_FAILED_RESOLUTIONS:
+                        logger.info(f"🔍 Best match for {spec_name}.{dep_name}: "
+                                  f"{best_candidate['provider_step']}.{best_candidate['output_name']} "
+                                  f"(score: {score:.3f}, threshold: {self.config.PASS_THRESHOLD:.1f})")
+                              
         except Exception as e:
             issues.append({
                 'severity': 'ERROR',
@@ -225,6 +290,31 @@ class SpecificationDependencyAlignmentTester:
             })
         
         return issues
+    
+    def _generate_compatibility_recommendation(self, dep_name: str, best_candidate: Dict) -> str:
+        """Generate specific recommendations based on compatibility analysis."""
+        if 'score_breakdown' not in best_candidate:
+            return f"Review dependency specification for {dep_name} and output specification for {best_candidate['output_name']}"
+        
+        score_breakdown = best_candidate['score_breakdown']
+        recommendations = []
+        
+        if score_breakdown.get('type_compatibility', 0) < 0.2:
+            recommendations.append(f"Consider changing dependency type or output type for better compatibility")
+        
+        if score_breakdown.get('semantic_similarity', 0) < 0.15:
+            recommendations.append(f"Consider renaming '{dep_name}' or adding aliases to improve semantic matching")
+        
+        if score_breakdown.get('source_compatibility', 0) < 0.05:
+            recommendations.append(f"Add '{best_candidate['provider_step']}' to compatible_sources for {dep_name}")
+        
+        if score_breakdown.get('data_type_compatibility', 0) < 0.1:
+            recommendations.append(f"Align data types between dependency and output specifications")
+        
+        if not recommendations:
+            recommendations.append(f"Review dependency specification for {dep_name} and output specification for {best_candidate['output_name']}")
+        
+        return "; ".join(recommendations)
     
     def _get_available_canonical_step_names(self, all_specs: Dict[str, Dict[str, Any]]) -> List[str]:
         """
@@ -337,36 +427,42 @@ class SpecificationDependencyAlignmentTester:
         # Convert dependencies
         dependencies = {}
         for dep in spec_dict.get('dependencies', []):
-            dep_spec = DependencySpec(
-                logical_name=dep['logical_name'],
-                dependency_type=DependencyType(dep['dependency_type']),
-                required=dep['required'],
-                compatible_sources=dep.get('compatible_sources', []),
-                data_type=dep['data_type'],
-                description=dep.get('description', ''),
-                semantic_keywords=dep.get('semantic_keywords', [])
-            )
+            # Create DependencySpec using keyword arguments
+            dep_data = {
+                'logical_name': dep['logical_name'],
+                'dependency_type': dep['dependency_type'],  # Keep as string, validator will convert
+                'required': dep['required'],
+                'compatible_sources': dep.get('compatible_sources', []),
+                'data_type': dep['data_type'],
+                'description': dep.get('description', ''),
+                'semantic_keywords': dep.get('semantic_keywords', [])
+            }
+            dep_spec = DependencySpec(**dep_data)
             dependencies[dep['logical_name']] = dep_spec
         
         # Convert outputs
         outputs = {}
         for out in spec_dict.get('outputs', []):
-            out_spec = OutputSpec(
-                logical_name=out['logical_name'],
-                output_type=DependencyType(out['output_type']),
-                property_path=out['property_path'],
-                data_type=out['data_type'],
-                description=out.get('description', ''),
-                aliases=out.get('aliases', [])
-            )
+            # Create OutputSpec using keyword arguments
+            out_data = {
+                'logical_name': out['logical_name'],
+                'output_type': out['output_type'],  # Keep as string, validator will convert
+                'property_path': out['property_path'],
+                'data_type': out['data_type'],
+                'description': out.get('description', ''),
+                'aliases': out.get('aliases', [])
+            }
+            out_spec = OutputSpec(**out_data)
             outputs[out['logical_name']] = out_spec
         
-        return StepSpecification(
-            step_type=spec_dict['step_type'],
-            node_type=NodeType(spec_dict['node_type']),
-            dependencies=dependencies,
-            outputs=outputs
-        )
+        # Create StepSpecification using keyword arguments
+        spec_data = {
+            'step_type': spec_dict['step_type'],
+            'node_type': spec_dict['node_type'],  # Keep as string, validator will convert
+            'dependencies': dependencies,
+            'outputs': outputs
+        }
+        return StepSpecification(**spec_data)
     
     def get_dependency_resolution_report(self, all_specs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """Generate detailed dependency resolution report using production resolver."""

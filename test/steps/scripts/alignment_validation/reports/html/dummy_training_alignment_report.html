@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: dummy_training</h2>
-        <p>Generated: 2025-08-11T11:48:48.555371</p>
+        <p>Generated: 2025-08-11T20:40:42.359635</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>2</h3>
+            <h3>1</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -43,7 +43,7 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>2</h3>
+            <h3>1</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
@@ -72,20 +72,15 @@
                 <p>Status: FAILED</p>
                 
                 <div class="issue error">
-                    <strong>ERROR:</strong> Dependency resolver failed: Step 'Dummy' has unresolved required dependencies: ['hyperparameters_s3_uri']
-                    <br><em>Recommendation: Check specification format and dependency resolver configuration</em>
+                    <strong>ERROR:</strong> Dependency hyperparameters_s3_uri has low compatibility score: 0.420
+                    <br><em>Recommendation: Consider renaming 'hyperparameters_s3_uri' or adding aliases to improve semantic matching; Add 'BatchTransform' to compatible_sources for hyperparameters_s3_uri</em>
                 </div>
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 4: Builder ↔ Configuration</h4>
-                <p>Status: FAILED</p>
-                
-                <div class="issue error">
-                    <strong>ERROR:</strong> Configuration file not found for dummy_training
-                    <br><em>Recommendation: Check if config file exists with correct naming pattern, or create config_dummy_training_step.py</em>
-                </div>
+                <p>Status: PASSED</p>
                 
             </div>
             
@@ -95,7 +90,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py</p>
         <p><strong>Contract Mapping:</strong> dummy_training_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T11:48:48.555371</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T20:40:42.359635</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

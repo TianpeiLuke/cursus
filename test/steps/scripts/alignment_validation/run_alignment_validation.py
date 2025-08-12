@@ -37,6 +37,7 @@ class ScriptAlignmentValidator:
         self.contracts_dir = self.project_root / "src" / "cursus" / "steps" / "contracts"
         self.specs_dir = self.project_root / "src" / "cursus" / "steps" / "specs"
         self.builders_dir = self.project_root / "src" / "cursus" / "steps" / "builders"
+        self.configs_dir = self.project_root / "src" / "cursus" / "steps" / "configs"
         
         # Output directories
         self.output_dir = Path(__file__).parent / "reports"
@@ -48,12 +49,13 @@ class ScriptAlignmentValidator:
         self.json_reports_dir.mkdir(exist_ok=True)
         self.html_reports_dir.mkdir(exist_ok=True)
         
-        # Initialize the unified alignment tester
+        # Initialize the unified alignment tester with configs directory
         self.tester = UnifiedAlignmentTester(
             scripts_dir=str(self.scripts_dir),
             contracts_dir=str(self.contracts_dir),
             specs_dir=str(self.specs_dir),
-            builders_dir=str(self.builders_dir)
+            builders_dir=str(self.builders_dir),
+            configs_dir=str(self.configs_dir)
         )
         
         # Script to contract mapping
@@ -126,6 +128,67 @@ class ScriptAlignmentValidator:
             print(f"❌ ERROR validating {script_name}: {e}")
             return error_result
     
+    def _make_json_serializable(self, obj: Any) -> Any:
+        """
+        Recursively convert an object to a JSON-serializable representation.
+        
+        Args:
+            obj: Object to convert
+            
+        Returns:
+            JSON-serializable representation
+        """
+        # Handle None
+        if obj is None:
+            return None
+        
+        # Handle basic JSON types
+        if isinstance(obj, (str, int, float, bool)):
+            return obj
+        
+        # Handle lists and tuples
+        if isinstance(obj, (list, tuple)):
+            return [self._make_json_serializable(item) for item in obj]
+        
+        # Handle dictionaries
+        if isinstance(obj, dict):
+            result = {}
+            for key, value in obj.items():
+                # Ensure keys are strings
+                str_key = str(key)
+                result[str_key] = self._make_json_serializable(value)
+            return result
+        
+        # Handle sets - convert to sorted lists
+        if isinstance(obj, set):
+            return sorted([self._make_json_serializable(item) for item in obj])
+        
+        # Handle Path objects
+        if hasattr(obj, '__fspath__'):  # Path-like objects
+            return str(obj)
+        
+        # Handle datetime objects
+        if hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        
+        # Handle Enum objects
+        if hasattr(obj, 'value'):
+            return obj.value
+        
+        # Handle type objects
+        if isinstance(obj, type):
+            return str(obj.__name__)
+        
+        # For everything else, try string conversion
+        try:
+            str_value = str(obj)
+            # Avoid storing string representations of complex objects
+            if '<' in str_value and '>' in str_value and 'object at' in str_value:
+                return f"<{type(obj).__name__}>"
+            return str_value
+        except Exception:
+            return f"<{type(obj).__name__}>"
+
     def _print_script_summary(self, script_name: str, results: Dict[str, Any]):
         """Print a summary of validation results for a script."""
         status = results.get('overall_status', 'UNKNOWN')
@@ -158,12 +221,29 @@ class ScriptAlignmentValidator:
             script_name: Name of the script
             results: Validation results dictionary
         """
-        # Save JSON report
+        # Save JSON report with robust serialization
         json_file = self.json_reports_dir / f"{script_name}_alignment_report.json"
-        with open(json_file, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, default=str)
-        
-        print(f"📄 JSON report saved: {json_file}")
+        try:
+            # Clean the results to ensure JSON serializability
+            cleaned_results = self._make_json_serializable(results)
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(cleaned_results, f, indent=2, default=str)
+            print(f"📄 JSON report saved: {json_file}")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not save JSON report for {script_name}: {e}")
+            # Try to save a simplified version
+            try:
+                simplified_results = {
+                    'script_name': script_name,
+                    'overall_status': results.get('overall_status', 'ERROR'),
+                    'error': f'JSON serialization failed: {str(e)}',
+                    'metadata': results.get('metadata', {})
+                }
+                with open(json_file, 'w', encoding='utf-8') as f:
+                    json.dump(simplified_results, f, indent=2, default=str)
+                print(f"📄 Simplified JSON report saved: {json_file}")
+            except Exception as e2:
+                print(f"❌ Failed to save even simplified JSON report for {script_name}: {e2}")
         
         # Generate and save HTML report
         try:
@@ -320,6 +400,7 @@ class ScriptAlignmentValidator:
         print(f"📁 Contracts Directory: {self.contracts_dir}")
         print(f"📁 Specifications Directory: {self.specs_dir}")
         print(f"📁 Builders Directory: {self.builders_dir}")
+        print(f"📁 Configs Directory: {self.configs_dir}")
         print(f"📁 Output Directory: {self.output_dir}")
         
         # Discover all scripts

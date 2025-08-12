@@ -19,6 +19,7 @@ from .alignment_utils import (
 from .script_contract_alignment import ScriptContractAlignmentTester
 from .contract_spec_alignment import ContractSpecificationAlignmentTester
 from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
+from .level3_validation_config import Level3ValidationConfig, ValidationMode
 from .builder_config_alignment import BuilderConfigurationAlignmentTester
 
 
@@ -35,7 +36,8 @@ class UnifiedAlignmentTester:
                  contracts_dir: str = "src/cursus/steps/contracts",
                  specs_dir: str = "src/cursus/steps/specs",
                  builders_dir: str = "src/cursus/steps/builders",
-                 configs_dir: str = "src/cursus/steps/configs"):
+                 configs_dir: str = "src/cursus/steps/configs",
+                 level3_validation_mode: str = "relaxed"):
         """
         Initialize the unified alignment tester.
         
@@ -45,6 +47,7 @@ class UnifiedAlignmentTester:
             specs_dir: Directory containing step specifications
             builders_dir: Directory containing step builders
             configs_dir: Directory containing step configurations
+            level3_validation_mode: Level 3 validation mode ('strict', 'relaxed', 'permissive')
         """
         self.scripts_dir = Path(scripts_dir).resolve()
         self.contracts_dir = Path(contracts_dir).resolve()
@@ -52,13 +55,27 @@ class UnifiedAlignmentTester:
         self.builders_dir = Path(builders_dir).resolve()
         self.configs_dir = Path(configs_dir).resolve()
         
+        # Configure Level 3 validation based on mode
+        if level3_validation_mode == "strict":
+            level3_config = Level3ValidationConfig.create_strict_config()
+        elif level3_validation_mode == "relaxed":
+            level3_config = Level3ValidationConfig.create_relaxed_config()
+        elif level3_validation_mode == "permissive":
+            level3_config = Level3ValidationConfig.create_permissive_config()
+        else:
+            level3_config = Level3ValidationConfig.create_relaxed_config()  # Default
+            print(f"⚠️  Unknown Level 3 validation mode '{level3_validation_mode}', using 'relaxed' mode")
+        
         # Initialize level-specific testers
         self.level1_tester = ScriptContractAlignmentTester(scripts_dir, contracts_dir, builders_dir)
         self.level2_tester = ContractSpecificationAlignmentTester(contracts_dir, specs_dir)
-        self.level3_tester = SpecificationDependencyAlignmentTester(specs_dir)
+        self.level3_tester = SpecificationDependencyAlignmentTester(specs_dir, level3_config)
         self.level4_tester = BuilderConfigurationAlignmentTester(str(self.builders_dir), str(self.configs_dir))
         
         self.report = AlignmentReport()
+        
+        # Store configuration for reporting
+        self.level3_config = level3_config
     
     def run_full_validation(self, 
                            target_scripts: Optional[List[str]] = None,

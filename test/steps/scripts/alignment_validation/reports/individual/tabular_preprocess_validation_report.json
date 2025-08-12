@@ -4,118 +4,18 @@
     "passed": false,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "path_usage",
-        "message": "Script uses undeclared SageMaker path: /opt/ml/processing/input",
-        "details": {
-          "path": "/opt/ml/processing/input",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Add path /opt/ml/processing/input to contract inputs or outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/data",
-        "details": {
-          "path": "/opt/ml/processing/input/data",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Either use path /opt/ml/processing/input/data in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses path not mapped to contract logical name: /opt/ml/processing/input",
-        "details": {
-          "path": "/opt/ml/processing/input",
-          "inferred_logical_name": null,
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Add path /opt/ml/processing/input to contract inputs/outputs with appropriate logical name"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --job-type (accessed as args.job_type)",
-        "details": {
-          "cli_argument": "job-type",
-          "python_attribute": "job_type",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Add --job-type to contract arguments or remove from script"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/data",
-        "details": {
-          "path": "/opt/ml/processing/input/data",
-          "operation": "read",
-          "script": "tabular_preprocess"
-        },
-        "recommendation": "Either read /opt/ml/processing/input/data in script or remove from contract inputs"
+        "severity": "CRITICAL",
+        "category": "missing_file",
+        "message": "Script file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
+        "recommendation": "Create the script file tabular_preprocess.py"
       }
-    ],
-    "script_analysis": {
-      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py",
-      "path_references": [
-        "path='.gz' line_number=18 context='\\ndef _is_gzipped(path: str) -> bool:\\n>>>     return path.lower().endswith(\".gz\")\\n\\ndef _detect_separator_from_sample(sample_lines: str) -> str:' is_hardcoded=True construction_method=None",
-        "path='Use csv.Sniffer to detect a delimiter, defaulting to comma.' line_number=21 context='\\ndef _detect_separator_from_sample(sample_lines: str) -> str:\\n>>>     \"\"\"Use csv.Sniffer to detect a delimiter, defaulting to comma.\"\"\"\\n    try:\\n        dialect = csv.Sniffer().sniff(sample_lines)' is_hardcoded=True construction_method=None",
-        "path='Check if the JSON file is in JSON Lines or regular format.' line_number=29 context='\\ndef peek_json_format(file_path: Path, open_func=open) -> str:\\n>>>     \"\"\"Check if the JSON file is in JSON Lines or regular format.\"\"\"\\n    try:\\n        with open_func(str(file_path), \"rt\") as f:' is_hardcoded=True construction_method=None",
-        "path='Read a JSON or JSON Lines file into a DataFrame.' line_number=48 context='\\ndef _read_json_file(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a JSON or JSON Lines file into a DataFrame.\"\"\"\\n    open_func = gzip.open if _is_gzipped(str(file_path)) else open\\n    fmt = peek_json_format(file_path, open_func)' is_hardcoded=True construction_method=None",
-        "path='Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.' line_number=59 context='\\ndef _read_file_to_df(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n    if suffix == \".gz\":' is_hardcoded=True construction_method=None",
-        "path='.gz' line_number=61 context='    \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n>>>     if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n        if inner_ext in [\".csv\", \".tsv\"]:' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=63 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.tsv' line_number=63 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=67 context='                sep = _detect_separator_from_sample(f.readline() + f.readline())\\n            return pd.read_csv(str(file_path), sep=sep, compression=\"gzip\")\\n>>>         elif inner_ext == \".json\":\\n            return _read_json_file(file_path)\\n        elif inner_ext.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=78 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.tsv' line_number=78 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=82 context='            sep = _detect_separator_from_sample(f.readline() + f.readline())\\n        return pd.read_csv(str(file_path), sep=sep)\\n>>>     elif suffix == \".json\":\\n        return _read_json_file(file_path)\\n    elif suffix.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
-        "path='Detect and combine all supported data shards in a directory.' line_number=90 context='\\ndef combine_shards(input_dir: str) -> pd.DataFrame:\\n>>>     \"\"\"Detect and combine all supported data shards in a directory.\"\"\"\\n    input_path = Path(input_dir)\\n    if not input_path.is_dir():' is_hardcoded=True construction_method=None",
-        "path='part-*.csv' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.csv.gz' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.json' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.json.gz' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.parquet.gz' line_number=96 context='    patterns = [\\n        \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n>>>         \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]\\n    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])' is_hardcoded=True construction_method=None",
-        "path='No CSV/JSON/Parquet shards found under ' line_number=100 context='    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])\\n    if not all_shards:\\n>>>         raise RuntimeError(f\"No CSV/JSON/Parquet shards found under {input_dir}\")\\n    try:\\n        dfs = [_read_file_to_df(shard) for shard in all_shards]' is_hardcoded=True construction_method=None",
-        "path='\\n    Main logic for preprocessing data, now refactored for testability.\\n    ' line_number=110 context='\\ndef main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_base_dir: str, output_dir: str):\\n>>>     \"\"\"\\n    Main logic for preprocessing data, now refactored for testability.\\n    \"\"\"' is_hardcoded=True construction_method=None",
-        "path='data' line_number=114 context='    \"\"\"\\n    # 1. Setup paths\\n>>>     input_data_dir = os.path.join(input_base_dir, \"data\")\\n    output_path = Path(output_dir)\\n    output_path.mkdir(parents=True, exist_ok=True)' is_hardcoded=False construction_method='os.path.join'",
-        "path='.' line_number=124 context='\\n    # 3. Process columns and labels\\n>>>     df.columns = [col.replace(\"__DOT__\", \".\") for col in df.columns]\\n    if label_field not in df.columns:\\n        raise RuntimeError(f\"Label field \\'{label_field}\\' not found in columns: {df.columns.tolist()}\")' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=152 context='        \\n        # Only output processed_data.csv\\n>>>         proc_path = subfolder / f\"{split_name}_processed_data.csv\"\\n        split_df.to_csv(proc_path, index=False)\\n        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")' is_hardcoded=True construction_method=None",
-        "path='[INFO] Preprocessing complete.' line_number=156 context='        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")\\n\\n>>>     print(\"[INFO] Preprocessing complete.\")\\n\\n' is_hardcoded=True construction_method=None",
-        "path='LABEL_FIELD environment variable must be set.' line_number=167 context='    LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n>>>         raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input' line_number=172 context='    \\n    # Define standard SageMaker paths\\n>>>     INPUT_BASE_DIR = \"/opt/ml/processing/input\"\\n    OUTPUT_DIR = \"/opt/ml/processing/output\"\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=173 context='    # Define standard SageMaker paths\\n    INPUT_BASE_DIR = \"/opt/ml/processing/input\"\\n>>>     OUTPUT_DIR = \"/opt/ml/processing/output\"\\n\\n    # Execute the main processing logic by calling the refactored main function' is_hardcoded=True construction_method=None"
-      ],
-      "env_var_accesses": [
-        "variable_name='LABEL_FIELD' line_number=165 context='\\n    # Read configuration from environment variables\\n>>>     LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")' access_method='os.environ.get' has_default=False default_value=None",
-        "variable_name='TRAIN_RATIO' line_number=168 context='    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n>>>     TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    ' access_method='os.environ.get' has_default=True default_value=None",
-        "variable_name='TEST_VAL_RATIO' line_number=169 context='        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n>>>     TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    \\n    # Define standard SageMaker paths' access_method='os.environ.get' has_default=True default_value=None"
-      ],
-      "imports": [
-        "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
-        "module_name='gzip' import_alias=None line_number=3 is_from_import=False imported_items=[]",
-        "module_name='tempfile' import_alias=None line_number=4 is_from_import=False imported_items=[]",
-        "module_name='shutil' import_alias=None line_number=5 is_from_import=False imported_items=[]",
-        "module_name='csv' import_alias=None line_number=6 is_from_import=False imported_items=[]",
-        "module_name='json' import_alias=None line_number=7 is_from_import=False imported_items=[]",
-        "module_name='argparse' import_alias=None line_number=8 is_from_import=False imported_items=[]",
-        "module_name='pathlib' import_alias=None line_number=9 is_from_import=True imported_items=['Path']",
-        "module_name='multiprocessing' import_alias=None line_number=10 is_from_import=True imported_items=['Pool', 'cpu_count']",
-        "module_name='pandas' import_alias='pd' line_number=11 is_from_import=False imported_items=[]",
-        "module_name='numpy' import_alias='np' line_number=12 is_from_import=False imported_items=[]",
-        "module_name='sklearn.model_selection' import_alias=None line_number=13 is_from_import=True imported_items=['train_test_split']"
-      ],
-      "argument_definitions": [
-        "argument_name='job_type' line_number=161 is_required=True has_default=False default_value=None argument_type='str' choices=None"
-      ],
-      "file_operations": [
-        "file_path='<file_object>' operation_type='read' line_number=55 context='    else:\\n        with open_func(str(file_path), \"rt\") as f:\\n>>>             data = json.load(f)\\n        return pd.json_normalize(data if isinstance(data, list) else [data])\\n' mode=None method='json.load'"
-      ]
-    },
+    ]
+  },
+  "level2": {
+    "passed": true,
+    "issues": [],
     "contract": {
-      "entry_point": "tabular_preprocess.py",
+      "entry_point": "tabular_preprocessing.py",
       "inputs": {
         "DATA": {
           "path": "/opt/ml/processing/input/data"
@@ -146,18 +46,128 @@
         "numpy": ">=1.21.0",
         "scikit-learn": ">=1.0.0"
       }
-    }
-  },
-  "level2": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "CRITICAL",
-        "category": "contract_load_error",
-        "message": "Failed to load contract: Failed to load contract from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/tabular_preprocess_contract.py: No module named 'src'",
-        "recommendation": "Fix Python syntax or contract structure in contract file"
+    },
+    "specifications": {
+      "preprocessing_training_spec": {
+        "step_type": "TabularPreprocessing_Training",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "DATA",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "ProcessingStep",
+              "CradleDataLoading",
+              "DataLoad"
+            ],
+            "data_type": "S3Uri",
+            "description": "Raw training data for preprocessing"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "processed_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Processed training data with train/val/test splits"
+          }
+        ]
       }
-    ]
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "TabularPreprocessing_Training",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "DATA",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "ProcessingStep",
+              "CradleDataLoading",
+              "DataLoad"
+            ],
+            "data_type": "S3Uri",
+            "description": "Raw training data for preprocessing"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "processed_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Processed training data with train/val/test splits"
+          }
+        ]
+      },
+      "variants": {
+        "training": {
+          "step_type": "TabularPreprocessing_Training",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "DATA",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "ProcessingStep",
+                "CradleDataLoading",
+                "DataLoad"
+              ],
+              "data_type": "S3Uri",
+              "description": "Raw training data for preprocessing"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "processed_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Processed training data with train/val/test splits"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "DATA": {
+          "logical_name": "DATA",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "ProcessingStep",
+            "CradleDataLoading",
+            "DataLoad"
+          ],
+          "data_type": "S3Uri",
+          "description": "Raw training data for preprocessing"
+        }
+      },
+      "unified_outputs": {
+        "processed_data": {
+          "logical_name": "processed_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Processed training data with train/val/test splits"
+        }
+      },
+      "dependency_sources": {
+        "DATA": [
+          "training"
+        ]
+      },
+      "output_sources": {
+        "processed_data": [
+          "training"
+        ]
+      },
+      "variant_count": 1
+    }
   },
   "level3": {
     "passed": false,
@@ -256,7 +266,7 @@
   "overall_status": "FAILING",
   "metadata": {
     "script_name": "tabular_preprocess",
-    "validation_timestamp": "2025-08-10T23:12:50.428580",
+    "validation_timestamp": "2025-08-11T20:24:17.393475",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py"
   }

@@ -14,10 +14,10 @@ from ..registry.builder_registry import register_builder
 
 # Import the packaging specification
 try:
-    from ..specs.packaging_spec import PACKAGING_SPEC
+    from ..specs.package_spec import PACKAGE_SPEC
     SPEC_AVAILABLE = True
 except ImportError:
-    PACKAGING_SPEC = None
+    PACKAGE_SPEC = None
     SPEC_AVAILABLE = False
     
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class PackageStepBuilder(StepBuilderBase):
             )
             
         # Use the packaging specification if available
-        spec = PACKAGING_SPEC if SPEC_AVAILABLE else None
+        spec = PACKAGE_SPEC if SPEC_AVAILABLE else None
         
         super().__init__(
             config=config,

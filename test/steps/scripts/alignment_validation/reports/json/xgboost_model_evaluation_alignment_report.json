@@ -6,26 +6,6 @@
       {
         "severity": "WARNING",
         "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
-        "details": {
-          "path": "/opt/ml/processing/input/model",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
-        "details": {
-          "path": "/opt/ml/processing/output/eval",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
         "message": "Contract declares path not used in script: /opt/ml/processing/input/eval_data",
         "details": {
           "path": "/opt/ml/processing/input/eval_data",
@@ -45,6 +25,26 @@
       },
       {
         "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/model",
+        "details": {
+          "path": "/opt/ml/processing/input/model",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Either use path /opt/ml/processing/input/model in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/output/eval",
+        "details": {
+          "path": "/opt/ml/processing/output/eval",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Either use path /opt/ml/processing/output/eval in script or remove from contract"
+      },
+      {
+        "severity": "WARNING",
         "category": "arguments",
         "message": "Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)",
         "details": {
@@ -57,17 +57,6 @@
       {
         "severity": "WARNING",
         "category": "arguments",
-        "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
-        "details": {
-          "cli_argument": "model-dir",
-          "python_attribute": "model_dir",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Add --model-dir to contract arguments or remove from script"
-      },
-      {
-        "severity": "WARNING",
-        "category": "arguments",
         "message": "Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)",
         "details": {
           "cli_argument": "eval-data-dir",
@@ -75,6 +64,28 @@
           "script": "xgboost_model_evaluation"
         },
         "recommendation": "Add --eval-data-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
+        "details": {
+          "cli_argument": "output-eval-dir",
+          "python_attribute": "output_eval_dir",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
+      },
+      {
+        "severity": "WARNING",
+        "category": "arguments",
+        "message": "Script defines argument not in contract: --model-dir (accessed as args.model_dir)",
+        "details": {
+          "cli_argument": "model-dir",
+          "python_attribute": "model_dir",
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Add --model-dir to contract arguments or remove from script"
       },
       {
         "severity": "INFO",
@@ -89,15 +100,15 @@
         "recommendation": "Argument --job-type is provided by builder - no action needed"
       },
       {
-        "severity": "WARNING",
-        "category": "arguments",
-        "message": "Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)",
+        "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/eval_data",
         "details": {
-          "cli_argument": "output-eval-dir",
-          "python_attribute": "output_eval_dir",
+          "path": "/opt/ml/processing/input/eval_data",
+          "operation": "read",
           "script": "xgboost_model_evaluation"
         },
-        "recommendation": "Add --output-eval-dir to contract arguments or remove from script"
+        "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
       },
       {
         "severity": "INFO",
@@ -111,15 +122,15 @@
         "recommendation": "Either read /opt/ml/processing/input/model in script or remove from contract inputs"
       },
       {
-        "severity": "INFO",
+        "severity": "WARNING",
         "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/processing/input/eval_data",
+        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
         "details": {
-          "path": "/opt/ml/processing/input/eval_data",
-          "operation": "read",
+          "path": "/opt/ml/processing/output/metrics",
+          "operation": "write",
           "script": "xgboost_model_evaluation"
         },
-        "recommendation": "Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs"
+        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
       },
       {
         "severity": "WARNING",
@@ -131,17 +142,6 @@
           "script": "xgboost_model_evaluation"
         },
         "recommendation": "Either write to /opt/ml/processing/output/eval in script or remove from contract outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "file_operations",
-        "message": "Contract declares output not written by script: /opt/ml/processing/output/metrics",
-        "details": {
-          "path": "/opt/ml/processing/output/metrics",
-          "operation": "write",
-          "script": "xgboost_model_evaluation"
-        },
-        "recommendation": "Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs"
       }
     ],
     "script_analysis": {
@@ -331,11 +331,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
+              "PyTorchModel",
+              "XGBoostModel",
               "DummyTraining",
               "PyTorchTraining",
-              "XGBoostModel",
-              "PyTorchModel"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -345,10 +345,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CurrencyConversion",
+              "RiskTableMapping",
               "TabularPreprocessing",
-              "CradleDataLoading",
-              "RiskTableMapping"
+              "CurrencyConversion",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -382,11 +382,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
+              "PyTorchModel",
+              "XGBoostModel",
               "DummyTraining",
               "PyTorchTraining",
-              "XGBoostModel",
-              "PyTorchModel"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -396,10 +396,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CurrencyConversion",
+              "RiskTableMapping",
               "TabularPreprocessing",
-              "CradleDataLoading",
-              "RiskTableMapping"
+              "CurrencyConversion",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -432,11 +432,11 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
+                "PyTorchModel",
+                "XGBoostModel",
                 "DummyTraining",
                 "PyTorchTraining",
-                "XGBoostModel",
-                "PyTorchModel"
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -446,10 +446,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CurrencyConversion",
+                "RiskTableMapping",
                 "TabularPreprocessing",
-                "CradleDataLoading",
-                "RiskTableMapping"
+                "CurrencyConversion",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset for model assessment"
@@ -479,11 +479,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
+            "PyTorchModel",
+            "XGBoostModel",
             "DummyTraining",
             "PyTorchTraining",
-            "XGBoostModel",
-            "PyTorchModel"
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -493,10 +493,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CurrencyConversion",
+            "RiskTableMapping",
             "TabularPreprocessing",
-            "CradleDataLoading",
-            "RiskTableMapping"
+            "CurrencyConversion",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -538,84 +538,8 @@
     }
   },
   "level3": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve required dependency: model_input",
-        "details": {
-          "logical_name": "model_input",
-          "specification": "xgboost_model_evaluation",
-          "compatible_sources": [
-            "XGBoostTraining",
-            "DummyTraining",
-            "PyTorchTraining",
-            "XGBoostModel",
-            "PyTorchModel"
-          ],
-          "dependency_type": "model_artifacts",
-          "available_steps": [
-            "Base",
-            "Processing",
-            "CradleDataLoading",
-            "TabularPreprocessing",
-            "RiskTableMapping",
-            "CurrencyConversion",
-            "PyTorchTraining",
-            "XGBoostTraining",
-            "DummyTraining",
-            "XGBoostModelEval",
-            "PyTorchModel",
-            "XGBoostModel",
-            "ModelCalibration",
-            "Package",
-            "Registration",
-            "Payload",
-            "HyperparameterPrep",
-            "BatchTransform"
-          ]
-        },
-        "recommendation": "Ensure a step exists that produces output model_input"
-      },
-      {
-        "severity": "ERROR",
-        "category": "dependency_resolution",
-        "message": "Cannot resolve required dependency: processed_data",
-        "details": {
-          "logical_name": "processed_data",
-          "specification": "xgboost_model_evaluation",
-          "compatible_sources": [
-            "CurrencyConversion",
-            "TabularPreprocessing",
-            "CradleDataLoading",
-            "RiskTableMapping"
-          ],
-          "dependency_type": "processing_output",
-          "available_steps": [
-            "Base",
-            "Processing",
-            "CradleDataLoading",
-            "TabularPreprocessing",
-            "RiskTableMapping",
-            "CurrencyConversion",
-            "PyTorchTraining",
-            "XGBoostTraining",
-            "DummyTraining",
-            "XGBoostModelEval",
-            "PyTorchModel",
-            "XGBoostModel",
-            "ModelCalibration",
-            "Package",
-            "Registration",
-            "Payload",
-            "HyperparameterPrep",
-            "BatchTransform"
-          ]
-        },
-        "recommendation": "Ensure a step exists that produces output processed_data"
-      }
-    ],
+    "passed": true,
+    "issues": [],
     "specification": {
       "step_type": "XGBoostModelEval",
       "node_type": "internal",
@@ -625,11 +549,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
+            "PyTorchModel",
+            "XGBoostModel",
             "DummyTraining",
             "PyTorchTraining",
-            "XGBoostModel",
-            "PyTorchModel"
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -639,10 +563,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CurrencyConversion",
+            "RiskTableMapping",
             "TabularPreprocessing",
-            "CradleDataLoading",
-            "RiskTableMapping"
+            "CurrencyConversion",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -667,33 +591,78 @@
     }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "missing_configuration",
-        "message": "Configuration file not found for xgboost_model_evaluation",
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class xgboost_model_evaluationConfig",
         "details": {
-          "builder_name": "xgboost_model_evaluation",
-          "search_directory": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/src/cursus/steps/configs",
-          "available_config_files": [],
-          "available_base_names": [],
-          "total_configs_found": 0,
-          "resolver_strategies": [
-            "Exact match",
-            "Normalized matching (preprocess\u2194preprocessing, eval\u2194evaluation, xgb\u2194xgboost)",
-            "Fuzzy matching (80% similarity threshold)"
-          ]
+          "config_class": "xgboost_model_evaluationConfig",
+          "builder": "xgboost_model_evaluation"
         },
-        "recommendation": "Check if config file exists with correct naming pattern, or create config_xgboost_model_evaluation_step.py"
+        "recommendation": "Ensure builder imports and uses xgboost_model_evaluationConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "XGBoostModelEvalStepBuilder",
+          "line_number": 27
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 75
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 111
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 134
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 156
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 209
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 264
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 284
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "xgboost_model_evaluationConfig",
+      "fields": {},
+      "required_fields": [],
+      "optional_fields": [],
+      "default_values": {},
+      "load_error": "Configuration class not found in /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/configs/config_xgboost_model_eval_step.py. Available classes: ['Any', 'Path', 'ProcessingStepConfigBase', 'XGBoostModelEvalConfig', 'XGBoostModelHyperparameters']"
+    }
   },
-  "overall_status": "FAILING",
+  "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py",
     "contract_mapping": "xgboost_model_evaluation_contract",
-    "validation_timestamp": "2025-08-11T11:48:48.693634",
+    "validation_timestamp": "2025-08-11T20:40:42.516185",
     "validator_version": "1.0.0"
   }
 }

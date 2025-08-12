@@ -121,6 +121,192 @@ class UnifiedDependencyResolver:
         self._resolution_cache[cache_key] = resolved
         return resolved
     
+    def resolve_with_scoring(self, consumer_step: str, available_steps: List[str]) -> Dict[str, any]:
+        """
+        Resolve dependencies with detailed compatibility scoring.
+        
+        Args:
+            consumer_step: Name of the step whose dependencies to resolve
+            available_steps: List of available step names
+            
+        Returns:
+            Dictionary with resolved dependencies and detailed scoring information
+        """
+        consumer_spec = self.registry.get_specification(consumer_step)
+        if not consumer_spec:
+            logger.warning(f"No specification found for step: {consumer_step}")
+            return {
+                'resolved': {},
+                'failed_with_scores': {},
+                'resolution_details': {
+                    'consumer_step': consumer_step,
+                    'error': 'No specification found'
+                }
+            }
+        
+        resolved = {}
+        failed_with_scores = {}
+        
+        for dep_name, dep_spec in consumer_spec.dependencies.items():
+            candidates = self._get_all_candidates_with_scores(dep_spec, consumer_step, available_steps)
+            
+            if candidates:
+                best_match = candidates[0]  # Highest scoring candidate
+                
+                if best_match['score'] >= 0.5:  # Current resolution threshold
+                    resolved[dep_name] = best_match['property_reference']
+                    logger.info(f"Resolved {consumer_step}.{dep_name} -> {best_match['property_reference']} (score: {best_match['score']:.3f})")
+                else:
+                    # Store failed resolution with scoring details
+                    failed_with_scores[dep_name] = {
+                        'best_candidate': best_match,
+                        'all_candidates': candidates[:3],  # Top 3 candidates
+                        'required': dep_spec.required
+                    }
+                    logger.debug(f"Best match for {consumer_step}.{dep_name} below threshold: "
+                               f"{best_match['provider_step']}.{best_match['output_name']} (score: {best_match['score']:.3f})")
+            else:
+                failed_with_scores[dep_name] = {
+                    'best_candidate': None,
+                    'all_candidates': [],
+                    'required': dep_spec.required
+                }
+                logger.debug(f"No candidates found for {consumer_step}.{dep_name}")
+        
+        return {
+            'resolved': resolved,
+            'failed_with_scores': failed_with_scores,
+            'resolution_details': self._generate_resolution_details(consumer_step, available_steps)
+        }
+    
+    def _get_all_candidates_with_scores(self, dep_spec: DependencySpec, consumer_step: str, 
+                                      available_steps: List[str]) -> List[Dict]:
+        """
+        Get all candidates with their compatibility scores.
+        
+        Args:
+            dep_spec: Dependency specification to resolve
+            consumer_step: Name of the consuming step
+            available_steps: List of available step names
+            
+        Returns:
+            List of candidate dictionaries sorted by score (highest first)
+        """
+        candidates = []
+        
+        for provider_step in available_steps:
+            if provider_step == consumer_step:
+                continue  # Skip self-dependencies
+                
+            provider_spec = self.registry.get_specification(provider_step)
+            if not provider_spec:
+                continue
+            
+            # Check each output of the provider step
+            for output_name, output_spec in provider_spec.outputs.items():
+                score = self._calculate_compatibility(dep_spec, output_spec, provider_spec)
+                if score > 0.0:  # Include all non-zero matches
+                    score_breakdown = self._get_score_breakdown(dep_spec, output_spec, provider_spec)
+                    candidates.append({
+                        'provider_step': provider_step,
+                        'output_name': output_name,
+                        'output_spec': output_spec,
+                        'score': score,
+                        'property_reference': PropertyReference(step_name=provider_step, output_spec=output_spec),
+                        'score_breakdown': score_breakdown
+                    })
+        
+        # Sort by score (highest first)
+        candidates.sort(key=lambda x: x['score'], reverse=True)
+        return candidates
+    
+    def _get_score_breakdown(self, dep_spec: DependencySpec, output_spec: OutputSpec,
+                           provider_spec: StepSpecification) -> Dict[str, float]:
+        """
+        Get detailed breakdown of compatibility score components.
+        
+        Args:
+            dep_spec: Dependency specification
+            output_spec: Output specification
+            provider_spec: Provider step specification
+            
+        Returns:
+            Dictionary with score breakdown by component
+        """
+        breakdown = {}
+        
+        # 1. Dependency type compatibility (40% weight)
+        if dep_spec.dependency_type == output_spec.output_type:
+            breakdown['type_compatibility'] = 0.4
+        elif self._are_types_compatible(dep_spec.dependency_type, output_spec.output_type):
+            breakdown['type_compatibility'] = 0.2
+        else:
+            breakdown['type_compatibility'] = 0.0
+        
+        # 2. Data type compatibility (20% weight)
+        if dep_spec.data_type == output_spec.data_type:
+            breakdown['data_type_compatibility'] = 0.2
+        elif self._are_data_types_compatible(dep_spec.data_type, output_spec.data_type):
+            breakdown['data_type_compatibility'] = 0.1
+        else:
+            breakdown['data_type_compatibility'] = 0.0
+        
+        # 3. Semantic name matching (25% weight)
+        semantic_score = self.semantic_matcher.calculate_similarity_with_aliases(
+            dep_spec.logical_name, output_spec
+        )
+        breakdown['semantic_similarity'] = semantic_score * 0.25
+        
+        # 4. Exact name match bonus (5% weight)
+        if dep_spec.logical_name == output_spec.logical_name:
+            breakdown['exact_match_bonus'] = 0.05
+        elif dep_spec.logical_name in output_spec.aliases:
+            breakdown['exact_match_bonus'] = 0.05
+        else:
+            breakdown['exact_match_bonus'] = 0.0
+        
+        # 5. Compatible source check (10% weight)
+        if dep_spec.compatible_sources:
+            if provider_spec.step_type in dep_spec.compatible_sources:
+                breakdown['source_compatibility'] = 0.1
+            else:
+                breakdown['source_compatibility'] = 0.0
+        else:
+            breakdown['source_compatibility'] = 0.05  # Small bonus if no sources specified
+        
+        # 6. Keyword matching (5% weight)
+        if dep_spec.semantic_keywords:
+            keyword_score = self._calculate_keyword_match(dep_spec.semantic_keywords, output_spec.logical_name)
+            breakdown['keyword_matching'] = keyword_score * 0.05
+        else:
+            breakdown['keyword_matching'] = 0.0
+        
+        return breakdown
+    
+    def _generate_resolution_details(self, consumer_step: str, available_steps: List[str]) -> Dict[str, any]:
+        """
+        Generate detailed resolution context information.
+        
+        Args:
+            consumer_step: Name of the consuming step
+            available_steps: List of available step names
+            
+        Returns:
+            Dictionary with resolution context details
+        """
+        consumer_spec = self.registry.get_specification(consumer_step)
+        
+        return {
+            'consumer_step': consumer_step,
+            'consumer_step_type': consumer_spec.step_type if consumer_spec else None,
+            'total_dependencies': len(consumer_spec.dependencies) if consumer_spec else 0,
+            'required_dependencies': len([d for d in consumer_spec.dependencies.values() if d.required]) if consumer_spec else 0,
+            'available_steps': available_steps,
+            'available_step_count': len(available_steps),
+            'registered_steps': len([s for s in available_steps if self.registry.get_specification(s)]),
+            'resolution_threshold': 0.5
+        }
+    
     def _resolve_single_dependency(self, dep_spec: DependencySpec, consumer_step: str,
                                  available_steps: List[str]) -> Optional[PropertyReference]:
         """

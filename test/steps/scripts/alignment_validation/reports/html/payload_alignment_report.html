@@ -29,25 +29,25 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: payload</h2>
-        <p>Generated: 2025-08-11T11:48:48.645702</p>
+        <p>Generated: 2025-08-11T20:40:42.418982</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>2</h3>
+            <h3>9</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
-            <h3>0</h3>
+            <h3>1</h3>
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>2</h3>
+            <h3>0</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>0</h3>
+            <h3>7</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -71,20 +71,55 @@
                 <h4>Level 3: Specification ↔ Dependencies</h4>
                 <p>Status: FAILED</p>
                 
-                <div class="issue error">
-                    <strong>ERROR:</strong> Dependency resolver failed: Step 'Payload' has unresolved required dependencies: ['model_input']
-                    <br><em>Recommendation: Check specification format and dependency resolver configuration</em>
+                <div class="issue critical">
+                    <strong>CRITICAL:</strong> No compatible candidates found for required dependency: model_input
+                    <br><em>Recommendation: Ensure a step exists that produces output compatible with model_input</em>
                 </div>
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 4: Builder ↔ Configuration</h4>
-                <p>Status: FAILED</p>
+                <p>Status: PASSED</p>
                 
-                <div class="issue error">
-                    <strong>ERROR:</strong> Configuration file not found for payload
-                    <br><em>Recommendation: Check if config file exists with correct naming pattern, or create config_payload_step.py</em>
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_objective
+                    <br><em>Recommendation: Access required field model_registration_objective in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_output_variable_list
+                    <br><em>Recommendation: Access required field source_model_inference_output_variable_list in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_domain
+                    <br><em>Recommendation: Access required field model_registration_domain in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_owner
+                    <br><em>Recommendation: Access required field model_owner in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: expected_tps
+                    <br><em>Recommendation: Access required field expected_tps in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
+                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
+                    <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
                 </div>
                 
             </div>
@@ -95,7 +130,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py</p>
         <p><strong>Contract Mapping:</strong> payload_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T11:48:48.645702</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-11T20:40:42.418982</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

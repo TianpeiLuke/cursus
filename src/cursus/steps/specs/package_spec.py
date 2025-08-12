@@ -14,7 +14,7 @@ def _get_package_contract():
     return PACKAGE_CONTRACT
 
 # MIMS Packaging Step Specification
-PACKAGING_SPEC = StepSpecification(
+PACKAGE_SPEC = StepSpecification(
     step_type=get_spec_step_type("Package"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_package_contract(),

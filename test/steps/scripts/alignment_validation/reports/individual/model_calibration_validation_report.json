@@ -130,42 +130,383 @@
     }
   },
   "level2": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "CRITICAL",
-        "category": "contract_load_error",
-        "message": "Failed to load contract: Failed to load contract from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/contracts/model_calibration_contract.py: No module named 'src'",
-        "recommendation": "Fix Python syntax or contract structure in contract file"
+    "passed": true,
+    "issues": [],
+    "contract": {
+      "entry_point": "model_calibration.py",
+      "inputs": {
+        "evaluation_data": {
+          "path": "/opt/ml/processing/input/eval_data"
+        }
+      },
+      "outputs": {
+        "calibration_output": {
+          "path": "/opt/ml/processing/output/calibration"
+        },
+        "metrics_output": {
+          "path": "/opt/ml/processing/output/metrics"
+        },
+        "calibrated_data": {
+          "path": "/opt/ml/processing/output/calibrated_data"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [
+          "CALIBRATION_METHOD",
+          "LABEL_FIELD",
+          "SCORE_FIELD",
+          "IS_BINARY"
+        ],
+        "optional": {
+          "MONOTONIC_CONSTRAINT": "True",
+          "GAM_SPLINES": "10",
+          "ERROR_THRESHOLD": "0.05",
+          "NUM_CLASSES": "2",
+          "SCORE_FIELD_PREFIX": "prob_class_",
+          "MULTICLASS_CATEGORIES": "[0, 1]"
+        }
+      },
+      "description": "Contract for model calibration processing step.\n    \n    The model calibration step takes a trained model's raw prediction scores and\n    calibrates them to better reflect true probabilities, which is essential for\n    risk-based decision-making, threshold setting, and confidence in model outputs.\n    Supports both binary and multi-class classification scenarios.\n    \n    Input Structure:\n    - /opt/ml/processing/input/eval_data: Evaluation dataset with ground truth labels and model predictions\n    \n    Output Structure:\n    - /opt/ml/processing/output/calibration: Calibration mapping and artifacts\n    - /opt/ml/processing/output/metrics: Calibration quality metrics\n    - /opt/ml/processing/output/calibrated_data: Dataset with calibrated probabilities\n    \n    Environment Variables:\n    - CALIBRATION_METHOD: Method to use for calibration (gam, isotonic, platt)\n    - LABEL_FIELD: Name of the label column\n    - SCORE_FIELD: Name of the prediction score column (for binary classification)\n    - IS_BINARY: Whether this is a binary classification task (true/false)\n    - MONOTONIC_CONSTRAINT: Whether to enforce monotonicity in GAM (optional)\n    - GAM_SPLINES: Number of splines for GAM (optional)\n    - ERROR_THRESHOLD: Acceptable calibration error threshold (optional)\n    - NUM_CLASSES: Number of classes for multi-class classification (optional, default=2)\n    - SCORE_FIELD_PREFIX: Prefix for probability columns in multi-class scenario (optional)\n    - MULTICLASS_CATEGORIES: JSON string of class names/values for multi-class (optional)\n    ",
+      "framework_requirements": {
+        "scikit-learn": ">=0.23.2,<1.0.0",
+        "pandas": ">=1.2.0,<2.0.0",
+        "numpy": ">=1.20.0",
+        "pygam": ">=0.8.0",
+        "matplotlib": ">=3.3.0"
       }
-    ]
+    },
+    "specifications": {
+      "model_calibration_spec": {
+        "step_type": "ModelCalibration",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "TrainingEvaluation",
+              "XGBoostTraining",
+              "XGBoostModelEval",
+              "CrossValidation",
+              "ModelEvaluation"
+            ],
+            "data_type": "S3Uri",
+            "description": "Evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Dataset with calibrated probabilities"
+          }
+        ]
+      }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "ModelCalibration",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "TrainingEvaluation",
+              "XGBoostTraining",
+              "XGBoostModelEval",
+              "CrossValidation",
+              "ModelEvaluation"
+            ],
+            "data_type": "S3Uri",
+            "description": "Evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Dataset with calibrated probabilities"
+          }
+        ]
+      },
+      "variants": {
+        "calibration": {
+          "step_type": "ModelCalibration",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "evaluation_data",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "TrainingEvaluation",
+                "XGBoostTraining",
+                "XGBoostModelEval",
+                "CrossValidation",
+                "ModelEvaluation"
+              ],
+              "data_type": "S3Uri",
+              "description": "Evaluation dataset with ground truth labels and model predictions"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "calibration_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Calibration mapping and artifacts"
+            },
+            {
+              "logical_name": "metrics_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Calibration quality metrics and visualizations"
+            },
+            {
+              "logical_name": "calibrated_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Dataset with calibrated probabilities"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "evaluation_data": {
+          "logical_name": "evaluation_data",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "TrainingEvaluation",
+            "XGBoostTraining",
+            "XGBoostModelEval",
+            "CrossValidation",
+            "ModelEvaluation"
+          ],
+          "data_type": "S3Uri",
+          "description": "Evaluation dataset with ground truth labels and model predictions"
+        }
+      },
+      "unified_outputs": {
+        "calibration_output": {
+          "logical_name": "calibration_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration mapping and artifacts"
+        },
+        "metrics_output": {
+          "logical_name": "metrics_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration quality metrics and visualizations"
+        },
+        "calibrated_data": {
+          "logical_name": "calibrated_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Dataset with calibrated probabilities"
+        }
+      },
+      "dependency_sources": {
+        "evaluation_data": [
+          "calibration"
+        ]
+      },
+      "output_sources": {
+        "calibration_output": [
+          "calibration"
+        ],
+        "metrics_output": [
+          "calibration"
+        ],
+        "calibrated_data": [
+          "calibration"
+        ]
+      },
+      "variant_count": 1
+    }
   },
   "level3": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "CRITICAL",
-        "category": "spec_parse_error",
-        "message": "Failed to parse specification from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/model_calibration_spec.py: Failed to load specification from /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/model_calibration_spec.py: No module named 'src'",
-        "recommendation": "Fix Python syntax or specification structure"
-      }
-    ]
+    "passed": true,
+    "issues": [],
+    "specification": {
+      "step_type": "ModelCalibration",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "evaluation_data",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "TrainingEvaluation",
+            "XGBoostTraining",
+            "XGBoostModelEval",
+            "CrossValidation",
+            "ModelEvaluation"
+          ],
+          "data_type": "S3Uri",
+          "description": "Evaluation dataset with ground truth labels and model predictions"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "calibration_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration mapping and artifacts"
+        },
+        {
+          "logical_name": "metrics_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration quality metrics and visualizations"
+        },
+        {
+          "logical_name": "calibrated_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Dataset with calibrated probabilities"
+        }
+      ]
+    }
   },
   "level4": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "missing_configuration",
-        "message": "Configuration file not found: src/cursus/steps/configs/config_model_calibration_step.py",
-        "recommendation": "Create configuration file config_model_calibration_step.py"
+        "severity": "INFO",
+        "category": "config_import",
+        "message": "Builder may not be properly importing configuration class model_calibrationConfig",
+        "details": {
+          "config_class": "model_calibrationConfig",
+          "builder": "model_calibration"
+        },
+        "recommendation": "Ensure builder imports and uses model_calibrationConfig"
       }
-    ]
+    ],
+    "builder_analysis": {
+      "config_accesses": [],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "ModelCalibrationStepBuilder",
+          "line_number": 26
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 71
+        },
+        {
+          "method_name": "_is_pipeline_variable",
+          "line_number": 120
+        },
+        {
+          "method_name": "_normalize_s3_uri",
+          "line_number": 131
+        },
+        {
+          "method_name": "_get_s3_directory_path",
+          "line_number": 160
+        },
+        {
+          "method_name": "_validate_s3_uri",
+          "line_number": 189
+        },
+        {
+          "method_name": "_detect_circular_references",
+          "line_number": 219
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 255
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 287
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 347
+        },
+        {
+          "method_name": "_get_processor",
+          "line_number": 402
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 425
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 436
+        }
+      ]
+    },
+    "config_analysis": {
+      "class_name": "model_calibrationConfig",
+      "fields": {},
+      "required_fields": "set()",
+      "optional_fields": "set()",
+      "default_values": {},
+      "load_error": "No module named 'src'"
+    }
   },
-  "overall_status": "FAILING",
+  "overall_status": "PASSING",
   "metadata": {
     "script_name": "model_calibration",
-    "validation_timestamp": "2025-08-10T23:57:36.860563",
+    "validation_timestamp": "2025-08-11T20:24:06.481595",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py"
   }

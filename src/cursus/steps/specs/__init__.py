@@ -39,7 +39,7 @@ from .model_calibration_spec import MODEL_CALIBRATION_SPEC
 from .xgboost_model_eval_spec import MODEL_EVAL_SPEC
 
 # Packaging and deployment specifications
-from .packaging_spec import PACKAGING_SPEC
+from .package_spec import PACKAGE_SPEC
 from .payload_spec import PAYLOAD_SPEC
 from .registration_spec import REGISTRATION_SPEC
 
@@ -90,7 +90,7 @@ __all__ = [
     "MODEL_EVAL_SPEC",
     
     # Packaging and deployment specifications
-    "PACKAGING_SPEC",
+    "PACKAGE_SPEC",
     "PAYLOAD_SPEC",
     "REGISTRATION_SPEC",
     
