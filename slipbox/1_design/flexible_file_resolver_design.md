@@ -547,6 +547,7 @@ The FlexibleFileResolver stands as a model for how intelligent, context-aware sy
 ## Related Documentation
 
 ### Core Validation System
+- **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - **FOUNDATIONAL** - Comprehensive standardization rules that define the naming conventions, interface standards, and architectural constraints that the FlexibleFileResolver intelligently handles. The FlexibleFileResolver's breakthrough capability to resolve naming convention mismatches directly enables validation of these standardization rules across diverse, evolutionary naming patterns.
 - **[Unified Alignment Tester Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)**: Comprehensive analysis of validation system challenges that the FlexibleFileResolver addresses
 - **[Two-Level Alignment Validation System Design](two_level_alignment_validation_system_design.md)**: Overall validation architecture that the FlexibleFileResolver enables
 
