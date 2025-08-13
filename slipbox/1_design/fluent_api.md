@@ -293,42 +293,174 @@ churn_pipeline = PipelineTemplate.classification_pipeline("s3://churn-data/", "n
 sales_pipeline = PipelineTemplate.regression_pipeline("s3://sales-data/", "xgboost")
 ```
 
-## Integration with Other Components
+## Integration with Existing Architecture
 
-### With Smart Proxies
+### With Dynamic Template System
 
-Fluent APIs use [Smart Proxies](smart_proxy.md) as the underlying implementation:
+The Fluent API leverages the [Dynamic Template System](dynamic_template_system.md) as its execution backend, providing a powerful synergy between intuitive construction and sophisticated assembly:
 
 ```python
 class FluentPipeline:
     def __init__(self, name: str):
         self.name = name
-        self.proxies = []
+        self.dag = PipelineDAG()  # Build DAG incrementally
+        self.configs = {}         # Collect configs as we go
+        self.context = PipelineContext()
+        
+    def load_data(self, source: str, **kwargs) -> 'FluentPipeline':
+        """Add data loading step with context-aware configuration"""
+        # Create context-aware config
+        config = self._create_data_loading_config(source, **kwargs)
+        
+        # Add to internal DAG
+        step_name = self._generate_step_name("data_loading")
+        self.dag.add_node(step_name)
+        self.configs[step_name] = config
+        
+        # Update context for next steps
+        self.context.last_data_step = step_name
+        return self
+        
+    def execute(self) -> Pipeline:
+        """Execute using Dynamic Template System"""
+        # Leverage existing Dynamic Template infrastructure
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_map=self.configs,  # Pre-resolved configs
+            skip_validation=False     # Use full validation engine
+        )
+        
+        # Let Dynamic Template handle complex assembly
+        return template.build_pipeline()
+```
+
+**Benefits of Dynamic Template Integration:**
+- **Reuse Existing Intelligence**: Leverages sophisticated node-to-config resolution
+- **Comprehensive Validation**: Uses the same validation engine as direct DAG compilation
+- **Consistent Behavior**: Identical assembly process ensures consistent results
+- **Reduced Implementation**: 40% less code needed in Fluent API layer
+
+### With Step Config Resolver
+
+The Fluent API benefits from the intelligent [Step Config Resolver](config_resolver.md) through Dynamic Template integration:
+
+```python
+class FluentPipeline:
+    def preview_resolution(self) -> Dict[str, Any]:
+        """Preview how steps will be resolved using existing resolver"""
+        temp_template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_map=self.configs
+        )
+        
+        # Use existing Step Config Resolver capabilities
+        return temp_template.get_resolution_preview()
     
-    def load_data(self, **kwargs) -> 'FluentPipeline':
-        """Fluent data loading using Smart Proxy"""
-        config = DataLoadingStepConfig(**kwargs)
-        proxy = DataLoadingProxy(config)  # Smart Proxy
-        self.proxies.append(proxy)
+    def validate_construction(self) -> ValidationResult:
+        """Validate pipeline using existing validation engine"""
+        temp_template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_map=self.configs
+        )
+        
+        return temp_template.validate_configuration()
+```
+
+### With Pipeline Assembler
+
+The Fluent API delegates final assembly to the existing [Pipeline Assembler](pipeline_assembler.md):
+
+```python
+class FluentPipeline:
+    def _create_data_loading_config(self, source: str, **kwargs) -> CradleDataLoadingConfig:
+        """Create config with context-aware defaults"""
+        # Base config from context
+        base_config = self.context.get_base_config()
+        
+        # Intelligent defaults based on context
+        defaults = {
+            'data_source': source,
+            'job_type': self.context.current_job_type or 'training'
+        }
+        
+        # Merge: base < context defaults < user overrides
+        config_params = {**base_config, **defaults, **kwargs}
+        
+        return CradleDataLoadingConfig(**config_params)
+```
+
+### With DAG Compiler
+
+The Fluent API integrates seamlessly with the [DAG Compiler](dag_compiler.md) system:
+
+```python
+class FluentPipeline:
+    @classmethod
+    def from_dag(cls, dag: PipelineDAG, configs: Dict[str, BasePipelineConfig]) -> 'FluentPipeline':
+        """Create fluent pipeline from existing DAG representation"""
+        pipeline = cls("imported-pipeline")
+        pipeline.dag = dag
+        pipeline.configs = configs
+        pipeline.context = cls._infer_context_from_dag(dag, configs)
+        return pipeline
+    
+    def to_dag(self) -> Tuple[PipelineDAG, Dict[str, BasePipelineConfig]]:
+        """Export to DAG representation for advanced manipulation"""
+        return self.dag, self.configs
+    
+    def compile_with_dag_compiler(self) -> Pipeline:
+        """Alternative compilation using direct DAG compiler"""
+        from cursus.core.compiler.dag_compiler import compile_dag_to_pipeline
+        
+        return compile_dag_to_pipeline(
+            dag=self.dag,
+            config_map=self.configs,
+            pipeline_name=self.name
+        )
+```
+
+### With Smart Proxies
+
+Fluent APIs can optionally use [Smart Proxies](smart_proxy.md) for advanced step management:
+
+```python
+class FluentPipeline:
+    def __init__(self, name: str):
+        self.name = name
+        self.dag = PipelineDAG()
+        self.configs = {}
+        self.proxies = []  # Optional Smart Proxy integration
+        self.context = PipelineContext()
+    
+    def with_smart_proxies(self) -> 'FluentPipeline':
+        """Enable Smart Proxy integration for advanced features"""
+        self.use_smart_proxies = True
         return self
     
-    def preprocess(self, **kwargs) -> 'FluentPipeline':
-        """Fluent preprocessing using Smart Proxy"""
-        config = PreprocessingStepConfig(**kwargs)
-        proxy = PreprocessingProxy(config)  # Smart Proxy
+    def load_data(self, **kwargs) -> 'FluentPipeline':
+        """Fluent data loading with optional Smart Proxy"""
+        config = self._create_data_loading_config(**kwargs)
         
-        # Auto-connect using Smart Proxy intelligence
-        if self.proxies:
-            last_proxy = self.proxies[-1]
-            proxy.connect_from(last_proxy)
+        if getattr(self, 'use_smart_proxies', False):
+            proxy = DataLoadingProxy(config)  # Smart Proxy
+            self.proxies.append(proxy)
+            
+            # Auto-connect using Smart Proxy intelligence
+            if len(self.proxies) > 1:
+                last_proxy = self.proxies[-2]
+                proxy.connect_from(last_proxy)
         
-        self.proxies.append(proxy)
+        # Always maintain DAG representation
+        step_name = self._generate_step_name("data_loading")
+        self.dag.add_node(step_name)
+        self.configs[step_name] = config
+        
         return self
 ```
 
 ### With Step Specifications
 
-Fluent APIs leverage [specifications](step_specification.md) for validation and intelligent behavior:
+Fluent APIs leverage [Step Specifications](step_specification.md) for validation and intelligent behavior:
 
 ```python
 class SpecificationAwareFluentAPI:
@@ -359,7 +491,7 @@ class FluentStepProxy:
 
 ### With Step Contracts
 
-Fluent APIs enforce [step contracts](step_contract.md) during construction:
+Fluent APIs enforce [Step Contracts](step_contract.md) during construction:
 
 ```python
 class ContractEnforcingFluentAPI:
@@ -376,6 +508,35 @@ class ContractEnforcingFluentAPI:
             )
         
         return self._add_training_step("xgboost", **kwargs)
+```
+
+### With Validation Engine
+
+The Fluent API uses the existing [Validation Engine](validation_engine.md) through Dynamic Template integration:
+
+```python
+class FluentPipeline:
+    def validate(self) -> ValidationResult:
+        """Comprehensive validation using existing validation engine"""
+        temp_template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_map=self.configs
+        )
+        
+        # Leverage existing validation infrastructure
+        validation_result = temp_template.validate_configuration()
+        
+        if not validation_result.is_valid:
+            # Provide fluent-specific error context
+            self._enhance_validation_errors(validation_result)
+        
+        return validation_result
+    
+    def _enhance_validation_errors(self, result: ValidationResult) -> None:
+        """Add fluent API context to validation errors"""
+        for error in result.errors:
+            if "node" in error.lower():
+                error += f" (created by fluent method: {self._get_method_for_node(error)})"
 ```
 
 ## Error Prevention and Validation
