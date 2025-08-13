@@ -11,7 +11,7 @@ import numpy as np
 import pickle as pkl
 
 # Import the functions to be tested
-from src.cursus.steps.scripts.xgboost_train import (
+from src.cursus.steps.scripts.xgboost_training import (
     load_and_validate_config,
     find_first_data_file,
     load_datasets,
@@ -590,7 +590,7 @@ class TestXGBoostTrainIntegration(unittest.TestCase):
     def test_script_imports_successfully(self):
         """Test that the script can be imported without errors."""
         try:
-            import src.cursus.steps.scripts.xgboost_train
+            import src.cursus.steps.scripts.xgboost_training
             success = True
         except Exception as e:
             success = False
