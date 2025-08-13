@@ -27,6 +27,17 @@ Comprehensive architectural documentation covering the sophisticated multi-layer
 - **[Smart Proxy](1_design/smart_proxy.md)** - Intelligent abstraction layer
 - **[Fluent API](1_design/fluent_api.md)** - Natural language interface design
 
+#### 🧪 Testing & Validation Framework
+**Comprehensive quality assurance and validation systems**
+
+Advanced testing and validation frameworks ensuring system reliability and architectural compliance:
+- **[Universal Step Builder Test](1_design/universal_step_builder_test.md)** - Standardized test suite for step builder validation
+- **[Universal Step Builder Test Scoring](1_design/universal_step_builder_test_scoring.md)** - Quality scoring system for step builders
+- **[Unified Alignment Tester Master Design](1_design/unified_alignment_tester_master_design.md)** - Master alignment testing strategy
+- **[Unified Alignment Tester Design](1_design/unified_alignment_tester_design.md)** - Detailed alignment testing implementation
+- **[Unified Alignment Tester Architecture](1_design/unified_alignment_tester_architecture.md)** - Comprehensive alignment testing framework
+- **[Script Testability Refactoring](1_design/script_testability_refactoring.md)** - Testable script architecture patterns
+
 ### 📋 [Project Planning](2_project_planning/)
 **Implementation roadmaps and project evolution**
 
@@ -146,6 +157,13 @@ Cursus implements a sophisticated layered architecture:
 📋 Interface Definition Layer
    ├── Step Specifications (Interface contracts & I/O definitions)
    └── Script Contracts (Implementation contracts & functionality)
+
+🧪 Testing & Validation Layer
+   ├── Universal Step Builder Test (Comprehensive step builder validation)
+   ├── Universal Step Builder Test Scoring (Quality scoring system)
+   ├── Unified Alignment Tester (Multi-level alignment validation)
+   ├── Script Testability Framework (Testable script architecture)
+   └── Standardization Rules (Quality enforcement & governance)
 
 ⚙️ Configuration Management Layer
    ├── Config Field Categorizer (Field categorization & rules)
