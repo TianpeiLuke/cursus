@@ -91,7 +91,7 @@ The Cursus package currently focuses on:
 
 ## 📦 System Components
 
-### Core Module Structure: `src/cursus/script_integration/`
+### Core Module Structure: `src/cursus/validation/script_integration/`
 
 #### **1. Pipeline Data Flow Tester** (`pipeline_data_flow_tester.py`)
 
@@ -218,6 +218,60 @@ class TestConfigManager:
 - **Configuration Validation**: Ensure test configurations are complete and valid
 
 ## 🔧 Integration with Existing Architecture
+
+### Integration with Existing Validation Module
+
+#### **Validation Module Structure Enhancement**
+The script integration testing system integrates seamlessly with the existing validation module:
+
+```
+src/cursus/validation/
+├── alignment/                      # Existing alignment validation
+│   ├── unified_alignment_tester.py
+│   ├── script_contract_alignment.py
+│   ├── contract_spec_alignment.py
+│   └── spec_dependency_alignment.py
+├── builders/                       # Existing builder validation
+├── interface/                      # Existing validation interfaces
+├── naming/                         # Existing naming validation
+└── script_integration/            # NEW: Script integration testing
+    ├── __init__.py
+    ├── pipeline_data_flow_tester.py
+    ├── script_unit_tester.py
+    ├── s3_integration_manager.py
+    ├── test_config_manager.py
+    ├── data_flow/
+    ├── unit_testing/
+    ├── s3_integration/
+    └── reporting/
+```
+
+#### **Shared Infrastructure Utilization**
+- **Validation Interfaces**: Extend existing validation interfaces for consistency
+- **Alignment Utilities**: Reuse alignment validation utilities and data models
+- **Reporting Framework**: Integrate with existing alignment reporting infrastructure
+- **CLI Integration**: Extend existing validation CLI with script integration commands
+
+#### **Cross-Validation Integration**
+```python
+# Integration with existing alignment validation
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.script_integration.pipeline_data_flow_tester import PipelineDataFlowTester
+
+class ComprehensiveValidationOrchestrator:
+    """Orchestrates both alignment and script integration validation."""
+    
+    def __init__(self):
+        self.alignment_tester = UnifiedAlignmentTester()
+        self.integration_tester = PipelineDataFlowTester()
+    
+    def run_comprehensive_validation(self, script_name: str):
+        """Run both alignment and integration validation."""
+        alignment_results = self.alignment_tester.test_script(script_name)
+        integration_results = self.integration_tester.test_script_integration(script_name)
+        
+        return self._merge_validation_results(alignment_results, integration_results)
+```
 
 ### Leveraging Existing Components
 
@@ -478,7 +532,7 @@ cursus script-integration compare-results --baseline baseline_results.json --cur
 **Objective**: Establish core testing infrastructure
 
 **Deliverables**:
-- Core module structure (`src/cursus/script_integration/`)
+- Core module structure (`src/cursus/validation/script_integration/`)
 - Basic `PipelineDataFlowTester` implementation
 - Simple test configuration system
 - CLI command structure
