@@ -56,8 +56,8 @@ The pipeline design represents a sophisticated, multi-layered architecture that 
 - **Benefits**: 80%+ reduction in user inputs, intelligent defaults, progressive disclosure
 - **Strategic Value**: Transforms configuration from burden to enabler
 
-#### **[Config Field Categorization](config_field_categorization.md)** - Sophisticated Field Management
-- **Purpose**: Streamlined architecture for managing configuration fields across multiple configurations
+#### **[Config Field Categorization](config_field_categorization_consolidated.md)** - Comprehensive Field Management Architecture
+- **Purpose**: Consolidated three-tier architecture for managing configuration fields with advanced serialization
 - **Key Features**: Three-tier field classification, type-safe serialization, circular reference handling
 - **Benefits**: Single source of truth, declarative categorization rules, enhanced maintainability
 - **Strategic Value**: Robust foundation for configuration management with clear separation of concerns
@@ -214,8 +214,8 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Eliminates redundant class lookups and references
 - **Strategic Value**: Foundation for configuration management systems
 
-#### **[Config Field Categorization](config_field_categorization.md)** - Streamlined Field Classification System
-- **Purpose**: Simplified approach to configuration field categorization with flattened architecture
+#### **[Config Field Categorization](config_field_categorization_consolidated.md)** - Comprehensive Field Management Architecture
+- **Purpose**: Consolidated three-tier architecture for managing configuration fields with advanced serialization
 - **Key Features**: Two-tier structure (shared/specific), explicit 5-rule categorization, type-aware serialization
 - **Benefits**: Reduced complexity, improved maintainability, easier mental model, better performance
 - **Strategic Value**: Current implementation foundation for configuration management systems
@@ -258,11 +258,35 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Quantifies quality, enables comparisons, identifies weaknesses, establishes baselines
 - **Strategic Value**: Transforms test results into actionable quality metrics with automated quality gates
 
+#### **[Unified Alignment Tester Architecture](unified_alignment_tester_architecture.md)** - Comprehensive Alignment Testing Framework
+- **Purpose**: Unified testing framework for validating alignment across all architectural levels
+- **Key Features**: Multi-level alignment validation, comprehensive test coverage, automated compliance checking
+- **Benefits**: Ensures system-wide alignment, reduces integration issues, maintains architectural integrity
+- **Strategic Value**: Single framework for validating all alignment requirements across the entire system
+
+#### **[Unified Alignment Tester Design](unified_alignment_tester_design.md)** - Detailed Alignment Testing Implementation
+- **Purpose**: Detailed design for implementing comprehensive alignment testing across all system components
+- **Key Features**: Component-specific validation, integration testing, alignment scoring, automated reporting
+- **Benefits**: Thorough validation of component alignment, early detection of misalignment issues
+- **Strategic Value**: Ensures all components work together harmoniously within the architectural framework
+
+#### **[Unified Alignment Tester Master Design](unified_alignment_tester_master_design.md)** - Master Alignment Testing Strategy
+- **Purpose**: Master design document consolidating all alignment testing approaches and strategies
+- **Key Features**: Comprehensive testing strategy, multi-dimensional validation, quality assurance framework
+- **Benefits**: Complete alignment validation coverage, systematic quality assurance, architectural compliance
+- **Strategic Value**: Master framework ensuring all system components maintain proper alignment and integration
+
 #### **[Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md)** - Step Type-Aware Testing Architecture
 - **Purpose**: Comprehensive design for step type-specific testing with specialized variants
 - **Key Features**: Hierarchical testing architecture, SageMaker step type classification, pattern-specific validation
 - **Benefits**: Type-aware validation, specialized testing patterns, comprehensive coverage
 - **Strategic Value**: Next-generation testing framework with step type-specific variants for improved quality assurance
+
+#### **[Script Testability Refactoring](script_testability_refactoring.md)** - Testable Script Architecture
+- **Purpose**: Refactoring pattern for making scripts testable by separating environment concerns from business logic
+- **Key Features**: Parameterized main functions, environment collection entry points, container/local hybrid execution
+- **Benefits**: Efficient local testing, rapid development iteration, comprehensive test coverage without container overhead
+- **Strategic Value**: Enables thorough testing of script logic while maintaining container compatibility
 
 ### 🔍 Step Builder Pattern Analysis
 
