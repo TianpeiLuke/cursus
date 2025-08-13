@@ -51,12 +51,27 @@ Please provide the following information:
 ### Standardization Rules
 **Source**: `slipbox/0_developer_guide/standardization_rules.md`
 - Code standardization requirements and patterns
-- Naming conventions for all components
-- Interface standardization requirements
+- Naming conventions for all components (STEP_NAMES registry patterns)
+- Interface standardization requirements (StepBuilderBase inheritance, required methods)
 - Documentation standards and completeness
 - Error handling standardization patterns
-- Testing standards and coverage requirements
+- Testing standards and coverage requirements (85% minimum, Universal Builder Test framework)
+- Script testability standards and implementation patterns
+- SageMaker step type classification standards
 - Code organization and structure standards
+
+### Script Testability Implementation
+**Source**: `slipbox/0_developer_guide/script_testability_implementation.md`
+- Detailed script testability refactoring patterns
+- Parameterized main function implementation guide
+- Environment collection entry point patterns
+- Helper function parameterization strategies
+- Container path handling standards
+- Unit testing standards for scripts
+- Error handling with success/failure markers
+- Script contract integration requirements
+- 12-point script refactoring checklist
+- Hybrid execution mode support (container/local)
 
 **Naming Conventions**:
 - Step builders must end with "StepBuilder" (e.g., `TabularPreprocessingStepBuilder`)
@@ -345,7 +360,28 @@ Please provide the following information:
 }
 ```
 
-### Tool 6: check_cross_component_standardization
+### Tool 6: validate_script_testability_strict
+**Purpose**: Deterministic validation of script testability implementation patterns
+**Parameters**:
+- `script_path`: Path to the script file to validate
+- `contract_path`: Path to the associated script contract
+- `testability_patterns`: Array of testability patterns to validate
+- `validation_scope`: Scope of testability validation (parameterized_main, environment_collection, helper_functions, container_paths, unit_testing, error_handling, comprehensive)
+
+**Usage Example**:
+```json
+{
+  "tool_name": "validate_script_testability_strict",
+  "parameters": {
+    "script_path": "src/cursus/steps/scripts/tabular_preprocessing.py",
+    "contract_path": "src/cursus/steps/contracts/tabular_preprocessing_contract.py",
+    "testability_patterns": ["parameterized_main_pattern", "environment_collection_pattern", "container_path_pattern"],
+    "validation_scope": "comprehensive"
+  }
+}
+```
+
+### Tool 7: check_cross_component_standardization
 **Purpose**: Check standardization consistency across multiple related components
 **Parameters**:
 - `component_set`: Array of related component paths

@@ -78,7 +78,21 @@ Please provide the following information:
 - Documentation standards and completeness
 - Error handling standardization patterns
 - Testing standards and coverage requirements
+- Script testability standards and implementation patterns
 - Code organization and structure standards
+
+### Script Testability Implementation
+**Source**: `slipbox/0_developer_guide/script_testability_implementation.md`
+- Detailed script testability refactoring patterns
+- Parameterized main function implementation guide
+- Environment collection entry point patterns
+- Helper function parameterization strategies
+- Container path handling standards
+- Unit testing standards for scripts
+- Error handling with success/failure markers
+- Script contract integration requirements
+- 12-point script refactoring checklist
+- Hybrid execution mode support (container/local)
 
 ### Common Pitfalls
 **Source**: `slipbox/0_developer_guide/common_pitfalls.md`
@@ -231,9 +245,10 @@ Perform a comprehensive validation of the implementation plan, with special emph
 1. **Specification Design Validation**
    - Verify appropriate node type and consistency with dependencies/outputs
    - Check dependency specifications completeness with semantic keywords
-   - Validate output property path formats follow standards
+   - Validate output property path formats follow SageMaker step type standards
    - Ensure contract alignment with step specification
    - Verify compatible sources are properly specified
+   - Validate step type classification matches SageMaker step type requirements
 
 2. **Contract Design Validation**
    - Validate contract structure and completeness
@@ -241,6 +256,7 @@ Perform a comprehensive validation of the implementation plan, with special emph
    - Check logical name consistency with specification
    - Ensure all environment variables are declared
    - Verify framework requirements are specified correctly
+   - Validate argument naming follows CLI-style hyphens convention
 
 3. **Builder Design Validation**
    - **Verify spec/contract availability validation** is included in builder
@@ -251,21 +267,34 @@ Perform a comprehensive validation of the implementation plan, with special emph
    - Check resource configuration appropriateness for workload
    - Validate job type handling if applicable
    - Verify proper error handling and logging strategy
+   - Ensure SageMaker step type classification alignment
 
-4. **Script Design Validation**
+4. **Script Design Validation** 
    - Verify script will use paths from the contract, not hardcoded paths
    - Check that environment variables will be properly handled
    - Ensure comprehensive error handling and logging strategy
    - Validate directory creation plans for output paths
    - Verify proper use of contract-based path access
+   - **Validate script testability implementation pattern**
 
-5. **Registration Plan Validation**
+5. **Script Testability Validation** (NEW HIGH PRIORITY SECTION)
+   - **Parameterized Main Function**: Verify main function accepts input_paths, output_paths, environ_vars, job_args
+   - **Environment Collection Entry Point**: Check entry point collects environment values and calls main function
+   - **Helper Function Parameterization**: Ensure helper functions accept parameters instead of accessing environment directly
+   - **Container Path Handling**: Verify container path constants and hybrid execution mode support
+   - **Unit Testing Standards**: Validate comprehensive unit test structure for refactored scripts
+   - **Error Handling Standards**: Check robust error handling with success/failure markers
+   - **Script Contract Integration**: Verify alignment between refactored scripts and their contracts
+   - **Script Refactoring Checklist**: Validate all 12 points of the refactoring checklist are addressed
+
+6. **Registration Plan Validation**
    - Verify step will be properly registered in step_names.py
    - Check all necessary imports in __init__.py files
    - Validate naming consistency across all components
    - Ensure config classes and step types match registration
+   - Verify SageMaker step type classification in registry
 
-6. **Integration and Cross-Component Compatibility** (HIGH PRIORITY)
+7. **Integration and Cross-Component Compatibility** (HIGH PRIORITY)
    - Evaluate compatibility potential using dependency resolver rules (40% type compatibility, 20% data type, 25% semantic matching)
    - Analyze output to input connections across steps
    - Verify logical name consistency and aliases that enhance step connectivity
@@ -274,44 +303,57 @@ Perform a comprehensive validation of the implementation plan, with special emph
    - Check for compatible_sources that include all potential upstream providers
    - Validate DAG connections and check for cyclic dependencies
 
-7. **Alignment Rules Adherence** (HIGH PRIORITY)
-   - Verify contract-to-specification logical name alignment strategy
-   - Check output property paths correspond to specification outputs
-   - Ensure script will use contract-defined paths exclusively
-   - Verify that builder will pass configuration parameters correctly
-   - Check environment variables will be set in builder consistent with contract
+8. **Enhanced Alignment Rules Adherence** (HIGH PRIORITY)
+   - **Script ↔ Contract Alignment**:
+     - Verify contract-to-specification logical name alignment strategy
+     - Check argument naming convention (CLI hyphens vs Python underscores)
+     - Ensure script will use contract-defined paths exclusively
+   - **Contract ↔ Specification Alignment**:
+     - Check output property paths correspond to specification outputs
+     - Verify logical name consistency between contract and specification
+   - **Specification ↔ SageMaker Property Paths**:
+     - Validate property paths are valid for corresponding SageMaker step type
+     - Check property paths follow SageMaker API patterns
+     - Verify step type classification aligns with SageMaker step types
+   - **Builder ↔ Configuration Alignment**:
+     - Verify that builder will pass configuration parameters correctly
+     - Check environment variables will be set in builder consistent with contract
 
-8. **Common Pitfalls Prevention**
+9. **Common Pitfalls Prevention**
    - Check for plans to use hardcoded paths instead of contract references
    - Verify environment variable error handling strategy with defaults
    - Check for potential directory vs. file path confusion
    - Look for incomplete compatible sources
    - Ensure property path consistency and formatting
    - Check for validation plans in processing scripts
+   - Verify script testability pattern implementation
 
-9. **Implementation Pattern Consistency** (NEW SECTION)
+10. **Implementation Pattern Consistency**
    - **Compare with existing components**: Verify plan follows patterns from existing, working components
    - **Required helper methods**: Confirm inclusion of all standard helper methods from existing builders
    - **S3 path handling**: Verify proper handling of S3 paths, including PipelineVariable objects
    - **Error handling pattern**: Check that consistent error handling patterns are followed
    - **Configuration validation**: Ensure comprehensive configuration validation approach
 
-10. **Standardization Rules Compliance** (HIGH PRIORITY)
+11. **Comprehensive Standardization Rules Compliance** (HIGH PRIORITY)
    - **Naming Conventions**:
-     - Verify step types use PascalCase (e.g., `DataLoading`)
-     - Verify logical names use snake_case (e.g., `input_data`)
-     - Verify config classes use PascalCase with `Config` suffix
+     - Verify step types use PascalCase from STEP_NAMES registry (e.g., `CradleDataLoading`, `XGBoostTraining`)
+     - Verify logical names use snake_case (e.g., `input_data`, `model_artifacts`)
+     - Verify config classes follow registry patterns (e.g., `CradleDataLoadConfig`, `XGBoostTrainingConfig`)
      - Verify builder classes use PascalCase with `StepBuilder` suffix
+     - Verify SageMaker step types follow "Step class name minus Step suffix" rule
    
    - **Interface Standardization**:
      - Verify step builders will inherit from `StepBuilderBase`
-     - Verify step builders will implement required methods
-     - Verify config classes will inherit from appropriate base classes
-     - Verify config classes will implement required methods
+     - Verify step builders will implement required methods: `validate_configuration`, `_get_inputs`, `_get_outputs`, `create_step`
+     - Verify config classes will inherit from appropriate base classes (e.g., `BasePipelineConfig`, `ProcessingStepConfigBase`)
+     - Verify config classes will implement required methods: `get_script_contract`, `get_script_path`
+     - Verify three-tier config design implementation (Essential, System, Derived fields)
    
    - **Documentation Standards**:
-     - Verify plan includes comprehensive documentation strategy
-     - Verify method documentation plans are complete
+     - Verify plan includes comprehensive class documentation with purpose, features, integration points
+     - Verify method documentation includes parameters, returns, exceptions, examples
+     - Verify documentation follows standardized format requirements
    
    - **Error Handling Standards**:
      - Verify plan for using standard exception hierarchy
@@ -320,10 +362,16 @@ Perform a comprehensive validation of the implementation plan, with special emph
      - Verify appropriate error logging strategy
    
    - **Testing Standards**:
-     - Verify plans for unit tests for components
+     - Verify plans for unit tests for components (85% coverage minimum)
      - Verify plans for integration tests for connected components
      - Verify plans for validation tests for specifications
      - Verify plans for error handling tests for edge cases
+     - Verify Universal Builder Test framework integration
+   
+   - **SageMaker Step Type Classification Standards**:
+     - Verify step type classification matches actual SageMaker step type
+     - Verify registry entry includes correct `sagemaker_step_type` field
+     - Verify step-type-specific validation requirements are addressed
 
 ## Required Builder Methods Checklist
 
@@ -346,7 +394,7 @@ Ensure the step builder plan includes these essential methods:
 
 ## Expected Output Format
 
-Present your validation results in the following format, giving special attention to alignment rules, standardization compliance, and cross-component compatibility in your scoring and assessment:
+Present your validation results in the following format, giving special attention to script testability, alignment rules, standardization compliance, and cross-component compatibility in your scoring and assessment:
 
 ```
 # Validation Report for [Step Name] Plan
@@ -356,17 +404,19 @@ Present your validation results in the following format, giving special attentio
 - Critical Issues: [Number of critical issues]
 - Minor Issues: [Number of minor issues]
 - Recommendations: [Number of recommendations]
+- Script Testability Score: [Score out of 10]
 - Standard Compliance Score: [Score out of 10]
 - Alignment Rules Score: [Score out of 10]
 - Cross-Component Compatibility Score: [Score out of 10]
-- Weighted Overall Score: [Score out of 10] (40% Alignment, 30% Standardization, 30% Functionality)
+- Weighted Overall Score: [Score out of 10] (25% Script Testability, 25% Alignment, 25% Standardization, 25% Compatibility)
 
 ## Specification Design Validation
 - [✓/✗] Appropriate node type and consistency
 - [✓/✗] Dependency specifications completeness
-- [✓/✗] Output property path formats
+- [✓/✗] Output property path formats follow SageMaker step type standards
 - [✓/✗] Contract alignment
 - [✓/✗] Compatible sources specification
+- [✓/✗] Step type classification matches SageMaker requirements
 - Issues:
   - [Critical/Minor] [Description of issue]
   - ...
@@ -377,6 +427,7 @@ Present your validation results in the following format, giving special attentio
 - [✓/✗] Logical name consistency
 - [✓/✗] Environment variables declaration
 - [✓/✗] Framework requirements
+- [✓/✗] Argument naming follows CLI-style hyphens convention
 - Issues:
   - [Critical/Minor] [Description of issue]
   - ...
@@ -387,6 +438,8 @@ Present your validation results in the following format, giving special attentio
 - [✓/✗] Resource configuration
 - [✓/✗] Job type handling
 - [✓/✗] Error handling and logging
+- [✓/✗] SageMaker step type classification alignment
+- [✓/✗] Required helper methods included
 - Issues:
   - [Critical/Minor] [Description of issue]
   - ...
@@ -397,6 +450,22 @@ Present your validation results in the following format, giving special attentio
 - [✓/✗] Comprehensive error handling and logging
 - [✓/✗] Directory creation for output paths
 - [✓/✗] Contract-based path access
+- [✓/✗] Script testability implementation pattern
+- Issues:
+  - [Critical/Minor] [Description of issue]
+  - ...
+
+## Script Testability Validation (NEW HIGH PRIORITY SECTION)
+- [✓/✗] Parameterized main function (input_paths, output_paths, environ_vars, job_args)
+- [✓/✗] Environment collection entry point
+- [✓/✗] Helper function parameterization
+- [✓/✗] Container path handling standards
+- [✓/✗] Unit testing standards compliance
+- [✓/✗] Error handling with success/failure markers
+- [✓/✗] Script contract integration alignment
+- [✓/✗] Script refactoring checklist completion (12 points)
+- [✓/✗] Hybrid execution mode support (container/local)
+- [✓/✗] Container path constants definition
 - Issues:
   - [Critical/Minor] [Description of issue]
   - ...
@@ -406,6 +475,7 @@ Present your validation results in the following format, giving special attentio
 - [✓/✗] Imports in __init__.py files
 - [✓/✗] Naming consistency
 - [✓/✗] Config and step type alignment
+- [✓/✗] SageMaker step type classification in registry
 - Issues:
   - [Critical/Minor] [Description of issue]
   - ...
@@ -422,14 +492,21 @@ Present your validation results in the following format, giving special attentio
   - [Critical/Minor] [Description of issue]
   - ...
 
-## Alignment Rules Adherence
-- [✓/✗] Script-to-contract path alignment
-- [✓/✗] Contract-to-specification logical name matching
-- [✓/✗] Specification-to-dependency consistency
-- [✓/✗] Builder-to-configuration parameter passing
-- [✓/✗] Environment variable declaration and usage
-- [✓/✗] Output property path correctness
-- [✓/✗] Cross-component semantic matching potential
+## Enhanced Alignment Rules Adherence
+- Script ↔ Contract Alignment:
+  - [✓/✗] Contract-to-specification logical name alignment
+  - [✓/✗] Argument naming convention (CLI hyphens vs Python underscores)
+  - [✓/✗] Script uses contract-defined paths exclusively
+- Contract ↔ Specification Alignment:
+  - [✓/✗] Output property paths correspond to specification outputs
+  - [✓/✗] Logical name consistency between contract and specification
+- Specification ↔ SageMaker Property Paths:
+  - [✓/✗] Property paths valid for corresponding SageMaker step type
+  - [✓/✗] Property paths follow SageMaker API patterns
+  - [✓/✗] Step type classification aligns with SageMaker step types
+- Builder ↔ Configuration Alignment:
+  - [✓/✗] Builder passes configuration parameters correctly
+  - [✓/✗] Environment variables set in builder consistent with contract
 - Issues:
   - [Critical/Minor] [Description of issue]
   - ...
@@ -441,9 +518,66 @@ Present your validation results in the following format, giving special attentio
 - [✓/✗] Complete compatible sources
 - [✓/✗] Property path consistency
 - [✓/✗] Script validation implemented
+- [✓/✗] Script testability pattern implementation
 - Issues:
   - [Critical/Minor] [Description of issue]
   - ...
+
+## Comprehensive Standardization Rules Compliance
+- Naming Conventions:
+  - [✓/✗] Step types use PascalCase from STEP_NAMES registry
+  - [✓/✗] Logical names use snake_case
+  - [✓/✗] Config classes follow registry patterns
+  - [✓/✗] Builder classes use PascalCase with StepBuilder suffix
+  - [✓/✗] SageMaker step types follow "Step class minus Step suffix" rule
+  - Issues:
+    - [Critical/Minor] [Description of issue]
+    - ...
+
+- Interface Standardization:
+  - [✓/✗] Step builders inherit from StepBuilderBase
+  - [✓/✗] Required methods planned (validate_configuration, _get_inputs, _get_outputs, create_step)
+  - [✓/✗] Config classes inherit from appropriate base classes
+  - [✓/✗] Required config methods planned (get_script_contract, get_script_path)
+  - [✓/✗] Three-tier config design implementation
+  - Issues:
+    - [Critical/Minor] [Description of issue]
+    - ...
+
+- Documentation Standards:
+  - [✓/✗] Class documentation with purpose, features, integration points
+  - [✓/✗] Method documentation with parameters, returns, exceptions, examples
+  - [✓/✗] Documentation follows standardized format
+  - Issues:
+    - [Critical/Minor] [Description of issue]
+    - ...
+
+- Error Handling Standards:
+  - [✓/✗] Standard exception hierarchy
+  - [✓/✗] Meaningful error messages with codes
+  - [✓/✗] Resolution suggestions included
+  - [✓/✗] Appropriate error logging
+  - Issues:
+    - [Critical/Minor] [Description of issue]
+    - ...
+
+- Testing Standards:
+  - [✓/✗] Unit tests for components (85% coverage minimum)
+  - [✓/✗] Integration tests
+  - [✓/✗] Specification validation tests
+  - [✓/✗] Error handling tests
+  - [✓/✗] Universal Builder Test framework integration
+  - Issues:
+    - [Critical/Minor] [Description of issue]
+    - ...
+
+- SageMaker Step Type Classification Standards:
+  - [✓/✗] Step type classification matches actual SageMaker step type
+  - [✓/✗] Registry entry includes correct sagemaker_step_type field
+  - [✓/✗] Step-type-specific validation requirements addressed
+  - Issues:
+    - [Critical/Minor] [Description of issue]
+    - ...
 
 ## Detailed Recommendations
 1. [Detailed explanation of recommendation]
@@ -460,60 +594,18 @@ Present your validation results in the following format, giving special attentio
 [recommended design approach]
 ```
 
-## Standardization Rules Compliance
-- Naming Conventions:
-  - [✓/✗] Step types use PascalCase
-  - [✓/✗] Logical names use snake_case
-  - [✓/✗] Config classes use PascalCase with Config suffix
-  - [✓/✗] Builder classes use PascalCase with StepBuilder suffix
-  - Issues:
-    - [Critical/Minor] [Description of issue]
-    - ...
-
-- Interface Standardization:
-  - [✓/✗] Step builders inherit from StepBuilderBase
-  - [✓/✗] Required methods planned
-  - [✓/✗] Config classes inherit from base classes
-  - [✓/✗] Required config methods planned
-  - Issues:
-    - [Critical/Minor] [Description of issue]
-    - ...
-
-- Documentation Standards:
-  - [✓/✗] Class documentation completeness
-  - [✓/✗] Method documentation completeness
-  - Issues:
-    - [Critical/Minor] [Description of issue]
-    - ...
-
-- Error Handling Standards:
-  - [✓/✗] Standard exception hierarchy
-  - [✓/✗] Meaningful error messages with codes
-  - [✓/✗] Resolution suggestions included
-  - [✓/✗] Appropriate error logging
-  - Issues:
-    - [Critical/Minor] [Description of issue]
-    - ...
-
-- Testing Standards:
-  - [✓/✗] Unit tests for components
-  - [✓/✗] Integration tests
-  - [✓/✗] Specification validation tests
-  - [✓/✗] Error handling tests
-  - Issues:
-    - [Critical/Minor] [Description of issue]
-    - ...
-
 ## Comprehensive Scoring
+- Script testability compliance: [Score/10]
 - Naming conventions: [Score/10]
 - Interface standardization: [Score/10]
 - Documentation standards: [Score/10]
 - Error handling standards: [Score/10]
 - Testing standards: [Score/10]
-- Standard compliance: [Score/10]
-- Alignment rules adherence: [Score/10]
+- SageMaker step type classification: [Score/10]
+- Standard compliance overall: [Score/10]
+- Enhanced alignment rules adherence: [Score/10]
 - Cross-component compatibility: [Score/10]
-- **Weighted overall score**: [Score/10]
+- **Weighted overall score**: [Score/10] (25% Script Testability, 25% Alignment, 25% Standardization, 25% Compatibility)
 
 ## Predicted Dependency Resolution Analysis
 - Type compatibility potential: [Score%] (40% weight in resolver)
@@ -522,6 +614,16 @@ Present your validation results in the following format, giving special attentio
 - Additional bonuses potential: [Score%] (15% weight in resolver)
 - Compatible sources coverage: [Good/Limited/Poor]
 - **Predicted resolver compatibility score**: [Score%] (threshold 50%)
+
+## Script Testability Assessment
+- Parameterized main function compliance: [Score/10]
+- Environment collection pattern: [Score/10]
+- Helper function parameterization: [Score/10]
+- Container path handling: [Score/10]
+- Unit testing readiness: [Score/10]
+- Error handling robustness: [Score/10]
+- Contract integration alignment: [Score/10]
+- **Overall script testability score**: [Score/10]
 ```
 
 Remember to reference the specific sections of the implementation plan in your feedback and provide concrete suggestions for improvement. Focus especially on cross-component compatibility and alignment rules to ensure the step will integrate properly with the existing pipeline architecture.

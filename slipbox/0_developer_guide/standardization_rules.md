@@ -143,7 +143,7 @@ All step builders must:
 Example:
 
 ```python
-from ..pipeline_registry.builder_registry import register_builder
+from cursus.steps.registry.builder_registry import register_builder
 
 @register_builder() # Step type will be auto-derived from class name (YourStepBuilder -> YourStep)
 class YourStepBuilder(StepBuilderBase):
@@ -251,7 +251,7 @@ class YourStepConfig(BasePipelineConfig):
     
     def get_script_contract(self):
         """Return the script contract for this step."""
-        from ..pipeline_script_contracts.your_script_contract import YOUR_SCRIPT_CONTRACT
+        from cursus.steps.contracts.your_script_contract import YOUR_SCRIPT_CONTRACT
         return YOUR_SCRIPT_CONTRACT
     
     def get_script_path(self):
@@ -412,7 +412,242 @@ class TestYourStepBuilder(unittest.TestCase):
         # Compliance test
 ```
 
-### 6. SageMaker Step Type Classification Standards
+### 6. Script Testability Standards
+
+All scripts in `cursus/steps/scripts` must follow the testability implementation pattern to enable efficient testing both locally and within containers. This standardization ensures scripts can be thoroughly tested without the overhead and complexity of container execution.
+
+#### Core Testability Requirements
+
+All scripts must implement the following testable structure:
+
+1. **Parameterized Main Function**: The main function must accept parameters instead of accessing environment directly:
+
+```python
+def main(input_paths, output_paths, environ_vars, job_args):
+    """
+    Main function for processing.
+    
+    Args:
+        input_paths (dict): Dictionary mapping logical names to physical paths for inputs
+        output_paths (dict): Dictionary mapping logical names to physical paths for outputs
+        environ_vars (dict): Dictionary of environment variables
+        job_args (argparse.Namespace): Command line arguments
+    """
+    # Use parameters instead of direct access
+    model_dir = input_paths["model_dir"]
+    id_field = environ_vars.get("ID_FIELD", "id")
+    job_type = job_args.job_type
+    # ... processing logic
+```
+
+2. **Environment Collection Entry Point**: Scripts must have an entry point that collects environment values:
+
+```python
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--job_type", type=str, required=True)
+    parser.add_argument("--model_dir", type=str, required=True)
+    parser.add_argument("--eval_data_dir", type=str, required=True)
+    parser.add_argument("--output_eval_dir", type=str, required=True)
+    parser.add_argument("--output_metrics_dir", type=str, required=True)
+    args = parser.parse_args()
+    
+    # Set up container paths from command-line arguments
+    input_paths = {
+        "model_dir": args.model_dir,
+        "eval_data_dir": args.eval_data_dir,
+    }
+    
+    output_paths = {
+        "output_eval_dir": args.output_eval_dir,
+        "output_metrics_dir": args.output_metrics_dir,
+    }
+    
+    # Collect environment variables
+    environ_vars = {
+        "ID_FIELD": os.environ.get("ID_FIELD", "id"),
+        "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),
+    }
+    
+    # Ensure output directories exist
+    os.makedirs(output_paths["output_eval_dir"], exist_ok=True)
+    os.makedirs(output_paths["output_metrics_dir"], exist_ok=True)
+    
+    # Call main function
+    main(input_paths, output_paths, environ_vars, args)
+```
+
+3. **Helper Function Parameterization**: All helper functions must accept necessary parameters instead of accessing environment directly:
+
+```python
+# BEFORE (Non-compliant)
+def process_data(df):
+    label_col = os.environ.get("LABEL_FIELD", "label")
+    return df[df[label_col] > 0.5]
+
+# AFTER (Compliant)
+def process_data(df, label_col="label"):
+    return df[df[label_col] > 0.5]
+```
+
+#### Container Path Handling Standards
+
+Scripts must define container path constants and support hybrid execution modes:
+
+```python
+# Container path constants
+CONTAINER_PATHS = {
+    "PROCESSING_INPUT_BASE": "/opt/ml/processing/input",
+    "PROCESSING_OUTPUT_BASE": "/opt/ml/processing/output",
+    "MODEL_DIR": "/opt/ml/processing/input/model",
+    "EVAL_DATA_DIR": "/opt/ml/processing/input/data",
+    "OUTPUT_EVAL_DIR": "/opt/ml/processing/output/evaluation",
+    "OUTPUT_METRICS_DIR": "/opt/ml/processing/output/metrics"
+}
+
+def is_running_in_container():
+    """Detect if the script is running inside a container."""
+    return os.path.exists("/.dockerenv") or os.environ.get("CONTAINER_MODE") == "true"
+```
+
+#### Unit Testing Standards for Scripts
+
+All refactored scripts must have comprehensive unit tests following this structure:
+
+```python
+def test_script_main_function():
+    """Test the script's main function."""
+    
+    # Set up test paths
+    input_paths = {
+        "model_dir": "test/resources/model",
+        "eval_data_dir": "test/resources/eval_data",
+    }
+    
+    output_paths = {
+        "output_eval_dir": "test/output/eval",
+        "output_metrics_dir": "test/output/metrics",
+    }
+    
+    # Set up test environment variables
+    environ_vars = {
+        "ID_FIELD": "test_id",
+        "LABEL_FIELD": "test_label",
+    }
+    
+    # Create mock arguments
+    args = argparse.Namespace()
+    args.job_type = "testing"
+    
+    # Create output directories
+    os.makedirs(output_paths["output_eval_dir"], exist_ok=True)
+    os.makedirs(output_paths["output_metrics_dir"], exist_ok=True)
+    
+    # Call the function under test
+    from cursus.steps.scripts.your_script import main
+    main(input_paths, output_paths, environ_vars, args)
+    
+    # Assertions to verify expected outputs
+    assert os.path.exists(os.path.join(output_paths["output_eval_dir"], "expected_output.csv"))
+    metrics_path = os.path.join(output_paths["output_metrics_dir"], "metrics.json")
+    assert os.path.exists(metrics_path)
+    
+    # Verify metrics content
+    with open(metrics_path, "r") as f:
+        metrics = json.load(f)
+    assert "expected_metric" in metrics
+```
+
+#### Error Handling Standards for Scripts
+
+Scripts must implement robust error handling with success/failure markers:
+
+```python
+if __name__ == "__main__":
+    try:
+        # Parse arguments, set up paths, etc.
+        # ...
+        
+        # Call main function
+        main(input_paths, output_paths, environ_vars, args)
+        
+        # Signal success
+        success_path = os.path.join(output_paths["output_metrics_dir"], "_SUCCESS")
+        Path(success_path).touch()
+        logger.info(f"Created success marker: {success_path}")
+        sys.exit(0)
+    except Exception as e:
+        # Log error and create failure marker
+        logger.exception(f"Script failed with error: {e}")
+        failure_path = os.path.join(output_paths["output_metrics_dir"], "_FAILURE")
+        with open(failure_path, "w") as f:
+            f.write(f"Error: {str(e)}")
+        sys.exit(1)
+```
+
+#### Script Contract Integration
+
+Refactored scripts must align with their Script Contracts:
+
+```python
+# Example script contract alignment
+SCRIPT_CONTRACT = ScriptContract(
+    entry_point="your_script.py",
+    expected_input_paths={
+        "model_dir": "/opt/ml/processing/input/model",
+        "eval_data_dir": "/opt/ml/processing/input/data"
+    },
+    expected_output_paths={
+        "output_eval_dir": "/opt/ml/processing/output/evaluation",
+        "output_metrics_dir": "/opt/ml/processing/output/metrics"
+    },
+    expected_arguments={
+        "job-type": "training",
+        "model-dir": "/opt/ml/processing/input/model",
+        "eval-data-dir": "/opt/ml/processing/input/data",
+        "output-eval-dir": "/opt/ml/processing/output/evaluation",
+        "output-metrics-dir": "/opt/ml/processing/output/metrics"
+    },
+    required_env_vars=[
+        "LABEL_FIELD"
+    ],
+    optional_env_vars={
+        "ID_FIELD": "id"
+    }
+)
+```
+
+#### Script Refactoring Checklist
+
+All scripts must pass this refactoring checklist:
+
+1. [ ] Main function accepts `input_paths`, `output_paths`, `environ_vars`, and `job_args`
+2. [ ] All direct environment variable access is replaced with dictionary access
+3. [ ] All direct path access is replaced with dictionary access
+4. [ ] Entry point collects all required environment variables
+5. [ ] Entry point sets up all required paths
+6. [ ] Helper functions accept necessary parameters instead of accessing environment
+7. [ ] Error handling is robust with success/failure markers
+8. [ ] The script behaves identically before and after refactoring
+9. [ ] Unit tests are added for the refactored script
+10. [ ] Documentation is updated to reflect the new structure
+11. [ ] Script contract alignment is verified
+12. [ ] Container and local execution modes are supported
+
+#### Benefits of Script Testability Standards
+
+Following these standards provides:
+
+1. **Efficient Testing**: Scripts can be tested locally without container overhead
+2. **Rapid Development**: Faster iteration cycles during development
+3. **Better Debugging**: Easier to debug issues without container complexity
+4. **Comprehensive Coverage**: Ability to run extensive test suites efficiently
+5. **Environment Flexibility**: Scripts work both in containers and locally
+6. **Maintainability**: Clear separation of concerns between environment and logic
+
+For detailed implementation guidance, see the [Script Testability Implementation Guide](script_testability_implementation.md).
+
+### 7. SageMaker Step Type Classification Standards
 
 All step builders must be properly classified according to their actual SageMaker step type. This classification is mandatory for the Universal Builder Test framework and step-type-specific validation.
 
@@ -514,7 +749,7 @@ All step builders are automatically tested using the Universal Builder Test fram
 Example test execution:
 
 ```python
-from src.cursus.validation.builders.universal_test import UniversalBuilderTester
+from cursus.validation.builders.universal_test import UniversalBuilderTester
 
 # Test your step builder with step-type-specific validation
 tester = UniversalBuilderTester(YourStepBuilder, config)
@@ -537,7 +772,7 @@ The `InterfaceStandardValidator` provides comprehensive validation for step buil
 
 ```python
 # Example interface validator usage
-from src.cursus.validation.interface.interface_standard_validator import InterfaceStandardValidator
+from cursus.validation.interface.interface_standard_validator import InterfaceStandardValidator
 
 validator = InterfaceStandardValidator()
 
@@ -597,7 +832,7 @@ The `NamingStandardValidator` provides comprehensive validation for naming conve
 
 ```python
 # Example validator usage
-from src.cursus.validation.naming import NamingStandardValidator
+from cursus.validation.naming import NamingStandardValidator
 
 validator = NamingStandardValidator()
 
@@ -643,7 +878,7 @@ The `UniversalStepBuilderTest` provides comprehensive validation across all arch
 
 ```python
 # Example comprehensive builder testing
-from src.cursus.validation.builders.universal_test import UniversalStepBuilderTest
+from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 
 # Test a specific builder with comprehensive validation
 tester = UniversalStepBuilderTest(YourStepBuilder)
@@ -670,7 +905,7 @@ The `SageMakerStepTypeValidator` provides specialized validation for SageMaker s
 
 ```python
 # Example SageMaker step type validation
-from src.cursus.validation.builders.sagemaker_step_type_validator import SageMakerStepTypeValidator
+from cursus.validation.builders.sagemaker_step_type_validator import SageMakerStepTypeValidator
 
 validator = SageMakerStepTypeValidator(YourStepBuilder)
 
@@ -691,7 +926,7 @@ if violations:
 
 ```python
 # Example registry validator usage
-from src.cursus.steps.registry.builder_registry import get_global_registry
+from cursus.steps.registry.builder_registry import get_global_registry
 
 registry = get_global_registry()
 validation = registry.validate_registry()
@@ -719,16 +954,16 @@ For convenient validation during development, use the CLI validation tools:
 
 ```bash
 # Validate all registry entries
-python -m src.cursus.cli.validation_cli validate-registry --verbose
+python -m cursus.cli.validation_cli validate-registry --verbose
 
 # Validate specific file naming
-python -m src.cursus.cli.validation_cli validate-file-name "builder_your_step.py" "builder" --verbose
+python -m cursus.cli.validation_cli validate-file-name "builder_your_step.py" "builder" --verbose
 
 # Validate step names
-python -m src.cursus.cli.validation_cli validate-step-name "YourStepName" --verbose
+python -m cursus.cli.validation_cli validate-step-name "YourStepName" --verbose
 
 # Validate logical names
-python -m src.cursus.cli.validation_cli validate-logical-name "your_logical_name" --verbose
+python -m cursus.cli.validation_cli validate-logical-name "your_logical_name" --verbose
 ```
 
 ### Job Type Handling

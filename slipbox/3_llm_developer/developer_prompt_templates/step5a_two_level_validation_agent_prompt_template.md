@@ -90,13 +90,15 @@ You are working within a specification-driven ML pipeline architecture with four
 ### Alignment Rules
 **Source**: `slipbox/0_developer_guide/alignment_rules.md`
 - Critical alignment requirements between components
-- Script-to-contract path alignment strategies
+- Script-to-contract path alignment strategies (including CLI hyphens vs Python underscores)
 - Contract-to-specification logical name matching
 - Specification-to-dependency consistency requirements
+- Specification-to-SageMaker property paths validation (step type specific)
 - Builder-to-configuration parameter passing rules
 - Environment variable declaration and usage patterns
 - Output property path correctness validation
 - Cross-component semantic matching requirements
+- Enhanced dependency validation with unified alignment tester integration
 
 ### Validation Checklist
 **Source**: `slipbox/0_developer_guide/validation_checklist.md`
