@@ -19,37 +19,38 @@
     "script_analysis": {
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
       "path_references": [
-        "path='.gz' line_number=18 context='\\ndef _is_gzipped(path: str) -> bool:\\n>>>     return path.lower().endswith(\".gz\")\\n\\ndef _detect_separator_from_sample(sample_lines: str) -> str:' is_hardcoded=True construction_method=None",
-        "path='Use csv.Sniffer to detect a delimiter, defaulting to comma.' line_number=21 context='\\ndef _detect_separator_from_sample(sample_lines: str) -> str:\\n>>>     \"\"\"Use csv.Sniffer to detect a delimiter, defaulting to comma.\"\"\"\\n    try:\\n        dialect = csv.Sniffer().sniff(sample_lines)' is_hardcoded=True construction_method=None",
-        "path='Check if the JSON file is in JSON Lines or regular format.' line_number=29 context='\\ndef peek_json_format(file_path: Path, open_func=open) -> str:\\n>>>     \"\"\"Check if the JSON file is in JSON Lines or regular format.\"\"\"\\n    try:\\n        with open_func(str(file_path), \"rt\") as f:' is_hardcoded=True construction_method=None",
-        "path='Read a JSON or JSON Lines file into a DataFrame.' line_number=48 context='\\ndef _read_json_file(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a JSON or JSON Lines file into a DataFrame.\"\"\"\\n    open_func = gzip.open if _is_gzipped(str(file_path)) else open\\n    fmt = peek_json_format(file_path, open_func)' is_hardcoded=True construction_method=None",
-        "path='Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.' line_number=59 context='\\ndef _read_file_to_df(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n    if suffix == \".gz\":' is_hardcoded=True construction_method=None",
-        "path='.gz' line_number=61 context='    \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n>>>     if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n        if inner_ext in [\".csv\", \".tsv\"]:' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=63 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.tsv' line_number=63 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=67 context='                sep = _detect_separator_from_sample(f.readline() + f.readline())\\n            return pd.read_csv(str(file_path), sep=sep, compression=\"gzip\")\\n>>>         elif inner_ext == \".json\":\\n            return _read_json_file(file_path)\\n        elif inner_ext.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=78 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.tsv' line_number=78 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=82 context='            sep = _detect_separator_from_sample(f.readline() + f.readline())\\n        return pd.read_csv(str(file_path), sep=sep)\\n>>>     elif suffix == \".json\":\\n        return _read_json_file(file_path)\\n    elif suffix.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
-        "path='Detect and combine all supported data shards in a directory.' line_number=90 context='\\ndef combine_shards(input_dir: str) -> pd.DataFrame:\\n>>>     \"\"\"Detect and combine all supported data shards in a directory.\"\"\"\\n    input_path = Path(input_dir)\\n    if not input_path.is_dir():' is_hardcoded=True construction_method=None",
-        "path='part-*.csv' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.csv.gz' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.json' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.json.gz' line_number=95 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
-        "path='part-*.parquet.gz' line_number=96 context='    patterns = [\\n        \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n>>>         \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]\\n    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])' is_hardcoded=True construction_method=None",
-        "path='No CSV/JSON/Parquet shards found under ' line_number=100 context='    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])\\n    if not all_shards:\\n>>>         raise RuntimeError(f\"No CSV/JSON/Parquet shards found under {input_dir}\")\\n    try:\\n        dfs = [_read_file_to_df(shard) for shard in all_shards]' is_hardcoded=True construction_method=None",
-        "path='\\n    Main logic for preprocessing data, now refactored for testability.\\n    ' line_number=110 context='\\ndef main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_data_dir: str, output_dir: str):\\n>>>     \"\"\"\\n    Main logic for preprocessing data, now refactored for testability.\\n    \"\"\"' is_hardcoded=True construction_method=None",
-        "path='.' line_number=123 context='\\n    # 3. Process columns and labels\\n>>>     df.columns = [col.replace(\"__DOT__\", \".\") for col in df.columns]\\n    if label_field not in df.columns:\\n        raise RuntimeError(f\"Label field \\'{label_field}\\' not found in columns: {df.columns.tolist()}\")' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=151 context='        \\n        # Only output processed_data.csv\\n>>>         proc_path = subfolder / f\"{split_name}_processed_data.csv\"\\n        split_df.to_csv(proc_path, index=False)\\n        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")' is_hardcoded=True construction_method=None",
-        "path='[INFO] Preprocessing complete.' line_number=155 context='        print(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")\\n\\n>>>     print(\"[INFO] Preprocessing complete.\")\\n\\n' is_hardcoded=True construction_method=None",
-        "path='LABEL_FIELD environment variable must be set.' line_number=166 context='    LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n>>>         raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/data' line_number=171 context='    \\n    # Define standard SageMaker paths - use contract-declared paths directly\\n>>>     INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"  # Direct path from contract\\n    OUTPUT_DIR = \"/opt/ml/processing/output\"\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=172 context='    # Define standard SageMaker paths - use contract-declared paths directly\\n    INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"  # Direct path from contract\\n>>>     OUTPUT_DIR = \"/opt/ml/processing/output\"\\n\\n    # Execute the main processing logic by calling the refactored main function' is_hardcoded=True construction_method=None"
+        "path='.gz' line_number=22 context='\\ndef _is_gzipped(path: str) -> bool:\\n>>>     return path.lower().endswith(\".gz\")\\n\\ndef _detect_separator_from_sample(sample_lines: str) -> str:' is_hardcoded=True construction_method=None",
+        "path='Use csv.Sniffer to detect a delimiter, defaulting to comma.' line_number=25 context='\\ndef _detect_separator_from_sample(sample_lines: str) -> str:\\n>>>     \"\"\"Use csv.Sniffer to detect a delimiter, defaulting to comma.\"\"\"\\n    try:\\n        dialect = csv.Sniffer().sniff(sample_lines)' is_hardcoded=True construction_method=None",
+        "path='Check if the JSON file is in JSON Lines or regular format.' line_number=33 context='\\ndef peek_json_format(file_path: Path, open_func=open) -> str:\\n>>>     \"\"\"Check if the JSON file is in JSON Lines or regular format.\"\"\"\\n    try:\\n        with open_func(str(file_path), \"rt\") as f:' is_hardcoded=True construction_method=None",
+        "path='Read a JSON or JSON Lines file into a DataFrame.' line_number=52 context='\\ndef _read_json_file(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a JSON or JSON Lines file into a DataFrame.\"\"\"\\n    open_func = gzip.open if _is_gzipped(str(file_path)) else open\\n    fmt = peek_json_format(file_path, open_func)' is_hardcoded=True construction_method=None",
+        "path='Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.' line_number=63 context='\\ndef _read_file_to_df(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n    if suffix == \".gz\":' is_hardcoded=True construction_method=None",
+        "path='.gz' line_number=65 context='    \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n>>>     if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n        if inner_ext in [\".csv\", \".tsv\"]:' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=67 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
+        "path='.tsv' line_number=67 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
+        "path='.json' line_number=71 context='                sep = _detect_separator_from_sample(f.readline() + f.readline())\\n            return pd.read_csv(str(file_path), sep=sep, compression=\"gzip\")\\n>>>         elif inner_ext == \".json\":\\n            return _read_json_file(file_path)\\n        elif inner_ext.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=82 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
+        "path='.tsv' line_number=82 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
+        "path='.json' line_number=86 context='            sep = _detect_separator_from_sample(f.readline() + f.readline())\\n        return pd.read_csv(str(file_path), sep=sep)\\n>>>     elif suffix == \".json\":\\n        return _read_json_file(file_path)\\n    elif suffix.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
+        "path='Detect and combine all supported data shards in a directory.' line_number=94 context='\\ndef combine_shards(input_dir: str) -> pd.DataFrame:\\n>>>     \"\"\"Detect and combine all supported data shards in a directory.\"\"\"\\n    input_path = Path(input_dir)\\n    if not input_path.is_dir():' is_hardcoded=True construction_method=None",
+        "path='part-*.csv' line_number=99 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
+        "path='part-*.csv.gz' line_number=99 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
+        "path='part-*.json' line_number=99 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
+        "path='part-*.json.gz' line_number=99 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n        \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]' is_hardcoded=True construction_method=None",
+        "path='part-*.parquet.gz' line_number=100 context='    patterns = [\\n        \"part-*.csv\", \"part-*.csv.gz\", \"part-*.json\", \"part-*.json.gz\",\\n>>>         \"part-*.parquet\", \"part-*.snappy.parquet\", \"part-*.parquet.gz\"\\n    ]\\n    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])' is_hardcoded=True construction_method=None",
+        "path='No CSV/JSON/Parquet shards found under ' line_number=104 context='    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])\\n    if not all_shards:\\n>>>         raise RuntimeError(f\"No CSV/JSON/Parquet shards found under {input_dir}\")\\n    try:\\n        dfs = [_read_file_to_df(shard) for shard in all_shards]' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=140 context='    \\n    # Extract paths\\n>>>     input_data_dir = input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\")\\n    output_dir = output_paths.get(\"data_output\", \"/opt/ml/processing/output\")\\n    # Use print function if no logger is provided' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=141 context='    # Extract paths\\n    input_data_dir = input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\")\\n>>>     output_dir = output_paths.get(\"data_output\", \"/opt/ml/processing/output\")\\n    # Use print function if no logger is provided\\n    log = logger or print' is_hardcoded=True construction_method=None",
+        "path='.' line_number=155 context='\\n    # 3. Process columns and labels\\n>>>     df.columns = [col.replace(\"__DOT__\", \".\") for col in df.columns]\\n    if label_field not in df.columns:\\n        raise RuntimeError(f\"Label field \\'{label_field}\\' not found in columns: {df.columns.tolist()}\")' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=183 context='        \\n        # Only output processed_data.csv\\n>>>         proc_path = subfolder / f\"{split_name}_processed_data.csv\"\\n        split_df.to_csv(proc_path, index=False)\\n        log(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")' is_hardcoded=True construction_method=None",
+        "path='[INFO] Preprocessing complete.' line_number=187 context='        log(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")\\n\\n>>>     log(\"[INFO] Preprocessing complete.\")\\n    return splits\\n' is_hardcoded=True construction_method=None",
+        "path='LABEL_FIELD environment variable must be set.' line_number=202 context='        LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n        if not LABEL_FIELD:\\n>>>             raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n        TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n        TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=207 context='        \\n        # Define standard SageMaker paths - use contract-declared paths directly\\n>>>         INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"\\n        OUTPUT_DIR = \"/opt/ml/processing/output\"\\n        ' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=208 context='        # Define standard SageMaker paths - use contract-declared paths directly\\n        INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"\\n>>>         OUTPUT_DIR = \"/opt/ml/processing/output\"\\n        \\n        # Set up logging' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [
-        "variable_name='LABEL_FIELD' line_number=164 context='\\n    # Read configuration from environment variables\\n>>>     LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")' access_method='os.environ.get' has_default=False default_value=None",
-        "variable_name='TRAIN_RATIO' line_number=167 context='    if not LABEL_FIELD:\\n        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n>>>     TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n    TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    ' access_method='os.environ.get' has_default=True default_value=None",
-        "variable_name='TEST_VAL_RATIO' line_number=168 context='        raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n    TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n>>>     TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n    \\n    # Define standard SageMaker paths - use contract-declared paths directly' access_method='os.environ.get' has_default=True default_value=None"
+        "variable_name='LABEL_FIELD' line_number=200 context='\\n        # Read configuration from environment variables\\n>>>         LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n        if not LABEL_FIELD:\\n            raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")' access_method='os.environ.get' has_default=False default_value=None",
+        "variable_name='TRAIN_RATIO' line_number=203 context='        if not LABEL_FIELD:\\n            raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n>>>         TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n        TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n        ' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='TEST_VAL_RATIO' line_number=204 context='            raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n        TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n>>>         TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n        \\n        # Define standard SageMaker paths - use contract-declared paths directly' access_method='os.environ.get' has_default=True default_value=None"
       ],
       "imports": [
         "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
@@ -59,17 +60,21 @@
         "module_name='csv' import_alias=None line_number=6 is_from_import=False imported_items=[]",
         "module_name='json' import_alias=None line_number=7 is_from_import=False imported_items=[]",
         "module_name='argparse' import_alias=None line_number=8 is_from_import=False imported_items=[]",
-        "module_name='pathlib' import_alias=None line_number=9 is_from_import=True imported_items=['Path']",
-        "module_name='multiprocessing' import_alias=None line_number=10 is_from_import=True imported_items=['Pool', 'cpu_count']",
-        "module_name='pandas' import_alias='pd' line_number=11 is_from_import=False imported_items=[]",
-        "module_name='numpy' import_alias='np' line_number=12 is_from_import=False imported_items=[]",
-        "module_name='sklearn.model_selection' import_alias=None line_number=13 is_from_import=True imported_items=['train_test_split']"
+        "module_name='logging' import_alias=None line_number=9 is_from_import=False imported_items=[]",
+        "module_name='sys' import_alias=None line_number=10 is_from_import=False imported_items=[]",
+        "module_name='traceback' import_alias=None line_number=11 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=12 is_from_import=True imported_items=['Path']",
+        "module_name='typing' import_alias=None line_number=13 is_from_import=True imported_items=['Dict']",
+        "module_name='multiprocessing' import_alias=None line_number=14 is_from_import=True imported_items=['Pool', 'cpu_count']",
+        "module_name='pandas' import_alias='pd' line_number=15 is_from_import=False imported_items=[]",
+        "module_name='numpy' import_alias='np' line_number=16 is_from_import=False imported_items=[]",
+        "module_name='sklearn.model_selection' import_alias=None line_number=17 is_from_import=True imported_items=['train_test_split']"
       ],
       "argument_definitions": [
-        "argument_name='job_type' line_number=160 is_required=True has_default=False default_value=None argument_type='str' choices=None"
+        "argument_name='job_type' line_number=194 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']"
       ],
       "file_operations": [
-        "file_path='<file_object>' operation_type='read' line_number=55 context='    else:\\n        with open_func(str(file_path), \"rt\") as f:\\n>>>             data = json.load(f)\\n        return pd.json_normalize(data if isinstance(data, list) else [data])\\n' mode=None method='json.load'"
+        "file_path='<file_object>' operation_type='read' line_number=59 context='    else:\\n        with open_func(str(file_path), \"rt\") as f:\\n>>>             data = json.load(f)\\n        return pd.json_normalize(data if isinstance(data, list) else [data])\\n' mode=None method='json.load'"
       ]
     },
     "contract": {
@@ -128,6 +133,48 @@
           "contract_outputs": 1
         },
         "recommendation": "Multi-variant validation completed successfully"
+      },
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: TabularPreprocessing_Training -> TabularPreprocessing -> Processing",
+        "details": {
+          "contract": "tabular_preprocessing",
+          "original_spec_type": "TabularPreprocessing_Training",
+          "canonical_name": "TabularPreprocessing",
+          "resolved_sagemaker_type": "Processing",
+          "registry_available": true
+        },
+        "recommendation": "Using Processing step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output processed_data: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+        "details": {
+          "contract": "tabular_preprocessing",
+          "logical_name": "processed_data",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for tabular_preprocessing",
+        "details": {
+          "contract": "tabular_preprocessing",
+          "step_type": "processing",
+          "node_type": "internal",
+          "total_outputs": 1,
+          "outputs_with_property_paths": 1,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 1/1 outputs with property paths against SageMaker documentation"
       }
     ],
     "contract": {
@@ -173,9 +220,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
               "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw testing data for preprocessing"
@@ -200,9 +247,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
               "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw calibration data for preprocessing"
@@ -227,9 +274,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
               "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw validation data for preprocessing"
@@ -254,9 +301,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
               "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -281,9 +328,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
               "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw tabular data for preprocessing"
@@ -310,9 +357,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "ProcessingStep",
               "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -338,9 +385,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
                 "CradleDataLoading",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw training data for preprocessing"
@@ -365,9 +412,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
                 "CradleDataLoading",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw testing data for preprocessing"
@@ -392,9 +439,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
                 "CradleDataLoading",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw validation data for preprocessing"
@@ -419,9 +466,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
                 "CradleDataLoading",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw calibration data for preprocessing"
@@ -446,9 +493,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "ProcessingStep",
                 "CradleDataLoading",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw tabular data for preprocessing"
@@ -471,9 +518,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
             "CradleDataLoading",
-            "DataLoad"
+            "DataLoad",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Raw tabular data for preprocessing"
@@ -521,9 +568,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "ProcessingStep",
             "CradleDataLoading",
-            "DataLoad"
+            "DataLoad",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Raw tabular data for preprocessing"
@@ -706,7 +753,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-08-11T23:19:40.696932",
+    "validation_timestamp": "2025-08-12T20:19:49.777760",
     "validator_version": "1.0.0"
   }
 }

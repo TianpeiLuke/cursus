@@ -7,25 +7,25 @@
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
       "path_references": [
         "path='\\nDummyTraining Processing Script\\n\\nThis script validates, unpacks a pretrained model.tar.gz file, adds a hyperparameters.json file \\ninside it, then repacks it and outputs to the destination. It serves as a dummy training step \\nthat skips actual training and integrates with downstream MIMS packaging and payload steps.\\n' line_number=2 context='#!/usr/bin/env python\\n>>> \"\"\"\\nDummyTraining Processing Script\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/model/model.tar.gz' line_number=33 context='# - hyperparameters_s3_uri: \"/opt/ml/processing/input/config/hyperparameters.json\"\\n# - model_input: \"/opt/ml/processing/output/model\" (aligns with packaging step dependency)\\n>>> MODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\nHYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/config/hyperparameters.json' line_number=34 context='# - model_input: \"/opt/ml/processing/output/model\" (aligns with packaging step dependency)\\nMODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\n>>> HYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output/model' line_number=35 context='MODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\nHYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\n>>> MODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n\\ndef validate_model(input_path: Path) -> bool:' is_hardcoded=True construction_method=None",
-        "path='.tar.gz' line_number=54 context='    \\n    # Check file extension\\n>>>     if not input_path.suffix == \\'.tar.gz\\' and not str(input_path).endswith(\\'.tar.gz\\'):\\n        raise ValueError(f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='.tar.gz' line_number=54 context='    \\n    # Check file extension\\n>>>     if not input_path.suffix == \\'.tar.gz\\' and not str(input_path).endswith(\\'.tar.gz\\'):\\n        raise ValueError(f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='Ensure a directory exists, creating it if necessary.' line_number=70 context='\\ndef ensure_directory(directory: Path):\\n>>>     \"\"\"Ensure a directory exists, creating it if necessary.\"\"\"\\n    try:\\n        directory.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
-        "path='Extract a tar file to the specified path.' line_number=80 context='\\ndef extract_tarfile(tar_path: Path, extract_path: Path):\\n>>>     \"\"\"Extract a tar file to the specified path.\"\"\"\\n    logger.info(f\"Extracting tar file: {tar_path} to {extract_path}\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=95 context='                size_mb = member.size / 1024 / 1024\\n                total_size += size_mb\\n>>>                 logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n            logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=96 context='                total_size += size_mb\\n                logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n>>>             logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            \\n            logger.info(f\"Extracting to: {extract_path}\")' is_hardcoded=True construction_method=None",
-        "path='Create a tar file from the contents of a directory.' line_number=108 context='\\ndef create_tarfile(output_tar_path: Path, source_dir: Path):\\n>>>     \"\"\"Create a tar file from the contents of a directory.\"\"\"\\n    logger.info(f\"Creating tar file: {output_tar_path} from {source_dir}\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=124 context='                    total_size += size_mb\\n                    files_added += 1\\n>>>                     logger.info(f\"Adding to tar: {arcname} ({size_mb:.2f}MB)\")\\n                    tar.add(item, arcname=arcname)\\n        ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=129 context='        logger.info(f\"Tar creation summary:\")\\n        logger.info(f\"  Files added: {files_added}\")\\n>>>         logger.info(f\"  Total uncompressed size: {total_size:.2f}MB\")\\n        \\n        if output_tar_path.exists():' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=133 context='        if output_tar_path.exists():\\n            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n>>>             logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n            logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        ' is_hardcoded=True construction_method=None",
-        "path='.2%' line_number=134 context='            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n            logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n>>>             logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        \\n    except Exception as e:' is_hardcoded=True construction_method=None",
-        "path='Copy a file and ensure the destination directory exists.' line_number=141 context='\\ndef copy_file(src: Path, dst: Path):\\n>>>     \"\"\"Copy a file and ensure the destination directory exists.\"\"\"\\n    logger.info(f\"Copying file: {src} to {dst}\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=193 context='        \\n        # Copy hyperparameters.json to the working directory\\n>>>         hyperparams_dest = working_dir / \"hyperparameters.json\"\\n        copy_file(hyperparams_path, hyperparams_dest)\\n        ' is_hardcoded=True construction_method=None",
-        "path='model.tar.gz' line_number=200 context='        \\n        # Create the output model.tar.gz\\n>>>         output_path = output_dir / \"model.tar.gz\"\\n        create_tarfile(output_path, working_dir)\\n        ' is_hardcoded=True construction_method=None",
-        "path='No hyperparameters file found. Falling back to simple copy mode.' line_number=234 context='        else:\\n            # For backward compatibility: just validate and copy the model\\n>>>             logger.info(\"No hyperparameters file found. Falling back to simple copy mode.\")\\n            validate_model(model_path)\\n            output_path = output_dir / \"model.tar.gz\"' is_hardcoded=True construction_method=None",
-        "path='model.tar.gz' line_number=236 context='            logger.info(\"No hyperparameters file found. Falling back to simple copy mode.\")\\n            validate_model(model_path)\\n>>>             output_path = output_dir / \"model.tar.gz\"\\n            ensure_directory(output_dir)\\n            copy_file(model_path, output_path)' is_hardcoded=True construction_method=None"
+        "path='/opt/ml/processing/input/model/model.tar.gz' line_number=35 context='# - hyperparameters_s3_uri: \"/opt/ml/processing/input/config/hyperparameters.json\"\\n# - model_input: \"/opt/ml/processing/output/model\" (aligns with packaging step dependency)\\n>>> MODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\nHYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/config/hyperparameters.json' line_number=36 context='# - model_input: \"/opt/ml/processing/output/model\" (aligns with packaging step dependency)\\nMODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\n>>> HYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/model' line_number=37 context='MODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\nHYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\n>>> MODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n\\ndef validate_model(input_path: Path) -> bool:' is_hardcoded=True construction_method=None",
+        "path='.tar.gz' line_number=56 context='    \\n    # Check file extension\\n>>>     if not input_path.suffix == \\'.tar.gz\\' and not str(input_path).endswith(\\'.tar.gz\\'):\\n        raise ValueError(f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='.tar.gz' line_number=56 context='    \\n    # Check file extension\\n>>>     if not input_path.suffix == \\'.tar.gz\\' and not str(input_path).endswith(\\'.tar.gz\\'):\\n        raise ValueError(f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='Ensure a directory exists, creating it if necessary.' line_number=72 context='\\ndef ensure_directory(directory: Path):\\n>>>     \"\"\"Ensure a directory exists, creating it if necessary.\"\"\"\\n    try:\\n        directory.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
+        "path='Extract a tar file to the specified path.' line_number=82 context='\\ndef extract_tarfile(tar_path: Path, extract_path: Path):\\n>>>     \"\"\"Extract a tar file to the specified path.\"\"\"\\n    logger.info(f\"Extracting tar file: {tar_path} to {extract_path}\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=97 context='                size_mb = member.size / 1024 / 1024\\n                total_size += size_mb\\n>>>                 logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n            logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=98 context='                total_size += size_mb\\n                logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n>>>             logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            \\n            logger.info(f\"Extracting to: {extract_path}\")' is_hardcoded=True construction_method=None",
+        "path='Create a tar file from the contents of a directory.' line_number=110 context='\\ndef create_tarfile(output_tar_path: Path, source_dir: Path):\\n>>>     \"\"\"Create a tar file from the contents of a directory.\"\"\"\\n    logger.info(f\"Creating tar file: {output_tar_path} from {source_dir}\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=126 context='                    total_size += size_mb\\n                    files_added += 1\\n>>>                     logger.info(f\"Adding to tar: {arcname} ({size_mb:.2f}MB)\")\\n                    tar.add(item, arcname=arcname)\\n        ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=131 context='        logger.info(f\"Tar creation summary:\")\\n        logger.info(f\"  Files added: {files_added}\")\\n>>>         logger.info(f\"  Total uncompressed size: {total_size:.2f}MB\")\\n        \\n        if output_tar_path.exists():' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=135 context='        if output_tar_path.exists():\\n            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n>>>             logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n            logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        ' is_hardcoded=True construction_method=None",
+        "path='.2%' line_number=136 context='            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n            logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n>>>             logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        \\n    except Exception as e:' is_hardcoded=True construction_method=None",
+        "path='Copy a file and ensure the destination directory exists.' line_number=143 context='\\ndef copy_file(src: Path, dst: Path):\\n>>>     \"\"\"Copy a file and ensure the destination directory exists.\"\"\"\\n    logger.info(f\"Copying file: {src} to {dst}\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=195 context='        \\n        # Copy hyperparameters.json to the working directory\\n>>>         hyperparams_dest = working_dir / \"hyperparameters.json\"\\n        copy_file(hyperparams_path, hyperparams_dest)\\n        ' is_hardcoded=True construction_method=None",
+        "path='model.tar.gz' line_number=202 context='        \\n        # Create the output model.tar.gz\\n>>>         output_path = output_dir / \"model.tar.gz\"\\n        create_tarfile(output_path, working_dir)\\n        ' is_hardcoded=True construction_method=None",
+        "path='No hyperparameters file found. Falling back to simple copy mode.' line_number=249 context='        else:\\n            # For backward compatibility: just validate and copy the model\\n>>>             logger.info(\"No hyperparameters file found. Falling back to simple copy mode.\")\\n            validate_model(model_path)\\n            output_path = output_dir / \"model.tar.gz\"' is_hardcoded=True construction_method=None",
+        "path='model.tar.gz' line_number=251 context='            logger.info(\"No hyperparameters file found. Falling back to simple copy mode.\")\\n            validate_model(model_path)\\n>>>             output_path = output_dir / \"model.tar.gz\"\\n            ensure_directory(output_dir)\\n            copy_file(model_path, output_path)' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [],
       "imports": [
@@ -37,8 +37,10 @@
         "module_name='sys' import_alias=None line_number=15 is_from_import=False imported_items=[]",
         "module_name='tarfile' import_alias=None line_number=16 is_from_import=False imported_items=[]",
         "module_name='tempfile' import_alias=None line_number=17 is_from_import=False imported_items=[]",
-        "module_name='pathlib' import_alias=None line_number=18 is_from_import=True imported_items=['Path']",
-        "module_name='traceback' import_alias=None line_number=254 is_from_import=False imported_items=[]"
+        "module_name='traceback' import_alias=None line_number=18 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=19 is_from_import=True imported_items=['Path']",
+        "module_name='typing' import_alias=None line_number=20 is_from_import=True imported_items=['Dict', 'Optional']",
+        "module_name='traceback' import_alias=None line_number=269 is_from_import=False imported_items=[]"
       ],
       "argument_definitions": [],
       "file_operations": []
@@ -72,7 +74,50 @@
   },
   "level2": {
     "passed": true,
-    "issues": [],
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: DummyTraining -> DummyTraining -> Processing",
+        "details": {
+          "contract": "dummy_training",
+          "original_spec_type": "DummyTraining",
+          "canonical_name": "DummyTraining",
+          "resolved_sagemaker_type": "Processing",
+          "registry_available": true
+        },
+        "recommendation": "Using Processing step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output model_input: properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
+        "details": {
+          "contract": "dummy_training",
+          "logical_name": "model_input",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for dummy_training",
+        "details": {
+          "contract": "dummy_training",
+          "step_type": "processing",
+          "node_type": "internal",
+          "total_outputs": 1,
+          "outputs_with_property_paths": 1,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 1/1 outputs with property paths against SageMaker documentation"
+      }
+    ],
     "contract": {
       "entry_point": "dummy_training.py",
       "inputs": {
@@ -109,9 +154,9 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
+              "XGBoostTraining",
               "ProcessingStep",
               "PytorchTraining",
-              "XGBoostTraining",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -122,8 +167,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -150,9 +195,9 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
+              "XGBoostTraining",
               "ProcessingStep",
               "PytorchTraining",
-              "XGBoostTraining",
               "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
@@ -163,8 +208,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -190,9 +235,9 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
+                "XGBoostTraining",
                 "ProcessingStep",
                 "PytorchTraining",
-                "XGBoostTraining",
                 "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
@@ -203,8 +248,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "HyperparameterPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -227,9 +272,9 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
+            "XGBoostTraining",
             "ProcessingStep",
             "PytorchTraining",
-            "XGBoostTraining",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -240,8 +285,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -337,9 +382,9 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
+            "XGBoostTraining",
             "ProcessingStep",
             "PytorchTraining",
-            "XGBoostTraining",
             "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
@@ -350,8 +395,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -513,7 +558,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-11T23:19:40.583245",
+    "validation_timestamp": "2025-08-12T20:19:49.673026",
     "validator_version": "1.0.0"
   }
 }

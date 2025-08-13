@@ -62,7 +62,7 @@
   "overall_status": "FAILING",
   "metadata": {
     "script_name": "model_evaluation_xgb",
-    "validation_timestamp": "2025-08-11T20:24:11.974004",
+    "validation_timestamp": "2025-08-12T20:19:43.729960",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_evaluation_xgb.py"
   }

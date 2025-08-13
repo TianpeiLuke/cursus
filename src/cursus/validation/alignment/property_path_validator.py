@@ -10,6 +10,27 @@ Reference: https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_bu
 import re
 from typing import Dict, List, Any, Optional, Tuple
 
+# Import step registry functions for proper step type resolution
+try:
+    from ...steps.registry.step_names import (
+        get_step_name_from_spec_type, 
+        get_sagemaker_step_type,
+        validate_step_name
+    )
+    STEP_REGISTRY_AVAILABLE = True
+except ImportError:
+    # Fallback if registry is not available
+    STEP_REGISTRY_AVAILABLE = False
+    
+    def get_step_name_from_spec_type(spec_type: str) -> str:
+        return spec_type.split('_')[0] if '_' in spec_type else spec_type
+    
+    def get_sagemaker_step_type(step_name: str) -> str:
+        return "Processing"  # Default fallback
+    
+    def validate_step_name(step_name: str) -> bool:
+        return True
+
 
 class SageMakerPropertyPathValidator:
     """
@@ -43,21 +64,81 @@ class SageMakerPropertyPathValidator:
         issues = []
         
         # Get the step type from specification
-        step_type = specification.get('step_type', '').lower()
+        spec_step_type = specification.get('step_type', '')
         node_type = specification.get('node_type', '').lower()
         
-        # Get valid property paths for this step type
-        valid_property_paths = self._get_valid_property_paths_for_step_type(step_type, node_type)
+        # STEP REGISTRY INTEGRATION: Resolve actual SageMaker step type
+        try:
+            if STEP_REGISTRY_AVAILABLE and spec_step_type:
+                # Get canonical step name from spec type (e.g., "CurrencyConversion_Training" -> "CurrencyConversion")
+                canonical_name = get_step_name_from_spec_type(spec_step_type)
+                
+                # Get actual SageMaker step type from registry (e.g., "CurrencyConversion" -> "Processing")
+                sagemaker_step_type = get_sagemaker_step_type(canonical_name)
+                
+                # Use the resolved SageMaker step type for validation
+                resolved_step_type = sagemaker_step_type.lower()
+                
+                # Add debug info
+                issues.append({
+                    'severity': 'INFO',
+                    'category': 'step_type_resolution',
+                    'message': f'Step type resolved via registry: {spec_step_type} -> {canonical_name} -> {sagemaker_step_type}',
+                    'details': {
+                        'contract': contract_name,
+                        'original_spec_type': spec_step_type,
+                        'canonical_name': canonical_name,
+                        'resolved_sagemaker_type': sagemaker_step_type,
+                        'registry_available': STEP_REGISTRY_AVAILABLE
+                    },
+                    'recommendation': f'Using {sagemaker_step_type} step property paths for validation'
+                })
+            else:
+                # Fallback to original logic if registry not available
+                resolved_step_type = spec_step_type.lower()
+                
+                issues.append({
+                    'severity': 'WARNING',
+                    'category': 'step_type_resolution',
+                    'message': f'Step registry not available, using naive step type resolution: {spec_step_type}',
+                    'details': {
+                        'contract': contract_name,
+                        'original_spec_type': spec_step_type,
+                        'resolved_step_type': resolved_step_type,
+                        'registry_available': STEP_REGISTRY_AVAILABLE
+                    },
+                    'recommendation': 'Consider fixing step registry imports for more accurate validation'
+                })
+                
+        except Exception as e:
+            # Fallback if registry resolution fails
+            resolved_step_type = spec_step_type.lower()
+            
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'step_type_resolution',
+                'message': f'Step type resolution failed, using fallback: {str(e)}',
+                'details': {
+                    'contract': contract_name,
+                    'original_spec_type': spec_step_type,
+                    'resolved_step_type': resolved_step_type,
+                    'error': str(e)
+                },
+                'recommendation': 'Check step registry configuration and imports'
+            })
+        
+        # Get valid property paths for the resolved step type
+        valid_property_paths = self._get_valid_property_paths_for_step_type(resolved_step_type, node_type)
         
         if not valid_property_paths:
             # If we don't have property path definitions for this step type, skip validation
             issues.append({
                 'severity': 'INFO',
                 'category': 'property_path_validation',
-                'message': f'Property path validation skipped for step_type: {step_type}, node_type: {node_type}',
+                'message': f'Property path validation skipped for step_type: {resolved_step_type}, node_type: {node_type}',
                 'details': {
                     'contract': contract_name,
-                    'step_type': step_type,
+                    'step_type': resolved_step_type,
                     'node_type': node_type,
                     'reason': 'No property path definitions available for this step type'
                 },
@@ -72,7 +153,7 @@ class SageMakerPropertyPathValidator:
             
             if property_path:
                 validation_result = self._validate_single_property_path(
-                    property_path, step_type, node_type, valid_property_paths
+                    property_path, resolved_step_type, node_type, valid_property_paths
                 )
                 
                 if not validation_result['valid']:
@@ -84,13 +165,13 @@ class SageMakerPropertyPathValidator:
                             'contract': contract_name,
                             'logical_name': logical_name,
                             'property_path': property_path,
-                            'step_type': step_type,
+                            'step_type': resolved_step_type,
                             'node_type': node_type,
                             'error': validation_result['error'],
                             'valid_paths': validation_result['suggestions'],
                             'documentation_reference': self.documentation_url
                         },
-                        'recommendation': f'Use a valid property path for {step_type}. Valid paths include: {", ".join(validation_result["suggestions"][:5])}'
+                        'recommendation': f'Use a valid property path for {resolved_step_type}. Valid paths include: {", ".join(validation_result["suggestions"][:5])}'
                     })
                 else:
                     # Valid property path - add info message
@@ -102,7 +183,7 @@ class SageMakerPropertyPathValidator:
                             'contract': contract_name,
                             'logical_name': logical_name,
                             'property_path': property_path,
-                            'step_type': step_type,
+                            'step_type': resolved_step_type,
                             'validation_source': f'SageMaker Documentation {self.documentation_version}',
                             'documentation_reference': self.documentation_url
                         },
@@ -126,7 +207,7 @@ class SageMakerPropertyPathValidator:
                 'message': f'Property path validation completed for {contract_name}',
                 'details': {
                     'contract': contract_name,
-                    'step_type': step_type,
+                    'step_type': resolved_step_type,
                     'node_type': node_type,
                     'total_outputs': total_outputs,
                     'outputs_with_property_paths': outputs_with_paths,

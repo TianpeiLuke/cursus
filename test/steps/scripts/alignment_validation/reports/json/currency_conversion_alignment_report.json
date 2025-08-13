@@ -6,55 +6,61 @@
     "script_analysis": {
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
       "path_references": [
-        "path='Get currency code for a given marketplace ID.' line_number=23 context='    default_currency: str\\n) -> str:\\n>>>     \"\"\"Get currency code for a given marketplace ID.\"\"\"\\n    try:\\n        if pd.isna(marketplace_id) or str(int(marketplace_id)) not in marketplace_info:' is_hardcoded=True construction_method=None",
-        "path='Combine currency codes from marketplace ID and existing currency column.' line_number=40 context='    skip_invalid_currencies: bool\\n) -> Tuple[pd.DataFrame, str]:\\n>>>     \"\"\"Combine currency codes from marketplace ID and existing currency column.\"\"\"\\n    df[\"currency_code_from_marketplace_id\"] = df[marketplace_id_col].apply(\\n        lambda x: get_currency_code(x, marketplace_info, default_currency)' is_hardcoded=True construction_method=None",
-        "path=\"Convert single variable's currency values.\" line_number=64 context='    args: Tuple[pd.DataFrame, str, pd.Series]\\n) -> pd.Series:\\n>>>     \"\"\"Convert single variable\\'s currency values.\"\"\"\\n    df, variable, exchange_rate_series = args\\n    return df[variable] / exchange_rate_series.values' is_hardcoded=True construction_method=None",
-        "path='Perform parallel currency conversion on multiple variables.' line_number=76 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Perform parallel currency conversion on multiple variables.\"\"\"\\n    exchange_rate_series = df[currency_col].apply(lambda x: currency_conversion_dict.get(x, 1.0))\\n    processes = min(cpu_count(), len(currency_conversion_vars), n_workers)' is_hardcoded=True construction_method=None",
-        "path='Process currency conversion.' line_number=101 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Process currency conversion.\"\"\"\\n    # Drop rows with missing marketplace IDs\\n    df = df.dropna(subset=[marketplace_id_col]).reset_index(drop=True)' is_hardcoded=True construction_method=None",
-        "path='\\n    Main function to execute the currency conversion logic.\\n    Refactored for improved testability.\\n    ' line_number=137 context='\\ndef main(args: argparse.Namespace, currency_vars: List[str], currency_dict: Dict[str, float], marketplace_info: Dict[str, Any]):\\n>>>     \"\"\"\\n    Main function to execute the currency conversion logic.\\n    Refactored for improved testability.' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/data' line_number=143 context='    job_type = args.job_type\\n    mode = args.mode\\n>>>     input_base = Path(\"/opt/ml/processing/input/data\")\\n    output_base = Path(\"/opt/ml/processing/output\")\\n    output_base.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=144 context='    mode = args.mode\\n    input_base = Path(\"/opt/ml/processing/input/data\")\\n>>>     output_base = Path(\"/opt/ml/processing/output\")\\n    output_base.mkdir(parents=True, exist_ok=True)\\n    ' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=171 context='        dfs = []\\n        for sp in splits:\\n>>>             fpath = input_base / sp / f\"{sp}_processed_data.csv\"\\n            logger.info(f\"  Reading split {sp} from {fpath}\")\\n            dfs.append(pd.read_csv(fpath))' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=197 context='            # processed\\n            proc = split_df.copy()\\n>>>             proc_path = out_dir / f\"{split_name}_processed_data.csv\"\\n            proc.to_csv(proc_path, index=False)\\n            logger.info(f\"Wrote converted processed: {proc_path} (shape={proc.shape})\")' is_hardcoded=True construction_method=None",
-        "path='_full_data.csv' line_number=203 context='            # full (just alias here\u2014but you could re-read your full_data.csv if needed)\\n            full = proc.copy()\\n>>>             full_path = out_dir / f\"{split_name}_full_data.csv\"\\n            full.to_csv(full_path, index=False)\\n            logger.info(f\"Wrote converted full: {full_path} (shape={full.shape})\")' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=216 context='        for sp in splits:\\n            in_dir = input_base / sp\\n>>>             proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n            full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n' is_hardcoded=True construction_method=None",
-        "path='_full_data.csv' line_number=217 context='            in_dir = input_base / sp\\n            proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n>>>             full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n\\n            df_proc = pd.read_csv(proc_in_path)' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=226 context='\\n            # write processed\\n>>>             proc_out = out_dir / f\"{sp}_processed_data.csv\"\\n            df_conv.to_csv(proc_out, index=False)\\n            logger.info(f\"Converted processed for \\'{sp}\\' \u2192 {proc_out} (shape={df_conv.shape})\")' is_hardcoded=True construction_method=None",
-        "path='_full_data.csv' line_number=234 context='                df_full = pd.read_csv(full_in_path)\\n                df_full_conv = apply_conversion(df_full)\\n>>>                 full_out = out_dir / f\"{sp}_full_data.csv\"\\n                df_full_conv.to_csv(full_out, index=False)\\n                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")' is_hardcoded=True construction_method=None",
-        "path='Currency conversion step complete.' line_number=238 context='                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")\\n\\n>>>     logger.info(\"Currency conversion step complete.\")\\n\\n' is_hardcoded=True construction_method=None"
+        "path='Get currency code for a given marketplace ID.' line_number=25 context='    default_currency: str\\n) -> str:\\n>>>     \"\"\"Get currency code for a given marketplace ID.\"\"\"\\n    try:\\n        if pd.isna(marketplace_id) or str(int(marketplace_id)) not in marketplace_info:' is_hardcoded=True construction_method=None",
+        "path='Combine currency codes from marketplace ID and existing currency column.' line_number=42 context='    skip_invalid_currencies: bool\\n) -> Tuple[pd.DataFrame, str]:\\n>>>     \"\"\"Combine currency codes from marketplace ID and existing currency column.\"\"\"\\n    df[\"currency_code_from_marketplace_id\"] = df[marketplace_id_col].apply(\\n        lambda x: get_currency_code(x, marketplace_info, default_currency)' is_hardcoded=True construction_method=None",
+        "path=\"Convert single variable's currency values.\" line_number=66 context='    args: Tuple[pd.DataFrame, str, pd.Series]\\n) -> pd.Series:\\n>>>     \"\"\"Convert single variable\\'s currency values.\"\"\"\\n    df, variable, exchange_rate_series = args\\n    return df[variable] / exchange_rate_series.values' is_hardcoded=True construction_method=None",
+        "path='Perform parallel currency conversion on multiple variables.' line_number=78 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Perform parallel currency conversion on multiple variables.\"\"\"\\n    exchange_rate_series = df[currency_col].apply(lambda x: currency_conversion_dict.get(x, 1.0))\\n    processes = min(cpu_count(), len(currency_conversion_vars), n_workers)' is_hardcoded=True construction_method=None",
+        "path='Process currency conversion.' line_number=103 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Process currency conversion.\"\"\"\\n    # Drop rows with missing marketplace IDs\\n    df = df.dropna(subset=[marketplace_id_col]).reset_index(drop=True)' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=166 context='    \\n    # Extract paths from parameters\\n>>>     input_base = Path(input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\"))\\n    output_base = Path(output_paths.get(\"data_output\", \"/opt/ml/processing/output\"))\\n    output_base.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=167 context='    # Extract paths from parameters\\n    input_base = Path(input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\"))\\n>>>     output_base = Path(output_paths.get(\"data_output\", \"/opt/ml/processing/output\"))\\n    output_base.mkdir(parents=True, exist_ok=True)\\n    ' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=194 context='        dfs = []\\n        for sp in splits:\\n>>>             fpath = input_base / sp / f\"{sp}_processed_data.csv\"\\n            logger.info(f\"  Reading split {sp} from {fpath}\")\\n            dfs.append(pd.read_csv(fpath))' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=221 context='            # processed\\n            proc = split_df.copy()\\n>>>             proc_path = out_dir / f\"{split_name}_processed_data.csv\"\\n            proc.to_csv(proc_path, index=False)\\n            logger.info(f\"Wrote converted processed: {proc_path} (shape={proc.shape})\")' is_hardcoded=True construction_method=None",
+        "path='_full_data.csv' line_number=227 context='            # full (just alias here\u2014but you could re-read your full_data.csv if needed)\\n            full = proc.copy()\\n>>>             full_path = out_dir / f\"{split_name}_full_data.csv\"\\n            full.to_csv(full_path, index=False)\\n            logger.info(f\"Wrote converted full: {full_path} (shape={full.shape})\")' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=240 context='        for sp in splits:\\n            in_dir = input_base / sp\\n>>>             proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n            full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n' is_hardcoded=True construction_method=None",
+        "path='_full_data.csv' line_number=241 context='            in_dir = input_base / sp\\n            proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n>>>             full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n\\n            df_proc = pd.read_csv(proc_in_path)' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=250 context='\\n            # write processed\\n>>>             proc_out = out_dir / f\"{sp}_processed_data.csv\"\\n            df_conv.to_csv(proc_out, index=False)\\n            logger.info(f\"Converted processed for \\'{sp}\\' \u2192 {proc_out} (shape={df_conv.shape})\")' is_hardcoded=True construction_method=None",
+        "path='_full_data.csv' line_number=258 context='                df_full = pd.read_csv(full_in_path)\\n                df_full_conv = apply_conversion(df_full)\\n>>>                 full_out = out_dir / f\"{sp}_full_data.csv\"\\n                df_full_conv.to_csv(full_out, index=False)\\n                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")' is_hardcoded=True construction_method=None",
+        "path='Currency conversion step complete.' line_number=262 context='                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")\\n\\n>>>     logger.info(\"Currency conversion step complete.\")\\n\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=296 context='        \\n        # Standard SageMaker paths\\n>>>         INPUT_PATH = \"/opt/ml/processing/input/data\"\\n        OUTPUT_PATH = \"/opt/ml/processing/output\"\\n        ' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=297 context='        # Standard SageMaker paths\\n        INPUT_PATH = \"/opt/ml/processing/input/data\"\\n>>>         OUTPUT_PATH = \"/opt/ml/processing/output\"\\n        \\n        # Set up path dictionaries' is_hardcoded=True construction_method=None",
+        "path='0.7' line_number=314 context='            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>             \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }' is_hardcoded=True construction_method=None",
+        "path='0.5' line_number=315 context='            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n>>>             \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }\\n        ' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [
-        "variable_name='LABEL_FIELD' line_number=182 context='            train_size=args.train_ratio,\\n            random_state=42,\\n>>>             stratify=df_conv[os.environ[\"LABEL_FIELD\"]]\\n        )\\n        test_df, val_df = train_test_split(' access_method='os.environ' has_default=False default_value=None",
-        "variable_name='LABEL_FIELD' line_number=188 context='            test_size=args.test_val_ratio,\\n            random_state=42,\\n>>>             stratify=holdout_df[os.environ[\"LABEL_FIELD\"]]\\n        )\\n' access_method='os.environ' has_default=False default_value=None",
-        "variable_name='TRAIN_RATIO' line_number=260 context='        )\\n    )\\n>>>     parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n    parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n    parser.add_argument(\"--n-workers\", type=int, default=50)' access_method='os.environ.get' has_default=True default_value=None",
-        "variable_name='TEST_VAL_RATIO' line_number=261 context='    )\\n    parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n>>>     parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n    parser.add_argument(\"--n-workers\", type=int, default=50)\\n    parser.add_argument(\"--marketplace-id-col\", required=True)' access_method='os.environ.get' has_default=True default_value=None",
-        "variable_name='CURRENCY_CONVERSION_VARS' line_number=271 context='    \\n    # load JSON env vars\\n>>>     currency_vars = json.loads(os.environ[\"CURRENCY_CONVERSION_VARS\"])\\n    currency_dict = json.loads(os.environ[\"CURRENCY_CONVERSION_DICT\"])\\n    marketplace_info = json.loads(os.environ[\"MARKETPLACE_INFO\"])' access_method='os.environ' has_default=False default_value=None",
-        "variable_name='CURRENCY_CONVERSION_DICT' line_number=272 context='    # load JSON env vars\\n    currency_vars = json.loads(os.environ[\"CURRENCY_CONVERSION_VARS\"])\\n>>>     currency_dict = json.loads(os.environ[\"CURRENCY_CONVERSION_DICT\"])\\n    marketplace_info = json.loads(os.environ[\"MARKETPLACE_INFO\"])\\n    ' access_method='os.environ' has_default=False default_value=None",
-        "variable_name='MARKETPLACE_INFO' line_number=273 context='    currency_vars = json.loads(os.environ[\"CURRENCY_CONVERSION_VARS\"])\\n    currency_dict = json.loads(os.environ[\"CURRENCY_CONVERSION_DICT\"])\\n>>>     marketplace_info = json.loads(os.environ[\"MARKETPLACE_INFO\"])\\n    \\n    logging.basicConfig(level=logging.INFO)' access_method='os.environ' has_default=False default_value=None"
+        "variable_name='TRAIN_RATIO' line_number=285 context='            )\\n        )\\n>>>         parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n        parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n        parser.add_argument(\"--n-workers\", type=int, default=50)' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='TEST_VAL_RATIO' line_number=286 context='        )\\n        parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n>>>         parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n        parser.add_argument(\"--n-workers\", type=int, default=50)\\n        parser.add_argument(\"--marketplace-id-col\", required=True)' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='CURRENCY_CONVERSION_VARS' line_number=310 context='        # Environment variables dictionary\\n        environ_vars = {\\n>>>             \"CURRENCY_CONVERSION_VARS\": os.environ.get(\"CURRENCY_CONVERSION_VARS\", \"[]\"),\\n            \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),' access_method='os.environ.get' has_default=True default_value='[]'",
+        "variable_name='CURRENCY_CONVERSION_DICT' line_number=311 context='        environ_vars = {\\n            \"CURRENCY_CONVERSION_VARS\": os.environ.get(\"CURRENCY_CONVERSION_VARS\", \"[]\"),\\n>>>             \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),' access_method='os.environ.get' has_default=True default_value='{}'",
+        "variable_name='MARKETPLACE_INFO' line_number=312 context='            \"CURRENCY_CONVERSION_VARS\": os.environ.get(\"CURRENCY_CONVERSION_VARS\", \"[]\"),\\n            \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n>>>             \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),' access_method='os.environ.get' has_default=True default_value='{}'",
+        "variable_name='LABEL_FIELD' line_number=313 context='            \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n>>>             \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")' access_method='os.environ.get' has_default=True default_value='label'",
+        "variable_name='TRAIN_RATIO' line_number=314 context='            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>             \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }' access_method='os.environ.get' has_default=True default_value='0.7'",
+        "variable_name='TEST_VAL_RATIO' line_number=315 context='            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n>>>             \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }\\n        ' access_method='os.environ.get' has_default=True default_value='0.5'"
       ],
       "imports": [
         "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
         "module_name='json' import_alias=None line_number=3 is_from_import=False imported_items=[]",
         "module_name='argparse' import_alias=None line_number=4 is_from_import=False imported_items=[]",
-        "module_name='pathlib' import_alias=None line_number=5 is_from_import=True imported_items=['Path']",
-        "module_name='typing' import_alias=None line_number=6 is_from_import=True imported_items=['Tuple', 'List', 'Dict', 'Any', 'Union', 'Optional']",
-        "module_name='pandas' import_alias='pd' line_number=7 is_from_import=False imported_items=[]",
-        "module_name='numpy' import_alias='np' line_number=8 is_from_import=False imported_items=[]",
-        "module_name='multiprocessing' import_alias=None line_number=9 is_from_import=True imported_items=['Pool', 'cpu_count']",
-        "module_name='logging' import_alias=None line_number=10 is_from_import=False imported_items=[]",
-        "module_name='sklearn.model_selection' import_alias=None line_number=11 is_from_import=True imported_items=['train_test_split']"
+        "module_name='sys' import_alias=None line_number=5 is_from_import=False imported_items=[]",
+        "module_name='traceback' import_alias=None line_number=6 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=7 is_from_import=True imported_items=['Path']",
+        "module_name='typing' import_alias=None line_number=8 is_from_import=True imported_items=['Tuple', 'List', 'Dict', 'Any', 'Union', 'Optional']",
+        "module_name='pandas' import_alias='pd' line_number=9 is_from_import=False imported_items=[]",
+        "module_name='numpy' import_alias='np' line_number=10 is_from_import=False imported_items=[]",
+        "module_name='multiprocessing' import_alias=None line_number=11 is_from_import=True imported_items=['Pool', 'cpu_count']",
+        "module_name='logging' import_alias=None line_number=12 is_from_import=False imported_items=[]",
+        "module_name='sklearn.model_selection' import_alias=None line_number=13 is_from_import=True imported_items=['train_test_split']"
       ],
       "argument_definitions": [
-        "argument_name='job_type' line_number=243 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']",
-        "argument_name='mode' line_number=250 is_required=False has_default=True default_value='per_split' argument_type='str' choices=['per_split', 'split_after_conversion']",
-        "argument_name='train_ratio' line_number=260 is_required=False has_default=True default_value=None argument_type='float' choices=None",
-        "argument_name='test_val_ratio' line_number=261 is_required=False has_default=True default_value=None argument_type='float' choices=None",
-        "argument_name='n_workers' line_number=262 is_required=False has_default=True default_value=50 argument_type='int' choices=None",
-        "argument_name='marketplace_id_col' line_number=263 is_required=True has_default=False default_value=None argument_type=None choices=None",
-        "argument_name='currency_col' line_number=264 is_required=False has_default=True default_value=None argument_type=None choices=None",
-        "argument_name='default_currency' line_number=265 is_required=False has_default=True default_value='USD' argument_type=None choices=None",
-        "argument_name='skip_invalid_currencies' line_number=266 is_required=False has_default=False default_value=None argument_type=None choices=None",
-        "argument_name='enable_conversion' line_number=267 is_required=False has_default=True default_value=True argument_type=None choices=None"
+        "argument_name='job_type' line_number=268 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']",
+        "argument_name='mode' line_number=275 is_required=False has_default=True default_value='per_split' argument_type='str' choices=['per_split', 'split_after_conversion']",
+        "argument_name='train_ratio' line_number=285 is_required=False has_default=True default_value=None argument_type='float' choices=None",
+        "argument_name='test_val_ratio' line_number=286 is_required=False has_default=True default_value=None argument_type='float' choices=None",
+        "argument_name='n_workers' line_number=287 is_required=False has_default=True default_value=50 argument_type='int' choices=None",
+        "argument_name='marketplace_id_col' line_number=288 is_required=True has_default=False default_value=None argument_type=None choices=None",
+        "argument_name='currency_col' line_number=289 is_required=False has_default=True default_value=None argument_type=None choices=None",
+        "argument_name='default_currency' line_number=290 is_required=False has_default=True default_value='USD' argument_type=None choices=None",
+        "argument_name='skip_invalid_currencies' line_number=291 is_required=False has_default=False default_value=None argument_type=None choices=None",
+        "argument_name='enable_conversion' line_number=292 is_required=False has_default=True default_value=True argument_type=None choices=None"
       ],
       "file_operations": []
     },
@@ -153,6 +159,48 @@
           "contract_outputs": 1
         },
         "recommendation": "Multi-variant validation completed successfully"
+      },
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: CurrencyConversion_Training -> CurrencyConversion -> Processing",
+        "details": {
+          "contract": "currency_conversion",
+          "original_spec_type": "CurrencyConversion_Training",
+          "canonical_name": "CurrencyConversion",
+          "resolved_sagemaker_type": "Processing",
+          "registry_available": true
+        },
+        "recommendation": "Using Processing step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output converted_data: properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+        "details": {
+          "contract": "currency_conversion",
+          "logical_name": "converted_data",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for currency_conversion",
+        "details": {
+          "contract": "currency_conversion",
+          "step_type": "processing",
+          "node_type": "internal",
+          "total_outputs": 1,
+          "outputs_with_property_paths": 1,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 1/1 outputs with property paths against SageMaker documentation"
       }
     ],
     "contract": {
@@ -238,9 +286,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -265,9 +313,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -292,9 +340,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -319,9 +367,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -348,9 +396,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
               "CradleDataLoading",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -376,9 +424,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
                 "CradleDataLoading",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed training data requiring currency conversion"
@@ -403,9 +451,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
                 "CradleDataLoading",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed testing data requiring currency conversion"
@@ -430,9 +478,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
                 "CradleDataLoading",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed validation data requiring currency conversion"
@@ -457,9 +505,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
                 "CradleDataLoading",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed calibration data requiring currency conversion"
@@ -482,9 +530,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
             "CradleDataLoading",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Processed calibration data requiring currency conversion"
@@ -530,9 +578,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
             "CradleDataLoading",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Processed testing data requiring currency conversion"
@@ -565,6 +613,16 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
+        "details": {
+          "field_name": "currency_conversion_dict",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: label_field",
         "details": {
           "field_name": "label_field",
@@ -583,25 +641,15 @@
         "recommendation": "Access required field marketplace_info in builder or make it optional"
       },
       {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
-        "details": {
-          "field_name": "currency_conversion_dict",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
-      },
-      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
+            "currency_conversion_dict",
             "marketplace_id_col",
-            "marketplace_info",
             "label_field",
-            "currency_conversion_dict"
+            "marketplace_info"
           ],
           "builder": "currency_conversion"
         },
@@ -801,7 +849,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-11T23:19:40.561934",
+    "validation_timestamp": "2025-08-12T20:19:49.656202",
     "validator_version": "1.0.0"
   }
 }

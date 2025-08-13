@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: tabular_preprocessing</h2>
-        <p>Generated: 2025-08-11T23:19:40.696932</p>
+        <p>Generated: 2025-08-12T20:19:49.777760</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>4</h3>
+            <h3>7</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -75,6 +75,21 @@
                     <br><em>Recommendation: Multi-variant validation completed successfully</em>
                 </div>
                 
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: TabularPreprocessing_Training -> TabularPreprocessing -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output processed_data: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for tabular_preprocessing
+                    <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
             </div>
             
             <div class="test-result test-passed">
@@ -105,7 +120,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py</p>
         <p><strong>Contract Mapping:</strong> tabular_preprocessing_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:40.696932</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T20:19:49.777760</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

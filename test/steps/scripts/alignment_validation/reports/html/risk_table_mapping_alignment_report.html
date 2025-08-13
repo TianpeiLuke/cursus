@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: risk_table_mapping</h2>
-        <p>Generated: 2025-08-11T23:19:40.679160</p>
+        <p>Generated: 2025-08-12T20:19:49.760571</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>3</h3>
+            <h3>7</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -75,6 +75,26 @@
                     <br><em>Recommendation: Multi-variant validation completed successfully</em>
                 </div>
                 
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: RiskTableMapping_Training -> RiskTableMapping -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output processed_data: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output risk_tables: properties.ProcessingOutputConfig.Outputs['risk_tables'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for risk_table_mapping
+                    <br><em>Recommendation: Validated 2/2 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
             </div>
             
             <div class="test-result test-passed">
@@ -100,7 +120,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py</p>
         <p><strong>Contract Mapping:</strong> risk_table_mapping_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:40.679160</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T20:19:49.760571</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

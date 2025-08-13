@@ -25,8 +25,6 @@ logger = logging.getLogger(__name__)
 
 # Container path constants - aligned with script contract
 CONTAINER_PATHS = {
-    "PROCESSING_INPUT_BASE": "/opt/ml/processing/input",
-    "PROCESSING_OUTPUT_BASE": "/opt/ml/processing/output",
     "MODEL_DIR": "/opt/ml/processing/input/model",
     "EVAL_DATA_DIR": "/opt/ml/processing/input/eval_data",
     "OUTPUT_EVAL_DIR": "/opt/ml/processing/output/eval",
@@ -417,46 +415,27 @@ def main(
     
     logger.info("Model evaluation script complete")
 
-def is_running_in_container():
-    """Detect if the script is running inside a container."""
-    return os.path.exists("/.dockerenv") or os.environ.get("CONTAINER_MODE") == "true"
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_type", type=str, required=True)
-    parser.add_argument("--model_dir", type=str, help="Directory containing model artifacts")
-    parser.add_argument("--eval_data_dir", type=str, help="Directory containing evaluation data")
-    parser.add_argument("--output_eval_dir", type=str, help="Directory to save evaluation predictions")
-    parser.add_argument("--output_metrics_dir", type=str, help="Directory to save metrics")
     args = parser.parse_args()
-
-    # Determine if we're in a container environment
-    in_container = is_running_in_container()
     
-    # Set up paths based on environment and arguments - using contract-defined logical names
+    # Set up paths using contract-defined paths only
     input_paths = {
-        "model_input": args.model_dir if args.model_dir else CONTAINER_PATHS["MODEL_DIR"],
-        "processed_data": args.eval_data_dir if args.eval_data_dir else CONTAINER_PATHS["EVAL_DATA_DIR"],
+        "model_input": CONTAINER_PATHS["MODEL_DIR"],
+        "processed_data": CONTAINER_PATHS["EVAL_DATA_DIR"],
     }
     
     output_paths = {
-        "eval_output": args.output_eval_dir if args.output_eval_dir else CONTAINER_PATHS["OUTPUT_EVAL_DIR"],
-        "metrics_output": args.output_metrics_dir if args.output_metrics_dir else CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
+        "eval_output": CONTAINER_PATHS["OUTPUT_EVAL_DIR"],
+        "metrics_output": CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
     }
     
     # Collect environment variables - ID_FIELD and LABEL_FIELD are required per contract
     environ_vars = {
         "ID_FIELD": os.environ.get("ID_FIELD", "id"),  # Fallback for testing
         "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),  # Fallback for testing
-        "CONTAINER_MODE": os.environ.get("CONTAINER_MODE", str(in_container).lower())
     }
-    
-    # Add SageMaker environment variables if present
-    sm_environ_vars = [
-        "SM_NUM_GPUS", "SM_NUM_CPUS", "SM_HOSTS",
-        "SM_CURRENT_HOST", "SM_MODEL_DIR", "SM_CHANNEL_TRAIN"
-    ]
-    environ_vars.update({var: os.environ[var] for var in sm_environ_vars if var in os.environ})
     
     try:
         # Call main function

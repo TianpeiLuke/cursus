@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: package</h2>
-        <p>Generated: 2025-08-11T23:19:40.640979</p>
+        <p>Generated: 2025-08-12T20:19:49.715979</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>2</h3>
+            <h3>5</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -75,6 +75,21 @@
                 <h4>Level 2: Contract ↔ Specification</h4>
                 <p>Status: PASSED</p>
                 
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: Package -> Package -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output packaged_model: properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for package
+                    <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
             </div>
             
             <div class="test-result test-passed">
@@ -95,7 +110,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py</p>
         <p><strong>Contract Mapping:</strong> package_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:40.640979</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T20:19:49.715979</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

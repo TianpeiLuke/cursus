@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: xgboost_model_evaluation</h2>
-        <p>Generated: 2025-08-11T23:19:40.762729</p>
+        <p>Generated: 2025-08-12T20:19:49.842481</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>14</h3>
+            <h3>6</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -47,7 +47,7 @@
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>10</h3>
+            <h3>0</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -59,69 +59,9 @@
                 <h4>Level 1: Script ↔ Contract</h4>
                 <p>Status: PASSED</p>
                 
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/output/metrics
-                    <br><em>Recommendation: Either use path /opt/ml/processing/output/metrics in script or remove from contract</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/eval_data
-                    <br><em>Recommendation: Either use path /opt/ml/processing/input/eval_data in script or remove from contract</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/output/eval
-                    <br><em>Recommendation: Either use path /opt/ml/processing/output/eval in script or remove from contract</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/model
-                    <br><em>Recommendation: Either use path /opt/ml/processing/input/model in script or remove from contract</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: --model-dir (accessed as args.model_dir)
-                    <br><em>Recommendation: Add --model-dir to contract arguments or remove from script</em>
-                </div>
-                
                 <div class="issue info">
                     <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
                     <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: --eval-data-dir (accessed as args.eval_data_dir)
-                    <br><em>Recommendation: Add --eval-data-dir to contract arguments or remove from script</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: --output-eval-dir (accessed as args.output_eval_dir)
-                    <br><em>Recommendation: Add --output-eval-dir to contract arguments or remove from script</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Script defines argument not in contract: --output-metrics-dir (accessed as args.output_metrics_dir)
-                    <br><em>Recommendation: Add --output-metrics-dir to contract arguments or remove from script</em>
-                </div>
-                
-                <div class="issue info">
-                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/eval_data
-                    <br><em>Recommendation: Either read /opt/ml/processing/input/eval_data in script or remove from contract inputs</em>
-                </div>
-                
-                <div class="issue info">
-                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/model
-                    <br><em>Recommendation: Either read /opt/ml/processing/input/model in script or remove from contract inputs</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/metrics
-                    <br><em>Recommendation: Either write to /opt/ml/processing/output/metrics in script or remove from contract outputs</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares output not written by script: /opt/ml/processing/output/eval
-                    <br><em>Recommendation: Either write to /opt/ml/processing/output/eval in script or remove from contract outputs</em>
                 </div>
                 
             </div>
@@ -129,6 +69,26 @@
             <div class="test-result test-passed">
                 <h4>Level 2: Contract ↔ Specification</h4>
                 <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: XGBoostModelEval -> XGBoostModelEval -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output eval_output: properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output metrics_output: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for xgboost_model_evaluation
+                    <br><em>Recommendation: Validated 2/2 outputs with property paths against SageMaker documentation</em>
+                </div>
                 
             </div>
             
@@ -155,7 +115,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py</p>
         <p><strong>Contract Mapping:</strong> xgboost_model_evaluation_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:40.762729</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T20:19:49.842481</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: model_calibration</h2>
-        <p>Generated: 2025-08-11T23:19:40.619842</p>
+        <p>Generated: 2025-08-12T20:19:49.698348</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>2</h3>
+            <h3>8</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -47,7 +47,7 @@
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>2</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -59,11 +59,41 @@
                 <h4>Level 1: Script ↔ Contract</h4>
                 <p>Status: PASSED</p>
                 
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Optional environment variable accessed without default: MULTICLASS_CATEGORIES
+                    <br><em>Recommendation: Provide default value when accessing optional variable MULTICLASS_CATEGORIES</em>
+                </div>
+                
             </div>
             
             <div class="test-result test-passed">
                 <h4>Level 2: Contract ↔ Specification</h4>
                 <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: ModelCalibration -> ModelCalibration -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output calibration_output: properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output metrics_output: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output calibrated_data: properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for model_calibration
+                    <br><em>Recommendation: Validated 3/3 outputs with property paths against SageMaker documentation</em>
+                </div>
                 
             </div>
             
@@ -95,7 +125,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py</p>
         <p><strong>Contract Mapping:</strong> model_calibration_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-11T23:19:40.619842</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T20:19:49.698348</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>
