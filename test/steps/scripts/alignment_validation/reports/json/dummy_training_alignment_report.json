@@ -10,10 +10,10 @@
         "details": {
           "script": "dummy_training",
           "testability_parameters": [
-            "output_paths",
             "job_args",
+            "input_paths",
             "environ_vars",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -143,7 +143,7 @@
         "category": "step_type_resolution",
         "message": "Step type resolved via registry: DummyTraining -> DummyTraining -> Processing",
         "details": {
-          "contract": "dummy_training",
+          "contract": "dummy_training_contract",
           "original_spec_type": "DummyTraining",
           "canonical_name": "DummyTraining",
           "resolved_sagemaker_type": "Processing",
@@ -156,7 +156,7 @@
         "category": "property_path_validation",
         "message": "Valid property path in output model_input: properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
         "details": {
-          "contract": "dummy_training",
+          "contract": "dummy_training_contract",
           "logical_name": "model_input",
           "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
           "step_type": "processing",
@@ -168,9 +168,9 @@
       {
         "severity": "INFO",
         "category": "property_path_validation_summary",
-        "message": "Property path validation completed for dummy_training",
+        "message": "Property path validation completed for dummy_training_contract",
         "details": {
-          "contract": "dummy_training",
+          "contract": "dummy_training_contract",
           "step_type": "processing",
           "node_type": "internal",
           "total_outputs": 1,
@@ -217,10 +217,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
+              "XGBoostTraining",
               "TabularPreprocessing",
               "PytorchTraining",
-              "ProcessingStep",
-              "XGBoostTraining"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -258,10 +258,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
+              "XGBoostTraining",
               "TabularPreprocessing",
               "PytorchTraining",
-              "ProcessingStep",
-              "XGBoostTraining"
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -298,10 +298,10 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
+                "XGBoostTraining",
                 "TabularPreprocessing",
                 "PytorchTraining",
-                "ProcessingStep",
-                "XGBoostTraining"
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -335,10 +335,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
+            "XGBoostTraining",
             "TabularPreprocessing",
             "PytorchTraining",
-            "ProcessingStep",
-            "XGBoostTraining"
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -445,10 +445,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
+            "XGBoostTraining",
             "TabularPreprocessing",
             "PytorchTraining",
-            "ProcessingStep",
-            "XGBoostTraining"
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -877,7 +877,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-12T21:24:54.362676",
+    "validation_timestamp": "2025-08-12T21:45:00.293513",
     "validator_version": "1.0.0"
   }
 }

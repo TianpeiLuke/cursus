@@ -52,7 +52,7 @@ class ContractSpecificationAlignmentTester:
         
         # Initialize loaders
         self.contract_loader = ContractLoader(str(self.contracts_dir))
-        self.spec_loader = SpecificationLoader(str(self.specs_dir), str(self.contracts_dir))
+        self.spec_loader = SpecificationLoader(str(self.specs_dir))
         
         # Initialize smart specification selector
         self.smart_spec_selector = SmartSpecificationSelector()
@@ -96,18 +96,18 @@ class ContractSpecificationAlignmentTester:
         
         return results
     
-    def validate_contract(self, contract_name: str) -> Dict[str, Any]:
+    def validate_contract(self, script_or_contract_name: str) -> Dict[str, Any]:
         """
         Validate alignment for a specific contract using Smart Specification Selection.
         
         Args:
-            contract_name: Name of the contract to validate
+            script_or_contract_name: Name of the script or contract to validate
             
         Returns:
             Validation result dictionary
         """
         # Use FlexibleFileResolver to find the correct contract file
-        contract_file_path = self.file_resolver.find_contract_file(contract_name)
+        contract_file_path = self.file_resolver.find_contract_file(script_or_contract_name)
         
         # Check if contract file exists
         if not contract_file_path:
@@ -116,15 +116,15 @@ class ContractSpecificationAlignmentTester:
                 'issues': [{
                     'severity': 'CRITICAL',
                     'category': 'missing_file',
-                    'message': f'Contract file not found for script: {contract_name}',
+                    'message': f'Contract file not found for script: {script_or_contract_name}',
                     'details': {
-                        'script': contract_name,
+                        'script': script_or_contract_name,
                         'searched_patterns': [
-                            f'{contract_name}_contract.py',
+                            f'{script_or_contract_name}_contract.py',
                             'Known naming patterns from FlexibleFileResolver'
                         ]
                     },
-                    'recommendation': f'Create contract file for {contract_name} or check naming patterns'
+                    'recommendation': f'Create contract file for {script_or_contract_name} or check naming patterns'
                 }]
             }
         
@@ -140,9 +140,13 @@ class ContractSpecificationAlignmentTester:
                 }]
             }
         
+        # Extract the actual contract name from the file path
+        # e.g., "xgboost_model_eval_contract.py" -> "xgboost_model_eval_contract"
+        actual_contract_name = contract_path.stem
+        
         # Load contract from Python file
         try:
-            contract = self.contract_loader.load_contract(contract_path, contract_name)
+            contract = self.contract_loader.load_contract(contract_path, actual_contract_name)
         except Exception as e:
             return {
                 'passed': False,
@@ -154,8 +158,8 @@ class ContractSpecificationAlignmentTester:
                 }]
             }
         
-        # Find specification files using script_contract field
-        spec_files = self.spec_loader.find_specifications_by_contract(contract_name)
+        # Find specification files using the actual contract name
+        spec_files = self.spec_loader.find_specifications_by_contract(actual_contract_name)
         
         if not spec_files:
             return {
@@ -163,8 +167,8 @@ class ContractSpecificationAlignmentTester:
                 'issues': [{
                     'severity': 'ERROR',
                     'category': 'missing_specification',
-                    'message': f'No specification files found for {contract_name}',
-                    'recommendation': f'Create specification files that reference {contract_name}_contract'
+                    'message': f'No specification files found for {actual_contract_name}',
+                    'recommendation': f'Create specification files that reference {actual_contract_name}'
                 }]
             }
         
@@ -189,25 +193,25 @@ class ContractSpecificationAlignmentTester:
                 }
         
         # SMART SPECIFICATION SELECTION: Create unified specification model
-        unified_spec = self.smart_spec_selector.create_unified_specification(specifications, contract_name)
+        unified_spec = self.smart_spec_selector.create_unified_specification(specifications, actual_contract_name)
         
         # Perform alignment validation against unified specification
         all_issues = []
         
         # Validate logical name alignment using smart multi-variant logic
-        logical_issues = self.smart_spec_selector.validate_logical_names_smart(contract, unified_spec, contract_name)
+        logical_issues = self.smart_spec_selector.validate_logical_names_smart(contract, unified_spec, actual_contract_name)
         all_issues.extend(logical_issues)
         
         # Validate data type consistency
-        type_issues = self.validator.validate_data_types(contract, unified_spec['primary_spec'], contract_name)
+        type_issues = self.validator.validate_data_types(contract, unified_spec['primary_spec'], actual_contract_name)
         all_issues.extend(type_issues)
         
         # Validate input/output alignment
-        io_issues = self.validator.validate_input_output_alignment(contract, unified_spec['primary_spec'], contract_name)
+        io_issues = self.validator.validate_input_output_alignment(contract, unified_spec['primary_spec'], actual_contract_name)
         all_issues.extend(io_issues)
         
         # NEW: Validate property path references (Level 2 enhancement)
-        property_path_issues = self._validate_property_paths(unified_spec['primary_spec'], contract_name)
+        property_path_issues = self._validate_property_paths(unified_spec['primary_spec'], actual_contract_name)
         all_issues.extend(property_path_issues)
         
         # Determine overall pass/fail status

@@ -29,7 +29,7 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: payload</h2>
-        <p>Generated: 2025-08-12T21:24:54.452658</p>
+        <p>Generated: 2025-08-12T21:45:00.389996</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
@@ -121,7 +121,7 @@
                 </div>
                 
                 <div class="issue info">
-                    <strong>INFO:</strong> Property path validation completed for payload
+                    <strong>INFO:</strong> Property path validation completed for payload_contract
                     <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
                 </div>
                 
@@ -138,8 +138,23 @@
                 <p>Status: PASSED</p>
                 
                 <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
+                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
                     <strong>WARNING:</strong> Required configuration field not accessed in builder: expected_tps
                     <br><em>Recommendation: Access required field expected_tps in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_objective
+                    <br><em>Recommendation: Access required field model_registration_objective in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_domain
+                    <br><em>Recommendation: Access required field model_registration_domain in builder or make it optional</em>
                 </div>
                 
                 <div class="issue warning">
@@ -153,23 +168,8 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_objective
-                    <br><em>Recommendation: Access required field model_registration_objective in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
-                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
                     <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
                     <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_domain
-                    <br><em>Recommendation: Access required field model_registration_domain in builder or make it optional</em>
                 </div>
                 
                 <div class="issue info">
@@ -185,7 +185,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py</p>
         <p><strong>Contract Mapping:</strong> payload_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-12T21:24:54.452658</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T21:45:00.389996</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

@@ -10,10 +10,10 @@
         "details": {
           "script": "currency_conversion",
           "testability_parameters": [
-            "output_paths",
             "job_args",
+            "input_paths",
             "environ_vars",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -453,7 +453,7 @@
         "category": "multi_variant_validation",
         "message": "Smart Specification Selection: validated against 4 variants",
         "details": {
-          "contract": "currency_conversion",
+          "contract": "currency_conversion_contract",
           "variants": [
             "training",
             "testing",
@@ -472,7 +472,7 @@
         "category": "step_type_resolution",
         "message": "Step type resolved via registry: CurrencyConversion_Training -> CurrencyConversion -> Processing",
         "details": {
-          "contract": "currency_conversion",
+          "contract": "currency_conversion_contract",
           "original_spec_type": "CurrencyConversion_Training",
           "canonical_name": "CurrencyConversion",
           "resolved_sagemaker_type": "Processing",
@@ -485,7 +485,7 @@
         "category": "property_path_validation",
         "message": "Valid property path in output converted_data: properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
         "details": {
-          "contract": "currency_conversion",
+          "contract": "currency_conversion_contract",
           "logical_name": "converted_data",
           "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
           "step_type": "processing",
@@ -497,9 +497,9 @@
       {
         "severity": "INFO",
         "category": "property_path_validation_summary",
-        "message": "Property path validation completed for currency_conversion",
+        "message": "Property path validation completed for currency_conversion_contract",
         "details": {
-          "contract": "currency_conversion",
+          "contract": "currency_conversion_contract",
           "step_type": "processing",
           "node_type": "internal",
           "total_outputs": 1,
@@ -920,16 +920,6 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_info",
-        "details": {
-          "field_name": "marketplace_info",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_info in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: currency_conversion_dict",
         "details": {
           "field_name": "currency_conversion_dict",
@@ -948,15 +938,25 @@
         "recommendation": "Access required field marketplace_id_col in builder or make it optional"
       },
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_info",
+        "details": {
+          "field_name": "marketplace_info",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_info in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
             "label_field",
-            "marketplace_info",
             "currency_conversion_dict",
-            "marketplace_id_col"
+            "marketplace_id_col",
+            "marketplace_info"
           ],
           "builder": "currency_conversion"
         },
@@ -1365,7 +1365,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-12T21:24:54.342422",
+    "validation_timestamp": "2025-08-12T21:45:00.276254",
     "validator_version": "1.0.0"
   }
 }

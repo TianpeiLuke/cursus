@@ -21,10 +21,10 @@
         "details": {
           "script": "model_calibration",
           "testability_parameters": [
-            "output_paths",
             "job_args",
+            "input_paths",
             "environ_vars",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -165,8 +165,8 @@
           ],
           "used_parameters": [
             "output_paths",
-            "environ_vars",
-            "input_paths"
+            "input_paths",
+            "environ_vars"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -573,7 +573,7 @@
         "category": "step_type_resolution",
         "message": "Step type resolved via registry: ModelCalibration -> ModelCalibration -> Processing",
         "details": {
-          "contract": "model_calibration",
+          "contract": "model_calibration_contract",
           "original_spec_type": "ModelCalibration",
           "canonical_name": "ModelCalibration",
           "resolved_sagemaker_type": "Processing",
@@ -586,7 +586,7 @@
         "category": "property_path_validation",
         "message": "Valid property path in output calibration_output: properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
         "details": {
-          "contract": "model_calibration",
+          "contract": "model_calibration_contract",
           "logical_name": "calibration_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
           "step_type": "processing",
@@ -600,7 +600,7 @@
         "category": "property_path_validation",
         "message": "Valid property path in output metrics_output: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
         "details": {
-          "contract": "model_calibration",
+          "contract": "model_calibration_contract",
           "logical_name": "metrics_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
           "step_type": "processing",
@@ -614,7 +614,7 @@
         "category": "property_path_validation",
         "message": "Valid property path in output calibrated_data: properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
         "details": {
-          "contract": "model_calibration",
+          "contract": "model_calibration_contract",
           "logical_name": "calibrated_data",
           "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
           "step_type": "processing",
@@ -626,9 +626,9 @@
       {
         "severity": "INFO",
         "category": "property_path_validation_summary",
-        "message": "Property path validation completed for model_calibration",
+        "message": "Property path validation completed for model_calibration_contract",
         "details": {
-          "contract": "model_calibration",
+          "contract": "model_calibration_contract",
           "step_type": "processing",
           "node_type": "internal",
           "total_outputs": 3,
@@ -693,11 +693,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
+              "ModelEvaluation",
               "XGBoostTraining",
+              "CrossValidation",
               "TrainingEvaluation",
-              "XGBoostModelEval",
-              "ModelEvaluation"
+              "XGBoostModelEval"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -738,11 +738,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
+              "ModelEvaluation",
               "XGBoostTraining",
+              "CrossValidation",
               "TrainingEvaluation",
-              "XGBoostModelEval",
-              "ModelEvaluation"
+              "XGBoostModelEval"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -782,11 +782,11 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CrossValidation",
+                "ModelEvaluation",
                 "XGBoostTraining",
+                "CrossValidation",
                 "TrainingEvaluation",
-                "XGBoostModelEval",
-                "ModelEvaluation"
+                "XGBoostModelEval"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -823,11 +823,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
+            "ModelEvaluation",
             "XGBoostTraining",
+            "CrossValidation",
             "TrainingEvaluation",
-            "XGBoostModelEval",
-            "ModelEvaluation"
+            "XGBoostModelEval"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -887,11 +887,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
+            "ModelEvaluation",
             "XGBoostTraining",
+            "CrossValidation",
             "TrainingEvaluation",
-            "XGBoostModelEval",
-            "ModelEvaluation"
+            "XGBoostModelEval"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -1350,7 +1350,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-12T21:24:54.404904",
+    "validation_timestamp": "2025-08-12T21:45:00.342346",
     "validator_version": "1.0.0"
   }
 }

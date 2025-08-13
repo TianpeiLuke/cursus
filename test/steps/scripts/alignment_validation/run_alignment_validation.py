@@ -67,7 +67,11 @@ class ScriptAlignmentValidator:
             "model_calibration": "model_calibration_contract",
             "model_evaluation_xgb": "model_evaluation_contract",
             "risk_table_mapping": "risk_table_mapping_contract",
-            "tabular_preprocess": "tabular_preprocess_contract"
+            "tabular_preprocess": "tabular_preprocess_contract",
+            "xgboost_model_evaluation": "xgboost_model_eval_contract",
+            "package": "package_contract",
+            "payload": "payload_contract",
+            "tabular_preprocessing": "tabular_preprocessing_contract"
         }
     
     def discover_scripts(self) -> List[str]:
