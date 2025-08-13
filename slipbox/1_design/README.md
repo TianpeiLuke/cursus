@@ -520,6 +520,13 @@ flowchart TD
         StepSpec["Step Specification<br/>Comprehensive step definition<br/>Interface contracts & quality gates"]
     end
     
+    subgraph "🧪 Validation & Test Framework Layer"
+        UniversalTester["Universal Step Builder Test<br/>Comprehensive validation & compliance testing"]
+        UnifiedAlignmentTester["Unified Alignment Tester<br/>Multi-level alignment validation"]
+        ScriptTestability["Script Testability Framework<br/>Testable script architecture & patterns"]
+        StandardizationRules["Standardization Rules<br/>Quality enforcement & governance"]
+    end
+    
     subgraph "🔗 Dependency Resolution Layer"
         DependencyResolver["Dependency Resolver<br/>Intelligent dependency matching<br/>Multi-criteria scoring & semantic matching<br/>(composition pattern)"]
     end
@@ -548,6 +555,20 @@ flowchart TD
     StepBuilder --> StepSpec
     Config --> DependencyResolver
     StepSpec --> DependencyResolver
+    
+    %% Validation layer validates all other layers
+    UniversalTester -.->|"Validates"| StepBuilder
+    UnifiedAlignmentTester -.->|"Validates"| StepSpec
+    UnifiedAlignmentTester -.->|"Validates"| Config
+    UnifiedAlignmentTester -.->|"Validates"| DependencyResolver
+    ScriptTestability -.->|"Validates"| StepBuilder
+    StandardizationRules -.->|"Enforces"| FluentAPI
+    StandardizationRules -.->|"Enforces"| PipelineBuilder
+    StandardizationRules -.->|"Enforces"| SmartProxy
+    StandardizationRules -.->|"Enforces"| StepBuilder
+    StandardizationRules -.->|"Enforces"| Config
+    StandardizationRules -.->|"Enforces"| StepSpec
+    
     DependencyResolver --> RegistryManager
     RegistryManager --> PipelineDAG
     RegistryManager --> BaseSpecs
