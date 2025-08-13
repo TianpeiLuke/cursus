@@ -13,7 +13,8 @@ from pathlib import Path
 # Import the components to be tested
 from src.cursus.steps.scripts.risk_table_mapping import (
     OfflineBinning,
-    main as risk_mapping_main
+    main as risk_mapping_main,
+    internal_main
 )
 
 class TestOfflineBinning(unittest.TestCase):
@@ -92,13 +93,29 @@ class TestMainRiskTableFlow(unittest.TestCase):
             })
             df.to_csv(os.path.join(split_dir, f'{split}_processed_data.csv'), index=False)
 
+        # Create config directory and hyperparameters file
+        config_dir = os.path.join(self.temp_dir, 'config')
+        os.makedirs(config_dir)
+        hyperparams_path = os.path.join(config_dir, 'hyperparameters.json')
+        with open(hyperparams_path, 'w') as f:
+            json.dump(self.hyperparams, f)
+
+        # Create job_args mock
+        from argparse import Namespace
+        job_args = Namespace(job_type='training')
+
+        # Set up input and output paths
+        input_paths = {
+            "data_input": self.input_dir,
+            "config_input": config_dir
+        }
+        output_paths = {
+            "data_output": self.output_dir
+        }
+        environ_vars = {}
+
         # Run main function
-        risk_mapping_main(
-            job_type='training',
-            input_dir=self.input_dir,
-            output_dir=self.output_dir,
-            hyperparams=self.hyperparams
-        )
+        result, binner = risk_mapping_main(input_paths, output_paths, environ_vars, job_args)
 
         # Assertions
         train_path = os.path.join(self.output_dir, 'train', 'train_processed_data.csv')
@@ -134,8 +151,15 @@ class TestMainRiskTableFlow(unittest.TestCase):
         risk_table_dir = os.path.join(self.temp_dir, 'risk_tables')
         os.makedirs(risk_table_dir)
         
-        # Generate risk tables by running training mode first
-        risk_mapping_main(
+        # Create config directory and hyperparameters file
+        config_dir = os.path.join(self.temp_dir, 'config')
+        os.makedirs(config_dir)
+        hyperparams_path = os.path.join(config_dir, 'hyperparameters.json')
+        with open(hyperparams_path, 'w') as f:
+            json.dump(self.hyperparams, f)
+        
+        # Generate risk tables by running training mode first using internal_main
+        internal_main(
             job_type='training',
             input_dir=self.input_dir,
             output_dir=risk_table_dir,
@@ -152,15 +176,24 @@ class TestMainRiskTableFlow(unittest.TestCase):
             'target': [1, 0, 1]
         })
         val_df.to_csv(os.path.join(val_dir, 'validation_processed_data.csv'), index=False)
+
+        # Create job_args mock for validation
+        from argparse import Namespace
+        job_args = Namespace(job_type='validation')
+
+        # Set up input and output paths for validation
+        input_paths = {
+            "data_input": val_input_dir,
+            "config_input": config_dir,
+            "risk_table_input": risk_table_dir
+        }
+        output_paths = {
+            "data_output": self.output_dir
+        }
+        environ_vars = {}
             
         # Run main function in validation mode
-        risk_mapping_main(
-            job_type='validation',
-            input_dir=val_input_dir,
-            output_dir=self.output_dir,
-            hyperparams=self.hyperparams,
-            risk_table_input_dir=risk_table_dir
-        )
+        result, binner = risk_mapping_main(input_paths, output_paths, environ_vars, job_args)
         
         # Assertions
         val_output_path = os.path.join(self.output_dir, 'validation', 'validation_processed_data.csv')

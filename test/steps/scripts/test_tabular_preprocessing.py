@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 # Import the functions to be tested from the updated script
-from src.cursus.steps.scripts.tabular_preprocess import (
+from src.cursus.steps.scripts.tabular_preprocessing import (
     combine_shards,
     _read_file_to_df,
     peek_json_format,
@@ -111,14 +111,24 @@ class TestMainFunction(unittest.TestCase):
         })
         df.to_csv(os.path.join(self.input_data_dir, 'part-00000.csv'), index=False)
         
-        preprocess_main(
-            job_type='training',
-            label_field='label',
-            train_ratio=0.6,
-            test_val_ratio=0.5,
-            input_base_dir=self.input_base_dir,
-            output_dir=self.output_dir
-        )
+        # Create job_args mock
+        from argparse import Namespace
+        job_args = Namespace(job_type='training')
+        
+        # Set up input and output paths
+        input_paths = {
+            "data_input": self.input_data_dir
+        }
+        output_paths = {
+            "data_output": self.output_dir
+        }
+        environ_vars = {
+            "LABEL_FIELD": "label",
+            "TRAIN_RATIO": "0.6",
+            "TEST_VAL_RATIO": "0.5"
+        }
+        
+        result = preprocess_main(input_paths, output_paths, environ_vars, job_args)
         
         # Verify outputs
         train_df = pd.read_csv(os.path.join(self.output_dir, 'train', 'train_processed_data.csv'))
@@ -130,40 +140,69 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(len(val_df), 20)
         self.assertIn("feature2.val", train_df.columns)
         self.assertTrue(pd.api.types.is_integer_dtype(train_df['label']))
+        
+        # Verify return value
+        self.assertIn('train', result)
+        self.assertIn('test', result)
+        self.assertIn('val', result)
 
     def test_main_validation_mode(self):
         """Test main logic for a non-training job_type, ensuring no split occurs."""
         df = pd.DataFrame({"feature1": range(100), "label": range(100)})
         df.to_csv(os.path.join(self.input_data_dir, 'part-00000.csv'), index=False)
         
-        preprocess_main(
-            job_type='validation',
-            label_field='label',
-            train_ratio=0.8,
-            test_val_ratio=0.5,
-            input_base_dir=self.input_base_dir,
-            output_dir=self.output_dir
-        )
+        # Create job_args mock
+        from argparse import Namespace
+        job_args = Namespace(job_type='validation')
+        
+        # Set up input and output paths
+        input_paths = {
+            "data_input": self.input_data_dir
+        }
+        output_paths = {
+            "data_output": self.output_dir
+        }
+        environ_vars = {
+            "LABEL_FIELD": "label",
+            "TRAIN_RATIO": "0.8",
+            "TEST_VAL_RATIO": "0.5"
+        }
+        
+        result = preprocess_main(input_paths, output_paths, environ_vars, job_args)
         
         self.assertTrue(os.path.exists(os.path.join(self.output_dir, 'validation')))
         self.assertFalse(os.path.exists(os.path.join(self.output_dir, 'train')))
         val_df = pd.read_csv(os.path.join(self.output_dir, 'validation', 'validation_processed_data.csv'))
         self.assertEqual(len(val_df), 100)
+        
+        # Verify return value
+        self.assertIn('validation', result)
+        self.assertEqual(len(result), 1)
     
     def test_main_label_not_found_error(self):
         """Test that main raises a RuntimeError if the label field is not found."""
         df = pd.DataFrame({"feature1": [1,2]})
         df.to_csv(os.path.join(self.input_data_dir, 'part-00000.csv'), index=False)
 
+        # Create job_args mock
+        from argparse import Namespace
+        job_args = Namespace(job_type='training')
+        
+        # Set up input and output paths
+        input_paths = {
+            "data_input": self.input_data_dir
+        }
+        output_paths = {
+            "data_output": self.output_dir
+        }
+        environ_vars = {
+            "LABEL_FIELD": "wrong_label",
+            "TRAIN_RATIO": "0.8",
+            "TEST_VAL_RATIO": "0.5"
+        }
+
         with self.assertRaisesRegex(RuntimeError, "Label field 'wrong_label' not found"):
-            preprocess_main(
-                job_type='training',
-                label_field='wrong_label',
-                train_ratio=0.8,
-                test_val_ratio=0.5,
-                input_base_dir=self.input_base_dir,
-                output_dir=self.output_dir
-            )
+            preprocess_main(input_paths, output_paths, environ_vars, job_args)
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

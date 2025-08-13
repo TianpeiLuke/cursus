@@ -15,7 +15,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the functions and main entrypoint from the script to be tested
-from src.cursus.steps.scripts.mims_package import (
+from src.cursus.steps.scripts.package import (
     ensure_directory,
     check_file_exists,
     list_directory_contents,
@@ -135,19 +135,24 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
             tar.add(dummy_model_content_path, arcname="model.pth")
         
         # --- Act ---
-        # Use patch.object to replace the module-level constants with our temporary paths
-        from src.cursus.steps.scripts import mims_package
-        with patch.object(mims_package, 'MODEL_PATH', self.model_path), \
-             patch.object(mims_package, 'SCRIPT_PATH', self.script_path), \
-             patch.object(mims_package, 'OUTPUT_PATH', self.output_path), \
-             patch.object(mims_package, 'WORKING_DIRECTORY', self.working_dir), \
-             patch.object(mims_package, 'CODE_DIRECTORY', self.working_dir / 'code'):
-            
-            package_main()
+        # Set up input and output paths for the new main function signature
+        input_paths = {
+            "model_input": str(self.model_path),
+            "script_input": str(self.script_path)
+        }
+        output_paths = {
+            "output_dir": str(self.output_path)
+        }
+        environ_vars = {
+            "WORKING_DIRECTORY": str(self.working_dir)
+        }
+        
+        result = package_main(input_paths, output_paths, environ_vars)
 
         # --- Assert ---
         final_output_tar = self.output_path / "model.tar.gz"
         self.assertTrue(final_output_tar.exists(), "Final model.tar.gz was not created.")
+        self.assertEqual(result, final_output_tar)
 
         with tarfile.open(final_output_tar, "r:gz") as tar:
             members = tar.getnames()
@@ -165,18 +170,24 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
         self._create_dummy_file(self.script_path / "requirements.txt", "pandas\nscikit-learn")
 
         # --- Act ---
-        from src.cursus.steps.scripts import mims_package
-        with patch.object(mims_package, 'MODEL_PATH', self.model_path), \
-             patch.object(mims_package, 'SCRIPT_PATH', self.script_path), \
-             patch.object(mims_package, 'OUTPUT_PATH', self.output_path), \
-             patch.object(mims_package, 'WORKING_DIRECTORY', self.working_dir), \
-             patch.object(mims_package, 'CODE_DIRECTORY', self.working_dir / 'code'):
-
-            package_main()
+        # Set up input and output paths for the new main function signature
+        input_paths = {
+            "model_input": str(self.model_path),
+            "script_input": str(self.script_path)
+        }
+        output_paths = {
+            "output_dir": str(self.output_path)
+        }
+        environ_vars = {
+            "WORKING_DIRECTORY": str(self.working_dir)
+        }
+        
+        result = package_main(input_paths, output_paths, environ_vars)
 
         # --- Assert ---
         final_output_tar = self.output_path / "model.tar.gz"
         self.assertTrue(final_output_tar.exists())
+        self.assertEqual(result, final_output_tar)
 
         with tarfile.open(final_output_tar, "r:gz") as tar:
             members = tar.getnames()

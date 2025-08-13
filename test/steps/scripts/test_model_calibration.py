@@ -540,13 +540,35 @@ class TestCalibrationMain(unittest.TestCase):
         """Test main function for binary calibration."""
         mock_plot.return_value = str(self.temp_dir / "plot.png")
         
+        # Set up input and output paths
+        input_paths = {
+            "eval_data": str(self.temp_dir / "input")
+        }
+        output_paths = {
+            "calibration": str(self.temp_dir / "calibration"),
+            "metrics": str(self.temp_dir / "metrics"),
+            "calibrated_data": str(self.temp_dir / "calibrated")
+        }
+        environ_vars = {
+            "CALIBRATION_METHOD": "isotonic",
+            "LABEL_FIELD": "label",
+            "SCORE_FIELD": "prob_class_1",
+            "IS_BINARY": "True",
+            "MONOTONIC_CONSTRAINT": "True",
+            "GAM_SPLINES": "10",
+            "ERROR_THRESHOLD": "0.05",
+            "NUM_CLASSES": "2",
+            "SCORE_FIELD_PREFIX": "prob_class_",
+            "MULTICLASS_CATEGORIES": None
+        }
+        
         # Run main function
-        main(self.config)
+        main(input_paths, output_paths, environ_vars)
         
         # Check that output files were created
-        calibration_dir = Path(self.config.output_calibration_path)
-        metrics_dir = Path(self.config.output_metrics_path)
-        calibrated_dir = Path(self.config.output_calibrated_data_path)
+        calibration_dir = Path(output_paths["calibration"])
+        metrics_dir = Path(output_paths["metrics"])
+        calibrated_dir = Path(output_paths["calibrated_data"])
         
         self.assertTrue(calibration_dir.exists())
         self.assertTrue(metrics_dir.exists())
@@ -583,35 +605,44 @@ class TestCalibrationMain(unittest.TestCase):
         )
         
         # Save multiclass data (remove existing binary data first)
-        input_dir = Path(self.config.input_data_path)
+        input_dir = Path(self.temp_dir / "input")
         # Remove existing binary data file
         existing_files = list(input_dir.glob("*.csv"))
         for f in existing_files:
             f.unlink()
         multiclass_df.to_csv(input_dir / "multiclass_data.csv", index=False)
         
-        # Update config for multiclass
-        multiclass_config = CalibrationConfig(
-            input_data_path=str(input_dir),
-            output_calibration_path=str(self.temp_dir / "calibration"),
-            output_metrics_path=str(self.temp_dir / "metrics"),
-            output_calibrated_data_path=str(self.temp_dir / "calibrated"),
-            calibration_method="isotonic",
-            is_binary=False,
-            num_classes=n_classes,
-            multiclass_categories=["0", "1", "2"],
-            score_field_prefix="prob_class_"
-        )
-        
         mock_plot.return_value = str(self.temp_dir / "plot.png")
         
+        # Set up input and output paths
+        input_paths = {
+            "eval_data": str(input_dir)
+        }
+        output_paths = {
+            "calibration": str(self.temp_dir / "calibration"),
+            "metrics": str(self.temp_dir / "metrics"),
+            "calibrated_data": str(self.temp_dir / "calibrated")
+        }
+        environ_vars = {
+            "CALIBRATION_METHOD": "isotonic",
+            "LABEL_FIELD": "label",
+            "SCORE_FIELD": "prob_class_1",
+            "IS_BINARY": "False",
+            "MONOTONIC_CONSTRAINT": "True",
+            "GAM_SPLINES": "10",
+            "ERROR_THRESHOLD": "0.05",
+            "NUM_CLASSES": "3",
+            "SCORE_FIELD_PREFIX": "prob_class_",
+            "MULTICLASS_CATEGORIES": '["0", "1", "2"]'
+        }
+        
         # Run main function
-        main(multiclass_config)
+        main(input_paths, output_paths, environ_vars)
         
         # Check that output files were created
-        calibration_dir = Path(multiclass_config.output_calibration_path)
-        metrics_dir = Path(multiclass_config.output_metrics_path)
-        calibrated_dir = Path(multiclass_config.output_calibrated_data_path)
+        calibration_dir = Path(output_paths["calibration"])
+        metrics_dir = Path(output_paths["metrics"])
+        calibrated_dir = Path(output_paths["calibrated_data"])
         
         self.assertTrue((calibration_dir / "calibration_summary.json").exists())
         self.assertTrue((metrics_dir / "calibration_metrics.json").exists())

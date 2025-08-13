@@ -263,161 +263,105 @@ class TestDummyTrainingMain(unittest.TestCase):
                     arcname = item.relative_to(temp_content_dir)
                     tar.add(item, arcname=arcname)
 
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.HYPERPARAMS_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_OUTPUT_DIR')
-    def test_main_with_hyperparameters(self, mock_output_dir, mock_hyperparams_path, mock_model_path):
+    def test_main_with_hyperparameters(self):
         """Test main function with hyperparameters file present."""
-        # Set up mock paths
-        mock_model_path.__str__ = lambda: str(self.model_path)
-        mock_hyperparams_path.__str__ = lambda: str(self.hyperparams_path)
-        mock_output_dir.__str__ = lambda: str(self.output_dir)
-        
         # Create input files
         self._create_dummy_tar(self.model_path, {"model.pth": "model content"})
         hyperparams_data = {"learning_rate": 0.01, "epochs": 100}
         self.hyperparams_path.write_text(json.dumps(hyperparams_data))
         
-        # Mock Path objects to return our temp paths
-        with patch('src.cursus.steps.scripts.dummy_training.Path') as mock_path_class:
-            def path_side_effect(path_str):
-                if path_str == mock_model_path:
-                    return self.model_path
-                elif path_str == mock_hyperparams_path:
-                    return self.hyperparams_path
-                elif path_str == mock_output_dir:
-                    return self.output_dir
-                else:
-                    return Path(path_str)
-            
-            mock_path_class.side_effect = path_side_effect
-            
-            # Run main function
-            result = main()
-            
-            # Verify success
-            self.assertEqual(result, 0)
-            
-            # Verify output file exists
-            output_file = self.output_dir / "model.tar.gz"
-            self.assertTrue(output_file.exists())
-
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.HYPERPARAMS_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_OUTPUT_DIR')
-    def test_main_without_hyperparameters(self, mock_output_dir, mock_hyperparams_path, mock_model_path):
-        """Test main function without hyperparameters file (fallback mode)."""
-        # Set up mock paths
-        mock_model_path.__str__ = lambda: str(self.model_path)
-        mock_hyperparams_path.__str__ = lambda: str(self.hyperparams_path)
-        mock_output_dir.__str__ = lambda: str(self.output_dir)
+        # Set up input and output paths
+        input_paths = {
+            "model_input": str(self.model_path),
+            "hyperparams_input": str(self.hyperparams_path)
+        }
+        output_paths = {
+            "model_output": str(self.output_dir)
+        }
+        environ_vars = {}
         
+        # Run main function
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify success (should return Path object, not exit code)
+        self.assertIsInstance(result, Path)
+        
+        # Verify output file exists
+        output_file = self.output_dir / "model.tar.gz"
+        self.assertTrue(output_file.exists())
+
+    def test_main_without_hyperparameters(self):
+        """Test main function without hyperparameters file (fallback mode)."""
         # Create only model file (no hyperparameters)
         self._create_dummy_tar(self.model_path, {"model.pth": "model content"})
         # Don't create hyperparameters file
         
-        # Mock Path objects
-        with patch('src.cursus.steps.scripts.dummy_training.Path') as mock_path_class:
-            def path_side_effect(path_str):
-                if path_str == mock_model_path:
-                    return self.model_path
-                elif path_str == mock_hyperparams_path:
-                    return self.hyperparams_path
-                elif path_str == mock_output_dir:
-                    return self.output_dir
-                else:
-                    return Path(path_str)
-            
-            mock_path_class.side_effect = path_side_effect
-            
-            # Run main function
-            result = main()
-            
-            # Verify success
-            self.assertEqual(result, 0)
-            
-            # Verify output file exists
-            output_file = self.output_dir / "model.tar.gz"
-            self.assertTrue(output_file.exists())
-
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.HYPERPARAMS_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_OUTPUT_DIR')
-    def test_main_missing_model_file(self, mock_output_dir, mock_hyperparams_path, mock_model_path):
-        """Test main function with missing model file."""
-        # Set up mock paths
-        mock_model_path.__str__ = lambda: str(self.model_path)
-        mock_hyperparams_path.__str__ = lambda: str(self.hyperparams_path)
-        mock_output_dir.__str__ = lambda: str(self.output_dir)
+        # Set up input and output paths (hyperparams_input points to non-existent file)
+        input_paths = {
+            "model_input": str(self.model_path),
+            "hyperparams_input": str(self.hyperparams_path)  # This file doesn't exist
+        }
+        output_paths = {
+            "model_output": str(self.output_dir)
+        }
+        environ_vars = {}
         
+        # Run main function
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify success (should return Path object)
+        self.assertIsInstance(result, Path)
+        
+        # Verify output file exists
+        output_file = self.output_dir / "model.tar.gz"
+        self.assertTrue(output_file.exists())
+
+    def test_main_missing_model_file(self):
+        """Test main function with missing model file."""
         # Don't create model file
         # Create hyperparameters file
         self.hyperparams_path.write_text('{"test": "value"}')
         
-        # Mock Path objects
-        with patch('src.cursus.steps.scripts.dummy_training.Path') as mock_path_class:
-            def path_side_effect(path_str):
-                if path_str == mock_model_path:
-                    return self.model_path
-                elif path_str == mock_hyperparams_path:
-                    return self.hyperparams_path
-                elif path_str == mock_output_dir:
-                    return self.output_dir
-                else:
-                    return Path(path_str)
-            
-            mock_path_class.side_effect = path_side_effect
-            
-            # Run main function
-            result = main()
-            
-            # Verify failure with appropriate exit code
-            self.assertEqual(result, 1)  # FileNotFoundError
-
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.HYPERPARAMS_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_OUTPUT_DIR')
-    def test_main_invalid_model_file(self, mock_output_dir, mock_hyperparams_path, mock_model_path):
-        """Test main function with invalid model file."""
-        # Set up mock paths
-        mock_model_path.__str__ = lambda: str(self.model_path)
-        mock_hyperparams_path.__str__ = lambda: str(self.hyperparams_path)
-        mock_output_dir.__str__ = lambda: str(self.output_dir)
+        # Set up input and output paths
+        input_paths = {
+            "model_input": str(self.model_path),  # This file doesn't exist
+            "hyperparams_input": str(self.hyperparams_path)
+        }
+        output_paths = {
+            "model_output": str(self.output_dir)
+        }
+        environ_vars = {}
         
+        # Run main function
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify failure with appropriate exit code
+        self.assertEqual(result, 1)  # FileNotFoundError
+
+    def test_main_invalid_model_file(self):
+        """Test main function with invalid model file."""
         # Create invalid model file (not a tar)
         self.model_path.write_text("not a tar file")
         
-        # Mock Path objects
-        with patch('src.cursus.steps.scripts.dummy_training.Path') as mock_path_class:
-            def path_side_effect(path_str):
-                if path_str == mock_model_path:
-                    return self.model_path
-                elif path_str == mock_hyperparams_path:
-                    return self.hyperparams_path
-                elif path_str == mock_output_dir:
-                    return self.output_dir
-                else:
-                    return Path(path_str)
-            
-            mock_path_class.side_effect = path_side_effect
-            
-            # Run main function
-            result = main()
-            
-            # Verify failure with appropriate exit code
-            self.assertEqual(result, 2)  # ValueError
-
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.HYPERPARAMS_INPUT_PATH')
-    @patch('src.cursus.steps.scripts.dummy_training.MODEL_OUTPUT_DIR')
-    @patch('src.cursus.steps.scripts.dummy_training.process_model_with_hyperparameters')
-    def test_main_unexpected_error(self, mock_process, mock_output_dir, mock_hyperparams_path, mock_model_path):
-        """Test main function with unexpected error."""
-        # Set up mock paths
-        mock_model_path.__str__ = lambda: str(self.model_path)
-        mock_hyperparams_path.__str__ = lambda: str(self.hyperparams_path)
-        mock_output_dir.__str__ = lambda: str(self.output_dir)
+        # Set up input and output paths
+        input_paths = {
+            "model_input": str(self.model_path),
+            "hyperparams_input": str(self.hyperparams_path)
+        }
+        output_paths = {
+            "model_output": str(self.output_dir)
+        }
+        environ_vars = {}
         
+        # Run main function
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify failure with appropriate exit code
+        self.assertEqual(result, 2)  # ValueError
+
+    @patch('src.cursus.steps.scripts.dummy_training.process_model_with_hyperparameters')
+    def test_main_unexpected_error(self, mock_process):
+        """Test main function with unexpected error."""
         # Create input files
         self._create_dummy_tar(self.model_path, {"model.pth": "content"})
         self.hyperparams_path.write_text('{"test": "value"}')
@@ -425,25 +369,21 @@ class TestDummyTrainingMain(unittest.TestCase):
         # Mock process function to raise unexpected error
         mock_process.side_effect = RuntimeError("Unexpected error")
         
-        # Mock Path objects
-        with patch('src.cursus.steps.scripts.dummy_training.Path') as mock_path_class:
-            def path_side_effect(path_str):
-                if path_str == mock_model_path:
-                    return self.model_path
-                elif path_str == mock_hyperparams_path:
-                    return self.hyperparams_path
-                elif path_str == mock_output_dir:
-                    return self.output_dir
-                else:
-                    return Path(path_str)
-            
-            mock_path_class.side_effect = path_side_effect
-            
-            # Run main function
-            result = main()
-            
-            # Verify failure with appropriate exit code
-            self.assertEqual(result, 3)  # RuntimeError
+        # Set up input and output paths
+        input_paths = {
+            "model_input": str(self.model_path),
+            "hyperparams_input": str(self.hyperparams_path)
+        }
+        output_paths = {
+            "model_output": str(self.output_dir)
+        }
+        environ_vars = {}
+        
+        # Run main function
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify failure with appropriate exit code
+        self.assertEqual(result, 3)  # RuntimeError
 
 
 if __name__ == '__main__':

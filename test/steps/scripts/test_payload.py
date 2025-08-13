@@ -16,7 +16,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the functions and main entrypoint from the script to be tested
-from src.cursus.steps.scripts.mims_payload import (
+from src.cursus.steps.scripts.payload import (
     VariableType,
     create_model_variable_list,
     extract_hyperparameters_from_tarball,
@@ -110,77 +110,73 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         }
         self._create_hyperparameters_tarball(test_hyperparams)
         
-        # Patch the module-level constants to use our test directories
-        with patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'WORKING_DIRECTORY', Path(str(self.working_dir))):
-            
-            # Extract the hyperparameters
-            hyperparams = extract_hyperparameters_from_tarball()
-            
-            # Verify the extracted hyperparameters
-            self.assertEqual(hyperparams["pipeline_name"], "test_pipeline")
-            self.assertEqual(hyperparams["full_field_list"], ["id", "feature1", "category1", "label"])
-            self.assertEqual(hyperparams["tab_field_list"], ["feature1"])
+        # Extract the hyperparameters using the new function signature
+        hyperparams = extract_hyperparameters_from_tarball(self.input_model_dir, self.working_dir)
+        
+        # Verify the extracted hyperparameters
+        self.assertEqual(hyperparams["pipeline_name"], "test_pipeline")
+        self.assertEqual(hyperparams["full_field_list"], ["id", "feature1", "category1", "label"])
+        self.assertEqual(hyperparams["tab_field_list"], ["feature1"])
 
     def test_get_environment_content_types(self):
         """Test getting content types from environment variables."""
         # Test default value
-        with patch.dict('os.environ', {}, clear=True):
-            content_types = get_environment_content_types()
-            self.assertEqual(content_types, ["application/json"])
+        environ_vars = {}
+        content_types = get_environment_content_types(environ_vars)
+        self.assertEqual(content_types, ["application/json"])
         
         # Test custom value
-        with patch.dict('os.environ', {"CONTENT_TYPES": "text/csv,application/json"}, clear=True):
-            content_types = get_environment_content_types()
-            self.assertEqual(content_types, ["text/csv", "application/json"])
+        environ_vars = {"CONTENT_TYPES": "text/csv,application/json"}
+        content_types = get_environment_content_types(environ_vars)
+        self.assertEqual(content_types, ["text/csv", "application/json"])
 
     def test_get_environment_default_numeric_value(self):
         """Test getting default numeric value from environment variables."""
         # Test default value
-        with patch.dict('os.environ', {}, clear=True):
-            value = get_environment_default_numeric_value()
-            self.assertEqual(value, 0.0)
+        environ_vars = {}
+        value = get_environment_default_numeric_value(environ_vars)
+        self.assertEqual(value, 0.0)
         
         # Test custom value
-        with patch.dict('os.environ', {"DEFAULT_NUMERIC_VALUE": "42.5"}, clear=True):
-            value = get_environment_default_numeric_value()
-            self.assertEqual(value, 42.5)
+        environ_vars = {"DEFAULT_NUMERIC_VALUE": "42.5"}
+        value = get_environment_default_numeric_value(environ_vars)
+        self.assertEqual(value, 42.5)
         
         # Test invalid value
-        with patch.dict('os.environ', {"DEFAULT_NUMERIC_VALUE": "not_a_number"}, clear=True):
-            value = get_environment_default_numeric_value()
-            self.assertEqual(value, 0.0)  # Should fall back to default
+        environ_vars = {"DEFAULT_NUMERIC_VALUE": "not_a_number"}
+        value = get_environment_default_numeric_value(environ_vars)
+        self.assertEqual(value, 0.0)  # Should fall back to default
 
     def test_get_environment_default_text_value(self):
         """Test getting default text value from environment variables."""
         # Test default value
-        with patch.dict('os.environ', {}, clear=True):
-            value = get_environment_default_text_value()
-            self.assertEqual(value, "DEFAULT_TEXT")
+        environ_vars = {}
+        value = get_environment_default_text_value(environ_vars)
+        self.assertEqual(value, "DEFAULT_TEXT")
         
         # Test custom value
-        with patch.dict('os.environ', {"DEFAULT_TEXT_VALUE": "CUSTOM_TEXT"}, clear=True):
-            value = get_environment_default_text_value()
-            self.assertEqual(value, "CUSTOM_TEXT")
+        environ_vars = {"DEFAULT_TEXT_VALUE": "CUSTOM_TEXT"}
+        value = get_environment_default_text_value(environ_vars)
+        self.assertEqual(value, "CUSTOM_TEXT")
 
     def test_get_environment_special_fields(self):
         """Test getting special field values from environment variables."""
         # Test empty case
-        with patch.dict('os.environ', {}, clear=True):
-            special_fields = get_environment_special_fields()
-            self.assertEqual(special_fields, {})
+        environ_vars = {}
+        special_fields = get_environment_special_fields(environ_vars)
+        self.assertEqual(special_fields, {})
         
         # Test with special fields
-        with patch.dict('os.environ', {
+        environ_vars = {
             "SPECIAL_FIELD_email": "user@example.com",
             "SPECIAL_FIELD_timestamp": "{timestamp}",
             "REGULAR_FIELD": "should_be_ignored"
-        }, clear=True):
-            special_fields = get_environment_special_fields()
-            self.assertEqual(len(special_fields), 2)
-            self.assertEqual(special_fields["email"], "user@example.com")
-            self.assertEqual(special_fields["timestamp"], "{timestamp}")
-            self.assertNotIn("REGULAR_FIELD", special_fields)
+        }
+        special_fields = get_environment_special_fields(environ_vars)
+        self.assertEqual(len(special_fields), 2)
+        self.assertEqual(special_fields["email"], "user@example.com")
+        self.assertEqual(special_fields["timestamp"], "{timestamp}")
+        self.assertNotIn("REGULAR_FIELD", special_fields)
 
     def test_get_field_default_value(self):
         """Test getting default value for a field based on its type."""
@@ -388,50 +384,59 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
         }
         self._create_hyperparameters_tarball(test_hyperparams)
         
-        # Set up environment variables
-        env_vars = {
+        # Set up input and output paths
+        input_paths = {
+            "model_input": str(self.input_model_dir)
+        }
+        output_paths = {
+            "output_dir": str(self.output_dir)
+        }
+        environ_vars = {
             "CONTENT_TYPES": "text/csv,application/json",
             "DEFAULT_NUMERIC_VALUE": "42.0",
             "DEFAULT_TEXT_VALUE": "TEST_TEXT",
-            "SPECIAL_FIELD_category1": "SPECIAL_CATEGORY"
+            "SPECIAL_FIELD_category1": "SPECIAL_CATEGORY",
+            "WORKING_DIRECTORY": str(self.working_dir)
         }
         
-        # Patch the constants and environment variables
-        with patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'OUTPUT_DIR', Path(str(self.output_dir))), \
-             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'PAYLOAD_SAMPLE_DIR', Path(str(self.payload_sample_dir))), \
-             patch.object(sys.modules['src.cursus.steps.scripts.mims_payload'], 'WORKING_DIRECTORY', Path(str(self.working_dir))), \
-             patch.dict('os.environ', env_vars, clear=True):
-            
-            # Run the main function
-            payload_main()
-            
-            # Check that output directories were created
-            self.assertTrue(os.path.exists(self.payload_sample_dir))
-            
-            # Check that payload files were created
-            csv_files = list(self.payload_sample_dir.glob("*csv*"))
-            json_files = list(self.payload_sample_dir.glob("*json*"))
-            self.assertGreaterEqual(len(csv_files), 1)
-            self.assertGreaterEqual(len(json_files), 1)
-            
-            # Check that payload archive was created
-            archive_path = self.output_dir / "payload.tar.gz"
-            self.assertTrue(os.path.exists(archive_path))
+        # Run the main function
+        result = payload_main(input_paths, output_paths, environ_vars)
+        
+        # The script creates payload_sample_dir in the working directory, not output directory
+        actual_payload_sample_dir = self.working_dir / "payload_sample"
+        
+        # Check that output directories were created
+        self.assertTrue(os.path.exists(actual_payload_sample_dir))
+        
+        # Check that payload files were created
+        csv_files = list(actual_payload_sample_dir.glob("*csv*"))
+        json_files = list(actual_payload_sample_dir.glob("*json*"))
+        self.assertGreaterEqual(len(csv_files), 1)
+        self.assertGreaterEqual(len(json_files), 1)
+        
+        # Check that payload archive was created
+        archive_path = self.output_dir / "payload.tar.gz"
+        self.assertTrue(os.path.exists(archive_path))
+        self.assertEqual(result, str(archive_path))
 
     def test_main_flow_missing_model_tarball(self):
         """Test the main flow when the model.tar.gz file is missing."""
         # Don't create the model.tar.gz file
         
-        # Patch the constants
-        with patch('src.cursus.steps.scripts.mims_payload.INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch('src.cursus.steps.scripts.mims_payload.OUTPUT_DIR', str(self.output_dir)), \
-             patch('src.cursus.steps.scripts.mims_payload.PAYLOAD_SAMPLE_DIR', str(self.payload_sample_dir)), \
-             patch('src.cursus.steps.scripts.mims_payload.WORKING_DIRECTORY', str(self.working_dir)):
-            
-            # Run the main function and expect an exception
-            with self.assertRaises(FileNotFoundError):
-                payload_main()
+        # Set up input and output paths
+        input_paths = {
+            "model_input": str(self.input_model_dir)
+        }
+        output_paths = {
+            "output_dir": str(self.output_dir)
+        }
+        environ_vars = {
+            "WORKING_DIRECTORY": str(self.working_dir)
+        }
+        
+        # Run the main function and expect an exception
+        with self.assertRaises(FileNotFoundError):
+            payload_main(input_paths, output_paths, environ_vars)
 
     def test_main_flow_missing_hyperparameters(self):
         """Test the main flow when hyperparameters.json is missing from the tarball."""
@@ -443,15 +448,20 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
             empty_file.touch()
             tar.add(empty_file, arcname="empty.txt")
         
-        # Patch the constants
-        with patch('src.cursus.steps.scripts.mims_payload.INPUT_MODEL_DIR', str(self.input_model_dir)), \
-             patch('src.cursus.steps.scripts.mims_payload.OUTPUT_DIR', str(self.output_dir)), \
-             patch('src.cursus.steps.scripts.mims_payload.PAYLOAD_SAMPLE_DIR', str(self.payload_sample_dir)), \
-             patch('src.cursus.steps.scripts.mims_payload.WORKING_DIRECTORY', str(self.working_dir)):
-            
-            # Run the main function and expect an exception
-            with self.assertRaises(FileNotFoundError):
-                payload_main()
+        # Set up input and output paths
+        input_paths = {
+            "model_input": str(self.input_model_dir)
+        }
+        output_paths = {
+            "output_dir": str(self.output_dir)
+        }
+        environ_vars = {
+            "WORKING_DIRECTORY": str(self.working_dir)
+        }
+        
+        # Run the main function and expect an exception
+        with self.assertRaises(FileNotFoundError):
+            payload_main(input_paths, output_paths, environ_vars)
 
 
 if __name__ == '__main__':

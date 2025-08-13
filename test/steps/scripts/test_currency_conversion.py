@@ -420,14 +420,11 @@ class TestCurrencyConversionIntegration(unittest.TestCase):
             df.to_csv(split_dir / f"{split}_processed_data.csv", index=False)
             df.to_csv(split_dir / f"{split}_full_data.csv", index=False)
 
-    @patch('src.cursus.steps.scripts.currency_conversion.Path')
-    @patch('src.cursus.steps.scripts.currency_conversion.argparse.ArgumentParser')
-    def test_main_per_split_mode_integration(self, mock_arg_parser, mock_path):
+    def test_main_per_split_mode_integration(self):
         """Test main function in per_split mode with realistic data."""
         self._create_realistic_test_data()
         
-        # Mock paths and arguments
-        mock_path.side_effect = [self.input_dir, self.output_dir]
+        # Create mock arguments
         mock_args = MagicMock(
             job_type="training",
             mode="per_split",
@@ -440,16 +437,13 @@ class TestCurrencyConversionIntegration(unittest.TestCase):
             train_ratio=0.7,
             test_val_ratio=0.5
         )
-        mock_arg_parser.return_value.parse_args.return_value = mock_args
+
+        # Set up input and output paths
+        input_paths = {"data_input": str(self.input_dir)}
+        output_paths = {"data_output": str(self.output_dir)}
 
         # Run main function
-        with patch.dict(os.environ, self.mock_env):
-            main(
-                mock_args,
-                json.loads(self.mock_env["CURRENCY_CONVERSION_VARS"]),
-                json.loads(self.mock_env["CURRENCY_CONVERSION_DICT"]),
-                json.loads(self.mock_env["MARKETPLACE_INFO"])
-            )
+        result = main(input_paths, output_paths, self.mock_env, mock_args)
 
         # Verify output files exist
         for split in ["train", "test", "val"]:
@@ -464,13 +458,10 @@ class TestCurrencyConversionIntegration(unittest.TestCase):
             self.assertGreater(len(df_out), 0, f"Empty output file for {split}")
             self.assertTrue(all(col in df_out.columns for col in ["price", "cost", "label"]))
 
-    @patch('src.cursus.steps.scripts.currency_conversion.Path')
-    @patch('src.cursus.steps.scripts.currency_conversion.argparse.ArgumentParser')
-    def test_main_split_after_conversion_mode(self, mock_arg_parser, mock_path):
+    def test_main_split_after_conversion_mode(self):
         """Test main function in split_after_conversion mode."""
         self._create_realistic_test_data()
         
-        mock_path.side_effect = [self.input_dir, self.output_dir]
         mock_args = MagicMock(
             job_type="training",
             mode="split_after_conversion",
@@ -483,15 +474,12 @@ class TestCurrencyConversionIntegration(unittest.TestCase):
             train_ratio=0.7,
             test_val_ratio=0.5
         )
-        mock_arg_parser.return_value.parse_args.return_value = mock_args
 
-        with patch.dict(os.environ, self.mock_env):
-            main(
-                mock_args,
-                json.loads(self.mock_env["CURRENCY_CONVERSION_VARS"]),
-                json.loads(self.mock_env["CURRENCY_CONVERSION_DICT"]),
-                json.loads(self.mock_env["MARKETPLACE_INFO"])
-            )
+        # Set up input and output paths
+        input_paths = {"data_input": str(self.input_dir)}
+        output_paths = {"data_output": str(self.output_dir)}
+
+        result = main(input_paths, output_paths, self.mock_env, mock_args)
 
         # Verify outputs
         for split in ["train", "test", "val"]:
@@ -501,13 +489,10 @@ class TestCurrencyConversionIntegration(unittest.TestCase):
             df_out = pd.read_csv(processed_file)
             self.assertGreater(len(df_out), 0)
 
-    @patch('src.cursus.steps.scripts.currency_conversion.Path')
-    @patch('src.cursus.steps.scripts.currency_conversion.argparse.ArgumentParser')
-    def test_main_conversion_disabled(self, mock_arg_parser, mock_path):
+    def test_main_conversion_disabled(self):
         """Test main function with conversion disabled."""
         self._create_realistic_test_data()
         
-        mock_path.side_effect = [self.input_dir, self.output_dir]
         mock_args = MagicMock(
             job_type="training",
             mode="per_split",
@@ -520,15 +505,18 @@ class TestCurrencyConversionIntegration(unittest.TestCase):
             train_ratio=0.7,
             test_val_ratio=0.5
         )
-        mock_arg_parser.return_value.parse_args.return_value = mock_args
 
-        with patch.dict(os.environ, self.mock_env):
-            main(
-                mock_args,
-                [],  # Empty conversion vars
-                {},  # Empty conversion dict
-                {}   # Empty marketplace info
-            )
+        # Set up input and output paths
+        input_paths = {"data_input": str(self.input_dir)}
+        output_paths = {"data_output": str(self.output_dir)}
+
+        # Create environment with empty conversion settings
+        empty_env = self.mock_env.copy()
+        empty_env["CURRENCY_CONVERSION_VARS"] = "[]"
+        empty_env["CURRENCY_CONVERSION_DICT"] = "{}"
+        empty_env["MARKETPLACE_INFO"] = "{}"
+
+        result = main(input_paths, output_paths, empty_env, mock_args)
 
         # Verify files exist and data is unchanged
         train_file = self.output_dir / "train" / "train_processed_data.csv"
