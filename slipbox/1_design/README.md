@@ -294,6 +294,12 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Early detection of data compatibility issues, automated script functionality validation, testing with real production data, comprehensive reporting
 - **Strategic Value**: Addresses critical gaps in pipeline validation by ensuring both script integration and individual functionality work correctly in production environments
 
+#### **[Script Integration Testing System Design](script_integration_testing_system_design.md)** - Comprehensive Pipeline Script Testing Framework
+- **Purpose**: Two-tier integrated testing system for validating both data flow compatibility between scripts and individual script functionality
+- **Key Features**: Pipeline data flow testing, script unit testing, S3 integration for real pipeline data, comprehensive CLI interface, YAML-based configuration
+- **Benefits**: Early detection of data compatibility issues, automated script functionality validation, testing with real production data, comprehensive reporting
+- **Strategic Value**: Addresses critical gaps in pipeline validation by ensuring both script integration and individual functionality work correctly in production environments
+
 ### 🔍 Step Builder Pattern Analysis
 
 #### **[Processing Step Builder Patterns](processing_step_builder_patterns.md)** - Processing Step Implementation Analysis
