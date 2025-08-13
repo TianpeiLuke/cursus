@@ -14,6 +14,222 @@
           "source": "builder"
         },
         "recommendation": "Argument --job-type is provided by builder - no action needed"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "testability_parameters": [
+            "output_paths",
+            "job_args",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_env_access",
+        "message": "Helper functions use direct environment access - consider parameter passing",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "helper_accesses": [
+            {
+              "function": null,
+              "variable": "ID_FIELD",
+              "line_number": 436
+            },
+            {
+              "function": null,
+              "variable": "LABEL_FIELD",
+              "line_number": 437
+            }
+          ]
+        },
+        "recommendation": "Pass environment variables as parameters to helper functions instead of direct access"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 380
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 380
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 381
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 381
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 382
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 382
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 383
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 383
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 386
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 387
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "job_args",
+          "current_pattern": "job_args.job_type",
+          "line_number": 390
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 458
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "xgboost_model_evaluation"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'None' accesses environment directly",
+        "details": {
+          "script": "xgboost_model_evaluation",
+          "function": null,
+          "env_variables": [
+            "ID_FIELD",
+            "LABEL_FIELD"
+          ],
+          "line_numbers": [
+            436,
+            437
+          ]
+        },
+        "recommendation": "Refactor 'None' to accept environment variables as parameters"
       }
     ],
     "script_analysis": {
@@ -266,11 +482,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "PyTorchTraining",
-              "PyTorchModel",
               "XGBoostModel",
               "DummyTraining",
-              "XGBoostTraining"
+              "XGBoostTraining",
+              "PyTorchModel",
+              "PyTorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -280,8 +496,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
               "CradleDataLoading",
+              "RiskTableMapping",
               "TabularPreprocessing",
               "CurrencyConversion"
             ],
@@ -317,11 +533,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "PyTorchTraining",
-              "PyTorchModel",
               "XGBoostModel",
               "DummyTraining",
-              "XGBoostTraining"
+              "XGBoostTraining",
+              "PyTorchModel",
+              "PyTorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -331,8 +547,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
               "CradleDataLoading",
+              "RiskTableMapping",
               "TabularPreprocessing",
               "CurrencyConversion"
             ],
@@ -367,11 +583,11 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "PyTorchTraining",
-                "PyTorchModel",
                 "XGBoostModel",
                 "DummyTraining",
-                "XGBoostTraining"
+                "XGBoostTraining",
+                "PyTorchModel",
+                "PyTorchTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -381,8 +597,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "RiskTableMapping",
                 "CradleDataLoading",
+                "RiskTableMapping",
                 "TabularPreprocessing",
                 "CurrencyConversion"
               ],
@@ -414,11 +630,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "PyTorchTraining",
-            "PyTorchModel",
             "XGBoostModel",
             "DummyTraining",
-            "XGBoostTraining"
+            "XGBoostTraining",
+            "PyTorchModel",
+            "PyTorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -428,8 +644,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
             "CradleDataLoading",
+            "RiskTableMapping",
             "TabularPreprocessing",
             "CurrencyConversion"
           ],
@@ -484,11 +700,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "PyTorchTraining",
-            "PyTorchModel",
             "XGBoostModel",
             "DummyTraining",
-            "XGBoostTraining"
+            "XGBoostTraining",
+            "PyTorchModel",
+            "PyTorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -498,8 +714,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
             "CradleDataLoading",
+            "RiskTableMapping",
             "TabularPreprocessing",
             "CurrencyConversion"
           ],
@@ -546,43 +762,218 @@
       "class_definitions": [
         {
           "class_name": "XGBoostModelEvalStepBuilder",
-          "line_number": 27
+          "line_number": 27,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 35
+          "line_number": 35,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 75
+          "line_number": 75,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_create_processor",
-          "line_number": 111
+          "line_number": 111,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 134
+          "line_number": 134,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 156
+          "line_number": 156,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 209
+          "line_number": 209,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 264
+          "line_number": 264,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "create_step",
-          "line_number": 284
+          "line_number": 284,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         }
-      ]
+      ],
+      "import_statements": [
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 2
+        },
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 3
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.xgboost",
+          "name": "XGBoostProcessor",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_xgboost_model_eval_step",
+          "name": "XGBoostModelEvalConfig",
+          "alias": null,
+          "line_number": 9
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.registry_manager",
+          "name": "RegistryManager",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.dependency_resolver",
+          "name": "UnifiedDependencyResolver",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "specs.xgboost_model_eval_spec",
+          "name": "MODEL_EVAL_SPEC",
+          "alias": null,
+          "line_number": 17
+        }
+      ],
+      "config_class_usage": []
     },
     "config_analysis": {
       "class_name": "xgboost_model_evaluationConfig",
@@ -597,7 +988,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py",
     "contract_mapping": "xgboost_model_evaluation_contract",
-    "validation_timestamp": "2025-08-12T20:19:49.842481",
+    "validation_timestamp": "2025-08-12T21:24:54.567333",
     "validator_version": "1.0.0"
   }
 }

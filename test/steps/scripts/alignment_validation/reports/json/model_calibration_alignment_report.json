@@ -13,6 +13,410 @@
           "script": "model_calibration"
         },
         "recommendation": "Provide default value when accessing optional variable MULTICLASS_CATEGORIES"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "model_calibration",
+          "testability_parameters": [
+            "output_paths",
+            "job_args",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_env_access",
+        "message": "Helper functions use direct environment access - consider parameter passing",
+        "details": {
+          "script": "model_calibration",
+          "helper_accesses": [
+            {
+              "function": "from_env",
+              "variable": "IS_BINARY",
+              "line_number": 97
+            },
+            {
+              "function": "from_env",
+              "variable": "MULTICLASS_CATEGORIES",
+              "line_number": 98
+            },
+            {
+              "function": "from_env",
+              "variable": "CALIBRATION_METHOD",
+              "line_number": 112
+            },
+            {
+              "function": "from_env",
+              "variable": "LABEL_FIELD",
+              "line_number": 113
+            },
+            {
+              "function": "from_env",
+              "variable": "SCORE_FIELD",
+              "line_number": 114
+            },
+            {
+              "function": "from_env",
+              "variable": "IS_BINARY",
+              "line_number": 115
+            },
+            {
+              "function": "from_env",
+              "variable": "MONOTONIC_CONSTRAINT",
+              "line_number": 116
+            },
+            {
+              "function": "from_env",
+              "variable": "GAM_SPLINES",
+              "line_number": 117
+            },
+            {
+              "function": "from_env",
+              "variable": "ERROR_THRESHOLD",
+              "line_number": 118
+            },
+            {
+              "function": "from_env",
+              "variable": "NUM_CLASSES",
+              "line_number": 119
+            },
+            {
+              "function": "from_env",
+              "variable": "SCORE_FIELD_PREFIX",
+              "line_number": 120
+            },
+            {
+              "function": null,
+              "variable": "CALIBRATION_METHOD",
+              "line_number": 984
+            },
+            {
+              "function": null,
+              "variable": "LABEL_FIELD",
+              "line_number": 985
+            },
+            {
+              "function": null,
+              "variable": "SCORE_FIELD",
+              "line_number": 986
+            },
+            {
+              "function": null,
+              "variable": "IS_BINARY",
+              "line_number": 987
+            },
+            {
+              "function": null,
+              "variable": "MONOTONIC_CONSTRAINT",
+              "line_number": 988
+            },
+            {
+              "function": null,
+              "variable": "GAM_SPLINES",
+              "line_number": 989
+            },
+            {
+              "function": null,
+              "variable": "ERROR_THRESHOLD",
+              "line_number": 990
+            },
+            {
+              "function": null,
+              "variable": "NUM_CLASSES",
+              "line_number": 991
+            },
+            {
+              "function": null,
+              "variable": "SCORE_FIELD_PREFIX",
+              "line_number": 992
+            },
+            {
+              "function": null,
+              "variable": "MULTICLASS_CATEGORIES",
+              "line_number": 993
+            }
+          ]
+        },
+        "recommendation": "Pass environment variables as parameters to helper functions instead of direct access"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "model_calibration"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_parameter_usage",
+        "message": "Testability parameters defined but not used: job_args",
+        "details": {
+          "script": "model_calibration",
+          "unused_parameters": [
+            "job_args"
+          ],
+          "used_parameters": [
+            "output_paths",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "Either use the testability parameters or remove them from function signature"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 738
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 739
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 740
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 741
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 742
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 743
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 744
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 745
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 746
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 747
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 748
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 749
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 750
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 751
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "model_calibration"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'from_env' accesses environment directly",
+        "details": {
+          "script": "model_calibration",
+          "function": "from_env",
+          "env_variables": [
+            "IS_BINARY",
+            "MULTICLASS_CATEGORIES",
+            "CALIBRATION_METHOD",
+            "LABEL_FIELD",
+            "SCORE_FIELD",
+            "IS_BINARY",
+            "MONOTONIC_CONSTRAINT",
+            "GAM_SPLINES",
+            "ERROR_THRESHOLD",
+            "NUM_CLASSES",
+            "SCORE_FIELD_PREFIX"
+          ],
+          "line_numbers": [
+            97,
+            98,
+            112,
+            113,
+            114,
+            115,
+            116,
+            117,
+            118,
+            119,
+            120
+          ]
+        },
+        "recommendation": "Refactor 'from_env' to accept environment variables as parameters"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'None' accesses environment directly",
+        "details": {
+          "script": "model_calibration",
+          "function": null,
+          "env_variables": [
+            "CALIBRATION_METHOD",
+            "LABEL_FIELD",
+            "SCORE_FIELD",
+            "IS_BINARY",
+            "MONOTONIC_CONSTRAINT",
+            "GAM_SPLINES",
+            "ERROR_THRESHOLD",
+            "NUM_CLASSES",
+            "SCORE_FIELD_PREFIX",
+            "MULTICLASS_CATEGORIES"
+          ],
+          "line_numbers": [
+            984,
+            985,
+            986,
+            987,
+            988,
+            989,
+            990,
+            991,
+            992,
+            993
+          ]
+        },
+        "recommendation": "Refactor 'None' to accept environment variables as parameters"
       }
     ],
     "script_analysis": {
@@ -290,9 +694,9 @@
             "required": true,
             "compatible_sources": [
               "CrossValidation",
-              "XGBoostModelEval",
               "XGBoostTraining",
               "TrainingEvaluation",
+              "XGBoostModelEval",
               "ModelEvaluation"
             ],
             "data_type": "S3Uri",
@@ -335,9 +739,9 @@
             "required": true,
             "compatible_sources": [
               "CrossValidation",
-              "XGBoostModelEval",
               "XGBoostTraining",
               "TrainingEvaluation",
+              "XGBoostModelEval",
               "ModelEvaluation"
             ],
             "data_type": "S3Uri",
@@ -379,9 +783,9 @@
               "required": true,
               "compatible_sources": [
                 "CrossValidation",
-                "XGBoostModelEval",
                 "XGBoostTraining",
                 "TrainingEvaluation",
+                "XGBoostModelEval",
                 "ModelEvaluation"
               ],
               "data_type": "S3Uri",
@@ -420,9 +824,9 @@
           "required": true,
           "compatible_sources": [
             "CrossValidation",
-            "XGBoostModelEval",
             "XGBoostTraining",
             "TrainingEvaluation",
+            "XGBoostModelEval",
             "ModelEvaluation"
           ],
           "data_type": "S3Uri",
@@ -484,9 +888,9 @@
           "required": true,
           "compatible_sources": [
             "CrossValidation",
-            "XGBoostModelEval",
             "XGBoostTraining",
             "TrainingEvaluation",
+            "XGBoostModelEval",
             "ModelEvaluation"
           ],
           "data_type": "S3Uri",
@@ -551,63 +955,275 @@
       "class_definitions": [
         {
           "class_name": "ModelCalibrationStepBuilder",
-          "line_number": 26
+          "line_number": 26,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 35
+          "line_number": 35,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 71
+          "line_number": 71,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_is_pipeline_variable",
-          "line_number": 120
+          "line_number": 120,
+          "args": [
+            "self",
+            "value"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_normalize_s3_uri",
-          "line_number": 131
+          "line_number": 131,
+          "args": [
+            "self",
+            "uri"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_s3_directory_path",
-          "line_number": 160
+          "line_number": 160,
+          "args": [
+            "self",
+            "s3_uri"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_validate_s3_uri",
-          "line_number": 189
+          "line_number": 189,
+          "args": [
+            "self",
+            "uri"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_detect_circular_references",
-          "line_number": 219
+          "line_number": 219,
+          "args": [
+            "self",
+            "var",
+            "visited"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 255
+          "line_number": 255,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 287
+          "line_number": 287,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 347
+          "line_number": 347,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_processor",
-          "line_number": 402
+          "line_number": 402,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 425
+          "line_number": 425,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "create_step",
-          "line_number": 436
+          "line_number": 436,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         }
-      ]
+      ],
+      "import_statements": [
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 9
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Union",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Set",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 14
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 15
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.entities",
+          "name": "PipelineVariable",
+          "alias": null,
+          "line_number": 16
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 18
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_model_calibration_step",
+          "name": "ModelCalibrationConfig",
+          "alias": null,
+          "line_number": 19
+        },
+        {
+          "type": "from_import",
+          "module": "specs.model_calibration_spec",
+          "name": "MODEL_CALIBRATION_SPEC",
+          "alias": null,
+          "line_number": 20
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 21
+        },
+        {
+          "type": "import",
+          "module": "json",
+          "alias": null,
+          "line_number": 282
+        }
+      ],
+      "config_class_usage": []
     },
     "config_analysis": {
       "class_name": "ModelCalibrationConfig",
@@ -734,7 +1350,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-12T20:19:49.698348",
+    "validation_timestamp": "2025-08-12T21:24:54.404904",
     "validator_version": "1.0.0"
   }
 }

@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: package</h2>
-        <p>Generated: 2025-08-12T20:19:49.715979</p>
+        <p>Generated: 2025-08-12T21:24:54.431597</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>5</h3>
+            <h3>10</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -47,7 +47,7 @@
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>3</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -67,6 +67,31 @@
                 <div class="issue info">
                     <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/calibration
                     <br><em>Recommendation: Either read /opt/ml/processing/input/calibration in script or remove from contract inputs</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Main function follows testability pattern with all required parameters
+                    <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
+                    <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args
+                    <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
+                    <br><em>Recommendation: Add container detection to support both local and container execution</em>
                 </div>
                 
             </div>
@@ -110,7 +135,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py</p>
         <p><strong>Contract Mapping:</strong> package_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-12T20:19:49.715979</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T21:24:54.431597</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

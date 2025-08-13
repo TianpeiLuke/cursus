@@ -14,6 +14,169 @@
           "source": "builder"
         },
         "recommendation": "Argument --job-type is provided by builder - no action needed"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "tabular_preprocessing",
+          "testability_parameters": [
+            "output_paths",
+            "job_args",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_env_access",
+        "message": "Helper functions use direct environment access - consider parameter passing",
+        "details": {
+          "script": "tabular_preprocessing",
+          "helper_accesses": [
+            {
+              "function": null,
+              "variable": "LABEL_FIELD",
+              "line_number": 200
+            },
+            {
+              "function": null,
+              "variable": "TRAIN_RATIO",
+              "line_number": 203
+            },
+            {
+              "function": null,
+              "variable": "TEST_VAL_RATIO",
+              "line_number": 204
+            }
+          ]
+        },
+        "recommendation": "Pass environment variables as parameters to helper functions instead of direct access"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "tabular_preprocessing"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "tabular_preprocessing",
+          "parameter": "job_args",
+          "current_pattern": "job_args.job_type",
+          "line_number": 134
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "tabular_preprocessing",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 135
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "tabular_preprocessing",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 136
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "tabular_preprocessing",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 137
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "tabular_preprocessing",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 140
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "tabular_preprocessing",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 141
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "tabular_preprocessing",
+          "parameter": "job_args",
+          "current_pattern": "args.job_type",
+          "line_number": 220
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "tabular_preprocessing"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'None' accesses environment directly",
+        "details": {
+          "script": "tabular_preprocessing",
+          "function": null,
+          "env_variables": [
+            "LABEL_FIELD",
+            "TRAIN_RATIO",
+            "TEST_VAL_RATIO"
+          ],
+          "line_numbers": [
+            200,
+            203,
+            204
+          ]
+        },
+        "recommendation": "Refactor 'None' to accept environment variables as parameters"
       }
     ],
     "script_analysis": {
@@ -617,7 +780,8 @@
       "config_accesses": [
         {
           "field_name": "job_type",
-          "line_number": 65
+          "line_number": 65,
+          "context": "line_65"
         }
       ],
       "validation_calls": [],
@@ -625,43 +789,231 @@
       "class_definitions": [
         {
           "class_name": "TabularPreprocessingStepBuilder",
-          "line_number": 29
+          "line_number": 29,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 37
+          "line_number": 37,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 98
+          "line_number": 98,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_create_processor",
-          "line_number": 125
+          "line_number": 125,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 145
+          "line_number": 145,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 173
+          "line_number": 173,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 226
+          "line_number": 226,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 281
+          "line_number": 281,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "create_step",
-          "line_number": 301
+          "line_number": 301,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         }
-      ]
+      ],
+      "import_statements": [
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 2
+        },
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 3
+        },
+        {
+          "type": "import",
+          "module": "importlib",
+          "alias": null,
+          "line_number": 4
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 8
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_tabular_preprocessing_step",
+          "name": "TabularPreprocessingConfig",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "specs.tabular_preprocessing_training_spec",
+          "name": "TABULAR_PREPROCESSING_TRAINING_SPEC",
+          "alias": null,
+          "line_number": 16
+        },
+        {
+          "type": "from_import",
+          "module": "specs.tabular_preprocessing_calibration_spec",
+          "name": "TABULAR_PREPROCESSING_CALIBRATION_SPEC",
+          "alias": null,
+          "line_number": 17
+        },
+        {
+          "type": "from_import",
+          "module": "specs.tabular_preprocessing_validation_spec",
+          "name": "TABULAR_PREPROCESSING_VALIDATION_SPEC",
+          "alias": null,
+          "line_number": 18
+        },
+        {
+          "type": "from_import",
+          "module": "specs.tabular_preprocessing_testing_spec",
+          "name": "TABULAR_PREPROCESSING_TESTING_SPEC",
+          "alias": null,
+          "line_number": 19
+        }
+      ],
+      "config_class_usage": []
     },
     "config_analysis": {
       "class_name": "TabularPreprocessingConfig",
@@ -753,7 +1105,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-08-12T20:19:49.777760",
+    "validation_timestamp": "2025-08-12T21:24:54.543024",
     "validator_version": "1.0.0"
   }
 }

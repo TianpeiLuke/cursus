@@ -23,6 +23,68 @@
           "script": "package"
         },
         "recommendation": "Either read /opt/ml/processing/input/calibration in script or remove from contract inputs"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "package",
+          "testability_parameters": [
+            "output_paths",
+            "job_args",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "package"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_parameter_usage",
+        "message": "Testability parameters defined but not used: job_args",
+        "details": {
+          "script": "package",
+          "unused_parameters": [
+            "job_args"
+          ],
+          "used_parameters": [
+            "output_paths",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "Either use the testability parameters or remove them from function signature"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "package",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 250
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "package"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
       }
     ],
     "script_analysis": {
@@ -188,9 +250,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
+              "TrainingStep",
               "ModelStep",
-              "TrainingStep"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -200,8 +262,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -238,9 +300,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
+              "TrainingStep",
               "ModelStep",
-              "TrainingStep"
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -250,8 +312,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "ScriptStep"
+              "ScriptStep",
+              "ProcessingStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -287,9 +349,9 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
+                "TrainingStep",
                 "ModelStep",
-                "TrainingStep"
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be packaged"
@@ -299,8 +361,8 @@
               "dependency_type": "custom_property",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "ScriptStep"
+                "ScriptStep",
+                "ProcessingStep"
               ],
               "data_type": "String",
               "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -333,9 +395,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
+            "TrainingStep",
             "ModelStep",
-            "TrainingStep"
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -345,8 +407,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -402,9 +464,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
+            "TrainingStep",
             "ModelStep",
-            "TrainingStep"
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -414,8 +476,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "ScriptStep"
+            "ScriptStep",
+            "ProcessingStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -452,43 +514,218 @@
       "class_definitions": [
         {
           "class_name": "PackageStepBuilder",
-          "line_number": 27
+          "line_number": 27,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 35
+          "line_number": 35,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 75
+          "line_number": 75,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_create_processor",
-          "line_number": 104
+          "line_number": 104,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 130
+          "line_number": 130,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 160
+          "line_number": 160,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 260
+          "line_number": 260,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 315
+          "line_number": 315,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "create_step",
-          "line_number": 326
+          "line_number": 326,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         }
-      ]
+      ],
+      "import_statements": [
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 2
+        },
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 3
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_package_step",
+          "name": "PackageConfig",
+          "alias": null,
+          "line_number": 9
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.registry_manager",
+          "name": "RegistryManager",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.dependency_resolver",
+          "name": "UnifiedDependencyResolver",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "specs.package_spec",
+          "name": "PACKAGE_SPEC",
+          "alias": null,
+          "line_number": 17
+        }
+      ],
+      "config_class_usage": []
     },
     "config_analysis": {
       "class_name": "PackageConfig",
@@ -549,7 +786,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-12T20:19:49.715979",
+    "validation_timestamp": "2025-08-12T21:24:54.431597",
     "validator_version": "1.0.0"
   }
 }

@@ -29,13 +29,13 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: xgboost_model_evaluation</h2>
-        <p>Generated: 2025-08-12T20:19:49.842481</p>
+        <p>Generated: 2025-08-12T21:24:54.567333</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>6</h3>
+            <h3>23</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -47,7 +47,7 @@
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>0</h3>
+            <h3>3</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -62,6 +62,91 @@
                 <div class="issue info">
                     <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
                     <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Main function follows testability pattern with all required parameters
+                    <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper functions use direct environment access - consider parameter passing
+                    <br><em>Recommendation: Pass environment variables as parameters to helper functions instead of direct access</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
+                    <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
+                    <br><em>Recommendation: Add container detection to support both local and container execution</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper function 'None' accesses environment directly
+                    <br><em>Recommendation: Refactor 'None' to accept environment variables as parameters</em>
                 </div>
                 
             </div>
@@ -115,7 +200,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py</p>
         <p><strong>Contract Mapping:</strong> xgboost_model_evaluation_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-12T20:19:49.842481</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-12T21:24:54.567333</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

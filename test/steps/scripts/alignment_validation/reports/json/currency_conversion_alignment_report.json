@@ -2,7 +2,314 @@
   "script_name": "currency_conversion",
   "level1": {
     "passed": true,
-    "issues": [],
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "currency_conversion",
+          "testability_parameters": [
+            "output_paths",
+            "job_args",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_env_access",
+        "message": "Helper functions use direct environment access - consider parameter passing",
+        "details": {
+          "script": "currency_conversion",
+          "helper_accesses": [
+            {
+              "function": null,
+              "variable": "TRAIN_RATIO",
+              "line_number": 285
+            },
+            {
+              "function": null,
+              "variable": "TEST_VAL_RATIO",
+              "line_number": 286
+            },
+            {
+              "function": null,
+              "variable": "CURRENCY_CONVERSION_VARS",
+              "line_number": 310
+            },
+            {
+              "function": null,
+              "variable": "CURRENCY_CONVERSION_DICT",
+              "line_number": 311
+            },
+            {
+              "function": null,
+              "variable": "MARKETPLACE_INFO",
+              "line_number": 312
+            },
+            {
+              "function": null,
+              "variable": "LABEL_FIELD",
+              "line_number": 313
+            },
+            {
+              "function": null,
+              "variable": "TRAIN_RATIO",
+              "line_number": 314
+            },
+            {
+              "function": null,
+              "variable": "TEST_VAL_RATIO",
+              "line_number": 315
+            }
+          ]
+        },
+        "recommendation": "Pass environment variables as parameters to helper functions instead of direct access"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.job_type",
+          "line_number": 157
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.mode",
+          "line_number": 158
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 161
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 162
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 163
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 166
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 167
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.enable_conversion",
+          "line_number": 173
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.marketplace_id_col",
+          "line_number": 176
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.currency_col",
+          "line_number": 180
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.default_currency",
+          "line_number": 181
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.skip_invalid_currencies",
+          "line_number": 182
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.n_workers",
+          "line_number": 183
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 201
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.train_ratio",
+          "line_number": 204
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "currency_conversion",
+          "parameter": "job_args",
+          "current_pattern": "job_args.test_val_ratio",
+          "line_number": 210
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "currency_conversion"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'None' accesses environment directly",
+        "details": {
+          "script": "currency_conversion",
+          "function": null,
+          "env_variables": [
+            "TRAIN_RATIO",
+            "TEST_VAL_RATIO",
+            "CURRENCY_CONVERSION_VARS",
+            "CURRENCY_CONVERSION_DICT",
+            "MARKETPLACE_INFO",
+            "LABEL_FIELD",
+            "TRAIN_RATIO",
+            "TEST_VAL_RATIO"
+          ],
+          "line_numbers": [
+            285,
+            286,
+            310,
+            311,
+            312,
+            313,
+            314,
+            315
+          ]
+        },
+        "recommendation": "Refactor 'None' to accept environment variables as parameters"
+      }
+    ],
     "script_analysis": {
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
       "path_references": [
@@ -287,8 +594,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -314,8 +621,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -341,8 +648,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -368,8 +675,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -397,8 +704,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -425,8 +732,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed training data requiring currency conversion"
@@ -452,8 +759,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed testing data requiring currency conversion"
@@ -479,8 +786,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed validation data requiring currency conversion"
@@ -506,8 +813,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed calibration data requiring currency conversion"
@@ -531,8 +838,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Processed calibration data requiring currency conversion"
@@ -579,8 +886,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Processed testing data requiring currency conversion"
@@ -603,26 +910,6 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: marketplace_id_col",
-        "details": {
-          "field_name": "marketplace_id_col",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
-        "details": {
-          "field_name": "currency_conversion_dict",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: label_field",
         "details": {
           "field_name": "label_field",
@@ -641,15 +928,35 @@
         "recommendation": "Access required field marketplace_info in builder or make it optional"
       },
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
+        "details": {
+          "field_name": "currency_conversion_dict",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: marketplace_id_col",
+        "details": {
+          "field_name": "marketplace_id_col",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field marketplace_id_col in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "currency_conversion_dict",
-            "marketplace_id_col",
             "label_field",
-            "marketplace_info"
+            "marketplace_info",
+            "currency_conversion_dict",
+            "marketplace_id_col"
           ],
           "builder": "currency_conversion"
         },
@@ -660,7 +967,8 @@
       "config_accesses": [
         {
           "field_name": "job_type",
-          "line_number": 67
+          "line_number": 67,
+          "context": "line_67"
         }
       ],
       "validation_calls": [],
@@ -668,43 +976,251 @@
       "class_definitions": [
         {
           "class_name": "CurrencyConversionStepBuilder",
-          "line_number": 31
+          "line_number": 31,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 39
+          "line_number": 39,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 100
+          "line_number": 100,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_create_processor",
-          "line_number": 130
+          "line_number": 130,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 150
+          "line_number": 150,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 170
+          "line_number": 170,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 222
+          "line_number": 222,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 277
+          "line_number": 277,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "create_step",
-          "line_number": 301
+          "line_number": 301,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         }
-      ]
+      ],
+      "import_statements": [
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 2
+        },
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 3
+        },
+        {
+          "type": "import",
+          "module": "importlib",
+          "alias": null,
+          "line_number": 4
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 8
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_currency_conversion_step",
+          "name": "CurrencyConversionConfig",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.registry_manager",
+          "name": "RegistryManager",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.dependency_resolver",
+          "name": "UnifiedDependencyResolver",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 14
+        },
+        {
+          "type": "from_import",
+          "module": "specs.currency_conversion_training_spec",
+          "name": "CURRENCY_CONVERSION_TRAINING_SPEC",
+          "alias": null,
+          "line_number": 18
+        },
+        {
+          "type": "from_import",
+          "module": "specs.currency_conversion_calibration_spec",
+          "name": "CURRENCY_CONVERSION_CALIBRATION_SPEC",
+          "alias": null,
+          "line_number": 19
+        },
+        {
+          "type": "from_import",
+          "module": "specs.currency_conversion_validation_spec",
+          "name": "CURRENCY_CONVERSION_VALIDATION_SPEC",
+          "alias": null,
+          "line_number": 20
+        },
+        {
+          "type": "from_import",
+          "module": "specs.currency_conversion_testing_spec",
+          "name": "CURRENCY_CONVERSION_TESTING_SPEC",
+          "alias": null,
+          "line_number": 21
+        },
+        {
+          "type": "import",
+          "module": "json",
+          "alias": null,
+          "line_number": 157
+        }
+      ],
+      "config_class_usage": []
     },
     "config_analysis": {
       "class_name": "CurrencyConversionConfig",
@@ -849,7 +1365,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-12T20:19:49.656202",
+    "validation_timestamp": "2025-08-12T21:24:54.342422",
     "validator_version": "1.0.0"
   }
 }

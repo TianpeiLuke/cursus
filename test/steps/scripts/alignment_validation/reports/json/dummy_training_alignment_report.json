@@ -2,7 +2,70 @@
   "script_name": "dummy_training",
   "level1": {
     "passed": true,
-    "issues": [],
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "dummy_training",
+          "testability_parameters": [
+            "output_paths",
+            "job_args",
+            "environ_vars",
+            "input_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "dummy_training"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_parameter_usage",
+        "message": "Testability parameters defined but not used: job_args, environ_vars",
+        "details": {
+          "script": "dummy_training",
+          "unused_parameters": [
+            "job_args",
+            "environ_vars"
+          ],
+          "used_parameters": [
+            "output_paths",
+            "input_paths"
+          ]
+        },
+        "recommendation": "Either use the testability parameters or remove them from function signature"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "dummy_training",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 234
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "dummy_training"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      }
+    ],
     "script_analysis": {
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
       "path_references": [
@@ -154,10 +217,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "XGBoostTraining",
-              "ProcessingStep",
+              "TabularPreprocessing",
               "PytorchTraining",
-              "TabularPreprocessing"
+              "ProcessingStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -167,8 +230,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -195,10 +258,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "XGBoostTraining",
-              "ProcessingStep",
+              "TabularPreprocessing",
               "PytorchTraining",
-              "TabularPreprocessing"
+              "ProcessingStep",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -208,8 +271,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -235,10 +298,10 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "XGBoostTraining",
-                "ProcessingStep",
+                "TabularPreprocessing",
                 "PytorchTraining",
-                "TabularPreprocessing"
+                "ProcessingStep",
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -248,8 +311,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "HyperparameterPrep"
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -272,10 +335,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "XGBoostTraining",
-            "ProcessingStep",
+            "TabularPreprocessing",
             "PytorchTraining",
-            "TabularPreprocessing"
+            "ProcessingStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -285,8 +348,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -382,10 +445,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "XGBoostTraining",
-            "ProcessingStep",
+            "TabularPreprocessing",
             "PytorchTraining",
-            "TabularPreprocessing"
+            "ProcessingStep",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -395,8 +458,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -423,63 +486,319 @@
       "class_definitions": [
         {
           "class_name": "DummyTrainingStepBuilder",
-          "line_number": 33
+          "line_number": 33,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 36
+          "line_number": 36,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 72
+          "line_number": 72,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_normalize_s3_uri",
-          "line_number": 102
+          "line_number": 102,
+          "args": [
+            "self",
+            "uri",
+            "description"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_validate_s3_uri",
-          "line_number": 130
+          "line_number": 130,
+          "args": [
+            "self",
+            "uri",
+            "description"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_s3_directory_path",
-          "line_number": 154
+          "line_number": 154,
+          "args": [
+            "self",
+            "uri",
+            "filename"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_upload_model_to_s3",
-          "line_number": 178
+          "line_number": 178,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_prepare_hyperparameters_file",
-          "line_number": 210
+          "line_number": 210,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_processor",
-          "line_number": 282
+          "line_number": 282,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 300
+          "line_number": 300,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 315
+          "line_number": 315,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 386
+          "line_number": 386,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 426
+          "line_number": 426,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         },
         {
           "method_name": "create_step",
-          "line_number": 437
+          "line_number": 437,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
         }
-      ]
+      ],
+      "import_statements": [
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 9
+        },
+        {
+          "type": "import",
+          "module": "os",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "import",
+          "module": "json",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "import",
+          "module": "tempfile",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "import",
+          "module": "shutil",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 14
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 15
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 15
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 15
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 15
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 17
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 17
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 18
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 19
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 19
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.functions",
+          "name": "Join",
+          "alias": null,
+          "line_number": 20
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.s3",
+          "name": "S3Uploader",
+          "alias": null,
+          "line_number": 21
+        },
+        {
+          "type": "from_import",
+          "module": "botocore.exceptions",
+          "name": "ClientError",
+          "alias": null,
+          "line_number": 22
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_dummy_training_step",
+          "name": "DummyTrainingConfig",
+          "alias": null,
+          "line_number": 24
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 25
+        },
+        {
+          "type": "from_import",
+          "module": "s3_utils",
+          "name": "S3PathHandler",
+          "alias": null,
+          "line_number": 26
+        },
+        {
+          "type": "from_import",
+          "module": "specs.dummy_training_spec",
+          "name": "DUMMY_TRAINING_SPEC",
+          "alias": null,
+          "line_number": 27
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 28
+        },
+        {
+          "type": "import",
+          "module": "traceback",
+          "alias": null,
+          "line_number": 206
+        },
+        {
+          "type": "import",
+          "module": "traceback",
+          "alias": null,
+          "line_number": 506
+        }
+      ],
+      "config_class_usage": []
     },
     "config_analysis": {
       "class_name": "DummyTrainingConfig",
@@ -558,7 +877,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-12T20:19:49.673026",
+    "validation_timestamp": "2025-08-12T21:24:54.362676",
     "validator_version": "1.0.0"
   }
 }

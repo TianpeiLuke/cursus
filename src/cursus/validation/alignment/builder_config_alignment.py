@@ -5,16 +5,16 @@ Validates alignment between step builders and their configuration requirements.
 Ensures builders properly handle configuration fields and validation.
 """
 
-import os
 import sys
-import json
 import ast
 import importlib.util
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Optional
 from pathlib import Path
 
+from .analyzers import ConfigurationAnalyzer, BuilderCodeAnalyzer
+from .patterns import PatternRecognizer, HybridFileResolver
 from .alignment_utils import FlexibleFileResolver
-from ...steps.registry.step_names import CONFIG_STEP_REGISTRY, STEP_NAMES, get_step_name_from_spec_type
+from ...steps.registry.step_names import STEP_NAMES, get_step_name_from_spec_type
 
 
 class BuilderConfigurationAlignmentTester:
@@ -39,8 +39,7 @@ class BuilderConfigurationAlignmentTester:
         self.builders_dir = Path(builders_dir)
         self.configs_dir = Path(configs_dir)
         
-        # Initialize the flexible file resolver with ALL required base directories
-        # FlexibleFileResolver expects 4 base directories: contracts, specs, builders, configs
+        # Initialize base directories for all resolvers
         base_directories = {
             'contracts': str(self.builders_dir.parent / 'contracts'),
             'specs': str(self.builders_dir.parent / 'specs'),
@@ -48,7 +47,14 @@ class BuilderConfigurationAlignmentTester:
             'configs': str(self.configs_dir)
         }
         
-        self.file_resolver = FlexibleFileResolver(base_directories)
+        # Initialize extracted components
+        self.config_analyzer = ConfigurationAnalyzer(str(self.configs_dir))
+        self.builder_analyzer = BuilderCodeAnalyzer()
+        self.pattern_recognizer = PatternRecognizer()
+        self.file_resolver = HybridFileResolver(base_directories)
+        
+        # Keep FlexibleFileResolver for backward compatibility
+        self.flexible_resolver = FlexibleFileResolver(base_directories)
         
         # Add the project root to Python path for imports
         project_root = self.builders_dir.parent.parent.parent
@@ -158,9 +164,11 @@ class BuilderConfigurationAlignmentTester:
         
         config_path = Path(config_path_str)
         
-        # Load configuration from Python file
+        # Load configuration using extracted component
         try:
-            config_analysis = self._load_config_from_python(config_path, builder_name)
+            config_analysis = self.config_analyzer.load_config_from_python(config_path, builder_name)
+            # Convert to expected format for backward compatibility
+            config_schema = self.config_analyzer.get_configuration_schema(config_analysis)
         except Exception as e:
             return {
                 'passed': False,
@@ -172,13 +180,9 @@ class BuilderConfigurationAlignmentTester:
                 }]
             }
         
-        # Analyze builder code
+        # Analyze builder code using extracted component
         try:
-            with open(builder_path, 'r') as f:
-                builder_content = f.read()
-            
-            builder_ast = ast.parse(builder_content)
-            builder_analysis = self._analyze_builder_code(builder_ast, builder_content)
+            builder_analysis = self.builder_analyzer.analyze_builder_file(builder_path)
         except Exception as e:
             return {
                 'passed': False,
@@ -217,65 +221,6 @@ class BuilderConfigurationAlignmentTester:
             'config_analysis': config_analysis
         }
     
-    def _analyze_builder_code(self, builder_ast: ast.AST, builder_content: str) -> Dict[str, Any]:
-        """Analyze builder code to extract configuration usage patterns."""
-        analysis = {
-            'config_accesses': [],
-            'validation_calls': [],
-            'default_assignments': [],
-            'class_definitions': [],
-            'method_definitions': []
-        }
-        
-        class BuilderVisitor(ast.NodeVisitor):
-            def visit_Attribute(self, node):
-                # Look for config.field_name accesses
-                if (isinstance(node.value, ast.Name) and 
-                    node.value.id == 'config'):
-                    analysis['config_accesses'].append({
-                        'field_name': node.attr,
-                        'line_number': node.lineno
-                    })
-                self.generic_visit(node)
-            
-            def visit_Call(self, node):
-                # Look for validation method calls
-                if (isinstance(node.func, ast.Attribute) and
-                    node.func.attr in ['validate', 'require', 'check']):
-                    analysis['validation_calls'].append({
-                        'method': node.func.attr,
-                        'line_number': node.lineno
-                    })
-                self.generic_visit(node)
-            
-            def visit_Assign(self, node):
-                # Look for default value assignments
-                for target in node.targets:
-                    if isinstance(target, ast.Attribute):
-                        analysis['default_assignments'].append({
-                            'field_name': target.attr,
-                            'line_number': node.lineno
-                        })
-                self.generic_visit(node)
-            
-            def visit_ClassDef(self, node):
-                analysis['class_definitions'].append({
-                    'class_name': node.name,
-                    'line_number': node.lineno
-                })
-                self.generic_visit(node)
-            
-            def visit_FunctionDef(self, node):
-                analysis['method_definitions'].append({
-                    'method_name': node.name,
-                    'line_number': node.lineno
-                })
-                self.generic_visit(node)
-        
-        visitor = BuilderVisitor()
-        visitor.visit(builder_ast)
-        
-        return analysis
     
     def _validate_configuration_fields(self, builder_analysis: Dict[str, Any], specification: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
         """Validate that builder properly handles configuration fields."""
@@ -613,6 +558,8 @@ class BuilderConfigurationAlignmentTester:
         """
         Determine if a configuration field issue represents an acceptable architectural pattern.
         
+        Uses the extracted PatternRecognizer component for consistent pattern recognition.
+        
         Args:
             field_name: Name of the configuration field
             builder_name: Name of the builder
@@ -621,102 +568,7 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             True if this is an acceptable pattern (should be filtered out)
         """
-        # Common acceptable patterns that should not be flagged as errors
-        
-        # Pattern 1: Framework-provided fields
-        framework_fields = {
-            'logger', 'session', 'context', 'environment', 'metadata',
-            'step_name', 'step_type', 'execution_id', 'pipeline_id'
-        }
-        
-        if field_name in framework_fields:
-            return True
-        
-        # Pattern 2: Inherited configuration fields
-        inherited_patterns = [
-            'base_', 'parent_', 'super_', 'common_', 'shared_'
-        ]
-        
-        if any(field_name.startswith(pattern) for pattern in inherited_patterns):
-            return True
-        
-        # Pattern 3: Dynamic configuration fields (runtime-determined)
-        dynamic_patterns = [
-            'dynamic_', 'runtime_', 'computed_', 'derived_', 'auto_'
-        ]
-        
-        if any(field_name.startswith(pattern) for pattern in dynamic_patterns):
-            return True
-        
-        # Pattern 4: Optional convenience fields that may not be accessed
-        if issue_type == 'unaccessed_required':
-            convenience_fields = {
-                'debug', 'verbose', 'dry_run', 'test_mode', 'profile',
-                'cache_enabled', 'parallel_enabled', 'retry_count'
-            }
-            
-            if field_name in convenience_fields:
-                return True
-        
-        # Pattern 5: Builder-specific patterns
-        builder_specific_patterns = self._get_builder_specific_patterns(builder_name)
-        
-        if field_name in builder_specific_patterns.get('acceptable_undeclared', set()):
-            return issue_type == 'undeclared_access'
-        
-        if field_name in builder_specific_patterns.get('acceptable_unaccessed', set()):
-            return issue_type == 'unaccessed_required'
-        
-        # Pattern 6: Configuration fields that follow naming conventions
-        if issue_type == 'undeclared_access':
-            # Fields that follow standard naming conventions are likely legitimate
-            standard_suffixes = ['_config', '_settings', '_params', '_options']
-            if any(field_name.endswith(suffix) for suffix in standard_suffixes):
-                return True
-        
-        return False
-    
-    def _get_builder_specific_patterns(self, builder_name: str) -> Dict[str, Set[str]]:
-        """
-        Get builder-specific acceptable patterns.
-        
-        Args:
-            builder_name: Name of the builder
-            
-        Returns:
-            Dictionary with 'acceptable_undeclared' and 'acceptable_unaccessed' sets
-        """
-        patterns = {
-            'acceptable_undeclared': set(),
-            'acceptable_unaccessed': set()
-        }
-        
-        # Training builders often access framework-provided fields
-        if 'training' in builder_name.lower():
-            patterns['acceptable_undeclared'].update({
-                'model_dir', 'output_dir', 'checkpoint_dir',
-                'num_gpus', 'distributed', 'local_rank'
-            })
-        
-        # Processing builders often have optional monitoring fields
-        if 'processing' in builder_name.lower() or 'transform' in builder_name.lower():
-            patterns['acceptable_unaccessed'].update({
-                'monitoring_enabled', 'metrics_enabled', 'profiling_enabled'
-            })
-        
-        # Evaluation builders often have optional comparison fields
-        if 'evaluation' in builder_name.lower() or 'validation' in builder_name.lower():
-            patterns['acceptable_unaccessed'].update({
-                'baseline_model', 'comparison_metrics', 'threshold_config'
-            })
-        
-        # Model builders often access model-specific fields
-        if 'model' in builder_name.lower():
-            patterns['acceptable_undeclared'].update({
-                'model_name', 'model_version', 'model_artifacts'
-            })
-        
-        return patterns
+        return self.pattern_recognizer.is_acceptable_pattern(field_name, builder_name, issue_type)
 
     def _validate_required_fields(self, builder_analysis: Dict[str, Any], config_analysis: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
         """Validate that builder properly validates required fields."""

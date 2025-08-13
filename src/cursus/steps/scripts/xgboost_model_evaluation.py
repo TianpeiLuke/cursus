@@ -438,7 +438,7 @@ if __name__ == "__main__":
     }
     
     try:
-        # Call main function
+        # Call main function with testability parameters
         main(input_paths, output_paths, environ_vars, args)
         
         # Signal success

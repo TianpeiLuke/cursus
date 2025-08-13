@@ -34,6 +34,9 @@ class TestabilityPatternValidator:
             'input_paths', 'output_paths', 'environ_vars', 'job_args'
         }
         
+        # Allow flexible parameter names for job arguments
+        self.job_args_aliases = {'job_args', 'args', 'arguments', 'parsed_args'}
+        
         # Patterns that indicate direct environment access (anti-pattern)
         self.direct_env_patterns = {
             'os.environ',
@@ -135,9 +138,19 @@ class TestabilityPatternValidator:
             ))
             return issues
         
-        # Check if main function has testability parameters
+        # Check if main function has testability parameters (with flexible job_args matching)
         main_params = set(main_function.get('parameters', []))
-        missing_params = self.testability_parameters - main_params
+        
+        # Create a flexible version of testability parameters that accepts job_args aliases
+        flexible_testability_params = {'input_paths', 'output_paths', 'environ_vars'}
+        has_job_args = bool(main_params & self.job_args_aliases)
+        
+        if has_job_args:
+            flexible_testability_params.add('job_args')  # Use canonical name for comparison
+        
+        missing_params = flexible_testability_params - main_params
+        if has_job_args and 'job_args' in missing_params:
+            missing_params.remove('job_args')  # Remove if we have an alias
         
         if missing_params:
             if len(missing_params) == len(self.testability_parameters):
@@ -492,10 +505,15 @@ class TestabilityStructureAnalyzer(ast.NodeVisitor):
             'has_testability_params': False
         }
         
-        # Check for testability parameters
-        testability_params = {'input_paths', 'output_paths', 'environ_vars', 'job_args'}
+        # Check for testability parameters (with flexible job_args matching)
+        testability_params = {'input_paths', 'output_paths', 'environ_vars'}
+        job_args_aliases = {'job_args', 'args', 'arguments', 'parsed_args'}
         function_params = set(function_info['parameters'])
-        if testability_params.issubset(function_params):
+        
+        has_core_params = testability_params.issubset(function_params)
+        has_job_args = bool(function_params & job_args_aliases)
+        
+        if has_core_params and has_job_args:
             function_info['has_testability_params'] = True
             self.has_testability_structure = True
         
@@ -538,12 +556,10 @@ class TestabilityStructureAnalyzer(ast.NodeVisitor):
     
     def visit_Call(self, node: ast.Call):
         """Visit function calls."""
-        # Check for main function calls
-        if (isinstance(node.func, ast.Name) and 
-            node.func.id == 'main' and 
-            self.in_main_block and 
-            self.main_block):
-            self.main_block['calls_main_function'] = True
+        # Check for main function calls (flexible detection)
+        if self.in_main_block and self.main_block:
+            if isinstance(node.func, ast.Name) and node.func.id == 'main':
+                self.main_block['calls_main_function'] = True
         
         # Check for container detection patterns
         if self._is_container_detection_call(node):
@@ -566,13 +582,19 @@ class TestabilityStructureAnalyzer(ast.NodeVisitor):
             if var_name:
                 self._record_env_access(var_name, node.lineno, 'os.environ')
         
-        # Check for parameter usage
+        # Check for parameter usage (including job_args aliases)
         if isinstance(node.value, ast.Name):
             param_name = node.value.id
-            if param_name in {'input_paths', 'output_paths', 'environ_vars', 'job_args'}:
+            testability_params = {'input_paths', 'output_paths', 'environ_vars'}
+            job_args_aliases = {'job_args', 'args', 'arguments', 'parsed_args'}
+            
+            if param_name in testability_params or param_name in job_args_aliases:
                 key = self._extract_string_value(node.slice)
+                # Normalize job_args aliases to 'job_args' for consistency
+                normalized_param = 'job_args' if param_name in job_args_aliases else param_name
                 self.parameter_usages.append({
-                    'parameter': param_name,
+                    'parameter': normalized_param,
+                    'original_parameter': param_name,
                     'key': key,
                     'line_number': node.lineno,
                     'access_pattern': f"{param_name}['{key}']" if key else f"{param_name}[...]",
@@ -583,12 +605,18 @@ class TestabilityStructureAnalyzer(ast.NodeVisitor):
     
     def visit_Attribute(self, node: ast.Attribute):
         """Visit attribute access."""
-        # Check for parameter method calls
+        # Check for parameter method calls (including job_args aliases)
         if isinstance(node.value, ast.Name):
             param_name = node.value.id
-            if param_name in {'input_paths', 'output_paths', 'environ_vars', 'job_args'}:
+            testability_params = {'input_paths', 'output_paths', 'environ_vars'}
+            job_args_aliases = {'job_args', 'args', 'arguments', 'parsed_args'}
+            
+            if param_name in testability_params or param_name in job_args_aliases:
+                # Normalize job_args aliases to 'job_args' for consistency
+                normalized_param = 'job_args' if param_name in job_args_aliases else param_name
                 self.parameter_usages.append({
-                    'parameter': param_name,
+                    'parameter': normalized_param,
+                    'original_parameter': param_name,
                     'attribute': node.attr,
                     'line_number': node.lineno,
                     'access_pattern': f"{param_name}.{node.attr}",
@@ -605,8 +633,47 @@ class TestabilityStructureAnalyzer(ast.NodeVisitor):
                 for target in stmt.targets:
                     if isinstance(target, ast.Name):
                         var_name = target.id
-                        if var_name in {'input_paths', 'output_paths', 'environ_vars', 'job_args'}:
-                            self.main_block['collected_parameters'].append(var_name)
+                        if var_name in {'input_paths', 'output_paths', 'environ_vars', 'job_args', 'args'}:
+                            # Normalize args to job_args for consistency
+                            normalized_name = 'job_args' if var_name == 'args' else var_name
+                            if normalized_name not in self.main_block['collected_parameters']:
+                                self.main_block['collected_parameters'].append(normalized_name)
+                
+                # Check for main function calls in assignment statements (e.g., result = main(...))
+                if isinstance(stmt.value, ast.Call):
+                    if isinstance(stmt.value.func, ast.Name) and stmt.value.func.id == 'main':
+                        self.main_block['calls_main_function'] = True
+                        
+            elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
+                # Check for main function calls in expression statements
+                if isinstance(stmt.value.func, ast.Name) and stmt.value.func.id == 'main':
+                    self.main_block['calls_main_function'] = True
+                    
+            elif isinstance(stmt, ast.Try):
+                # Recursively analyze try blocks
+                self._analyze_main_block(stmt.body)
+                for handler in stmt.handlers:
+                    self._analyze_main_block(handler.body)
+                if stmt.orelse:
+                    self._analyze_main_block(stmt.orelse)
+                if stmt.finalbody:
+                    self._analyze_main_block(stmt.finalbody)
+                    
+            elif isinstance(stmt, ast.If):
+                # Recursively analyze if blocks
+                self._analyze_main_block(stmt.body)
+                if stmt.orelse:
+                    self._analyze_main_block(stmt.orelse)
+                    
+            elif isinstance(stmt, ast.For) or isinstance(stmt, ast.While):
+                # Recursively analyze loop blocks
+                self._analyze_main_block(stmt.body)
+                if hasattr(stmt, 'orelse') and stmt.orelse:
+                    self._analyze_main_block(stmt.orelse)
+                    
+            elif isinstance(stmt, ast.With):
+                # Recursively analyze with blocks
+                self._analyze_main_block(stmt.body)
     
     def _check_env_access_call(self, node: ast.Call):
         """Check for environment variable access in function calls."""
