@@ -1,3 +1,18 @@
+---
+tags:
+  - design
+  - pipeline
+  - architecture
+keywords:
+  - pipeline
+  - registry
+topics:
+  - pipeline architecture
+  - component registry
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Registry
 
 ## What is the Purpose of Pipeline Registry?

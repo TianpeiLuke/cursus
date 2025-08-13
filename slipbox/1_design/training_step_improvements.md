@@ -1,3 +1,20 @@
+---
+tags:
+  - design
+  - step
+  - builder
+keywords:
+  - training
+  - step
+  - improvements
+topics:
+  - step builders
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Training Step Input Handling Improvements
 
 ## Background

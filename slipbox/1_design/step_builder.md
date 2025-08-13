@@ -840,7 +840,7 @@ The Step Builder Registry connects with:
 - [Configuration System](config.md): Maps config classes to step builders
 - [Pipeline DAG](pipeline_dag.md): Resolves DAG node names to builders
 - [Specifications](step_specification.md): Links step types to specifications
-- [Dynamic Pipeline Templates](dynamic_template.md): Creates steps with right builders
+- [Dynamic Template System](dynamic_template_system.md): Creates steps with right builders
 - [Pipeline Template Base](pipeline_template_base.md): Provides foundation for template creation
 - [Validation Engine](dependency_resolution_explained.md): Validates builder availability
 

@@ -616,5 +616,5 @@ Potential areas for future development:
 - [Step Builder Registry](step_builder_registry_design.md) - How configuration types map to step builders
 - [Config Registry](config_registry.md) - Registration system for configuration classes
 - [Circular Reference Tracker](circular_reference_tracker.md) - Details on circular reference handling
-- [Dynamic Template](dynamic_template.md) - How templates use the configuration system
+- [Dynamic Template System](dynamic_template_system.md) - How templates use the configuration system
 - [Standardization Rules](standardization_rules.md) - Rules governing the configuration system

@@ -1,3 +1,28 @@
+---
+tags:
+  - design
+  - configuration
+  - merger
+  - serialization
+  - three_tier
+keywords:
+  - configuration merger
+  - field categorization
+  - shared configuration
+  - specific configuration
+  - config serialization
+  - three-tier merging
+  - special field handling
+  - step name generation
+topics:
+  - configuration management
+  - three-tier architecture
+  - configuration serialization
+  - field categorization
+language: python
+date of note: 2025-08-12
+---
+
 # Config Merger
 
 ## Overview

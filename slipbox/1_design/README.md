@@ -170,17 +170,11 @@ This alternative design approach focuses on minimizing user input by providing o
 
 ### 🏗️ Pipeline Assembly & Orchestration
 
-#### **[Dynamic Template](dynamic_template.md)** - Flexible, Configuration-Driven Template
-- **Purpose**: Enable flexible pipeline creation without requiring custom template classes
-- **Key Features**: Automatic config resolution, step builder mapping, comprehensive validation
-- **Benefits**: Code reuse, simplified maintenance, dynamic configuration support
-- **Strategic Value**: Universal adapter between specifications and execution environment
-
-#### **[Dynamic Template Resolution](dynamic_template_resolution.md)** - Intelligent Node-to-Config-to-Builder Mapping
-- **Purpose**: Automatically match DAG nodes to configurations and step builders
-- **Key Features**: Multi-strategy resolution, semantic matching, central registry integration
-- **Benefits**: Elimination of custom template classes, intelligent name resolution
-- **Strategic Value**: Core mechanism that enables the dynamic template to adapt to any DAG structure
+#### **[Dynamic Template System](dynamic_template_system.md)** - Comprehensive Dynamic Pipeline Template Solution
+- **Purpose**: Enable flexible pipeline creation without requiring custom template classes through intelligent resolution
+- **Key Features**: Automatic config resolution, step builder mapping, comprehensive validation, multi-strategy node resolution, semantic matching
+- **Benefits**: Code reuse, simplified maintenance, dynamic configuration support, elimination of custom template classes
+- **Strategic Value**: Universal adapter between specifications and execution environment with intelligent DAG node resolution
 
 #### **[Pipeline Template Builder V2](pipeline_template_builder_v2.md)** - Modern Orchestration
 - **Purpose**: Transform declarative specifications into executable SageMaker pipelines

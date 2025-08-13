@@ -1,3 +1,21 @@
+---
+tags:
+  - design
+  - configuration
+  - management
+keywords:
+  - simplified
+  - config
+  - field
+  - categorization
+topics:
+  - configuration management
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Simplified Config Field Categorization
 
 ## Overview

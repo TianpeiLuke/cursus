@@ -1,3 +1,20 @@
+---
+tags:
+  - design
+  - architecture
+  - system
+keywords:
+  - field
+  - derivation
+  - engine
+  - revised
+topics:
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Field Derivation Engine (Revised)
 
 ## Overview

@@ -1,3 +1,25 @@
+---
+tags:
+  - design
+  - configuration
+  - management
+keywords:
+  - cradle
+  - data
+  - load
+  - config
+  - helper
+  - design
+  - system design
+  - architecture
+topics:
+  - configuration management
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Cradle Data Load Config Helper Design
 
 ## Overview

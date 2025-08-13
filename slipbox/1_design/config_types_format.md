@@ -1,3 +1,27 @@
+---
+tags:
+  - design
+  - configuration
+  - metadata
+  - serialization
+  - format
+keywords:
+  - config types format
+  - step name mapping
+  - class name mapping
+  - job type variants
+  - configuration metadata
+  - backward compatibility
+  - serialization format
+topics:
+  - configuration serialization
+  - metadata format standards
+  - step name generation
+  - configuration loading
+language: python
+date of note: 2025-08-12
+---
+
 # Config Types Format
 
 ## Overview

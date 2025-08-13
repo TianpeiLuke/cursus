@@ -1,3 +1,20 @@
+---
+tags:
+  - design
+  - architecture
+  - system
+keywords:
+  - mims
+  - registration
+  - integration
+  - system integration
+topics:
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # MIMS Registration Step Integration
 
 ## Problem

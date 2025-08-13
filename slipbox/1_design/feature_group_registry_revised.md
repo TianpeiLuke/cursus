@@ -1,3 +1,27 @@
+---
+tags:
+  - design
+  - configuration
+  - feature_groups
+  - registry
+  - user_experience
+keywords:
+  - feature group registry
+  - business concepts
+  - field organization
+  - categorical fields
+  - region-specific fields
+  - configuration simplification
+  - three-tier architecture
+topics:
+  - feature group management
+  - configuration simplification
+  - business-driven design
+  - field categorization
+language: python
+date of note: 2025-08-12
+---
+
 # Feature Group Registry (Revised)
 
 ## Overview

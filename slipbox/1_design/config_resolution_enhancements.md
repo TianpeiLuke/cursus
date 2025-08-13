@@ -1,3 +1,20 @@
+---
+tags:
+  - design
+  - configuration
+  - management
+keywords:
+  - config
+  - resolution
+  - enhancements
+topics:
+  - configuration management
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Configuration Resolution Enhancements
 
 ## Overview
@@ -504,7 +521,7 @@ resolved_map = resolver.resolve_config_map(dag_nodes, configs)
 
 ## References
 
-1. [Dynamic Template Resolution](./dynamic_template_resolution.md)
+1. [Dynamic Template System](./dynamic_template_system.md)
 2. [Job Type Variant Handling](./job_type_variant_handling.md)
 3. [Config Types Format](./config_types_format.md)
 4. [Config Field Categorization](./config_field_categorization.md)

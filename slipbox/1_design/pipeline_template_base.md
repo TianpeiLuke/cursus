@@ -361,7 +361,7 @@ By following these best practices, you can create pipeline templates that are co
 
 ## References
 
-- [Dynamic Pipeline Template](dynamic_template.md) - Advanced template implementation built on this base class
+- [Dynamic Template System](dynamic_template_system.md) - Advanced template implementation built on this base class
 - [Step Config Resolver](step_config_resolver.md) - Resolver for mapping DAG nodes to configurations
 - [Pipeline DAG](pipeline_dag.md) - DAG structure used by pipeline templates
 - [Step Builder](step_builder.md) - Builder pattern used for step instantiation

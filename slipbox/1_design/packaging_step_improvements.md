@@ -1,3 +1,20 @@
+---
+tags:
+  - design
+  - step
+  - builder
+keywords:
+  - packaging
+  - step
+  - improvements
+topics:
+  - step builders
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Packaging Step Dependency Improvements
 
 ## Background

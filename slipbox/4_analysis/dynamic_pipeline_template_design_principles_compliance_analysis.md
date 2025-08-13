@@ -24,7 +24,7 @@ date of note: 2025-08-10
 
 ## Overview
 
-This document analyzes how well the [Dynamic Pipeline Template](../1_design/dynamic_template.md) and [Config Resolver](../1_design/dynamic_template_resolution.md) components adhere to the established [Design Principles](../1_design/design_principles.md). It evaluates each principle against the implementation and identifies strengths and areas for potential improvement.
+This document analyzes how well the [Dynamic Template System](../1_design/dynamic_template_system.md) components adhere to the established [Design Principles](../1_design/design_principles.md). It evaluates each principle against the implementation and identifies strengths and areas for potential improvement.
 
 The Dynamic Pipeline Template and Config Resolver represent sophisticated components that enable flexible, configuration-driven pipeline creation. They form a core part of the "intelligence layer" that bridges declarative specifications with executable implementations.
 
@@ -38,7 +38,7 @@ The Dynamic Pipeline Template and Config Resolver represent sophisticated compon
 - Configuration is separated from structure, allowing users to declare intent rather than implementation
 - Resolution happens automatically based on specifications rather than manual wiring
 
-The [Config Resolver](../1_design/dynamic_template_resolution.md) exemplifies this by automatically determining appropriate configurations for DAG nodes through intelligent resolution strategies rather than requiring imperative mapping code. This aligns with the core declarative philosophy outlined in the [Design Principles](../1_design/design_principles.md#1-declarative-over-imperative).
+The Config Resolver component of the [Dynamic Template System](../1_design/dynamic_template_system.md) exemplifies this by automatically determining appropriate configurations for DAG nodes through intelligent resolution strategies rather than requiring imperative mapping code. This aligns with the core declarative philosophy outlined in the [Design Principles](../1_design/design_principles.md#1-declarative-over-imperative).
 
 ### 2. Composition Over Inheritance ✅
 
@@ -176,14 +176,13 @@ While the implementation strongly adheres to the design principles, some areas c
 
 ## Conclusion
 
-The [Dynamic Pipeline Template](../1_design/dynamic_template.md) and [Config Resolver](../1_design/dynamic_template_resolution.md) demonstrate strong adherence to the established [Design Principles](../1_design/design_principles.md). They represent a sophisticated solution that transforms pipeline construction from an imperative, error-prone process to a declarative, intelligent system.
+The [Dynamic Template System](../1_design/dynamic_template_system.md) demonstrates strong adherence to the established [Design Principles](../1_design/design_principles.md). It represents a sophisticated solution that transforms pipeline construction from an imperative, error-prone process to a declarative, intelligent system.
 
 The implementation successfully balances flexibility with convention, providing intelligent automation while maintaining explicit control when needed. The multi-strategy resolution approach exemplifies composition over inheritance and enables adaptation to various pipeline structures without custom code.
 
 ## Related Documentation
 
-- [Dynamic Template](../1_design/dynamic_template.md) - Core design of the Dynamic Pipeline Template
-- [Dynamic Template Resolution](../1_design/dynamic_template_resolution.md) - Resolution mechanism details
+- [Dynamic Template System](../1_design/dynamic_template_system.md) - Comprehensive design of the dynamic pipeline template system
 - [Design Principles](../1_design/design_principles.md) - Architectural philosophy and guidelines
 - [DAG to Template](../1_design/pipeline_compiler.md) - Visual and programmatic pipeline creation
 - [Config Field Categorization](../1_design/config_field_categorization.md) - Supporting configuration system

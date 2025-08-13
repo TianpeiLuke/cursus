@@ -25,7 +25,7 @@ date of note: 2025-07-31
 
 ## Overview
 
-The ValidationEngine is a specialized component in the pipeline architecture that provides comprehensive validation and error detection for pipeline configurations, step builders, and dependency relationships. It serves as the quality assurance layer in the [Dynamic Template](dynamic_template.md) system, ensuring that pipelines are well-formed, complete, and executable before resources are allocated.
+The ValidationEngine is a specialized component in the pipeline architecture that provides comprehensive validation and error detection for pipeline configurations, step builders, and dependency relationships. It serves as the quality assurance layer in the [Dynamic Template System](dynamic_template_system.md), ensuring that pipelines are well-formed, complete, and executable before resources are allocated.
 
 ## Purpose
 
@@ -650,7 +650,7 @@ class ValidationResults:
 
 ## Integration with Dynamic Template
 
-The ValidationEngine is a key component of the [Dynamic Template](dynamic_template.md), ensuring that pipelines are valid before execution:
+The ValidationEngine is a key component of the [Dynamic Template System](dynamic_template_system.md), ensuring that pipelines are valid before execution:
 
 ```python
 class DynamicPipelineTemplate(PipelineTemplateBase):
@@ -881,7 +881,7 @@ The ValidationEngine is fully implemented and integrated with the Dynamic Templa
 
 ## References
 
-- [Dynamic Template](dynamic_template.md) - Template system that uses the ValidationEngine
+- [Dynamic Template System](dynamic_template_system.md) - Template system that uses the ValidationEngine
 - [Step Config Resolver](step_config_resolver.md) - Resolver for mapping DAG nodes to configurations
 - [Step Builder Registry](step_builder_registry_design.md) - Registry for mapping configurations to builders
 - [Script Contract](script_contract.md) - Contract system for script validation

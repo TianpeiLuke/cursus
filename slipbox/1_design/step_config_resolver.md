@@ -399,4 +399,4 @@ raise AmbiguityError(
 - [Registry-Based Step Names](registry_based_step_name_generation.md) - Step naming conventions
 - [Configuration System](config.md) - Configuration object design
 - [DAG Compiler](pipeline_dag.md) - DAG compilation that uses the resolver
-- [Dynamic Pipeline Template](dynamic_template.md) - Template system that leverages the config resolver
+- [Dynamic Template System](dynamic_template_system.md) - Template system that leverages the config resolver

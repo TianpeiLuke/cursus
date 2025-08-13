@@ -1,3 +1,23 @@
+---
+tags:
+  - design
+  - architecture
+  - system
+keywords:
+  - essential
+  - inputs
+  - notebook
+  - design
+  - revised
+  - system design
+  - architecture
+topics:
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Essential Inputs Notebook Design (Revised)
 
 ## Executive Summary

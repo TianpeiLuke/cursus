@@ -1,3 +1,27 @@
+---
+tags:
+  - design
+  - configuration
+  - job_types
+  - variants
+  - pipeline
+keywords:
+  - job type variants
+  - training variants
+  - calibration variants
+  - pipeline variants
+  - semantic matching
+  - step name generation
+  - configuration variants
+topics:
+  - job type handling
+  - pipeline variants
+  - configuration management
+  - semantic dependency resolution
+language: python
+date of note: 2025-08-12
+---
+
 # Job Type Variant Handling
 
 ## Overview

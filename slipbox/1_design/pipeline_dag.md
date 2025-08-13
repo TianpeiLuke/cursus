@@ -495,7 +495,7 @@ Pipeline DAG serves as the **mathematical and computational backbone** of the pi
 
 ## Related Documents
 
-- [Dynamic Pipeline Template](dynamic_template.md) - Template system that leverages Pipeline DAG for structure
+- [Dynamic Template System](dynamic_template_system.md) - Template system that leverages Pipeline DAG for structure
 - [Step Config Resolver](step_config_resolver.md) - Maps DAG nodes to configurations
 - [Pipeline Template Base](pipeline_template_base.md) - Base class for templates using DAGs
 - [Step Builder](step_builder.md) - Builds pipeline steps based on DAG structure

@@ -1,3 +1,19 @@
+---
+tags:
+  - design
+  - step
+  - builder
+keywords:
+  - step
+  - contract
+topics:
+  - step builders
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Step Contract
 
 ## What is the Purpose of Step Contract?

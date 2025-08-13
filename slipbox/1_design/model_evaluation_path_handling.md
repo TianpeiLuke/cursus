@@ -1,3 +1,20 @@
+---
+tags:
+  - design
+  - model
+  - machine_learning
+keywords:
+  - model
+  - evaluation
+  - path
+  - handling
+topics:
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Model Evaluation Step Path Handling
 
 ## Background

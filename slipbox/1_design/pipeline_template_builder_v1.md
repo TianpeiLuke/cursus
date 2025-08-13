@@ -1,3 +1,27 @@
+---
+tags:
+  - design
+  - pipeline
+  - template
+  - builder
+  - orchestration
+keywords:
+  - pipeline template builder
+  - monolithic orchestrator
+  - imperative orchestration
+  - DAG-based construction
+  - property path resolution
+  - step coordination
+  - dependency management
+topics:
+  - pipeline orchestration
+  - template-based construction
+  - step builder coordination
+  - dependency resolution
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Template Builder V1
 
 ## What is the Purpose of Pipeline Template Builder V1?

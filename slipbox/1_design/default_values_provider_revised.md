@@ -1,3 +1,20 @@
+---
+tags:
+  - design
+  - architecture
+  - system
+keywords:
+  - default
+  - values
+  - provider
+  - revised
+topics:
+  - system design
+  - architecture
+language: python
+date of note: 2025-08-12
+---
+
 # Default Values Provider (Revised)
 
 ## Overview
