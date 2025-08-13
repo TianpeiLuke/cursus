@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .static_analysis.script_analyzer import ScriptAnalyzer
 from .static_analysis.builder_analyzer import extract_builder_arguments
+from .testability_validator import TestabilityPatternValidator
 from .alignment_utils import (
     SeverityLevel, create_alignment_issue, normalize_path,
     extract_logical_name_from_path, is_sagemaker_path,
@@ -52,6 +53,9 @@ class ScriptContractAlignmentTester:
             'scripts': str(self.scripts_dir)
         }
         self.file_resolver = FlexibleFileResolver(base_directories)
+        
+        # Initialize testability validator
+        self.testability_validator = TestabilityPatternValidator()
         
         # Build entry_point to contract file mapping (kept as fallback)
         self._entry_point_to_contract = self._build_entry_point_mapping()
@@ -196,6 +200,30 @@ class ScriptContractAlignmentTester:
         # Validate file operations
         file_issues = self._validate_file_operations(analysis, contract, script_name)
         issues.extend(file_issues)
+        
+        # Validate script testability patterns
+        try:
+            testability_issues = self.testability_validator.validate_script_testability(
+                str(script_path), analyzer.ast_tree
+            )
+            # Convert AlignmentIssue objects to dictionary format for consistency
+            for issue in testability_issues:
+                issues.append({
+                    'severity': issue.level.value,
+                    'category': issue.category,
+                    'message': issue.message,
+                    'details': issue.details,
+                    'recommendation': issue.recommendation
+                })
+        except Exception as e:
+            # If testability validation fails, add a warning but don't fail the entire validation
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'testability_validation_error',
+                'message': f'Failed to validate script testability: {str(e)}',
+                'details': {'script': script_name, 'error': str(e)},
+                'recommendation': 'Check script syntax and structure for testability validation'
+            })
         
         # Determine overall pass/fail status
         has_critical_or_error = any(

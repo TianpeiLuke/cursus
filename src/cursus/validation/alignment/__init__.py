@@ -17,6 +17,7 @@ from .script_contract_alignment import ScriptContractAlignmentTester
 from .contract_spec_alignment import ContractSpecificationAlignmentTester
 from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
 from .builder_config_alignment import BuilderConfigurationAlignmentTester
+from .testability_validator import TestabilityPatternValidator
 
 __all__ = [
     'UnifiedAlignmentTester',
@@ -26,5 +27,6 @@ __all__ = [
     'ScriptContractAlignmentTester',
     'ContractSpecificationAlignmentTester',
     'SpecificationDependencyAlignmentTester',
-    'BuilderConfigurationAlignmentTester'
+    'BuilderConfigurationAlignmentTester',
+    'TestabilityPatternValidator'
 ]
