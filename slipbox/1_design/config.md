@@ -1,3 +1,25 @@
+---
+tags:
+  - design
+  - configuration
+  - management
+  - validation
+  - pydantic
+keywords:
+  - configuration management
+  - hierarchical configuration
+  - environment overrides
+  - validation
+  - type safety
+  - script contracts
+topics:
+  - configuration management
+  - validation systems
+  - environment configuration
+language: python
+date of note: 2025-08-12
+---
+
 # Config
 
 ## What is the Purpose of Config?

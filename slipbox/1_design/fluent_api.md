@@ -1,3 +1,24 @@
+---
+tags:
+  - design
+  - api
+  - interface
+  - fluent
+  - usability
+keywords:
+  - fluent API
+  - method chaining
+  - natural language interface
+  - pipeline construction
+  - user experience
+topics:
+  - user interface design
+  - API design
+  - pipeline construction
+language: python
+date of note: 2025-08-12
+---
+
 # Fluent API
 
 ## What is the Purpose of Fluent API?

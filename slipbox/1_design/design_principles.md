@@ -1,3 +1,24 @@
+---
+tags:
+  - design
+  - architecture
+  - principles
+  - philosophy
+  - guidelines
+keywords:
+  - design principles
+  - architectural philosophy
+  - system design
+  - development guidelines
+  - best practices
+topics:
+  - architectural philosophy
+  - design guidelines
+  - system principles
+language: python
+date of note: 2025-08-12
+---
+
 # Design Principles
 
 ## What is the Purpose of Design Principles?

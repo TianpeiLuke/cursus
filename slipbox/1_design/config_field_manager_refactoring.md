@@ -1,3 +1,24 @@
+---
+tags:
+  - design
+  - configuration
+  - registry
+  - refactoring
+  - architecture
+keywords:
+  - config field manager
+  - hyperparameter registry
+  - single source of truth
+  - configuration management
+  - registry pattern
+topics:
+  - configuration management
+  - registry systems
+  - system refactoring
+language: python
+date of note: 2025-08-12
+---
+
 # Config Field Manager and Registry Refactoring
 
 ## Overview

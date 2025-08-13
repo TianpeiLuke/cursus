@@ -1,3 +1,24 @@
+---
+tags:
+  - design
+  - evolution
+  - architecture
+  - transformation
+  - history
+keywords:
+  - design evolution
+  - imperative to declarative
+  - architectural transformation
+  - pipeline modernization
+  - system redesign
+topics:
+  - architectural evolution
+  - design transformation
+  - system modernization
+language: python
+date of note: 2025-08-12
+---
+
 # Pipeline Design Evolution: From Imperative to Declarative
 
 ## Overview

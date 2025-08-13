@@ -1,3 +1,24 @@
+---
+tags:
+  - design
+  - proxy
+  - abstraction
+  - intelligence
+  - automation
+keywords:
+  - smart proxy
+  - intelligent abstraction
+  - dependency resolution
+  - type safety
+  - developer experience
+topics:
+  - intelligent abstraction
+  - pipeline construction
+  - developer experience
+language: python
+date of note: 2025-08-12
+---
+
 # Smart Proxy
 
 ## What is the Purpose of Smart Proxy?

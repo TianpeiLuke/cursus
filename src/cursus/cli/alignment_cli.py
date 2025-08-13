@@ -420,7 +420,8 @@ def validate(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_d
         status = results.get('overall_status', 'UNKNOWN')
         if status == 'PASSING':
             click.echo(f"\n✅ {script_name} passed all alignment validation checks!")
-            ctx.exit(0)
+            # Exit successfully without raising an exception
+            sys.exit(0)
         else:
             click.echo(f"\n❌ {script_name} failed alignment validation. Please review the issues above.")
             ctx.exit(1)

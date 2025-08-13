@@ -1,3 +1,25 @@
+---
+tags:
+  - design
+  - architecture
+  - patterns
+  - testing
+  - state_management
+keywords:
+  - global singletons
+  - local objects
+  - dependency injection
+  - testing isolation
+  - state management
+  - concurrency
+topics:
+  - architectural patterns
+  - testing strategies
+  - state management
+language: python
+date of note: 2025-08-12
+---
+
 # Global Singletons vs. Local Objects
 
 ## Overview
