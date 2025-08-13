@@ -6,7 +6,11 @@ import shutil
 import csv
 import json
 import argparse
+import logging
+import sys
+import traceback
 from pathlib import Path
+from typing import Dict
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 import numpy as np
@@ -106,18 +110,46 @@ def combine_shards(input_dir: str) -> pd.DataFrame:
 
 # --- Main Processing Logic ---
 
-def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_data_dir: str, output_dir: str):
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: argparse.Namespace,
+    logger=None
+) -> Dict[str, pd.DataFrame]:
     """
-    Main logic for preprocessing data, now refactored for testability.
+    Main logic for preprocessing data, refactored for testability.
+    
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments
+        logger: Optional logger object (defaults to print if None)
+    
+    Returns:
+        Dictionary of DataFrames by split name (e.g., 'train', 'test', 'val')
     """
+    # Extract parameters from arguments and environment variables
+    job_type = job_args.job_type
+    label_field = environ_vars.get("LABEL_FIELD")
+    train_ratio = float(environ_vars.get("TRAIN_RATIO", 0.7))
+    test_val_ratio = float(environ_vars.get("TEST_VAL_RATIO", 0.5))
+    
+    # Extract paths
+    input_data_dir = input_paths.get("data_input", "/opt/ml/processing/input/data")
+    output_dir = output_paths.get("data_output", "/opt/ml/processing/output")
+    # Use print function if no logger is provided
+    log = logger or print
+    
     # 1. Setup paths
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     # 2. Combine data shards
-    print(f"[INFO] Combining data shards from {input_data_dir}…")
+    log(f"[INFO] Combining data shards from {input_data_dir}…")
     df = combine_shards(input_data_dir)
-    print(f"[INFO] Combined data shape: {df.shape}")
+    log(f"[INFO] Combined data shape: {df.shape}")
 
     # 3. Process columns and labels
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
@@ -132,7 +164,7 @@ def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: fl
     df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype("Int64")
     df.dropna(subset=[label_field], inplace=True)
     df[label_field] = df[label_field].astype(int)
-    print(f"[INFO] Data shape after cleaning labels: {df.shape}")
+    log(f"[INFO] Data shape after cleaning labels: {df.shape}")
     
     # 4. Split data if training, otherwise use the job_type as the single split
     if job_type == "training":
@@ -150,33 +182,78 @@ def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: fl
         # Only output processed_data.csv
         proc_path = subfolder / f"{split_name}_processed_data.csv"
         split_df.to_csv(proc_path, index=False)
-        print(f"[INFO] Saved {proc_path} (shape={split_df.shape})")
+        log(f"[INFO] Saved {proc_path} (shape={split_df.shape})")
 
-    print("[INFO] Preprocessing complete.")
+    log("[INFO] Preprocessing complete.")
+    return splits
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--job_type", type=str, required=True, help="One of ['training','validation','testing']")
-    args = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--job_type", type=str, required=True, 
+                            choices=["training", "validation", "testing", "calibration"],
+                            help="One of ['training','validation','testing','calibration']")
+        args = parser.parse_args()
 
-    # Read configuration from environment variables
-    LABEL_FIELD = os.environ.get("LABEL_FIELD")
-    if not LABEL_FIELD:
-        raise RuntimeError("LABEL_FIELD environment variable must be set.")
-    TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
-    TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
-    
-    # Define standard SageMaker paths - use contract-declared paths directly
-    INPUT_DATA_DIR = "/opt/ml/processing/input/data"  # Direct path from contract
-    OUTPUT_DIR = "/opt/ml/processing/output"
+        # Read configuration from environment variables
+        LABEL_FIELD = os.environ.get("LABEL_FIELD")
+        if not LABEL_FIELD:
+            raise RuntimeError("LABEL_FIELD environment variable must be set.")
+        TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
+        TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
+        
+        # Define standard SageMaker paths - use contract-declared paths directly
+        INPUT_DATA_DIR = "/opt/ml/processing/input/data"
+        OUTPUT_DIR = "/opt/ml/processing/output"
+        
+        # Set up logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        logger = logging.getLogger(__name__)
+        
+        # Log key parameters
+        logger.info(f"Starting tabular preprocessing with parameters:")
+        logger.info(f"  Job Type: {args.job_type}")
+        logger.info(f"  Label Field: {LABEL_FIELD}")
+        logger.info(f"  Train Ratio: {TRAIN_RATIO}")
+        logger.info(f"  Test/Val Ratio: {TEST_VAL_RATIO}")
+        logger.info(f"  Input Directory: {INPUT_DATA_DIR}")
+        logger.info(f"  Output Directory: {OUTPUT_DIR}")
 
-    # Execute the main processing logic by calling the refactored main function
-    main(
-        job_type=args.job_type,
-        label_field=LABEL_FIELD,
-        train_ratio=TRAIN_RATIO,
-        test_val_ratio=TEST_VAL_RATIO,
-        input_data_dir=INPUT_DATA_DIR,
-        output_dir=OUTPUT_DIR,
-    )
+        # Set up path dictionaries
+        input_paths = {
+            "data_input": INPUT_DATA_DIR
+        }
+        
+        output_paths = {
+            "data_output": OUTPUT_DIR
+        }
+        
+        # Environment variables dictionary
+        environ_vars = {
+            "LABEL_FIELD": LABEL_FIELD,
+            "TRAIN_RATIO": str(TRAIN_RATIO),
+            "TEST_VAL_RATIO": str(TEST_VAL_RATIO)
+        }
+
+        # Execute the main processing logic
+        result = main(
+            input_paths=input_paths,
+            output_paths=output_paths,
+            environ_vars=environ_vars,
+            job_args=args,
+            logger=logger.info
+        )
+        
+        # Log completion summary
+        splits_summary = ", ".join([f"{name}: {df.shape}" for name, df in result.items()])
+        logger.info(f"Preprocessing completed successfully. Splits: {splits_summary}")
+        sys.exit(0)
+    except Exception as e:
+        logging.error(f"Error in preprocessing script: {str(e)}")
+        logging.error(traceback.format_exc())
+        sys.exit(1)

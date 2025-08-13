@@ -13,6 +13,7 @@ import sys
 import json
 import logging
 import traceback
+import argparse
 from typing import Dict, List, Any, Optional, Tuple
 
 import numpy as np
@@ -711,16 +712,52 @@ def plot_multiclass_reliability_diagram(
     return figure_path
 
 
-def main(config=None):
-    """Main entry point for the calibration script."""
+def main(
+    input_paths: dict,
+    output_paths: dict,
+    environ_vars: dict,
+    job_args: argparse.Namespace = None,
+    config: CalibrationConfig = None
+) -> dict:
+    """Main entry point for the calibration script.
+    
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments (optional)
+        config: Configuration object (optional, created from environ_vars if not provided)
+        
+    Returns:
+        Dictionary with metrics and results
+    """
     try:
-        # Use provided config or create from environment
-        config = config or CalibrationConfig.from_env()
+        # Use provided config or create from environment variables
+        if config is None:
+            config = CalibrationConfig(
+                input_data_path=input_paths.get("eval_data", "/opt/ml/processing/input/eval_data"),
+                output_calibration_path=output_paths.get("calibration", "/opt/ml/processing/output/calibration"),
+                output_metrics_path=output_paths.get("metrics", "/opt/ml/processing/output/metrics"),
+                output_calibrated_data_path=output_paths.get("calibrated_data", "/opt/ml/processing/output/calibrated_data"),
+                calibration_method=environ_vars.get("CALIBRATION_METHOD", "gam"),
+                label_field=environ_vars.get("LABEL_FIELD", "label"),
+                score_field=environ_vars.get("SCORE_FIELD", "prob_class_1"),
+                is_binary=environ_vars.get("IS_BINARY", "True").lower() == "true",
+                monotonic_constraint=environ_vars.get("MONOTONIC_CONSTRAINT", "True").lower() == "true",
+                gam_splines=int(environ_vars.get("GAM_SPLINES", "10")),
+                error_threshold=float(environ_vars.get("ERROR_THRESHOLD", "0.05")),
+                num_classes=int(environ_vars.get("NUM_CLASSES", "2")),
+                score_field_prefix=environ_vars.get("SCORE_FIELD_PREFIX", "prob_class_"),
+                multiclass_categories=environ_vars.get("MULTICLASS_CATEGORIES")
+            )
+
         logger.info("Starting model calibration")
         logger.info(f"Running in {'binary' if config.is_binary else 'multi-class'} mode")
         
         # Create output directories
         create_directories(config)
+        
+        results = {}
         
         if config.is_binary:
             # Binary classification workflow
@@ -936,4 +973,46 @@ def main(config=None):
 
 
 if __name__ == "__main__":
-    main()
+    # Define standard SageMaker paths
+    INPUT_DATA_PATH = "/opt/ml/processing/input/eval_data"
+    OUTPUT_CALIBRATION_PATH = "/opt/ml/processing/output/calibration"
+    OUTPUT_METRICS_PATH = "/opt/ml/processing/output/metrics"
+    OUTPUT_CALIBRATED_DATA_PATH = "/opt/ml/processing/output/calibrated_data"
+    
+    # Parse environment variables
+    environ_vars = {
+        "CALIBRATION_METHOD": os.environ.get("CALIBRATION_METHOD", "gam"),
+        "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),
+        "SCORE_FIELD": os.environ.get("SCORE_FIELD", "prob_class_1"),
+        "IS_BINARY": os.environ.get("IS_BINARY", "True"),
+        "MONOTONIC_CONSTRAINT": os.environ.get("MONOTONIC_CONSTRAINT", "True"),
+        "GAM_SPLINES": os.environ.get("GAM_SPLINES", "10"),
+        "ERROR_THRESHOLD": os.environ.get("ERROR_THRESHOLD", "0.05"),
+        "NUM_CLASSES": os.environ.get("NUM_CLASSES", "2"),
+        "SCORE_FIELD_PREFIX": os.environ.get("SCORE_FIELD_PREFIX", "prob_class_"),
+        "MULTICLASS_CATEGORIES": os.environ.get("MULTICLASS_CATEGORIES")
+    }
+    
+    # Set up input and output paths
+    input_paths = {
+        "eval_data": INPUT_DATA_PATH
+    }
+    
+    output_paths = {
+        "calibration": OUTPUT_CALIBRATION_PATH,
+        "metrics": OUTPUT_METRICS_PATH,
+        "calibrated_data": OUTPUT_CALIBRATED_DATA_PATH
+    }
+    
+    # No command line arguments for this script, but include for consistency
+    args = argparse.Namespace()
+    
+    # Call the main function
+    try:
+        main(input_paths, output_paths, environ_vars, args)
+        logger.info("Calibration completed successfully")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Calibration failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)

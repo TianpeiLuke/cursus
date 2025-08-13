@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import json
 import argparse
@@ -9,14 +10,28 @@ from sklearn.metrics import roc_auc_score, average_precision_score, precision_re
 import xgboost as xgb
 import matplotlib.pyplot as plt
 import time
+import sys
+from datetime import datetime
+from typing import Dict, Any, Optional
 
 from ...processing.risk_table_processor import RiskTableMappingProcessor
 from ...processing.numerical_imputation_processor import NumericalVariableImputationProcessor
 
 import logging
 
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Container path constants - aligned with script contract
+CONTAINER_PATHS = {
+    "PROCESSING_INPUT_BASE": "/opt/ml/processing/input",
+    "PROCESSING_OUTPUT_BASE": "/opt/ml/processing/output",
+    "MODEL_DIR": "/opt/ml/processing/input/model",
+    "EVAL_DATA_DIR": "/opt/ml/processing/input/eval_data",
+    "OUTPUT_EVAL_DIR": "/opt/ml/processing/output/eval",
+    "OUTPUT_METRICS_DIR": "/opt/ml/processing/output/metrics"
+}
 
 def load_model_artifacts(model_dir):
     """
@@ -315,7 +330,7 @@ def evaluate_model(model, df, feature_columns, id_col, label_col, hyperparams, o
         y_prob = np.column_stack([1 - y_prob, y_prob])
         logger.info("Converted binary prediction to two-column probabilities")
 
-    # FIX: Determine the classification type from the model's saved hyperparameters,
+    # Determine the classification type from the model's saved hyperparameters,
     # which is the definitive source of truth.
     is_binary_model = hyperparams.get("is_binary", True)
     
@@ -340,44 +355,129 @@ def evaluate_model(model, df, feature_columns, id_col, label_col, hyperparams, o
     save_metrics(metrics, output_metrics_dir)
     logger.info("Evaluation complete")
 
+def create_health_check_file(output_path: str) -> str:
+    """Create a health check file to signal script completion."""
+    health_path = output_path
+    with open(health_path, "w") as f:
+        f.write(f"healthy: {datetime.now().isoformat()}")
+    return health_path
 
-def main():
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: argparse.Namespace
+) -> None:
     """
     Main entry point for XGBoost model evaluation script.
     Loads model and data, runs evaluation, and saves results.
+    
+    Args:
+        input_paths (Dict[str, str]): Dictionary of input paths
+        output_paths (Dict[str, str]): Dictionary of output paths
+        environ_vars (Dict[str, str]): Dictionary of environment variables
+        job_args (argparse.Namespace): Command line arguments
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--job_type", type=str, required=True)
-    parser.add_argument("--model_dir", type=str, required=True, help="Directory containing model artifacts")
-    parser.add_argument("--eval_data_dir", type=str, required=True, help="Directory containing evaluation data")
-    parser.add_argument("--output_eval_dir", type=str, required=True, help="Directory to save evaluation predictions")
-    parser.add_argument("--output_metrics_dir", type=str, required=True, help="Directory to save metrics")
-    args = parser.parse_args()
-
-    # Access environment variables with defaults
-    ID_FIELD = os.environ.get("ID_FIELD", "id")
-    LABEL_FIELD = os.environ.get("LABEL_FIELD", "label")
-
-    # Use command line arguments for paths
-    model_dir = args.model_dir
-    eval_data_dir = args.eval_data_dir
-    output_eval_dir = args.output_eval_dir
-    output_metrics_dir = args.output_metrics_dir
-
+    # Extract paths from parameters - using contract-defined logical names
+    model_dir = input_paths.get("model_input", input_paths.get("model_dir"))
+    eval_data_dir = input_paths.get("processed_data", input_paths.get("eval_data_dir"))
+    output_eval_dir = output_paths.get("eval_output", output_paths.get("output_eval_dir"))
+    output_metrics_dir = output_paths.get("metrics_output", output_paths.get("output_metrics_dir"))
+    
+    # Extract environment variables
+    id_field = environ_vars.get("ID_FIELD", "id")
+    label_field = environ_vars.get("LABEL_FIELD", "label")
+    
+    # Log job info
+    job_type = job_args.job_type
+    logger.info(f"Running model evaluation with job_type: {job_type}")
+    
     # Ensure output directories exist
     os.makedirs(output_eval_dir, exist_ok=True)
     os.makedirs(output_metrics_dir, exist_ok=True)
 
     logger.info("Starting model evaluation script")
+    
+    # Load model artifacts
     model, risk_tables, impute_dict, feature_columns, hyperparams = load_model_artifacts(model_dir)
+    
+    # Load and preprocess data
     df = load_eval_data(eval_data_dir)
     df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
     df = df[[col for col in feature_columns if col in df.columns]]
-    id_col, label_col = get_id_label_columns(df, ID_FIELD, LABEL_FIELD)
+    
+    # Get ID and label columns
+    id_col, label_col = get_id_label_columns(df, id_field, label_field)
+    
+    # Evaluate model
     evaluate_model(
-        model, df, feature_columns, id_col, label_col, hyperparams, output_eval_dir, output_metrics_dir
+        model, df, feature_columns, id_col, label_col, hyperparams, 
+        output_eval_dir, output_metrics_dir
     )
+    
     logger.info("Model evaluation script complete")
 
+def is_running_in_container():
+    """Detect if the script is running inside a container."""
+    return os.path.exists("/.dockerenv") or os.environ.get("CONTAINER_MODE") == "true"
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--job_type", type=str, required=True)
+    parser.add_argument("--model_dir", type=str, help="Directory containing model artifacts")
+    parser.add_argument("--eval_data_dir", type=str, help="Directory containing evaluation data")
+    parser.add_argument("--output_eval_dir", type=str, help="Directory to save evaluation predictions")
+    parser.add_argument("--output_metrics_dir", type=str, help="Directory to save metrics")
+    args = parser.parse_args()
+
+    # Determine if we're in a container environment
+    in_container = is_running_in_container()
+    
+    # Set up paths based on environment and arguments - using contract-defined logical names
+    input_paths = {
+        "model_input": args.model_dir if args.model_dir else CONTAINER_PATHS["MODEL_DIR"],
+        "processed_data": args.eval_data_dir if args.eval_data_dir else CONTAINER_PATHS["EVAL_DATA_DIR"],
+    }
+    
+    output_paths = {
+        "eval_output": args.output_eval_dir if args.output_eval_dir else CONTAINER_PATHS["OUTPUT_EVAL_DIR"],
+        "metrics_output": args.output_metrics_dir if args.output_metrics_dir else CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
+    }
+    
+    # Collect environment variables - ID_FIELD and LABEL_FIELD are required per contract
+    environ_vars = {
+        "ID_FIELD": os.environ.get("ID_FIELD", "id"),  # Fallback for testing
+        "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),  # Fallback for testing
+        "CONTAINER_MODE": os.environ.get("CONTAINER_MODE", str(in_container).lower())
+    }
+    
+    # Add SageMaker environment variables if present
+    sm_environ_vars = [
+        "SM_NUM_GPUS", "SM_NUM_CPUS", "SM_HOSTS",
+        "SM_CURRENT_HOST", "SM_MODEL_DIR", "SM_CHANNEL_TRAIN"
+    ]
+    environ_vars.update({var: os.environ[var] for var in sm_environ_vars if var in os.environ})
+    
+    try:
+        # Call main function
+        main(input_paths, output_paths, environ_vars, args)
+        
+        # Signal success
+        success_path = os.path.join(output_paths["metrics_output"], "_SUCCESS")
+        Path(success_path).touch()
+        logger.info(f"Created success marker: {success_path}")
+        
+        # Create health check file
+        health_path = os.path.join(output_paths["metrics_output"], "_HEALTH")
+        create_health_check_file(health_path)
+        logger.info(f"Created health check file: {health_path}")
+        
+        sys.exit(0)
+    except Exception as e:
+        # Log error and create failure marker
+        logger.exception(f"Script failed with error: {e}")
+        failure_path = os.path.join(output_paths.get("metrics_output", "/tmp"), "_FAILURE")
+        os.makedirs(os.path.dirname(failure_path), exist_ok=True)
+        with open(failure_path, "w") as f:
+            f.write(f"Error: {str(e)}")
+        sys.exit(1)

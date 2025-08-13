@@ -15,7 +15,9 @@ import shutil
 import sys
 import tarfile
 import tempfile
+import traceback
 from pathlib import Path
+from typing import Dict, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -203,23 +205,36 @@ def process_model_with_hyperparameters(model_path: Path, hyperparams_path: Path,
         logger.info(f"Model processing complete. Output at: {output_path}")
         return output_path
 
-def main():
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: Optional[argparse.Namespace] = None
+) -> Path:
     """
     Main entry point for the DummyTraining script.
     
-    This function uses paths from the script contract rather than command-line arguments,
-    processes the model with hyperparameters, and outputs the resulting model.tar.gz.
-    
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments (optional)
+        
     Returns:
-        Exit code (0 for success, non-zero for errors)
+        Path to the processed model.tar.gz output
     """
     try:
-        # Use standard paths defined in the script contract
-        model_path = Path(MODEL_INPUT_PATH)
-        hyperparams_path = Path(HYPERPARAMS_INPUT_PATH)
-        output_dir = Path(MODEL_OUTPUT_DIR)
+        # Extract paths from input parameters - required keys must be present
+        if "model_input" not in input_paths:
+            raise ValueError("Missing required input path: model_input")
+        if "model_output" not in output_paths:
+            raise ValueError("Missing required output path: model_output")
+            
+        model_path = Path(input_paths["model_input"])
+        hyperparams_path = Path(input_paths.get("hyperparams_input", ""))
+        output_dir = Path(output_paths["model_output"])
         
-        logger.info(f"Using standard paths from contract:")
+        logger.info(f"Using paths:")
         logger.info(f"Model path: {model_path}")
         logger.info(f"Hyperparameters path: {hyperparams_path}")
         logger.info(f"Output directory: {output_dir}")
@@ -238,7 +253,7 @@ def main():
             copy_file(model_path, output_path)
             logger.info(f"Model copied to: {output_path}")
             
-        return 0
+        return output_path
     
     except FileNotFoundError as e:
         logger.error(f"File not found error: {e}")
@@ -256,4 +271,29 @@ def main():
         return 4
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        # Standard SageMaker paths
+        input_paths = {
+            "model_input": MODEL_INPUT_PATH,
+            "hyperparams_input": HYPERPARAMS_INPUT_PATH
+        }
+        
+        output_paths = {
+            "model_output": MODEL_OUTPUT_DIR
+        }
+        
+        # Environment variables dictionary
+        environ_vars = {}
+        
+        # No command line arguments needed for this script
+        args = None
+        
+        # Execute the main function
+        result = main(input_paths, output_paths, environ_vars, args)
+        
+        logger.info(f"Dummy training completed successfully. Output model at: {result}")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Error in dummy training script: {str(e)}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)

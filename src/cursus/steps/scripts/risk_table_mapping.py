@@ -14,9 +14,17 @@ import pandas as pd
 import numpy as np
 import json
 import pickle as pkl
+import traceback
 from pathlib import Path
 from sklearn.impute import SimpleImputer
 import logging
+from typing import Dict, List, Tuple, Any, Optional, Callable
+
+# Default paths (will be overridden by parameters in main function)
+DEFAULT_INPUT_DIR = "/opt/ml/processing/input/data"
+DEFAULT_CONFIG_DIR = "/opt/ml/processing/input/config" 
+DEFAULT_OUTPUT_DIR = "/opt/ml/processing/output"
+DEFAULT_RISK_TABLE_DIR = "/opt/ml/processing/input/risk_tables"
 
 # Constants for file paths to ensure consistency between training and inference
 # These constants ensure the same filenames are used across all job types,
@@ -33,7 +41,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def load_json_config(config_path):
+def load_json_config(config_path: str) -> Dict[str, Any]:
     """
     Loads a JSON configuration file.
     
@@ -66,7 +74,7 @@ def load_json_config(config_path):
         raise
 
 
-def validate_categorical_fields(df, cat_field_list):
+def validate_categorical_fields(df: pd.DataFrame, cat_field_list: List[str]) -> List[str]:
     """
     Validate that fields in cat_field_list are suitable for risk mapping.
     
@@ -103,12 +111,12 @@ class OfflineBinning:
     Risk tables map categorical values to numerical risk scores based on
     their correlation with the target variable.
     """
-    def __init__(self, cat_field_list, target_field):
+    def __init__(self, cat_field_list: List[str], target_field: str):
         self.risk_tables = {}
         self.target = target_field
         self.variables = cat_field_list
 
-    def fit(self, df: pd.DataFrame, smooth_factor: float = 0, count_threshold: int = 0):
+    def fit(self, df: pd.DataFrame, smooth_factor: float = 0, count_threshold: int = 0) -> None:
         """Fits the risk tables based on the provided dataframe."""
         # Drop any -1 or NaN target rows for fitting
         fit_df = df.loc[(df[self.target] != -1) & (~df[self.target].isnull())].copy()
@@ -139,7 +147,8 @@ class OfflineBinning:
             risk_table = self._create_risk_table(fit_df, var, default_risk, smooth_samples, count_threshold)
             self.risk_tables[var]["bins"] = risk_table
 
-    def _create_risk_table(self, df, variable, default_risk, samples, count_threshold):
+    def _create_risk_table(self, df: pd.DataFrame, variable: str, default_risk: float, 
+                          samples: int, count_threshold: int) -> Dict:
         """Helper to calculate the risk table for a single variable."""
         cross_tab = pd.crosstab(df[variable], df[self.target].astype(object), margins=True, margins_name="_count_", dropna=False)
         cross_tab["risk"] = cross_tab.apply(lambda x: x.get(1, 0.0) / (x.get(1, 0) + x.get(0, 0)), axis=1)
@@ -160,17 +169,13 @@ class OfflineBinning:
                 df_transformed[var] = df_transformed[var].map(bins).fillna(default_bin)
         return df_transformed
 
-    def load_risk_tables(self, risk_tables):
+    def load_risk_tables(self, risk_tables: Dict) -> None:
         """Loads pre-existing risk tables."""
         self.risk_tables = risk_tables
         logger.info(f"Loaded {len(risk_tables)} risk tables")
 
 
-# The MissingValueImputation class has been removed as we're now handling only categorical risk mapping.
-# The tabular preprocessing step is assumed to handle any necessary numerical imputation.
-
-
-def load_split_data(job_type: str, input_dir: str):
+def load_split_data(job_type: str, input_dir: str) -> Dict[str, pd.DataFrame]:
     """
     Load data according to job_type.
     
@@ -193,7 +198,7 @@ def load_split_data(job_type: str, input_dir: str):
         return {job_type: df}
 
 
-def save_output_data(job_type: str, output_dir: str, data_dict: dict):
+def save_output_data(job_type: str, output_dir: str, data_dict: Dict[str, pd.DataFrame]) -> None:
     """
     Save processed data according to job_type.
     
@@ -211,13 +216,13 @@ def save_output_data(job_type: str, output_dir: str, data_dict: dict):
         logger.info(f"Saved {split_name} data to {output_file}, shape: {df.shape}")
 
 
-def process_data(data_dict: dict, 
-                cat_field_list: list, 
+def process_data(data_dict: Dict[str, pd.DataFrame], 
+                cat_field_list: List[str], 
                 label_name: str, 
                 job_type: str,
-                risk_tables_dict: dict = None, 
+                risk_tables_dict: Optional[Dict] = None, 
                 smooth_factor: float = 0.01, 
-                count_threshold: int = 5) -> tuple:
+                count_threshold: int = 5) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
     """
     Core data processing logic for risk table mapping.
     
@@ -290,7 +295,7 @@ def process_data(data_dict: dict,
 
 
 def save_artifacts(binner: OfflineBinning, 
-                  hyperparams: dict, 
+                  hyperparams: Dict[str, Any], 
                   output_path: Path) -> None:
     """
     Save risk table artifacts to the specified output path.
@@ -314,7 +319,7 @@ def save_artifacts(binner: OfflineBinning,
     logger.info(f"Saved hyperparameters to {hyperparams_output_path}")
 
 
-def load_risk_tables(risk_table_path: Path) -> dict:
+def load_risk_tables(risk_table_path: Path) -> Dict:
     """
     Load risk tables from a pickle file.
     
@@ -335,13 +340,15 @@ def load_risk_tables(risk_table_path: Path) -> dict:
     return risk_tables
 
 
-def main(job_type: str, 
-         input_dir: str, 
-         output_dir: str, 
-         hyperparams: dict, 
-         risk_table_input_dir: str = None,
-         load_data_func=load_split_data,
-         save_data_func=save_output_data):
+def internal_main(
+    job_type: str, 
+    input_dir: str, 
+    output_dir: str, 
+    hyperparams: Dict[str, Any], 
+    risk_table_input_dir: Optional[str] = None,
+    load_data_func: Callable = load_split_data,
+    save_data_func: Callable = save_output_data
+) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
     """
     Main logic for risk table mapping, modified to handle both training and inference modes.
     
@@ -404,20 +411,50 @@ def main(job_type: str,
     return transformed_data, binner
 
 
-if __name__ == "__main__":
-    try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--job_type", type=str, required=True, 
-                            choices=["training", "validation", "testing", "calibration"],
-                            help="Type of job to perform")
-        args = parser.parse_args()
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: Optional[argparse.Namespace] = None
+) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
+    """
+    Standardized main entry point for risk table mapping script.
+    
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments (optional)
         
-        # Define standard SageMaker paths based on contract
-        input_dir = "/opt/ml/processing/input/data"
-        config_dir = "/opt/ml/processing/input/config"
-        output_dir = "/opt/ml/processing/output"
-        risk_table_input_dir = "/opt/ml/processing/input/risk_tables" if args.job_type != "training" else None
-
+    Returns:
+        Tuple containing:
+        - Dictionary of transformed dataframes
+        - OfflineBinning instance with fitted risk tables
+    """
+    try:
+        # Extract paths from input parameters - required keys must be present
+        if "data_input" not in input_paths:
+            raise ValueError("Missing required input path: data_input")
+        if "data_output" not in output_paths:
+            raise ValueError("Missing required output path: data_output")
+        
+        # Extract job_type from args
+        if job_args is None or not hasattr(job_args, "job_type"):
+            raise ValueError("job_args must contain job_type parameter")
+            
+        job_type = job_args.job_type
+        input_dir = input_paths["data_input"]
+        output_dir = output_paths["data_output"]
+        config_dir = input_paths.get("config_input", DEFAULT_CONFIG_DIR)
+        
+        # For non-training jobs, check if risk table input path is provided
+        risk_table_input_dir = None
+        if job_type != "training":
+            risk_table_input_dir = input_paths.get("risk_table_input")
+            if not risk_table_input_dir:
+                logger.warning(f"No risk_table_input path provided for non-training job {job_type}. " +
+                               "Risk table mapping may fail.")
+        
         # Log input/output paths for clarity
         logger.info(f"Input data directory: {input_dir}")
         logger.info(f"Output directory: {output_dir}")
@@ -440,14 +477,50 @@ if __name__ == "__main__":
                 "count_threshold": 5
             }
         
-        # Execute the main logic
-        main(
-            job_type=args.job_type,
+        # Execute the internal main logic
+        return internal_main(
+            job_type=job_type,
             input_dir=input_dir,
             output_dir=output_dir,
             hyperparams=hyperparams,
             risk_table_input_dir=risk_table_input_dir
         )
+        
+    except Exception as e:
+        logger.error(f"Error in risk table mapping: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise
+
+
+if __name__ == "__main__":
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--job_type", type=str, required=True, 
+                            choices=["training", "validation", "testing", "calibration"],
+                            help="Type of job to perform")
+        args = parser.parse_args()
+        
+        # Define standard SageMaker paths based on contract
+        input_paths = {
+            "data_input": DEFAULT_INPUT_DIR,
+            "config_input": DEFAULT_CONFIG_DIR
+        }
+        
+        output_paths = {
+            "data_output": DEFAULT_OUTPUT_DIR
+        }
+        
+        # For non-training jobs, add risk table input path
+        if args.job_type != "training":
+            input_paths["risk_table_input"] = DEFAULT_RISK_TABLE_DIR
+            
+        # Environment variables dictionary (not used in this script)
+        environ_vars = {}
+        
+        # Execute the main function with standardized inputs
+        result, _ = main(input_paths, output_paths, environ_vars, args)
+        
+        logger.info(f"Risk table mapping completed successfully")
         sys.exit(0)
     except FileNotFoundError as e:
         logger.error(f"File not found error: {str(e)}")
@@ -457,6 +530,5 @@ if __name__ == "__main__":
         sys.exit(2)
     except Exception as e:
         logger.error(f"Error in risk table mapping script: {str(e)}")
-        import traceback
         logger.error(traceback.format_exc())
         sys.exit(3)
