@@ -1,23 +1,28 @@
 ---
-date: 2025-08-12
-title: "Fluent API Implementation Plan"
-status: "planning"
-priority: "high"
-estimated_effort: "11-16 weeks"
-team_size: "2-3 developers"
-dependencies:
-  - "Dynamic Template System"
-  - "Existing Configuration Classes"
-  - "Step Builder Registry"
-related_docs:
-  - "slipbox/1_design/fluent_api.md"
-  - "slipbox/4_analysis/fluent_api_dag_compiler_integration_analysis.md"
-  - "slipbox/4_analysis/fluent_api_user_input_collection_analysis.md"
 tags:
-  - "fluent_api"
-  - "user_experience"
-  - "api_design"
-  - "implementation_plan"
+  - project
+  - planning
+  - fluent_api
+  - user_experience
+  - api_design
+  - implementation_plan
+keywords:
+  - fluent API
+  - implementation plan
+  - user experience
+  - progressive disclosure
+  - context-aware defaults
+  - method chaining
+  - configuration factory
+  - dynamic template integration
+topics:
+  - fluent API implementation
+  - project planning
+  - user experience design
+  - architectural integration
+  - development phases
+language: python
+date of note: 2025-08-12
 ---
 
 # Fluent API Implementation Plan
@@ -26,12 +31,20 @@ tags:
 
 This plan outlines the implementation of a Fluent API for the cursus pipeline system, transforming complex configuration management into an intuitive, natural language-like interface. The implementation leverages existing infrastructure while providing progressive disclosure of complexity, context-aware defaults, and comprehensive validation.
 
-**Based on:**
-- Design specifications from `slipbox/1_design/fluent_api.md`
-- Integration analysis from `slipbox/4_analysis/fluent_api_dag_compiler_integration_analysis.md`
-- User input complexity analysis from `slipbox/4_analysis/fluent_api_user_input_collection_analysis.md`
+## Related Documents
+
+This implementation plan is based on comprehensive analysis and design work:
+
+- **[Fluent API Design Specification](../1_design/fluent_api.md)** - Core design principles, API patterns, and user experience goals
+- **[DAG Compiler Integration Analysis](../4_analysis/fluent_api_dag_compiler_integration_analysis.md)** - Analysis of integration with existing Dynamic Template System
+- **[User Input Collection Analysis](../4_analysis/fluent_api_user_input_collection_analysis.md)** - Strategies for managing complex user input and progressive disclosure
+- **[Data Structure Reuse Analysis](../4_analysis/fluent_api_data_structure_reuse_analysis.md)** - Comprehensive strategy for maximizing reuse of existing infrastructure (95%+ code reuse)
+
+Additional technical references:
 - Existing Dynamic Template System architecture
 - Current configuration classes in `src/cursus/steps/configs/`
+- Step Builder Registry system
+- Validation Engine infrastructure
 
 ## Project Objectives
 
@@ -87,7 +100,7 @@ graph TD
 
 ### Integration Strategy
 - **Backend**: Leverage existing Dynamic Template System as execution engine (ref: `slipbox/1_design/dynamic_template_system.md`)
-- **Configuration**: Use existing configuration classes as data models (ref: `src/cursus/steps/configs/`)
+- **Configuration**: Use existing configuration classes as data models with 95%+ code reuse (ref: [Data Structure Reuse Analysis](../4_analysis/fluent_api_data_structure_reuse_analysis.md))
 - **Validation**: Extend existing validation infrastructure (ref: `src/cursus/core/validation/`)
 - **Assembly**: Delegate to existing Pipeline Assembler (ref: `src/cursus/core/pipeline_assembler.py`)
 
@@ -123,6 +136,7 @@ class PipelineContext:
 - [ ] Implement `PipelineContext` for intelligent defaults (ref: `slipbox/4_analysis/fluent_api_user_input_collection_analysis.md` - Context-Aware Defaults)
 - [ ] Add basic fluent methods: `load_data()`, `train_xgboost()` (ref: `slipbox/1_design/fluent_api.md` - Core Methods)
 - [ ] Integrate with Dynamic Template System for execution (ref: `slipbox/4_analysis/fluent_api_dag_compiler_integration_analysis.md` - Integration Strategy)
+- [ ] Implement Configuration Factory pattern for maximum code reuse (ref: [Data Structure Reuse Analysis](../4_analysis/fluent_api_data_structure_reuse_analysis.md) - Configuration Factory Pattern)
 - [ ] Create unit tests for core functionality
 
 ##### 1.2 Context-Aware Defaults (Week 2-3)
