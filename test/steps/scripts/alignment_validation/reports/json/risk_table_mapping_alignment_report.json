@@ -22,9 +22,9 @@
         "details": {
           "script": "risk_table_mapping",
           "testability_parameters": [
-            "job_args",
             "input_paths",
             "environ_vars",
+            "job_args",
             "output_paths"
           ]
         },
@@ -49,9 +49,9 @@
             "environ_vars"
           ],
           "used_parameters": [
-            "job_args",
             "input_paths",
-            "output_paths"
+            "output_paths",
+            "job_args"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -320,8 +320,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed testing data from tabular preprocessing step"
@@ -332,12 +332,12 @@
             "required": false,
             "compatible_sources": [
               "HyperparameterPrep",
-              "ModelTraining",
-              "ConfigurationStep",
               "DataQuality",
-              "FeatureEngineering",
+              "ModelTraining",
               "DataPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ConfigurationStep",
+              "FeatureEngineering"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -379,8 +379,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -391,12 +391,12 @@
             "required": false,
             "compatible_sources": [
               "HyperparameterPrep",
-              "ModelTraining",
-              "ConfigurationStep",
               "DataQuality",
-              "FeatureEngineering",
+              "ModelTraining",
               "DataPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ConfigurationStep",
+              "FeatureEngineering"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -438,8 +438,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed validation data from tabular preprocessing step"
@@ -450,12 +450,12 @@
             "required": false,
             "compatible_sources": [
               "HyperparameterPrep",
-              "ModelTraining",
-              "ConfigurationStep",
               "DataQuality",
-              "FeatureEngineering",
+              "ModelTraining",
               "DataPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ConfigurationStep",
+              "FeatureEngineering"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -497,8 +497,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -509,12 +509,12 @@
             "required": false,
             "compatible_sources": [
               "HyperparameterPrep",
-              "ModelTraining",
-              "ConfigurationStep",
               "DataQuality",
-              "FeatureEngineering",
+              "ModelTraining",
               "DataPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ConfigurationStep",
+              "FeatureEngineering"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -548,8 +548,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -560,12 +560,12 @@
             "required": false,
             "compatible_sources": [
               "HyperparameterPrep",
-              "ModelTraining",
-              "ConfigurationStep",
               "DataQuality",
-              "FeatureEngineering",
+              "ModelTraining",
               "DataPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ConfigurationStep",
+              "FeatureEngineering"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -598,8 +598,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed training data from tabular preprocessing step"
@@ -610,12 +610,12 @@
               "required": false,
               "compatible_sources": [
                 "HyperparameterPrep",
-                "ModelTraining",
-                "ConfigurationStep",
                 "DataQuality",
-                "FeatureEngineering",
+                "ModelTraining",
                 "DataPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "ConfigurationStep",
+                "FeatureEngineering"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -647,8 +647,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed testing data from tabular preprocessing step"
@@ -659,12 +659,12 @@
               "required": false,
               "compatible_sources": [
                 "HyperparameterPrep",
-                "ModelTraining",
-                "ConfigurationStep",
                 "DataQuality",
-                "FeatureEngineering",
+                "ModelTraining",
                 "DataPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "ConfigurationStep",
+                "FeatureEngineering"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -706,8 +706,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed validation data from tabular preprocessing step"
@@ -718,12 +718,12 @@
               "required": false,
               "compatible_sources": [
                 "HyperparameterPrep",
-                "ModelTraining",
-                "ConfigurationStep",
                 "DataQuality",
-                "FeatureEngineering",
+                "ModelTraining",
                 "DataPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "ConfigurationStep",
+                "FeatureEngineering"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -765,8 +765,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -777,12 +777,12 @@
               "required": false,
               "compatible_sources": [
                 "HyperparameterPrep",
-                "ModelTraining",
-                "ConfigurationStep",
                 "DataQuality",
-                "FeatureEngineering",
+                "ModelTraining",
                 "DataPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "ConfigurationStep",
+                "FeatureEngineering"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -822,8 +822,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -834,12 +834,12 @@
           "required": false,
           "compatible_sources": [
             "HyperparameterPrep",
-            "ModelTraining",
-            "ConfigurationStep",
             "DataQuality",
-            "FeatureEngineering",
+            "ModelTraining",
             "DataPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "ConfigurationStep",
+            "FeatureEngineering"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -972,8 +972,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Preprocessed testing data from tabular preprocessing step"
@@ -984,12 +984,12 @@
           "required": false,
           "compatible_sources": [
             "HyperparameterPrep",
-            "ModelTraining",
-            "ConfigurationStep",
             "DataQuality",
-            "FeatureEngineering",
+            "ModelTraining",
             "DataPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "ConfigurationStep",
+            "FeatureEngineering"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -1426,7 +1426,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-08-12T21:45:00.413547",
+    "validation_timestamp": "2025-08-12T21:58:51.658565",
     "validator_version": "1.0.0"
   }
 }

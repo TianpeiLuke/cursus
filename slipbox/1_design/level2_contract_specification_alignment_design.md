@@ -28,9 +28,11 @@ date of note: 2025-08-11
 
 ## 🎉 **BREAKTHROUGH STATUS: 100% SUCCESS RATE**
 
-**Status**: ✅ **PRODUCTION-READY** - Smart Specification Selection breakthrough achieving 100% success rate (8/8 scripts)
+**Date**: August 12, 2025  
+**Status**: ✅ **PRODUCTION-READY** - Script-to-Contract Name Mapping breakthrough achieving 100% success rate (8/8 scripts)
 
 **Revolutionary Achievements**:
+- **Script-to-Contract Name Mapping**: Critical breakthrough resolving naming mismatches (e.g., `xgboost_model_evaluation` → `xgboost_model_eval_contract`)
 - Smart Specification Selection for multi-variant architectures
 - Union-based validation embracing job-type-specific specifications
 - Intelligent validation logic (permissive inputs, strict coverage)
@@ -40,12 +42,20 @@ date of note: 2025-08-11
 
 Level 2 validation ensures alignment between **contract specifications** and their **step specifications**. This interface layer validates that contracts correctly interface with the specification system, handling multi-variant architectures where multiple job-type-specific specifications exist for the same logical step.
 
-## Architecture Pattern: Smart Specification Selection with Multi-Variant Support
+**Key Achievement**: The critical script-to-contract name mapping breakthrough on August 12, 2025, resolved the fundamental issue where script names didn't match contract file names, enabling 100% validation success across all scripts.
+
+## Architecture Pattern: Smart Specification Selection with Script-to-Contract Name Mapping
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │              Level 2: Contract ↔ Specification             │
 │                     INTERFACE LAYER                        │
+├─────────────────────────────────────────────────────────────┤
+│  🎯 Script-to-Contract Name Mapping (BREAKTHROUGH!)        │
+│  ├─ FlexibleFileResolver integration                        │
+│  ├─ Multi-strategy contract file discovery                  │
+│  ├─ Actual contract name extraction                         │
+│  └─ Unified specification loading                           │
 ├─────────────────────────────────────────────────────────────┤
 │  Smart Specification Selection                              │
 │  ├─ Multi-variant pattern detection                         │
@@ -69,7 +79,72 @@ Level 2 validation ensures alignment between **contract specifications** and the
 
 ## Revolutionary Breakthroughs
 
-### 1. Smart Specification Selection (Multi-Variant Detection)
+### 1. Script-to-Contract Name Mapping (Critical Breakthrough)
+
+**Problem Solved**: The `xgboost_model_evaluation` script was failing validation because the system was looking for specifications using the script name, but the actual contract file was named `xgboost_model_eval_contract.py`.
+
+**Root Cause**: The `validate_contract` method was using script names directly to find specifications, without properly mapping to the actual contract file names.
+
+**Breakthrough Solution**: Enhanced the validation system with FlexibleFileResolver integration to handle script-to-contract name mapping:
+
+```python
+def validate_contract(self, script_or_contract_name: str) -> ValidationResult:
+    """Validate contract with robust script-to-contract name mapping."""
+    
+    # Step 1: Resolve script name to actual contract file
+    contract_file_path = self.file_resolver.find_contract_file(script_or_contract_name)
+    
+    if not contract_file_path:
+        return ValidationResult(
+            test_name=f"contract_spec_{script_or_contract_name}",
+            passed=False,
+            details={'error': f'Contract file not found for {script_or_contract_name}'}
+        )
+    
+    # Step 2: Extract actual contract name from file path
+    # e.g., "xgboost_model_eval_contract.py" -> "xgboost_model_eval_contract"
+    actual_contract_name = Path(contract_file_path).stem
+    
+    # Step 3: Use actual contract name for specification loading
+    specifications = self.specification_loader.load_specifications_for_contract(actual_contract_name)
+    
+    # Step 4: Continue with normal validation using correct contract name
+    return self._validate_with_specifications(actual_contract_name, specifications)
+```
+
+**FlexibleFileResolver Integration**:
+```python
+class FlexibleFileResolver:
+    """Flexible file resolver with multiple discovery strategies."""
+    
+    def find_contract_file(self, script_or_contract_name: str) -> Optional[str]:
+        """Find contract file using multiple strategies."""
+        
+        contracts_dir = Path(self.base_directories.get('contracts', ''))
+        
+        # Strategy 1: Direct match (script_name + "_contract.py")
+        direct_pattern = f"{script_or_contract_name}_contract.py"
+        direct_path = contracts_dir / direct_pattern
+        if direct_path.exists():
+            return str(direct_path)
+            
+        # Strategy 2: Exact name match (already a contract name)
+        if script_or_contract_name.endswith('_contract'):
+            exact_path = contracts_dir / f"{script_or_contract_name}.py"
+            if exact_path.exists():
+                return str(exact_path)
+                
+        # Strategy 3: Fuzzy matching for edge cases
+        for contract_file in contracts_dir.glob("*_contract.py"):
+            if self._names_might_match(script_or_contract_name, contract_file.stem):
+                return str(contract_file)
+                
+        return None
+```
+
+**Impact**: This breakthrough resolved the critical validation failure for `xgboost_model_evaluation` and enabled 100% success rate across all scripts.
+
+### 2. Smart Specification Selection (Multi-Variant Detection)
 
 **Problem Solved**: Previous validation failed when multiple job-type-specific specifications existed for the same logical step.
 
@@ -427,65 +502,78 @@ class MultiVariantArchitectureHandler:
 
 ```python
 class ContractSpecificationAlignmentTester:
-    """Level 2 validation: Contract ↔ Specification alignment."""
+    """Level 2 validation: Contract ↔ Specification alignment with script-to-contract name mapping."""
     
     def __init__(self, registry):
         self.registry = registry
+        self.file_resolver = FlexibleFileResolver()  # NEW: Script-to-contract name mapping
         self.smart_selector = SmartSpecificationSelector(registry)
         self.union_validator = UnionBasedValidator()
         self.multi_variant_handler = MultiVariantArchitectureHandler(registry)
         
-    def validate_contract_specification_alignment(self, contract_name: str) -> ValidationResult:
-        """Validate alignment between contract and specifications."""
+    def validate_contract(self, script_or_contract_name: str) -> ValidationResult:
+        """Validate contract with robust script-to-contract name mapping."""
         
         try:
-            # Step 1: Load contract
-            contract = self._load_contract(contract_name)
+            # Step 1: Resolve script name to actual contract file (BREAKTHROUGH!)
+            contract_file_path = self.file_resolver.find_contract_file(script_or_contract_name)
+            
+            if not contract_file_path:
+                return ValidationResult(
+                    test_name=f"contract_spec_{script_or_contract_name}",
+                    passed=False,
+                    details={'error': f'Contract file not found for {script_or_contract_name}'}
+                )
+            
+            # Step 2: Extract actual contract name from file path
+            # e.g., "xgboost_model_eval_contract.py" -> "xgboost_model_eval_contract"
+            actual_contract_name = Path(contract_file_path).stem
+            
+            # Step 3: Load contract using actual contract name
+            contract = self._load_contract_from_path(contract_file_path)
             if not contract:
-                return self._create_contract_loading_failure(contract_name)
+                return self._create_contract_loading_failure(actual_contract_name)
                 
-            # Step 2: Smart specification selection
-            spec_selection = self.smart_selector.select_specifications_for_contract(contract_name)
+            # Step 4: Smart specification selection using actual contract name
+            spec_selection = self.smart_selector.select_specifications_for_contract(actual_contract_name)
             
             if not spec_selection.has_valid_specifications():
-                return self._create_specification_missing_failure(contract_name)
+                return self._create_specification_missing_failure(actual_contract_name)
                 
-            # Step 3: Validate based on architecture type
+            # Step 5: Validate based on architecture type
             if spec_selection.is_multi_variant:
                 issues = self._validate_multi_variant_alignment(contract, spec_selection)
             else:
                 issues = self._validate_single_variant_alignment(contract, spec_selection)
                 
             return ValidationResult(
-                script_name=contract_name,
-                level=2,
+                test_name=f"contract_spec_{script_or_contract_name}",
                 passed=len([i for i in issues if i.is_blocking()]) == 0,
-                issues=issues,
-                success_metrics={
-                    "specifications_found": spec_selection.get_specification_count(),
-                    "variants_detected": len(spec_selection.variant_groups) if spec_selection.is_multi_variant else 1,
-                    "validation_strategy": spec_selection.validation_strategy
+                details={
+                    'script_or_contract_input': script_or_contract_name,
+                    'resolved_contract_name': actual_contract_name,
+                    'contract_file_path': contract_file_path,
+                    'specifications_found': spec_selection.get_specification_count(),
+                    'variants_detected': len(spec_selection.variant_groups) if spec_selection.is_multi_variant else 1,
+                    'validation_strategy': spec_selection.validation_strategy,
+                    'architecture_type': "multi_variant" if spec_selection.is_multi_variant else "single_variant",
+                    'name_mapping_applied': script_or_contract_name != actual_contract_name
                 },
-                resolution_details={
-                    "architecture_type": "multi_variant" if spec_selection.is_multi_variant else "single_variant",
-                    "smart_selection_applied": True
-                }
+                issues=issues
             )
             
         except Exception as e:
             return ValidationResult(
-                script_name=contract_name,
-                level=2,
+                test_name=f"contract_spec_{script_or_contract_name}",
                 passed=False,
                 issues=[ValidationIssue(
                     severity="ERROR",
                     category="validation_error",
                     message=f"Level 2 validation failed: {str(e)}",
-                    details={"error": str(e)},
+                    details={"error": str(e), "input_name": script_or_contract_name},
                     recommendation="Check contract and specification availability"
                 )],
-                degraded=True,
-                error_context={"exception": str(e)}
+                details={'error_context': str(e)}
             )
             
     def _validate_multi_variant_alignment(self, contract: Any, 
@@ -630,12 +718,15 @@ class SpecificationCache:
 
 ## Conclusion
 
-Level 2 validation represents a **revolutionary breakthrough** in contract-specification alignment validation. Through Smart Specification Selection, union-based validation logic, and comprehensive multi-variant architecture support, it achieved a complete transformation from systematic failures to **100% success rate**.
+Level 2 validation represents a **revolutionary breakthrough** in contract-specification alignment validation. Through the critical **script-to-contract name mapping breakthrough**, Smart Specification Selection, union-based validation logic, and comprehensive multi-variant architecture support, it achieved a complete transformation from systematic failures to **100% success rate**.
+
+**Key Achievement**: The script-to-contract name mapping resolution on August 12, 2025, eliminated the final barrier to 100% success, enabling the `xgboost_model_evaluation` script to properly map to the `xgboost_model_eval_contract` file and pass validation.
 
 The intelligent validation approach embraces the complexity of multi-variant job-type-specific architectures, providing the interface layer foundation that enables higher-level validations to build upon a solid, flexible base.
 
 ---
 
-**Level 2 Design Updated**: August 11, 2025  
-**Status**: Production-Ready with 100% Success Rate  
-**Next Phase**: Support Level 3 dependency validation and continued architecture evolution
+**Level 2 Design Updated**: August 12, 2025  
+**Status**: Production-Ready with 100% Success Rate (Script-to-Contract Name Mapping Breakthrough)  
+**Success Rate**: 100% (8/8 scripts) - All scripts now pass Level 2 validation  
+**Next Phase**: Continued optimization and feature enhancement for production deployment

@@ -22,9 +22,9 @@
         "details": {
           "script": "tabular_preprocessing",
           "testability_parameters": [
-            "job_args",
             "input_paths",
             "environ_vars",
+            "job_args",
             "output_paths"
           ]
         },
@@ -384,8 +384,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw testing data for preprocessing"
@@ -411,8 +411,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw calibration data for preprocessing"
@@ -438,8 +438,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw validation data for preprocessing"
@@ -465,8 +465,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -492,8 +492,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw tabular data for preprocessing"
@@ -521,8 +521,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "DataLoad"
+              "DataLoad",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -549,8 +549,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw training data for preprocessing"
@@ -576,8 +576,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw testing data for preprocessing"
@@ -603,8 +603,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw validation data for preprocessing"
@@ -630,8 +630,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw calibration data for preprocessing"
@@ -657,8 +657,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "DataLoad"
+                "DataLoad",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Raw tabular data for preprocessing"
@@ -682,8 +682,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "ProcessingStep",
-            "DataLoad"
+            "DataLoad",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Raw tabular data for preprocessing"
@@ -732,8 +732,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "ProcessingStep",
-            "DataLoad"
+            "DataLoad",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Raw tabular data for preprocessing"
@@ -1105,7 +1105,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-08-12T21:45:00.480754",
+    "validation_timestamp": "2025-08-12T21:58:51.721260",
     "validator_version": "1.0.0"
   }
 }

@@ -10,9 +10,9 @@
         "details": {
           "script": "currency_conversion",
           "testability_parameters": [
-            "job_args",
             "input_paths",
             "environ_vars",
+            "job_args",
             "output_paths"
           ]
         },
@@ -594,8 +594,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -621,8 +621,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -648,8 +648,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -675,8 +675,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -704,8 +704,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -732,8 +732,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed training data requiring currency conversion"
@@ -759,8 +759,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed testing data requiring currency conversion"
@@ -786,8 +786,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed validation data requiring currency conversion"
@@ -813,8 +813,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed calibration data requiring currency conversion"
@@ -838,8 +838,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Processed calibration data requiring currency conversion"
@@ -886,8 +886,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Processed testing data requiring currency conversion"
@@ -910,26 +910,6 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: label_field",
-        "details": {
-          "field_name": "label_field",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field label_field in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
-        "details": {
-          "field_name": "currency_conversion_dict",
-          "builder": "currency_conversion"
-        },
-        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: marketplace_id_col",
         "details": {
           "field_name": "marketplace_id_col",
@@ -948,15 +928,35 @@
         "recommendation": "Access required field marketplace_info in builder or make it optional"
       },
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: currency_conversion_dict",
+        "details": {
+          "field_name": "currency_conversion_dict",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field currency_conversion_dict in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: label_field",
+        "details": {
+          "field_name": "label_field",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Access required field label_field in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "label_field",
-            "currency_conversion_dict",
             "marketplace_id_col",
-            "marketplace_info"
+            "currency_conversion_dict",
+            "marketplace_info",
+            "label_field"
           ],
           "builder": "currency_conversion"
         },
@@ -1365,7 +1365,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-12T21:45:00.276254",
+    "validation_timestamp": "2025-08-12T21:58:51.524703",
     "validator_version": "1.0.0"
   }
 }

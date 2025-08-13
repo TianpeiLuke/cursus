@@ -282,6 +282,12 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Type-aware validation, specialized testing patterns, comprehensive coverage
 - **Strategic Value**: Next-generation testing framework with step type-specific variants for improved quality assurance
 
+#### **[Alignment Validation Data Structures](alignment_validation_data_structures.md)** - Comprehensive Data Structure Design for Alignment Testing
+- **Purpose**: Complete data structure definitions for all four levels of alignment validation testing
+- **Key Features**: Level-specific validation results, comprehensive issue tracking, success metrics, production-ready data models
+- **Benefits**: Standardized validation reporting, comprehensive issue categorization, actionable feedback generation
+- **Strategic Value**: Foundation data structures enabling the perfect validation pyramid with 100% success rate achievement
+
 #### **[Script Testability Refactoring](script_testability_refactoring.md)** - Testable Script Architecture
 - **Purpose**: Refactoring pattern for making scripts testable by separating environment concerns from business logic
 - **Key Features**: Parameterized main functions, environment collection entry points, container/local hybrid execution
