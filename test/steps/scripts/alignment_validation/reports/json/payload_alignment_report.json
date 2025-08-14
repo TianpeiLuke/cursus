@@ -10,10 +10,10 @@
         "details": {
           "script": "payload",
           "testability_parameters": [
-            "output_paths",
-            "input_paths",
+            "environ_vars",
             "job_args",
-            "environ_vars"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -37,9 +37,9 @@
             "job_args"
           ],
           "used_parameters": [
+            "environ_vars",
             "output_paths",
-            "input_paths",
-            "environ_vars"
+            "input_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -427,12 +427,42 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: model_owner",
+        "details": {
+          "field_name": "model_owner",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field model_owner in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: max_latency_in_millisecond",
+        "details": {
+          "field_name": "max_latency_in_millisecond",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field max_latency_in_millisecond in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: source_model_inference_output_variable_list",
         "details": {
           "field_name": "source_model_inference_output_variable_list",
           "builder": "payload"
         },
         "recommendation": "Access required field source_model_inference_output_variable_list in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: source_model_inference_input_variable_list",
+        "details": {
+          "field_name": "source_model_inference_input_variable_list",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field source_model_inference_input_variable_list in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -457,36 +487,6 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: model_owner",
-        "details": {
-          "field_name": "model_owner",
-          "builder": "payload"
-        },
-        "recommendation": "Access required field model_owner in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: source_model_inference_input_variable_list",
-        "details": {
-          "field_name": "source_model_inference_input_variable_list",
-          "builder": "payload"
-        },
-        "recommendation": "Access required field source_model_inference_input_variable_list in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: max_latency_in_millisecond",
-        "details": {
-          "field_name": "max_latency_in_millisecond",
-          "builder": "payload"
-        },
-        "recommendation": "Access required field max_latency_in_millisecond in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: expected_tps",
         "details": {
           "field_name": "expected_tps",
@@ -500,13 +500,13 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "source_model_inference_output_variable_list",
-            "model_registration_domain",
             "model_owner",
-            "source_model_inference_input_variable_list",
             "max_latency_in_millisecond",
+            "source_model_inference_output_variable_list",
+            "model_registration_objective",
             "expected_tps",
-            "model_registration_objective"
+            "source_model_inference_input_variable_list",
+            "model_registration_domain"
           ],
           "builder": "payload"
         },
@@ -900,7 +900,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py",
     "contract_mapping": "payload_contract",
-    "validation_timestamp": "2025-08-14T08:25:50.702863",
+    "validation_timestamp": "2025-08-14T08:34:51.207544",
     "validator_version": "1.0.0"
   }
 }

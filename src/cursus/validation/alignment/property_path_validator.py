@@ -223,7 +223,7 @@ class SageMakerPropertyPathValidator:
         """
         Get valid property paths for a specific SageMaker step type.
         
-        Based on SageMaker documentation v2.92.2:
+        Based on SageMaker Property Path Reference Database:
         https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference
         
         Args:
@@ -249,46 +249,45 @@ class SageMakerPropertyPathValidator:
         if 'training' in step_type_lower or node_type_lower == 'training':
             property_paths = {
                 'model_artifacts': [
-                    'ModelArtifacts.S3ModelArtifacts',
                     'properties.ModelArtifacts.S3ModelArtifacts'
                 ],
+                'output_config': [
+                    'properties.OutputDataConfig.S3OutputPath',
+                    'properties.OutputDataConfig.KmsKeyId'
+                ],
                 'metrics': [
-                    'FinalMetricDataList[*].Value',
+                    # Support both named and wildcard access for metrics
                     'properties.FinalMetricDataList[*].Value',
-                    'FinalMetricDataList[*].MetricName',
-                    'properties.FinalMetricDataList[*].MetricName'
+                    'properties.FinalMetricDataList[*].MetricName',
+                    'properties.FinalMetricDataList[*].Timestamp'
                 ],
                 'job_info': [
-                    'TrainingJobName',
                     'properties.TrainingJobName',
-                    'TrainingJobArn',
                     'properties.TrainingJobArn',
-                    'TrainingJobStatus',
                     'properties.TrainingJobStatus',
-                    'CreationTime',
                     'properties.CreationTime',
-                    'TrainingStartTime',
                     'properties.TrainingStartTime',
-                    'TrainingEndTime',
                     'properties.TrainingEndTime'
                 ],
-                'hyperparameters': [
-                    'HyperParameters',
-                    'properties.HyperParameters'
-                ],
                 'algorithm': [
-                    'AlgorithmSpecification',
-                    'properties.AlgorithmSpecification',
-                    'AlgorithmSpecification.TrainingImage',
-                    'properties.AlgorithmSpecification.TrainingImage'
+                    'properties.AlgorithmSpecification.TrainingImage',
+                    'properties.AlgorithmSpecification.TrainingInputMode'
                 ],
                 'resources': [
-                    'ResourceConfig',
-                    'properties.ResourceConfig',
-                    'ResourceConfig.InstanceType',
                     'properties.ResourceConfig.InstanceType',
-                    'ResourceConfig.InstanceCount',
-                    'properties.ResourceConfig.InstanceCount'
+                    'properties.ResourceConfig.InstanceCount',
+                    'properties.ResourceConfig.VolumeSizeInGB'
+                ],
+                'stopping_condition': [
+                    'properties.StoppingCondition.MaxRuntimeInSeconds'
+                ],
+                'secondary_status': [
+                    'properties.SecondaryStatus',
+                    'properties.SecondaryStatusTransitions[*].Status',
+                    'properties.SecondaryStatusTransitions[*].StartTime'
+                ],
+                'hyperparameters': [
+                    'properties.HyperParameters'
                 ]
             }
         
@@ -296,38 +295,34 @@ class SageMakerPropertyPathValidator:
         elif 'processing' in step_type_lower or node_type_lower == 'processing':
             property_paths = {
                 'outputs': [
-                    'ProcessingOutputConfig.Outputs[*].S3Output.S3Uri',
+                    # Support both named and indexed access
                     'properties.ProcessingOutputConfig.Outputs[*].S3Output.S3Uri',
-                    'ProcessingOutputConfig.Outputs[*].OutputName',
+                    'properties.ProcessingOutputConfig.Outputs[*].S3Output.LocalPath',
+                    'properties.ProcessingOutputConfig.Outputs[*].S3Output.S3UploadMode',
                     'properties.ProcessingOutputConfig.Outputs[*].OutputName'
                 ],
                 'inputs': [
-                    'ProcessingInputs[*].S3Input.S3Uri',
                     'properties.ProcessingInputs[*].S3Input.S3Uri',
-                    'ProcessingInputs[*].InputName',
+                    'properties.ProcessingInputs[*].S3Input.LocalPath',
                     'properties.ProcessingInputs[*].InputName'
                 ],
                 'job_info': [
-                    'ProcessingJobName',
                     'properties.ProcessingJobName',
-                    'ProcessingJobArn',
                     'properties.ProcessingJobArn',
-                    'ProcessingJobStatus',
                     'properties.ProcessingJobStatus',
-                    'CreationTime',
                     'properties.CreationTime',
-                    'ProcessingStartTime',
                     'properties.ProcessingStartTime',
-                    'ProcessingEndTime',
                     'properties.ProcessingEndTime'
                 ],
                 'resources': [
-                    'ProcessingResources',
-                    'properties.ProcessingResources',
-                    'ProcessingResources.ClusterConfig.InstanceType',
                     'properties.ProcessingResources.ClusterConfig.InstanceType',
-                    'ProcessingResources.ClusterConfig.InstanceCount',
-                    'properties.ProcessingResources.ClusterConfig.InstanceCount'
+                    'properties.ProcessingResources.ClusterConfig.InstanceCount',
+                    'properties.ProcessingResources.ClusterConfig.VolumeSizeInGB'
+                ],
+                'app_specification': [
+                    'properties.AppSpecification.ImageUri',
+                    'properties.AppSpecification.ContainerEntrypoint[*]',
+                    'properties.AppSpecification.ContainerArguments[*]'
                 ]
             }
         
@@ -335,34 +330,36 @@ class SageMakerPropertyPathValidator:
         elif 'transform' in step_type_lower or node_type_lower == 'transform':
             property_paths = {
                 'outputs': [
-                    'TransformOutput.S3OutputPath',
-                    'properties.TransformOutput.S3OutputPath'
+                    'properties.TransformOutput.S3OutputPath',
+                    'properties.TransformOutput.Accept',
+                    'properties.TransformOutput.AssembleWith',
+                    'properties.TransformOutput.KmsKeyId'
                 ],
                 'job_info': [
-                    'TransformJobName',
                     'properties.TransformJobName',
-                    'TransformJobArn',
                     'properties.TransformJobArn',
-                    'TransformJobStatus',
                     'properties.TransformJobStatus',
-                    'CreationTime',
                     'properties.CreationTime',
-                    'TransformStartTime',
                     'properties.TransformStartTime',
-                    'TransformEndTime',
                     'properties.TransformEndTime'
                 ],
-                'model': [
-                    'ModelName',
-                    'properties.ModelName'
+                'inputs': [
+                    'properties.TransformInput.DataSource.S3DataSource.S3Uri',
+                    'properties.TransformInput.ContentType',
+                    'properties.TransformInput.CompressionType',
+                    'properties.TransformInput.SplitType'
                 ],
                 'resources': [
-                    'TransformResources',
-                    'properties.TransformResources',
-                    'TransformResources.InstanceType',
                     'properties.TransformResources.InstanceType',
-                    'TransformResources.InstanceCount',
                     'properties.TransformResources.InstanceCount'
+                ],
+                'model': [
+                    'properties.ModelName'
+                ],
+                'data_processing': [
+                    'properties.DataProcessing.InputFilter',
+                    'properties.DataProcessing.OutputFilter',
+                    'properties.DataProcessing.JoinSource'
                 ]
             }
         
@@ -370,123 +367,132 @@ class SageMakerPropertyPathValidator:
         elif 'tuning' in step_type_lower or 'hyperparameter' in step_type_lower:
             property_paths = {
                 'best_training_job': [
-                    'BestTrainingJob.TrainingJobName',
                     'properties.BestTrainingJob.TrainingJobName',
-                    'BestTrainingJob.TrainingJobArn',
                     'properties.BestTrainingJob.TrainingJobArn',
-                    'BestTrainingJob.FinalHyperParameterTuningJobObjectiveMetric',
-                    'properties.BestTrainingJob.FinalHyperParameterTuningJobObjectiveMetric'
+                    'properties.BestTrainingJob.TrainingJobStatus',
+                    'properties.BestTrainingJob.CreationTime',
+                    'properties.BestTrainingJob.TrainingStartTime',
+                    'properties.BestTrainingJob.TrainingEndTime',
+                    'properties.BestTrainingJob.FinalHyperParameterTuningJobObjectiveMetric.MetricName',
+                    'properties.BestTrainingJob.FinalHyperParameterTuningJobObjectiveMetric.Value'
                 ],
                 'training_job_summaries': [
-                    'TrainingJobSummaries[*].TrainingJobName',
                     'properties.TrainingJobSummaries[*].TrainingJobName',
-                    'TrainingJobSummaries[*].TrainingJobArn',
                     'properties.TrainingJobSummaries[*].TrainingJobArn',
-                    'TrainingJobSummaries[*].FinalHyperParameterTuningJobObjectiveMetric',
-                    'properties.TrainingJobSummaries[*].FinalHyperParameterTuningJobObjectiveMetric'
+                    'properties.TrainingJobSummaries[*].TrainingJobStatus',
+                    'properties.TrainingJobSummaries[*].CreationTime',
+                    'properties.TrainingJobSummaries[*].TrainingStartTime',
+                    'properties.TrainingJobSummaries[*].TrainingEndTime',
+                    'properties.TrainingJobSummaries[*].FinalHyperParameterTuningJobObjectiveMetric.MetricName',
+                    'properties.TrainingJobSummaries[*].FinalHyperParameterTuningJobObjectiveMetric.Value'
                 ],
                 'job_info': [
-                    'HyperParameterTuningJobName',
                     'properties.HyperParameterTuningJobName',
-                    'HyperParameterTuningJobArn',
                     'properties.HyperParameterTuningJobArn',
-                    'HyperParameterTuningJobStatus',
                     'properties.HyperParameterTuningJobStatus',
-                    'CreationTime',
                     'properties.CreationTime',
-                    'HyperParameterTuningStartTime',
                     'properties.HyperParameterTuningStartTime',
-                    'HyperParameterTuningEndTime',
                     'properties.HyperParameterTuningEndTime'
                 ],
-                'objective_metric': [
-                    'ObjectiveStatusCounters',
-                    'properties.ObjectiveStatusCounters',
-                    'BestTrainingJob.ObjectiveStatus',
-                    'properties.BestTrainingJob.ObjectiveStatus'
+                'tuning_config': [
+                    'properties.HyperParameterTuningJobConfig.Strategy',
+                    'properties.HyperParameterTuningJobConfig.HyperParameterTuningJobObjective.Type',
+                    'properties.HyperParameterTuningJobConfig.HyperParameterTuningJobObjective.MetricName'
+                ],
+                'training_job_counts': [
+                    'properties.TrainingJobStatusCounters.Completed',
+                    'properties.TrainingJobStatusCounters.InProgress',
+                    'properties.TrainingJobStatusCounters.RetryableError',
+                    'properties.TrainingJobStatusCounters.NonRetryableError',
+                    'properties.TrainingJobStatusCounters.Stopped'
                 ]
             }
         
         # CreateModelStep - Properties from DescribeModel API
-        elif 'model' in step_type_lower and 'create' in step_type_lower:
+        elif 'model' in step_type_lower and ('create' in step_type_lower or node_type_lower == 'model'):
             property_paths = {
                 'model_info': [
-                    'ModelName',
                     'properties.ModelName',
-                    'ModelArn',
                     'properties.ModelArn',
-                    'CreationTime',
                     'properties.CreationTime'
                 ],
-                'containers': [
-                    'PrimaryContainer.ModelDataUrl',
-                    'properties.PrimaryContainer.ModelDataUrl',
-                    'PrimaryContainer.Image',
+                'primary_container': [
                     'properties.PrimaryContainer.Image',
-                    'PrimaryContainer.Environment',
-                    'properties.PrimaryContainer.Environment'
+                    'properties.PrimaryContainer.ModelDataUrl',
+                    'properties.PrimaryContainer.Environment[*]',
+                    'properties.PrimaryContainer.ContainerHostname',
+                    'properties.PrimaryContainer.Mode'
+                ],
+                'multi_model_config': [
+                    'properties.PrimaryContainer.MultiModelConfig.ModelCacheSetting'
+                ],
+                'containers': [
+                    'properties.Containers[*].Image',
+                    'properties.Containers[*].ModelDataUrl',
+                    'properties.Containers[*].Environment[*]',
+                    'properties.Containers[*].ContainerHostname'
+                ],
+                'inference_config': [
+                    'properties.InferenceExecutionConfig.Mode'
+                ],
+                'vpc_config': [
+                    'properties.VpcConfig.SecurityGroupIds[*]',
+                    'properties.VpcConfig.Subnets[*]'
                 ],
                 'execution_role': [
-                    'ExecutionRoleArn',
                     'properties.ExecutionRoleArn'
+                ],
+                'network_isolation': [
+                    'properties.EnableNetworkIsolation'
                 ]
             }
         
-        # LambdaStep - OutputParameters
+        # LambdaStep - OutputParameters (no properties prefix)
         elif 'lambda' in step_type_lower:
             property_paths = {
                 'output_parameters': [
-                    'OutputParameters[*]',
-                    'properties.OutputParameters[*]'
+                    'OutputParameters[*]'
                 ]
             }
         
-        # CallbackStep - OutputParameters
+        # CallbackStep - OutputParameters (no properties prefix)
         elif 'callback' in step_type_lower:
             property_paths = {
                 'output_parameters': [
-                    'OutputParameters[*]',
-                    'properties.OutputParameters[*]'
+                    'OutputParameters[*]'
                 ]
             }
         
-        # QualityCheckStep - Specific properties
+        # QualityCheckStep - Model Monitor Container Output
         elif 'quality' in step_type_lower or 'qualitycheck' in step_type_lower:
             property_paths = {
                 'baseline_constraints': [
-                    'CalculatedBaselineConstraints',
                     'properties.CalculatedBaselineConstraints'
                 ],
                 'baseline_statistics': [
-                    'CalculatedBaselineStatistics',
                     'properties.CalculatedBaselineStatistics'
                 ],
                 'drift_check': [
-                    'BaselineUsedForDriftCheckStatistics',
                     'properties.BaselineUsedForDriftCheckStatistics',
-                    'BaselineUsedForDriftCheckConstraints',
                     'properties.BaselineUsedForDriftCheckConstraints'
                 ]
             }
         
-        # ClarifyCheckStep - Specific properties
+        # ClarifyCheckStep - Clarify Container Output
         elif 'clarify' in step_type_lower:
             property_paths = {
                 'baseline_constraints': [
-                    'CalculatedBaselineConstraints',
                     'properties.CalculatedBaselineConstraints'
                 ],
                 'drift_check': [
-                    'BaselineUsedForDriftCheckConstraints',
                     'properties.BaselineUsedForDriftCheckConstraints'
                 ]
             }
         
-        # EMRStep - ClusterId
+        # EMRStep - EMR Step Properties
         elif 'emr' in step_type_lower:
             property_paths = {
                 'cluster_info': [
-                    'ClusterId',
                     'properties.ClusterId'
                 ]
             }
@@ -549,6 +555,12 @@ class SageMakerPropertyPathValidator:
         """
         Check if a property path matches a pattern with wildcards.
         
+        Supports multiple pattern types from the reference database:
+        - Exact matches: properties.ModelArtifacts.S3ModelArtifacts
+        - Wildcard array access: properties.FinalMetricDataList[*].Value
+        - Named array access: properties.FinalMetricDataList['accuracy'].Value
+        - Indexed array access: properties.ProcessingOutputConfig.Outputs[0].S3Output.S3Uri
+        
         Args:
             property_path: The actual property path
             pattern: The pattern to match against (may contain [*])
@@ -556,21 +568,31 @@ class SageMakerPropertyPathValidator:
         Returns:
             True if the property path matches the pattern
         """
-        # Convert pattern to regex
-        # Handle array indexing patterns like FinalMetricDataList['metric_name'].Value
-        # and FinalMetricDataList[*].Value
+        # Direct exact match first
+        if property_path == pattern:
+            return True
         
-        # Escape special regex characters except [*]
-        escaped_pattern = re.escape(pattern)
-        
-        # Replace escaped [*] with regex pattern for array indexing
-        escaped_pattern = escaped_pattern.replace(r'\[\*\]', r'\[[^\]]+\]')
-        
-        # Create full regex pattern
-        regex_pattern = f'^{escaped_pattern}$'
-        
+        # Convert pattern to regex for advanced matching
         try:
+            # Escape special regex characters except [*]
+            escaped_pattern = re.escape(pattern)
+            
+            # Replace escaped [*] with regex patterns for different array access types:
+            # 1. Named access: ['key_name'] or ["key_name"]
+            # 2. Indexed access: [0], [1], [2], etc.
+            # 3. Wildcard: [*] (original behavior)
+            
+            # Handle [*] -> match any array access pattern
+            escaped_pattern = escaped_pattern.replace(
+                r'\[\*\]', 
+                r'\[(?:[\'"][^\'\"]*[\'"]|\d+|\*)\]'  # Match ['key'], ["key"], [0], or [*]
+            )
+            
+            # Create full regex pattern
+            regex_pattern = f'^{escaped_pattern}$'
+            
             return bool(re.match(regex_pattern, property_path))
+            
         except re.error:
             # If regex compilation fails, fall back to simple string comparison
             return property_path == pattern

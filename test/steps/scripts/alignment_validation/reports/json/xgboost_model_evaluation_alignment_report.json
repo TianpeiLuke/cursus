@@ -22,10 +22,10 @@
         "details": {
           "script": "xgboost_model_evaluation",
           "testability_parameters": [
-            "output_paths",
-            "input_paths",
+            "environ_vars",
             "job_args",
-            "environ_vars"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -496,11 +496,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "DummyTraining",
               "XGBoostTraining",
-              "PyTorchTraining",
+              "DummyTraining",
               "XGBoostModel",
-              "PyTorchModel"
+              "PyTorchModel",
+              "PyTorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -510,9 +510,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "CradleDataLoading",
               "RiskTableMapping",
+              "CradleDataLoading",
+              "TabularPreprocessing",
               "CurrencyConversion"
             ],
             "data_type": "S3Uri",
@@ -547,11 +547,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "DummyTraining",
               "XGBoostTraining",
-              "PyTorchTraining",
+              "DummyTraining",
               "XGBoostModel",
-              "PyTorchModel"
+              "PyTorchModel",
+              "PyTorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -561,9 +561,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "CradleDataLoading",
               "RiskTableMapping",
+              "CradleDataLoading",
+              "TabularPreprocessing",
               "CurrencyConversion"
             ],
             "data_type": "S3Uri",
@@ -597,11 +597,11 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "DummyTraining",
                 "XGBoostTraining",
-                "PyTorchTraining",
+                "DummyTraining",
                 "XGBoostModel",
-                "PyTorchModel"
+                "PyTorchModel",
+                "PyTorchTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -611,9 +611,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "CradleDataLoading",
                 "RiskTableMapping",
+                "CradleDataLoading",
+                "TabularPreprocessing",
                 "CurrencyConversion"
               ],
               "data_type": "S3Uri",
@@ -644,11 +644,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "DummyTraining",
             "XGBoostTraining",
-            "PyTorchTraining",
+            "DummyTraining",
             "XGBoostModel",
-            "PyTorchModel"
+            "PyTorchModel",
+            "PyTorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -658,9 +658,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "CradleDataLoading",
             "RiskTableMapping",
+            "CradleDataLoading",
+            "TabularPreprocessing",
             "CurrencyConversion"
           ],
           "data_type": "S3Uri",
@@ -714,11 +714,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "DummyTraining",
             "XGBoostTraining",
-            "PyTorchTraining",
+            "DummyTraining",
             "XGBoostModel",
-            "PyTorchModel"
+            "PyTorchModel",
+            "PyTorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -728,9 +728,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "CradleDataLoading",
             "RiskTableMapping",
+            "CradleDataLoading",
+            "TabularPreprocessing",
             "CurrencyConversion"
           ],
           "data_type": "S3Uri",
@@ -1002,7 +1002,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py",
     "contract_mapping": "xgboost_model_eval_contract",
-    "validation_timestamp": "2025-08-14T08:25:50.813210",
+    "validation_timestamp": "2025-08-14T08:34:51.321601",
     "validator_version": "1.0.0"
   }
 }

@@ -29,7 +29,7 @@
     <div class="header">
         <h1>Alignment Validation Report</h1>
         <h2>Script: xgboost_training</h2>
-        <p>Generated: 2025-08-14T08:25:50.841213</p>
+        <p>Generated: 2025-08-14T08:34:51.350108</p>
         <p>Overall Status: <span class="failing">FAILING</span></p>
     </div>
     
@@ -43,7 +43,7 @@
             <p>Critical Issues</p>
         </div>
         <div class="metric">
-            <h3>3</h3>
+            <h3>2</h3>
             <p>Error Issues</p>
         </div>
         <div class="metric">
@@ -90,7 +90,7 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args, environ_vars
+                    <strong>WARNING:</strong> Testability parameters defined but not used: environ_vars, job_args
                     <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
                 </div>
                 
@@ -106,9 +106,9 @@
                 
             </div>
             
-            <div class="test-result test-failed">
+            <div class="test-result test-passed">
                 <h4>Level 2: Contract ↔ Specification</h4>
-                <p>Status: FAILED</p>
+                <p>Status: PASSED</p>
                 
                 <div class="issue info">
                     <strong>INFO:</strong> Step type resolved via registry: XGBoostTraining -> XGBoostTraining -> Training
@@ -120,9 +120,9 @@
                     <br><em>Recommendation: Property path is correctly formatted for the step type</em>
                 </div>
                 
-                <div class="issue error">
-                    <strong>ERROR:</strong> Invalid property path in output evaluation_output: properties.OutputDataConfig.S3OutputPath
-                    <br><em>Recommendation: Use a valid property path for training. Valid paths include: properties.TrainingJobName, properties.TrainingJobArn, properties.TrainingJobStatus, properties.CreationTime, properties.TrainingStartTime</em>
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output evaluation_output: properties.OutputDataConfig.S3OutputPath
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
                 </div>
                 
                 <div class="issue info">
@@ -165,7 +165,7 @@
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py</p>
         <p><strong>Contract Mapping:</strong> xgboost_training_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-08-14T08:25:50.841213</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-14T08:34:51.350108</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>
