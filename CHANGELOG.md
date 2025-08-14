@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2025-08-14
+
+### Enhanced
+- **Step Specification System** - Major improvements to step specification handling
+  - **Job Type Helper Integration** - Updated all step specifications to use job type helper for better variant handling
+  - **Naming Convention Standardization** - Comprehensive standardization of step, config, contract, and script names
+  - **Step Registry Enhancement** - Improved step name registry with better inference and consistency
+
+- **Dependency Resolution System** - Advanced dependency resolution capabilities
+  - **Enhanced Dependency Resolver** - Improved dependency matching with better canonical name mapping
+  - **Job Type Variant Handling** - Better support for training/testing/validation/calibration variants
+  - **Production Resolver Integration** - Enhanced integration with production dependency resolver
+
+- **Validation System Improvements** - Major enhancements to alignment validation
+  - **Script Contract Validator** - Enhanced validator to accept complex path validation patterns
+  - **Property Path Validator** - Augmented property path validation with improved pattern matching
+  - **Validation Report Generation** - Comprehensive validation reports with detailed HTML and JSON outputs
+  - **Test Framework Enhancement** - Improved test validation with better error reporting
+
+- **Configuration Management** - Enhanced configuration system
+  - **Cradle Config Factory** - New configuration factory for cradle data loading steps
+  - **Config Field Management** - Improved configuration field handling and validation
+  - **Three-Tier Configuration** - Enhanced three-tier configuration architecture
+
+### Added
+- **Step Type Enhancement System** - New step type enhancement framework
+  - **Step Type Enhancers** - Base enhancer classes for different step types
+  - **Enhancement Router** - Smart routing system for step type enhancements
+  - **Framework Patterns** - Comprehensive framework patterns for step validation
+  - **Step-Specific Validation** - Specialized validation patterns for different step types
+
+- **Comprehensive Test Suite** - Expanded test infrastructure
+  - **Step Type Enhancement Tests** - Complete test suite for step type enhancement system
+  - **Alignment Validation Tests** - Enhanced alignment validation test framework
+  - **Builder Argument Integration Tests** - Comprehensive builder argument validation tests
+  - **Framework Pattern Tests** - Tests for framework patterns and step type detection
+
+- **Documentation Updates** - Extensive documentation improvements
+  - **Step Specification Guide** - Updated developer guide for step specifications
+  - **Alignment Validation Patterns** - Detailed documentation for validation patterns
+  - **Design Documentation** - Enhanced design documents for dependency resolution and job type handling
+
+### Fixed
+- **Import Path Corrections** - Resolved import errors in builder steps and specifications
+  - **Builder Module Imports** - Fixed import paths in PyTorch and XGBoost builder modules
+  - **Specification Imports** - Corrected import paths in training specifications
+  - **Contract Discovery** - Fixed errors in contract and specification discovery
+
+- **Naming Convention Issues** - Comprehensive fixes to naming inconsistencies
+  - **Step Name Standardization** - Standardized step names across builders, configs, contracts, and scripts
+  - **File Name Alignment** - Aligned file names with naming conventions
+  - **Registry Consistency** - Ensured consistency between registry and actual component names
+
+- **Validation System Fixes** - Major fixes to validation alignment
+  - **File Operations Detection** - Enhanced detection of file operations in scripts
+  - **Path Validation Logic** - Improved path validation with better pattern matching
+  - **Validation Report Accuracy** - Fixed validation report generation and accuracy
+
+### Technical Details
+- **Step Specification Architecture** - Enhanced step specification system with job type helper integration
+- **Dependency Resolution** - Advanced dependency resolution with canonical name mapping and variant support
+- **Validation Framework** - Comprehensive validation framework with step-specific patterns and enhanced reporting
+- **Configuration System** - Improved configuration management with factory patterns and tier-based organization
+- **Test Infrastructure** - Expanded test suite with specialized tests for different components and patterns
+
+### Quality Assurance
+- **Validation Accuracy** - Improved validation accuracy with enhanced pattern matching and error detection
+- **Test Coverage** - Expanded test coverage with specialized tests for different step types and validation patterns
+- **Documentation Quality** - Enhanced documentation with detailed guides and examples
+- **Code Standardization** - Comprehensive code standardization with consistent naming conventions
+
+### Performance Improvements
+- **Validation Performance** - Optimized validation execution with better caching and pattern matching
+- **Dependency Resolution Speed** - Improved dependency resolution performance with enhanced algorithms
+- **Test Execution** - Faster test execution with optimized test patterns and better resource management
+
 ## [1.0.8] - 2025-08-11
 
 ### Added
