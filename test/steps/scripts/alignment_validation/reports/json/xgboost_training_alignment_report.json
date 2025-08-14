@@ -33,10 +33,10 @@
         "details": {
           "script": "xgboost_training",
           "testability_parameters": [
-            "output_paths",
-            "job_args",
+            "environ_vars",
             "input_paths",
-            "environ_vars"
+            "job_args",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -53,12 +53,12 @@
       {
         "severity": "WARNING",
         "category": "testability_parameter_usage",
-        "message": "Testability parameters defined but not used: job_args, environ_vars",
+        "message": "Testability parameters defined but not used: environ_vars, job_args",
         "details": {
           "script": "xgboost_training",
           "unused_parameters": [
-            "job_args",
-            "environ_vars"
+            "environ_vars",
+            "job_args"
           ],
           "used_parameters": [
             "output_paths",
@@ -334,10 +334,10 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
+              "RiskTableMapping",
               "TabularPreprocessing",
-              "DataLoad",
               "ProcessingStep",
-              "RiskTableMapping"
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -347,8 +347,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -382,10 +382,10 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
+              "RiskTableMapping",
               "TabularPreprocessing",
-              "DataLoad",
               "ProcessingStep",
-              "RiskTableMapping"
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -395,8 +395,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -429,10 +429,10 @@
               "dependency_type": "training_data",
               "required": true,
               "compatible_sources": [
+                "RiskTableMapping",
                 "TabularPreprocessing",
-                "DataLoad",
                 "ProcessingStep",
-                "RiskTableMapping"
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -442,8 +442,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "HyperparameterPrep"
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -473,10 +473,10 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
+            "RiskTableMapping",
             "TabularPreprocessing",
-            "DataLoad",
             "ProcessingStep",
-            "RiskTableMapping"
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -486,8 +486,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -593,10 +593,10 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
+            "RiskTableMapping",
             "TabularPreprocessing",
-            "DataLoad",
             "ProcessingStep",
-            "RiskTableMapping"
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -606,8 +606,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -974,7 +974,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py",
     "contract_mapping": "xgboost_training_contract",
-    "validation_timestamp": "2025-08-14T09:40:43.952489",
+    "validation_timestamp": "2025-08-14T10:24:23.570671",
     "validator_version": "1.0.0"
   }
 }

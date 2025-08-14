@@ -10,10 +10,10 @@
         "details": {
           "script": "currency_conversion",
           "testability_parameters": [
-            "output_paths",
-            "job_args",
+            "environ_vars",
             "input_paths",
-            "environ_vars"
+            "job_args",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -968,9 +968,9 @@
         "details": {
           "required_fields": [
             "currency_conversion_dict",
-            "marketplace_info",
             "label_field",
-            "marketplace_id_col"
+            "marketplace_id_col",
+            "marketplace_info"
           ],
           "builder": "currency_conversion"
         },
@@ -1379,7 +1379,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
     "contract_mapping": "currency_conversion_contract",
-    "validation_timestamp": "2025-08-14T09:40:43.689687",
+    "validation_timestamp": "2025-08-14T10:24:23.329670",
     "validator_version": "1.0.0"
   }
 }

@@ -22,10 +22,10 @@
         "details": {
           "script": "tabular_preprocessing",
           "testability_parameters": [
-            "output_paths",
-            "job_args",
+            "environ_vars",
             "input_paths",
-            "environ_vars"
+            "job_args",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -1119,7 +1119,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-08-14T09:40:43.901094",
+    "validation_timestamp": "2025-08-14T10:24:23.521892",
     "validator_version": "1.0.0"
   }
 }
