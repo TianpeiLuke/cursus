@@ -276,6 +276,18 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Type-aware validation, specialized testing patterns, comprehensive coverage
 - **Strategic Value**: Next-generation testing framework with step type-specific variants for improved quality assurance
 
+#### **[SageMaker Step Type Universal Builder Tester Design](sagemaker_step_type_universal_builder_tester_design.md)** - SageMaker Step Type-Aware Universal Testing Framework
+- **Purpose**: Comprehensive design for enhancing the universal step builder test system with SageMaker step type-specific variants
+- **Key Features**: Hierarchical universal tester system, step type-specific validation, framework detection, reference example integration
+- **Benefits**: Type-specific validation, automated testing enhancement, improved developer experience, quality assurance
+- **Strategic Value**: Universal testing framework with SageMaker step type awareness for comprehensive step builder validation
+
+#### **[SageMaker Step Type-Aware Unified Alignment Tester Design](sagemaker_step_type_aware_unified_alignment_tester_design.md)** - SageMaker Step Type-Aware Alignment Validation Framework
+- **Purpose**: Comprehensive design for transforming the unified alignment tester into a SageMaker step type-aware validation framework
+- **Key Features**: Step type-aware multi-variant system, training step validation, framework-specific validation, four-tier architecture
+- **Benefits**: Step type-specific validation, framework awareness, comprehensive coverage, extensible architecture
+- **Strategic Value**: Enhanced alignment validation framework with SageMaker step type awareness and training step support
+
 #### **[Alignment Validation Data Structures](alignment_validation_data_structures.md)** - Comprehensive Data Structure Design for Alignment Testing
 - **Purpose**: Complete data structure definitions for all four levels of alignment validation testing
 - **Key Features**: Level-specific validation results, comprehensive issue tracking, success metrics, production-ready data models
