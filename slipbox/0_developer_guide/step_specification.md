@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 
 from ..pipeline_deps.base_specifications import StepSpecification, NodeType, DependencySpec, OutputSpec, DependencyType
 from ..pipeline_script_contracts.your_script_contract import YOUR_SCRIPT_CONTRACT
-from ..pipeline_registry.step_names import get_spec_step_type
+from ..pipeline_registry.step_names import get_spec_step_type, get_spec_step_type_with_job_type
 
 def _get_your_script_contract():
     """Get the script contract for this step."""
@@ -143,16 +143,70 @@ YOUR_STEP_SPEC = StepSpecification(
 
 ### 5. Support Job Type Variants (If Needed)
 
-For steps that need job type variants (training, calibration, etc.):
+For steps that need job type variants (training, calibration, testing, validation), use the `get_spec_step_type_with_job_type` helper function:
 
 ```python
-# Define variants with different compatible sources or dependencies
+# Training variant
 YOUR_STEP_TRAINING_SPEC = StepSpecification(
-    # Training-specific specification
+    step_type=get_spec_step_type_with_job_type("YourStepName", "training"),
+    node_type=NodeType.INTERNAL,
+    script_contract=_get_your_script_contract(),
+    dependencies={
+        "training_data": DependencySpec(
+            logical_name="training_data",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=True,
+            compatible_sources=["TabularPreprocessing"],
+            semantic_keywords=["training", "train", "data", "input"],
+            data_type="S3Uri",
+            description="Training data for model training"
+        )
+    },
+    outputs={
+        "model_artifacts": OutputSpec(
+            logical_name="model_artifacts",
+            output_type=DependencyType.MODEL_ARTIFACTS,
+            property_path="properties.ModelArtifacts.S3ModelArtifacts",
+            data_type="S3Uri",
+            description="Trained model artifacts"
+        )
+    }
 )
 
+# Calibration variant
 YOUR_STEP_CALIBRATION_SPEC = StepSpecification(
-    # Calibration-specific specification
+    step_type=get_spec_step_type_with_job_type("YourStepName", "calibration"),
+    node_type=NodeType.INTERNAL,
+    script_contract=_get_your_script_contract(),
+    dependencies={
+        "calibration_data": DependencySpec(
+            logical_name="calibration_data",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=True,
+            compatible_sources=["TabularPreprocessing"],
+            semantic_keywords=["calibration", "calib", "data", "input"],
+            data_type="S3Uri",
+            description="Calibration data for model evaluation"
+        ),
+        "model_artifacts": DependencySpec(
+            logical_name="model_artifacts",
+            dependency_type=DependencyType.MODEL_ARTIFACTS,
+            required=True,
+            compatible_sources=["YourStepName_Training"],
+            semantic_keywords=["model", "artifacts", "trained"],
+            data_type="S3Uri",
+            description="Trained model artifacts from training step"
+        )
+    },
+    outputs={
+        "evaluation_results": OutputSpec(
+            logical_name="evaluation_results",
+            output_type=DependencyType.PROCESSING_OUTPUT,
+            property_path="properties.ProcessingOutputConfig.Outputs['evaluation_results'].S3Output.S3Uri",
+            data_type="S3Uri",
+            description="Model evaluation results"
+        )
+    }
 )
 
 # Provide a function to select the appropriate specification
@@ -163,6 +217,24 @@ def get_your_step_spec(job_type: str = None):
     else:
         return YOUR_STEP_TRAINING_SPEC  # Default to training
 ```
+
+#### Job Type Helper Function Benefits
+
+Using `get_spec_step_type_with_job_type("StepName", "jobtype")` instead of manual concatenation provides:
+
+1. **Consistency**: Ensures proper capitalization (e.g., "training" → "Training")
+2. **Maintainability**: Changes to job type formatting logic only need to be made in one place
+3. **Validation**: The helper function can validate job type values
+4. **Future-proofing**: Any enhancements to job type handling automatically apply to all specs
+
+#### Common Job Type Patterns
+
+| Job Type | Usage | Example Step Type |
+|----------|-------|-------------------|
+| `training` | Model training steps | `YourStepName_Training` |
+| `calibration` | Model evaluation/calibration | `YourStepName_Calibration` |
+| `testing` | Model testing | `YourStepName_Testing` |
+| `validation` | Model validation | `YourStepName_Validation` |
 
 ## Step-to-Step Alignment
 
