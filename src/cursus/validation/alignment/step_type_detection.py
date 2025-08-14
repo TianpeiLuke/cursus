@@ -29,12 +29,12 @@ def detect_step_type_from_registry(script_name: str) -> str:
         return "Processing"
 
 
-def detect_framework_from_imports(imports: List[ImportStatement]) -> Optional[str]:
+def detect_framework_from_imports(imports: List) -> Optional[str]:
     """
     Detect framework from existing import analysis.
     
     Args:
-        imports: List of ImportStatement objects from script analysis
+        imports: List of ImportStatement objects or strings from script analysis
         
     Returns:
         Detected framework name or None if no framework detected
@@ -51,7 +51,13 @@ def detect_framework_from_imports(imports: List[ImportStatement]) -> Optional[st
     detected_frameworks = []
     
     for imp in imports:
-        module_name_lower = imp.module_name.lower()
+        # Handle both ImportStatement objects and strings
+        if hasattr(imp, 'module_name'):
+            module_name_lower = imp.module_name.lower()
+        else:
+            # Assume it's a string
+            module_name_lower = str(imp).lower()
+            
         for framework, patterns in framework_patterns.items():
             if any(pattern in module_name_lower for pattern in patterns):
                 detected_frameworks.append(framework)

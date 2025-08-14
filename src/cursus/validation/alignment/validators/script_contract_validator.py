@@ -9,7 +9,8 @@ from typing import Dict, Any, List, Optional, Set
 from pathlib import Path
 
 from ..alignment_utils import (
-    normalize_path, extract_logical_name_from_path, is_sagemaker_path
+    normalize_path, extract_logical_name_from_path, is_sagemaker_path,
+    detect_step_type_from_registry, detect_framework_from_imports
 )
 
 
@@ -490,3 +491,204 @@ class ScriptContractValidator:
                     return logical_name
         
         return None  # Only return None if truly not in contract
+    
+    def validate_step_type_specific(self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]:
+        """
+        Phase 2 Enhancement: Add step type-specific validation.
+        
+        Args:
+            analysis: Script analysis results including step type and framework
+            contract: Contract dictionary
+            script_name: Name of the script
+            
+        Returns:
+            List of step type-specific validation issues
+        """
+        issues = []
+        
+        # Get step type and framework from analysis
+        step_type = analysis.get('step_type')
+        framework = analysis.get('framework')
+        step_type_patterns = analysis.get('step_type_patterns', {})
+        
+        if step_type == "Training":
+            issues.extend(self._validate_training_step_specific(analysis, contract, script_name, framework, step_type_patterns))
+        elif step_type == "Processing":
+            issues.extend(self._validate_processing_step_specific(analysis, contract, script_name, framework))
+        
+        return issues
+    
+    def _validate_training_step_specific(self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str, framework: Optional[str], patterns: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Validate training-specific requirements.
+        
+        Args:
+            analysis: Script analysis results
+            contract: Contract dictionary
+            script_name: Name of the training script
+            framework: Detected framework
+            patterns: Detected training patterns
+            
+        Returns:
+            List of training-specific validation issues
+        """
+        issues = []
+        
+        # Check for model output path in contract
+        contract_outputs = contract.get('outputs', {})
+        has_model_output = any(
+            '/opt/ml/model' in output_spec.get('path', '') 
+            for output_spec in contract_outputs.values()
+        )
+        
+        if not has_model_output:
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'training_contract_validation',
+                'message': 'Training script contract should declare model output path',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Training',
+                    'expected_path': '/opt/ml/model/'
+                },
+                'recommendation': 'Add model output path (/opt/ml/model/) to contract outputs'
+            })
+        
+        # Check for hyperparameter input path in contract
+        contract_inputs = contract.get('inputs', {})
+        has_hyperparameter_input = any(
+            '/opt/ml/input/data/config' in input_spec.get('path', '') 
+            for input_spec in contract_inputs.values()
+        )
+        
+        if not has_hyperparameter_input:
+            issues.append({
+                'severity': 'INFO',
+                'category': 'training_contract_validation',
+                'message': 'Training script contract should declare hyperparameter input path',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Training',
+                    'expected_path': '/opt/ml/input/data/config/'
+                },
+                'recommendation': 'Add hyperparameter input path (/opt/ml/input/data/config/) to contract inputs'
+            })
+        
+        # Framework-specific validation
+        if framework == 'xgboost':
+            issues.extend(self._validate_xgboost_training_contract(analysis, contract, script_name, patterns))
+        
+        return issues
+    
+    def _validate_xgboost_training_contract(self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str, patterns: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Validate XGBoost-specific training contract requirements.
+        
+        Args:
+            analysis: Script analysis results
+            contract: Contract dictionary
+            script_name: Name of the script
+            patterns: Detected XGBoost patterns
+            
+        Returns:
+            List of XGBoost-specific validation issues
+        """
+        issues = []
+        
+        # Check for XGBoost framework requirements in contract
+        framework_requirements = contract.get('framework_requirements', {})
+        xgboost_requirements = framework_requirements.get('xgboost', {})
+        
+        if not xgboost_requirements:
+            issues.append({
+                'severity': 'INFO',
+                'category': 'xgboost_contract_validation',
+                'message': 'XGBoost training script should declare framework requirements',
+                'details': {
+                    'script': script_name,
+                    'framework': 'xgboost',
+                    'step_type': 'Training'
+                },
+                'recommendation': 'Add xgboost framework requirements to contract'
+            })
+        
+        # Check for training data input paths
+        contract_inputs = contract.get('inputs', {})
+        has_training_data = any(
+            '/opt/ml/input/data/train' in input_spec.get('path', '') 
+            for input_spec in contract_inputs.values()
+        )
+        
+        if not has_training_data:
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'xgboost_contract_validation',
+                'message': 'XGBoost training script should declare training data input path',
+                'details': {
+                    'script': script_name,
+                    'framework': 'xgboost',
+                    'expected_path': '/opt/ml/input/data/train/'
+                },
+                'recommendation': 'Add training data input path (/opt/ml/input/data/train/) to contract inputs'
+            })
+        
+        return issues
+    
+    def _validate_processing_step_specific(self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str, framework: Optional[str]) -> List[Dict[str, Any]]:
+        """
+        Validate processing-specific requirements.
+        
+        Args:
+            analysis: Script analysis results
+            contract: Contract dictionary
+            script_name: Name of the processing script
+            framework: Detected framework
+            
+        Returns:
+            List of processing-specific validation issues
+        """
+        issues = []
+        
+        # Processing scripts typically have input/output data paths
+        contract_inputs = contract.get('inputs', {})
+        contract_outputs = contract.get('outputs', {})
+        
+        if not contract_inputs:
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'processing_contract_validation',
+                'message': 'Processing script should declare input data paths',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Processing'
+                },
+                'recommendation': 'Add input data paths to contract inputs'
+            })
+        
+        if not contract_outputs:
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'processing_contract_validation',
+                'message': 'Processing script should declare output data paths',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Processing'
+                },
+                'recommendation': 'Add output data paths to contract outputs'
+            })
+        
+        # Framework-specific recommendations
+        if framework:
+            issues.append({
+                'severity': 'INFO',
+                'category': 'processing_framework_validation',
+                'message': f'Processing script uses {framework} framework',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Processing',
+                    'framework': framework
+                },
+                'recommendation': f'Ensure {framework} dependencies are properly specified in contract'
+            })
+        
+        return issues

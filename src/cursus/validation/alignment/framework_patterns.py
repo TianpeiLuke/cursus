@@ -1,504 +1,359 @@
 """
-Framework pattern detection for step type-aware validation.
+Framework Patterns Detection
 
-This module provides pattern detection capabilities for different ML frameworks
-used in SageMaker steps, enabling framework-specific validation.
+Provides framework-specific pattern detection for validation enhancement.
+Detects training patterns, XGBoost patterns, PyTorch patterns, and other framework-specific code patterns.
 """
 
-import re
-from typing import Dict, List, Optional, Set
-from pathlib import Path
+from typing import Dict, Any, List, Optional
 
 
-def detect_training_patterns(script_content: str) -> Dict[str, List[str]]:
+def detect_training_patterns(script_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Detect training-specific patterns in script content.
+    Detect general training patterns in script analysis.
     
     Args:
-        script_content: Content of the training script
+        script_analysis: Script analysis results
         
     Returns:
         Dictionary containing detected training patterns
     """
     patterns = {
-        "training_loop_patterns": [],
-        "model_saving_patterns": [],
-        "hyperparameter_loading_patterns": [],
-        "evaluation_patterns": []
+        'has_training_loop': False,
+        'has_model_saving': False,
+        'has_hyperparameter_loading': False,
+        'has_data_loading': False,
+        'has_evaluation': False
     }
     
-    # Training loop patterns
-    training_patterns = [
-        r'\.fit\(',
-        r'\.train\(',
-        r'xgb\.train\(',
-        r'model\.train\(',
-        r'for.*epoch',
-        r'training_step\(',
-        r'train_model\(',
-        r'\.learn\('
-    ]
+    functions = script_analysis.get('functions', [])
+    path_references = script_analysis.get('path_references', [])
     
-    # Model saving patterns
-    saving_patterns = [
-        r'\.save_model\(',
-        r'\.save\(',
-        r'pickle\.dump\(',
-        r'torch\.save\(',
-        r'/opt/ml/model',
-        r'model\.save_pretrained\(',
-        r'joblib\.dump\('
-    ]
+    # Check for training loop patterns
+    training_keywords = ['fit', 'train', 'epoch', 'batch', 'forward', 'backward']
+    patterns['has_training_loop'] = any(
+        any(keyword.lower() in str(func).lower() for keyword in training_keywords)
+        for func in functions
+    )
     
-    # Hyperparameter loading patterns
-    hyperparam_patterns = [
-        r'json\.load\(',
-        r'hyperparameters\.json',
-        r'/opt/ml/input/data/config',
-        r'load.*config',
-        r'argparse\.ArgumentParser\(',
-        r'os\.environ\.get\('
-    ]
+    # Check for model saving patterns
+    saving_keywords = ['save', 'dump', 'pickle', 'joblib', 'torch.save']
+    model_path_keywords = ['/opt/ml/model']
+    patterns['has_model_saving'] = (
+        any(any(keyword.lower() in str(func).lower() for keyword in saving_keywords) for func in functions) or
+        any(any(keyword in str(path) for keyword in model_path_keywords) for path in path_references)
+    )
     
-    # Evaluation patterns
-    evaluation_patterns = [
-        r'\.evaluate\(',
-        r'\.score\(',
-        r'accuracy_score\(',
-        r'classification_report\(',
-        r'confusion_matrix\(',
-        r'/opt/ml/output'
-    ]
+    # Check for hyperparameter loading patterns
+    hp_keywords = ['hyperparameters', 'config', 'params']
+    hp_path_keywords = ['/opt/ml/input/data/config']
+    patterns['has_hyperparameter_loading'] = (
+        any(any(keyword.lower() in str(func).lower() for keyword in hp_keywords) for func in functions) or
+        any(any(keyword in str(path) for keyword in hp_path_keywords) for path in path_references)
+    )
     
-    # Search for patterns in script content
-    patterns["training_loop_patterns"] = _find_patterns(script_content, training_patterns)
-    patterns["model_saving_patterns"] = _find_patterns(script_content, saving_patterns)
-    patterns["hyperparameter_loading_patterns"] = _find_patterns(script_content, hyperparam_patterns)
-    patterns["evaluation_patterns"] = _find_patterns(script_content, evaluation_patterns)
+    # Check for data loading patterns
+    data_keywords = ['read_csv', 'load', 'data']
+    data_path_keywords = ['/opt/ml/input/data/train']
+    patterns['has_data_loading'] = (
+        any(any(keyword.lower() in str(func).lower() for keyword in data_keywords) for func in functions) or
+        any(any(keyword in str(path) for keyword in data_path_keywords) for path in path_references)
+    )
+    
+    # Check for evaluation patterns
+    eval_keywords = ['evaluate', 'score', 'metric', 'accuracy', 'loss', 'validation']
+    patterns['has_evaluation'] = any(
+        any(keyword.lower() in str(func).lower() for keyword in eval_keywords)
+        for func in functions
+    )
     
     return patterns
 
 
-def detect_xgboost_patterns(script_content: str) -> Dict[str, List[str]]:
+def detect_xgboost_patterns(script_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Detect XGBoost-specific patterns in script content.
+    Detect XGBoost-specific patterns in script analysis.
     
     Args:
-        script_content: Content of the script
+        script_analysis: Script analysis results
         
     Returns:
         Dictionary containing detected XGBoost patterns
     """
     patterns = {
-        "xgboost_imports": [],
-        "dmatrix_patterns": [],
-        "xgboost_training": [],
-        "xgboost_evaluation": [],
-        "xgboost_model_saving": []
+        'has_xgboost_import': False,
+        'has_dmatrix_usage': False,
+        'has_xgb_train': False,
+        'has_booster_usage': False,
+        'has_model_loading': False
     }
     
-    # XGBoost import patterns
-    import_patterns = [
-        r'import xgboost',
-        r'from xgboost import',
-        r'import xgb',
-        r'from xgb import'
-    ]
+    imports = script_analysis.get('imports', [])
+    functions = script_analysis.get('functions', [])
     
-    # DMatrix patterns
-    dmatrix_patterns = [
-        r'xgb\.DMatrix',
-        r'xgboost\.DMatrix',
-        r'DMatrix\('
-    ]
+    # Check for XGBoost imports
+    xgb_import_keywords = ['xgboost', 'xgb']
+    patterns['has_xgboost_import'] = any(
+        any(keyword.lower() in str(imp).lower() for keyword in xgb_import_keywords)
+        for imp in imports
+    )
     
-    # XGBoost training patterns
-    training_patterns = [
-        r'xgb\.train\(',
-        r'xgboost\.train\(',
-        r'xgb\.XGBClassifier\(',
-        r'xgb\.XGBRegressor\(',
-        r'XGBClassifier\(',
-        r'XGBRegressor\('
-    ]
+    # Check for DMatrix usage
+    dmatrix_keywords = ['DMatrix', 'xgb.DMatrix']
+    patterns['has_dmatrix_usage'] = any(
+        any(keyword in str(func) for keyword in dmatrix_keywords)
+        for func in functions
+    )
     
-    # XGBoost evaluation patterns
-    evaluation_patterns = [
-        r'\.predict\(',
-        r'\.get_fscore\(',
-        r'\.get_score\(',
-        r'xgb\.cv\(',
-        r'xgboost\.cv\('
-    ]
+    # Check for XGBoost training
+    train_keywords = ['xgb.train', 'train']
+    patterns['has_xgb_train'] = any(
+        any(keyword in str(func) for keyword in train_keywords)
+        for func in functions
+    )
     
-    # XGBoost model saving patterns
-    saving_patterns = [
-        r'\.save_model\(',
-        r'booster\.save_model\(',
-        r'model\.save_model\('
-    ]
+    # Check for Booster usage
+    booster_keywords = ['Booster', 'xgb.Booster']
+    patterns['has_booster_usage'] = any(
+        any(keyword in str(func) for keyword in booster_keywords)
+        for func in functions
+    )
     
-    # Search for patterns
-    patterns["xgboost_imports"] = _find_patterns(script_content, import_patterns)
-    patterns["dmatrix_patterns"] = _find_patterns(script_content, dmatrix_patterns)
-    patterns["xgboost_training"] = _find_patterns(script_content, training_patterns)
-    patterns["xgboost_evaluation"] = _find_patterns(script_content, evaluation_patterns)
-    patterns["xgboost_model_saving"] = _find_patterns(script_content, saving_patterns)
+    # Check for model loading
+    loading_keywords = ['load_model', 'pickle.load', 'joblib.load']
+    patterns['has_model_loading'] = any(
+        any(keyword in str(func) for keyword in loading_keywords)
+        for func in functions
+    )
     
     return patterns
 
 
-def detect_pytorch_patterns(script_content: str) -> Dict[str, List[str]]:
+def detect_pytorch_patterns(script_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Detect PyTorch-specific patterns in script content.
+    Detect PyTorch-specific patterns in script analysis.
     
     Args:
-        script_content: Content of the script
+        script_analysis: Script analysis results
         
     Returns:
         Dictionary containing detected PyTorch patterns
     """
     patterns = {
-        "pytorch_imports": [],
-        "model_definition": [],
-        "training_loop": [],
-        "loss_computation": [],
-        "optimizer_usage": [],
-        "model_saving": []
+        'has_torch_import': False,
+        'has_nn_module': False,
+        'has_optimizer': False,
+        'has_loss_function': False,
+        'has_model_loading': False,
+        'has_training_loop': False
     }
     
-    # PyTorch import patterns
-    import_patterns = [
-        r'import torch',
-        r'from torch import',
-        r'import torch\.nn',
-        r'from torch\.nn import',
-        r'import torch\.optim',
-        r'from torch\.optim import'
-    ]
+    imports = script_analysis.get('imports', [])
+    functions = script_analysis.get('functions', [])
     
-    # Model definition patterns
-    model_patterns = [
-        r'class.*\(nn\.Module\)',
-        r'nn\.Sequential\(',
-        r'nn\.Linear\(',
-        r'nn\.Conv2d\(',
-        r'def forward\('
-    ]
+    # Check for PyTorch imports
+    torch_import_keywords = ['torch', 'pytorch']
+    patterns['has_torch_import'] = any(
+        any(keyword.lower() in str(imp).lower() for keyword in torch_import_keywords)
+        for imp in imports
+    )
     
-    # Training loop patterns
-    training_patterns = [
-        r'model\.train\(',
-        r'for.*in.*dataloader',
-        r'optimizer\.zero_grad\(',
-        r'loss\.backward\(',
-        r'optimizer\.step\('
-    ]
+    # Check for nn.Module usage
+    module_keywords = ['nn.Module', 'torch.nn']
+    patterns['has_nn_module'] = any(
+        any(keyword in str(func) for keyword in module_keywords)
+        for func in functions
+    )
     
-    # Loss computation patterns
-    loss_patterns = [
-        r'nn\.CrossEntropyLoss\(',
-        r'nn\.MSELoss\(',
-        r'F\.cross_entropy\(',
-        r'criterion\(',
-        r'loss\s*='
-    ]
+    # Check for optimizer usage
+    optimizer_keywords = ['optim', 'optimizer', 'Adam', 'SGD']
+    patterns['has_optimizer'] = any(
+        any(keyword in str(func) for keyword in optimizer_keywords)
+        for func in functions
+    )
     
-    # Optimizer patterns
-    optimizer_patterns = [
-        r'torch\.optim\.Adam\(',
-        r'torch\.optim\.SGD\(',
-        r'optim\.Adam\(',
-        r'optim\.SGD\('
-    ]
+    # Check for loss function usage
+    loss_keywords = ['loss', 'criterion', 'CrossEntropyLoss', 'MSELoss']
+    patterns['has_loss_function'] = any(
+        any(keyword in str(func) for keyword in loss_keywords)
+        for func in functions
+    )
     
-    # Model saving patterns
-    saving_patterns = [
-        r'torch\.save\(',
-        r'model\.state_dict\(',
-        r'torch\.jit\.save\(',
-        r'model\.save_pretrained\('
-    ]
+    # Check for model loading
+    loading_keywords = ['torch.load', 'load_state_dict']
+    patterns['has_model_loading'] = any(
+        any(keyword in str(func) for keyword in loading_keywords)
+        for func in functions
+    )
     
-    # Search for patterns
-    patterns["pytorch_imports"] = _find_patterns(script_content, import_patterns)
-    patterns["model_definition"] = _find_patterns(script_content, model_patterns)
-    patterns["training_loop"] = _find_patterns(script_content, training_patterns)
-    patterns["loss_computation"] = _find_patterns(script_content, loss_patterns)
-    patterns["optimizer_usage"] = _find_patterns(script_content, optimizer_patterns)
-    patterns["model_saving"] = _find_patterns(script_content, saving_patterns)
+    # Check for training loop patterns
+    training_keywords = ['forward', 'backward', 'zero_grad', 'step']
+    patterns['has_training_loop'] = any(
+        any(keyword in str(func) for keyword in training_keywords)
+        for func in functions
+    )
     
     return patterns
 
 
-def detect_processing_patterns(script_content: str) -> Dict[str, List[str]]:
+def detect_sklearn_patterns(script_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Detect processing-specific patterns in script content.
+    Detect Scikit-learn-specific patterns in script analysis.
     
     Args:
-        script_content: Content of the processing script
+        script_analysis: Script analysis results
         
     Returns:
-        Dictionary containing detected processing patterns
+        Dictionary containing detected sklearn patterns
     """
     patterns = {
-        "data_loading_patterns": [],
-        "data_transformation_patterns": [],
-        "data_saving_patterns": [],
-        "environment_variable_patterns": []
+        'has_sklearn_import': False,
+        'has_preprocessing': False,
+        'has_model_training': False,
+        'has_model_evaluation': False,
+        'has_pipeline': False
     }
     
-    # Data loading patterns
-    loading_patterns = [
-        r'pd\.read_csv\(',
-        r'pd\.read_parquet\(',
-        r'np\.load\(',
-        r'/opt/ml/processing/input',
-        r'os\.listdir\(',
-        r'glob\.glob\('
-    ]
+    imports = script_analysis.get('imports', [])
+    functions = script_analysis.get('functions', [])
     
-    # Data transformation patterns
-    transformation_patterns = [
-        r'\.transform\(',
-        r'\.fit_transform\(',
-        r'\.apply\(',
-        r'\.map\(',
-        r'\.groupby\(',
-        r'\.merge\(',
-        r'\.join\('
-    ]
+    # Check for sklearn imports
+    sklearn_import_keywords = ['sklearn', 'scikit-learn']
+    patterns['has_sklearn_import'] = any(
+        any(keyword.lower() in str(imp).lower() for keyword in sklearn_import_keywords)
+        for imp in imports
+    )
     
-    # Data saving patterns
-    saving_patterns = [
-        r'\.to_csv\(',
-        r'\.to_parquet\(',
-        r'np\.save\(',
-        r'/opt/ml/processing/output',
-        r'pickle\.dump\(',
-        r'joblib\.dump\('
-    ]
+    # Check for preprocessing usage
+    preprocessing_keywords = ['preprocessing', 'StandardScaler', 'LabelEncoder', 'fit_transform']
+    patterns['has_preprocessing'] = any(
+        any(keyword in str(func) for keyword in preprocessing_keywords)
+        for func in functions
+    )
     
-    # Environment variable patterns
-    env_patterns = [
-        r'os\.environ\.get\(',
-        r'os\.getenv\(',
-        r'SM_CHANNEL_',
-        r'SM_MODEL_DIR',
-        r'SM_OUTPUT_DATA_DIR'
-    ]
+    # Check for model training
+    training_keywords = ['fit', 'train', 'RandomForestClassifier', 'SVC']
+    patterns['has_model_training'] = any(
+        any(keyword in str(func) for keyword in training_keywords)
+        for func in functions
+    )
     
-    # Search for patterns
-    patterns["data_loading_patterns"] = _find_patterns(script_content, loading_patterns)
-    patterns["data_transformation_patterns"] = _find_patterns(script_content, transformation_patterns)
-    patterns["data_saving_patterns"] = _find_patterns(script_content, saving_patterns)
-    patterns["environment_variable_patterns"] = _find_patterns(script_content, env_patterns)
+    # Check for model evaluation
+    evaluation_keywords = ['score', 'predict', 'accuracy_score', 'classification_report']
+    patterns['has_model_evaluation'] = any(
+        any(keyword in str(func) for keyword in evaluation_keywords)
+        for func in functions
+    )
+    
+    # Check for pipeline usage
+    pipeline_keywords = ['Pipeline', 'make_pipeline']
+    patterns['has_pipeline'] = any(
+        any(keyword in str(func) for keyword in pipeline_keywords)
+        for func in functions
+    )
     
     return patterns
 
 
-def detect_create_model_patterns(script_content: str) -> Dict[str, List[str]]:
+def detect_pandas_patterns(script_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Detect CreateModel-specific patterns in script content.
+    Detect Pandas-specific patterns in script analysis.
     
     Args:
-        script_content: Content of the model creation script
+        script_analysis: Script analysis results
         
     Returns:
-        Dictionary containing detected CreateModel patterns
+        Dictionary containing detected pandas patterns
     """
     patterns = {
-        "model_loading_patterns": [],
-        "inference_patterns": [],
-        "serialization_patterns": [],
-        "container_patterns": []
+        'has_pandas_import': False,
+        'has_dataframe_operations': False,
+        'has_data_loading': False,
+        'has_data_saving': False,
+        'has_data_transformation': False
     }
     
-    # Model loading patterns
-    loading_patterns = [
-        r'pickle\.load\(',
-        r'joblib\.load\(',
-        r'torch\.load\(',
-        r'xgb\.Booster\(',
-        r'model\.load\(',
-        r'/opt/ml/model'
-    ]
+    imports = script_analysis.get('imports', [])
+    functions = script_analysis.get('functions', [])
     
-    # Inference patterns
-    inference_patterns = [
-        r'def model_fn\(',
-        r'def input_fn\(',
-        r'def predict_fn\(',
-        r'def output_fn\(',
-        r'\.predict\(',
-        r'\.inference\('
-    ]
+    # Check for pandas imports
+    pandas_import_keywords = ['pandas', 'pd']
+    patterns['has_pandas_import'] = any(
+        any(keyword.lower() in str(imp).lower() for keyword in pandas_import_keywords)
+        for imp in imports
+    )
     
-    # Serialization patterns
-    serialization_patterns = [
-        r'json\.loads\(',
-        r'json\.dumps\(',
-        r'pickle\.loads\(',
-        r'pickle\.dumps\(',
-        r'np\.frombuffer\(',
-        r'\.decode\('
-    ]
+    # Check for DataFrame operations
+    dataframe_keywords = ['DataFrame', 'pd.DataFrame', 'df.']
+    patterns['has_dataframe_operations'] = any(
+        any(keyword in str(func) for keyword in dataframe_keywords)
+        for func in functions
+    )
     
-    # Container patterns
-    container_patterns = [
-        r'sagemaker\.model\.Model\(',
-        r'sagemaker\.pytorch\.PyTorchModel\(',
-        r'sagemaker\.xgboost\.XGBoostModel\(',
-        r'sagemaker\.sklearn\.SKLearnModel\('
-    ]
+    # Check for data loading
+    loading_keywords = ['read_csv', 'read_json', 'read_excel', 'pd.read']
+    patterns['has_data_loading'] = any(
+        any(keyword in str(func) for keyword in loading_keywords)
+        for func in functions
+    )
     
-    # Search for patterns
-    patterns["model_loading_patterns"] = _find_patterns(script_content, loading_patterns)
-    patterns["inference_patterns"] = _find_patterns(script_content, inference_patterns)
-    patterns["serialization_patterns"] = _find_patterns(script_content, serialization_patterns)
-    patterns["container_patterns"] = _find_patterns(script_content, container_patterns)
+    # Check for data saving
+    saving_keywords = ['to_csv', 'to_json', 'to_excel']
+    patterns['has_data_saving'] = any(
+        any(keyword in str(func) for keyword in saving_keywords)
+        for func in functions
+    )
+    
+    # Check for data transformation
+    transform_keywords = ['groupby', 'merge', 'join', 'pivot', 'apply', 'map']
+    patterns['has_data_transformation'] = any(
+        any(keyword in str(func) for keyword in transform_keywords)
+        for func in functions
+    )
     
     return patterns
 
 
-def detect_framework_from_script_content(script_content: str) -> Optional[str]:
+def get_framework_patterns(framework: str, script_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Detect the primary framework used in script content.
+    Get framework-specific patterns for the given framework.
     
     Args:
-        script_content: Content of the script
+        framework: Framework name
+        script_analysis: Script analysis results
         
     Returns:
-        Detected framework name or None if no framework detected
+        Dictionary containing framework-specific patterns
     """
-    framework_indicators = {
-        'xgboost': [
-            r'import xgboost',
-            r'from xgboost',
-            r'xgb\.train\(',
-            r'xgb\.DMatrix'
-        ],
-        'pytorch': [
-            r'import torch',
-            r'from torch',
-            r'nn\.Module',
-            r'torch\.save\('
-        ],
-        'sklearn': [
-            r'from sklearn',
-            r'import sklearn',
-            r'\.fit_transform\(',
-            r'\.fit\('
-        ],
-        'tensorflow': [
-            r'import tensorflow',
-            r'from tensorflow',
-            r'tf\.',
-            r'keras\.'
-        ]
+    framework_detectors = {
+        'xgboost': detect_xgboost_patterns,
+        'pytorch': detect_pytorch_patterns,
+        'sklearn': detect_sklearn_patterns,
+        'pandas': detect_pandas_patterns,
+        'training': detect_training_patterns
     }
     
-    framework_scores = {}
+    detector = framework_detectors.get(framework.lower())
+    if detector:
+        return detector(script_analysis)
     
-    for framework, patterns in framework_indicators.items():
-        score = 0
-        for pattern in patterns:
-            matches = re.findall(pattern, script_content, re.IGNORECASE)
-            score += len(matches)
-        framework_scores[framework] = score
-    
-    # Return framework with highest score, if any
-    if framework_scores:
-        best_framework = max(framework_scores, key=framework_scores.get)
-        if framework_scores[best_framework] > 0:
-            return best_framework
-    
-    return None
+    return {}
 
 
-def _find_patterns(content: str, patterns: List[str]) -> List[str]:
+def get_all_framework_patterns(script_analysis: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """
-    Find all occurrences of patterns in content.
+    Get patterns for all supported frameworks.
     
     Args:
-        content: Text content to search
-        patterns: List of regex patterns to search for
+        script_analysis: Script analysis results
         
     Returns:
-        List of matched pattern strings with line context
+        Dictionary mapping framework names to their patterns
     """
-    matches = []
-    lines = content.split('\n')
+    frameworks = ['xgboost', 'pytorch', 'sklearn', 'pandas', 'training']
+    all_patterns = {}
     
-    for i, line in enumerate(lines, 1):
-        for pattern in patterns:
-            if re.search(pattern, line, re.IGNORECASE):
-                context = f"Line {i}: {line.strip()}"
-                if context not in matches:  # Avoid duplicates
-                    matches.append(context)
+    for framework in frameworks:
+        all_patterns[framework] = get_framework_patterns(framework, script_analysis)
     
-    return matches
-
-
-def get_step_type_specific_patterns(script_content: str, step_type: str) -> Dict[str, List[str]]:
-    """
-    Get step type-specific patterns for a script.
-    
-    Args:
-        script_content: Content of the script
-        step_type: SageMaker step type (Processing, Training, etc.)
-        
-    Returns:
-        Dictionary containing step type-specific patterns
-    """
-    if step_type == "Training":
-        return detect_training_patterns(script_content)
-    elif step_type == "Processing":
-        return detect_processing_patterns(script_content)
-    elif step_type == "CreateModel":
-        return detect_create_model_patterns(script_content)
-    else:
-        # For other step types, return basic patterns
-        return {
-            "general_patterns": _find_patterns(script_content, [
-                r'import\s+\w+',
-                r'def\s+\w+\(',
-                r'class\s+\w+',
-                r'/opt/ml/'
-            ])
-        }
-
-
-def validate_framework_patterns(script_content: str, expected_framework: str) -> List[str]:
-    """
-    Validate that script contains expected framework patterns.
-    
-    Args:
-        script_content: Content of the script
-        expected_framework: Expected framework name
-        
-    Returns:
-        List of validation issues found
-    """
-    issues = []
-    
-    if expected_framework == "xgboost":
-        xgb_patterns = detect_xgboost_patterns(script_content)
-        if not xgb_patterns["xgboost_imports"]:
-            issues.append("Missing XGBoost imports")
-        if not xgb_patterns["xgboost_training"]:
-            issues.append("Missing XGBoost training patterns")
-            
-    elif expected_framework == "pytorch":
-        pytorch_patterns = detect_pytorch_patterns(script_content)
-        if not pytorch_patterns["pytorch_imports"]:
-            issues.append("Missing PyTorch imports")
-        if not pytorch_patterns["model_definition"]:
-            issues.append("Missing PyTorch model definition")
-            
-    elif expected_framework == "sklearn":
-        # Basic sklearn validation
-        if not re.search(r'from sklearn|import sklearn', script_content, re.IGNORECASE):
-            issues.append("Missing scikit-learn imports")
-    
-    return issues
+    return all_patterns

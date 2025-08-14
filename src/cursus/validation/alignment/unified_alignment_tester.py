@@ -18,6 +18,7 @@ from .alignment_utils import (
     detect_step_type_from_registry, detect_framework_from_imports,
     StepTypeAwareAlignmentIssue, create_step_type_aware_alignment_issue
 )
+from .step_type_enhancement_router import StepTypeEnhancementRouter
 from .script_contract_alignment import ScriptContractAlignmentTester
 from .contract_spec_alignment import ContractSpecificationAlignmentTester
 from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
@@ -81,6 +82,9 @@ class UnifiedAlignmentTester:
         
         # Phase 1 Enhancement: Step type awareness feature flag
         self.enable_step_type_awareness = os.getenv('ENABLE_STEP_TYPE_AWARENESS', 'true').lower() == 'true'
+        
+        # Phase 3 Enhancement: Step Type Enhancement System
+        self.step_type_enhancement_router = StepTypeEnhancementRouter()
     
     def run_full_validation(self, 
                            target_scripts: Optional[List[str]] = None,
@@ -192,6 +196,24 @@ class UnifiedAlignmentTester:
                 # Phase 1 Enhancement: Add step type context to issues if enabled
                 if self.enable_step_type_awareness:
                     self._add_step_type_context_to_issues(script_name, validation_result)
+                
+                # Phase 3 Enhancement: Apply step type-specific validation enhancements
+                enhanced_result = self.step_type_enhancement_router.enhance_validation_results(
+                    validation_result.details, script_name
+                )
+                
+                # Merge enhanced issues into validation result
+                if 'enhanced_issues' in enhanced_result:
+                    for enhanced_issue_data in enhanced_result['enhanced_issues']:
+                        enhanced_issue = create_alignment_issue(
+                            level=SeverityLevel(enhanced_issue_data.get('severity', 'INFO')),
+                            category=enhanced_issue_data.get('category', 'step_type_enhancement'),
+                            message=enhanced_issue_data.get('message', ''),
+                            details=enhanced_issue_data.get('details', {}),
+                            recommendation=enhanced_issue_data.get('recommendation'),
+                            alignment_level=AlignmentLevel.SCRIPT_CONTRACT
+                        )
+                        validation_result.add_issue(enhanced_issue)
                 
                 self.report.add_level1_result(script_name, validation_result)
                 
@@ -536,9 +558,9 @@ class UnifiedAlignmentTester:
                     with open(script_path, 'r', encoding='utf-8') as f:
                         script_content = f.read()
                     framework = detect_framework_from_script_content(script_content)
-            except Exception:
+            except Exception as e:
                 # Framework detection is optional, continue without it
-                pass
+                print(f"⚠️  Framework detection failed for {script_name}: {e}")
             
             # Add step type context to existing issues
             for issue in validation_result.issues:

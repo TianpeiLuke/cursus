@@ -12,8 +12,10 @@ from pathlib import Path
 
 from ..alignment_utils import (
     PathReference, EnvVarAccess, ImportStatement, ArgumentDefinition,
-    PathConstruction, FileOperation
+    PathConstruction, FileOperation, detect_step_type_from_registry,
+    detect_framework_from_imports
 )
+from ..framework_patterns import detect_training_patterns
 
 
 class ScriptAnalyzer:
@@ -698,14 +700,46 @@ class ScriptAnalyzer:
     
     def get_all_analysis_results(self) -> Dict[str, Any]:
         """Get comprehensive analysis results for the script."""
+        # Extract basic analysis results
+        imports = self.extract_imports()
+        
+        # Phase 2 Enhancement: Add step type and framework detection
+        script_name = Path(self.script_path).stem
+        step_type = detect_step_type_from_registry(script_name)
+        framework = detect_framework_from_imports(imports)
+        
+        # Add step type-specific patterns if this is a training script
+        step_type_patterns = {}
+        if step_type == "Training":
+            step_type_patterns = self._detect_training_patterns()
+        
         return {
             'script_path': self.script_path,
             'path_references': self.extract_path_references(),
             'env_var_accesses': self.extract_env_var_access(),
-            'imports': self.extract_imports(),
+            'imports': imports,
             'argument_definitions': self.extract_argument_definitions(),
-            'file_operations': self.extract_file_operations()
+            'file_operations': self.extract_file_operations(),
+            # Phase 2 Enhancement: Step type awareness
+            'step_type': step_type,
+            'framework': framework,
+            'step_type_patterns': step_type_patterns
         }
+    
+    def _detect_training_patterns(self) -> Dict[str, Any]:
+        """
+        Phase 2 Enhancement: Detect training-specific patterns using existing pattern recognition.
+        
+        Returns:
+            Dictionary containing detected training patterns
+        """
+        try:
+            # Use the framework patterns detection
+            training_patterns = detect_training_patterns(self.script_content)
+            return training_patterns
+        except Exception as e:
+            # Pattern detection is optional, return empty dict if it fails
+            return {'error': f'Training pattern detection failed: {str(e)}'}
     
     def has_main_function(self) -> bool:
         """Check if the script has a main function."""

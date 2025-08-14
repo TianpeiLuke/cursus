@@ -15,9 +15,14 @@ from pathlib import Path
 from .static_analysis.script_analyzer import ScriptAnalyzer
 from .static_analysis.builder_analyzer import extract_builder_arguments
 from .testability_validator import TestabilityPatternValidator
-from .alignment_utils import FlexibleFileResolver
+from .alignment_utils import (
+    FlexibleFileResolver, detect_step_type_from_registry, 
+    detect_framework_from_imports, create_step_type_aware_alignment_issue,
+    SeverityLevel, normalize_path
+)
 from .loaders import ContractLoader
 from .validators import ScriptContractValidator
+from .framework_patterns import detect_training_patterns, detect_xgboost_patterns
 
 
 class ScriptContractAlignmentTester:
@@ -234,6 +239,20 @@ class ScriptContractAlignmentTester:
                 'message': f'Failed to validate script testability: {str(e)}',
                 'details': {'script': script_name, 'error': str(e)},
                 'recommendation': 'Check script syntax and structure for testability validation'
+            })
+        
+        # Phase 2 Enhancement: Add step type-specific validation
+        try:
+            step_type_issues = self._enhance_with_step_type_validation(script_name, analysis, contract)
+            issues.extend(step_type_issues)
+        except Exception as e:
+            # Step type enhancement is optional, don't fail validation if it fails
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'step_type_enhancement_error',
+                'message': f'Failed to apply step type enhancements: {str(e)}',
+                'details': {'script': script_name, 'error': str(e)},
+                'recommendation': 'Check step type detection and framework patterns'
             })
         
         # Determine overall pass/fail status
@@ -516,6 +535,203 @@ class ScriptContractAlignmentTester:
         
         return sorted(scripts)
     
+    def _enhance_with_step_type_validation(self, script_name: str, analysis: Dict[str, Any], contract: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Phase 2 Enhancement: Add step type-specific validation to existing results.
+        
+        Args:
+            script_name: Name of the script being validated
+            analysis: Script analysis results
+            contract: Contract dictionary
+            
+        Returns:
+            List of additional validation issues
+        """
+        additional_issues = []
+        
+        # Detect step type from registry
+        step_type = detect_step_type_from_registry(script_name)
+        
+        # Detect framework from imports
+        framework = None
+        if 'imports' in analysis:
+            framework = detect_framework_from_imports(analysis['imports'])
+        
+        # Add step type-specific validation
+        if step_type == "Training":
+            additional_issues.extend(self._validate_training_specific(script_name, analysis, contract, framework))
+        elif step_type == "Processing":
+            # Processing validation is already comprehensive, but we can add framework-specific checks
+            additional_issues.extend(self._validate_processing_framework_specific(script_name, analysis, contract, framework))
+        
+        return additional_issues
+    
+    def _validate_training_specific(self, script_name: str, analysis: Dict[str, Any], contract: Dict[str, Any], framework: Optional[str]) -> List[Dict[str, Any]]:
+        """
+        Add training-specific validation using existing patterns.
+        
+        Args:
+            script_name: Name of the training script
+            analysis: Script analysis results
+            contract: Contract dictionary
+            framework: Detected framework (xgboost, pytorch, etc.)
+            
+        Returns:
+            List of training-specific validation issues
+        """
+        issues = []
+        
+        # Get script content for pattern analysis
+        script_path = self.scripts_dir / f"{script_name}.py"
+        try:
+            with open(script_path, 'r', encoding='utf-8') as f:
+                script_content = f.read()
+        except Exception:
+            return issues  # Can't analyze patterns without script content
+        
+        # Detect training patterns
+        training_patterns = detect_training_patterns(script_content)
+        
+        # Check for training loop patterns
+        if not training_patterns.get('training_loop_patterns'):
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'training_pattern_missing',
+                'message': 'Training script should contain model training logic',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Training',
+                    'expected_patterns': ['model.fit()', 'xgb.train()', 'training loop']
+                },
+                'recommendation': 'Add model training logic such as model.fit() or xgb.train()'
+            })
+        
+        # Check for model saving patterns
+        if not training_patterns.get('model_saving_patterns'):
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'training_model_saving_missing',
+                'message': 'Training script should save model artifacts',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Training',
+                    'expected_paths': ['/opt/ml/model/']
+                },
+                'recommendation': 'Add model saving to /opt/ml/model/ directory'
+            })
+        
+        # Check for hyperparameter loading patterns
+        if not training_patterns.get('hyperparameter_loading_patterns'):
+            issues.append({
+                'severity': 'INFO',
+                'category': 'training_hyperparameter_loading_missing',
+                'message': 'Training script should load hyperparameters from file',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Training',
+                    'expected_paths': ['/opt/ml/input/data/config/']
+                },
+                'recommendation': 'Add hyperparameter loading from /opt/ml/input/data/config/'
+            })
+        
+        # Framework-specific validation
+        if framework == 'xgboost':
+            xgb_issues = self._validate_xgboost_training_patterns(script_name, script_content)
+            issues.extend(xgb_issues)
+        
+        return issues
+    
+    def _validate_xgboost_training_patterns(self, script_name: str, script_content: str) -> List[Dict[str, Any]]:
+        """
+        Validate XGBoost-specific training patterns.
+        
+        Args:
+            script_name: Name of the script
+            script_content: Content of the script
+            
+        Returns:
+            List of XGBoost-specific validation issues
+        """
+        issues = []
+        
+        # Detect XGBoost patterns
+        xgb_patterns = detect_xgboost_patterns(script_content)
+        
+        # Check for XGBoost imports
+        if not xgb_patterns.get('xgboost_imports'):
+            issues.append({
+                'severity': 'ERROR',
+                'category': 'xgboost_import_missing',
+                'message': 'XGBoost training script should import xgboost',
+                'details': {
+                    'script': script_name,
+                    'framework': 'xgboost',
+                    'expected_imports': ['import xgboost as xgb', 'from xgboost import']
+                },
+                'recommendation': 'Add XGBoost import: import xgboost as xgb'
+            })
+        
+        # Check for DMatrix usage
+        if not xgb_patterns.get('dmatrix_patterns'):
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'xgboost_dmatrix_missing',
+                'message': 'XGBoost training should use DMatrix for data handling',
+                'details': {
+                    'script': script_name,
+                    'framework': 'xgboost',
+                    'expected_patterns': ['xgb.DMatrix()', 'xgboost.DMatrix()']
+                },
+                'recommendation': 'Use xgb.DMatrix() for efficient data handling'
+            })
+        
+        # Check for XGBoost training calls
+        if not xgb_patterns.get('xgboost_training'):
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'xgboost_training_missing',
+                'message': 'XGBoost training script should call xgb.train() or use XGBoost estimators',
+                'details': {
+                    'script': script_name,
+                    'framework': 'xgboost',
+                    'expected_patterns': ['xgb.train()', 'XGBClassifier()', 'XGBRegressor()']
+                },
+                'recommendation': 'Add XGBoost training call: xgb.train() or use XGBClassifier/XGBRegressor'
+            })
+        
+        return issues
+    
+    def _validate_processing_framework_specific(self, script_name: str, analysis: Dict[str, Any], contract: Dict[str, Any], framework: Optional[str]) -> List[Dict[str, Any]]:
+        """
+        Add framework-specific validation for processing scripts.
+        
+        Args:
+            script_name: Name of the processing script
+            analysis: Script analysis results
+            contract: Contract dictionary
+            framework: Detected framework
+            
+        Returns:
+            List of framework-specific validation issues
+        """
+        issues = []
+        
+        # For processing scripts, we mainly add informational context
+        if framework:
+            issues.append({
+                'severity': 'INFO',
+                'category': 'framework_detected',
+                'message': f'Processing script uses {framework} framework',
+                'details': {
+                    'script': script_name,
+                    'step_type': 'Processing',
+                    'framework': framework
+                },
+                'recommendation': f'Ensure {framework} dependencies are properly specified'
+            })
+        
+        return issues
+
     def get_validation_summary(self, results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """Generate a summary of validation results."""
         total_scripts = len(results)
