@@ -476,14 +476,14 @@ class TestXGBoostTrainMain(unittest.TestCase):
         mock_model.predict.return_value = np.array([0.3, 0.7, 0.4, 0.6])
         mock_xgb_train.return_value = mock_model
         
-        # Prepare input parameters
+        # Prepare input parameters using contract logical names
         input_paths = {
-            "data_dir": str(self.data_dir),
-            "config_dir": str(self.config_dir)
+            "input_path": str(self.data_dir),
+            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json")
         }
         output_paths = {
-            "model_dir": str(self.model_dir),
-            "output_dir": str(self.output_dir)
+            "model_output": str(self.model_dir),
+            "evaluation_output": str(self.output_dir)
         }
         environ_vars = {}
         args = argparse.Namespace()
@@ -512,12 +512,12 @@ class TestXGBoostTrainMain(unittest.TestCase):
         (self.config_dir / "hyperparameters.json").unlink()
         
         input_paths = {
-            "data_dir": str(self.data_dir),
-            "config_dir": str(self.config_dir)
+            "input_path": str(self.data_dir),
+            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json")
         }
         output_paths = {
-            "model_dir": str(self.model_dir),
-            "output_dir": str(self.output_dir)
+            "model_output": str(self.model_dir),
+            "evaluation_output": str(self.output_dir)
         }
         environ_vars = {}
         args = argparse.Namespace()
@@ -531,12 +531,12 @@ class TestXGBoostTrainMain(unittest.TestCase):
         shutil.rmtree(self.data_dir / "train")
         
         input_paths = {
-            "data_dir": str(self.data_dir),
-            "config_dir": str(self.config_dir)
+            "input_path": str(self.data_dir),
+            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json")
         }
         output_paths = {
-            "model_dir": str(self.model_dir),
-            "output_dir": str(self.output_dir)
+            "model_output": str(self.model_dir),
+            "evaluation_output": str(self.output_dir)
         }
         environ_vars = {}
         args = argparse.Namespace()
@@ -553,12 +553,12 @@ class TestXGBoostTrainMain(unittest.TestCase):
             json.dump(invalid_config, f)
         
         input_paths = {
-            "data_dir": str(self.data_dir),
-            "config_dir": str(self.config_dir)
+            "input_path": str(self.data_dir),
+            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json")
         }
         output_paths = {
-            "model_dir": str(self.model_dir),
-            "output_dir": str(self.output_dir)
+            "model_output": str(self.model_dir),
+            "evaluation_output": str(self.output_dir)
         }
         environ_vars = {}
         args = argparse.Namespace()

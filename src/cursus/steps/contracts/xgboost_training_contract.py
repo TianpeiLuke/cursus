@@ -8,7 +8,7 @@ training with risk table mapping and numerical imputation.
 from .training_script_contract import TrainingScriptContract
 
 XGBOOST_TRAIN_CONTRACT = TrainingScriptContract(
-    entry_point="train_xgb.py",
+    entry_point="xgboost_training.py",
     expected_input_paths={
         "input_path": "/opt/ml/input/data",
         "hyperparameters_s3_uri": "/opt/ml/input/data/config/hyperparameters.json"

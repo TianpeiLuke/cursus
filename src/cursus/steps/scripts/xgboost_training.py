@@ -461,25 +461,31 @@ def main(
     
     Args:
         input_paths: Dictionary of input paths with logical names
-            - "data_dir": Directory containing train/val/test data
-            - "config_dir": Directory containing hyperparameters.json
+            - "input_path": Directory containing train/val/test data
+            - "hyperparameters_s3_uri": Path to hyperparameters.json file
         output_paths: Dictionary of output paths with logical names
-            - "model_dir": Directory to save model artifacts
-            - "output_dir": Directory to save evaluation outputs
+            - "model_output": Directory to save model artifacts
+            - "evaluation_output": Directory to save evaluation outputs
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments
     """
     try:
         logger.info("====== STARTING MAIN EXECUTION ======")
         
-        # Extract paths from parameters
-        data_dir = input_paths["data_dir"]
-        config_dir = input_paths["config_dir"]
-        model_dir = output_paths["model_dir"]
-        output_dir = output_paths["output_dir"]
+        # Extract paths from parameters using contract logical names
+        data_dir = input_paths["input_path"]
+        model_dir = output_paths["model_output"]
+        output_dir = output_paths["evaluation_output"]
         
-        # Build hyperparameters path
-        hparam_path = os.path.join(config_dir, "hyperparameters.json")
+        # Build hyperparameters path - handle both file path and directory cases
+        if "hyperparameters_s3_uri" in input_paths:
+            hparam_path = input_paths["hyperparameters_s3_uri"]
+            # If it's a directory path, append the filename
+            if not hparam_path.endswith("hyperparameters.json"):
+                hparam_path = os.path.join(hparam_path, "hyperparameters.json")
+        else:
+            # Fallback to default location within input_path
+            hparam_path = os.path.join(data_dir, "config", "hyperparameters.json")
         
         logger.info("Starting XGBoost training process...")
         logger.info(f"Loading configuration from {hparam_path}")
@@ -565,14 +571,6 @@ def main(
 if __name__ == "__main__":
     logger.info("Script starting...")
     
-    # Parse command line arguments (if any)
-    parser = argparse.ArgumentParser(description="XGBoost Training Script")
-    parser.add_argument("--data-dir", type=str, help="Directory containing train/val/test data")
-    parser.add_argument("--config-dir", type=str, help="Directory containing hyperparameters.json")
-    parser.add_argument("--model-dir", type=str, help="Directory to save model artifacts")
-    parser.add_argument("--output-dir", type=str, help="Directory to save evaluation outputs")
-    args = parser.parse_args()
-    
     # Container path constants
     CONTAINER_PATHS = {
         "INPUT_DATA": "/opt/ml/input/data",
@@ -581,16 +579,16 @@ if __name__ == "__main__":
         "CONFIG_DIR": "/opt/ml/input/data/config"
     }
     
-    # Define input and output paths
-    # Use command line arguments if provided, otherwise use container defaults
+    # Define input and output paths using contract logical names
+    # Use container defaults (no CLI arguments per contract)
     input_paths = {
-        "data_dir": args.data_dir if args.data_dir else CONTAINER_PATHS["INPUT_DATA"],
-        "config_dir": args.config_dir if args.config_dir else CONTAINER_PATHS["CONFIG_DIR"]
+        "input_path": CONTAINER_PATHS["INPUT_DATA"],
+        "hyperparameters_s3_uri": CONTAINER_PATHS["CONFIG_DIR"]
     }
     
     output_paths = {
-        "model_dir": args.model_dir if args.model_dir else CONTAINER_PATHS["MODEL_DIR"],
-        "output_dir": args.output_dir if args.output_dir else CONTAINER_PATHS["OUTPUT_DATA"]
+        "model_output": CONTAINER_PATHS["MODEL_DIR"],
+        "evaluation_output": CONTAINER_PATHS["OUTPUT_DATA"]
     }
     
     # Collect environment variables (none currently used, but following the pattern)
@@ -599,12 +597,15 @@ if __name__ == "__main__":
         # Example: "LOG_LEVEL": os.environ.get("LOG_LEVEL", "INFO")
     }
     
+    # Create empty args namespace to maintain function signature
+    args = argparse.Namespace()
+    
     try:
         logger.info(f"Starting main process with paths:")
-        logger.info(f"  Data directory: {input_paths['data_dir']}")
-        logger.info(f"  Config directory: {input_paths['config_dir']}")
-        logger.info(f"  Model directory: {output_paths['model_dir']}")
-        logger.info(f"  Output directory: {output_paths['output_dir']}")
+        logger.info(f"  Data directory: {input_paths['input_path']}")
+        logger.info(f"  Config directory: {input_paths['hyperparameters_s3_uri']}")
+        logger.info(f"  Model directory: {output_paths['model_output']}")
+        logger.info(f"  Output directory: {output_paths['evaluation_output']}")
         
         # Call the refactored main function
         main(input_paths, output_paths, environ_vars, args)
