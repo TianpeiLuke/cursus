@@ -148,10 +148,12 @@ class TabularPreprocessingStepBuilder:
         """Test builder argument extraction with real project files."""
         print("\n🔍 Testing real builder argument extraction...")
         
-        # Use real project directories
-        real_scripts_dir = "src/cursus/steps/scripts"
-        real_contracts_dir = "src/cursus/steps/contracts"
-        real_builders_dir = "src/cursus/steps/builders"
+        # Use real project directories with absolute paths
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent.parent.parent
+        real_scripts_dir = str(project_root / "src/cursus/steps/scripts")
+        real_contracts_dir = str(project_root / "src/cursus/steps/contracts")
+        real_builders_dir = str(project_root / "src/cursus/steps/builders")
         
         tester = ScriptContractAlignmentTester(
             real_scripts_dir,
