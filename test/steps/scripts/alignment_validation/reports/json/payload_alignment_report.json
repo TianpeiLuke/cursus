@@ -10,10 +10,10 @@
         "details": {
           "script": "payload",
           "testability_parameters": [
-            "environ_vars",
+            "input_paths",
             "job_args",
-            "output_paths",
-            "input_paths"
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -37,9 +37,9 @@
             "job_args"
           ],
           "used_parameters": [
+            "input_paths",
             "environ_vars",
-            "output_paths",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -278,8 +278,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -307,8 +307,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -335,8 +335,8 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
                 "TrainingStep",
+                "XGBoostTraining",
                 "ModelStep"
               ],
               "data_type": "S3Uri",
@@ -360,8 +360,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -402,8 +402,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -427,32 +427,12 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: model_owner",
+        "message": "Required configuration field not accessed in builder: model_registration_domain",
         "details": {
-          "field_name": "model_owner",
+          "field_name": "model_registration_domain",
           "builder": "payload"
         },
-        "recommendation": "Access required field model_owner in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: max_latency_in_millisecond",
-        "details": {
-          "field_name": "max_latency_in_millisecond",
-          "builder": "payload"
-        },
-        "recommendation": "Access required field max_latency_in_millisecond in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: source_model_inference_output_variable_list",
-        "details": {
-          "field_name": "source_model_inference_output_variable_list",
-          "builder": "payload"
-        },
-        "recommendation": "Access required field source_model_inference_output_variable_list in builder or make it optional"
+        "recommendation": "Access required field model_registration_domain in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -467,22 +447,32 @@
       {
         "severity": "WARNING",
         "category": "configuration_fields",
-        "message": "Required configuration field not accessed in builder: model_registration_domain",
-        "details": {
-          "field_name": "model_registration_domain",
-          "builder": "payload"
-        },
-        "recommendation": "Access required field model_registration_domain in builder or make it optional"
-      },
-      {
-        "severity": "WARNING",
-        "category": "configuration_fields",
         "message": "Required configuration field not accessed in builder: model_registration_objective",
         "details": {
           "field_name": "model_registration_objective",
           "builder": "payload"
         },
         "recommendation": "Access required field model_registration_objective in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: source_model_inference_output_variable_list",
+        "details": {
+          "field_name": "source_model_inference_output_variable_list",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field source_model_inference_output_variable_list in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: model_owner",
+        "details": {
+          "field_name": "model_owner",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field model_owner in builder or make it optional"
       },
       {
         "severity": "WARNING",
@@ -495,18 +485,28 @@
         "recommendation": "Access required field expected_tps in builder or make it optional"
       },
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: max_latency_in_millisecond",
+        "details": {
+          "field_name": "max_latency_in_millisecond",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field max_latency_in_millisecond in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "model_owner",
-            "max_latency_in_millisecond",
             "source_model_inference_output_variable_list",
-            "model_registration_objective",
+            "model_owner",
             "expected_tps",
+            "max_latency_in_millisecond",
+            "model_registration_domain",
             "source_model_inference_input_variable_list",
-            "model_registration_domain"
+            "model_registration_objective"
           ],
           "builder": "payload"
         },
@@ -900,7 +900,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py",
     "contract_mapping": "payload_contract",
-    "validation_timestamp": "2025-08-14T08:34:51.207544",
+    "validation_timestamp": "2025-08-14T08:48:04.353663",
     "validator_version": "1.0.0"
   }
 }

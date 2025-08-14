@@ -31,10 +31,10 @@
         "details": {
           "script": "package",
           "testability_parameters": [
-            "environ_vars",
+            "input_paths",
             "job_args",
-            "output_paths",
-            "input_paths"
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -58,9 +58,9 @@
             "job_args"
           ],
           "used_parameters": [
+            "input_paths",
             "environ_vars",
-            "output_paths",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -253,8 +253,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -303,8 +303,8 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
               "TrainingStep",
+              "XGBoostTraining",
               "ModelStep"
             ],
             "data_type": "S3Uri",
@@ -352,8 +352,8 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
                 "TrainingStep",
+                "XGBoostTraining",
                 "ModelStep"
               ],
               "data_type": "S3Uri",
@@ -398,8 +398,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -467,8 +467,8 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
             "TrainingStep",
+            "XGBoostTraining",
             "ModelStep"
           ],
           "data_type": "S3Uri",
@@ -789,7 +789,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-14T08:34:51.187466",
+    "validation_timestamp": "2025-08-14T08:48:04.333651",
     "validator_version": "1.0.0"
   }
 }

@@ -22,10 +22,10 @@
         "details": {
           "script": "tabular_preprocessing",
           "testability_parameters": [
-            "environ_vars",
+            "input_paths",
             "job_args",
-            "output_paths",
-            "input_paths"
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -397,9 +397,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
-              "CradleDataLoading"
+              "CradleDataLoading",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Raw testing data for preprocessing"
@@ -424,9 +424,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
-              "CradleDataLoading"
+              "CradleDataLoading",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Raw calibration data for preprocessing"
@@ -451,9 +451,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
-              "CradleDataLoading"
+              "CradleDataLoading",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Raw validation data for preprocessing"
@@ -478,9 +478,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
-              "CradleDataLoading"
+              "CradleDataLoading",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -505,9 +505,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
-              "CradleDataLoading"
+              "CradleDataLoading",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Raw tabular data for preprocessing"
@@ -534,9 +534,9 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
-              "CradleDataLoading"
+              "CradleDataLoading",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -562,9 +562,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "DataLoad",
                 "ProcessingStep",
-                "CradleDataLoading"
+                "CradleDataLoading",
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Raw training data for preprocessing"
@@ -589,9 +589,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "DataLoad",
                 "ProcessingStep",
-                "CradleDataLoading"
+                "CradleDataLoading",
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Raw testing data for preprocessing"
@@ -616,9 +616,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "DataLoad",
                 "ProcessingStep",
-                "CradleDataLoading"
+                "CradleDataLoading",
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Raw validation data for preprocessing"
@@ -643,9 +643,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "DataLoad",
                 "ProcessingStep",
-                "CradleDataLoading"
+                "CradleDataLoading",
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Raw calibration data for preprocessing"
@@ -670,9 +670,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "DataLoad",
                 "ProcessingStep",
-                "CradleDataLoading"
+                "CradleDataLoading",
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Raw tabular data for preprocessing"
@@ -695,9 +695,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "DataLoad",
             "ProcessingStep",
-            "CradleDataLoading"
+            "CradleDataLoading",
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Raw tabular data for preprocessing"
@@ -745,9 +745,9 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "DataLoad",
             "ProcessingStep",
-            "CradleDataLoading"
+            "CradleDataLoading",
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Raw tabular data for preprocessing"
@@ -1119,7 +1119,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-08-14T08:34:51.297293",
+    "validation_timestamp": "2025-08-14T08:48:04.444459",
     "validator_version": "1.0.0"
   }
 }

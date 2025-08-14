@@ -1,38 +1,19 @@
 {
   "script_name": "xgboost_training",
   "level1": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
+        "severity": "INFO",
         "category": "path_usage",
-        "message": "Script uses undeclared SageMaker path: /opt/ml/input/data/config",
+        "message": "Script correctly uses parent directory to construct file path: /opt/ml/input/data/config \u2192 /opt/ml/input/data/config/hyperparameters.json",
         "details": {
-          "path": "/opt/ml/input/data/config",
+          "script_path": "/opt/ml/input/data/config",
+          "contract_path": "/opt/ml/input/data/config/hyperparameters.json",
+          "construction_method": "os.path.join",
           "script": "xgboost_training"
         },
-        "recommendation": "Add path /opt/ml/input/data/config to contract inputs or outputs"
-      },
-      {
-        "severity": "WARNING",
-        "category": "path_usage",
-        "message": "Contract declares path not used in script: /opt/ml/input/data/config/hyperparameters.json",
-        "details": {
-          "path": "/opt/ml/input/data/config/hyperparameters.json",
-          "script": "xgboost_training"
-        },
-        "recommendation": "Either use path /opt/ml/input/data/config/hyperparameters.json in script or remove from contract"
-      },
-      {
-        "severity": "WARNING",
-        "category": "logical_names",
-        "message": "Script uses path not mapped to contract logical name: /opt/ml/input/data/config",
-        "details": {
-          "path": "/opt/ml/input/data/config",
-          "inferred_logical_name": "config",
-          "script": "xgboost_training"
-        },
-        "recommendation": "Add path /opt/ml/input/data/config to contract inputs/outputs with appropriate logical name"
+        "recommendation": "Path usage pattern is correct - no action needed"
       },
       {
         "severity": "INFO",
@@ -52,10 +33,10 @@
         "details": {
           "script": "xgboost_training",
           "testability_parameters": [
-            "environ_vars",
+            "input_paths",
             "job_args",
-            "output_paths",
-            "input_paths"
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -72,16 +53,16 @@
       {
         "severity": "WARNING",
         "category": "testability_parameter_usage",
-        "message": "Testability parameters defined but not used: environ_vars, job_args",
+        "message": "Testability parameters defined but not used: job_args, environ_vars",
         "details": {
           "script": "xgboost_training",
           "unused_parameters": [
-            "environ_vars",
-            "job_args"
+            "job_args",
+            "environ_vars"
           ],
           "used_parameters": [
-            "output_paths",
-            "input_paths"
+            "input_paths",
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -353,10 +334,10 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
+              "TabularPreprocessing",
               "RiskTableMapping",
-              "TabularPreprocessing"
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -366,8 +347,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -401,10 +382,10 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
-              "DataLoad",
               "ProcessingStep",
+              "TabularPreprocessing",
               "RiskTableMapping",
-              "TabularPreprocessing"
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -414,8 +395,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "HyperparameterPrep"
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -448,10 +429,10 @@
               "dependency_type": "training_data",
               "required": true,
               "compatible_sources": [
-                "DataLoad",
                 "ProcessingStep",
+                "TabularPreprocessing",
                 "RiskTableMapping",
-                "TabularPreprocessing"
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -461,8 +442,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "HyperparameterPrep"
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -492,10 +473,10 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
-            "DataLoad",
             "ProcessingStep",
+            "TabularPreprocessing",
             "RiskTableMapping",
-            "TabularPreprocessing"
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -505,8 +486,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -664,10 +645,10 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
-            "DataLoad",
             "ProcessingStep",
+            "TabularPreprocessing",
             "RiskTableMapping",
-            "TabularPreprocessing"
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -677,8 +658,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ProcessingStep",
-            "HyperparameterPrep"
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -1045,7 +1026,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py",
     "contract_mapping": "xgboost_training_contract",
-    "validation_timestamp": "2025-08-14T08:34:51.350108",
+    "validation_timestamp": "2025-08-14T08:48:04.493198",
     "validator_version": "1.0.0"
   }
 }

@@ -5,6 +5,7 @@ Contains the core validation logic for script-contract alignment.
 Handles path usage, environment variables, arguments, and file operations validation.
 """
 
+import os
 from typing import Dict, Any, List, Optional, Set
 from pathlib import Path
 
@@ -26,30 +27,92 @@ class ScriptContractValidator:
     """
     
     def validate_path_usage(self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]:
-        """Validate that script path usage matches contract declarations."""
+        """
+        Validate that script path usage matches contract declarations.
+        
+        Enhanced to handle three scenarios:
+        1. Contract file path + Script uses file path → Direct match
+        2. Contract file path + Script uses directory path → Parent-child relationship  
+        3. Contract directory path + Script uses directory path → Direct match
+        """
         issues = []
         
         # Get contract paths
         contract_inputs = contract.get('inputs', {})
         contract_outputs = contract.get('outputs', {})
         
-        # Extract expected paths from contract
-        expected_paths = set()
+        # Extract expected paths from contract with type detection
+        contract_file_paths = set()
+        contract_dir_paths = set()
+        
         for input_spec in contract_inputs.values():
             if 'path' in input_spec:
-                expected_paths.add(normalize_path(input_spec['path']))
+                path = normalize_path(input_spec['path'])
+                if self._is_file_path(path):
+                    contract_file_paths.add(path)
+                else:
+                    contract_dir_paths.add(path)
         
         for output_spec in contract_outputs.values():
             if 'path' in output_spec:
-                expected_paths.add(normalize_path(output_spec['path']))
+                path = normalize_path(output_spec['path'])
+                if self._is_file_path(path):
+                    contract_file_paths.add(path)
+                else:
+                    contract_dir_paths.add(path)
         
-        # Get script paths
+        # Get script paths with construction pattern detection
         script_paths = set()
-        for path_ref in analysis.get('path_references', []):
-            script_paths.add(normalize_path(path_ref.path))
+        script_path_constructions = {}  # path -> construction info
         
-        # Check for hardcoded paths not in contract
-        undeclared_paths = script_paths - expected_paths
+        for path_ref in analysis.get('path_references', []):
+            normalized_path = normalize_path(path_ref.path)
+            script_paths.add(normalized_path)
+            
+            # Detect path construction patterns
+            context = getattr(path_ref, 'context', '').lower()
+            if 'os.path.join' in context:
+                script_path_constructions[normalized_path] = {
+                    'method': 'os.path.join',
+                    'context': context,
+                    'line': getattr(path_ref, 'line_number', None)
+                }
+        
+        # Enhanced validation with three scenarios
+        validated_paths = set()
+        
+        # Scenario 1 & 3: Direct path matching (file-to-file, dir-to-dir)
+        direct_matches = script_paths.intersection(contract_file_paths.union(contract_dir_paths))
+        validated_paths.update(direct_matches)
+        
+        # Scenario 2: Parent-child relationship validation (contract file, script directory)
+        for contract_file_path in contract_file_paths:
+            contract_dir = os.path.dirname(contract_file_path)
+            contract_filename = os.path.basename(contract_file_path)
+            
+            for script_path in script_paths:
+                if normalize_path(script_path) == normalize_path(contract_dir):
+                    # Script uses parent directory of contract file path
+                    # Check if script constructs the file path
+                    if self._script_constructs_file_path(analysis, contract_dir, contract_filename):
+                        validated_paths.add(script_path)
+                        validated_paths.add(contract_file_path)  # Mark contract path as validated too
+                        
+                        issues.append({
+                            'severity': 'INFO',
+                            'category': 'path_usage',
+                            'message': f'Script correctly uses parent directory to construct file path: {script_path} → {contract_file_path}',
+                            'details': {
+                                'script_path': script_path,
+                                'contract_path': contract_file_path,
+                                'construction_method': 'os.path.join',
+                                'script': script_name
+                            },
+                            'recommendation': 'Path usage pattern is correct - no action needed'
+                        })
+        
+        # Check for undeclared paths (not validated by any scenario)
+        undeclared_paths = script_paths - validated_paths
         for path in undeclared_paths:
             if is_sagemaker_path(path):
                 issues.append({
@@ -60,8 +123,9 @@ class ScriptContractValidator:
                     'recommendation': f'Add path {path} to contract inputs or outputs'
                 })
         
-        # Check for contract paths not used in script
-        unused_paths = expected_paths - script_paths
+        # Check for unused contract paths (only if not validated by parent-child relationship)
+        all_contract_paths = contract_file_paths.union(contract_dir_paths)
+        unused_paths = all_contract_paths - validated_paths
         for path in unused_paths:
             issues.append({
                 'severity': 'WARNING',
@@ -72,40 +136,25 @@ class ScriptContractValidator:
             })
         
         # Check for logical name consistency using contract mappings
-        # This fixes the critical issue of incorrect path-based logical name extraction
-        script_logical_names = set()
-        contract_logical_names = set()
-        
-        # Build contract logical names
-        for input_name in contract_inputs.keys():
-            contract_logical_names.add(input_name)
-        for output_name in contract_outputs.keys():
-            contract_logical_names.add(output_name)
-        
-        # Resolve logical names from script paths using contract mappings
         for path in script_paths:
-            logical_name = self._resolve_logical_name_from_contract(path, contract)
-            if logical_name:
-                script_logical_names.add(logical_name)
-        
-        # Check for logical name mismatches - only flag if path is used but not in contract
-        for path in script_paths:
-            if is_sagemaker_path(path):
+            if is_sagemaker_path(path) and path in validated_paths:
                 logical_name = self._resolve_logical_name_from_contract(path, contract)
                 if logical_name is None:
-                    # Path is used but not mapped to any contract logical name
-                    fallback_name = extract_logical_name_from_path(path)
-                    issues.append({
-                        'severity': 'WARNING',
-                        'category': 'logical_names',
-                        'message': f'Script uses path not mapped to contract logical name: {path}',
-                        'details': {
-                            'path': path, 
-                            'inferred_logical_name': fallback_name,
-                            'script': script_name
-                        },
-                        'recommendation': f'Add path {path} to contract inputs/outputs with appropriate logical name'
-                    })
+                    # Check if this path is a parent directory of a contract file path
+                    parent_logical_name = self._resolve_parent_logical_name_from_contract(path, contract)
+                    if parent_logical_name is None:
+                        fallback_name = extract_logical_name_from_path(path)
+                        issues.append({
+                            'severity': 'WARNING',
+                            'category': 'logical_names',
+                            'message': f'Script uses path not mapped to contract logical name: {path}',
+                            'details': {
+                                'path': path, 
+                                'inferred_logical_name': fallback_name,
+                                'script': script_name
+                            },
+                            'recommendation': f'Add path {path} to contract inputs/outputs with appropriate logical name'
+                        })
         
         return issues
     
@@ -491,6 +540,130 @@ class ScriptContractValidator:
                     return logical_name
         
         return None  # Only return None if truly not in contract
+    
+    def _is_file_path(self, path: str) -> bool:
+        """
+        Determine if a path represents a file or directory.
+        
+        Args:
+            path: The path to analyze
+            
+        Returns:
+            True if path appears to be a file, False if directory
+        """
+        # Check for common file extensions
+        file_extensions = [
+            '.json', '.csv', '.parquet', '.txt', '.pkl', '.bst', '.jpg', '.png',
+            '.py', '.yaml', '.yml', '.xml', '.tar', '.gz', '.zip', '.log'
+        ]
+        
+        normalized_path = normalize_path(path)
+        
+        # If path has a file extension, it's likely a file
+        for ext in file_extensions:
+            if normalized_path.lower().endswith(ext):
+                return True
+        
+        # If path ends with a slash, it's definitely a directory
+        if normalized_path.endswith('/'):
+            return False
+        
+        # Check for common directory patterns
+        directory_patterns = [
+            '/opt/ml/input/data',
+            '/opt/ml/model',
+            '/opt/ml/output/data',
+            '/opt/ml/processing/input',
+            '/opt/ml/processing/output'
+        ]
+        
+        for pattern in directory_patterns:
+            if normalized_path == pattern or normalized_path.startswith(pattern + '/'):
+                # If it's exactly a known directory pattern, it's a directory
+                if normalized_path == pattern:
+                    return False
+                # If it extends beyond the pattern, check if it looks like a file
+                remainder = normalized_path[len(pattern):].strip('/')
+                if '.' in remainder and not '/' in remainder:
+                    return True  # Single component with dot - likely a file
+        
+        # Default heuristic: if it contains a dot in the last component, it's likely a file
+        last_component = os.path.basename(normalized_path)
+        return '.' in last_component
+    
+    def _script_constructs_file_path(self, analysis: Dict[str, Any], directory_path: str, filename: str) -> bool:
+        """
+        Check if the script constructs a file path from directory + filename.
+        
+        Args:
+            analysis: Script analysis results
+            directory_path: The directory path used by script
+            filename: The filename that should be constructed
+            
+        Returns:
+            True if script constructs the file path
+        """
+        # Look for os.path.join patterns in the script
+        path_references = analysis.get('path_references', [])
+        
+        for path_ref in path_references:
+            context = getattr(path_ref, 'context', '').lower()
+            
+            # Check for os.path.join with the directory and filename
+            if 'os.path.join' in context:
+                # Look for patterns like os.path.join(dir, "filename")
+                if directory_path.split('/')[-1] in context and filename in context:
+                    return True
+                
+                # Look for patterns where config directory is joined with hyperparameters.json
+                if 'config' in context and filename in context:
+                    return True
+        
+        # Also check if the script has logic to handle both file and directory paths
+        # This is common in well-written scripts
+        for path_ref in path_references:
+            context = getattr(path_ref, 'context', '').lower()
+            
+            # Look for conditional logic that appends filename to directory
+            if any(pattern in context for pattern in [
+                'endswith', 'if not', 'append', 'join', 'dirname', 'basename'
+            ]):
+                if filename in context:
+                    return True
+        
+        return False
+    
+    def _resolve_parent_logical_name_from_contract(self, path: str, contract: Dict[str, Any]) -> Optional[str]:
+        """
+        Resolve logical name for a path that might be a parent directory of a contract file path.
+        
+        Args:
+            path: The directory path to resolve
+            contract: The contract dictionary
+            
+        Returns:
+            Logical name if path is parent of a contract file path, None otherwise
+        """
+        normalized_path = normalize_path(path)
+        
+        # Check if this path is a parent directory of any contract file paths
+        for logical_name, input_spec in contract.get('inputs', {}).items():
+            if 'path' in input_spec:
+                contract_path = normalize_path(input_spec['path'])
+                contract_dir = os.path.dirname(contract_path)
+                
+                if normalized_path == contract_dir:
+                    return logical_name
+        
+        for logical_name, output_spec in contract.get('outputs', {}).items():
+            if 'path' in output_spec:
+                contract_path = normalize_path(output_spec['path'])
+                contract_dir = os.path.dirname(contract_path)
+                
+                if normalized_path == contract_dir:
+                    return logical_name
+        
+        return None
     
     def validate_step_type_specific(self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]:
         """

@@ -21,10 +21,10 @@
         "details": {
           "script": "model_calibration",
           "testability_parameters": [
-            "environ_vars",
+            "input_paths",
             "job_args",
-            "output_paths",
-            "input_paths"
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -164,9 +164,9 @@
             "job_args"
           ],
           "used_parameters": [
+            "input_paths",
             "environ_vars",
-            "output_paths",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -707,11 +707,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
-              "XGBoostModelEval",
               "CrossValidation",
-              "ModelEvaluation",
-              "TrainingEvaluation"
+              "TrainingEvaluation",
+              "XGBoostModelEval",
+              "XGBoostTraining",
+              "ModelEvaluation"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -752,11 +752,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostTraining",
-              "XGBoostModelEval",
               "CrossValidation",
-              "ModelEvaluation",
-              "TrainingEvaluation"
+              "TrainingEvaluation",
+              "XGBoostModelEval",
+              "XGBoostTraining",
+              "ModelEvaluation"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -796,11 +796,11 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "XGBoostTraining",
-                "XGBoostModelEval",
                 "CrossValidation",
-                "ModelEvaluation",
-                "TrainingEvaluation"
+                "TrainingEvaluation",
+                "XGBoostModelEval",
+                "XGBoostTraining",
+                "ModelEvaluation"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -837,11 +837,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
-            "XGBoostModelEval",
             "CrossValidation",
-            "ModelEvaluation",
-            "TrainingEvaluation"
+            "TrainingEvaluation",
+            "XGBoostModelEval",
+            "XGBoostTraining",
+            "ModelEvaluation"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -901,11 +901,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostTraining",
-            "XGBoostModelEval",
             "CrossValidation",
-            "ModelEvaluation",
-            "TrainingEvaluation"
+            "TrainingEvaluation",
+            "XGBoostModelEval",
+            "XGBoostTraining",
+            "ModelEvaluation"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -1364,7 +1364,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-14T08:34:51.167928",
+    "validation_timestamp": "2025-08-14T08:48:04.314716",
     "validator_version": "1.0.0"
   }
 }

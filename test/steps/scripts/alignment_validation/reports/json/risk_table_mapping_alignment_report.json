@@ -22,10 +22,10 @@
         "details": {
           "script": "risk_table_mapping",
           "testability_parameters": [
-            "environ_vars",
+            "input_paths",
             "job_args",
-            "output_paths",
-            "input_paths"
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -49,9 +49,9 @@
             "environ_vars"
           ],
           "used_parameters": [
+            "input_paths",
             "job_args",
-            "output_paths",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -345,13 +345,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "DataPrep",
               "FeatureEngineering",
-              "ProcessingStep",
-              "HyperparameterPrep",
               "ConfigurationStep",
               "ModelTraining",
-              "DataQuality"
+              "DataPrep",
+              "HyperparameterPrep",
+              "DataQuality",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -404,13 +404,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "DataPrep",
               "FeatureEngineering",
-              "ProcessingStep",
-              "HyperparameterPrep",
               "ConfigurationStep",
               "ModelTraining",
-              "DataQuality"
+              "DataPrep",
+              "HyperparameterPrep",
+              "DataQuality",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -463,13 +463,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "DataPrep",
               "FeatureEngineering",
-              "ProcessingStep",
-              "HyperparameterPrep",
               "ConfigurationStep",
               "ModelTraining",
-              "DataQuality"
+              "DataPrep",
+              "HyperparameterPrep",
+              "DataQuality",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -522,13 +522,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "DataPrep",
               "FeatureEngineering",
-              "ProcessingStep",
-              "HyperparameterPrep",
               "ConfigurationStep",
               "ModelTraining",
-              "DataQuality"
+              "DataPrep",
+              "HyperparameterPrep",
+              "DataQuality",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -573,13 +573,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "DataPrep",
               "FeatureEngineering",
-              "ProcessingStep",
-              "HyperparameterPrep",
               "ConfigurationStep",
               "ModelTraining",
-              "DataQuality"
+              "DataPrep",
+              "HyperparameterPrep",
+              "DataQuality",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -623,13 +623,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "DataPrep",
                 "FeatureEngineering",
-                "ProcessingStep",
-                "HyperparameterPrep",
                 "ConfigurationStep",
                 "ModelTraining",
-                "DataQuality"
+                "DataPrep",
+                "HyperparameterPrep",
+                "DataQuality",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -672,13 +672,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "DataPrep",
                 "FeatureEngineering",
-                "ProcessingStep",
-                "HyperparameterPrep",
                 "ConfigurationStep",
                 "ModelTraining",
-                "DataQuality"
+                "DataPrep",
+                "HyperparameterPrep",
+                "DataQuality",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -731,13 +731,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "DataPrep",
                 "FeatureEngineering",
-                "ProcessingStep",
-                "HyperparameterPrep",
                 "ConfigurationStep",
                 "ModelTraining",
-                "DataQuality"
+                "DataPrep",
+                "HyperparameterPrep",
+                "DataQuality",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -790,13 +790,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "DataPrep",
                 "FeatureEngineering",
-                "ProcessingStep",
-                "HyperparameterPrep",
                 "ConfigurationStep",
                 "ModelTraining",
-                "DataQuality"
+                "DataPrep",
+                "HyperparameterPrep",
+                "DataQuality",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -847,13 +847,13 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "DataPrep",
             "FeatureEngineering",
-            "ProcessingStep",
-            "HyperparameterPrep",
             "ConfigurationStep",
             "ModelTraining",
-            "DataQuality"
+            "DataPrep",
+            "HyperparameterPrep",
+            "DataQuality",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -997,13 +997,13 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "DataPrep",
             "FeatureEngineering",
-            "ProcessingStep",
-            "HyperparameterPrep",
             "ConfigurationStep",
             "ModelTraining",
-            "DataQuality"
+            "DataPrep",
+            "HyperparameterPrep",
+            "DataQuality",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -1440,7 +1440,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-08-14T08:34:51.232359",
+    "validation_timestamp": "2025-08-14T08:48:04.378435",
     "validator_version": "1.0.0"
   }
 }
