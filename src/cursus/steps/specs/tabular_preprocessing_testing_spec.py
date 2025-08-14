@@ -6,7 +6,7 @@ specifically for testing data, including their dependencies and outputs.
 """
 
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
-from ..registry.step_names import get_spec_step_type
+from ..registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_tabular_preprocess_contract():
@@ -15,7 +15,7 @@ def _get_tabular_preprocess_contract():
 
 # Tabular Preprocessing Testing Step Specification
 TABULAR_PREPROCESSING_TESTING_SPEC = StepSpecification(
-    step_type=get_spec_step_type("TabularPreprocessing") + "_Testing",
+    step_type=get_spec_step_type_with_job_type("TabularPreprocessing", "testing"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_tabular_preprocess_contract(),
     dependencies=[

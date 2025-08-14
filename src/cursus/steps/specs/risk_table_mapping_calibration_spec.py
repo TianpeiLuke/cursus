@@ -6,7 +6,7 @@ specifically for calibration data, including their dependencies and outputs.
 """
 
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
-from ..registry.step_names import get_spec_step_type
+from ..registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_risk_table_mapping_contract():
@@ -15,7 +15,7 @@ def _get_risk_table_mapping_contract():
 
 # Risk Table Mapping Calibration Step Specification
 RISK_TABLE_MAPPING_CALIBRATION_SPEC = StepSpecification(
-    step_type=get_spec_step_type("RiskTableMapping") + "_Calibration",
+    step_type=get_spec_step_type_with_job_type("RiskTableMapping", "calibration"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_risk_table_mapping_contract(),
     dependencies=[

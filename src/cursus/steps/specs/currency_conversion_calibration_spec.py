@@ -6,7 +6,7 @@ specifically for calibration data, including their dependencies and outputs.
 """
 
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
-from ..registry.step_names import get_spec_step_type
+from ..registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_currency_conversion_contract():
@@ -15,7 +15,7 @@ def _get_currency_conversion_contract():
 
 # Currency Conversion Calibration Step Specification
 CURRENCY_CONVERSION_CALIBRATION_SPEC = StepSpecification(
-    step_type=get_spec_step_type("CurrencyConversion") + "_Calibration",
+    step_type=get_spec_step_type_with_job_type("CurrencyConversion", "calibration"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_currency_conversion_contract(),
     dependencies=[
