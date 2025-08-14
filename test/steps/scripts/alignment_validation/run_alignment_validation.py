@@ -61,17 +61,14 @@ class ScriptAlignmentValidator:
         # Script to contract mapping
         self.script_mappings = {
             "currency_conversion": "currency_conversion_contract",
-            "dummy_training": "dummy_training_contract", 
-            "mims_package": "mims_package_contract",
-            "mims_payload": "mims_payload_contract",
+            "dummy_training": "dummy_training_contract",
             "model_calibration": "model_calibration_contract",
-            "model_evaluation_xgb": "model_evaluation_contract",
-            "risk_table_mapping": "risk_table_mapping_contract",
-            "tabular_preprocess": "tabular_preprocess_contract",
-            "xgboost_model_evaluation": "xgboost_model_eval_contract",
             "package": "package_contract",
-            "payload": "payload_contract",
-            "tabular_preprocessing": "tabular_preprocessing_contract"
+            "payload": "payload_contract", 
+            "risk_table_mapping": "risk_table_mapping_contract",
+            "tabular_preprocessing": "tabular_preprocessing_contract",
+            "xgboost_model_evaluation": "xgboost_model_eval_contract",
+            "xgboost_training": "xgboost_training_contract"
         }
     
     def discover_scripts(self) -> List[str]:
