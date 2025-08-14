@@ -137,7 +137,7 @@ class BuilderConfigurationAlignmentTester:
         # Check if config file exists
         if not config_path_str:
             # Get detailed diagnostics from FlexibleFileResolver
-            available_files_report = self.file_resolver.get_available_files_report()
+            available_files_report = self.flexible_resolver.get_available_files_report()
             config_report = available_files_report.get('configs', {})
             
             return {
@@ -167,8 +167,6 @@ class BuilderConfigurationAlignmentTester:
         # Load configuration using extracted component
         try:
             config_analysis = self.config_analyzer.load_config_from_python(config_path, builder_name)
-            # Convert to expected format for backward compatibility
-            config_schema = self.config_analyzer.get_configuration_schema(config_analysis)
         except Exception as e:
             return {
                 'passed': False,
@@ -222,44 +220,6 @@ class BuilderConfigurationAlignmentTester:
         }
     
     
-    def _validate_configuration_fields(self, builder_analysis: Dict[str, Any], specification: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
-        """Validate that builder properly handles configuration fields."""
-        issues = []
-        
-        # Get configuration schema from specification
-        config_schema = specification.get('configuration', {})
-        required_fields = set(config_schema.get('required', []))
-        optional_fields = set(config_schema.get('optional', []))
-        all_spec_fields = required_fields | optional_fields
-        
-        # Get fields accessed in builder
-        accessed_fields = set()
-        for access in builder_analysis.get('config_accesses', []):
-            accessed_fields.add(access['field_name'])
-        
-        # Check for accessed fields not in specification
-        undeclared_fields = accessed_fields - all_spec_fields
-        for field_name in undeclared_fields:
-            issues.append({
-                'severity': 'ERROR',
-                'category': 'configuration_fields',
-                'message': f'Builder accesses undeclared configuration field: {field_name}',
-                'details': {'field_name': field_name, 'builder': builder_name},
-                'recommendation': f'Add {field_name} to specification configuration schema'
-            })
-        
-        # Check for required fields not accessed
-        unaccessed_required = required_fields - accessed_fields
-        for field_name in unaccessed_required:
-            issues.append({
-                'severity': 'WARNING',
-                'category': 'configuration_fields',
-                'message': f'Required configuration field not accessed in builder: {field_name}',
-                'details': {'field_name': field_name, 'builder': builder_name},
-                'recommendation': f'Access required field {field_name} in builder or remove from specification'
-            })
-        
-        return issues
     
     def _validate_required_fields(self, builder_analysis: Dict[str, Any], specification: Dict[str, Any], builder_name: str) -> List[Dict[str, Any]]:
         """Validate that builder properly validates required fields."""

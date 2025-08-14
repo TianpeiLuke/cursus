@@ -85,30 +85,59 @@ class BuilderVisitor(ast.NodeVisitor):
             analysis: Dictionary to store analysis results
         """
         self.analysis = analysis
-    
-    def visit_Attribute(self, node):
-        """Visit attribute access nodes (e.g., config.field_name)."""
-        # Look for config.field_name accesses
-        if (isinstance(node.value, ast.Name) and 
-            node.value.id == 'config'):
-            self.analysis['config_accesses'].append({
-                'field_name': node.attr,
-                'line_number': node.lineno,
-                'context': self._get_context(node)
-            })
-        self.generic_visit(node)
+        self.method_calls = set()  # Track method calls to exclude from field accesses
     
     def visit_Call(self, node):
         """Visit function/method call nodes."""
-        # Look for validation method calls
-        if (isinstance(node.func, ast.Attribute) and
-            node.func.attr in ['validate', 'require', 'check', 'assert_required']):
-            self.analysis['validation_calls'].append({
-                'method': node.func.attr,
-                'line_number': node.lineno,
-                'args': len(node.args),
-                'context': self._get_context(node)
-            })
+        # Track method calls on config objects to exclude from field access detection
+        if isinstance(node.func, ast.Attribute):
+            # Check for config.method() calls
+            if (isinstance(node.func.value, ast.Name) and 
+                node.func.value.id == 'config'):
+                self.method_calls.add((node.func.attr, node.lineno))
+            # Check for self.config.method() calls
+            elif (isinstance(node.func.value, ast.Attribute) and
+                  isinstance(node.func.value.value, ast.Name) and
+                  node.func.value.value.id == 'self' and
+                  node.func.value.attr == 'config'):
+                self.method_calls.add((node.func.attr, node.lineno))
+            
+            # Look for validation method calls
+            if node.func.attr in ['validate', 'require', 'check', 'assert_required']:
+                self.analysis['validation_calls'].append({
+                    'method': node.func.attr,
+                    'line_number': node.lineno,
+                    'args': len(node.args),
+                    'context': self._get_context(node)
+                })
+        
+        self.generic_visit(node)
+    
+    def visit_Attribute(self, node):
+        """Visit attribute access nodes (e.g., config.field_name or self.config.field_name)."""
+        # Look for config.field_name accesses
+        if (isinstance(node.value, ast.Name) and 
+            node.value.id == 'config'):
+            # Only record as field access if it's not a method call
+            if (node.attr, node.lineno) not in self.method_calls:
+                self.analysis['config_accesses'].append({
+                    'field_name': node.attr,
+                    'line_number': node.lineno,
+                    'context': self._get_context(node)
+                })
+        # Look for self.config.field_name accesses
+        elif (isinstance(node.value, ast.Attribute) and
+              isinstance(node.value.value, ast.Name) and
+              node.value.value.id == 'self' and
+              node.value.attr == 'config'):
+            # Only record as field access if it's not a method call
+            if (node.attr, node.lineno) not in self.method_calls:
+                self.analysis['config_accesses'].append({
+                    'field_name': node.attr,
+                    'line_number': node.lineno,
+                    'context': self._get_context(node)
+                })
+        
         self.generic_visit(node)
     
     def visit_Assign(self, node):

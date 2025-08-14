@@ -130,27 +130,120 @@ class ConfigurationAnalyzer:
             'default_values': {}
         }
         
-        # Get class annotations (type hints)
-        if hasattr(config_class, '__annotations__'):
-            for field_name, field_type in config_class.__annotations__.items():
-                # Determine if field is optional based on type annotation
-                is_optional = self._is_optional_field(field_type, field_name, config_class)
-                
-                analysis['fields'][field_name] = {
-                    'type': str(field_type),
-                    'required': not is_optional
-                }
-                
-                if is_optional:
-                    analysis['optional_fields'].add(field_name)
-                else:
-                    analysis['required_fields'].add(field_name)
+        # Get all annotations from the class hierarchy (including inherited fields)
+        all_annotations = {}
         
-        # Check for default values in class definition and Pydantic Field definitions
+        # Walk through the MRO (Method Resolution Order) to get all annotations
+        for cls in reversed(config_class.__mro__):
+            if hasattr(cls, '__annotations__'):
+                all_annotations.update(cls.__annotations__)
+        
+        # Process all annotations (direct and inherited)
+        for field_name, field_type in all_annotations.items():
+            # Skip private fields and special methods
+            if field_name.startswith('_'):
+                continue
+                
+            # Determine if field is optional based on type annotation
+            is_optional = self._is_optional_field(field_type, field_name, config_class)
+            
+            analysis['fields'][field_name] = {
+                'type': str(field_type),
+                'required': not is_optional
+            }
+            
+            if is_optional:
+                analysis['optional_fields'].add(field_name)
+            else:
+                analysis['required_fields'].add(field_name)
+        
+        # Check for Pydantic model fields (v2 style) - includes inherited fields
+        if hasattr(config_class, 'model_fields'):
+            for field_name, field_info in config_class.model_fields.items():
+                # Skip if we already processed this field from annotations
+                if field_name in analysis['fields']:
+                    # Update the required status based on Pydantic field info
+                    if hasattr(field_info, 'is_required'):
+                        is_required = field_info.is_required()
+                        analysis['fields'][field_name]['required'] = is_required
+                        
+                        # Update the sets
+                        if is_required:
+                            analysis['optional_fields'].discard(field_name)
+                            analysis['required_fields'].add(field_name)
+                        else:
+                            analysis['required_fields'].discard(field_name)
+                            analysis['optional_fields'].add(field_name)
+                else:
+                    # Add field that wasn't in annotations
+                    is_required = hasattr(field_info, 'is_required') and field_info.is_required()
+                    analysis['fields'][field_name] = {
+                        'type': str(getattr(field_info, 'annotation', 'Any')),
+                        'required': is_required
+                    }
+                    
+                    if is_required:
+                        analysis['required_fields'].add(field_name)
+                    else:
+                        analysis['optional_fields'].add(field_name)
+                
+                # Extract default values from Pydantic field info
+                if hasattr(field_info, 'default') and field_info.default is not ...:
+                    analysis['default_values'][field_name] = field_info.default
+        
+        # Check for Pydantic v1 style fields
+        elif hasattr(config_class, '__fields__'):
+            for field_name, field_info in config_class.__fields__.items():
+                # Skip if we already processed this field from annotations
+                if field_name in analysis['fields']:
+                    # Update the required status based on Pydantic field info
+                    if hasattr(field_info, 'required'):
+                        is_required = field_info.required
+                        analysis['fields'][field_name]['required'] = is_required
+                        
+                        # Update the sets
+                        if is_required:
+                            analysis['optional_fields'].discard(field_name)
+                            analysis['required_fields'].add(field_name)
+                        else:
+                            analysis['required_fields'].discard(field_name)
+                            analysis['optional_fields'].add(field_name)
+                else:
+                    # Add field that wasn't in annotations
+                    is_required = hasattr(field_info, 'required') and field_info.required
+                    analysis['fields'][field_name] = {
+                        'type': str(getattr(field_info, 'type_', 'Any')),
+                        'required': is_required
+                    }
+                    
+                    if is_required:
+                        analysis['required_fields'].add(field_name)
+                    else:
+                        analysis['optional_fields'].add(field_name)
+                
+                # Extract default values from Pydantic field info
+                if hasattr(field_info, 'default') and field_info.default is not ...:
+                    analysis['default_values'][field_name] = field_info.default
+        
+        # Check for properties and other attributes (including inherited)
         for attr_name in dir(config_class):
             if not attr_name.startswith('_'):
                 attr_value = getattr(config_class, attr_name, None)
-                if not callable(attr_value):
+                
+                # Check if it's a property
+                if isinstance(attr_value, property):
+                    # Add property as an optional field if not already present
+                    if attr_name not in analysis['fields']:
+                        analysis['fields'][attr_name] = {
+                            'type': 'property',
+                            'required': False  # Properties are typically computed, so optional
+                        }
+                        analysis['optional_fields'].add(attr_name)
+                
+                # Check for default values (non-callable, non-descriptor attributes)
+                elif (attr_name in analysis['fields'] and 
+                      not callable(attr_value) and 
+                      not hasattr(attr_value, '__get__')):  # Skip descriptors
                     analysis['default_values'][attr_name] = attr_value
                     # If a field has a default value, it's optional
                     if attr_name in analysis['required_fields']:

@@ -10,10 +10,10 @@
         "details": {
           "script": "currency_conversion",
           "testability_parameters": [
+            "job_args",
             "input_paths",
-            "output_paths",
             "environ_vars",
-            "job_args"
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -608,8 +608,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -635,8 +635,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed calibration data requiring currency conversion"
@@ -662,8 +662,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed validation data requiring currency conversion"
@@ -689,8 +689,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed testing data requiring currency conversion"
@@ -718,8 +718,8 @@
             "required": true,
             "compatible_sources": [
               "CradleDataLoading",
-              "ProcessingStep",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Processed training data requiring currency conversion"
@@ -746,8 +746,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed training data requiring currency conversion"
@@ -773,8 +773,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed testing data requiring currency conversion"
@@ -800,8 +800,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed validation data requiring currency conversion"
@@ -827,8 +827,8 @@
               "required": true,
               "compatible_sources": [
                 "CradleDataLoading",
-                "ProcessingStep",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Processed calibration data requiring currency conversion"
@@ -852,8 +852,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Processed calibration data requiring currency conversion"
@@ -900,8 +900,8 @@
           "required": true,
           "compatible_sources": [
             "CradleDataLoading",
-            "ProcessingStep",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "Processed testing data requiring currency conversion"
@@ -924,12 +924,202 @@
       {
         "severity": "ERROR",
         "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: use_large_processing_instance",
+        "details": {
+          "field_name": "use_large_processing_instance",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add use_large_processing_instance to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: label_field",
+        "details": {
+          "field_name": "label_field",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add label_field to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: processing_instance_type_small",
+        "details": {
+          "field_name": "processing_instance_type_small",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add processing_instance_type_small to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: processing_instance_type_large",
+        "details": {
+          "field_name": "processing_instance_type_large",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add processing_instance_type_large to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: marketplace_id_col",
+        "details": {
+          "field_name": "marketplace_id_col",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add marketplace_id_col to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: default_currency",
+        "details": {
+          "field_name": "default_currency",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add default_currency to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: mode",
+        "details": {
+          "field_name": "mode",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add mode to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: currency_conversion_var_list",
+        "details": {
+          "field_name": "currency_conversion_var_list",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add currency_conversion_var_list to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: test_val_ratio",
+        "details": {
+          "field_name": "test_val_ratio",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add test_val_ratio to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
         "message": "Builder accesses undeclared configuration field: job_type",
         "details": {
           "field_name": "job_type",
           "builder": "currency_conversion"
         },
         "recommendation": "Add job_type to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: processing_framework_version",
+        "details": {
+          "field_name": "processing_framework_version",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add processing_framework_version to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: processing_instance_count",
+        "details": {
+          "field_name": "processing_instance_count",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add processing_instance_count to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: currency_conversion_dict",
+        "details": {
+          "field_name": "currency_conversion_dict",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add currency_conversion_dict to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: marketplace_info",
+        "details": {
+          "field_name": "marketplace_info",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add marketplace_info to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: pipeline_s3_loc",
+        "details": {
+          "field_name": "pipeline_s3_loc",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add pipeline_s3_loc to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: currency_col",
+        "details": {
+          "field_name": "currency_col",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add currency_col to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: skip_invalid_currencies",
+        "details": {
+          "field_name": "skip_invalid_currencies",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add skip_invalid_currencies to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: train_ratio",
+        "details": {
+          "field_name": "train_ratio",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add train_ratio to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: processing_volume_size",
+        "details": {
+          "field_name": "processing_volume_size",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add processing_volume_size to configuration class or remove from builder"
+      },
+      {
+        "severity": "ERROR",
+        "category": "configuration_fields",
+        "message": "Builder accesses undeclared configuration field: enable_currency_conversion",
+        "details": {
+          "field_name": "enable_currency_conversion",
+          "builder": "currency_conversion"
+        },
+        "recommendation": "Add enable_currency_conversion to configuration class or remove from builder"
       },
       {
         "severity": "INFO",
@@ -948,6 +1138,141 @@
           "field_name": "job_type",
           "line_number": 67,
           "context": "line_67"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 120,
+          "context": "line_120"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 121,
+          "context": "line_121"
+        },
+        {
+          "field_name": "enable_currency_conversion",
+          "line_number": 124,
+          "context": "line_124"
+        },
+        {
+          "field_name": "marketplace_id_col",
+          "line_number": 125,
+          "context": "line_125"
+        },
+        {
+          "field_name": "currency_conversion_var_list",
+          "line_number": 127,
+          "context": "line_127"
+        },
+        {
+          "field_name": "use_large_processing_instance",
+          "line_number": 137,
+          "context": "line_137"
+        },
+        {
+          "field_name": "processing_instance_type_large",
+          "line_number": 137,
+          "context": "line_137"
+        },
+        {
+          "field_name": "processing_instance_type_small",
+          "line_number": 137,
+          "context": "line_137"
+        },
+        {
+          "field_name": "processing_framework_version",
+          "line_number": 140,
+          "context": "line_140"
+        },
+        {
+          "field_name": "processing_instance_count",
+          "line_number": 143,
+          "context": "line_143"
+        },
+        {
+          "field_name": "processing_volume_size",
+          "line_number": 144,
+          "context": "line_144"
+        },
+        {
+          "field_name": "currency_conversion_var_list",
+          "line_number": 160,
+          "context": "line_160"
+        },
+        {
+          "field_name": "currency_conversion_dict",
+          "line_number": 161,
+          "context": "line_161"
+        },
+        {
+          "field_name": "marketplace_info",
+          "line_number": 162,
+          "context": "line_162"
+        },
+        {
+          "field_name": "label_field",
+          "line_number": 163,
+          "context": "line_163"
+        },
+        {
+          "field_name": "train_ratio",
+          "line_number": 164,
+          "context": "line_164"
+        },
+        {
+          "field_name": "test_val_ratio",
+          "line_number": 165,
+          "context": "line_165"
+        },
+        {
+          "field_name": "pipeline_s3_loc",
+          "line_number": 264,
+          "context": "line_264"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 264,
+          "context": "line_264"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 285,
+          "context": "line_285"
+        },
+        {
+          "field_name": "mode",
+          "line_number": 286,
+          "context": "line_286"
+        },
+        {
+          "field_name": "marketplace_id_col",
+          "line_number": 287,
+          "context": "line_287"
+        },
+        {
+          "field_name": "default_currency",
+          "line_number": 288,
+          "context": "line_288"
+        },
+        {
+          "field_name": "enable_currency_conversion",
+          "line_number": 289,
+          "context": "line_289"
+        },
+        {
+          "field_name": "currency_col",
+          "line_number": 293,
+          "context": "line_293"
+        },
+        {
+          "field_name": "currency_col",
+          "line_number": 294,
+          "context": "line_294"
+        },
+        {
+          "field_name": "skip_invalid_currencies",
+          "line_number": 296,
+          "context": "line_296"
         }
       ],
       "validation_calls": [],
@@ -1213,7 +1538,7 @@
   "overall_status": "FAILING",
   "metadata": {
     "script_name": "currency_conversion",
-    "validation_timestamp": "2025-08-14T10:25:15.144382",
+    "validation_timestamp": "2025-08-14T10:36:44.552475",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py"
   }
