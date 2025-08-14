@@ -15,7 +15,7 @@ sys.path.insert(0, str(project_root))
 from src.cursus.validation.alignment.property_path_validator import SageMakerPropertyPathValidator
 
 
-def test_property_path_validator():
+def test_sagemaker_property_path_validator():
     """Test the SageMaker Property Path Validator with various scenarios."""
     
     print("🔍 Testing SageMaker Property Path Validator")
@@ -242,8 +242,8 @@ def test_property_path_validator():
     return True
 
 
-def test_integration_with_unified_tester():
-    """Test integration with the unified alignment tester."""
+def test_sagemaker_property_path_integration_with_unified_tester():
+    """Test SageMaker property path validator integration with the unified alignment tester."""
     
     print("\n🔗 Testing Integration with Unified Alignment Tester")
     print("=" * 60)
@@ -299,10 +299,10 @@ if __name__ == "__main__":
     print("=" * 80)
     
     # Run standalone validator tests
-    success1 = test_property_path_validator()
+    success1 = test_sagemaker_property_path_validator()
     
     # Run integration tests
-    success2 = test_integration_with_unified_tester()
+    success2 = test_sagemaker_property_path_integration_with_unified_tester()
     
     print("\n" + "=" * 80)
     if success1 and success2:

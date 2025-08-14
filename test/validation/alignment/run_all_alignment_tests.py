@@ -29,7 +29,7 @@ class AlignmentTestRunner:
             'test.validation.alignment.test_builder_argument_integration',
             'test.validation.alignment.test_enhanced_argument_validation',
             'test.validation.alignment.test_framework_patterns',
-            'test.validation.alignment.test_property_path_validator',
+            'test.validation.alignment.test_sagemaker_property_path_validation',
             'test.validation.alignment.test_step_type_detection',
             'test.validation.alignment.test_step_type_enhancement_router',
             'test.validation.alignment.test_step_type_enhancement_system_comprehensive',
@@ -49,7 +49,7 @@ class AlignmentTestRunner:
             'test.validation.alignment.reporter.test_alignment_report',
             
             # Script-Contract tests
-            'test.validation.alignment.script_contract.test_path_validation',
+            'test.validation.alignment.script_contract.test_script_contract_path_validation',
             'test.validation.alignment.script_contract.test_argument_validation',
             'test.validation.alignment.script_contract.test_testability_validation',
             

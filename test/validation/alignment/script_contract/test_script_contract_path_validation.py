@@ -13,7 +13,7 @@ from src.cursus.validation.alignment.script_contract_alignment import (
 )
 
 
-class TestPathValidation(unittest.TestCase):
+class TestScriptContractPathValidation(unittest.TestCase):
     """Test path validation in script contract alignment."""
     
     def setUp(self):
@@ -35,8 +35,8 @@ class TestPathValidation(unittest.TestCase):
         import shutil
         shutil.rmtree(self.temp_dir)
     
-    def test_path_validation_success(self):
-        """Test successful path validation."""
+    def test_script_contract_path_validation_success(self):
+        """Test successful script contract path validation."""
         # Create test script
         script_content = '''
 import os
@@ -141,7 +141,7 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             ]
             self.assertEqual(len(critical_or_error_issues), 0)
     
-    def test_path_validation_undeclared_path(self):
+    def test_script_contract_path_validation_undeclared_path(self):
         """Test validation with undeclared path usage."""
         # Create test script with undeclared path
         script_content = '''
