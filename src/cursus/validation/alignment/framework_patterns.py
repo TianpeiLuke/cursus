@@ -357,3 +357,98 @@ def get_all_framework_patterns(script_analysis: Dict[str, Any]) -> Dict[str, Dic
         all_patterns[framework] = get_framework_patterns(framework, script_analysis)
     
     return all_patterns
+
+
+def detect_framework_from_script_content(script_content: str) -> Optional[str]:
+    """
+    Detect the primary framework used in script content.
+    
+    Args:
+        script_content: The content of the script as a string
+        
+    Returns:
+        The detected framework name or None if no framework is detected
+    """
+    if not script_content:
+        return None
+    
+    # Framework detection patterns with scoring
+    framework_scores = {
+        'xgboost': 0,
+        'pytorch': 0,
+        'sklearn': 0,
+        'pandas': 0
+    }
+    
+    # XGBoost patterns
+    xgb_patterns = [
+        'import xgboost', 'from xgboost', 'xgb.', 'DMatrix', 'xgb.train',
+        'XGBClassifier', 'XGBRegressor', 'xgboost.train'
+    ]
+    for pattern in xgb_patterns:
+        if pattern in script_content:
+            framework_scores['xgboost'] += 2 if 'import' in pattern else 1
+    
+    # PyTorch patterns
+    pytorch_patterns = [
+        'import torch', 'from torch', 'torch.', 'nn.Module', 'torch.nn',
+        'torch.optim', 'torch.save', 'torch.load', 'pytorch'
+    ]
+    for pattern in pytorch_patterns:
+        if pattern in script_content:
+            framework_scores['pytorch'] += 2 if 'import' in pattern else 1
+    
+    # Scikit-learn patterns
+    sklearn_patterns = [
+        'import sklearn', 'from sklearn', 'scikit-learn', 'fit_transform',
+        'RandomForestClassifier', 'SVC', 'StandardScaler'
+    ]
+    for pattern in sklearn_patterns:
+        if pattern in script_content:
+            framework_scores['sklearn'] += 2 if 'import' in pattern else 1
+    
+    # Pandas patterns
+    pandas_patterns = [
+        'import pandas', 'from pandas', 'pd.', 'DataFrame', 'read_csv',
+        'to_csv', 'pd.read'
+    ]
+    for pattern in pandas_patterns:
+        if pattern in script_content:
+            framework_scores['pandas'] += 2 if 'import' in pattern else 1
+    
+    # Return the framework with the highest score
+    if max(framework_scores.values()) > 0:
+        return max(framework_scores, key=framework_scores.get)
+    
+    return None
+
+
+def detect_framework_from_imports(imports: List[str]) -> Optional[str]:
+    """
+    Detect framework from import statements.
+    
+    Args:
+        imports: List of import statements
+        
+    Returns:
+        The detected framework name or None if no framework is detected
+    """
+    if not imports:
+        return None
+    
+    # Convert imports to a single string for pattern matching
+    imports_str = ' '.join(str(imp) for imp in imports)
+    
+    # Priority order for framework detection (ML frameworks first)
+    framework_patterns = [
+        ('xgboost', ['xgboost', 'xgb']),
+        ('pytorch', ['torch', 'pytorch']),
+        ('sklearn', ['sklearn', 'scikit-learn']),
+        ('pandas', ['pandas', 'pd'])
+    ]
+    
+    for framework, patterns in framework_patterns:
+        if any(pattern in imports_str.lower() for pattern in patterns):
+            return framework
+    
+    return None

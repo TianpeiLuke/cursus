@@ -344,3 +344,252 @@ class ProcessingStepEnhancer(BaseStepEnhancer):
         # This is a placeholder - in real implementation, this would check
         # requirements.txt, imports, or other dependency declarations
         return True  # Assume dependency exists for now
+    
+    def _get_script_analysis(self, script_name: str) -> Dict[str, Any]:
+        """
+        Get script analysis for the given script.
+        
+        Args:
+            script_name: Name of the script to analyze
+            
+        Returns:
+            Dictionary containing script analysis results
+        """
+        # Try to get existing analysis from validation context
+        # In real implementation, this would integrate with the static analysis system
+        return {
+            'imports': [],
+            'functions': [],
+            'path_references': [],
+            'patterns': {},
+            'framework': None
+        }
+    
+    def _get_builder_analysis(self, script_name: str) -> Dict[str, Any]:
+        """
+        Get builder analysis for the given script.
+        
+        Args:
+            script_name: Name of the script whose builder to analyze
+            
+        Returns:
+            Dictionary containing builder analysis results
+        """
+        return {
+            'builder_methods': [],
+            'step_creation_patterns': [],
+            'configuration_patterns': []
+        }
+    
+    def _detect_framework_from_script_analysis(self, script_analysis: Dict[str, Any]) -> Optional[str]:
+        """
+        Detect framework from script analysis results.
+        
+        Args:
+            script_analysis: Script analysis results
+            
+        Returns:
+            Detected framework name or None
+        """
+        imports = script_analysis.get('imports', [])
+        
+        # Check for framework-specific imports (processing-focused)
+        if any('pandas' in imp or 'pd' in imp for imp in imports):
+            return 'pandas'
+        elif any('sklearn' in imp for imp in imports):
+            return 'sklearn'
+        elif any('numpy' in imp or 'np' in imp for imp in imports):
+            return 'numpy'
+        elif any('scipy' in imp for imp in imports):
+            return 'scipy'
+        
+        return None
+    
+    def _has_pattern_in_analysis(self, analysis: Dict[str, Any], category: str, keywords: List[str]) -> bool:
+        """
+        Check if analysis contains any of the specified keywords in the given category.
+        
+        Args:
+            analysis: Analysis results dictionary
+            category: Category to check (e.g., 'imports', 'functions', 'path_references')
+            keywords: List of keywords to search for
+            
+        Returns:
+            True if any keyword is found in the category
+        """
+        category_data = analysis.get(category, [])
+        if not category_data:
+            return False
+        
+        # Convert to lowercase for case-insensitive matching
+        category_str = ' '.join(str(item).lower() for item in category_data)
+        
+        return any(keyword.lower() in category_str for keyword in keywords)
+    
+    def _create_step_type_issue(self, category: str, message: str, recommendation: str, 
+                               severity: str, details: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a step type-specific validation issue.
+        
+        Args:
+            category: Issue category
+            message: Issue message
+            recommendation: Recommended fix
+            severity: Issue severity (ERROR, WARNING, INFO)
+            details: Additional issue details
+            
+        Returns:
+            Formatted validation issue
+        """
+        return {
+            'category': category,
+            'message': message,
+            'recommendation': recommendation,
+            'severity': severity,
+            'step_type': self.step_type,
+            'details': details,
+            'source': 'ProcessingStepEnhancer'
+        }
+    
+    def get_processing_validation_requirements(self) -> Dict[str, Any]:
+        """
+        Get comprehensive processing validation requirements.
+        
+        Returns:
+            Dictionary containing processing validation requirements
+        """
+        return {
+            'required_patterns': {
+                'data_transformation': {
+                    'keywords': ['transform', 'process', 'clean', 'filter', 'map', 'apply'],
+                    'description': 'Data transformation operations',
+                    'severity': 'INFO'
+                },
+                'input_data_loading': {
+                    'keywords': ['read_csv', 'read_json', 'load', '/opt/ml/processing/input'],
+                    'description': 'Input data loading from SageMaker processing input',
+                    'severity': 'WARNING'
+                },
+                'output_data_saving': {
+                    'keywords': ['to_csv', 'to_json', 'save', '/opt/ml/processing/output'],
+                    'description': 'Output data saving to SageMaker processing output',
+                    'severity': 'WARNING'
+                },
+                'environment_variables': {
+                    'keywords': ['os.environ', 'getenv', 'environment'],
+                    'description': 'Environment variable usage for configuration',
+                    'severity': 'INFO'
+                }
+            },
+            'framework_requirements': {
+                'pandas': {
+                    'imports': ['pandas', 'pd'],
+                    'functions': ['DataFrame', 'read_csv', 'to_csv'],
+                    'patterns': ['dataframe_operations', 'data_manipulation']
+                },
+                'sklearn': {
+                    'imports': ['sklearn', 'scikit-learn'],
+                    'functions': ['fit_transform', 'transform', 'preprocessing'],
+                    'patterns': ['preprocessing_operations', 'feature_engineering']
+                }
+            },
+            'sagemaker_paths': {
+                'processing_input': '/opt/ml/processing/input',
+                'processing_output': '/opt/ml/processing/output',
+                'processing_code': '/opt/ml/processing/code'
+            },
+            'validation_levels': {
+                'level1': 'Script pattern validation',
+                'level2': 'Specification alignment',
+                'level3': 'Dependency validation',
+                'level4': 'Builder pattern validation'
+            }
+        }
+    
+    def validate_processing_script_comprehensive(self, script_name: str, script_content: str) -> Dict[str, Any]:
+        """
+        Perform comprehensive processing script validation.
+        
+        Args:
+            script_name: Name of the processing script
+            script_content: Content of the processing script
+            
+        Returns:
+            Comprehensive validation results
+        """
+        # Create a basic script analysis from content
+        script_analysis = self._create_script_analysis_from_content(script_content)
+        
+        # Detect patterns in script analysis
+        from ..framework_patterns import detect_pandas_patterns, detect_sklearn_patterns
+        
+        # Detect framework from content directly
+        from ..framework_patterns import detect_framework_from_script_content
+        framework = detect_framework_from_script_content(script_content)
+        
+        # Get framework-specific patterns
+        framework_patterns = {}
+        if framework == 'pandas':
+            framework_patterns = detect_pandas_patterns(script_analysis)
+        elif framework == 'sklearn':
+            framework_patterns = detect_sklearn_patterns(script_analysis)
+        
+        # Create comprehensive analysis
+        analysis = {
+            'script_name': script_name,
+            'framework': framework,
+            'processing_patterns': {
+                'data_transformation': self._has_data_transformation_patterns(script_analysis),
+                'input_data_loading': self._has_input_data_loading_patterns(script_analysis),
+                'output_data_saving': self._has_output_data_saving_patterns(script_analysis),
+                'environment_variables': self._has_environment_variable_patterns(script_analysis)
+            },
+            'framework_patterns': framework_patterns,
+            'validation_results': {
+                'data_transformation': self._has_data_transformation_patterns(script_analysis),
+                'input_loading': self._has_input_data_loading_patterns(script_analysis),
+                'output_saving': self._has_output_data_saving_patterns(script_analysis),
+                'env_variables': self._has_environment_variable_patterns(script_analysis)
+            }
+        }
+        
+        return analysis
+    
+    def _create_script_analysis_from_content(self, script_content: str) -> Dict[str, Any]:
+        """
+        Create a basic script analysis from script content.
+        
+        Args:
+            script_content: Raw script content
+            
+        Returns:
+            Basic script analysis dictionary
+        """
+        # Extract imports (simple pattern matching)
+        imports = []
+        for line in script_content.split('\n'):
+            line = line.strip()
+            if line.startswith('import ') or line.startswith('from '):
+                imports.append(line)
+        
+        # Extract function-like patterns (simple pattern matching)
+        functions = []
+        for line in script_content.split('\n'):
+            line = line.strip()
+            if '(' in line and ')' in line:
+                functions.append(line)
+        
+        # Extract path references
+        path_references = []
+        common_paths = ['/opt/ml/processing/input', '/opt/ml/processing/output', '/opt/ml/processing/code']
+        for path in common_paths:
+            if path in script_content:
+                path_references.append(path)
+        
+        return {
+            'imports': imports,
+            'functions': functions,
+            'path_references': path_references,
+            'patterns': {},
+            'framework': None
+        }

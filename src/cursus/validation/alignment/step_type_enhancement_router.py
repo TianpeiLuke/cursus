@@ -176,13 +176,13 @@ class StepTypeEnhancementRouter:
         """Get list of all supported step types."""
         return list(self._enhancer_classes.keys())
     
-    def enhance_validation_results(self, script_name: str, existing_results: Dict[str, Any]) -> Dict[str, Any]:
+    def enhance_validation_results(self, existing_results: Dict[str, Any], script_name: str) -> Dict[str, Any]:
         """
-        Alias for enhance_validation for backward compatibility.
+        Enhance validation results with step type-specific validation.
         
         Args:
-            script_name: Name of the script being validated
             existing_results: Existing validation results to enhance
+            script_name: Name of the script being validated
             
         Returns:
             Enhanced validation results with step type-specific issues

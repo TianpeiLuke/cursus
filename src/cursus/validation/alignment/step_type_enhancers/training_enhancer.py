@@ -10,7 +10,12 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from .base_enhancer import BaseStepEnhancer
-from ..framework_patterns import detect_training_patterns, detect_xgboost_patterns, detect_pytorch_patterns
+from ..framework_patterns import (
+    detect_training_patterns, 
+    detect_xgboost_patterns, 
+    detect_pytorch_patterns,
+    detect_framework_from_script_content
+)
 
 
 class TrainingStepEnhancer(BaseStepEnhancer):
@@ -381,3 +386,248 @@ class TrainingStepEnhancer(BaseStepEnhancer):
         # This is a placeholder - in real implementation, this would check
         # requirements.txt, imports, or other dependency declarations
         return True  # Assume dependency exists for now
+    
+    def _get_script_analysis(self, script_name: str) -> Dict[str, Any]:
+        """
+        Get script analysis for the given script.
+        
+        Args:
+            script_name: Name of the script to analyze
+            
+        Returns:
+            Dictionary containing script analysis results
+        """
+        # Try to get existing analysis from validation context
+        # In real implementation, this would integrate with the static analysis system
+        return {
+            'imports': [],
+            'functions': [],
+            'path_references': [],
+            'patterns': {},
+            'framework': None
+        }
+    
+    def _get_builder_analysis(self, script_name: str) -> Dict[str, Any]:
+        """
+        Get builder analysis for the given script.
+        
+        Args:
+            script_name: Name of the script whose builder to analyze
+            
+        Returns:
+            Dictionary containing builder analysis results
+        """
+        return {
+            'builder_methods': [],
+            'step_creation_patterns': [],
+            'configuration_patterns': []
+        }
+    
+    def _detect_framework_from_script_analysis(self, script_analysis: Dict[str, Any]) -> Optional[str]:
+        """
+        Detect framework from script analysis results.
+        
+        Args:
+            script_analysis: Script analysis results
+            
+        Returns:
+            Detected framework name or None
+        """
+        imports = script_analysis.get('imports', [])
+        
+        # Check for framework-specific imports
+        if any('xgboost' in imp or 'xgb' in imp for imp in imports):
+            return 'xgboost'
+        elif any('torch' in imp for imp in imports):
+            return 'pytorch'
+        elif any('sklearn' in imp for imp in imports):
+            return 'sklearn'
+        elif any('tensorflow' in imp or 'tf' in imp for imp in imports):
+            return 'tensorflow'
+        
+        return None
+    
+    def _has_pattern_in_analysis(self, analysis: Dict[str, Any], category: str, keywords: List[str]) -> bool:
+        """
+        Check if analysis contains any of the specified keywords in the given category.
+        
+        Args:
+            analysis: Analysis results dictionary
+            category: Category to check (e.g., 'imports', 'functions', 'path_references')
+            keywords: List of keywords to search for
+            
+        Returns:
+            True if any keyword is found in the category
+        """
+        category_data = analysis.get(category, [])
+        if not category_data:
+            return False
+        
+        # Convert to lowercase for case-insensitive matching
+        category_str = ' '.join(str(item).lower() for item in category_data)
+        
+        return any(keyword.lower() in category_str for keyword in keywords)
+    
+    def _create_step_type_issue(self, category: str, message: str, recommendation: str, 
+                               severity: str, details: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a step type-specific validation issue.
+        
+        Args:
+            category: Issue category
+            message: Issue message
+            recommendation: Recommended fix
+            severity: Issue severity (ERROR, WARNING, INFO)
+            details: Additional issue details
+            
+        Returns:
+            Formatted validation issue
+        """
+        return {
+            'category': category,
+            'message': message,
+            'recommendation': recommendation,
+            'severity': severity,
+            'step_type': self.step_type,
+            'details': details,
+            'source': 'TrainingStepEnhancer'
+        }
+    
+    def get_training_validation_requirements(self) -> Dict[str, Any]:
+        """
+        Get comprehensive training validation requirements.
+        
+        Returns:
+            Dictionary containing training validation requirements
+        """
+        return {
+            'required_patterns': {
+                'training_loop': {
+                    'keywords': ['fit', 'train', 'epoch', 'batch'],
+                    'description': 'Training loop implementation',
+                    'severity': 'ERROR'
+                },
+                'model_saving': {
+                    'keywords': ['save', 'dump', 'pickle', '/opt/ml/model'],
+                    'description': 'Model artifact saving',
+                    'severity': 'ERROR'
+                },
+                'hyperparameter_loading': {
+                    'keywords': ['hyperparameters', 'config', '/opt/ml/input/data/config'],
+                    'description': 'Hyperparameter loading from SageMaker',
+                    'severity': 'WARNING'
+                },
+                'data_loading': {
+                    'keywords': ['read_csv', 'load', '/opt/ml/input/data/train'],
+                    'description': 'Training data loading',
+                    'severity': 'WARNING'
+                }
+            },
+            'framework_requirements': {
+                'xgboost': {
+                    'imports': ['xgboost', 'xgb'],
+                    'functions': ['DMatrix', 'xgb.train'],
+                    'patterns': ['dmatrix_creation', 'xgboost_training']
+                },
+                'pytorch': {
+                    'imports': ['torch', 'torch.nn'],
+                    'functions': ['nn.Module', 'optim', 'loss'],
+                    'patterns': ['model_definition', 'training_loop', 'optimizer_usage']
+                }
+            },
+            'sagemaker_paths': {
+                'model_output': '/opt/ml/model',
+                'hyperparameters': '/opt/ml/input/data/config',
+                'training_data': '/opt/ml/input/data/train',
+                'validation_data': '/opt/ml/input/data/validation'
+            },
+            'validation_levels': {
+                'level1': 'Script pattern validation',
+                'level2': 'Specification alignment',
+                'level3': 'Dependency validation',
+                'level4': 'Builder pattern validation'
+            }
+        }
+    
+    def validate_training_script_comprehensive(self, script_name: str, script_content: str) -> Dict[str, Any]:
+        """
+        Perform comprehensive training script validation.
+        
+        Args:
+            script_name: Name of the training script
+            script_content: Content of the training script
+            
+        Returns:
+            Comprehensive validation results
+        """
+        # Create a basic script analysis from content
+        script_analysis = self._create_script_analysis_from_content(script_content)
+        
+        # Detect patterns in script analysis
+        training_patterns = detect_training_patterns(script_analysis)
+        
+        # Detect framework from content directly
+        framework = detect_framework_from_script_content(script_content)
+        
+        # Get framework-specific patterns
+        framework_patterns = {}
+        if framework == 'xgboost':
+            framework_patterns = detect_xgboost_patterns(script_analysis)
+        elif framework == 'pytorch':
+            framework_patterns = detect_pytorch_patterns(script_analysis)
+        
+        # Create comprehensive analysis
+        analysis = {
+            'script_name': script_name,
+            'framework': framework,
+            'training_patterns': training_patterns,
+            'framework_patterns': framework_patterns,
+            'validation_results': {
+                'training_loop': bool(training_patterns.get('has_training_loop')),
+                'model_saving': bool(training_patterns.get('has_model_saving')),
+                'hyperparameter_loading': bool(training_patterns.get('has_hyperparameter_loading')),
+                'data_loading': bool(training_patterns.get('has_data_loading')),
+                'evaluation': bool(training_patterns.get('has_evaluation'))
+            }
+        }
+        
+        return analysis
+    
+    def _create_script_analysis_from_content(self, script_content: str) -> Dict[str, Any]:
+        """
+        Create a basic script analysis from script content.
+        
+        Args:
+            script_content: Raw script content
+            
+        Returns:
+            Basic script analysis dictionary
+        """
+        # Extract imports (simple pattern matching)
+        imports = []
+        for line in script_content.split('\n'):
+            line = line.strip()
+            if line.startswith('import ') or line.startswith('from '):
+                imports.append(line)
+        
+        # Extract function-like patterns (simple pattern matching)
+        functions = []
+        for line in script_content.split('\n'):
+            line = line.strip()
+            if '(' in line and ')' in line:
+                functions.append(line)
+        
+        # Extract path references
+        path_references = []
+        common_paths = ['/opt/ml/model', '/opt/ml/input/data/config', '/opt/ml/input/data/train']
+        for path in common_paths:
+            if path in script_content:
+                path_references.append(path)
+        
+        return {
+            'imports': imports,
+            'functions': functions,
+            'path_references': path_references,
+            'patterns': {},
+            'framework': None
+        }

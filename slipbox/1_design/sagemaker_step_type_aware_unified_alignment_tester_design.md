@@ -40,6 +40,21 @@ date of note: 2025-08-13
 - **[Level 3: Specification ↔ Dependencies Alignment Design](level3_specification_dependency_alignment_design.md)** - Dependency resolution validation
 - **[Level 4: Builder ↔ Configuration Alignment Design](level4_builder_configuration_alignment_design.md)** - Builder-configuration validation
 
+### Step Type-Specific Validation Patterns
+- **[Processing Step Alignment Validation Patterns](processing_step_alignment_validation_patterns.md)** - Comprehensive validation patterns for processing steps
+- **[Training Step Alignment Validation Patterns](training_step_alignment_validation_patterns.md)** - Comprehensive validation patterns for training steps
+- **[CreateModel Step Alignment Validation Patterns](createmodel_step_alignment_validation_patterns.md)** - Comprehensive validation patterns for model creation steps
+- **[Transform Step Alignment Validation Patterns](transform_step_alignment_validation_patterns.md)** - Comprehensive validation patterns for batch transform steps
+- **[RegisterModel Step Alignment Validation Patterns](registermodel_step_alignment_validation_patterns.md)** - Comprehensive validation patterns for model registry steps
+- **[Utility Step Alignment Validation Patterns](utility_step_alignment_validation_patterns.md)** - Comprehensive validation patterns for utility steps
+
+### Step Builder Pattern References
+- **[SageMaker Step Type Classification Design](sagemaker_step_type_classification_design.md)** - Complete step type taxonomy and classification
+- **[Processing Step Builder Patterns](processing_step_builder_patterns.md)** - Processing step builder design patterns
+- **[Training Step Builder Patterns](training_step_builder_patterns.md)** - Training step builder design patterns
+- **[CreateModel Step Builder Patterns](createmodel_step_builder_patterns.md)** - CreateModel step builder design patterns
+- **[Transform Step Builder Patterns](transform_step_builder_patterns.md)** - Transform step builder design patterns
+
 ### Supporting Documentation
 - **[Alignment Rules](../0_developer_guide/alignment_rules.md)** - Centralized alignment guidance and principles
 
