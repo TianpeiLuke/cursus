@@ -6,9 +6,14 @@ for the tabular_preprocess script and job_type argument.
 """
 
 import unittest
+import sys
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+# Add the project root to the Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 from src.cursus.validation.alignment.static_analysis.builder_analyzer import (
     BuilderRegistry, BuilderArgumentExtractor, extract_builder_arguments

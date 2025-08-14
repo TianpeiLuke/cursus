@@ -3,8 +3,13 @@ Test suite for UnifiedAlignmentTester full validation.
 """
 
 import unittest
+import sys
+import os
 from unittest.mock import patch, MagicMock
 import json
+
+# Add the project root to the Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
 from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 from src.cursus.validation.alignment.alignment_reporter import ValidationResult
