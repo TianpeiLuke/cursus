@@ -22,10 +22,10 @@
         "details": {
           "script": "tabular_preprocessing",
           "testability_parameters": [
+            "output_paths",
             "input_paths",
-            "environ_vars",
             "job_args",
-            "output_paths"
+            "environ_vars"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -177,6 +177,17 @@
           ]
         },
         "recommendation": "Refactor 'None' to accept environment variables as parameters"
+      },
+      {
+        "severity": "INFO",
+        "category": "framework_detected",
+        "message": "Processing script uses sklearn framework",
+        "details": {
+          "script": "tabular_preprocessing",
+          "step_type": "Processing",
+          "framework": "sklearn"
+        },
+        "recommendation": "Ensure sklearn dependencies are properly specified"
       }
     ],
     "script_analysis": {
@@ -238,7 +249,10 @@
       ],
       "file_operations": [
         "file_path='<file_object>' operation_type='read' line_number=59 context='    else:\\n        with open_func(str(file_path), \"rt\") as f:\\n>>>             data = json.load(f)\\n        return pd.json_normalize(data if isinstance(data, list) else [data])\\n' mode=None method='json.load'"
-      ]
+      ],
+      "step_type": "Processing",
+      "framework": "sklearn",
+      "step_type_patterns": {}
     },
     "contract": {
       "entry_point": "tabular_preprocessing.py",
@@ -383,8 +397,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -410,8 +424,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -437,8 +451,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -464,8 +478,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -491,8 +505,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -520,8 +534,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
               "DataLoad",
+              "CradleDataLoading",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -548,8 +562,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "DataLoad",
+                "CradleDataLoading",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -575,8 +589,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "DataLoad",
+                "CradleDataLoading",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -602,8 +616,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "DataLoad",
+                "CradleDataLoading",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -629,8 +643,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "DataLoad",
+                "CradleDataLoading",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -656,8 +670,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
                 "DataLoad",
+                "CradleDataLoading",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -681,8 +695,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "DataLoad",
+            "CradleDataLoading",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -731,8 +745,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
             "DataLoad",
+            "CradleDataLoading",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -1105,7 +1119,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-08-12T21:58:51.721260",
+    "validation_timestamp": "2025-08-14T08:25:50.790112",
     "validator_version": "1.0.0"
   }
 }

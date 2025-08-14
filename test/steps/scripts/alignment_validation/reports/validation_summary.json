@@ -1,41 +1,45 @@
 {
-  "total_scripts": 8,
+  "total_scripts": 9,
   "passed_scripts": 8,
-  "failed_scripts": 0,
+  "failed_scripts": 1,
   "error_scripts": 0,
-  "validation_timestamp": "2025-08-12T21:58:51.473660",
+  "validation_timestamp": "2025-08-14T08:25:50.575210",
   "script_results": {
     "currency_conversion": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.524703"
+      "timestamp": "2025-08-14T08:25:50.598871"
     },
     "dummy_training": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.552886"
+      "timestamp": "2025-08-14T08:25:50.618923"
     },
     "model_calibration": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.585405"
+      "timestamp": "2025-08-14T08:25:50.648137"
     },
     "package": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.607219"
+      "timestamp": "2025-08-14T08:25:50.668713"
     },
     "payload": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.634880"
+      "timestamp": "2025-08-14T08:25:50.702863"
     },
     "risk_table_mapping": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.658565"
+      "timestamp": "2025-08-14T08:25:50.726496"
     },
     "tabular_preprocessing": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.721260"
+      "timestamp": "2025-08-14T08:25:50.790112"
     },
     "xgboost_model_evaluation": {
       "status": "PASSING",
-      "timestamp": "2025-08-12T21:58:51.743763"
+      "timestamp": "2025-08-14T08:25:50.813210"
+    },
+    "xgboost_training": {
+      "status": "FAILING",
+      "timestamp": "2025-08-14T08:25:50.841213"
     }
   }
 }

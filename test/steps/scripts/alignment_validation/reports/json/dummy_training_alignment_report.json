@@ -10,10 +10,10 @@
         "details": {
           "script": "dummy_training",
           "testability_parameters": [
+            "output_paths",
             "input_paths",
-            "environ_vars",
             "job_args",
-            "output_paths"
+            "environ_vars"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -30,16 +30,16 @@
       {
         "severity": "WARNING",
         "category": "testability_parameter_usage",
-        "message": "Testability parameters defined but not used: environ_vars, job_args",
+        "message": "Testability parameters defined but not used: job_args, environ_vars",
         "details": {
           "script": "dummy_training",
           "unused_parameters": [
-            "environ_vars",
-            "job_args"
+            "job_args",
+            "environ_vars"
           ],
           "used_parameters": [
-            "input_paths",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -106,7 +106,10 @@
         "module_name='traceback' import_alias=None line_number=269 is_from_import=False imported_items=[]"
       ],
       "argument_definitions": [],
-      "file_operations": []
+      "file_operations": [],
+      "step_type": "Processing",
+      "framework": null,
+      "step_type_patterns": {}
     },
     "contract": {
       "entry_point": "dummy_training.py",
@@ -217,9 +220,9 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
               "TabularPreprocessing",
               "XGBoostTraining",
+              "PytorchTraining",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -258,9 +261,9 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "PytorchTraining",
               "TabularPreprocessing",
               "XGBoostTraining",
+              "PytorchTraining",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -298,9 +301,9 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "PytorchTraining",
                 "TabularPreprocessing",
                 "XGBoostTraining",
+                "PytorchTraining",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -335,9 +338,9 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
             "TabularPreprocessing",
             "XGBoostTraining",
+            "PytorchTraining",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -445,9 +448,9 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "PytorchTraining",
             "TabularPreprocessing",
             "XGBoostTraining",
+            "PytorchTraining",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -877,7 +880,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-12T21:58:51.552886",
+    "validation_timestamp": "2025-08-14T08:25:50.618923",
     "validator_version": "1.0.0"
   }
 }

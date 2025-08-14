@@ -13,7 +13,70 @@
   },
   "level2": {
     "passed": true,
-    "issues": [],
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "multi_variant_validation",
+        "message": "Smart Specification Selection: validated against 5 variants",
+        "details": {
+          "contract": "tabular_preprocess_contract",
+          "variants": [
+            "training",
+            "testing",
+            "validation",
+            "calibration",
+            "generic"
+          ],
+          "total_dependencies": 1,
+          "total_outputs": 1,
+          "contract_inputs": 1,
+          "contract_outputs": 1
+        },
+        "recommendation": "Multi-variant validation completed successfully"
+      },
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: TabularPreprocessing_Training -> TabularPreprocessing -> Processing",
+        "details": {
+          "contract": "tabular_preprocess_contract",
+          "original_spec_type": "TabularPreprocessing_Training",
+          "canonical_name": "TabularPreprocessing",
+          "resolved_sagemaker_type": "Processing",
+          "registry_available": true
+        },
+        "recommendation": "Using Processing step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output processed_data: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+        "details": {
+          "contract": "tabular_preprocess_contract",
+          "logical_name": "processed_data",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for tabular_preprocess_contract",
+        "details": {
+          "contract": "tabular_preprocess_contract",
+          "step_type": "processing",
+          "node_type": "internal",
+          "total_outputs": 1,
+          "outputs_with_property_paths": 1,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 1/1 outputs with property paths against SageMaker documentation"
+      }
+    ],
     "contract": {
       "entry_point": "tabular_preprocessing.py",
       "inputs": {
@@ -48,7 +111,88 @@
       }
     },
     "specifications": {
-      "preprocessing_training_spec": {
+      "tabular_preprocessing_testing_spec": {
+        "step_type": "TabularPreprocessing_Testing",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "DATA",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "ProcessingStep",
+              "DataLoad",
+              "CradleDataLoading"
+            ],
+            "data_type": "S3Uri",
+            "description": "Raw testing data for preprocessing"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "processed_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Processed testing data"
+          }
+        ]
+      },
+      "tabular_preprocessing_calibration_spec": {
+        "step_type": "TabularPreprocessing_Calibration",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "DATA",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "ProcessingStep",
+              "DataLoad",
+              "CradleDataLoading"
+            ],
+            "data_type": "S3Uri",
+            "description": "Raw calibration data for preprocessing"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "processed_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Processed calibration data for model evaluation"
+          }
+        ]
+      },
+      "tabular_preprocessing_validation_spec": {
+        "step_type": "TabularPreprocessing_Validation",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "DATA",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "ProcessingStep",
+              "DataLoad",
+              "CradleDataLoading"
+            ],
+            "data_type": "S3Uri",
+            "description": "Raw validation data for preprocessing"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "processed_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Processed validation data"
+          }
+        ]
+      },
+      "tabular_preprocessing_training_spec": {
         "step_type": "TabularPreprocessing_Training",
         "node_type": "internal",
         "dependencies": [
@@ -58,8 +202,8 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -72,6 +216,33 @@
             "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             "data_type": "S3Uri",
             "description": "Processed training data with train/val/test splits"
+          }
+        ]
+      },
+      "tabular_preprocessing_spec": {
+        "step_type": "TabularPreprocessing_Training",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "DATA",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "ProcessingStep",
+              "DataLoad",
+              "CradleDataLoading"
+            ],
+            "data_type": "S3Uri",
+            "description": "Raw tabular data for preprocessing"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "processed_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Processed tabular data with train/val/test splits"
           }
         ]
       }
@@ -87,8 +258,8 @@
             "required": true,
             "compatible_sources": [
               "ProcessingStep",
-              "CradleDataLoading",
-              "DataLoad"
+              "DataLoad",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Raw training data for preprocessing"
@@ -115,8 +286,8 @@
               "required": true,
               "compatible_sources": [
                 "ProcessingStep",
-                "CradleDataLoading",
-                "DataLoad"
+                "DataLoad",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Raw training data for preprocessing"
@@ -131,6 +302,114 @@
               "description": "Processed training data with train/val/test splits"
             }
           ]
+        },
+        "testing": {
+          "step_type": "TabularPreprocessing_Testing",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "DATA",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "ProcessingStep",
+                "DataLoad",
+                "CradleDataLoading"
+              ],
+              "data_type": "S3Uri",
+              "description": "Raw testing data for preprocessing"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "processed_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Processed testing data"
+            }
+          ]
+        },
+        "validation": {
+          "step_type": "TabularPreprocessing_Validation",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "DATA",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "ProcessingStep",
+                "DataLoad",
+                "CradleDataLoading"
+              ],
+              "data_type": "S3Uri",
+              "description": "Raw validation data for preprocessing"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "processed_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Processed validation data"
+            }
+          ]
+        },
+        "calibration": {
+          "step_type": "TabularPreprocessing_Calibration",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "DATA",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "ProcessingStep",
+                "DataLoad",
+                "CradleDataLoading"
+              ],
+              "data_type": "S3Uri",
+              "description": "Raw calibration data for preprocessing"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "processed_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Processed calibration data for model evaluation"
+            }
+          ]
+        },
+        "generic": {
+          "step_type": "TabularPreprocessing_Training",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "DATA",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "ProcessingStep",
+                "DataLoad",
+                "CradleDataLoading"
+              ],
+              "data_type": "S3Uri",
+              "description": "Raw tabular data for preprocessing"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "processed_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Processed tabular data with train/val/test splits"
+            }
+          ]
         }
       },
       "unified_dependencies": {
@@ -140,11 +419,11 @@
           "required": true,
           "compatible_sources": [
             "ProcessingStep",
-            "CradleDataLoading",
-            "DataLoad"
+            "DataLoad",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
-          "description": "Raw training data for preprocessing"
+          "description": "Raw tabular data for preprocessing"
         }
       },
       "unified_outputs": {
@@ -153,120 +432,67 @@
           "output_type": "processing_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "Processed training data with train/val/test splits"
+          "description": "Processed tabular data with train/val/test splits"
         }
       },
       "dependency_sources": {
         "DATA": [
-          "training"
+          "training",
+          "testing",
+          "validation",
+          "calibration",
+          "generic"
         ]
       },
       "output_sources": {
         "processed_data": [
-          "training"
+          "training",
+          "testing",
+          "validation",
+          "calibration",
+          "generic"
         ]
       },
-      "variant_count": 1
+      "variant_count": 5
     }
   },
   "level3": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "CRITICAL",
-        "category": "missing_file",
-        "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/tabular_preprocess_spec.py",
-        "recommendation": "Create the specification file tabular_preprocess_spec.py"
-      }
-    ]
-  },
-  "level4": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "configuration_fields",
-        "message": "Builder accesses undeclared configuration field: job_type",
-        "details": {
-          "field_name": "job_type",
-          "builder": "tabular_preprocess"
-        },
-        "recommendation": "Add job_type to configuration class or remove from builder"
-      },
-      {
-        "severity": "INFO",
-        "category": "config_import",
-        "message": "Builder may not be properly importing configuration class tabular_preprocessConfig",
-        "details": {
-          "config_class": "tabular_preprocessConfig",
-          "builder": "tabular_preprocess"
-        },
-        "recommendation": "Ensure builder imports and uses tabular_preprocessConfig"
-      }
-    ],
-    "builder_analysis": {
-      "config_accesses": [
+    "passed": true,
+    "issues": [],
+    "specification": {
+      "step_type": "TabularPreprocessing_Training",
+      "node_type": "internal",
+      "dependencies": [
         {
-          "field_name": "job_type",
-          "line_number": 65
+          "logical_name": "DATA",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "ProcessingStep",
+            "DataLoad",
+            "CradleDataLoading"
+          ],
+          "data_type": "S3Uri",
+          "description": "Raw tabular data for preprocessing"
         }
       ],
-      "validation_calls": [],
-      "default_assignments": [],
-      "class_definitions": [
+      "outputs": [
         {
-          "class_name": "TabularPreprocessingStepBuilder",
-          "line_number": 29
-        }
-      ],
-      "method_definitions": [
-        {
-          "method_name": "__init__",
-          "line_number": 37
-        },
-        {
-          "method_name": "validate_configuration",
-          "line_number": 98
-        },
-        {
-          "method_name": "_create_processor",
-          "line_number": 125
-        },
-        {
-          "method_name": "_get_environment_variables",
-          "line_number": 145
-        },
-        {
-          "method_name": "_get_inputs",
-          "line_number": 173
-        },
-        {
-          "method_name": "_get_outputs",
-          "line_number": 226
-        },
-        {
-          "method_name": "_get_job_arguments",
-          "line_number": 281
-        },
-        {
-          "method_name": "create_step",
-          "line_number": 301
+          "logical_name": "processed_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Processed tabular data with train/val/test splits"
         }
       ]
-    },
-    "config_analysis": {
-      "class_name": "tabular_preprocessConfig",
-      "fields": {},
-      "required_fields": "set()",
-      "optional_fields": "set()",
-      "default_values": {},
-      "load_error": "No module named 'src'"
     }
   },
-  "overall_status": "FAILING",
+  "level4": {},
+  "overall_status": "ERROR",
+  "error": "'HybridFileResolver' object has no attribute 'get_available_files_report'",
   "metadata": {
     "script_name": "tabular_preprocess",
-    "validation_timestamp": "2025-08-11T20:24:17.393475",
+    "validation_timestamp": "2025-08-14T08:25:43.819233",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocess.py"
   }

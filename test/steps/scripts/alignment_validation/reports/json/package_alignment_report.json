@@ -31,10 +31,10 @@
         "details": {
           "script": "package",
           "testability_parameters": [
+            "output_paths",
             "input_paths",
-            "environ_vars",
             "job_args",
-            "output_paths"
+            "environ_vars"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -58,9 +58,9 @@
             "job_args"
           ],
           "used_parameters": [
+            "output_paths",
             "input_paths",
-            "environ_vars",
-            "output_paths"
+            "environ_vars"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -135,7 +135,10 @@
         "module_name='sys' import_alias=None line_number=9 is_from_import=False imported_items=[]"
       ],
       "argument_definitions": [],
-      "file_operations": []
+      "file_operations": [],
+      "step_type": "Processing",
+      "framework": null,
+      "step_type_patterns": {}
     },
     "contract": {
       "entry_point": "package.py",
@@ -250,9 +253,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "ModelStep",
+              "XGBoostTraining",
               "TrainingStep",
-              "XGBoostTraining"
+              "ModelStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -300,9 +303,9 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "ModelStep",
+              "XGBoostTraining",
               "TrainingStep",
-              "XGBoostTraining"
+              "ModelStep"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be packaged"
@@ -349,9 +352,9 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "ModelStep",
+                "XGBoostTraining",
                 "TrainingStep",
-                "XGBoostTraining"
+                "ModelStep"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be packaged"
@@ -395,9 +398,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "ModelStep",
+            "XGBoostTraining",
             "TrainingStep",
-            "XGBoostTraining"
+            "ModelStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -464,9 +467,9 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "ModelStep",
+            "XGBoostTraining",
             "TrainingStep",
-            "XGBoostTraining"
+            "ModelStep"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be packaged"
@@ -786,7 +789,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-08-12T21:58:51.607219",
+    "validation_timestamp": "2025-08-14T08:25:50.668713",
     "validator_version": "1.0.0"
   }
 }

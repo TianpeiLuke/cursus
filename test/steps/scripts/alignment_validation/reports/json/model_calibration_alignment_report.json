@@ -21,10 +21,10 @@
         "details": {
           "script": "model_calibration",
           "testability_parameters": [
+            "output_paths",
             "input_paths",
-            "environ_vars",
             "job_args",
-            "output_paths"
+            "environ_vars"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -164,9 +164,9 @@
             "job_args"
           ],
           "used_parameters": [
+            "output_paths",
             "input_paths",
-            "environ_vars",
-            "output_paths"
+            "environ_vars"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -417,6 +417,17 @@
           ]
         },
         "recommendation": "Refactor 'None' to accept environment variables as parameters"
+      },
+      {
+        "severity": "INFO",
+        "category": "framework_detected",
+        "message": "Processing script uses sklearn framework",
+        "details": {
+          "script": "model_calibration",
+          "step_type": "Processing",
+          "framework": "sklearn"
+        },
+        "recommendation": "Ensure sklearn dependencies are properly specified"
       }
     ],
     "script_analysis": {
@@ -518,7 +529,10 @@
         "file_path='<file_object>' operation_type='write' line_number=852 context='            summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n>>>                 json.dump(summary, f, indent=2)\\n            \\n            # Check if calibration improved by error threshold' mode=None method='json.dump'",
         "file_path='<file_object>' operation_type='write' line_number=913 context='            metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n>>>                 json.dump(metrics_report, f, indent=2)\\n            \\n            # Save calibrator models' mode=None method='json.dump'",
         "file_path='<file_object>' operation_type='write' line_number=955 context='            summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n>>>                 json.dump(summary, f, indent=2)\\n            \\n            # Check if calibration improved by error threshold' mode=None method='json.dump'"
-      ]
+      ],
+      "step_type": "Processing",
+      "framework": "sklearn",
+      "step_type_patterns": {}
     },
     "contract": {
       "entry_point": "model_calibration.py",
@@ -693,11 +707,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostModelEval",
-              "ModelEvaluation",
+              "XGBoostTraining",
               "CrossValidation",
+              "ModelEvaluation",
               "TrainingEvaluation",
-              "XGBoostTraining"
+              "XGBoostModelEval"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -738,11 +752,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "XGBoostModelEval",
-              "ModelEvaluation",
+              "XGBoostTraining",
               "CrossValidation",
+              "ModelEvaluation",
               "TrainingEvaluation",
-              "XGBoostTraining"
+              "XGBoostModelEval"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -782,11 +796,11 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "XGBoostModelEval",
-                "ModelEvaluation",
+                "XGBoostTraining",
                 "CrossValidation",
+                "ModelEvaluation",
                 "TrainingEvaluation",
-                "XGBoostTraining"
+                "XGBoostModelEval"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -823,11 +837,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostModelEval",
-            "ModelEvaluation",
+            "XGBoostTraining",
             "CrossValidation",
+            "ModelEvaluation",
             "TrainingEvaluation",
-            "XGBoostTraining"
+            "XGBoostModelEval"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -887,11 +901,11 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "XGBoostModelEval",
-            "ModelEvaluation",
+            "XGBoostTraining",
             "CrossValidation",
+            "ModelEvaluation",
             "TrainingEvaluation",
-            "XGBoostTraining"
+            "XGBoostModelEval"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -1350,7 +1364,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
     "contract_mapping": "model_calibration_contract",
-    "validation_timestamp": "2025-08-12T21:58:51.585405",
+    "validation_timestamp": "2025-08-14T08:25:50.648137",
     "validator_version": "1.0.0"
   }
 }
