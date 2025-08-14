@@ -29,6 +29,23 @@ date of note: 2025-08-12
 - **[Unified Alignment Tester Architecture](unified_alignment_tester_architecture.md)** - Core architectural patterns
 - **[Alignment Rules](../0_developer_guide/alignment_rules.md)** - Centralized alignment guidance and principles
 
+## August 2025 Refactoring Update
+
+**ARCHITECTURAL ENHANCEMENT**: The Level 2 Property Path Validation has been enhanced with modular architecture and step type awareness support, extending validation capabilities while maintaining comprehensive SageMaker property path validation.
+
+### Enhanced Module Integration
+Level 2 property path validation now leverages the refactored modular architecture:
+- **core_models.py**: StepTypeAwareAlignmentIssue for enhanced property path issue context
+- **step_type_detection.py**: Step type detection for training script property path validation
+- **utils.py**: Common utilities shared across validation levels
+- **framework_patterns.py**: Framework-specific property path patterns
+
+### Key Enhancements
+- **Training Script Support**: Extended property path validation for training scripts with step type awareness
+- **Enhanced Issue Context**: Step type-aware property path validation issues with framework information
+- **Framework-Specific Patterns**: Property path patterns specific to XGBoost, PyTorch, and other ML frameworks
+- **Improved Maintainability**: Modular components with clear boundaries for property path validation
+
 ## Overview
 
 Successfully implemented **Level 2 Property Path Validation** as an enhancement to the unified alignment tester. This validation ensures that SageMaker Step Property Path References used in step specifications are valid according to official SageMaker documentation.

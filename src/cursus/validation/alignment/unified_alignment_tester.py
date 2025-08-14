@@ -14,7 +14,9 @@ from pathlib import Path
 
 from .alignment_reporter import AlignmentReport, ValidationResult
 from .alignment_utils import (
-    SeverityLevel, AlignmentLevel, create_alignment_issue
+    SeverityLevel, AlignmentLevel, create_alignment_issue,
+    detect_step_type_from_registry, detect_framework_from_imports,
+    StepTypeAwareAlignmentIssue, create_step_type_aware_alignment_issue
 )
 from .script_contract_alignment import ScriptContractAlignmentTester
 from .contract_spec_alignment import ContractSpecificationAlignmentTester
@@ -76,6 +78,9 @@ class UnifiedAlignmentTester:
         
         # Store configuration for reporting
         self.level3_config = level3_config
+        
+        # Phase 1 Enhancement: Step type awareness feature flag
+        self.enable_step_type_awareness = os.getenv('ENABLE_STEP_TYPE_AWARENESS', 'true').lower() == 'true'
     
     def run_full_validation(self, 
                            target_scripts: Optional[List[str]] = None,
@@ -183,6 +188,10 @@ class UnifiedAlignmentTester:
                         alignment_level=AlignmentLevel.SCRIPT_CONTRACT
                     )
                     validation_result.add_issue(alignment_issue)
+                
+                # Phase 1 Enhancement: Add step type context to issues if enabled
+                if self.enable_step_type_awareness:
+                    self._add_step_type_context_to_issues(script_name, validation_result)
                 
                 self.report.add_level1_result(script_name, validation_result)
                 
@@ -504,3 +513,60 @@ class UnifiedAlignmentTester:
                 matrix[builder_name]['level4'] = 'PASSING' if result.passed else 'FAILING'
         
         return matrix
+    
+    def _add_step_type_context_to_issues(self, script_name: str, validation_result: ValidationResult):
+        """
+        Phase 1 Enhancement: Add step type context to validation issues.
+        
+        Args:
+            script_name: Name of the script being validated
+            validation_result: ValidationResult to enhance with step type context
+        """
+        try:
+            # Detect step type from registry
+            step_type = detect_step_type_from_registry(script_name)
+            
+            # Detect framework if possible (requires script analysis)
+            framework = None
+            try:
+                # Try to get framework from script analysis if available
+                script_path = self.scripts_dir / f"{script_name}.py"
+                if script_path.exists():
+                    from .framework_patterns import detect_framework_from_script_content
+                    with open(script_path, 'r', encoding='utf-8') as f:
+                        script_content = f.read()
+                    framework = detect_framework_from_script_content(script_content)
+            except Exception:
+                # Framework detection is optional, continue without it
+                pass
+            
+            # Add step type context to existing issues
+            for issue in validation_result.issues:
+                if hasattr(issue, 'step_type'):
+                    # Already a StepTypeAwareAlignmentIssue, update it
+                    issue.step_type = step_type
+                    if framework:
+                        issue.framework_context = framework
+                else:
+                    # Convert to step type-aware issue
+                    step_type_issue = create_step_type_aware_alignment_issue(
+                        level=issue.level,
+                        category=issue.category,
+                        message=issue.message,
+                        step_type=step_type,
+                        framework_context=framework,
+                        details=issue.details,
+                        recommendation=issue.recommendation,
+                        alignment_level=issue.alignment_level
+                    )
+                    # Replace the original issue
+                    validation_result.issues[validation_result.issues.index(issue)] = step_type_issue
+            
+            # Add step type information to validation result details
+            validation_result.details['step_type'] = step_type
+            if framework:
+                validation_result.details['framework'] = framework
+                
+        except Exception as e:
+            # Step type enhancement is optional, don't fail validation if it fails
+            print(f"⚠️  Step type enhancement failed for {script_name}: {e}")

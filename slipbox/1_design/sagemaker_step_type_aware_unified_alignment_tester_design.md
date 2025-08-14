@@ -25,9 +25,72 @@ date of note: 2025-08-13
 
 # SageMaker Step Type-Aware Unified Alignment Tester Design
 
+## Related Documents
+
+### Core Alignment Validation System
+- **[Unified Alignment Tester Master Design](unified_alignment_tester_master_design.md)** - Complete system overview and architecture
+- **[Unified Alignment Tester Design](unified_alignment_tester_design.md)** - Core unified alignment tester implementation
+- **[Unified Alignment Tester Architecture](unified_alignment_tester_architecture.md)** - Core architectural patterns and design principles
+- **[Alignment Validation Data Structures](alignment_validation_data_structures.md)** - Core data structure designs and models
+
+### Level-Specific Validation Designs
+- **[Level 1: Script ↔ Contract Alignment Design](level1_script_contract_alignment_design.md)** - Script-contract validation patterns
+- **[Level 2: Contract ↔ Specification Alignment Design](level2_contract_specification_alignment_design.md)** - Contract-specification validation
+- **[Level 2: Property Path Validation Implementation](level2_property_path_validation_implementation.md)** - SageMaker property path validation
+- **[Level 3: Specification ↔ Dependencies Alignment Design](level3_specification_dependency_alignment_design.md)** - Dependency resolution validation
+- **[Level 4: Builder ↔ Configuration Alignment Design](level4_builder_configuration_alignment_design.md)** - Builder-configuration validation
+
+### Supporting Documentation
+- **[Alignment Rules](../0_developer_guide/alignment_rules.md)** - Centralized alignment guidance and principles
+
 ## Overview
 
 This document presents a comprehensive design for transforming the unified alignment tester into a **SageMaker step type-aware validation framework**. The enhanced system will provide targeted, expert-level validation for each type of SageMaker step while maintaining the proven four-tier alignment validation architecture.
+
+## August 2025 Refactoring Update
+
+**MAJOR ARCHITECTURAL CHANGE**: The alignment validation system has been refactored into focused, single-responsibility modules to improve maintainability and support step type awareness.
+
+### Refactored Module Structure
+
+The monolithic `alignment_utils.py` has been decomposed into specialized modules:
+
+```
+src/cursus/validation/alignment/
+├── core_models.py              # Core data models & enums
+├── script_analysis_models.py   # Script analysis structures  
+├── dependency_classifier.py    # Dependency pattern logic
+├── file_resolver.py           # Dynamic file discovery
+├── step_type_detection.py     # Step type & framework detection
+├── utils.py                   # Common utilities
+├── framework_patterns.py      # Framework-specific patterns
+├── alignment_utils.py         # Import aggregator (backward compatibility)
+└── unified_alignment_tester.py # Main validation orchestrator
+```
+
+### Key Refactoring Benefits
+
+1. **Enhanced Step Type Support**: New `step_type_detection.py` module provides:
+   - Registry-based step type detection
+   - Framework detection from imports
+   - Pattern-based step type analysis
+   - Comprehensive step type context
+
+2. **Improved Maintainability**: Each module has single responsibility:
+   - `core_models.py`: Core data structures including `StepTypeAwareAlignmentIssue`
+   - `script_analysis_models.py`: Script analysis data models
+   - `dependency_classifier.py`: Intelligent dependency classification
+   - `file_resolver.py`: Dynamic file discovery and matching
+
+3. **Backward Compatibility**: `alignment_utils.py` serves as import aggregator:
+   - All existing imports continue to work
+   - Clean re-export of all public APIs
+   - No breaking changes for existing consumers
+
+4. **Training Script Support**: Enhanced validation for training scripts:
+   - Step type-aware alignment issues
+   - Framework-specific pattern detection
+   - Training-specific validation rules
 
 ## Problem Statement
 

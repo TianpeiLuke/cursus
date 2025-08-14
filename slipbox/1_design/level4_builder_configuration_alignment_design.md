@@ -9,11 +9,11 @@ keywords:
   - builder configuration alignment
   - hybrid file resolution
   - flexible file resolver
-  - three-tier resolution
-  - infrastructure validation
+  - multi-strategy discovery
+  - production registry integration
 topics:
   - level 4 validation
-  - configuration alignment
+  - builder alignment
   - infrastructure validation
 language: python
 date of note: 2025-08-11
@@ -29,711 +29,637 @@ date of note: 2025-08-11
 
 ## 🎉 **BREAKTHROUGH STATUS: 100% SUCCESS RATE**
 
-**Status**: ✅ **PRODUCTION-READY** - Hybrid file resolution system breakthrough achieving 100% success rate (8/8 scripts)
+**Status**: ✅ **PRODUCTION-READY** - Hybrid file resolution achieving 100% success rate (8/8 scripts)
+
+## August 2025 Refactoring Update
+
+**ARCHITECTURAL ENHANCEMENT**: The Level 4 validation system has been enhanced with modular architecture and step type awareness support, extending validation capabilities while maintaining the breakthrough 100% success rate.
+
+### Enhanced Module Integration
+Level 4 validation now leverages the refactored modular architecture:
+- **file_resolver.py**: Enhanced FlexibleFileResolver for builder-configuration file discovery
+- **core_models.py**: StepTypeAwareAlignmentIssue for enhanced builder alignment issue context
+- **step_type_detection.py**: Step type detection for training script builder validation
+- **utils.py**: Common utilities shared across validation levels
+
+### Key Enhancements
+- **Training Script Support**: Extended builder validation for training scripts with step type awareness
+- **Enhanced Issue Context**: Step type-aware builder validation issues with framework information
+- **Framework-Specific Builders**: Builder patterns specific to XGBoost, PyTorch, and other ML frameworks
+- **Improved Maintainability**: Modular components with clear boundaries for builder validation
 
 **Revolutionary Achievements**:
-- Hybrid file resolution system with three-tier resolution strategy
-- FlexibleFileResolver integration eliminating file path issues
-- Production registry integration ensuring consistency
-- Infrastructure-level validation completing the validation pyramid
+- Hybrid file resolution eliminating all file discovery failures
+- FlexibleFileResolver integration for complex naming conventions
+- Performance optimization with intelligent fallback hierarchy
+- Production registry integration for naming consistency
 
 ## Overview
 
-Level 4 validation ensures alignment between **step builders** and their **configuration requirements**. This infrastructure layer validates that builders can correctly resolve and access all required configuration files, completing the four-tier validation pyramid with robust file resolution capabilities.
+Level 4 validation ensures alignment between **step builders** and their **configuration files**. This infrastructure layer validates that builders can locate and load their required configuration files, handling complex naming conventions and file discovery patterns across the entire pipeline system.
 
-## Architecture Pattern: Hybrid File Resolution with Three-Tier Strategy
+**Key Achievement**: Level 4 validation achieved **100% success rate** through revolutionary hybrid file resolution architecture that handles all edge cases and naming variations.
+
+## Architecture Pattern: Hybrid File Resolution with Multi-Strategy Discovery
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │            Level 4: Builder ↔ Configuration                │
 │                 INFRASTRUCTURE LAYER                       │
 ├─────────────────────────────────────────────────────────────┤
-│  Hybrid File Resolution System                              │
+│  Hybrid File Resolution Architecture                        │
 │  ├─ Three-tier resolution strategy                          │
-│  ├─ FlexibleFileResolver integration                        │
-│  ├─ Fallback mechanisms for robustness                      │
-│  └─ Production-grade file path handling                     │
+│  ├─ Performance optimization (fastest path first)           │
+│  ├─ Comprehensive edge case handling                        │
+│  └─ Graceful fallback hierarchy                             │
 ├─────────────────────────────────────────────────────────────┤
-│  Production Registry Integration                             │
-│  ├─ Same registry as runtime pipeline                       │
-│  ├─ Consistent builder resolution                           │
-│  ├─ Configuration metadata validation                       │
-│  └─ Builder-configuration mapping verification              │
+│  FlexibleFileResolver Integration                           │
+│  ├─ Predefined mapping support                              │
+│  ├─ Complex naming convention handling                      │
+│  ├─ Multi-directory search capabilities                     │
+│  └─ Pattern-based file discovery                            │
 ├─────────────────────────────────────────────────────────────┤
-│  Infrastructure Validation Framework                        │
-│  ├─ File accessibility validation                           │
-│  ├─ Configuration format validation                         │
-│  ├─ Builder compatibility checking                          │
-│  └─ End-to-end infrastructure verification                  │
+│  Production Registry Integration                            │
+│  ├─ Naming consistency with production                      │
+│  ├─ Canonical name mapping                                  │
+│  ├─ Registry-based file discovery                           │
+│  └─ Single source of truth alignment                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Revolutionary Breakthroughs
 
-### 1. Hybrid File Resolution System (Three-Tier Strategy)
+### 1. Hybrid File Resolution Architecture (Comprehensive Edge Case Handling)
 
-**Problem Solved**: Previous validation failed when configuration files couldn't be resolved due to complex file path requirements and varying resolution strategies.
+**Problem Solved**: Previous validation failed when configuration files didn't follow standard naming conventions or were located in unexpected directories.
 
-**Breakthrough Solution**: Three-tier resolution strategy with FlexibleFileResolver integration:
+**Breakthrough Solution**: Three-tier hybrid resolution strategy with intelligent fallbacks:
 
 ```python
-class HybridFileResolutionSystem:
-    """Hybrid file resolution with three-tier strategy for maximum robustness."""
+class HybridFileResolver:
+    """Hybrid file resolution with three-tier strategy and intelligent fallbacks."""
     
-    def __init__(self, registry):
+    def __init__(self, base_directories: Dict[str, str], registry):
+        self.base_directories = base_directories
         self.registry = registry
-        # Use production FlexibleFileResolver
-        from cursus.core.flexible_file_resolver import FlexibleFileResolver
-        self.flexible_resolver = FlexibleFileResolver()
+        self.flexible_resolver = FlexibleFileResolver(base_directories)
+        self.resolution_cache = {}
         
-        # Three-tier resolution strategies
-        self.resolution_strategies = [
-            self._tier1_direct_resolution,
-            self._tier2_flexible_resolution, 
-            self._tier3_fallback_resolution
+    def resolve_configuration_file(self, builder_name: str, 
+                                 file_type: str = 'config') -> FileResolutionResult:
+        """Resolve configuration file using hybrid three-tier strategy."""
+        
+        # Check cache first for performance
+        cache_key = f"{builder_name}:{file_type}"
+        if cache_key in self.resolution_cache:
+            return self.resolution_cache[cache_key]
+            
+        # Tier 1: Standard Pattern Resolution (Fastest Path)
+        result = self._tier1_standard_resolution(builder_name, file_type)
+        if result.success:
+            self.resolution_cache[cache_key] = result
+            return result
+            
+        # Tier 2: FlexibleFileResolver Integration (Edge Cases)
+        result = self._tier2_flexible_resolution(builder_name, file_type)
+        if result.success:
+            self.resolution_cache[cache_key] = result
+            return result
+            
+        # Tier 3: Fuzzy Matching with Registry (Last Resort)
+        result = self._tier3_fuzzy_resolution(builder_name, file_type)
+        self.resolution_cache[cache_key] = result
+        return result
+        
+    def _tier1_standard_resolution(self, builder_name: str, file_type: str) -> FileResolutionResult:
+        """Tier 1: Standard pattern resolution for common cases."""
+        
+        # Standard naming patterns
+        patterns = [
+            f"{builder_name}_{file_type}.py",
+            f"{builder_name}_{file_type}.json",
+            f"{builder_name}_{file_type}.yaml",
+            f"{builder_name}.{file_type}",
+            f"{builder_name}_config.py"
         ]
         
-    def resolve_configuration_files(self, builder_name: str, 
-                                   configuration_requirements: List[str]) -> FileResolutionResult:
-        """Resolve configuration files using three-tier hybrid strategy."""
+        # Search in expected directories
+        search_dirs = [
+            self.base_directories.get('configs', ''),
+            self.base_directories.get('builders', ''),
+            self.base_directories.get('specifications', '')
+        ]
         
-        resolved_files = {}
-        failed_files = {}
-        resolution_details = {}
-        
-        for config_file in configuration_requirements:
-            resolution_result = self._resolve_single_file(builder_name, config_file)
-            
-            if resolution_result.success:
-                resolved_files[config_file] = {
-                    'resolved_path': resolution_result.resolved_path,
-                    'resolution_tier': resolution_result.tier_used,
-                    'strategy': resolution_result.strategy_name,
-                    'metadata': resolution_result.metadata
-                }
-                resolution_details[config_file] = resolution_result
-            else:
-                failed_files[config_file] = {
-                    'failure_reason': resolution_result.failure_reason,
-                    'attempted_tiers': resolution_result.attempted_tiers,
-                    'error_details': resolution_result.error_details
-                }
-                
-        return FileResolutionResult(
-            resolved=resolved_files,
-            failed=failed_files,
-            resolution_details=resolution_details,
-            total_files=len(configuration_requirements),
-            success_rate=len(resolved_files) / len(configuration_requirements) if configuration_requirements else 1.0,
-            hybrid_strategy_used=True
-        )
-        
-    def _resolve_single_file(self, builder_name: str, config_file: str) -> SingleFileResolution:
-        """Resolve single configuration file using three-tier strategy."""
-        
-        attempted_tiers = []
-        
-        for tier_index, strategy in enumerate(self.resolution_strategies, 1):
-            try:
-                result = strategy(builder_name, config_file)
-                attempted_tiers.append(f"tier_{tier_index}")
-                
-                if result.success:
-                    return SingleFileResolution(
-                        success=True,
-                        resolved_path=result.path,
-                        tier_used=tier_index,
-                        strategy_name=result.strategy_name,
-                        metadata=result.metadata,
-                        attempted_tiers=attempted_tiers
-                    )
-                    
-            except Exception as e:
-                attempted_tiers.append(f"tier_{tier_index}_failed")
+        for directory in search_dirs:
+            if not directory or not os.path.exists(directory):
                 continue
                 
-        # All tiers failed
-        return SingleFileResolution(
-            success=False,
-            failure_reason="All three resolution tiers failed",
-            attempted_tiers=attempted_tiers,
-            error_details="No resolution strategy could locate the configuration file"
-        )
-        
-    def _tier1_direct_resolution(self, builder_name: str, config_file: str) -> ResolutionAttempt:
-        """Tier 1: Direct file path resolution."""
-        
-        # Try direct path resolution
-        if os.path.exists(config_file):
-            return ResolutionAttempt(
-                success=True,
-                path=os.path.abspath(config_file),
-                strategy_name="direct_path",
-                metadata={"tier": 1, "method": "direct_exists_check"}
-            )
-            
-        # Try relative to builder location
-        builder_dir = self._get_builder_directory(builder_name)
-        if builder_dir:
-            relative_path = os.path.join(builder_dir, config_file)
-            if os.path.exists(relative_path):
-                return ResolutionAttempt(
-                    success=True,
-                    path=os.path.abspath(relative_path),
-                    strategy_name="builder_relative",
-                    metadata={"tier": 1, "method": "builder_relative", "builder_dir": builder_dir}
-                )
-                
-        return ResolutionAttempt(success=False, strategy_name="direct_resolution")
-        
-    def _tier2_flexible_resolution(self, builder_name: str, config_file: str) -> ResolutionAttempt:
-        """Tier 2: FlexibleFileResolver integration."""
-        
-        try:
-            # Use production FlexibleFileResolver
-            resolution = self.flexible_resolver.resolve_file(
-                file_reference=config_file,
-                context={
-                    'builder_name': builder_name,
-                    'validation_level': 4,
-                    'resolution_tier': 2
-                }
-            )
-            
-            if resolution.success:
-                return ResolutionAttempt(
-                    success=True,
-                    path=resolution.resolved_path,
-                    strategy_name="flexible_resolver",
-                    metadata={
-                        "tier": 2, 
-                        "method": "flexible_file_resolver",
-                        "resolver_strategy": resolution.strategy_used,
-                        "resolution_metadata": resolution.metadata
-                    }
-                )
-                
-        except Exception as e:
-            pass
-            
-        return ResolutionAttempt(success=False, strategy_name="flexible_resolution")
-        
-    def _tier3_fallback_resolution(self, builder_name: str, config_file: str) -> ResolutionAttempt:
-        """Tier 3: Fallback resolution with pattern matching."""
-        
-        # Try common configuration directories
-        config_dirs = [
-            'config',
-            'configs', 
-            'configuration',
-            'settings',
-            os.path.join('src', 'config'),
-            os.path.join('cursus', 'config')
-        ]
-        
-        for config_dir in config_dirs:
-            if os.path.exists(config_dir):
-                potential_path = os.path.join(config_dir, config_file)
-                if os.path.exists(potential_path):
-                    return ResolutionAttempt(
+            for pattern in patterns:
+                file_path = os.path.join(directory, pattern)
+                if os.path.exists(file_path):
+                    return FileResolutionResult(
                         success=True,
-                        path=os.path.abspath(potential_path),
-                        strategy_name="fallback_pattern",
-                        metadata={
-                            "tier": 3, 
-                            "method": "pattern_matching",
-                            "config_dir": config_dir
-                        }
+                        file_path=file_path,
+                        resolution_strategy='tier1_standard',
+                        pattern_used=pattern,
+                        directory_found=directory,
+                        performance_tier=1
                     )
                     
-        # Try pattern variations of the filename
-        file_variations = self._generate_file_variations(config_file)
-        for variation in file_variations:
-            if os.path.exists(variation):
-                return ResolutionAttempt(
-                    success=True,
-                    path=os.path.abspath(variation),
-                    strategy_name="fallback_variation",
-                    metadata={
-                        "tier": 3, 
-                        "method": "filename_variation",
-                        "original": config_file,
-                        "variation": variation
-                    }
-                )
+        return FileResolutionResult(
+            success=False,
+            resolution_strategy='tier1_standard',
+            failure_reason='No standard patterns found'
+        )
+        
+    def _tier2_flexible_resolution(self, builder_name: str, file_type: str) -> FileResolutionResult:
+        """Tier 2: FlexibleFileResolver integration for edge cases."""
+        
+        # Use FlexibleFileResolver for complex cases
+        flexible_result = self.flexible_resolver.find_configuration_file(
+            builder_name, file_type
+        )
+        
+        if flexible_result:
+            return FileResolutionResult(
+                success=True,
+                file_path=flexible_result,
+                resolution_strategy='tier2_flexible',
+                pattern_used='flexible_resolver',
+                directory_found=os.path.dirname(flexible_result),
+                performance_tier=2
+            )
+            
+        return FileResolutionResult(
+            success=False,
+            resolution_strategy='tier2_flexible',
+            failure_reason='FlexibleFileResolver found no matches'
+        )
+        
+    def _tier3_fuzzy_resolution(self, builder_name: str, file_type: str) -> FileResolutionResult:
+        """Tier 3: Fuzzy matching with registry integration as last resort."""
+        
+        # Get canonical name from registry
+        canonical_name = self.registry.get_canonical_name(builder_name)
+        if canonical_name and canonical_name != builder_name:
+            # Try resolution with canonical name
+            canonical_result = self._tier1_standard_resolution(canonical_name, file_type)
+            if canonical_result.success:
+                canonical_result.resolution_strategy = 'tier3_fuzzy_canonical'
+                canonical_result.performance_tier = 3
+                return canonical_result
                 
-        return ResolutionAttempt(success=False, strategy_name="fallback_resolution")
+        # Fuzzy matching across all configuration files
+        all_config_files = self._discover_all_configuration_files()
+        best_match = self._find_best_fuzzy_match(builder_name, all_config_files)
         
-    def _generate_file_variations(self, config_file: str) -> List[str]:
-        """Generate filename variations for fallback resolution."""
+        if best_match and best_match['confidence'] > 0.7:
+            return FileResolutionResult(
+                success=True,
+                file_path=best_match['file_path'],
+                resolution_strategy='tier3_fuzzy_match',
+                pattern_used=f"fuzzy_match_{best_match['confidence']:.2f}",
+                directory_found=os.path.dirname(best_match['file_path']),
+                performance_tier=3,
+                confidence_score=best_match['confidence']
+            )
+            
+        return FileResolutionResult(
+            success=False,
+            resolution_strategy='tier3_fuzzy_match',
+            failure_reason=f'No fuzzy matches above 0.7 confidence threshold',
+            attempted_strategies=['tier1_standard', 'tier2_flexible', 'tier3_fuzzy']
+        )
         
-        variations = []
-        base_name = os.path.splitext(config_file)[0]
-        extension = os.path.splitext(config_file)[1]
+    def _find_best_fuzzy_match(self, builder_name: str, 
+                              config_files: List[str]) -> Optional[Dict[str, Any]]:
+        """Find best fuzzy match using similarity scoring."""
         
-        # Add common extensions if none provided
-        if not extension:
-            for ext in ['.json', '.yaml', '.yml', '.toml', '.ini']:
-                variations.append(f"{base_name}{ext}")
+        best_match = None
+        best_confidence = 0.0
+        
+        for config_file in config_files:
+            file_base = os.path.splitext(os.path.basename(config_file))[0]
+            
+            # Calculate similarity score
+            confidence = self._calculate_name_similarity(builder_name, file_base)
+            
+            if confidence > best_confidence:
+                best_confidence = confidence
+                best_match = {
+                    'file_path': config_file,
+                    'confidence': confidence,
+                    'matched_name': file_base
+                }
                 
-        # Add common prefixes/suffixes
-        for prefix in ['', 'default_', 'config_']:
-            for suffix in ['', '_config', '_default']:
-                variation = f"{prefix}{base_name}{suffix}{extension}"
-                if variation != config_file:
-                    variations.append(variation)
-                    
-        return variations
+        return best_match
+        
+    def _calculate_name_similarity(self, name1: str, name2: str) -> float:
+        """Calculate similarity score between two names."""
+        
+        # Normalize names
+        norm1 = name1.lower().replace('_', '').replace('-', '')
+        norm2 = name2.lower().replace('_', '').replace('-', '')
+        
+        # Exact match
+        if norm1 == norm2:
+            return 1.0
+            
+        # Substring match
+        if norm1 in norm2 or norm2 in norm1:
+            return 0.8
+            
+        # Levenshtein distance-based similarity
+        from difflib import SequenceMatcher
+        return SequenceMatcher(None, norm1, norm2).ratio()
 ```
 
-**Impact**: Achieved 100% file resolution success through robust three-tier strategy.
+**Impact**: Eliminated all file discovery failures through comprehensive three-tier resolution strategy.
 
-### 2. Production Registry Integration (Consistency Assurance)
+### 2. FlexibleFileResolver Integration (Complex Naming Convention Handling)
 
-**Problem Solved**: Inconsistencies between validation and runtime builder resolution caused infrastructure mismatches.
+**Problem Solved**: Standard file resolution couldn't handle complex naming conventions and predefined mappings.
 
-**Breakthrough Solution**: Direct integration with production registry for consistent builder resolution:
+**Breakthrough Solution**: Deep integration with FlexibleFileResolver for edge case handling:
+
+```python
+class FlexibleFileResolverIntegration:
+    """Integration with FlexibleFileResolver for complex naming conventions."""
+    
+    def __init__(self, base_directories: Dict[str, str]):
+        self.base_directories = base_directories
+        self.predefined_mappings = self._load_predefined_mappings()
+        
+    def find_configuration_file(self, builder_name: str, file_type: str) -> Optional[str]:
+        """Find configuration file using flexible resolution strategies."""
+        
+        # Strategy 1: Predefined mappings (highest priority)
+        if builder_name in self.predefined_mappings:
+            mapped_path = self.predefined_mappings[builder_name].get(file_type)
+            if mapped_path and os.path.exists(mapped_path):
+                return mapped_path
+                
+        # Strategy 2: Pattern-based discovery
+        patterns = self._generate_flexible_patterns(builder_name, file_type)
+        for pattern in patterns:
+            result = self._search_with_pattern(pattern)
+            if result:
+                return result
+                
+        # Strategy 3: Multi-directory recursive search
+        return self._recursive_search(builder_name, file_type)
+        
+    def _load_predefined_mappings(self) -> Dict[str, Dict[str, str]]:
+        """Load predefined mappings for complex cases."""
+        
+        return {
+            # Handle known edge cases
+            'xgboost_model_evaluation': {
+                'config': 'cursus/steps/configs/xgboost_model_eval_config.py',
+                'specification': 'cursus/steps/specifications/xgboost_model_eval_training_spec.py'
+            },
+            'model_calibration': {
+                'config': 'cursus/steps/configs/model_calibration_config.py',
+                'specification': 'cursus/steps/specifications/model_calibration_spec.py'
+            },
+            # Add more mappings as needed
+        }
+        
+    def _generate_flexible_patterns(self, builder_name: str, file_type: str) -> List[str]:
+        """Generate flexible patterns for file discovery."""
+        
+        patterns = []
+        
+        # Base name variations
+        base_variations = [
+            builder_name,
+            builder_name.replace('_', '-'),
+            builder_name.replace('-', '_'),
+        ]
+        
+        # Add common prefixes/suffixes
+        for base in base_variations:
+            patterns.extend([
+                f"{base}_{file_type}",
+                f"{base}_{file_type}_config",
+                f"{base}_config",
+                f"{file_type}_{base}",
+                f"config_{base}",
+                base  # Sometimes the file is just the base name
+            ])
+            
+        # Add file extensions
+        extensions = ['.py', '.json', '.yaml', '.yml']
+        full_patterns = []
+        for pattern in patterns:
+            for ext in extensions:
+                full_patterns.append(f"{pattern}{ext}")
+                
+        return full_patterns
+        
+    def _search_with_pattern(self, pattern: str) -> Optional[str]:
+        """Search for file using specific pattern."""
+        
+        search_dirs = [
+            self.base_directories.get('configs', ''),
+            self.base_directories.get('specifications', ''),
+            self.base_directories.get('builders', ''),
+            self.base_directories.get('steps', '')
+        ]
+        
+        for directory in search_dirs:
+            if not directory or not os.path.exists(directory):
+                continue
+                
+            # Direct path check
+            file_path = os.path.join(directory, pattern)
+            if os.path.exists(file_path):
+                return file_path
+                
+            # Subdirectory search
+            for root, dirs, files in os.walk(directory):
+                if pattern in files:
+                    return os.path.join(root, pattern)
+                    
+        return None
+        
+    def _recursive_search(self, builder_name: str, file_type: str) -> Optional[str]:
+        """Recursive search as last resort."""
+        
+        search_roots = [
+            self.base_directories.get('root', '.'),
+            'cursus/steps',
+            'src/cursus/steps'
+        ]
+        
+        for root_dir in search_roots:
+            if not os.path.exists(root_dir):
+                continue
+                
+            for root, dirs, files in os.walk(root_dir):
+                for file in files:
+                    if self._file_matches_builder(file, builder_name, file_type):
+                        return os.path.join(root, file)
+                        
+        return None
+        
+    def _file_matches_builder(self, filename: str, builder_name: str, file_type: str) -> bool:
+        """Check if filename matches builder with flexible criteria."""
+        
+        file_base = os.path.splitext(filename)[0].lower()
+        builder_lower = builder_name.lower()
+        
+        # Direct match
+        if builder_lower in file_base or file_base in builder_lower:
+            return True
+            
+        # Pattern matching
+        if file_type in file_base and any(part in file_base for part in builder_lower.split('_')):
+            return True
+            
+        return False
+```
+
+**Impact**: Enabled handling of complex naming conventions and edge cases that standard resolution couldn't handle.
+
+### 3. Production Registry Integration (Naming Consistency)
+
+**Problem Solved**: Inconsistencies between builder names and configuration file names caused resolution failures.
+
+**Breakthrough Solution**: Production registry integration for canonical name mapping:
 
 ```python
 class ProductionRegistryIntegration:
-    """Production registry integration for consistent builder resolution."""
+    """Production registry integration for naming consistency."""
     
-    def __init__(self):
-        # Use the SAME registry as runtime pipeline
-        from cursus.core.registry import Registry
-        self.registry = Registry()
+    def __init__(self, registry):
+        self.registry = registry
+        self.name_mapping_cache = {}
         
-        # Use the SAME builder resolver as runtime pipeline
-        from cursus.core.builder_resolver import BuilderResolver
-        self.builder_resolver = BuilderResolver(self.registry)
+    def get_canonical_builder_name(self, builder_name: str) -> str:
+        """Get canonical builder name from production registry."""
         
-    def resolve_builder_with_production_logic(self, builder_name: str) -> BuilderResolutionResult:
-        """Resolve builder using exact same logic as production pipeline."""
-        
-        try:
-            # Use production builder resolver
-            builder = self.builder_resolver.resolve_builder(builder_name)
+        if builder_name in self.name_mapping_cache:
+            return self.name_mapping_cache[builder_name]
             
-            if builder:
-                # Extract configuration requirements using production logic
-                config_requirements = self._extract_configuration_requirements(builder)
+        # Try direct registry lookup
+        canonical_name = self.registry.get_canonical_name(builder_name)
+        if canonical_name:
+            self.name_mapping_cache[builder_name] = canonical_name
+            return canonical_name
+            
+        # Try builder-specific patterns
+        builder_patterns = [
+            f"{builder_name}_builder",
+            f"builder_{builder_name}",
+            builder_name.replace('_builder', ''),
+            builder_name.replace('builder_', '')
+        ]
+        
+        for pattern in builder_patterns:
+            canonical_name = self.registry.get_canonical_name(pattern)
+            if canonical_name:
+                self.name_mapping_cache[builder_name] = canonical_name
+                return canonical_name
                 
-                return BuilderResolutionResult(
-                    success=True,
-                    builder=builder,
-                    builder_name=builder_name,
-                    configuration_requirements=config_requirements,
-                    builder_metadata=self._extract_builder_metadata(builder),
-                    registry_version=self.registry.get_version() if hasattr(self.registry, 'get_version') else 'unknown'
-                )
-            else:
-                return BuilderResolutionResult(
-                    success=False,
-                    builder_name=builder_name,
-                    failure_reason="Builder not found in production registry",
-                    registry_version=self.registry.get_version() if hasattr(self.registry, 'get_version') else 'unknown'
-                )
+        # Fallback to original name
+        self.name_mapping_cache[builder_name] = builder_name
+        return builder_name
+        
+    def validate_builder_registry_consistency(self, builder_name: str, 
+                                            config_file_path: str) -> RegistryConsistencyResult:
+        """Validate consistency between builder and registry."""
+        
+        canonical_name = self.get_canonical_builder_name(builder_name)
+        expected_config_name = self._derive_expected_config_name(canonical_name)
+        actual_config_name = os.path.splitext(os.path.basename(config_file_path))[0]
+        
+        consistency_score = self._calculate_consistency_score(
+            expected_config_name, actual_config_name
+        )
+        
+        return RegistryConsistencyResult(
+            builder_name=builder_name,
+            canonical_name=canonical_name,
+            expected_config_name=expected_config_name,
+            actual_config_name=actual_config_name,
+            consistency_score=consistency_score,
+            is_consistent=consistency_score > 0.8,
+            registry_aligned=canonical_name != builder_name
+        )
+        
+    def _derive_expected_config_name(self, canonical_name: str) -> str:
+        """Derive expected configuration file name from canonical name."""
+        
+        # Remove common suffixes
+        base_name = canonical_name
+        for suffix in ['_builder', '_step', '_config']:
+            if base_name.endswith(suffix):
+                base_name = base_name[:-len(suffix)]
                 
-        except Exception as e:
-            return BuilderResolutionResult(
-                success=False,
-                builder_name=builder_name,
-                failure_reason=f"Production builder resolution failed: {str(e)}",
-                error_details=str(e)
-            )
-            
-    def _extract_configuration_requirements(self, builder: Any) -> List[str]:
-        """Extract configuration requirements from builder using production logic."""
+        return f"{base_name}_config"
         
-        requirements = []
+    def _calculate_consistency_score(self, expected: str, actual: str) -> float:
+        """Calculate consistency score between expected and actual names."""
         
-        # Extract from builder attributes
-        if hasattr(builder, 'configuration_files'):
-            requirements.extend(builder.configuration_files)
-            
-        if hasattr(builder, 'config_requirements'):
-            requirements.extend(builder.config_requirements)
-            
-        # Extract from builder methods
-        if hasattr(builder, 'get_configuration_requirements'):
-            try:
-                method_requirements = builder.get_configuration_requirements()
-                if method_requirements:
-                    requirements.extend(method_requirements)
-            except Exception:
-                pass
-                
-        # Extract from builder metadata
-        if hasattr(builder, 'metadata') and isinstance(builder.metadata, dict):
-            config_files = builder.metadata.get('configuration_files', [])
-            requirements.extend(config_files)
-            
-        return list(set(requirements))  # Remove duplicates
+        # Normalize names
+        norm_expected = expected.lower().replace('_', '').replace('-', '')
+        norm_actual = actual.lower().replace('_', '').replace('-', '')
         
-    def _extract_builder_metadata(self, builder: Any) -> Dict[str, Any]:
-        """Extract builder metadata for validation context."""
-        
-        metadata = {}
-        
-        # Basic builder information
-        metadata['builder_type'] = type(builder).__name__
-        metadata['builder_module'] = getattr(builder, '__module__', 'unknown')
-        
-        # Configuration-related metadata
-        if hasattr(builder, 'metadata'):
-            metadata['builder_metadata'] = builder.metadata
+        # Exact match
+        if norm_expected == norm_actual:
+            return 1.0
             
-        if hasattr(builder, 'configuration_schema'):
-            metadata['configuration_schema'] = builder.configuration_schema
+        # Substring match
+        if norm_expected in norm_actual or norm_actual in norm_expected:
+            return 0.9
             
-        return metadata
+        # Similarity-based score
+        from difflib import SequenceMatcher
+        return SequenceMatcher(None, norm_expected, norm_actual).ratio()
 ```
 
-**Impact**: Ensured consistent builder resolution between validation and runtime.
+**Impact**: Achieved naming consistency with production registry, eliminating registry-related resolution failures.
 
-### 3. Infrastructure Validation Framework (End-to-End Verification)
+### 4. Performance Optimization with Intelligent Fallback Hierarchy
 
-**Problem Solved**: Previous validation didn't verify end-to-end infrastructure compatibility between builders and configurations.
+**Problem Solved**: File resolution was slow due to exhaustive searching without optimization.
 
-**Breakthrough Solution**: Comprehensive infrastructure validation framework:
+**Breakthrough Solution**: Performance-optimized resolution with intelligent caching and fallback hierarchy:
 
 ```python
-class InfrastructureValidationFramework:
-    """Comprehensive infrastructure validation for builder-configuration alignment."""
+class PerformanceOptimizedResolver:
+    """Performance-optimized file resolution with intelligent caching."""
     
-    def __init__(self, file_resolver, registry_integration):
-        self.file_resolver = file_resolver
-        self.registry_integration = registry_integration
-        self.format_validators = self._initialize_format_validators()
+    def __init__(self):
+        self.resolution_cache = {}
+        self.directory_cache = {}
+        self.performance_metrics = {}
         
-    def validate_infrastructure_alignment(self, builder_name: str) -> InfrastructureValidationResult:
-        """Validate complete infrastructure alignment for builder."""
+    def resolve_with_performance_optimization(self, builder_name: str, 
+                                            file_type: str) -> OptimizedResolutionResult:
+        """Resolve file with performance optimization and metrics tracking."""
         
-        validation_results = {}
-        overall_issues = []
+        start_time = time.time()
         
-        # Step 1: Resolve builder using production logic
-        builder_resolution = self.registry_integration.resolve_builder_with_production_logic(builder_name)
-        
-        if not builder_resolution.success:
-            return InfrastructureValidationResult(
-                builder_name=builder_name,
-                passed=False,
-                issues=[ValidationIssue(
-                    severity="ERROR",
-                    category="builder_resolution",
-                    message=f"Failed to resolve builder '{builder_name}'",
-                    details={"failure_reason": builder_resolution.failure_reason},
-                    recommendation="Check if builder exists in registry and is properly configured"
-                )],
-                infrastructure_status="builder_resolution_failed"
+        # Performance Tier 1: Cache lookup (fastest)
+        cache_result = self._check_cache(builder_name, file_type)
+        if cache_result:
+            end_time = time.time()
+            self._record_performance_metrics('cache_hit', end_time - start_time)
+            return OptimizedResolutionResult(
+                success=True,
+                file_path=cache_result,
+                resolution_time=end_time - start_time,
+                performance_tier=0,  # Cache is tier 0 (fastest)
+                cache_hit=True
             )
             
-        # Step 2: Resolve configuration files
-        config_requirements = builder_resolution.configuration_requirements
-        file_resolution = self.file_resolver.resolve_configuration_files(builder_name, config_requirements)
-        
-        # Step 3: Validate file accessibility
-        accessibility_results = self._validate_file_accessibility(file_resolution.resolved)
-        validation_results['accessibility'] = accessibility_results
-        
-        # Step 4: Validate configuration formats
-        format_results = self._validate_configuration_formats(file_resolution.resolved)
-        validation_results['formats'] = format_results
-        
-        # Step 5: Validate builder compatibility
-        compatibility_results = self._validate_builder_compatibility(
-            builder_resolution.builder, file_resolution.resolved
-        )
-        validation_results['compatibility'] = compatibility_results
-        
-        # Step 6: Aggregate results and create issues
-        for category, results in validation_results.items():
-            overall_issues.extend(results.issues)
+        # Performance Tier 1: Standard patterns (fast)
+        standard_result = self._resolve_standard_patterns(builder_name, file_type)
+        if standard_result.success:
+            end_time = time.time()
+            resolution_time = end_time - start_time
+            self._cache_result(builder_name, file_type, standard_result.file_path)
+            self._record_performance_metrics('standard_resolution', resolution_time)
             
-        # Add file resolution issues
-        for failed_file, failure_info in file_resolution.failed.items():
-            overall_issues.append(ValidationIssue(
-                severity="ERROR",
-                category="file_resolution",
-                message=f"Failed to resolve configuration file '{failed_file}'",
-                details={
-                    "file_name": failed_file,
-                    "failure_reason": failure_info['failure_reason'],
-                    "attempted_tiers": failure_info.get('attempted_tiers', [])
-                },
-                recommendation=f"Check if file '{failed_file}' exists and is accessible"
-            ))
+            standard_result.resolution_time = resolution_time
+            return standard_result
             
-        # Determine overall pass/fail
-        blocking_issues = [issue for issue in overall_issues if issue.is_blocking()]
-        passed = len(blocking_issues) == 0 and file_resolution.success_rate >= 0.8
+        # Performance Tier 2: Flexible resolution (medium)
+        flexible_result = self._resolve_flexible_patterns(builder_name, file_type)
+        if flexible_result.success:
+            end_time = time.time()
+            resolution_time = end_time - start_time
+            self._cache_result(builder_name, file_type, flexible_result.file_path)
+            self._record_performance_metrics('flexible_resolution', resolution_time)
+            
+            flexible_result.resolution_time = resolution_time
+            return flexible_result
+            
+        # Performance Tier 3: Fuzzy matching (slow)
+        fuzzy_result = self._resolve_fuzzy_matching(builder_name, file_type)
+        end_time = time.time()
+        resolution_time = end_time - start_time
         
-        return InfrastructureValidationResult(
-            builder_name=builder_name,
-            passed=passed,
-            issues=overall_issues,
-            success_metrics={
-                "configuration_files_resolved": len(file_resolution.resolved),
-                "configuration_files_failed": len(file_resolution.failed),
-                "file_resolution_success_rate": file_resolution.success_rate,
-                "accessibility_checks_passed": accessibility_results.passed_count,
-                "format_validations_passed": format_results.passed_count,
-                "compatibility_checks_passed": compatibility_results.passed_count
-            },
-            infrastructure_status="fully_validated" if passed else "validation_issues_found",
-            resolution_details={
-                "hybrid_file_resolution_used": True,
-                "production_registry_integration": True,
-                "end_to_end_validation_completed": True
+        if fuzzy_result.success:
+            self._cache_result(builder_name, file_type, fuzzy_result.file_path)
+            
+        self._record_performance_metrics('fuzzy_resolution', resolution_time)
+        fuzzy_result.resolution_time = resolution_time
+        return fuzzy_result
+        
+    def _check_cache(self, builder_name: str, file_type: str) -> Optional[str]:
+        """Check resolution cache for existing result."""
+        
+        cache_key = f"{builder_name}:{file_type}"
+        cached_path = self.resolution_cache.get(cache_key)
+        
+        # Verify cached file still exists
+        if cached_path and os.path.exists(cached_path):
+            return cached_path
+        elif cached_path:
+            # Remove stale cache entry
+            del self.resolution_cache[cache_key]
+            
+        return None
+        
+    def _cache_result(self, builder_name: str, file_type: str, file_path: str):
+        """Cache successful resolution result."""
+        
+        cache_key = f"{builder_name}:{file_type}"
+        self.resolution_cache[cache_key] = file_path
+        
+        # Also cache directory for faster future searches
+        directory = os.path.dirname(file_path)
+        dir_cache_key = f"{builder_name}:dir"
+        if dir_cache_key not in self.directory_cache:
+            self.directory_cache[dir_cache_key] = []
+        if directory not in self.directory_cache[dir_cache_key]:
+            self.directory_cache[dir_cache_key].append(directory)
+            
+    def _record_performance_metrics(self, strategy: str, resolution_time: float):
+        """Record performance metrics for monitoring."""
+        
+        if strategy not in self.performance_metrics:
+            self.performance_metrics[strategy] = {
+                'total_calls': 0,
+                'total_time': 0.0,
+                'average_time': 0.0,
+                'min_time': float('inf'),
+                'max_time': 0.0
             }
-        )
-        
-    def _validate_file_accessibility(self, resolved_files: Dict[str, Any]) -> AccessibilityValidationResult:
-        """Validate that resolved files are accessible and readable."""
-        
-        passed_files = []
-        failed_files = []
-        issues = []
-        
-        for file_name, file_info in resolved_files.items():
-            resolved_path = file_info['resolved_path']
             
-            try:
-                # Check file exists
-                if not os.path.exists(resolved_path):
-                    failed_files.append(file_name)
-                    issues.append(ValidationIssue(
-                        severity="ERROR",
-                        category="file_accessibility",
-                        message=f"Resolved file '{file_name}' does not exist at path '{resolved_path}'",
-                        details={"file_name": file_name, "resolved_path": resolved_path},
-                        recommendation=f"Verify file resolution for '{file_name}'"
-                    ))
-                    continue
-                    
-                # Check file is readable
-                if not os.access(resolved_path, os.R_OK):
-                    failed_files.append(file_name)
-                    issues.append(ValidationIssue(
-                        severity="ERROR",
-                        category="file_accessibility",
-                        message=f"File '{file_name}' is not readable at path '{resolved_path}'",
-                        details={"file_name": file_name, "resolved_path": resolved_path},
-                        recommendation=f"Check file permissions for '{resolved_path}'"
-                    ))
-                    continue
-                    
-                # Check file is not empty (for configuration files)
-                if os.path.getsize(resolved_path) == 0:
-                    issues.append(ValidationIssue(
-                        severity="WARNING",
-                        category="file_accessibility",
-                        message=f"Configuration file '{file_name}' is empty",
-                        details={"file_name": file_name, "resolved_path": resolved_path},
-                        recommendation=f"Verify if empty file '{file_name}' is intentional"
-                    ))
-                    
-                passed_files.append(file_name)
-                
-            except Exception as e:
-                failed_files.append(file_name)
-                issues.append(ValidationIssue(
-                    severity="ERROR",
-                    category="file_accessibility",
-                    message=f"Error accessing file '{file_name}': {str(e)}",
-                    details={"file_name": file_name, "resolved_path": resolved_path, "error": str(e)},
-                    recommendation=f"Check file system access for '{resolved_path}'"
-                ))
-                
-        return AccessibilityValidationResult(
-            passed_files=passed_files,
-            failed_files=failed_files,
-            issues=issues,
-            passed_count=len(passed_files),
-            failed_count=len(failed_files)
-        )
+        metrics = self.performance_metrics[strategy]
+        metrics['total_calls'] += 1
+        metrics['total_time'] += resolution_time
+        metrics['average_time'] = metrics['total_time'] / metrics['total_calls']
+        metrics['min_time'] = min(metrics['min_time'], resolution_time)
+        metrics['max_time'] = max(metrics['max_time'], resolution_time)
         
-    def _validate_configuration_formats(self, resolved_files: Dict[str, Any]) -> FormatValidationResult:
-        """Validate configuration file formats."""
+    def get_performance_report(self) -> Dict[str, Any]:
+        """Get performance metrics report."""
         
-        passed_files = []
-        failed_files = []
-        issues = []
-        
-        for file_name, file_info in resolved_files.items():
-            resolved_path = file_info['resolved_path']
-            
-            try:
-                # Determine file format
-                file_format = self._detect_file_format(resolved_path)
-                
-                # Get appropriate validator
-                validator = self.format_validators.get(file_format)
-                if not validator:
-                    issues.append(ValidationIssue(
-                        severity="WARNING",
-                        category="format_validation",
-                        message=f"No format validator available for '{file_name}' (format: {file_format})",
-                        details={"file_name": file_name, "detected_format": file_format},
-                        recommendation=f"Add format validator for {file_format} files if needed"
-                    ))
-                    passed_files.append(file_name)  # Pass by default if no validator
-                    continue
-                    
-                # Validate format
-                validation_result = validator.validate_file(resolved_path)
-                
-                if validation_result.valid:
-                    passed_files.append(file_name)
-                else:
-                    failed_files.append(file_name)
-                    issues.append(ValidationIssue(
-                        severity="ERROR",
-                        category="format_validation",
-                        message=f"Configuration file '{file_name}' has invalid format",
-                        details={
-                            "file_name": file_name,
-                            "format": file_format,
-                            "validation_errors": validation_result.errors
-                        },
-                        recommendation=f"Fix format errors in '{file_name}'"
-                    ))
-                    
-            except Exception as e:
-                failed_files.append(file_name)
-                issues.append(ValidationIssue(
-                    severity="ERROR",
-                    category="format_validation",
-                    message=f"Error validating format of '{file_name}': {str(e)}",
-                    details={"file_name": file_name, "error": str(e)},
-                    recommendation=f"Check file format and content of '{file_name}'"
-                ))
-                
-        return FormatValidationResult(
-            passed_files=passed_files,
-            failed_files=failed_files,
-            issues=issues,
-            passed_count=len(passed_files),
-            failed_count=len(failed_files)
-        )
-        
-    def _validate_builder_compatibility(self, builder: Any, 
-                                      resolved_files: Dict[str, Any]) -> CompatibilityValidationResult:
-        """Validate compatibility between builder and resolved configuration files."""
-        
-        compatibility_checks = []
-        issues = []
-        
-        # Check if builder can handle the resolved configuration files
-        for file_name, file_info in resolved_files.items():
-            resolved_path = file_info['resolved_path']
-            
-            try:
-                # Check if builder has method to load this configuration
-                if hasattr(builder, 'load_configuration'):
-                    try:
-                        # Test load configuration (dry run)
-                        builder.load_configuration(resolved_path, dry_run=True)
-                        compatibility_checks.append({
-                            'file_name': file_name,
-                            'compatible': True,
-                            'method': 'load_configuration'
-                        })
-                    except Exception as e:
-                        compatibility_checks.append({
-                            'file_name': file_name,
-                            'compatible': False,
-                            'method': 'load_configuration',
-                            'error': str(e)
-                        })
-                        issues.append(ValidationIssue(
-                            severity="WARNING",
-                            category="builder_compatibility",
-                            message=f"Builder may not be compatible with configuration file '{file_name}'",
-                            details={"file_name": file_name, "error": str(e)},
-                            recommendation=f"Verify builder can load configuration from '{file_name}'"
-                        ))
-                else:
-                    # Builder doesn't have explicit configuration loading method
-                    compatibility_checks.append({
-                        'file_name': file_name,
-                        'compatible': True,  # Assume compatible if no explicit method
-                        'method': 'assumed_compatible'
-                    })
-                    
-            except Exception as e:
-                compatibility_checks.append({
-                    'file_name': file_name,
-                    'compatible': False,
-                    'error': str(e)
-                })
-                issues.append(ValidationIssue(
-                    severity="ERROR",
-                    category="builder_compatibility",
-                    message=f"Error checking builder compatibility with '{file_name}': {str(e)}",
-                    details={"file_name": file_name, "error": str(e)},
-                    recommendation=f"Check builder configuration handling for '{file_name}'"
-                ))
-                
-        passed_count = sum(1 for check in compatibility_checks if check.get('compatible', False))
-        failed_count = len(compatibility_checks) - passed_count
-        
-        return CompatibilityValidationResult(
-            compatibility_checks=compatibility_checks,
-            issues=issues,
-            passed_count=passed_count,
-            failed_count=failed_count
-        )
-        
-    def _initialize_format_validators(self) -> Dict[str, Any]:
-        """Initialize format validators for different configuration file types."""
-        
-        validators = {}
-        
-        # JSON validator
-        try:
-            from cursus.validation.json_validator import JSONValidator
-            validators['json'] = JSONValidator()
-        except ImportError:
-            pass
-            
-        # YAML validator
-        try:
-            from cursus.validation.yaml_validator import YAMLValidator
-            validators['yaml'] = YAMLValidator()
-            validators['yml'] = YAMLValidator()
-        except ImportError:
-            pass
-            
-        # TOML validator
-        try:
-            from cursus.validation.toml_validator import TOMLValidator
-            validators['toml'] = TOMLValidator()
-        except ImportError:
-            pass
-            
-        return validators
-        
-    def _detect_file_format(self, file_path: str) -> str:
-        """Detect configuration file format from file extension."""
-        
-        extension = os.path.splitext(file_path)[1].lower()
-        
-        format_mapping = {
-            '.json': 'json',
-            '.yaml': 'yaml',
-            '.yml': 'yaml',
-            '.toml': 'toml',
-            '.ini': 'ini',
-            '.cfg': 'cfg',
-            '.conf': 'conf'
+        return {
+            'cache_size': len(self.resolution_cache),
+            'directory_cache_size': len(self.directory_cache),
+            'strategy_metrics': self.performance_metrics.copy(),
+            'cache_hit_rate': self._calculate_cache_hit_rate()
         }
         
-        return format_mapping.get(extension, 'unknown')
+    def _calculate_cache_hit_rate(self) -> float:
+        """Calculate cache hit rate."""
+        
+        cache_hits = self.performance_metrics.get('cache_hit', {}).get('total_calls', 0)
+        total_calls = sum(
+            metrics.get('total_calls', 0) 
+            for metrics in self.performance_metrics.values()
+        )
+        
+        return cache_hits / total_calls if total_calls > 0 else 0.0
 ```
 
-**Impact**: Provided comprehensive end-to-end infrastructure validation ensuring complete builder-configuration alignment.
+**Impact**: Achieved significant performance improvements with sub-second resolution times and intelligent caching.
 
 ## Implementation Architecture
 
@@ -743,113 +669,120 @@ class InfrastructureValidationFramework:
 class BuilderConfigurationAlignmentTester:
     """Level 4 validation: Builder ↔ Configuration alignment."""
     
-    def __init__(self, registry):
+    def __init__(self, base_directories: Dict[str, str], registry):
+        self.base_directories = base_directories
         self.registry = registry
-        self.file_resolver = HybridFileResolutionSystem(registry)
-        self.registry_integration = ProductionRegistryIntegration()
-        self.infrastructure_validator = InfrastructureValidationFramework(
-            self.file_resolver, self.registry_integration
-        )
+        self.hybrid_resolver = HybridFileResolver(base_directories, registry)
+        self.registry_integration = ProductionRegistryIntegration(registry)
+        self.performance_optimizer = PerformanceOptimizedResolver()
         
     def validate_builder_configuration_alignment(self, builder_name: str) -> ValidationResult:
-        """Validate alignment between builder and its configuration requirements."""
+        """Validate alignment between builder and its configuration files."""
         
         try:
-            # Perform comprehensive infrastructure validation
-            infrastructure_result = self.infrastructure_validator.validate_infrastructure_alignment(builder_name)
-            
-            return ValidationResult(
-                script_name=builder_name,
-                level=4,
-                passed=infrastructure_result.passed,
-                issues=infrastructure_result.issues,
-                success_metrics=infrastructure_result.success_metrics,
-                resolution_details=infrastructure_result.resolution_details,
-                infrastructure_status=infrastructure_result.infrastructure_status
+            # Step 1: Resolve configuration file using hybrid resolution
+            config_resolution = self.hybrid_resolver.resolve_configuration_file(
+                builder_name, 'config'
             )
             
-        except Exception as e:
-            return ValidationResult(
-                script_name=builder_name,
-                level=4,
-                passed=False,
-                issues=[ValidationIssue(
+            # Step 2: Resolve specification file
+            spec_resolution = self.hybrid_resolver.resolve_configuration_file(
+                builder_name, 'specification'
+            )
+            
+            # Step 3: Validate registry consistency
+            registry_consistency = None
+            if config_resolution.success:
+                registry_consistency = self.registry_integration.validate_builder_registry_consistency(
+                    builder_name, config_resolution.file_path
+                )
+                
+            # Step 4: Create validation issues
+            issues = []
+            
+            # Configuration file validation
+            if not config_resolution.success:
+                issues.append(ValidationIssue(
                     severity="ERROR",
-                    category="validation_error",
-                    message=f"Level 4 validation failed: {str(e)}",
-                    details={"error": str(e)},
-                    recommendation="Check builder availability and infrastructure configuration"
-                )],
-                degraded=True,
-                error_context={"exception": str(e)}
-            )
-```
-
-## Success Metrics
-
-### Quantitative Achievements
-- **Success Rate**: 100% (8/8 scripts passing validation)
-- **File Resolution Success**: 100% through three-tier strategy
-- **Infrastructure Validation**: Complete end-to-end verification
-- **Production Integration**: 100% consistency with runtime components
-
-### Qualitative Improvements
-- **Hybrid File Resolution**: Robust three-tier resolution strategy
-- **Production Integration**: Same components as runtime pipeline
-- **Infrastructure Validation**: Comprehensive end-to-end verification
-- **Developer Experience**: Clear infrastructure status reporting
-
-## Performance Optimizations
-
-### File Resolution Caching
-```python
-class FileResolutionCache:
-    """Cache for file resolution results to improve performance."""
-    
-    def __init__(self):
-        self.resolution_cache = {}
-        self.accessibility_cache = {}
-        
-    def get_cached_resolution(self, builder_name: str, config_file: str) -> Optional[Any]:
-        """Get cached file resolution result."""
-        cache_key = f"{builder_name}:{config_file}"
-        return self.resolution_cache.get(cache_key)
-        
-    def cache_resolution(self, builder_name: str, config_file: str, resolution: Any):
-        """Cache file resolution result."""
-        cache_key = f"{builder_name}:{config_file}"
-        self.resolution_cache[cache_key] = resolution
-```
-
-## Future Enhancements
-
-### Advanced Infrastructure Validation
-- **Configuration Schema Validation**: Validate against builder-specific schemas
-- **Runtime Compatibility Testing**: Test actual builder instantiation with configurations
-- **Performance Impact Analysis**: Analyze configuration loading performance
-
-### Enhanced File Resolution
-- **Machine Learning**: Learn optimal resolution strategies from usage patterns
-- **Dynamic Path Discovery**: Discover configuration paths dynamically
-- **Version-Aware Resolution**: Handle versioned configuration files
-
-## Conclusion
-
-Level 4 validation represents the **capstone achievement** of the four-tier validation pyramid. Through hybrid file resolution, production registry integration, and comprehensive infrastructure validation, it achieved **100% success rate** and completes the validation system with robust infrastructure verification.
-
-The three-tier resolution strategy ensures maximum robustness in file resolution, while production integration guarantees consistency between validation and runtime. The infrastructure validation framework provides end-to-end verification of builder-configuration alignment.
-
-**🎉 Level 4 Success Completes the Perfect Validation Pyramid**:
-- **Foundation**: Level 1 (100% success) - Script ↔ Contract alignment ✅
-- **Interface**: Level 2 (100% success) - Contract ↔ Specification alignment ✅
-- **Integration**: Level 3 (100% success) - Specification ↔ Dependencies alignment ✅
-- **Infrastructure**: Level 4 (100% success) - Builder ↔ Configuration alignment ✅
-
-**🏆 PERFECT VALIDATION PYRAMID ACHIEVED**: All four levels now achieve 100% success rate!
-
----
-
-**Level 4 Design Updated**: August 12, 2025  
-**Status**: Production-Ready with 100% Success Rate  
-**Achievement**: Perfect Validation Pyramid - All 4 Levels at 100% Success Rate  
-**Historic Milestone**: Complete validation system achieving perfect alignment across all tiers
+                    category="config_file_missing",
+                    message=f"Configuration file not found for builder '{builder_name}'",
+                    details={
+                        "builder_name": builder_name,
+                        "attempted_strategies": config_resolution.attempted_strategies,
+                        "failure_reason": config_resolution.failure_reason
+                    },
+                    recommendation=f"Create configuration file for builder '{builder_name}' or check naming conventions"
+                ))
+            else:
+                issues.append(ValidationIssue(
+                    severity="INFO",
+                    category="config_file_found",
+                    message=f"Configuration file found for builder '{builder_name}'",
+                    details={
+                        "builder_name": builder_name,
+                        "config_file_path": config_resolution.file_path,
+                        "resolution_strategy": config_resolution.resolution_strategy,
+                        "performance_tier": config_resolution.performance_tier
+                    },
+                    recommendation="No action needed - configuration file successfully located"
+                ))
+                
+            # Specification file validation
+            if not spec_resolution.success:
+                issues.append(ValidationIssue(
+                    severity="WARNING",
+                    category="spec_file_missing",
+                    message=f"Specification file not found for builder '{builder_name}'",
+                    details={
+                        "builder_name": builder_name,
+                        "attempted_strategies": spec_resolution.attempted_strategies,
+                        "failure_reason": spec_resolution.failure_reason
+                    },
+                    recommendation=f"Consider creating specification file for builder '{builder_name}' for better documentation"
+                ))
+            else:
+                issues.append(ValidationIssue(
+                    severity="INFO",
+                    category="spec_file_found",
+                    message=f"Specification file found for builder '{builder_name}'",
+                    details={
+                        "builder_name": builder_name,
+                        "spec_file_path": spec_resolution.file_path,
+                        "resolution_strategy": spec_resolution.resolution_strategy,
+                        "performance_tier": spec_resolution.performance_tier
+                    },
+                    recommendation="No action needed - specification file successfully located"
+                ))
+                
+            # Registry consistency validation
+            if registry_consistency:
+                if not registry_consistency.is_consistent:
+                    issues.append(ValidationIssue(
+                        severity="WARNING",
+                        category="registry_inconsistency",
+                        message=f"Builder name inconsistent with registry for '{builder_name}'",
+                        details={
+                            "builder_name": builder_name,
+                            "canonical_name": registry_consistency.canonical_name,
+                            "expected_config_name": registry_consistency.expected_config_name,
+                            "actual_config_name": registry_consistency.actual_config_name,
+                            "consistency_score": registry_consistency.consistency_score
+                        },
+                        recommendation=f"Consider using canonical name '{registry_consistency.canonical_name}' for consistency"
+                    ))
+                else:
+                    issues.append(ValidationIssue(
+                        severity="INFO",
+                        category="registry_consistent",
+                        message=f"Builder name consistent with registry for '{builder_name}'",
+                        details={
+                            "builder_name": builder_name,
+                            "canonical_name": registry_consistency.canonical_name,
+                            "consistency_score": registry_consistency.consistency_score
+                        },
+                        recommendation="No action needed - builder name is consistent with registry"
+                    ))
+                    
+            # Determine overall success
+            critical_issues = [i for i in issues if i.severity in ['ERROR', 'CRITICAL']]
+            passed = len(critical_issues) ==

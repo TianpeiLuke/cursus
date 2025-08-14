@@ -37,9 +37,33 @@ The Unified Alignment Tester has achieved **revolutionary breakthrough status** 
 
 **Key Achievement**: The critical script-to-contract name mapping issue has been resolved, enabling the `xgboost_model_evaluation` script to pass validation by properly mapping to the `xgboost_model_eval_contract` file.
 
+## August 2025 Refactoring Update
+
+**MAJOR ARCHITECTURAL ENHANCEMENT**: The alignment validation system has been refactored into a modular architecture with step type awareness support, extending validation capabilities to training scripts while maintaining 100% backward compatibility.
+
+### Refactored Module Structure
+```
+src/cursus/validation/alignment/
+├── core_models.py              # Core data models & enums
+├── script_analysis_models.py   # Script analysis structures  
+├── dependency_classifier.py    # Dependency pattern logic
+├── file_resolver.py           # Dynamic file discovery
+├── step_type_detection.py     # Step type & framework detection
+├── utils.py                   # Common utilities
+├── framework_patterns.py      # Framework-specific patterns
+├── alignment_utils.py         # Import aggregator (backward compatibility)
+└── unified_alignment_tester.py # Main validation orchestrator
+```
+
+### Key Refactoring Benefits
+- **Enhanced Step Type Support**: Training script validation with framework detection
+- **Improved Maintainability**: Single-responsibility modules with clear boundaries
+- **Backward Compatibility**: All existing imports continue to work seamlessly
+- **Extended Functionality**: Step type-aware alignment issues and validation rules
+
 ## Overview
 
-The Unified Alignment Tester is a **production-grade validation framework** that ensures alignment across all four critical levels of the pipeline architecture. Through revolutionary breakthroughs in August 2025, it has evolved from a conceptual framework to a **battle-tested, production-ready system** with **100% validation success**.
+The Unified Alignment Tester is a **production-grade validation framework** that ensures alignment across all four critical levels of the pipeline architecture. Through revolutionary breakthroughs in August 2025, including both the 100% success rate achievement and the modular refactoring, it has evolved from a conceptual framework to a **battle-tested, production-ready system** with **100% validation success** and **comprehensive step type awareness**.
 
 ## Architecture Overview
 
@@ -75,6 +99,13 @@ This master document coordinates the following focused design documents:
 - Production-ready component interfaces
 - Enhanced error reporting structures
 - **Updated**: Script-to-contract name mapping data structures
+- **August 2025**: Refactored into modular architecture with step type awareness
+
+#### [SageMaker Step Type-Aware Unified Alignment Tester Design](sagemaker_step_type_aware_unified_alignment_tester_design.md)
+- Step type-aware validation framework design
+- Training script validation support
+- Framework-specific validation patterns
+- Enhanced validation for XGBoost, PyTorch, and other ML frameworks
 
 ### 🔧 **Level-Specific Design Documents**
 

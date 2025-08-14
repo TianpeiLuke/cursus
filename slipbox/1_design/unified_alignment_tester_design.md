@@ -27,6 +27,23 @@ This document has been restructured into multiple focused design documents for b
 **Date**: August 12, 2025  
 **Status**: ✅ **COMPLETE SUCCESS - ALL LEVELS OPERATIONAL AT 100%**
 
+## August 2025 Refactoring Update
+
+**MAJOR ARCHITECTURAL ENHANCEMENT**: The alignment validation system has been refactored into a modular architecture with step type awareness support, extending validation capabilities to training scripts while maintaining 100% backward compatibility.
+
+### Refactored Module Structure
+The system has been decomposed into focused, single-responsibility modules:
+- **core_models.py**: Core data models including StepTypeAwareAlignmentIssue
+- **script_analysis_models.py**: Script analysis data structures
+- **step_type_detection.py**: Step type and framework detection capabilities
+- **file_resolver.py**: Dynamic file discovery and matching
+- **alignment_utils.py**: Import aggregator maintaining backward compatibility
+
+### Key Benefits
+- **Enhanced Step Type Support**: Training script validation with framework detection
+- **Improved Maintainability**: Clear module boundaries and single responsibilities
+- **Extended Functionality**: Step type-aware validation rules and enhanced issue context
+
 ## 🎯 **Main Entry Point**
 
 **Please see**: **[Unified Alignment Tester - Master Design Document](unified_alignment_tester_master_design.md)**

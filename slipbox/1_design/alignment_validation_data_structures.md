@@ -23,6 +23,7 @@ date of note: 2025-08-12
 ## Related Documents
 - **[Master Design](unified_alignment_tester_master_design.md)** - Complete system overview
 - **[Architecture](unified_alignment_tester_architecture.md)** - Core architectural patterns
+- **[SageMaker Step Type-Aware Unified Alignment Tester Design](sagemaker_step_type_aware_unified_alignment_tester_design.md)** - Step type-aware validation framework design
 - **[Implementation Guide](unified_alignment_tester_implementation.md)** - Production implementation details
 - **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - **FOUNDATIONAL** - Comprehensive standardization rules that define the naming conventions, interface standards, and architectural constraints that these data structures implement validation for. The breakthrough data structures documented here enable enforcement of these standardization rules across all validation levels.
 - **[Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)** - Comprehensive analysis of validation challenges that drove the data structure design decisions documented here
@@ -33,90 +34,170 @@ This document defines the critical data structures that emerged from the revolut
 
 **Key Achievement**: The refactored system now achieves **100% validation success** across all 8 scripts, with robust script-to-contract name mapping and comprehensive error handling.
 
-## Core Validation Data Structures
+## Refactored Modular Data Structures (August 2025)
 
-### ValidationIssue (Enhanced Error Reporting)
+**BREAKING CHANGE**: The alignment validation system has been refactored into focused, single-responsibility modules to improve maintainability and extensibility.
+
+### Module Organization
+
+#### Core Models (`core_models.py`)
 ```python
-@dataclass
-class ValidationIssue:
-    """Enhanced validation issue with production-grade diagnostics."""
-    
-    severity: str                           # CRITICAL, ERROR, WARNING, INFO
-    category: str                          # Specific issue type for filtering
-    message: str                           # Human-readable description
-    details: Dict[str, Any]                # Technical details for debugging
-    recommendation: str                    # Specific action to resolve
-    resolution_strategy: Optional[str]     # Which strategy was used/failed
-    confidence_score: Optional[float]      # For Level 3 dependency resolution
-    variant_info: Optional[Dict]           # For Level 2 multi-variant validation
-    timestamp: datetime                    # When issue was detected
-    context: Dict[str, Any]                # Additional context information
-    
-    def is_blocking(self) -> bool:
-        """Check if issue blocks validation success."""
-        return self.severity in ['CRITICAL', 'ERROR']
-        
-    def get_actionable_recommendation(self) -> str:
-        """Get specific actionable recommendation."""
-        if self.resolution_strategy:
-            return f"{self.recommendation} (Strategy: {self.resolution_strategy})"
-        return self.recommendation
+from enum import Enum
+from typing import Dict, List, Any, Optional
+from pydantic import BaseModel, Field
+
+class SeverityLevel(Enum):
+    """Severity levels for alignment issues."""
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
+class AlignmentLevel(Enum):
+    """Alignment validation levels."""
+    SCRIPT_CONTRACT = 1
+    CONTRACT_SPECIFICATION = 2
+    SPECIFICATION_DEPENDENCY = 3
+    BUILDER_CONFIGURATION = 4
+
+class AlignmentIssue(BaseModel):
+    """Base alignment issue with comprehensive context."""
+    level: SeverityLevel
+    category: str
+    message: str
+    details: Dict[str, Any] = Field(default_factory=dict)
+    recommendation: Optional[str] = None
+    alignment_level: Optional[AlignmentLevel] = None
+
+class StepTypeAwareAlignmentIssue(AlignmentIssue):
+    """Extended alignment issue with step type context for training scripts."""
+    step_type: Optional[str] = None              # Training, Processing, CreateModel
+    framework_context: Optional[str] = None     # XGBoost, PyTorch, sklearn
+    reference_examples: List[str] = Field(default_factory=list)
 ```
 
-### ValidationResult (Comprehensive Results)
+#### Script Analysis Models (`script_analysis_models.py`)
 ```python
-@dataclass
-class ValidationResult:
-    """Comprehensive validation result with success metrics."""
-    
-    test_name: str                        # Unique test identifier
-    passed: bool                          # Overall pass/fail status
-    details: Dict[str, Any]               # Validation details and context
-    issues: List[AlignmentIssue] = field(default_factory=list)  # All detected issues
-    
-    def add_issue(self, issue: AlignmentIssue) -> None:
-        """Add an alignment issue to this result."""
-        self.issues.append(issue)
-        
-    def get_critical_issues(self) -> List[AlignmentIssue]:
-        """Get all critical issues."""
-        return [issue for issue in self.issues if issue.level == SeverityLevel.CRITICAL]
-        
-    def get_error_issues(self) -> List[AlignmentIssue]:
-        """Get all error issues."""
-        return [issue for issue in self.issues if issue.level == SeverityLevel.ERROR]
-        
-    def get_success_rate(self) -> float:
-        """Calculate success rate based on issue severity."""
-        if not self.issues:
-            return 1.0
-        blocking_issues = len([i for i in self.issues if i.level in [SeverityLevel.CRITICAL, SeverityLevel.ERROR]])
-        return max(0.0, 1.0 - (blocking_issues / len(self.issues)))
+class PathReference(BaseModel):
+    """Path reference found in script analysis."""
+    path: str
+    line_number: int
+    context: str
+    is_hardcoded: bool = True
+    construction_method: Optional[str] = None
+
+class ImportStatement(BaseModel):
+    """Import statement found in script analysis."""
+    module_name: str
+    import_alias: Optional[str]
+    line_number: int
+    is_from_import: bool = False
+    imported_items: List[str] = Field(default_factory=list)
+
+class ArgumentDefinition(BaseModel):
+    """Command-line argument definition."""
+    argument_name: str
+    line_number: int
+    is_required: bool = False
+    has_default: bool = False
+    default_value: Optional[Any] = None
+    argument_type: Optional[str] = None
+    choices: Optional[List[str]] = None
 ```
 
-### AlignmentIssue (Structured Issue Reporting)
+#### Dependency Classification (`dependency_classifier.py`)
 ```python
-@dataclass
-class AlignmentIssue:
-    """Structured alignment issue with comprehensive context."""
+from enum import Enum
+
+class DependencyPattern(Enum):
+    """Types of dependency patterns for classification."""
+    PIPELINE_DEPENDENCY = "pipeline"
+    EXTERNAL_INPUT = "external"
+    CONFIGURATION = "configuration"
+    ENVIRONMENT = "environment"
+
+class DependencyPatternClassifier:
+    """Classify dependencies by pattern type for appropriate validation."""
     
-    level: SeverityLevel                   # CRITICAL, ERROR, WARNING, INFO
-    category: str                          # Issue category for filtering
-    message: str                           # Human-readable description
-    details: Dict[str, Any] = field(default_factory=dict)  # Technical details
-    recommendation: Optional[str] = None   # Actionable recommendation
-    alignment_level: Optional[AlignmentLevel] = None  # Which alignment level
+    def classify_dependency(self, dependency_info: Dict[str, Any]) -> DependencyPattern:
+        """Classify dependency pattern for appropriate validation."""
+        # Intelligent classification logic to reduce false positives
+        
+    def should_validate_pipeline_resolution(self, pattern: DependencyPattern) -> bool:
+        """Determine if dependency requires pipeline resolution validation."""
+        return pattern == DependencyPattern.PIPELINE_DEPENDENCY
+```
+
+#### Step Type Detection (`step_type_detection.py`)
+```python
+def detect_step_type_from_registry(script_name: str) -> str:
+    """Use existing step registry to determine SageMaker step type."""
+    # Returns: Training, Processing, CreateModel, etc.
+
+def detect_framework_from_imports(imports: List[ImportStatement]) -> Optional[str]:
+    """Detect ML framework from import analysis."""
+    # Returns: xgboost, pytorch, sklearn, etc.
+
+def get_step_type_context(script_name: str, script_content: Optional[str] = None) -> dict:
+    """Get comprehensive step type context for a script."""
+    # Combines registry and pattern-based detection
+```
+
+#### File Resolution (`file_resolver.py`)
+```python
+class FlexibleFileResolver:
+    """Dynamic file resolution with intelligent pattern matching."""
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            'severity': self.level.value,
-            'category': self.category,
-            'message': self.message,
-            'details': self.details,
-            'recommendation': self.recommendation,
-            'alignment_level': self.alignment_level.value if self.alignment_level else None
-        }
+    def find_contract_file(self, script_name: str) -> Optional[str]:
+        """Find contract file using multiple strategies."""
+        
+    def find_spec_file(self, script_name: str) -> Optional[str]:
+        """Find specification file using dynamic discovery."""
+        
+    def find_builder_file(self, script_name: str) -> Optional[str]:
+        """Find builder file using dynamic discovery."""
+        
+    def find_all_component_files(self, script_name: str) -> Dict[str, Optional[str]]:
+        """Find all component files for a given script."""
+```
+
+#### Utility Functions (`utils.py`)
+```python
+def normalize_path(path: str) -> str:
+    """Normalize a path for comparison purposes."""
+
+def extract_logical_name_from_path(path: str) -> Optional[str]:
+    """Extract logical name from a SageMaker path."""
+
+def is_sagemaker_path(path: str) -> bool:
+    """Check if a path is a SageMaker container path."""
+
+def format_alignment_issue(issue: AlignmentIssue) -> str:
+    """Format an alignment issue for display."""
+
+def group_issues_by_severity(issues: List[AlignmentIssue]) -> Dict[SeverityLevel, List[AlignmentIssue]]:
+    """Group alignment issues by severity level."""
+```
+
+#### Import Aggregator (`alignment_utils.py`)
+```python
+"""
+Backward compatibility import aggregator.
+Maintains existing interface while organizing code into focused modules.
+"""
+
+# Re-exports all public APIs from specialized modules
+from .core_models import (
+    SeverityLevel, AlignmentLevel, AlignmentIssue, StepTypeAwareAlignmentIssue,
+    create_alignment_issue, create_step_type_aware_alignment_issue
+)
+from .script_analysis_models import (
+    PathReference, EnvVarAccess, ImportStatement, ArgumentDefinition
+)
+from .dependency_classifier import (
+    DependencyPattern, DependencyPatternClassifier
+)
+# ... and all other modules
 ```
 
 ## Level 1: Script ↔ Contract Data Structures

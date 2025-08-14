@@ -34,6 +34,58 @@ The Unified Alignment Tester implements a **four-tier validation pyramid archite
 
 **Key Achievement**: On August 12, 2025, the critical script-to-contract name mapping breakthrough was achieved, enabling the system to reach **100% validation success** across all 8 scripts and all 4 validation levels.
 
+## August 2025 Refactoring Update
+
+**MAJOR ARCHITECTURAL ENHANCEMENT**: The alignment validation system has been refactored into a modular architecture with step type awareness support, extending validation capabilities to training scripts while maintaining the proven four-tier validation pyramid.
+
+### Refactored Implementation Architecture
+
+The system now implements a **modular component architecture** within the four-tier validation pyramid:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           Refactored Modular Architecture                   │
+│        (August 2025 - Step Type Aware)                     │
+├─────────────────────────────────────────────────────────────┤
+│  src/cursus/validation/alignment/                           │
+│  ├── core_models.py              # Core data models        │
+│  ├── script_analysis_models.py   # Script analysis         │
+│  ├── dependency_classifier.py    # Dependency logic        │
+│  ├── file_resolver.py           # Dynamic file discovery   │
+│  ├── step_type_detection.py     # Step type & framework    │
+│  ├── utils.py                   # Common utilities         │
+│  ├── framework_patterns.py      # Framework-specific       │
+│  ├── alignment_utils.py         # Import aggregator        │
+│  └── unified_alignment_tester.py # Main orchestrator       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Enhancements
+
+1. **Step Type Awareness Integration**: New `step_type_detection.py` module provides:
+   - Registry-based step type detection
+   - Framework detection from imports and patterns
+   - Step type-aware validation rules
+   - Enhanced issue context with step type information
+
+2. **Modular Component Design**: Each module has single responsibility:
+   - `core_models.py`: Enhanced with `StepTypeAwareAlignmentIssue`
+   - `script_analysis_models.py`: Focused script analysis data structures
+   - `dependency_classifier.py`: Intelligent dependency pattern classification
+   - `file_resolver.py`: Dynamic file discovery and matching capabilities
+
+3. **Backward Compatibility Architecture**: `alignment_utils.py` serves as:
+   - Import aggregator maintaining all existing interfaces
+   - Clean re-export of all public APIs
+   - Zero breaking changes for existing consumers
+   - Seamless migration path for enhanced functionality
+
+4. **Training Script Support**: Extended validation capabilities:
+   - Framework-specific pattern detection (XGBoost, PyTorch)
+   - Training-specific validation rules
+   - Step type-aware alignment issues
+   - Enhanced context for training script validation
+
 ## Core Architecture Pattern: Four-Tier Validation Pyramid
 
 ```
