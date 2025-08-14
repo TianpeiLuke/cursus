@@ -322,6 +322,118 @@ calibration_configs = [c for c in configs if
     getattr(c, "job_type", None) == "calibration" or not hasattr(c, "job_type")]
 ```
 
+## Dependency Resolution Integration
+
+### Job Type Normalization for Compatibility
+
+The dependency resolver includes intelligent job type normalization to handle step type variants with job suffixes. This addresses the classical job type variants issue where step types like `TabularPreprocessing_Training` need to be normalized to `TabularPreprocessing` for compatibility checking against `compatible_sources`.
+
+```python
+def _normalize_step_type_for_compatibility(self, step_type: str) -> str:
+    """
+    Normalize step type by removing job type suffixes for compatibility checking.
+    
+    This handles the classical job type variants issue where step types like
+    "TabularPreprocessing_Training" need to be normalized to "TabularPreprocessing"
+    for compatibility checking against compatible_sources.
+    
+    Uses the centralized registry function to ensure consistency.
+    """
+    try:
+        # Import here to avoid circular imports
+        from src.cursus.steps.registry.step_names import get_step_name_from_spec_type, get_spec_step_type
+        
+        # Use the registry function to get canonical name, then get the base spec type
+        canonical_name = get_step_name_from_spec_type(step_type)
+        normalized = get_spec_step_type(canonical_name)
+        
+        if normalized != step_type:
+            logger.debug(f"Normalized step type '{step_type}' -> '{normalized}' for compatibility checking")
+        
+        return normalized
+        
+    except Exception as e:
+        # Fallback to manual normalization if registry lookup fails
+        logger.debug(f"Registry normalization failed for '{step_type}': {e}, using fallback")
+        
+        job_type_suffixes = ['_Training', '_Testing', '_Validation', '_Calibration']
+        for suffix in job_type_suffixes:
+            if step_type.endswith(suffix):
+                normalized = step_type[:-len(suffix)]
+                logger.debug(f"Fallback normalized step type '{step_type}' -> '{normalized}'")
+                return normalized
+        
+        return step_type
+```
+
+### Integration in Compatibility Scoring
+
+The normalization is integrated into the dependency resolver's compatibility scoring process:
+
+```python
+def _calculate_compatibility(self, dep_spec: DependencySpec, output_spec: OutputSpec,
+                           provider_spec: StepSpecification) -> float:
+    # ... other scoring factors ...
+    
+    # 4. Compatible source check (10% weight) with job type normalization
+    if dep_spec.compatible_sources:
+        # Normalize the provider step type for compatibility checking
+        normalized_provider_type = self._normalize_step_type_for_compatibility(provider_spec.step_type)
+        
+        if normalized_provider_type in dep_spec.compatible_sources:
+            score += 0.1
+    else:
+        # If no compatible sources specified, give small bonus for any match
+        score += 0.05
+    
+    # ... rest of scoring ...
+```
+
+### Example Resolution Scenario
+
+Consider a dependency resolution scenario with job type variants:
+
+```python
+# Provider specification (job type variant)
+provider_spec = StepSpecification(
+    step_type="TabularPreprocessing_Training",  # Job type variant
+    outputs=[
+        OutputSpec(
+            logical_name="processed_data",
+            output_type=DependencyType.PROCESSING_OUTPUT,
+            # ...
+        )
+    ]
+)
+
+# Consumer specification
+consumer_spec = StepSpecification(
+    step_type="XGBoostTraining",
+    dependencies=[
+        DependencySpec(
+            logical_name="training_data",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            compatible_sources=["TabularPreprocessing"],  # Base type, not variant
+            # ...
+        )
+    ]
+)
+
+# Resolution process:
+# 1. Resolver normalizes "TabularPreprocessing_Training" -> "TabularPreprocessing"
+# 2. Checks if "TabularPreprocessing" in ["TabularPreprocessing"] -> True
+# 3. Adds 0.1 to compatibility score for source match
+# 4. Successfully resolves dependency
+```
+
+### Benefits of Job Type Normalization
+
+1. **Seamless Compatibility**: Job type variants automatically match base types in `compatible_sources`
+2. **Registry Integration**: Uses centralized step name registry for consistent normalization
+3. **Fallback Support**: Manual normalization if registry lookup fails
+4. **Backward Compatibility**: Existing specifications work without modification
+5. **Improved Resolution**: Better dependency resolution for job type variants
+
 ## Benefits
 
 1. **Reuse Classes**: Use the same config class for different purposes
@@ -330,6 +442,8 @@ calibration_configs = [c for c in configs if
 4. **Data Flow Control**: Direct different datasets through specialized processing paths
 5. **Improved Error Messages**: More context-aware error messages
 6. **Simplified Configuration**: Automatic specification selection based on job_type
+7. **Intelligent Dependency Resolution**: Automatic normalization for compatibility checking
+8. **Registry Consistency**: Centralized job type handling across the system
 
 ## Challenges and Solutions
 

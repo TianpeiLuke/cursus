@@ -265,9 +265,12 @@ class UnifiedDependencyResolver:
         else:
             breakdown['exact_match_bonus'] = 0.0
         
-        # 5. Compatible source check (10% weight)
+        # 5. Compatible source check with job type normalization (10% weight)
         if dep_spec.compatible_sources:
-            if provider_spec.step_type in dep_spec.compatible_sources:
+            # Normalize the provider step type for compatibility checking
+            normalized_step_type = self._normalize_step_type_for_compatibility(provider_spec.step_type)
+            
+            if normalized_step_type in dep_spec.compatible_sources:
                 breakdown['source_compatibility'] = 0.1
             else:
                 breakdown['source_compatibility'] = 0.0
@@ -401,9 +404,12 @@ class UnifiedDependencyResolver:
         elif dep_spec.logical_name in output_spec.aliases:
             score += 0.05  # Exact alias match bonus
         
-        # 4. Compatible source check (10% weight)
+        # 4. Compatible source check with job type normalization (10% weight)
         if dep_spec.compatible_sources:
-            if provider_spec.step_type in dep_spec.compatible_sources:
+            # Normalize the provider step type for compatibility checking
+            normalized_step_type = self._normalize_step_type_for_compatibility(provider_spec.step_type)
+            
+            if normalized_step_type in dep_spec.compatible_sources:
                 score += 0.1
         else:
             # If no compatible sources specified, give small bonus for any match
@@ -444,6 +450,48 @@ class UnifiedDependencyResolver:
         
         compatible_types = compatibility_map.get(dep_data_type, [dep_data_type])
         return output_data_type in compatible_types
+    
+    def _normalize_step_type_for_compatibility(self, step_type: str) -> str:
+        """
+        Normalize step type by removing job type suffixes for compatibility checking.
+        
+        This handles the classical job type variants issue where step types like
+        "TabularPreprocessing_Training" need to be normalized to "TabularPreprocessing"
+        for compatibility checking against compatible_sources.
+        
+        Uses the centralized registry function to ensure consistency.
+        
+        Args:
+            step_type: Original step type (e.g., "TabularPreprocessing_Training")
+            
+        Returns:
+            Normalized step type (e.g., "TabularPreprocessing")
+        """
+        try:
+            # Import here to avoid circular imports
+            from ...steps.registry.step_names import get_step_name_from_spec_type, get_spec_step_type
+            
+            # Use the registry function to get canonical name, then get the base spec type
+            canonical_name = get_step_name_from_spec_type(step_type)
+            normalized = get_spec_step_type(canonical_name)
+            
+            if normalized != step_type:
+                logger.debug(f"Normalized step type '{step_type}' -> '{normalized}' for compatibility checking")
+            
+            return normalized
+            
+        except Exception as e:
+            # Fallback to manual normalization if registry lookup fails
+            logger.debug(f"Registry normalization failed for '{step_type}': {e}, using fallback")
+            
+            job_type_suffixes = ['_Training', '_Testing', '_Validation', '_Calibration']
+            for suffix in job_type_suffixes:
+                if step_type.endswith(suffix):
+                    normalized = step_type[:-len(suffix)]
+                    logger.debug(f"Fallback normalized step type '{step_type}' -> '{normalized}'")
+                    return normalized
+            
+            return step_type
     
     def _calculate_keyword_match(self, keywords: List[str], output_name: str) -> float:
         """Calculate keyword matching score."""

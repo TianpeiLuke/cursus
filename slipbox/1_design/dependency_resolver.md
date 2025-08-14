@@ -153,7 +153,7 @@ The resolver works with context-specific registries managed by the RegistryManag
 
 ```python
 # Get context-specific registry
-from src.pipeline_deps.registry_manager import get_registry
+from src.cursus.core.deps.registry_manager import get_registry
 
 # Each pipeline gets its own isolated registry
 fraud_registry = get_registry("fraud_detection")
@@ -192,7 +192,121 @@ class UnifiedDependencyResolver:
         return resolved
 ```
 
-### 6. Comprehensive Error Handling
+### 6. Job Type Normalization for Source Compatibility
+
+The resolver includes intelligent job type normalization to handle step type variants with job suffixes. This addresses the classical job type variants issue where step types like `TabularPreprocessing_Training` need to be normalized to `TabularPreprocessing` for compatibility checking against `compatible_sources`.
+
+```python
+def _normalize_step_type_for_compatibility(self, step_type: str) -> str:
+    """
+    Normalize step type by removing job type suffixes for compatibility checking.
+    
+    This handles the classical job type variants issue where step types like
+    "TabularPreprocessing_Training" need to be normalized to "TabularPreprocessing"
+    for compatibility checking against compatible_sources.
+    
+    Uses the centralized registry function to ensure consistency.
+    """
+    try:
+        # Import here to avoid circular imports
+        from src.cursus.steps.registry.step_names import get_step_name_from_spec_type, get_spec_step_type
+        
+        # Use the registry function to get canonical name, then get the base spec type
+        canonical_name = get_step_name_from_spec_type(step_type)
+        normalized = get_spec_step_type(canonical_name)
+        
+        if normalized != step_type:
+            logger.debug(f"Normalized step type '{step_type}' -> '{normalized}' for compatibility checking")
+        
+        return normalized
+        
+    except Exception as e:
+        # Fallback to manual normalization if registry lookup fails
+        logger.debug(f"Registry normalization failed for '{step_type}': {e}, using fallback")
+        
+        job_type_suffixes = ['_Training', '_Testing', '_Validation', '_Calibration']
+        for suffix in job_type_suffixes:
+            if step_type.endswith(suffix):
+                normalized = step_type[:-len(suffix)]
+                logger.debug(f"Fallback normalized step type '{step_type}' -> '{normalized}'")
+                return normalized
+        
+        return step_type
+```
+
+**Integration in Compatibility Scoring:**
+
+The normalization is integrated into the compatibility scoring process:
+
+```python
+def _calculate_compatibility(self, dep_spec: DependencySpec, output_spec: OutputSpec,
+                           provider_spec: StepSpecification) -> float:
+    # ... other scoring factors ...
+    
+    # 4. Compatible source check (10% weight) with job type normalization
+    if dep_spec.compatible_sources:
+        # Normalize the provider step type for compatibility checking
+        normalized_provider_type = self._normalize_step_type_for_compatibility(provider_spec.step_type)
+        
+        if normalized_provider_type in dep_spec.compatible_sources:
+            score += 0.1
+    else:
+        # If no compatible sources specified, give small bonus for any match
+        score += 0.05
+    
+    # ... rest of scoring ...
+```
+
+**Key Benefits:**
+- **Handles Job Type Variants**: Automatically normalizes `TabularPreprocessing_Training` → `TabularPreprocessing`
+- **Registry Integration**: Uses centralized step name registry for consistent normalization
+- **Fallback Support**: Manual normalization if registry lookup fails
+- **Improved Resolution**: Enables proper source compatibility matching for job type variants
+- **Backward Compatibility**: Works with existing specifications without modification
+
+### 7. Enhanced Semantic Matching with Aliases
+
+The resolver supports alias-aware semantic matching for improved dependency resolution:
+
+```python
+def calculate_similarity_with_aliases(self, name: str, output_spec) -> float:
+    """
+    Calculate semantic similarity between a name and an output specification,
+    considering both logical_name and all aliases.
+    
+    Returns the highest similarity score between name and any name in output_spec.
+    """
+    # Start with similarity to logical_name
+    best_score = self.calculate_similarity(name, output_spec.logical_name)
+    best_match = output_spec.logical_name
+    
+    # Check each alias
+    for alias in output_spec.aliases:
+        alias_score = self.calculate_similarity(name, alias)
+        if alias_score > best_score:
+            best_score = alias_score
+            best_match = alias
+    
+    return best_score
+```
+
+**Example Usage:**
+```python
+# Output specification with aliases
+output_spec = OutputSpec(
+    logical_name="processed_data",
+    aliases=["input_path", "training_data", "model_input_data"]
+)
+
+# Dependency looking for "input_path"
+dependency_name = "input_path"
+
+# Resolver finds perfect match through alias
+score = semantic_matcher.calculate_similarity_with_aliases(dependency_name, output_spec)
+# Returns 1.0 (perfect match via alias)
+```
+
+### 8. Comprehensive Error Handling
 
 The resolver provides detailed error reporting and debugging capabilities:
 
@@ -222,7 +336,7 @@ def get_resolution_report(self, available_steps: List[str]) -> Dict[str, any]:
 The resolver consumes [step specifications](step_specification.md) to understand step capabilities:
 
 ```python
-from src.pipeline_deps.base_specifications import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
+from cursus.core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 
 # Define step specification
 XGBOOST_TRAINING_SPEC = StepSpecification(
@@ -256,8 +370,8 @@ resolved = resolver.resolve_step_dependencies("training", ["preprocessing", "tra
 The resolver works with any specification registry through dependency injection:
 
 ```python
-from src.pipeline_deps.specification_registry import SpecificationRegistry
-from src.pipeline_deps.dependency_resolver import UnifiedDependencyResolver
+from src.cursus.core.deps.specification_registry import SpecificationRegistry
+from src.cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
 
 # Create context-specific registry
 pipeline_registry = SpecificationRegistry("fraud_detection")
@@ -278,7 +392,7 @@ resolved = resolver.resolve_all_dependencies(["preprocessing", "training"])
 The registry manager coordinates multiple isolated contexts:
 
 ```python
-from src.pipeline_deps.registry_manager import get_registry, list_contexts, get_context_stats
+from src.cursus.core.deps.registry_manager import get_registry, list_contexts, get_context_stats
 
 # Get registries for different pipelines
 fraud_registry = get_registry("fraud_detection")
@@ -341,8 +455,8 @@ RESOLUTION_THRESHOLD = 0.5  # Minimum score for automatic resolution
 ### 1. Basic Resolution
 
 ```python
-from src.pipeline_deps.dependency_resolver import UnifiedDependencyResolver
-from src.pipeline_deps.registry_manager import get_registry
+from src.cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
+from src.cursus.core.deps.registry_manager import get_registry
 
 # Get context-specific registry
 registry = get_registry("my_pipeline")
@@ -433,7 +547,7 @@ for dep_name, prop_ref in resolved.items():
 ### 5. Error Handling
 
 ```python
-from src.pipeline_deps.dependency_resolver import DependencyResolutionError
+from src.cursus.core.deps.dependency_resolver import DependencyResolutionError
 
 try:
     resolved = resolver.resolve_all_dependencies(["training", "registration"])
@@ -511,7 +625,7 @@ fraud_registry = get_registry("fraud_detection_v2")
 credit_registry = get_registry("credit_scoring_prod")
 
 # Clear contexts when no longer needed
-from src.pipeline_deps.registry_manager import clear_context
+from src.cursus.core.deps.registry_manager import clear_context
 clear_context("temporary_experiment")
 ```
 

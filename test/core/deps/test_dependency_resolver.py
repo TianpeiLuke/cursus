@@ -2,14 +2,16 @@ import unittest
 from src.cursus.core.deps import (
     UnifiedDependencyResolver,
     SpecificationRegistry,
+    SemanticMatcher,
+    DependencyResolutionError,
+    PropertyReference,
+)
+from src.cursus.core.base import (
     StepSpecification,
     OutputSpec,
     DependencySpec,
     DependencyType,
     NodeType,
-    PropertyReference,
-    SemanticMatcher,
-    DependencyResolutionError,
 )
 
 class TestDependencyResolver(unittest.TestCase):
@@ -685,6 +687,70 @@ class TestDependencyResolver(unittest.TestCase):
         self.assertEqual(resolved["evaluation"]["test_data"].step_name, "preprocessing")
         # Given the added semantic keywords, it should now match with validation_data
         self.assertEqual(resolved["evaluation"]["test_data"].output_spec.logical_name, "validation_data")
+
+    def test_job_type_normalization(self):
+        """Test that job type normalization works correctly for compatible sources."""
+        registry = SpecificationRegistry()
+        semantic_matcher = SemanticMatcher()
+        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
+        
+        # Create a producer step with job type suffix
+        producer_spec = StepSpecification(
+            step_type="TabularPreprocessing_Training",  # Job type variant
+            node_type="source",
+            outputs=[
+                OutputSpec(
+                    logical_name="processed_data",
+                    output_type=DependencyType.PROCESSING_OUTPUT,
+                    property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+                    data_type="S3Uri"
+                )
+            ]
+        )
+        
+        # Create a consumer step that expects the base step type (without job suffix)
+        consumer_spec = StepSpecification(
+            step_type="XGBoostTraining",
+            node_type="sink",
+            dependencies=[
+                DependencySpec(
+                    logical_name="training_data",
+                    dependency_type=DependencyType.PROCESSING_OUTPUT,
+                    required=True,
+                    compatible_sources=["TabularPreprocessing"],  # Base type without job suffix
+                    data_type="S3Uri"
+                )
+            ]
+        )
+        
+        # Register the steps
+        registry.register("preprocessing", producer_spec)
+        registry.register("training", consumer_spec)
+        
+        # Resolve dependencies - this should work due to job type normalization
+        resolved = resolver.resolve_step_dependencies("training", ["preprocessing"])
+        
+        # Assert that resolution was successful despite the job type suffix
+        self.assertIn("training_data", resolved)
+        self.assertEqual(resolved["training_data"].step_name, "preprocessing")
+        self.assertEqual(resolved["training_data"].output_spec.logical_name, "processed_data")
+        
+        # Test the normalization method directly
+        normalized = resolver._normalize_step_type_for_compatibility("TabularPreprocessing_Training")
+        self.assertEqual(normalized, "TabularPreprocessing")
+        
+        # Test with other job type suffixes
+        test_cases = [
+            ("TabularPreprocessing_Testing", "TabularPreprocessing"),
+            ("TabularPreprocessing_Validation", "TabularPreprocessing"),
+            ("TabularPreprocessing_Calibration", "TabularPreprocessing"),
+            ("XGBoostTraining", "XGBoostTraining"),  # No suffix, should remain unchanged
+        ]
+        
+        for input_type, expected_output in test_cases:
+            normalized = resolver._normalize_step_type_for_compatibility(input_type)
+            self.assertEqual(normalized, expected_output, 
+                           f"Failed to normalize {input_type} to {expected_output}, got {normalized}")
 
 
 if __name__ == '__main__':

@@ -105,9 +105,12 @@ def _calculate_compatibility(self, dep_spec: DependencySpec, output_spec: Output
     elif dep_spec.logical_name in output_spec.aliases:
         score += 0.05  # Exact alias match bonus
     
-    # 4. Compatible source check (10% weight)
+    # 4. Compatible source check with job type normalization (10% weight)
     if dep_spec.compatible_sources:
-        if provider_spec.step_type in dep_spec.compatible_sources:
+        # Normalize the provider step type for compatibility checking
+        normalized_step_type = self._normalize_step_type_for_compatibility(provider_spec.step_type)
+        
+        if normalized_step_type in dep_spec.compatible_sources:
             score += 0.1
     else:
         # If no compatible sources specified, give small bonus for any match
@@ -158,7 +161,57 @@ def _are_data_types_compatible(self, dep_data_type: str, output_data_type: str) 
 
 This design allows for flexible matching while still enforcing type safety.
 
-### 4. Resolution Strategy
+### 4. Job Type Normalization
+
+The resolver includes a critical feature for handling job type variants through step type normalization:
+
+```python
+def _normalize_step_type_for_compatibility(self, step_type: str) -> str:
+    """
+    Normalize step type by removing job type suffixes for compatibility checking.
+    
+    This handles the classical job type variants issue where step types like
+    "TabularPreprocessing_Training" need to be normalized to "TabularPreprocessing"
+    for compatibility checking against compatible_sources.
+    
+    Uses the centralized registry function to ensure consistency.
+    
+    Args:
+        step_type: Original step type (e.g., "TabularPreprocessing_Training")
+        
+    Returns:
+        Normalized step type (e.g., "TabularPreprocessing")
+    """
+    try:
+        # Import here to avoid circular imports
+        from ...steps.registry.step_names import get_step_name_from_spec_type, get_spec_step_type
+        
+        # Use the registry function to get canonical name, then get the base spec type
+        canonical_name = get_step_name_from_spec_type(step_type)
+        normalized = get_spec_step_type(canonical_name)
+        
+        if normalized != step_type:
+            logger.debug(f"Normalized step type '{step_type}' -> '{normalized}' for compatibility checking")
+        
+        return normalized
+        
+    except Exception as e:
+        # Fallback to manual normalization if registry lookup fails
+        logger.debug(f"Registry normalization failed for '{step_type}': {e}, using fallback")
+        
+        job_type_suffixes = ['_Training', '_Testing', '_Validation', '_Calibration']
+        for suffix in job_type_suffixes:
+            if step_type.endswith(suffix):
+                normalized = step_type[:-len(suffix)]
+                logger.debug(f"Fallback normalized step type '{step_type}' -> '{normalized}'")
+                return normalized
+        
+        return step_type
+```
+
+This normalization is crucial for handling the "job type variants" problem where the same logical step type (e.g., "TabularPreprocessing") appears with different job-specific suffixes (e.g., "TabularPreprocessing_Training", "TabularPreprocessing_Testing"). The normalization ensures that dependency compatibility checks work correctly by comparing the base step types rather than the job-specific variants.
+
+### 5. Resolution Strategy
 
 The resolver uses a strategic approach to dependency resolution:
 
@@ -242,6 +295,28 @@ def resolve_step_dependencies(self, consumer_step: str,
         Dictionary mapping dependency names to property references
     """
 ```
+
+### Advanced Resolution with Scoring
+
+```python
+def resolve_with_scoring(self, consumer_step: str, available_steps: List[str]) -> Dict[str, any]:
+    """
+    Resolve dependencies with detailed compatibility scoring.
+    
+    Args:
+        consumer_step: Name of the step whose dependencies to resolve
+        available_steps: List of available step names
+        
+    Returns:
+        Dictionary with resolved dependencies and detailed scoring information
+    """
+```
+
+This method provides detailed scoring information for each dependency resolution attempt, including:
+- Successfully resolved dependencies with their property references
+- Failed resolutions with scoring details for the best candidates
+- Complete candidate lists with compatibility scores
+- Resolution context and metadata
 
 ### Debugging and Reporting
 

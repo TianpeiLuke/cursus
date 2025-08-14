@@ -10,10 +10,10 @@
         "details": {
           "script": "dummy_training",
           "testability_parameters": [
+            "output_paths",
             "job_args",
-            "environ_vars",
             "input_paths",
-            "output_paths"
+            "environ_vars"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -222,8 +222,8 @@
             "compatible_sources": [
               "ProcessingStep",
               "XGBoostTraining",
-              "PytorchTraining",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -263,8 +263,8 @@
             "compatible_sources": [
               "ProcessingStep",
               "XGBoostTraining",
-              "PytorchTraining",
-              "TabularPreprocessing"
+              "TabularPreprocessing",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -303,8 +303,8 @@
               "compatible_sources": [
                 "ProcessingStep",
                 "XGBoostTraining",
-                "PytorchTraining",
-                "TabularPreprocessing"
+                "TabularPreprocessing",
+                "PytorchTraining"
               ],
               "data_type": "S3Uri",
               "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -340,8 +340,8 @@
           "compatible_sources": [
             "ProcessingStep",
             "XGBoostTraining",
-            "PytorchTraining",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -450,8 +450,8 @@
           "compatible_sources": [
             "ProcessingStep",
             "XGBoostTraining",
-            "PytorchTraining",
-            "TabularPreprocessing"
+            "TabularPreprocessing",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -880,7 +880,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-08-14T09:10:04.797281",
+    "validation_timestamp": "2025-08-14T09:40:43.717263",
     "validator_version": "1.0.0"
   }
 }

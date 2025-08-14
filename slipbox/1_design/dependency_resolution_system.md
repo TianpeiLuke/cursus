@@ -211,6 +211,52 @@ class OutputSpec(BaseModel):
 
 ## Advanced Features
 
+### Job Type Normalization
+
+The system includes intelligent job type normalization to handle step type variants with job suffixes:
+
+```python
+def _normalize_step_type_for_compatibility(self, step_type: str) -> str:
+    """
+    Normalize step type by removing job type suffixes for compatibility checking.
+    
+    This handles the classical job type variants issue where step types like
+    "TabularPreprocessing_Training" need to be normalized to "TabularPreprocessing"
+    for compatibility checking against compatible_sources.
+    """
+    try:
+        # Import here to avoid circular imports
+        from src.cursus.steps.registry.step_names import get_step_name_from_spec_type, get_spec_step_type
+        
+        # Use the registry function to get canonical name, then get the base spec type
+        canonical_name = get_step_name_from_spec_type(step_type)
+        normalized = get_spec_step_type(canonical_name)
+        
+        if normalized != step_type:
+            logger.debug(f"Normalized step type '{step_type}' -> '{normalized}' for compatibility checking")
+        
+        return normalized
+        
+    except Exception as e:
+        # Fallback to manual normalization if registry lookup fails
+        logger.debug(f"Registry normalization failed for '{step_type}': {e}, using fallback")
+        
+        job_type_suffixes = ['_Training', '_Testing', '_Validation', '_Calibration']
+        for suffix in job_type_suffixes:
+            if step_type.endswith(suffix):
+                normalized = step_type[:-len(suffix)]
+                logger.debug(f"Fallback normalized step type '{step_type}' -> '{normalized}'")
+                return normalized
+        
+        return step_type
+```
+
+**Benefits:**
+- **Handles Job Type Variants**: Automatically normalizes `TabularPreprocessing_Training` → `TabularPreprocessing`
+- **Registry Integration**: Uses centralized step name registry for consistent normalization
+- **Fallback Support**: Manual normalization if registry lookup fails
+- **Improved Resolution**: Enables proper source compatibility matching for job type variants
+
 ### Resolution with Detailed Scoring
 
 ```python
@@ -283,7 +329,7 @@ logger.debug(f"Alternative matches: [('training.evaluation_output', 0.740)]")
 ### Basic Resolution
 
 ```python
-from src.cursus.core.deps import create_dependency_resolver
+from src.cursus.core.deps.factory import create_dependency_resolver
 
 # Create resolver
 resolver = create_dependency_resolver()
