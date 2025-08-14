@@ -54,7 +54,7 @@ except ImportError:
     CRADLE_DATA_LOADING_CONTRACT = None
     CONTRACT_AVAILABLE = False
 
-from ..configs.config_data_load_step_cradle import CradleDataLoadConfig
+from ..configs.config_cradle_data_loading_step import CradleDataLoadConfig
 from ...core.base.builder_base import StepBuilderBase
 from ..registry.builder_registry import register_builder
 
