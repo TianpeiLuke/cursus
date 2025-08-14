@@ -303,7 +303,7 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         }
         
         # Test the argument validation directly
-        issues = self.tester._validate_argument_usage(mock_analysis, mock_contract, "test_script")
+        issues = self.tester.script_validator.validate_argument_usage(mock_analysis, mock_contract, "test_script", set())
         
         # Check for type mismatch warning
         type_issues = [issue for issue in issues 
@@ -370,7 +370,7 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         }
         
         # Test the argument validation with the fix
-        issues = self.tester._validate_argument_usage(mock_analysis, mock_contract, "currency_conversion")
+        issues = self.tester.script_validator.validate_argument_usage(mock_analysis, mock_contract, "currency_conversion", set())
         
         # Should have NO issues - the fix should handle argparse normalization correctly
         self.assertEqual(len(issues), 0, 
@@ -412,7 +412,7 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             }
         }
         
-        issues = self.tester._validate_argument_usage(mock_analysis, mock_contract, "test_script")
+        issues = self.tester.script_validator.validate_argument_usage(mock_analysis, mock_contract, "test_script", set())
         
         # Should find exactly 1 missing argument issue
         missing_arg_issues = [issue for issue in issues if 'not defined in script' in issue['message']]
@@ -457,7 +457,7 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             }
         }
         
-        issues = self.tester._validate_argument_usage(mock_analysis, mock_contract, "test_script")
+        issues = self.tester.script_validator.validate_argument_usage(mock_analysis, mock_contract, "test_script", set())
         
         # Should find exactly 1 extra argument issue
         extra_arg_issues = [issue for issue in issues if 'not in contract' in issue['message']]

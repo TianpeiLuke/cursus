@@ -24,12 +24,25 @@ class AlignmentTestRunner:
     def __init__(self):
         """Initialize the test runner."""
         self.test_modules = [
+            # Root level tests
+            'test.validation.alignment.test_builder_argument_debug',
+            'test.validation.alignment.test_builder_argument_integration',
+            'test.validation.alignment.test_enhanced_argument_validation',
+            'test.validation.alignment.test_framework_patterns',
+            'test.validation.alignment.test_property_path_validator',
+            'test.validation.alignment.test_step_type_detection',
+            'test.validation.alignment.test_step_type_enhancement_router',
+            'test.validation.alignment.test_step_type_enhancement_system_comprehensive',
+            
             # Utils tests
             'test.validation.alignment.utils.test_severity_level',
             'test.validation.alignment.utils.test_alignment_level',
             'test.validation.alignment.utils.test_alignment_issue',
             'test.validation.alignment.utils.test_path_reference',
             'test.validation.alignment.utils.test_utility_functions',
+            'test.validation.alignment.utils.test_core_models',
+            'test.validation.alignment.utils.test_script_analysis_models',
+            'test.validation.alignment.utils.test_step_type_detection',
             
             # Reporter tests
             'test.validation.alignment.reporter.test_validation_result',
@@ -38,6 +51,11 @@ class AlignmentTestRunner:
             # Script-Contract tests
             'test.validation.alignment.script_contract.test_path_validation',
             'test.validation.alignment.script_contract.test_argument_validation',
+            'test.validation.alignment.script_contract.test_testability_validation',
+            
+            # Step Type Enhancers tests
+            'test.validation.alignment.step_type_enhancers.test_base_enhancer',
+            'test.validation.alignment.step_type_enhancers.test_training_enhancer',
             
             # Unified Tester tests
             'test.validation.alignment.unified_tester.test_level_validation',
@@ -310,7 +328,7 @@ Examples:
     
     parser.add_argument(
         '--module',
-        choices=['utils', 'reporter', 'script_contract', 'unified'],
+        choices=['root', 'utils', 'reporter', 'script_contract', 'step_enhancers', 'unified'],
         help='Run tests from specific module only'
     )
     
@@ -329,12 +347,16 @@ Examples:
     
     if args.module:
         # Filter modules by category
-        if args.module == 'utils':
+        if args.module == 'root':
+            modules_to_run = [m for m in runner.test_modules if not any(subfolder in m for subfolder in ['.utils.', '.reporter.', '.script_contract.', '.step_type_enhancers.', '.unified_tester.'])]
+        elif args.module == 'utils':
             modules_to_run = [m for m in runner.test_modules if '.utils.' in m]
         elif args.module == 'reporter':
             modules_to_run = [m for m in runner.test_modules if '.reporter.' in m]
         elif args.module == 'script_contract':
             modules_to_run = [m for m in runner.test_modules if '.script_contract.' in m]
+        elif args.module == 'step_enhancers':
+            modules_to_run = [m for m in runner.test_modules if '.step_type_enhancers.' in m]
         elif args.module == 'unified':
             modules_to_run = [m for m in runner.test_modules if '.unified_tester.' in m]
         else:

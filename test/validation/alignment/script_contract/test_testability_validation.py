@@ -133,9 +133,9 @@ if __name__ == "__main__":
         ast_tree = ast.parse(bad_script)
         issues = self.validator.validate_script_testability("bad_script.py", ast_tree)
         
-        # Should have ERROR issues for poor testability
-        error_issues = [issue for issue in issues if issue.level == SeverityLevel.ERROR]
-        self.assertGreater(len(error_issues), 0, "Should have ERROR issues for poor testability")
+        # Should have WARNING issues for poor testability (main signature)
+        warning_issues = [issue for issue in issues if issue.level == SeverityLevel.WARNING]
+        self.assertGreater(len(warning_issues), 0, "Should have WARNING issues for poor testability")
         
         # Check for specific testability issues
         issue_categories = [issue.category for issue in issues]

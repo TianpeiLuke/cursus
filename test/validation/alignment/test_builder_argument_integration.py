@@ -183,7 +183,8 @@ class TabularPreprocessingStepBuilder:
             'arguments': {}  # Empty - job_type not in contract
         }
         
-        issues = tester._validate_argument_usage(mock_analysis, mock_contract, "tabular_preprocess")
+        # Test the argument validation through the validator
+        issues = tester.script_validator.validate_argument_usage(mock_analysis, mock_contract, "tabular_preprocess", builder_args)
         
         print(f"📋 Argument validation issues: {len(issues)}")
         for issue in issues:

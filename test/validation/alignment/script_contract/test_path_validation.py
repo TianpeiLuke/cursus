@@ -279,16 +279,15 @@ class EnhancedOpsContract(ScriptContract):
     def __init__(self):
         super().__init__(
             entry_point="enhanced_ops.py",
-            expected_input_paths={
-                "data": "/opt/ml/input/data.csv",
-                "model": "/opt/ml/input/model.tar.gz",
-                "source": "/tmp/source.txt"
-            },
-            expected_output_paths={
-                "parquet_data": "/opt/ml/output/data.parquet",
-                "dest": "/opt/ml/output/dest.txt",
-                "output_dir": "/opt/ml/output"
-            },
+                expected_input_paths={
+                    "data": "/opt/ml/processing/input/data.csv",
+                    "model": "/opt/ml/processing/input/model.tar.gz"
+                },
+                expected_output_paths={
+                    "parquet_data": "/opt/ml/processing/output/data.parquet",
+                    "dest": "/opt/ml/processing/output/dest.txt",
+                    "output_dir": "/opt/ml/processing/output"
+                },
             expected_arguments={},
             required_env_vars=[],
             optional_env_vars={}
@@ -306,17 +305,17 @@ ENHANCED_OPS_CONTRACT = EnhancedOpsContract()
             
             # Mock enhanced file operations with method tracking
             mock_ops = [
-                MagicMock(file_path="/opt/ml/input/data.csv", operation_type="read", 
+                MagicMock(file_path="/opt/ml/processing/input/data.csv", operation_type="read", 
                          method="pandas.read_csv", line_number=6),
-                MagicMock(file_path="/opt/ml/output/data.parquet", operation_type="write", 
+                MagicMock(file_path="/opt/ml/processing/output/data.parquet", operation_type="write", 
                          method="dataframe.to_parquet", line_number=7),
-                MagicMock(file_path="/opt/ml/input/model.tar.gz", operation_type="read", 
+                MagicMock(file_path="/opt/ml/processing/input/model.tar.gz", operation_type="read", 
                          method="tarfile.open", line_number=10),
                 MagicMock(file_path="/tmp/source.txt", operation_type="read", 
                          method="shutil.copy", line_number=14),
-                MagicMock(file_path="/opt/ml/output/dest.txt", operation_type="write", 
+                MagicMock(file_path="/opt/ml/processing/output/dest.txt", operation_type="write", 
                          method="shutil.copy", line_number=14),
-                MagicMock(file_path="/opt/ml/output", operation_type="write", 
+                MagicMock(file_path="/opt/ml/processing/output", operation_type="write", 
                          method="pathlib.mkdir", line_number=18)
             ]
             
