@@ -60,6 +60,38 @@ class StepTypeAwareAlignmentIssue(AlignmentIssue):
     reference_examples: List[str] = Field(default_factory=list)
 
 
+class ValidationResult(BaseModel):
+    """
+    Represents the result of a validation operation.
+    
+    Attributes:
+        is_valid: Whether the validation passed
+        issues: List of issues found during validation
+        summary: Summary of validation results
+        metadata: Additional metadata about the validation
+    """
+    is_valid: bool
+    issues: List[AlignmentIssue] = Field(default_factory=list)
+    summary: Dict[str, Any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    @property
+    def has_errors(self) -> bool:
+        """Check if validation result has any errors."""
+        return any(issue.level in [SeverityLevel.ERROR, SeverityLevel.CRITICAL] for issue in self.issues)
+    
+    @property
+    def has_warnings(self) -> bool:
+        """Check if validation result has any warnings."""
+        return any(issue.level == SeverityLevel.WARNING for issue in self.issues)
+    
+    def add_issue(self, issue: AlignmentIssue) -> None:
+        """Add an issue to the validation result."""
+        self.issues.append(issue)
+        if issue.level in [SeverityLevel.ERROR, SeverityLevel.CRITICAL]:
+            self.is_valid = False
+
+
 def create_alignment_issue(
     level: SeverityLevel,
     category: str,

@@ -48,32 +48,67 @@ class BaseStepEnhancer(ABC):
         """
         pass
     
-    def _merge_results(self, existing_results: Dict[str, Any], additional_issues: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _merge_results(self, existing_results, additional_issues):
         """
         Merge additional issues with existing validation results.
         
         Args:
-            existing_results: Original validation results
+            existing_results: Original validation results (dict or ValidationResult)
             additional_issues: Additional issues to merge
             
         Returns:
             Merged validation results
         """
+        # Handle None input
+        if existing_results is None:
+            if not additional_issues:
+                return None
+            # Create a basic result structure
+            return {
+                'issues': additional_issues,
+                'success': len(additional_issues) == 0,
+                'summary': {'total_issues': len(additional_issues)}
+            }
+        
+        # Handle ValidationResult objects
+        if hasattr(existing_results, 'issues'):
+            # This is a ValidationResult object
+            existing_results.issues.extend(additional_issues)
+            return existing_results
+        
+        # Handle dictionary results
         if isinstance(existing_results, dict):
             existing_results.setdefault('issues', []).extend(additional_issues)
             
-            # Update summary statistics if present
-            if 'summary' in existing_results:
+            # Update summary statistics if present and summary is a dict
+            if 'summary' in existing_results and isinstance(existing_results['summary'], dict):
                 summary = existing_results['summary']
                 summary['total_issues'] = summary.get('total_issues', 0) + len(additional_issues)
                 
                 # Update severity counts
                 for issue in additional_issues:
-                    severity = issue.get('severity', 'INFO').lower()
+                    if hasattr(issue, 'level'):
+                        severity = str(issue.level).lower()
+                    else:
+                        severity = issue.get('severity', 'INFO').lower()
                     severity_key = f'{severity}_count'
                     summary[severity_key] = summary.get(severity_key, 0) + 1
+            
+            return existing_results
         
-        return existing_results
+        # Handle other types - try to convert to dict
+        try:
+            result_dict = {'issues': additional_issues}
+            if hasattr(existing_results, '__dict__'):
+                result_dict.update(existing_results.__dict__)
+            return result_dict
+        except:
+            # Last resort - return a basic structure
+            return {
+                'issues': additional_issues,
+                'original_result': existing_results,
+                'success': len(additional_issues) == 0
+            }
     
     def _create_step_type_issue(self, category: str, message: str, recommendation: str, 
                                severity: str = 'WARNING', details: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

@@ -36,6 +36,11 @@ class StepTypeEnhancementRouter:
             "Base": "BaseStepEnhancer"
         }
     
+    @property
+    def enhancers(self):
+        """Public access to enhancers dictionary."""
+        return self._enhancers
+    
     def enhance_validation(self, script_name: str, existing_results: Dict[str, Any]) -> Dict[str, Any]:
         """
         Route validation enhancement to appropriate step type enhancer.
