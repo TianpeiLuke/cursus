@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alignment Validation Report - payload</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
+        .summary { display: flex; justify-content: space-around; margin: 20px 0; }
+        .metric { text-align: center; padding: 10px; }
+        .metric h3 { margin: 0; font-size: 2em; }
+        .metric p { margin: 5px 0; color: #666; }
+        .passing { color: #28a745; }
+        .failing { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .level-section { margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .level-header { background-color: #e9ecef; padding: 10px; font-weight: bold; }
+        .test-result { padding: 10px; border-bottom: 1px solid #eee; }
+        .test-passed { border-left: 4px solid #28a745; }
+        .test-failed { border-left: 4px solid #dc3545; }
+        .issue { margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 3px; }
+        .critical { border-left: 4px solid #dc3545; }
+        .error { border-left: 4px solid #fd7e14; }
+        .warning { border-left: 4px solid #ffc107; }
+        .info { border-left: 4px solid #17a2b8; }
+        .metadata { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Alignment Validation Report</h1>
+        <h2>Script: payload</h2>
+        <p>Generated: 2025-08-14T09:10:04.865890</p>
+        <p>Overall Status: <span class="passing">PASSING</span></p>
+    </div>
+    
+    <div class="summary">
+        <div class="metric">
+            <h3>20</h3>
+            <p>Total Issues</p>
+        </div>
+        <div class="metric">
+            <h3>0</h3>
+            <p>Critical Issues</p>
+        </div>
+        <div class="metric">
+            <h3>0</h3>
+            <p>Error Issues</p>
+        </div>
+        <div class="metric">
+            <h3>9</h3>
+            <p>Warning Issues</p>
+        </div>
+    </div>
+    
+    <div class="level-section">
+        <div class="level-header">Alignment Validation Results</div>
+        
+            <div class="test-result test-passed">
+                <h4>Level 1: Script ↔ Contract</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Main function follows testability pattern with all required parameters
+                    <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
+                    <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args
+                    <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
+                    <br><em>Recommendation: Add container detection to support both local and container execution</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>Level 2: Contract ↔ Specification</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: Payload -> Payload -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output payload_sample: properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for payload_contract
+                    <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>Level 3: Specification ↔ Dependencies</h4>
+                <p>Status: PASSED</p>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>Level 4: Builder ↔ Configuration</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_output_variable_list
+                    <br><em>Recommendation: Access required field source_model_inference_output_variable_list in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
+                    <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_domain
+                    <br><em>Recommendation: Access required field model_registration_domain in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
+                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_registration_objective
+                    <br><em>Recommendation: Access required field model_registration_objective in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: expected_tps
+                    <br><em>Recommendation: Access required field expected_tps in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_owner
+                    <br><em>Recommendation: Access required field model_owner in builder or make it optional</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
+                </div>
+                
+            </div>
+            
+    </div>
+    
+    <div class="metadata">
+        <h3>Metadata</h3>
+        <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py</p>
+        <p><strong>Contract Mapping:</strong> payload_contract</p>
+        <p><strong>Validation Timestamp:</strong> 2025-08-14T09:10:04.865890</p>
+        <p><strong>Validator Version:</strong> 1.0.0</p>
+    </div>
+</body>
+</html>
