@@ -182,18 +182,61 @@ def print_violations(violations: List, verbose: bool = False) -> None:
 ### Continuous Integration
 ```bash
 # Validate all naming standards
-cursus validate registry || exit 1
+python -m src.cursus.cli.validation_cli registry || exit 1
 
 # Validate specific components
-cursus validate interface <builder_class> || exit 1
+python -m src.cursus.cli.validation_cli interface <builder_class> || exit 1
 ```
 
 ### Code Review Process
 ```bash
 # Validate new builder implementation
-cursus validate interface <new_builder> --verbose
-cursus validate file <new_file> builder
+python -m src.cursus.cli.validation_cli interface <new_builder> --verbose
+python -m src.cursus.cli.validation_cli file <new_file> builder
 ```
+
+## Alignment Validation System Integration
+
+### Comprehensive Script Alignment Validation
+The validation CLI works in conjunction with the comprehensive alignment validation system located in `test/steps/scripts/alignment_validation/`. This system provides 4-level validation:
+
+#### Level 1: Script ↔ Contract Alignment
+- Validates script arguments match contract specifications
+- Ensures all required paths are properly declared
+- Checks for unused or undeclared arguments
+
+#### Level 2: Contract ↔ Specification Alignment
+- Verifies contract fields align with step specifications
+- Validates field types and constraints
+- Ensures all required fields are present
+
+#### Level 3: Specification ↔ Dependencies Alignment
+- Checks dependency resolution and compatibility
+- Validates specification requirements
+- Ensures all dependencies are properly declared
+
+#### Level 4: Builder ↔ Configuration Alignment
+- Validates step builder configuration
+- Ensures proper field mapping and resolution
+- Checks for configuration consistency
+
+### Running Comprehensive Alignment Validation
+```bash
+# Run comprehensive validation for all scripts
+cd test/steps/scripts/alignment_validation
+python run_alignment_validation.py
+
+# Run validation for individual scripts
+python validate_currency_conversion.py
+python validate_dummy_training.py
+python validate_xgboost_training.py
+```
+
+### Generated Reports
+The alignment validation system generates comprehensive reports:
+- **JSON Reports**: Machine-readable format in `reports/json/`
+- **HTML Reports**: Human-readable format in `reports/html/`
+- **Summary Report**: Overall validation summary in `reports/validation_summary.json`
 
 ## Error Handling
 
