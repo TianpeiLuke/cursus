@@ -105,6 +105,7 @@ class BuilderTestSummary(BaseModel):
     highest_severity: Optional[str]
     overall_status: str  # PASSING, MOSTLY_PASSING, PARTIALLY_PASSING, FAILING
     validation_timestamp: datetime = Field(default_factory=datetime.now)
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # For scoring and other metadata
     
     @classmethod
     def from_results(cls, builder_name: str, builder_class: str, sagemaker_step_type: str,
@@ -510,6 +511,14 @@ class BuilderTestReport:
             }
         }
         
+        # Add scoring data if available
+        if 'scoring' in self.metadata:
+            report_data['scoring'] = self.metadata['scoring']
+            # Also add scoring summary to top level for easy access
+            scoring_overall = self.metadata['scoring'].get('overall', {})
+            report_data['quality_score'] = scoring_overall.get('score', 0.0)
+            report_data['quality_rating'] = scoring_overall.get('rating', 'Unknown')
+        
         return json.dumps(report_data, indent=2, default=str)
         
     def save_to_file(self, output_path: Path):
@@ -531,6 +540,14 @@ class BuilderTestReport:
         print(f"SageMaker Step Type: {self.sagemaker_step_type}")
         print(f"Overall Status: {'✅ ' + self.summary.overall_status if self.is_passing() else '❌ ' + self.summary.overall_status}")
         print(f"Pass Rate: {self.summary.pass_rate:.1f}% ({self.summary.passed_tests}/{self.summary.total_tests})")
+        
+        # Print quality score if available
+        if 'scoring' in self.metadata:
+            scoring_overall = self.metadata['scoring'].get('overall', {})
+            quality_score = scoring_overall.get('score', 0.0)
+            quality_rating = scoring_overall.get('rating', 'Unknown')
+            print(f"📊 Quality Score: {quality_score:.1f}/100 - {quality_rating}")
+        
         print(f"Total Issues: {self.summary.total_issues}")
         
         if self.summary.total_issues > 0:
@@ -539,21 +556,41 @@ class BuilderTestReport:
             print(f"  ⚠️  Warning: {self.summary.warning_issues}")
             print(f"  ℹ️  Info: {self.summary.info_issues}")
         
-        # Print level summaries
+        # Print level summaries with scoring if available
         levels = [
-            ("Level 1 (Interface)", self.level1_interface),
-            ("Level 2 (Specification)", self.level2_specification),
-            ("Level 3 (Path Mapping)", self.level3_path_mapping),
-            ("Level 4 (Integration)", self.level4_integration),
-            ("Step Type Specific", self.step_type_specific)
+            ("Level 1 (Interface)", self.level1_interface, "level1_interface"),
+            ("Level 2 (Specification)", self.level2_specification, "level2_specification"),
+            ("Level 3 (Path Mapping)", self.level3_path_mapping, "level3_path_mapping"),
+            ("Level 4 (Integration)", self.level4_integration, "level4_integration"),
+            ("Step Type Specific", self.step_type_specific, "step_type_specific")
         ]
         
-        for level_name, level_results in levels:
+        for level_name, level_results, level_key in levels:
             if level_results:
                 passed = sum(1 for r in level_results.values() if r.passed)
                 total = len(level_results)
                 rate = (passed / total * 100) if total > 0 else 0
-                print(f"\n{level_name}: {passed}/{total} tests passed ({rate:.1f}%)")
+                
+                # Add scoring information if available
+                score_info = ""
+                if 'scoring' in self.metadata:
+                    level_scores = self.metadata['scoring'].get('levels', {})
+                    if level_key in level_scores:
+                        level_score = level_scores[level_key].get('score', 0.0)
+                        score_info = f" - Score: {level_score:.1f}/100"
+                
+                print(f"\n{level_name}: {passed}/{total} tests passed ({rate:.1f}%){score_info}")
+        
+        # Print scoring breakdown if available
+        if 'scoring' in self.metadata:
+            level_scores = self.metadata['scoring'].get('levels', {})
+            if level_scores:
+                print(f"\n📈 Quality Score Breakdown:")
+                for level_key, level_data in level_scores.items():
+                    display_name = level_key.replace("level", "L").replace("_", " ").title()
+                    score = level_data.get('score', 0.0)
+                    # Get weight information (would need to import LEVEL_WEIGHTS or pass it)
+                    print(f"  {display_name}: {score:.1f}/100")
         
         # Print critical issues
         critical_issues = self.get_critical_issues()
@@ -622,12 +659,30 @@ class BuilderTestReporter:
         # Import locally to avoid circular import
         from .universal_test import UniversalStepBuilderTest
         
-        # Run universal tests
-        tester = UniversalStepBuilderTest(builder_class, verbose=False)
-        universal_results = tester.run_all_tests()
+        # Run universal tests with scoring enabled
+        tester = UniversalStepBuilderTest(builder_class, verbose=False, enable_scoring=True)
+        test_data = tester.run_all_tests()
+        
+        # Extract test results and scoring data
+        if isinstance(test_data, dict) and 'test_results' in test_data:
+            # New format with scoring
+            universal_results = test_data['test_results']
+            scoring_data = test_data.get('scoring')
+        else:
+            # Legacy format (raw results)
+            universal_results = test_data
+            scoring_data = None
         
         # Convert results to BuilderTestResult objects and organize by level
         self._organize_results_into_report(universal_results, report)
+        
+        # Add scoring data to report metadata if available
+        if scoring_data:
+            report.metadata['scoring'] = scoring_data
+            # Add scoring summary to the report summary
+            if report.summary:
+                report.summary.metadata['quality_score'] = scoring_data.get('overall', {}).get('score', 0.0)
+                report.summary.metadata['quality_rating'] = scoring_data.get('overall', {}).get('rating', 'Unknown')
         
         # Generate summary and recommendations
         report.generate_summary()
