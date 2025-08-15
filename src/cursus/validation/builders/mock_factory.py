@@ -326,115 +326,186 @@ class StepTypeMockFactory:
             print(f"Failed to create XGBoostModelEvalConfig from base: {e}")
             return None
     
-    def _create_xgboost_training_config(self) -> Any:
-        """Create proper XGBoostTrainingConfig instance."""
+    def _create_xgboost_training_config_from_base(self, base_config: Any) -> Any:
+        """Create proper XGBoostTrainingConfig instance using from_base_config."""
         try:
             from ...steps.configs.config_xgboost_training_step import XGBoostTrainingConfig
-            # Create mock hyperparameters
-            mock_hp = SimpleNamespace()
-            mock_hp.model_dump = lambda: {
-                'learning_rate': 0.1, 'max_depth': 6, 'n_estimators': 100,
-                'subsample': 0.8, 'colsample_bytree': 0.8
-            }
-            mock_hp.is_binary = True
-            mock_hp.num_classes = 2
-            mock_hp.input_tab_dim = 10
-            mock_hp.objective = 'binary:logistic'
-            mock_hp.eval_metric = 'auc'
+            # Create mock hyperparameters using the correct class from hyperparams
+            try:
+                from ...steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
+                mock_hp = XGBoostModelHyperparameters(
+                    # Required fields from base ModelHyperparameters
+                    full_field_list=['feature1', 'feature2', 'target'],
+                    cat_field_list=['category_1', 'category_2'],
+                    tab_field_list=['numeric_1', 'numeric_2'],
+                    id_name='id',
+                    label_name='target',
+                    multiclass_categories=['class_0', 'class_1'],
+                    # Required XGBoost-specific fields
+                    num_round=100,
+                    max_depth=6,
+                    # Optional fields with defaults
+                    eta=0.1,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    min_child_weight=1.0,
+                    gamma=0.0
+                )
+            except Exception as e:
+                print(f"Failed to create XGBoostModelHyperparameters: {e}")
+                # Fallback to SimpleNamespace if hyperparameters class not available
+                mock_hp = SimpleNamespace()
+                mock_hp.model_dump = lambda: {
+                    'learning_rate': 0.1, 'max_depth': 6, 'n_estimators': 100,
+                    'subsample': 0.8, 'colsample_bytree': 0.8
+                }
+                mock_hp.is_binary = True
+                mock_hp.num_classes = 2
+                mock_hp.input_tab_dim = 10
+                mock_hp.objective = 'binary:logistic'
+                mock_hp.eval_metric = 'auc'
             
-            return XGBoostTrainingConfig(
-                region='NA',
-                pipeline_name='test-pipeline',
-                pipeline_s3_loc='s3://test-bucket/prefix',
-                bucket='test-bucket',
+            return XGBoostTrainingConfig.from_base_config(
+                base_config,
                 hyperparameters=mock_hp,
                 hyperparameters_s3_uri='s3://bucket/config/hyperparameters.json',
-                current_date='2025-08-07',
                 training_instance_type='ml.m5.xlarge',
                 training_instance_count=1,
                 training_volume_size=30,
                 training_entry_point='train_xgb.py',
-                source_dir='src/pipeline_scripts',
                 framework_version='1.7-1',
                 py_version='py3'
             )
         except Exception as e:
-            print(f"Failed to create XGBoostTrainingConfig: {e}")
+            print(f"Failed to create XGBoostTrainingConfig from base: {e}")
             return None
     
-    def _create_pytorch_training_config(self) -> Any:
-        """Create proper PyTorchTrainingConfig instance."""
+    def _create_pytorch_training_config_from_base(self, base_config: Any) -> Any:
+        """Create proper PyTorchTrainingConfig instance using from_base_config."""
         try:
             from ...steps.configs.config_pytorch_training_step import PyTorchTrainingConfig
-            # Create mock hyperparameters
-            mock_hp = SimpleNamespace()
-            mock_hp.model_dump = lambda: {
-                'learning_rate': 0.001, 'batch_size': 32, 'epochs': 10
-            }
+            # Create mock hyperparameters using BSM hyperparameters
+            try:
+                from ...steps.hyperparams.hyperparameters_bsm import BSMModelHyperparameters
+                mock_hp = BSMModelHyperparameters(
+                    # Required fields from base ModelHyperparameters
+                    full_field_list=['feature1', 'feature2', 'text_field', 'target'],
+                    cat_field_list=['category_1', 'category_2'],
+                    tab_field_list=['numeric_1', 'numeric_2'],
+                    id_name='id',
+                    label_name='target',
+                    multiclass_categories=['class_0', 'class_1'],
+                    # Required BSM-specific fields
+                    tokenizer='bert-base-uncased',
+                    text_name='text_field',
+                    # Optional fields with defaults
+                    lr_decay=0.05,
+                    adam_epsilon=1e-08,
+                    momentum=0.9,
+                    run_scheduler=True,
+                    val_check_interval=0.25,
+                    warmup_steps=300,
+                    weight_decay=0.0,
+                    gradient_clip_val=1.0,
+                    fp16=False,
+                    early_stop_metric='val_loss',
+                    early_stop_patience=3,
+                    load_ckpt=False,
+                    text_field_overwrite=False,
+                    chunk_trancate=True,
+                    max_total_chunks=3,
+                    max_sen_len=512,
+                    fixed_tokenizer_length=True,
+                    text_input_ids_key='input_ids',
+                    text_attention_mask_key='attention_mask',
+                    num_channels=[100, 100],
+                    num_layers=2,
+                    dropout_keep=0.1,
+                    kernel_size=[3, 5, 7],
+                    is_embeddings_trainable=True,
+                    pretrained_embedding=True,
+                    reinit_layers=2,
+                    reinit_pooler=True,
+                    hidden_common_dim=100
+                )
+            except Exception as e:
+                print(f"Failed to create BSMModelHyperparameters: {e}")
+                # Fallback to SimpleNamespace if hyperparameters class not available
+                mock_hp = SimpleNamespace()
+                mock_hp.model_dump = lambda: {
+                    'learning_rate': 0.001, 'batch_size': 32, 'epochs': 10
+                }
             
-            return PyTorchTrainingConfig(
-                region='NA',
-                pipeline_name='test-pipeline',
-                pipeline_s3_loc='s3://test-bucket/prefix',
-                bucket='test-bucket',
+            return PyTorchTrainingConfig.from_base_config(
+                base_config,
                 hyperparameters=mock_hp,
-                training_instance_type='ml.p3.2xlarge',
+                training_instance_type='ml.g5.12xlarge',  # Use valid instance type
                 training_instance_count=1,
                 training_volume_size=30,
                 training_entry_point='train_pytorch.py',
-                source_dir='src/pipeline_scripts',
                 framework_version='1.12.0',
-                py_version='py39'
+                py_version='py38'  # Use correct py version
             )
         except Exception as e:
-            print(f"Failed to create PyTorchTrainingConfig: {e}")
+            print(f"Failed to create PyTorchTrainingConfig from base: {e}")
             return None
     
-    def _create_xgboost_model_config(self) -> Any:
-        """Create proper XGBoostModelConfig instance."""
+    def _create_xgboost_model_config_from_base(self, base_config: Any) -> Any:
+        """Create proper XGBoostModelStepConfig instance using from_base_config."""
         try:
-            from ...steps.configs.config_xgboost_model_step import XGBoostModelConfig
-            return XGBoostModelConfig(
-                region='NA',
-                pipeline_name='test-pipeline',
-                pipeline_s3_loc='s3://test-bucket/prefix',
-                bucket='test-bucket',
+            from ...steps.configs.config_xgboost_model_step import XGBoostModelStepConfig
+            return XGBoostModelStepConfig.from_base_config(
+                base_config,
+                instance_type='ml.m5.large',
+                entry_point='inference.py',
+                framework_version='1.5-1',
+                py_version='py3',
+                accelerator_type=None,
                 model_name='test-xgboost-model',
-                primary_container_image='mock-xgboost-image-uri',
-                model_data_url='s3://bucket/model.tar.gz',
-                execution_role_arn='arn:aws:iam::123456789012:role/MockRole'
+                tags=None,
+                initial_instance_count=1,
+                container_startup_health_check_timeout=300,
+                container_memory_limit=6144,
+                data_download_timeout=900,
+                inference_memory_limit=6144,
+                max_concurrent_invocations=10,
+                max_payload_size=6
             )
         except Exception as e:
-            print(f"Failed to create XGBoostModelConfig: {e}")
+            print(f"Failed to create XGBoostModelStepConfig from base: {e}")
             return None
     
-    def _create_pytorch_model_config(self) -> Any:
-        """Create proper PyTorchModelConfig instance."""
+    def _create_pytorch_model_config_from_base(self, base_config: Any) -> Any:
+        """Create proper PyTorchModelStepConfig instance using from_base_config."""
         try:
-            from ...steps.configs.config_pytorch_model_step import PyTorchModelConfig
-            return PyTorchModelConfig(
-                region='NA',
-                pipeline_name='test-pipeline',
-                pipeline_s3_loc='s3://test-bucket/prefix',
-                bucket='test-bucket',
+            from ...steps.configs.config_pytorch_model_step import PyTorchModelStepConfig
+            return PyTorchModelStepConfig.from_base_config(
+                base_config,
+                instance_type='ml.m5.large',
+                entry_point='inference.py',
+                framework_version='1.12.0',
+                py_version='py38',
+                accelerator_type=None,
                 model_name='test-pytorch-model',
-                primary_container_image='mock-pytorch-image-uri',
-                model_data_url='s3://bucket/model.tar.gz',
-                execution_role_arn='arn:aws:iam::123456789012:role/MockRole'
+                tags=None,
+                initial_instance_count=1,
+                container_startup_health_check_timeout=300,
+                container_memory_limit=6144,
+                data_download_timeout=900,
+                inference_memory_limit=6144,
+                max_concurrent_invocations=10,
+                max_payload_size=6
             )
         except Exception as e:
-            print(f"Failed to create PyTorchModelConfig: {e}")
+            print(f"Failed to create PyTorchModelStepConfig from base: {e}")
             return None
     
-    def _create_batch_transform_config(self) -> Any:
-        """Create proper BatchTransformConfig instance."""
+    def _create_batch_transform_config_from_base(self, base_config: Any) -> Any:
+        """Create proper BatchTransformConfig instance using from_base_config."""
         try:
             from ...steps.configs.config_batch_transform_step import BatchTransformStepConfig
-            return BatchTransformStepConfig(
-                region='NA',
-                pipeline_name='test-pipeline',
-                pipeline_s3_loc='s3://test-bucket/prefix',
-                bucket='test-bucket',
+            return BatchTransformStepConfig.from_base_config(
+                base_config,
                 transform_instance_type='ml.m5.large',
                 transform_instance_count=1,
                 transform_max_concurrent_transforms=1,
@@ -445,40 +516,57 @@ class StepTypeMockFactory:
                 transform_assemble_with='Line'
             )
         except Exception as e:
-            print(f"Failed to create BatchTransformStepConfig: {e}")
+            print(f"Failed to create BatchTransformStepConfig from base: {e}")
             return None
     
-    def _create_registration_config(self) -> Any:
-        """Create proper RegistrationConfig instance."""
+    def _create_registration_config_from_base(self, base_config: Any) -> Any:
+        """Create proper RegistrationConfig instance using from_base_config."""
         try:
             from ...steps.configs.config_registration_step import RegistrationConfig
-            return RegistrationConfig(
-                region='NA',
-                pipeline_name='test-pipeline',
-                pipeline_s3_loc='s3://test-bucket/prefix',
-                bucket='test-bucket',
+            return RegistrationConfig.from_base_config(
+                base_config,
                 model_owner='test-team',
                 model_registration_domain='test-domain',
                 model_registration_objective='test-objective'
             )
         except Exception as e:
-            print(f"Failed to create RegistrationConfig: {e}")
+            print(f"Failed to create RegistrationConfig from base: {e}")
             return None
     
-    def _create_cradle_data_loading_config(self) -> Any:
-        """Create proper CradleDataLoadConfig instance."""
+    def _create_cradle_data_loading_config_from_base(self, base_config: Any) -> Any:
+        """Create proper CradleDataLoadConfig instance using cradle_config_factory."""
         try:
-            from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
-            return CradleDataLoadConfig(
-                region='NA',
-                pipeline_name='test-pipeline',
-                pipeline_s3_loc='s3://test-bucket/prefix',
-                bucket='test-bucket',
-                data_source='test-data-source',
-                output_format='csv'
+            from ...core.config_fields.cradle_config_factory import create_cradle_data_load_config
+            return create_cradle_data_load_config(
+                base_config=base_config,
+                job_type='training',
+                mds_field_list=['objectId', 'transactionDate', 'feature1', 'feature2'],
+                start_date='2025-01-01T00:00:00',
+                end_date='2025-01-31T23:59:59',
+                tag_edx_provider='test-provider',
+                tag_edx_subject='test-subject',
+                tag_edx_dataset='test-dataset',
+                etl_job_id='test-etl-job',
+                edx_manifest_comment='test-comment',
+                service_name='test-service',
+                cradle_account='Buyer-Abuse-RnD-Dev',
+                org_id=0,
+                cluster_type='STANDARD',
+                output_format='PARQUET',
+                output_save_mode='ERRORIFEXISTS',
+                split_job=False,
+                days_per_split=7,
+                merge_sql=None,
+                s3_input_override=None,
+                transform_sql=None,
+                tag_schema=None,
+                use_dedup_sql=None,
+                mds_join_key='objectId',
+                edx_join_key='order_id',
+                join_type='JOIN'
             )
         except Exception as e:
-            print(f"Failed to create CradleDataLoadConfig: {e}")
+            print(f"Failed to create CradleDataLoadConfig using factory: {e}")
             return None
     
     def create_step_type_mocks(self) -> Dict[str, Any]:
