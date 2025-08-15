@@ -2,9 +2,9 @@
   "step_type": "Processing",
   "summary": {
     "total_builders": 8,
-    "passing_builders": 1,
+    "passing_builders": 4,
     "mostly_passing_builders": 0,
-    "partially_passing_builders": 7,
+    "partially_passing_builders": 4,
     "failing_builders": 0
   },
   "builder_reports": {
@@ -23,7 +23,7 @@
       "info_issues": 24,
       "highest_severity": "INFO",
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.391913",
+      "validation_timestamp": "2025-08-15T00:29:30.442424",
       "is_passing": true
     },
     "RiskTableMapping": {
@@ -41,7 +41,7 @@
       "info_issues": 21,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.395068",
+      "validation_timestamp": "2025-08-15T00:29:30.446733",
       "is_passing": false
     },
     "CurrencyConversion": {
@@ -49,18 +49,18 @@
       "builder_class": "CurrencyConversionStepBuilder",
       "sagemaker_step_type": "Processing",
       "total_tests": 24,
-      "passed_tests": 21,
-      "failed_tests": 3,
-      "pass_rate": 87.5,
+      "passed_tests": 24,
+      "failed_tests": 0,
+      "pass_rate": 100.0,
       "total_issues": 24,
       "critical_issues": 0,
-      "error_issues": 3,
+      "error_issues": 0,
       "warning_issues": 0,
-      "info_issues": 21,
-      "highest_severity": "ERROR",
-      "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.397191",
-      "is_passing": false
+      "info_issues": 24,
+      "highest_severity": "INFO",
+      "overall_status": "PASSING",
+      "validation_timestamp": "2025-08-15T00:29:30.451632",
+      "is_passing": true
     },
     "DummyTraining": {
       "builder_name": "DummyTraining",
@@ -77,7 +77,7 @@
       "info_issues": 20,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.400090",
+      "validation_timestamp": "2025-08-15T00:29:30.454558",
       "is_passing": false
     },
     "XGBoostModelEval": {
@@ -95,7 +95,7 @@
       "info_issues": 21,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.402380",
+      "validation_timestamp": "2025-08-15T00:29:30.457393",
       "is_passing": false
     },
     "ModelCalibration": {
@@ -113,7 +113,7 @@
       "info_issues": 21,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.404467",
+      "validation_timestamp": "2025-08-15T00:29:30.460140",
       "is_passing": false
     },
     "Package": {
@@ -121,41 +121,41 @@
       "builder_class": "PackageStepBuilder",
       "sagemaker_step_type": "Processing",
       "total_tests": 24,
-      "passed_tests": 21,
-      "failed_tests": 3,
-      "pass_rate": 87.5,
+      "passed_tests": 24,
+      "failed_tests": 0,
+      "pass_rate": 100.0,
       "total_issues": 24,
       "critical_issues": 0,
-      "error_issues": 3,
+      "error_issues": 0,
       "warning_issues": 0,
-      "info_issues": 21,
-      "highest_severity": "ERROR",
-      "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.407085",
-      "is_passing": false
+      "info_issues": 24,
+      "highest_severity": "INFO",
+      "overall_status": "PASSING",
+      "validation_timestamp": "2025-08-15T00:29:30.463674",
+      "is_passing": true
     },
     "Payload": {
       "builder_name": "Payload",
       "builder_class": "PayloadStepBuilder",
       "sagemaker_step_type": "Processing",
       "total_tests": 24,
-      "passed_tests": 21,
-      "failed_tests": 3,
-      "pass_rate": 87.5,
+      "passed_tests": 24,
+      "failed_tests": 0,
+      "pass_rate": 100.0,
       "total_issues": 24,
       "critical_issues": 0,
-      "error_issues": 3,
+      "error_issues": 0,
       "warning_issues": 0,
-      "info_issues": 21,
-      "highest_severity": "ERROR",
-      "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T00:11:30.409215",
-      "is_passing": false
+      "info_issues": 24,
+      "highest_severity": "INFO",
+      "overall_status": "PASSING",
+      "validation_timestamp": "2025-08-15T00:29:30.465968",
+      "is_passing": true
     }
   },
   "metadata": {
     "step_type": "Processing",
-    "generation_timestamp": "2025-08-15T00:11:30.409871",
+    "generation_timestamp": "2025-08-15T00:29:30.466471",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   }

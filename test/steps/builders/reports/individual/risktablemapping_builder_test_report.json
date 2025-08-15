@@ -82,7 +82,7 @@
       "test_configuration_validation": {
         "test_name": "test_configuration_validation",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.394984",
+        "timestamp": "2025-08-15T00:29:30.446662",
         "test_level": "interface",
         "issues": [
           {
@@ -100,7 +100,7 @@
       "test_documentation_standards": {
         "test_name": "test_documentation_standards",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.394996",
+        "timestamp": "2025-08-15T00:29:30.446673",
         "test_level": "interface",
         "issues": [
           {
@@ -118,7 +118,7 @@
       "test_error_handling": {
         "test_name": "test_error_handling",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395000",
+        "timestamp": "2025-08-15T00:29:30.446676",
         "test_level": "interface",
         "issues": [
           {
@@ -136,7 +136,7 @@
       "test_inheritance": {
         "test_name": "test_inheritance",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395002",
+        "timestamp": "2025-08-15T00:29:30.446678",
         "test_level": "interface",
         "issues": [
           {
@@ -154,7 +154,7 @@
       "test_method_return_types": {
         "test_name": "test_method_return_types",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395005",
+        "timestamp": "2025-08-15T00:29:30.446681",
         "test_level": "interface",
         "issues": [
           {
@@ -172,7 +172,7 @@
       "test_naming_conventions": {
         "test_name": "test_naming_conventions",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395007",
+        "timestamp": "2025-08-15T00:29:30.446682",
         "test_level": "interface",
         "issues": [
           {
@@ -190,7 +190,7 @@
       "test_registry_integration": {
         "test_name": "test_registry_integration",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395009",
+        "timestamp": "2025-08-15T00:29:30.446684",
         "test_level": "interface",
         "issues": [
           {
@@ -208,7 +208,7 @@
       "test_required_methods": {
         "test_name": "test_required_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395014",
+        "timestamp": "2025-08-15T00:29:30.446689",
         "test_level": "interface",
         "issues": [
           {
@@ -226,7 +226,7 @@
       "test_type_hints": {
         "test_name": "test_type_hints",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395017",
+        "timestamp": "2025-08-15T00:29:30.446691",
         "test_level": "interface",
         "issues": [
           {
@@ -283,7 +283,7 @@
       "test_contract_alignment": {
         "test_name": "test_contract_alignment",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395019",
+        "timestamp": "2025-08-15T00:29:30.446693",
         "test_level": "specification",
         "issues": [
           {
@@ -301,7 +301,7 @@
       "test_environment_variable_handling": {
         "test_name": "test_environment_variable_handling",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395021",
+        "timestamp": "2025-08-15T00:29:30.446695",
         "test_level": "specification",
         "issues": [
           {
@@ -319,7 +319,7 @@
       "test_job_arguments": {
         "test_name": "test_job_arguments",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395023",
+        "timestamp": "2025-08-15T00:29:30.446697",
         "test_level": "specification",
         "issues": [
           {
@@ -337,7 +337,7 @@
       "test_specification_usage": {
         "test_name": "test_specification_usage",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395025",
+        "timestamp": "2025-08-15T00:29:30.446698",
         "test_level": "specification",
         "issues": [
           {
@@ -360,7 +360,7 @@
       {
         "severity": "ERROR",
         "category": "test_failure",
-        "message": "Input path mapping test failed: config.job_type must be specified",
+        "message": "Input path mapping test failed: Spec-Contract alignment errors: [\"Contract inputs missing from specification dependencies: {'risk_tables'}\"]",
         "details": {},
         "recommendation": "Fix test_input_path_mapping failure",
         "test_name": "test_input_path_mapping"
@@ -368,7 +368,7 @@
       {
         "severity": "ERROR",
         "category": "test_failure",
-        "message": "Output path mapping test failed: config.job_type must be specified",
+        "message": "Output path mapping test failed: Spec-Contract alignment errors: [\"Contract inputs missing from specification dependencies: {'risk_tables'}\"]",
         "details": {},
         "recommendation": "Fix test_output_path_mapping failure",
         "test_name": "test_output_path_mapping"
@@ -376,7 +376,7 @@
       {
         "severity": "ERROR",
         "category": "test_failure",
-        "message": "Property path validity test failed: config.job_type must be specified",
+        "message": "Property path validity test failed: Spec-Contract alignment errors: [\"Contract inputs missing from specification dependencies: {'risk_tables'}\"]",
         "details": {},
         "recommendation": "Fix test_property_path_validity failure",
         "test_name": "test_property_path_validity"
@@ -386,13 +386,13 @@
       "test_input_path_mapping": {
         "test_name": "test_input_path_mapping",
         "passed": false,
-        "timestamp": "2025-08-15T00:11:30.395027",
+        "timestamp": "2025-08-15T00:29:30.446700",
         "test_level": "path_mapping",
         "issues": [
           {
             "severity": "ERROR",
             "category": "test_failure",
-            "message": "Input path mapping test failed: config.job_type must be specified",
+            "message": "Input path mapping test failed: Spec-Contract alignment errors: [\"Contract inputs missing from specification dependencies: {'risk_tables'}\"]",
             "details": {},
             "recommendation": "Fix test_input_path_mapping failure",
             "test_name": "test_input_path_mapping"
@@ -404,13 +404,13 @@
       "test_output_path_mapping": {
         "test_name": "test_output_path_mapping",
         "passed": false,
-        "timestamp": "2025-08-15T00:11:30.395039",
+        "timestamp": "2025-08-15T00:29:30.446709",
         "test_level": "path_mapping",
         "issues": [
           {
             "severity": "ERROR",
             "category": "test_failure",
-            "message": "Output path mapping test failed: config.job_type must be specified",
+            "message": "Output path mapping test failed: Spec-Contract alignment errors: [\"Contract inputs missing from specification dependencies: {'risk_tables'}\"]",
             "details": {},
             "recommendation": "Fix test_output_path_mapping failure",
             "test_name": "test_output_path_mapping"
@@ -422,13 +422,13 @@
       "test_property_path_validity": {
         "test_name": "test_property_path_validity",
         "passed": false,
-        "timestamp": "2025-08-15T00:11:30.395042",
+        "timestamp": "2025-08-15T00:29:30.446712",
         "test_level": "path_mapping",
         "issues": [
           {
             "severity": "ERROR",
             "category": "test_failure",
-            "message": "Property path validity test failed: config.job_type must be specified",
+            "message": "Property path validity test failed: Spec-Contract alignment errors: [\"Contract inputs missing from specification dependencies: {'risk_tables'}\"]",
             "details": {},
             "recommendation": "Fix test_property_path_validity failure",
             "test_name": "test_property_path_validity"
@@ -471,7 +471,7 @@
       "test_dependency_resolution": {
         "test_name": "test_dependency_resolution",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395044",
+        "timestamp": "2025-08-15T00:29:30.446714",
         "test_level": "integration",
         "issues": [
           {
@@ -489,7 +489,7 @@
       "test_step_creation": {
         "test_name": "test_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395047",
+        "timestamp": "2025-08-15T00:29:30.446716",
         "test_level": "integration",
         "issues": [
           {
@@ -507,7 +507,7 @@
       "test_step_name": {
         "test_name": "test_step_name",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395049",
+        "timestamp": "2025-08-15T00:29:30.446718",
         "test_level": "integration",
         "issues": [
           {
@@ -596,7 +596,7 @@
       "test_step_type_detection": {
         "test_name": "test_step_type_detection",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395052",
+        "timestamp": "2025-08-15T00:29:30.446720",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -624,7 +624,7 @@
       "test_step_type_classification": {
         "test_name": "test_step_type_classification",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395055",
+        "timestamp": "2025-08-15T00:29:30.446722",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -648,7 +648,7 @@
       "test_step_type_compliance": {
         "test_name": "test_step_type_compliance",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395058",
+        "timestamp": "2025-08-15T00:29:30.446724",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -676,7 +676,7 @@
       "test_processing_processor_methods": {
         "test_name": "test_processing_processor_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395060",
+        "timestamp": "2025-08-15T00:29:30.446727",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -710,7 +710,7 @@
       "test_processing_io_methods": {
         "test_name": "test_processing_io_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:11:30.395063",
+        "timestamp": "2025-08-15T00:29:30.446729",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -749,7 +749,7 @@
     "info_issues": 21,
     "highest_severity": "ERROR",
     "overall_status": "PARTIALLY_PASSING",
-    "validation_timestamp": "2025-08-15T00:11:30.395068",
+    "validation_timestamp": "2025-08-15T00:29:30.446733",
     "is_passing": false
   },
   "recommendations": [],
@@ -757,7 +757,7 @@
     "builder_name": "RiskTableMapping",
     "builder_class": "RiskTableMappingStepBuilder",
     "sagemaker_step_type": "Processing",
-    "validation_timestamp": "2025-08-15T00:11:30.395068",
+    "validation_timestamp": "2025-08-15T00:29:30.446733",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   }
