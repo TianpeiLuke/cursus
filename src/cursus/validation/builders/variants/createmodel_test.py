@@ -23,7 +23,7 @@ from .createmodel_integration_tests import CreateModelIntegrationTests
 logger = logging.getLogger(__name__)
 
 
-class CreateModelTest:
+class CreateModelStepBuilderTest:
     """Main orchestrator for CreateModel step validation testing."""
     
     def __init__(self, builder_instance, config: Dict[str, Any]):
