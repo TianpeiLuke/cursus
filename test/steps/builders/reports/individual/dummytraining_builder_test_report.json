@@ -1,0 +1,764 @@
+{
+  "builder_name": "DummyTraining",
+  "builder_class": "DummyTrainingStepBuilder",
+  "sagemaker_step_type": "Processing",
+  "level1_interface": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_configuration_validation passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_configuration_validation"
+      },
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "Class docstring should be at least 50 characters, got 42",
+        "details": {},
+        "recommendation": "Fix test_documentation_standards failure",
+        "test_name": "test_documentation_standards"
+      },
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "Error handling test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+        "details": {},
+        "recommendation": "Fix test_error_handling failure",
+        "test_name": "test_error_handling"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_inheritance passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_inheritance"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_method_return_types passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_method_return_types"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_naming_conventions passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_naming_conventions"
+      },
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "'StepBuilderRegistry' object has no attribute 'is_registered'",
+        "details": {},
+        "recommendation": "Fix test_registry_integration failure",
+        "test_name": "test_registry_integration"
+      },
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "create_step() must have parameter 'dependencies'\ncreate_step() must have parameter 'enable_caching'",
+        "details": {},
+        "recommendation": "Fix test_required_methods failure",
+        "test_name": "test_required_methods"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_type_hints passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_type_hints"
+      }
+    ],
+    "test_results": {
+      "test_configuration_validation": {
+        "test_name": "test_configuration_validation",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794705",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_configuration_validation passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_configuration_validation"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_documentation_standards": {
+        "test_name": "test_documentation_standards",
+        "passed": false,
+        "timestamp": "2025-08-15T00:05:25.794716",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "Class docstring should be at least 50 characters, got 42",
+            "details": {},
+            "recommendation": "Fix test_documentation_standards failure",
+            "test_name": "test_documentation_standards"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      },
+      "test_error_handling": {
+        "test_name": "test_error_handling",
+        "passed": false,
+        "timestamp": "2025-08-15T00:05:25.794719",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "Error handling test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+            "details": {},
+            "recommendation": "Fix test_error_handling failure",
+            "test_name": "test_error_handling"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      },
+      "test_inheritance": {
+        "test_name": "test_inheritance",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794721",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_inheritance passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_inheritance"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_method_return_types": {
+        "test_name": "test_method_return_types",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794724",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_method_return_types passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_method_return_types"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_naming_conventions": {
+        "test_name": "test_naming_conventions",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794726",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_naming_conventions passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_naming_conventions"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_registry_integration": {
+        "test_name": "test_registry_integration",
+        "passed": false,
+        "timestamp": "2025-08-15T00:05:25.794728",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "'StepBuilderRegistry' object has no attribute 'is_registered'",
+            "details": {},
+            "recommendation": "Fix test_registry_integration failure",
+            "test_name": "test_registry_integration"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      },
+      "test_required_methods": {
+        "test_name": "test_required_methods",
+        "passed": false,
+        "timestamp": "2025-08-15T00:05:25.794734",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "create_step() must have parameter 'dependencies'\ncreate_step() must have parameter 'enable_caching'",
+            "details": {},
+            "recommendation": "Fix test_required_methods failure",
+            "test_name": "test_required_methods"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      },
+      "test_type_hints": {
+        "test_name": "test_type_hints",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794737",
+        "test_level": "interface",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_type_hints passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_type_hints"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      }
+    }
+  },
+  "level2_specification": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_contract_alignment passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_contract_alignment"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_environment_variable_handling passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_environment_variable_handling"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_job_arguments passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_job_arguments"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_specification_usage passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_specification_usage"
+      }
+    ],
+    "test_results": {
+      "test_contract_alignment": {
+        "test_name": "test_contract_alignment",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794739",
+        "test_level": "specification",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_contract_alignment passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_contract_alignment"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_environment_variable_handling": {
+        "test_name": "test_environment_variable_handling",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794741",
+        "test_level": "specification",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_environment_variable_handling passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_environment_variable_handling"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_job_arguments": {
+        "test_name": "test_job_arguments",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794743",
+        "test_level": "specification",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_job_arguments passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_job_arguments"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_specification_usage": {
+        "test_name": "test_specification_usage",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794745",
+        "test_level": "specification",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_specification_usage passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_specification_usage"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      }
+    }
+  },
+  "level3_path_mapping": {
+    "passed": false,
+    "issues": [
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "Input path mapping test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+        "details": {},
+        "recommendation": "Fix test_input_path_mapping failure",
+        "test_name": "test_input_path_mapping"
+      },
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "Output path mapping test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+        "details": {},
+        "recommendation": "Fix test_output_path_mapping failure",
+        "test_name": "test_output_path_mapping"
+      },
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "Property path validity test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+        "details": {},
+        "recommendation": "Fix test_property_path_validity failure",
+        "test_name": "test_property_path_validity"
+      }
+    ],
+    "test_results": {
+      "test_input_path_mapping": {
+        "test_name": "test_input_path_mapping",
+        "passed": false,
+        "timestamp": "2025-08-15T00:05:25.794747",
+        "test_level": "path_mapping",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "Input path mapping test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+            "details": {},
+            "recommendation": "Fix test_input_path_mapping failure",
+            "test_name": "test_input_path_mapping"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      },
+      "test_output_path_mapping": {
+        "test_name": "test_output_path_mapping",
+        "passed": false,
+        "timestamp": "2025-08-15T00:05:25.794750",
+        "test_level": "path_mapping",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "Output path mapping test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+            "details": {},
+            "recommendation": "Fix test_output_path_mapping failure",
+            "test_name": "test_output_path_mapping"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      },
+      "test_property_path_validity": {
+        "test_name": "test_property_path_validity",
+        "passed": false,
+        "timestamp": "2025-08-15T00:05:25.794752",
+        "test_level": "path_mapping",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "Property path validity test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+            "details": {},
+            "recommendation": "Fix test_property_path_validity failure",
+            "test_name": "test_property_path_validity"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      }
+    }
+  },
+  "level4_integration": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_dependency_resolution passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_dependency_resolution"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_step_creation passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_step_creation"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_step_name passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_step_name"
+      }
+    ],
+    "test_results": {
+      "test_dependency_resolution": {
+        "test_name": "test_dependency_resolution",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794754",
+        "test_level": "integration",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_dependency_resolution passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_dependency_resolution"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_step_creation": {
+        "test_name": "test_step_creation",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794756",
+        "test_level": "integration",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_step_creation passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_step_creation"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_step_name": {
+        "test_name": "test_step_name",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794758",
+        "test_level": "integration",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_step_name passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_step_name"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      }
+    }
+  },
+  "step_type_specific": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_step_type_detection passed successfully",
+        "details": {
+          "builder_class": "DummyTrainingStepBuilder",
+          "detected_step_name": "DummyTraining",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        },
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_step_type_detection"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_step_type_classification passed successfully",
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        },
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_step_type_classification"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_step_type_compliance passed successfully",
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        },
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_step_type_compliance"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_processing_processor_methods passed successfully",
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_get_processor"
+          ]
+        },
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_processing_processor_methods"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_processing_io_methods passed successfully",
+        "details": {
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        },
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_processing_io_methods"
+      }
+    ],
+    "test_results": {
+      "test_step_type_detection": {
+        "test_name": "test_step_type_detection",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794761",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_step_type_detection passed successfully",
+            "details": {
+              "builder_class": "DummyTrainingStepBuilder",
+              "detected_step_name": "DummyTraining",
+              "sagemaker_step_type": "Processing",
+              "is_valid_step_type": true
+            },
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_step_type_detection"
+          }
+        ],
+        "details": {
+          "builder_class": "DummyTrainingStepBuilder",
+          "detected_step_name": "DummyTraining",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        },
+        "highest_severity": "INFO"
+      },
+      "test_step_type_classification": {
+        "test_name": "test_step_type_classification",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794764",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_step_type_classification passed successfully",
+            "details": {
+              "sagemaker_step_type": "Processing",
+              "is_valid": true
+            },
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_step_type_classification"
+          }
+        ],
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        },
+        "highest_severity": "INFO"
+      },
+      "test_step_type_compliance": {
+        "test_name": "test_step_type_compliance",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794766",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_step_type_compliance passed successfully",
+            "details": {
+              "error_count": 0,
+              "warning_count": 0,
+              "info_count": 0,
+              "violations": []
+            },
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_step_type_compliance"
+          }
+        ],
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        },
+        "highest_severity": "INFO"
+      },
+      "test_processing_processor_methods": {
+        "test_name": "test_processing_processor_methods",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794768",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_processing_processor_methods passed successfully",
+            "details": {
+              "expected_methods": [
+                "_create_processor",
+                "_get_processor"
+              ],
+              "found_methods": [
+                "_get_processor"
+              ]
+            },
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_processing_processor_methods"
+          }
+        ],
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_get_processor"
+          ]
+        },
+        "highest_severity": "INFO"
+      },
+      "test_processing_io_methods": {
+        "test_name": "test_processing_io_methods",
+        "passed": true,
+        "timestamp": "2025-08-15T00:05:25.794770",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_processing_io_methods passed successfully",
+            "details": {
+              "has_get_inputs": true,
+              "has_get_outputs": true
+            },
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_processing_io_methods"
+          }
+        ],
+        "details": {
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        },
+        "highest_severity": "INFO"
+      }
+    }
+  },
+  "overall_status": "PARTIALLY_PASSING",
+  "summary": {
+    "builder_name": "DummyTraining",
+    "builder_class": "DummyTrainingStepBuilder",
+    "sagemaker_step_type": "Processing",
+    "total_tests": 24,
+    "passed_tests": 17,
+    "failed_tests": 7,
+    "pass_rate": 70.83333333333334,
+    "total_issues": 24,
+    "critical_issues": 0,
+    "error_issues": 7,
+    "warning_issues": 0,
+    "info_issues": 17,
+    "highest_severity": "ERROR",
+    "overall_status": "PARTIALLY_PASSING",
+    "validation_timestamp": "2025-08-15T00:05:25.794775",
+    "is_passing": false
+  },
+  "recommendations": [],
+  "metadata": {
+    "builder_name": "DummyTraining",
+    "builder_class": "DummyTrainingStepBuilder",
+    "sagemaker_step_type": "Processing",
+    "validation_timestamp": "2025-08-15T00:05:25.794775",
+    "validator_version": "1.0.0",
+    "test_framework": "UniversalStepBuilderTest"
+  }
+}
