@@ -11,7 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from .universal_test import UniversalStepBuilderTest
 from ...core.base.builder_base import StepBuilderBase
 from ...steps.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
 
@@ -620,6 +619,9 @@ class BuilderTestReporter:
         # Create report
         report = BuilderTestReport(step_name, builder_class.__name__, sagemaker_step_type)
         
+        # Import locally to avoid circular import
+        from .universal_test import UniversalStepBuilderTest
+        
         # Run universal tests
         tester = UniversalStepBuilderTest(builder_class, verbose=False)
         universal_results = tester.run_all_tests()
@@ -847,35 +849,3 @@ class BuilderTestReporter:
             json.dump(summary_data, f, indent=2, default=str)
         
         print(f"✅ {step_type} summary saved: {summary_file}")
-
-
-def main():
-    """Main entry point for command-line usage."""
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Generate Step Builder Test Reports")
-    parser.add_argument("--step-type", help="Generate reports for specific step type (e.g., Processing, Training)")
-    parser.add_argument("--step-name", help="Generate report for specific step name")
-    parser.add_argument("--output-dir", help="Output directory for reports")
-    
-    args = parser.parse_args()
-    
-    # Create reporter
-    output_dir = Path(args.output_dir) if args.output_dir else None
-    reporter = BuilderTestReporter(output_dir)
-    
-    if args.step_type:
-        reporter.test_step_type_builders(args.step_type)
-    elif args.step_name:
-        # Load builder class for specific step
-        builder_class = reporter._load_builder_class(args.step_name)
-        if builder_class:
-            reporter.test_and_save_builder_report(builder_class, args.step_name)
-        else:
-            print(f"❌ Could not load builder class for {args.step_name}")
-    else:
-        print("Please specify --step-type or --step-name")
-
-
-if __name__ == "__main__":
-    main()

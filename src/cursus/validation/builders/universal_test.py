@@ -2,12 +2,15 @@
 Universal Step Builder Test Suite.
 
 This module combines all test levels into a single comprehensive test suite
-that evaluates step builders against all architectural requirements.
+that evaluates step builders against all architectural requirements with
+integrated scoring and reporting capabilities.
 """
 
 import unittest
 from types import SimpleNamespace
 from typing import Dict, List, Any, Optional, Union, Type
+from pathlib import Path
+import json
 
 # Import base classes for type hints
 from ...core.base.builder_base import StepBuilderBase
@@ -22,6 +25,10 @@ from .path_mapping_tests import PathMappingTests
 from .integration_tests import IntegrationTests
 from .sagemaker_step_type_validator import SageMakerStepTypeValidator
 from .base_test import StepName
+
+# Import scoring and reporting
+from .scoring import StepBuilderScorer, LEVEL_WEIGHTS, RATING_LEVELS
+from ...steps.registry.step_names import STEP_NAMES
 
 
 class UniversalStepBuilderTest:
@@ -55,7 +62,9 @@ class UniversalStepBuilderTest:
         spec: Optional[StepSpecification] = None,
         contract: Optional[ScriptContract] = None,
         step_name: Optional[Union[str, StepName]] = None,
-        verbose: bool = False
+        verbose: bool = False,
+        enable_scoring: bool = True,
+        enable_structured_reporting: bool = False
     ):
         """
         Initialize with explicit components.
@@ -67,6 +76,8 @@ class UniversalStepBuilderTest:
             contract: Optional script contract (will extract from builder if not provided)
             step_name: Optional step name (will extract from class name if not provided)
             verbose: Whether to print verbose output
+            enable_scoring: Whether to calculate and include quality scores
+            enable_structured_reporting: Whether to generate structured reports
         """
         self.builder_class = builder_class
         self.config = config
@@ -74,6 +85,12 @@ class UniversalStepBuilderTest:
         self.contract = contract
         self.step_name = step_name
         self.verbose = verbose
+        self.enable_scoring = enable_scoring
+        self.enable_structured_reporting = enable_structured_reporting
+        
+        # Infer step name if not provided
+        if not self.step_name:
+            self.step_name = self._infer_step_name()
         
         # Create test suites for each level
         self.interface_tests = InterfaceTests(
@@ -115,13 +132,22 @@ class UniversalStepBuilderTest:
         # Create SageMaker step type validator
         self.sagemaker_validator = SageMakerStepTypeValidator(builder_class)
     
-    def run_all_tests(self) -> Dict[str, Dict[str, Any]]:
+    def run_all_tests(self, include_scoring: bool = None, 
+                      include_structured_report: bool = None) -> Dict[str, Any]:
         """
-        Run all tests across all levels.
+        Run all tests across all levels with optional scoring and structured reporting.
+        
+        Args:
+            include_scoring: Whether to calculate and include quality scores (overrides instance setting)
+            include_structured_report: Whether to generate structured report (overrides instance setting)
         
         Returns:
-            Dictionary mapping test names to their results
+            Dictionary containing test results and optional scoring/reporting data
         """
+        # Use method parameters or fall back to instance settings
+        calc_scoring = include_scoring if include_scoring is not None else self.enable_scoring
+        gen_report = include_structured_report if include_structured_report is not None else self.enable_structured_reporting
+        
         # Run tests for each level
         level1_results = self.interface_tests.run_all_tests()
         level2_results = self.specification_tests.run_all_tests()
@@ -131,19 +157,53 @@ class UniversalStepBuilderTest:
         # Run SageMaker step type validation
         sagemaker_results = self.run_step_type_specific_tests()
         
-        # Combine results
-        all_results = {}
-        all_results.update(level1_results)
-        all_results.update(level2_results)
-        all_results.update(level3_results)
-        all_results.update(level4_results)
-        all_results.update(sagemaker_results)
+        # Combine raw test results
+        raw_results = {}
+        raw_results.update(level1_results)
+        raw_results.update(level2_results)
+        raw_results.update(level3_results)
+        raw_results.update(level4_results)
+        raw_results.update(sagemaker_results)
         
-        # Print consolidated results if verbose
-        if self.verbose:
-            self._report_consolidated_results(all_results)
+        # Prepare return data
+        result_data = {
+            'test_results': raw_results
+        }
         
-        return all_results
+        # Add scoring if enabled
+        if calc_scoring:
+            try:
+                scorer = StepBuilderScorer(raw_results)
+                score_report = scorer.generate_report()
+                result_data['scoring'] = score_report
+                
+                # Enhanced console output with scoring
+                if self.verbose:
+                    self._report_consolidated_results_with_scoring(raw_results, score_report)
+            except Exception as e:
+                print(f"⚠️  Scoring calculation failed: {e}")
+                result_data['scoring_error'] = str(e)
+                if self.verbose:
+                    self._report_consolidated_results(raw_results)
+        else:
+            # Standard console output without scoring
+            if self.verbose:
+                self._report_consolidated_results(raw_results)
+        
+        # Add structured report if enabled
+        if gen_report:
+            try:
+                structured_report = self._generate_structured_report(raw_results, result_data.get('scoring'))
+                result_data['structured_report'] = structured_report
+            except Exception as e:
+                print(f"⚠️  Structured report generation failed: {e}")
+                result_data['report_error'] = str(e)
+        
+        # For backward compatibility, if no enhanced features are enabled, return just the raw results
+        if not calc_scoring and not gen_report:
+            return raw_results
+        
+        return result_data
     
     def run_step_type_specific_tests(self) -> Dict[str, Any]:
         """Run tests specific to the SageMaker step type."""
@@ -338,6 +398,193 @@ class UniversalStepBuilderTest:
         
         return results
     
+    def _infer_step_name(self) -> str:
+        """Infer step name from builder class name."""
+        class_name = self.builder_class.__name__
+        
+        # Remove "StepBuilder" suffix
+        if class_name.endswith("StepBuilder"):
+            step_name = class_name[:-11]  # Remove "StepBuilder"
+        else:
+            step_name = class_name
+        
+        # Look for matching step name in registry
+        for name, info in STEP_NAMES.items():
+            if info.get("builder_step_name", "").replace("StepBuilder", "") == step_name:
+                return name
+        
+        return step_name
+    
+    def _report_consolidated_results_with_scoring(self, results: Dict[str, Dict[str, Any]], 
+                                                 score_report: Dict[str, Any]) -> None:
+        """Report consolidated results with integrated scoring information."""
+        # Calculate summary statistics
+        total_tests = len(results)
+        passed_tests = sum(1 for result in results.values() if result["passed"])
+        pass_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
+        
+        # Get scoring data
+        overall_score = score_report.get('overall', {}).get('score', 0.0)
+        overall_rating = score_report.get('overall', {}).get('rating', 'Unknown')
+        level_scores = score_report.get('levels', {})
+        
+        # Print summary header
+        print("\n" + "=" * 80)
+        print(f"UNIVERSAL STEP BUILDER TEST RESULTS FOR {self.builder_class.__name__}")
+        print("=" * 80)
+        
+        # Print overall summary with scoring
+        status_icon = "✅" if passed_tests == total_tests else "❌"
+        print(f"\n{status_icon} OVERALL: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
+        print(f"📊 QUALITY SCORE: {overall_score:.1f}/100 - {overall_rating}")
+        
+        # Print level summaries with scores
+        print(f"\nLevel Performance:")
+        for level_name in ["level1_interface", "level2_specification", "level3_path_mapping", "level4_integration"]:
+            if level_name in level_scores:
+                level_data = level_scores[level_name]
+                display_name = level_name.replace("level", "Level ").replace("_", " ").title()
+                score = level_data.get('score', 0)
+                passed = level_data.get('passed', 0)
+                total = level_data.get('total', 0)
+                rate = (passed / total * 100) if total > 0 else 0
+                print(f"  {display_name}: {score:.1f}/100 ({passed}/{total} tests, {rate:.1f}%)")
+        
+        # Print failed tests if any
+        failed_tests = {k: v for k, v in results.items() if not v["passed"]}
+        if failed_tests:
+            print(f"\n❌ Failed Tests ({len(failed_tests)}):")
+            for test_name, result in failed_tests.items():
+                print(f"  • {test_name}: {result['error']}")
+        
+        # Print score breakdown
+        if len(level_scores) > 0:
+            print(f"\n📈 Score Breakdown:")
+            for level_name, level_data in level_scores.items():
+                display_name = level_name.replace("level", "L").replace("_", " ").title()
+                weight = LEVEL_WEIGHTS.get(level_name, 1.0)
+                score = level_data.get('score', 0)
+                print(f"  {display_name}: {score:.1f}/100 (weight: {weight}x)")
+        
+        print("\n" + "=" * 80)
+    
+    def _generate_structured_report(self, raw_results: Dict[str, Dict[str, Any]], 
+                                   scoring_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Generate a structured report following the alignment validation pattern."""
+        
+        # Get step information
+        step_info = STEP_NAMES.get(str(self.step_name), {})
+        sagemaker_step_type = step_info.get("sagemaker_step_type", "Unknown")
+        
+        # Create structured report
+        structured_report = {
+            'builder_info': {
+                'builder_name': str(self.step_name),
+                'builder_class': self.builder_class.__name__,
+                'sagemaker_step_type': sagemaker_step_type
+            },
+            'test_results': {
+                'level1_interface': self._extract_level_results(raw_results, 'level1'),
+                'level2_specification': self._extract_level_results(raw_results, 'level2'),
+                'level3_path_mapping': self._extract_level_results(raw_results, 'level3'),
+                'level4_integration': self._extract_level_results(raw_results, 'level4'),
+                'step_type_specific': self._extract_step_type_results(raw_results)
+            },
+            'summary': {
+                'total_tests': len(raw_results),
+                'passed_tests': sum(1 for r in raw_results.values() if r.get('passed', False)),
+                'pass_rate': (sum(1 for r in raw_results.values() if r.get('passed', False)) / len(raw_results) * 100) if raw_results else 0
+            }
+        }
+        
+        # Add scoring data if available
+        if scoring_data:
+            structured_report['scoring'] = scoring_data
+            structured_report['summary']['overall_score'] = scoring_data.get('overall', {}).get('score', 0.0)
+            structured_report['summary']['score_rating'] = scoring_data.get('overall', {}).get('rating', 'Unknown')
+        
+        return structured_report
+    
+    def _extract_level_results(self, raw_results: Dict[str, Dict[str, Any]], level: str) -> Dict[str, Any]:
+        """Extract results for a specific test level."""
+        level_results = {}
+        
+        # Define test patterns for each level
+        level_patterns = {
+            'level1': ['test_inheritance', 'test_required_methods', 'test_error_handling', 'test_generic'],
+            'level2': ['test_specification', 'test_contract', 'test_environment', 'test_job'],
+            'level3': ['test_input', 'test_output', 'test_path', 'test_property'],
+            'level4': ['test_dependency', 'test_step_creation', 'test_integration']
+        }
+        
+        patterns = level_patterns.get(level, [])
+        
+        for test_name, result in raw_results.items():
+            if any(pattern in test_name.lower() for pattern in patterns):
+                level_results[test_name] = result
+        
+        return level_results
+    
+    def _extract_step_type_results(self, raw_results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """Extract step type-specific test results."""
+        step_type_results = {}
+        
+        step_type_patterns = ['test_step_type', 'test_processing', 'test_training', 'test_transform', 'test_create_model', 'test_register']
+        
+        for test_name, result in raw_results.items():
+            if any(pattern in test_name.lower() for pattern in step_type_patterns):
+                step_type_results[test_name] = result
+        
+        return step_type_results
+    
+    def run_all_tests_legacy(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Legacy method that returns raw results for backward compatibility.
+        
+        This method maintains the original behavior of run_all_tests() before
+        the scoring and structured reporting enhancements were added.
+        """
+        return self.run_all_tests(include_scoring=False, include_structured_report=False)
+    
+    def run_all_tests_with_scoring(self) -> Dict[str, Any]:
+        """
+        Convenience method to run tests with scoring enabled.
+        
+        Returns:
+            Dictionary containing test results and scoring data
+        """
+        return self.run_all_tests(include_scoring=True, include_structured_report=False)
+    
+    def run_all_tests_with_full_report(self) -> Dict[str, Any]:
+        """
+        Convenience method to run tests with both scoring and structured reporting.
+        
+        Returns:
+            Dictionary containing test results, scoring, and structured report
+        """
+        return self.run_all_tests(include_scoring=True, include_structured_report=True)
+    
+    def export_results_to_json(self, output_path: Optional[str] = None) -> str:
+        """
+        Export test results with scoring to JSON format.
+        
+        Args:
+            output_path: Optional path to save the JSON file
+            
+        Returns:
+            JSON string of the results
+        """
+        results = self.run_all_tests_with_full_report()
+        json_content = json.dumps(results, indent=2, default=str)
+        
+        if output_path:
+            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w') as f:
+                f.write(json_content)
+            print(f"✅ Results exported to: {output_path}")
+        
+        return json_content
+    
     def _report_consolidated_results(self, results: Dict[str, Dict[str, Any]]) -> None:
         """Report consolidated results across all test levels."""
         # Calculate summary statistics
@@ -401,10 +648,10 @@ class TestUniversalStepBuilder(unittest.TestCase):
             # Import the builder class
             from ...steps.builders.builder_xgboost_training_step import XGBoostTrainingStepBuilder
             
-            # Create tester
-            tester = UniversalStepBuilderTest(XGBoostTrainingStepBuilder)
+            # Create tester with scoring disabled for backward compatibility
+            tester = UniversalStepBuilderTest(XGBoostTrainingStepBuilder, enable_scoring=False)
             
-            # Run all tests
+            # Run all tests (returns raw results when scoring is disabled)
             results = tester.run_all_tests()
             
             # Check that key tests passed
@@ -419,10 +666,10 @@ class TestUniversalStepBuilder(unittest.TestCase):
             # Import the builder class
             from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
             
-            # Create tester
-            tester = UniversalStepBuilderTest(TabularPreprocessingStepBuilder)
+            # Create tester with scoring disabled for backward compatibility
+            tester = UniversalStepBuilderTest(TabularPreprocessingStepBuilder, enable_scoring=False)
             
-            # Run all tests
+            # Run all tests (returns raw results when scoring is disabled)
             results = tester.run_all_tests()
             
             # Check that key tests passed
@@ -444,21 +691,118 @@ class TestUniversalStepBuilder(unittest.TestCase):
             config.pipeline_name = 'test-pipeline'
             config.job_type = 'training'
             
-            # Create tester with explicit components
+            # Create tester with explicit components and scoring disabled for backward compatibility
             tester = UniversalStepBuilderTest(
                 TabularPreprocessingStepBuilder,
                 config=config,
                 spec=TABULAR_PREPROCESSING_TRAINING_SPEC,
-                step_name='CustomPreprocessingStep'
+                step_name='CustomPreprocessingStep',
+                enable_scoring=False
             )
             
-            # Run all tests
+            # Run all tests (returns raw results when scoring is disabled)
             results = tester.run_all_tests()
             
             # Check that key tests passed
             self.assertTrue(results["test_inheritance"]["passed"])
         except ImportError:
             self.skipTest("TabularPreprocessingStepBuilder or TABULAR_PREPROCESSING_TRAINING_SPEC not available")
+    
+    def test_scoring_integration(self):
+        """Test the new scoring integration functionality."""
+        try:
+            # Import the builder class
+            from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+            
+            # Create tester with scoring enabled
+            tester = UniversalStepBuilderTest(TabularPreprocessingStepBuilder, enable_scoring=True, verbose=False)
+            
+            # Run all tests with scoring
+            results = tester.run_all_tests()
+            
+            # Check that the enhanced result structure is returned
+            self.assertIn('test_results', results)
+            self.assertIn('scoring', results)
+            
+            # Check scoring structure
+            scoring = results['scoring']
+            self.assertIn('overall', scoring)
+            self.assertIn('levels', scoring)
+            self.assertIn('score', scoring['overall'])
+            self.assertIn('rating', scoring['overall'])
+            
+            # Check that raw test results are still accessible
+            test_results = results['test_results']
+            self.assertIn('test_inheritance', test_results)
+            self.assertTrue(test_results['test_inheritance']['passed'])
+            
+        except ImportError:
+            self.skipTest("TabularPreprocessingStepBuilder not available")
+    
+    def test_structured_reporting(self):
+        """Test the structured reporting functionality."""
+        try:
+            # Import the builder class
+            from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+            
+            # Create tester with both scoring and structured reporting enabled
+            tester = UniversalStepBuilderTest(
+                TabularPreprocessingStepBuilder, 
+                enable_scoring=True, 
+                enable_structured_reporting=True,
+                verbose=False
+            )
+            
+            # Run all tests with full reporting
+            results = tester.run_all_tests()
+            
+            # Check that all components are present
+            self.assertIn('test_results', results)
+            self.assertIn('scoring', results)
+            self.assertIn('structured_report', results)
+            
+            # Check structured report structure
+            report = results['structured_report']
+            self.assertIn('builder_info', report)
+            self.assertIn('test_results', report)
+            self.assertIn('summary', report)
+            
+            # Check builder info
+            builder_info = report['builder_info']
+            self.assertIn('builder_name', builder_info)
+            self.assertIn('builder_class', builder_info)
+            self.assertIn('sagemaker_step_type', builder_info)
+            
+        except ImportError:
+            self.skipTest("TabularPreprocessingStepBuilder not available")
+    
+    def test_convenience_methods(self):
+        """Test the convenience methods for different testing modes."""
+        try:
+            # Import the builder class
+            from ...steps.builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+            
+            # Create tester
+            tester = UniversalStepBuilderTest(TabularPreprocessingStepBuilder, verbose=False)
+            
+            # Test legacy method
+            legacy_results = tester.run_all_tests_legacy()
+            self.assertIsInstance(legacy_results, dict)
+            self.assertIn('test_inheritance', legacy_results)
+            
+            # Test scoring method
+            scoring_results = tester.run_all_tests_with_scoring()
+            self.assertIn('test_results', scoring_results)
+            self.assertIn('scoring', scoring_results)
+            
+            # Test full report method
+            full_results = tester.run_all_tests_with_full_report()
+            self.assertIn('test_results', full_results)
+            self.assertIn('scoring', full_results)
+            self.assertIn('structured_report', full_results)
+            
+        except ImportError:
+            self.skipTest("TabularPreprocessingStepBuilder not available")
 
 
 if __name__ == '__main__':

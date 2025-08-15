@@ -109,8 +109,15 @@ def run_individual_builder_test(step_name: str):
         
         # Run universal tests
         print("Running Universal Step Builder Tests...")
-        tester = UniversalStepBuilderTest(builder_class, verbose=True)
-        universal_results = tester.run_all_tests()
+        tester = UniversalStepBuilderTest(
+            builder_class, 
+            verbose=True,
+            enable_scoring=True,
+            enable_structured_reporting=False  # Keep simple for individual testing
+        )
+        results = tester.run_all_tests()
+        # Extract test results from enhanced format
+        universal_results = results.get('test_results', results) if isinstance(results, dict) and 'test_results' in results else results
         
         # Run Processing-specific tests
         print("\nRunning Processing-Specific Tests...")

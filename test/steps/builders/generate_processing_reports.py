@@ -12,11 +12,6 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-# Import the builder reporter from the correct path
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
-
 from cursus.validation.builders.builder_reporter import BuilderTestReporter
 
 

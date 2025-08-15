@@ -414,10 +414,17 @@ class TestProcessingStepBuilders(unittest.TestCase):
             print(f"Testing {step_name} ({builder_class.__name__})")
             print(f"{'='*60}")
             
-            # Run universal tests
+            # Run universal tests with enhanced features
             try:
-                tester = UniversalStepBuilderTest(builder_class, verbose=True)
-                universal_results = tester.run_all_tests()
+                tester = UniversalStepBuilderTest(
+                    builder_class, 
+                    verbose=True,
+                    enable_scoring=True,
+                    enable_structured_reporting=False  # Keep simple for batch testing
+                )
+                results = tester.run_all_tests()
+                # Extract test results from enhanced format
+                universal_results = results.get('test_results', results) if isinstance(results, dict) and 'test_results' in results else results
                 
                 # Run Processing-specific tests
                 processing_results = self.test_suite.run_processing_specific_tests(
