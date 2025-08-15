@@ -34,6 +34,19 @@ from .step_info_detector import StepInfoDetector
 from .mock_factory import StepTypeMockFactory
 from .generic_test import GenericStepBuilderTest
 from .variants.processing_test import ProcessingStepBuilderTest
+from .variants.training_test import TrainingStepBuilderTest
+from .variants.transform_test import TransformStepBuilderTest
+from .variants.createmodel_test import CreateModelStepBuilderTest
+# Registry-based discovery utilities
+from .registry_discovery import (
+    RegistryStepDiscovery,
+    get_training_steps_from_registry,
+    get_transform_steps_from_registry,
+    get_createmodel_steps_from_registry,
+    get_processing_steps_from_registry,
+    get_builder_class_path,
+    load_builder_class
+)
 
 __all__ = [
     'UniversalStepBuilderTest',
@@ -49,5 +62,17 @@ __all__ = [
     'StepInfoDetector',
     'StepTypeMockFactory',
     'GenericStepBuilderTest',
-    'ProcessingStepBuilderTest'
+    # Step-type-specific test variants
+    'ProcessingStepBuilderTest',
+    'TrainingStepBuilderTest',
+    'TransformStepBuilderTest',
+    'CreateModelStepBuilderTest',
+    # Registry-based discovery utilities
+    'RegistryStepDiscovery',
+    'get_training_steps_from_registry',
+    'get_transform_steps_from_registry',
+    'get_createmodel_steps_from_registry',
+    'get_processing_steps_from_registry',
+    'get_builder_class_path',
+    'load_builder_class'
 ]

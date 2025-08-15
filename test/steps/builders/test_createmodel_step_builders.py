@@ -17,8 +17,14 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+from cursus.validation.builders.registry_discovery import (
+    RegistryStepDiscovery,
+    get_createmodel_steps_from_registry,
+    get_builder_class_path,
+    load_builder_class
+)
 from cursus.core.base.builder_base import StepBuilderBase
-from cursus.steps.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
+from cursus.steps.registry.step_names import STEP_NAMES
 
 
 class CreateModelStepBuilderTestSuite:
@@ -28,19 +34,15 @@ class CreateModelStepBuilderTestSuite:
     This class provides specialized testing for CreateModel steps with enhanced
     validation for model creation, input/output handling, and CreateModel-specific
     requirements.
+    
+    Uses registry information to automatically discover CreateModel step builders,
+    making it adaptive when new steps are added.
     """
     
-    # All CreateModel step builders to test (based on sagemaker_step_type: "CreateModel")
-    CREATEMODEL_STEPS = [
-        "PyTorchModel",
-        "XGBoostModel"
-    ]
-    
-    # Builder class mapping
-    BUILDER_CLASS_MAP = {
-        "PyTorchModel": "cursus.steps.builders.builder_pytorch_model_step.PyTorchModelStepBuilder",
-        "XGBoostModel": "cursus.steps.builders.builder_xgboost_model_step.XGBoostModelStepBuilder"
-    }
+    @classmethod
+    def get_createmodel_steps_from_registry(cls) -> List[str]:
+        """Get all CreateModel step names from the registry."""
+        return get_createmodel_steps_from_registry()
     
     # Expected model types for each step
     EXPECTED_MODELS = {
@@ -57,7 +59,7 @@ class CreateModelStepBuilderTestSuite:
     @classmethod
     def load_builder_class(cls, step_name: str) -> Optional[Type[StepBuilderBase]]:
         """
-        Dynamically load a builder class by step name.
+        Dynamically load a builder class by step name using registry information.
         
         Args:
             step_name: Name of the step (e.g., "PyTorchModel")
@@ -65,29 +67,24 @@ class CreateModelStepBuilderTestSuite:
         Returns:
             Builder class if found, None otherwise
         """
-        if step_name not in cls.BUILDER_CLASS_MAP:
-            return None
-            
-        module_path, class_name = cls.BUILDER_CLASS_MAP[step_name].rsplit('.', 1)
-        
         try:
-            module = importlib.import_module(module_path)
-            return getattr(module, class_name)
-        except (ImportError, AttributeError) as e:
+            return load_builder_class(step_name)
+        except (ImportError, AttributeError, ValueError) as e:
             print(f"Failed to load {step_name} builder: {e}")
             return None
     
     @classmethod
     def get_available_createmodel_builders(cls) -> List[tuple]:
         """
-        Get all available CreateModel step builders for testing.
+        Get all available CreateModel step builders for testing using registry information.
         
         Returns:
             List of tuples (step_name, builder_class)
         """
         available_builders = []
+        createmodel_steps = cls.get_createmodel_steps_from_registry()
         
-        for step_name in cls.CREATEMODEL_STEPS:
+        for step_name in createmodel_steps:
             builder_class = cls.load_builder_class(step_name)
             if builder_class:
                 available_builders.append((step_name, builder_class))

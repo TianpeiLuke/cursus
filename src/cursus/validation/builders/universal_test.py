@@ -30,6 +30,9 @@ from .base_test import StepName
 from .scoring import StepBuilderScorer, LEVEL_WEIGHTS, RATING_LEVELS
 from ...steps.registry.step_names import STEP_NAMES
 
+# Import registry discovery utilities
+from .registry_discovery import RegistryStepDiscovery
+
 
 class UniversalStepBuilderTest:
     """
@@ -584,6 +587,92 @@ class UniversalStepBuilderTest:
             print(f"✅ Results exported to: {output_path}")
         
         return json_content
+    
+    @classmethod
+    def test_all_builders_by_type(cls, sagemaker_step_type: str, 
+                                  verbose: bool = False,
+                                  enable_scoring: bool = True) -> Dict[str, Any]:
+        """
+        Test all builders for a specific SageMaker step type using registry discovery.
+        
+        Args:
+            sagemaker_step_type: The SageMaker step type to test (e.g., 'Training', 'Transform')
+            verbose: Whether to print verbose output
+            enable_scoring: Whether to calculate and include quality scores
+            
+        Returns:
+            Dictionary containing test results for all builders of the specified type
+        """
+        results = {}
+        
+        try:
+            # Get all builder classes for the step type
+            builder_classes = RegistryStepDiscovery.get_all_builder_classes_by_type(sagemaker_step_type)
+            
+            for step_name, builder_class in builder_classes.items():
+                if verbose:
+                    print(f"\n🔍 Testing {step_name} ({builder_class.__name__})...")
+                
+                try:
+                    # Create tester for this builder
+                    tester = cls(
+                        builder_class=builder_class,
+                        step_name=step_name,
+                        verbose=verbose,
+                        enable_scoring=enable_scoring,
+                        enable_structured_reporting=True
+                    )
+                    
+                    # Run tests
+                    test_results = tester.run_all_tests()
+                    results[step_name] = test_results
+                    
+                    if verbose:
+                        if enable_scoring and 'scoring' in test_results:
+                            score = test_results['scoring'].get('overall', {}).get('score', 0)
+                            rating = test_results['scoring'].get('overall', {}).get('rating', 'Unknown')
+                            print(f"✅ {step_name}: Score {score:.1f}/100 ({rating})")
+                        else:
+                            passed = test_results.get('test_results', {})
+                            total_tests = len(passed)
+                            passed_tests = sum(1 for r in passed.values() if r.get('passed', False))
+                            print(f"✅ {step_name}: {passed_tests}/{total_tests} tests passed")
+                            
+                except Exception as e:
+                    results[step_name] = {
+                        'error': f"Failed to test {step_name}: {str(e)}",
+                        'builder_class': builder_class.__name__
+                    }
+                    if verbose:
+                        print(f"❌ {step_name}: {str(e)}")
+        
+        except Exception as e:
+            return {'error': f"Failed to discover builders for type '{sagemaker_step_type}': {str(e)}"}
+        
+        return results
+    
+    @classmethod
+    def generate_registry_discovery_report(cls) -> Dict[str, Any]:
+        """
+        Generate a comprehensive report of step builder discovery status.
+        
+        Returns:
+            Dictionary containing discovery report
+        """
+        return RegistryStepDiscovery.generate_discovery_report()
+    
+    @classmethod
+    def validate_builder_availability(cls, step_name: str) -> Dict[str, Any]:
+        """
+        Validate that a step builder is available and can be loaded.
+        
+        Args:
+            step_name: The step name to validate
+            
+        Returns:
+            Dictionary containing validation results
+        """
+        return RegistryStepDiscovery.validate_step_builder_availability(step_name)
     
     def _report_consolidated_results(self, results: Dict[str, Dict[str, Any]]) -> None:
         """Report consolidated results across all test levels."""

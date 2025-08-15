@@ -140,8 +140,13 @@ pytest test/steps/builders/test_createmodel_step_builders.py -v
 
 ## Key Features
 
-### Registry-Based Categorization
-All step categorizations are based on the `sagemaker_step_type` field in `cursus/steps/registry/step_names.py`, ensuring accurate classification.
+### Centralized Registry-Based Discovery
+- **Centralized Discovery Utilities**: Tests use `cursus.validation.builders.registry_discovery` module for consistent step builder discovery across all test suites
+- **Automatic Step Discovery**: Tests automatically discover step builders using `get_training_steps_from_registry()`, `get_transform_steps_from_registry()`, etc.
+- **Dynamic Class Loading**: Builder classes are loaded using centralized `load_builder_class()` function from the validation framework
+- **Adaptive to Changes**: When new step builders are added to the registry, tests automatically include them without code changes
+- **Accurate Categorization**: All step categorizations are based on the `sagemaker_step_type` field in the registry
+- **Reusable Components**: Discovery methods are now available in the main validation framework for use by other testing components
 
 ### Comprehensive Testing
 - Universal compliance testing using the existing `UniversalStepBuilderTest` framework

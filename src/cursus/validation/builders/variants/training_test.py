@@ -23,7 +23,7 @@ from .training_integration_tests import TrainingIntegrationTests
 logger = logging.getLogger(__name__)
 
 
-class TrainingTest:
+class TrainingStepBuilderTest:
     """Main orchestrator for Training step validation testing."""
     
     def __init__(self, builder_instance, config: Dict[str, Any]):
@@ -489,7 +489,7 @@ def run_training_validation(builder_instance, config: Optional[Dict[str, Any]] =
     if config is None:
         config = {}
     
-    test_orchestrator = TrainingTest(builder_instance, config)
+    test_orchestrator = TrainingStepBuilderTest(builder_instance, config)
     return test_orchestrator.run_all_tests()
 
 
@@ -509,7 +509,7 @@ def run_training_framework_tests(builder_instance, framework: str,
     if config is None:
         config = {}
     
-    test_orchestrator = TrainingTest(builder_instance, config)
+    test_orchestrator = TrainingStepBuilderTest(builder_instance, config)
     return test_orchestrator.run_framework_specific_tests(framework)
 
 
@@ -527,6 +527,6 @@ def generate_training_report(builder_instance, config: Optional[Dict[str, Any]] 
     if config is None:
         config = {}
     
-    test_orchestrator = TrainingTest(builder_instance, config)
+    test_orchestrator = TrainingStepBuilderTest(builder_instance, config)
     test_results = test_orchestrator.run_all_tests()
     return test_orchestrator.generate_training_report(test_results)

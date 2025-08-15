@@ -23,7 +23,7 @@ from .transform_integration_tests import TransformIntegrationTests
 logger = logging.getLogger(__name__)
 
 
-class TransformTest:
+class TransformStepBuilderTest:
     """Main orchestrator for Transform step validation testing."""
     
     def __init__(self, builder_instance, config: Dict[str, Any]):

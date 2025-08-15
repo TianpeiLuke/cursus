@@ -1,0 +1,97 @@
+{
+  "timestamp": "2025-08-15T11:49:00.266509",
+  "base_path": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders",
+  "step_types": {
+    "training": {
+      "step_type": "training",
+      "steps_processed": 0,
+      "successful": [],
+      "errors": [
+        {
+          "step_name": "PyTorchTraining",
+          "error": "Could not load builder class for PyTorchTraining"
+        },
+        {
+          "step_name": "XGBoostTraining",
+          "error": "Could not load builder class for XGBoostTraining"
+        }
+      ],
+      "timestamp": "2025-08-15T11:49:00.266523"
+    },
+    "transform": {
+      "step_type": "transform",
+      "steps_processed": 0,
+      "successful": [],
+      "errors": [
+        {
+          "step_name": "BatchTransform",
+          "error": "Error testing BatchTransform: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        }
+      ],
+      "timestamp": "2025-08-15T11:49:00.267095"
+    },
+    "createmodel": {
+      "step_type": "createmodel",
+      "steps_processed": 0,
+      "successful": [],
+      "errors": [
+        {
+          "step_name": "PyTorchModel",
+          "error": "Could not load builder class for PyTorchModel"
+        },
+        {
+          "step_name": "XGBoostModel",
+          "error": "Could not load builder class for XGBoostModel"
+        }
+      ],
+      "timestamp": "2025-08-15T11:49:00.267291"
+    },
+    "processing": {
+      "step_type": "processing",
+      "steps_processed": 0,
+      "successful": [],
+      "errors": [
+        {
+          "step_name": "Processing",
+          "error": "Could not load builder class for Processing"
+        },
+        {
+          "step_name": "TabularPreprocessing",
+          "error": "Error testing TabularPreprocessing: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        },
+        {
+          "step_name": "RiskTableMapping",
+          "error": "Error testing RiskTableMapping: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        },
+        {
+          "step_name": "CurrencyConversion",
+          "error": "Error testing CurrencyConversion: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        },
+        {
+          "step_name": "DummyTraining",
+          "error": "Error testing DummyTraining: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        },
+        {
+          "step_name": "XGBoostModelEval",
+          "error": "Could not load builder class for XGBoostModelEval"
+        },
+        {
+          "step_name": "ModelCalibration",
+          "error": "Error testing ModelCalibration: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        },
+        {
+          "step_name": "Package",
+          "error": "Error testing Package: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        },
+        {
+          "step_name": "Payload",
+          "error": "Error testing Payload: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+        }
+      ],
+      "timestamp": "2025-08-15T11:49:00.267660"
+    }
+  },
+  "total_steps_processed": 0,
+  "total_successful": 0,
+  "total_errors": 14
+}

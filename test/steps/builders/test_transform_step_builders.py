@@ -17,8 +17,14 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+from cursus.validation.builders.registry_discovery import (
+    RegistryStepDiscovery,
+    get_transform_steps_from_registry,
+    get_builder_class_path,
+    load_builder_class
+)
 from cursus.core.base.builder_base import StepBuilderBase
-from cursus.steps.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
+from cursus.steps.registry.step_names import STEP_NAMES
 
 
 class TransformStepBuilderTestSuite:
@@ -28,17 +34,15 @@ class TransformStepBuilderTestSuite:
     This class provides specialized testing for Transform steps with enhanced
     validation for transformer creation, input/output handling, and Transform-specific
     requirements.
+    
+    Uses registry information to automatically discover Transform step builders,
+    making it adaptive when new steps are added.
     """
     
-    # All Transform step builders to test (based on sagemaker_step_type: "Transform")
-    TRANSFORM_STEPS = [
-        "BatchTransform"
-    ]
-    
-    # Builder class mapping
-    BUILDER_CLASS_MAP = {
-        "BatchTransform": "cursus.steps.builders.builder_batch_transform_step.BatchTransformStepBuilder"
-    }
+    @classmethod
+    def get_transform_steps_from_registry(cls) -> List[str]:
+        """Get all Transform step names from the registry."""
+        return get_transform_steps_from_registry()
     
     # Expected transformer types for each step
     EXPECTED_TRANSFORMERS = {
@@ -53,7 +57,7 @@ class TransformStepBuilderTestSuite:
     @classmethod
     def load_builder_class(cls, step_name: str) -> Optional[Type[StepBuilderBase]]:
         """
-        Dynamically load a builder class by step name.
+        Dynamically load a builder class by step name using registry information.
         
         Args:
             step_name: Name of the step (e.g., "BatchTransform")
@@ -61,29 +65,24 @@ class TransformStepBuilderTestSuite:
         Returns:
             Builder class if found, None otherwise
         """
-        if step_name not in cls.BUILDER_CLASS_MAP:
-            return None
-            
-        module_path, class_name = cls.BUILDER_CLASS_MAP[step_name].rsplit('.', 1)
-        
         try:
-            module = importlib.import_module(module_path)
-            return getattr(module, class_name)
-        except (ImportError, AttributeError) as e:
+            return load_builder_class(step_name)
+        except (ImportError, AttributeError, ValueError) as e:
             print(f"Failed to load {step_name} builder: {e}")
             return None
     
     @classmethod
     def get_available_transform_builders(cls) -> List[tuple]:
         """
-        Get all available Transform step builders for testing.
+        Get all available Transform step builders for testing using registry information.
         
         Returns:
             List of tuples (step_name, builder_class)
         """
         available_builders = []
+        transform_steps = cls.get_transform_steps_from_registry()
         
-        for step_name in cls.TRANSFORM_STEPS:
+        for step_name in transform_steps:
             builder_class = cls.load_builder_class(step_name)
             if builder_class:
                 available_builders.append((step_name, builder_class))
