@@ -323,6 +323,13 @@ class UniversalStepBuilderTestBase(ABC):
         for logical_name in required_deps:
             mock_inputs[logical_name] = self._generate_mock_s3_uri(logical_name)
         
+        # For CreateModel steps, also check if we need to add dependencies from the mock factory
+        if hasattr(self.step_info, 'get') and self.step_info.get('sagemaker_step_type') == 'CreateModel':
+            expected_deps = self._get_expected_dependencies()
+            for dep_name in expected_deps:
+                if dep_name not in mock_inputs:
+                    mock_inputs[dep_name] = self._generate_mock_s3_uri(dep_name)
+        
         return mock_inputs
     
     def _generate_mock_s3_uri(self, logical_name: str) -> str:
@@ -402,15 +409,37 @@ class UniversalStepBuilderTestBase(ABC):
                     )
                 ]
                 # Also add ModelArtifacts in case it's from a training step
-                step.properties.ModelArtifacts = MagicMock(
-                    S3ModelArtifacts=f"s3://test-bucket/model-artifacts/{dep_name}"
-                )
+                step.properties.ModelArtifacts = MagicMock()
+                step.properties.ModelArtifacts.S3ModelArtifacts = f"s3://test-bucket/model-artifacts/{dep_name}"
                 
-            elif dep_name.lower() in ['model_input', 'model_artifacts']:
-                # Model artifacts from training steps
-                step.properties.ModelArtifacts = MagicMock(
-                    S3ModelArtifacts=f"s3://test-bucket/model-artifacts/{dep_name}"
-                )
+            elif dep_name.lower() in ['model_input', 'model_artifacts', 'model_data']:
+                # Model artifacts from training steps - CRITICAL FIX FOR CREATEMODEL
+                mock_s3_uri = f"s3://test-bucket/model-artifacts/{dep_name}"
+                
+                # Create a custom mock that always returns the string value
+                class StringMock:
+                    def __init__(self, value):
+                        self.value = str(value)
+                    
+                    def __str__(self):
+                        return self.value
+                    
+                    def __repr__(self):
+                        return self.value
+                    
+                    def __getattr__(self, name):
+                        return self.value
+                    
+                    def __getitem__(self, key):
+                        return self.value
+                
+                # Set up the ModelArtifacts structure with string mock
+                step.properties.ModelArtifacts = MagicMock()
+                step.properties.ModelArtifacts.S3ModelArtifacts = StringMock(mock_s3_uri)
+                
+                # Also configure the MagicMock to return the string directly
+                step.properties.ModelArtifacts.configure_mock(S3ModelArtifacts=mock_s3_uri)
+                
                 # Also provide processing output format for model evaluation steps
                 step.properties.ProcessingOutputConfig = MagicMock()
                 step.properties.ProcessingOutputConfig.Outputs = [
@@ -435,9 +464,8 @@ class UniversalStepBuilderTestBase(ABC):
                         )
                     )
                 ]
-                step.properties.ModelArtifacts = MagicMock(
-                    S3ModelArtifacts=f"s3://test-bucket/generic/{dep_name}"
-                )
+                step.properties.ModelArtifacts = MagicMock()
+                step.properties.ModelArtifacts.S3ModelArtifacts = f"s3://test-bucket/generic/{dep_name}"
             
             # Add comprehensive _spec attribute for dependency resolution
             step._spec = MagicMock()
