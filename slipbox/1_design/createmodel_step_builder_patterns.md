@@ -409,13 +409,90 @@ CreateModel step builders should be tested for:
 
 ## Special Considerations
 
-### 1. Model Data Sources
+### 1. Cache Configuration Limitation (Critical Design Pattern)
+
+**IMPORTANT**: CreateModelStep does **NOT** support the `cache_config` parameter, unlike other SageMaker step types.
+
+#### Official SageMaker SDK Documentation Evidence
+
+According to the [official SageMaker SDK documentation](https://sagemaker.readthedocs.io/en/stable/workflows/pipelines/sagemaker.workflow.pipelines.html#sagemaker.workflow.steps.CreateModelStep), the CreateModelStep constructor signature is:
+
+```python
+CreateModelStep(name, step_args=None, model=None, inputs=None, depends_on=None, 
+                retry_policies=None, display_name=None, description=None)
+```
+
+**No `cache_config` parameter is supported.**
+
+#### Comparison with Other Step Types
+
+Other SageMaker step types **DO** support caching:
+
+- **ProcessingStep**: Supports `cache_config` parameter
+- **TrainingStep**: Supports `cache_config` parameter  
+- **TransformStep**: Supports `cache_config` parameter
+
+#### Impact on Step Builder Implementation
+
+This architectural constraint means CreateModel step builders must **NOT** pass `cache_config` to the CreateModelStep constructor:
+
+```python
+# INCORRECT - Will cause TypeError
+def create_step(self, **kwargs) -> CreateModelStep:
+    enable_caching = kwargs.get('enable_caching', False)
+    
+    model_step = CreateModelStep(
+        name=step_name,
+        step_args=model.create(...),
+        depends_on=dependencies,
+        cache_config=self._get_cache_config(enable_caching)  # ❌ NOT SUPPORTED
+    )
+    
+# CORRECT - No cache_config parameter
+def create_step(self, **kwargs) -> CreateModelStep:
+    model_step = CreateModelStep(
+        name=step_name,
+        step_args=model.create(...),
+        depends_on=dependencies  # ✅ CORRECT
+    )
+```
+
+#### Root Cause Analysis
+
+The `_get_cache_config()` method in `StepBuilderBase` was designed for step types that support caching (ProcessingStep, TrainingStep, TransformStep). CreateModel step builders incorrectly inherited this pattern without considering the CreateModelStep API limitations.
+
+#### Design Pattern Rule
+
+**Rule**: CreateModel step builders must override or bypass any caching-related functionality from the base class, as CreateModelStep fundamentally does not support pipeline caching.
+
+```python
+@register_builder()
+class ModelStepBuilder(StepBuilderBase):
+    def create_step(self, **kwargs) -> CreateModelStep:
+        # Note: Explicitly ignore enable_caching parameter
+        # CreateModelStep does not support cache_config
+        enable_caching = kwargs.get('enable_caching', False)
+        if enable_caching:
+            self.log_warning("CreateModelStep does not support caching - ignoring enable_caching=True")
+        
+        # Create step without cache_config
+        model_step = CreateModelStep(
+            name=step_name,
+            step_args=model.create(...),
+            depends_on=dependencies
+        )
+        return model_step
+```
+
+This limitation was discovered through test failures and confirmed by official SageMaker SDK documentation analysis.
+
+### 2. Model Data Sources
 CreateModel steps can receive model_data from various sources:
 - **TrainingStep**: Direct model artifacts from training
 - **ProcessingStep**: Processed or converted model artifacts
 - **External Sources**: Pre-trained models from S3
 
-### 2. Model Naming Strategy
+### 3. Model Naming Strategy
 ```python
 # Automatic model naming (recommended)
 model_step = CreateModelStep(
@@ -435,7 +512,7 @@ model_step = CreateModelStep(
 )
 ```
 
-### 3. Multi-Container Models
+### 4. Multi-Container Models
 For complex deployments, CreateModel steps can support multi-container models:
 ```python
 # Future pattern for multi-container models

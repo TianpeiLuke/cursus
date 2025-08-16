@@ -247,6 +247,11 @@ class XGBoostModelStepBuilder(StepBuilderBase):
         
         # Create the model step
         try:
+            # Note: CreateModelStep does not support cache_config parameter
+            # Log warning if caching was requested
+            if enable_caching:
+                self.log_warning("CreateModelStep does not support caching - ignoring enable_caching=True")
+            
             model_step = CreateModelStep(
                 name=step_name,
                 step_args=model.create(
@@ -255,8 +260,8 @@ class XGBoostModelStepBuilder(StepBuilderBase):
                     tags=getattr(self.config, 'tags', None)
                     # Note: model_name parameter removed - it's not accepted by model.create()
                 ),
-                depends_on=dependencies,
-                cache_config=self._get_cache_config(enable_caching)
+                depends_on=dependencies
+                # Note: cache_config parameter removed - not supported by CreateModelStep
             )
             
             # Attach specification to the step for future reference
