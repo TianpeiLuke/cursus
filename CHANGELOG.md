@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2025-08-16
+
+### Changed
+- **Package Maintenance** - Version bump and package redeployment
+  - Updated version to 1.0.10 for new PyPI release
+  - Refreshed package build and distribution
+  - Maintained compatibility with existing installations
+
+### Technical Details
+- **Version Management** - Incremented version number in `__version__.py`
+- **Package Distribution** - Rebuilt and repackaged for PyPI deployment
+- **Quality Assurance** - Validated package integrity and dependencies
+
 ## [1.0.9] - 2025-08-14
 
 ### Enhanced
