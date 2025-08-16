@@ -21,7 +21,7 @@ from ...core.base.config_base import BaseModel as ConfigBase
 # Import test levels
 from .interface_tests import InterfaceTests
 from .specification_tests import SpecificationTests
-from .path_mapping_tests import PathMappingTests
+from .step_creation_tests import StepCreationTests
 from .integration_tests import IntegrationTests
 from .sagemaker_step_type_validator import SageMakerStepTypeValidator
 from .base_test import StepName
@@ -114,7 +114,7 @@ class UniversalStepBuilderTest:
             verbose=verbose
         )
         
-        self.path_mapping_tests = PathMappingTests(
+        self.step_creation_tests = StepCreationTests(
             builder_class=builder_class,
             config=config,
             spec=spec,
@@ -154,7 +154,7 @@ class UniversalStepBuilderTest:
         # Run tests for each level
         level1_results = self.interface_tests.run_all_tests()
         level2_results = self.specification_tests.run_all_tests()
-        level3_results = self.path_mapping_tests.run_all_tests()
+        level3_results = self.step_creation_tests.run_all_tests()
         level4_results = self.integration_tests.run_all_tests()
         
         # Run SageMaker step type validation
@@ -684,7 +684,7 @@ class UniversalStepBuilderTest:
         # Group results by level
         level1_results = {k: v for k, v in results.items() if k.startswith('test_') and hasattr(InterfaceTests, k)}
         level2_results = {k: v for k, v in results.items() if k.startswith('test_') and hasattr(SpecificationTests, k)}
-        level3_results = {k: v for k, v in results.items() if k.startswith('test_') and hasattr(PathMappingTests, k)}
+        level3_results = {k: v for k, v in results.items() if k.startswith('test_') and hasattr(StepCreationTests, k)}
         level4_results = {k: v for k, v in results.items() if k.startswith('test_') and hasattr(IntegrationTests, k)}
         
         # Calculate level statistics

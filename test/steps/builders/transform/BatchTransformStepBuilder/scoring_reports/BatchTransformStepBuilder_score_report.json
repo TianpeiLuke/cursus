@@ -3,7 +3,7 @@
     "test_configuration_validation": {
       "passed": true,
       "name": "test_configuration_validation",
-      "assertions": 1
+      "assertions": 0
     },
     "test_documentation_standards": {
       "passed": true,
@@ -23,7 +23,7 @@
     "test_method_return_types": {
       "passed": true,
       "name": "test_method_return_types",
-      "assertions": 2
+      "assertions": 0
     },
     "test_naming_conventions": {
       "passed": true,
@@ -70,20 +70,55 @@
       "name": "test_specification_usage",
       "assertions": 1
     },
-    "test_input_path_mapping": {
-      "passed": true,
-      "name": "test_input_path_mapping",
-      "assertions": 0
+    "test_create_model_step_creation": {
+      "passed": false,
+      "name": "test_create_model_step_creation",
+      "error": "CreateModel step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
     },
-    "test_output_path_mapping": {
-      "passed": true,
-      "name": "test_output_path_mapping",
-      "assertions": 0
+    "test_processing_step_creation": {
+      "passed": false,
+      "name": "test_processing_step_creation",
+      "error": "Processing step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
     },
-    "test_property_path_validity": {
+    "test_step_configuration_validity": {
+      "passed": false,
+      "name": "test_step_configuration_validity",
+      "error": "Step configuration validity test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+    },
+    "test_step_dependencies_attachment": {
+      "passed": false,
+      "name": "test_step_dependencies_attachment",
+      "error": "Step dependencies attachment test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+    },
+    "test_step_instantiation": {
+      "passed": false,
+      "name": "test_step_instantiation",
+      "error": "Step instantiation failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+    },
+    "test_step_name_generation": {
+      "passed": false,
+      "name": "test_step_name_generation",
+      "error": "Step name generation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+    },
+    "test_step_type_compliance": {
       "passed": true,
-      "name": "test_property_path_validity",
-      "assertions": 2
+      "error": null,
+      "details": {
+        "error_count": 0,
+        "warning_count": 0,
+        "info_count": 0,
+        "violations": []
+      }
+    },
+    "test_training_step_creation": {
+      "passed": false,
+      "name": "test_training_step_creation",
+      "error": "Training step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+    },
+    "test_transform_step_creation": {
+      "passed": false,
+      "name": "test_transform_step_creation",
+      "error": "Transform step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
     },
     "test_dependency_resolution": {
       "passed": true,
@@ -118,16 +153,6 @@
         "is_valid": true
       }
     },
-    "test_step_type_compliance": {
-      "passed": true,
-      "error": null,
-      "details": {
-        "error_count": 0,
-        "warning_count": 0,
-        "info_count": 0,
-        "violations": []
-      }
-    },
     "test_transform_transformer_methods": {
       "passed": true,
       "error": null,
@@ -144,11 +169,11 @@
   },
   "scoring": {
     "overall": {
-      "score": 100.0,
-      "rating": "Excellent",
-      "passed": 14,
-      "total": 14,
-      "pass_rate": 100.0
+      "score": 71.42857142857143,
+      "rating": "Satisfactory",
+      "passed": 11,
+      "total": 19,
+      "pass_rate": 57.89473684210527
     },
     "levels": {
       "level1_interface": {
@@ -173,13 +198,18 @@
         }
       },
       "level3_path_mapping": {
-        "score": 100.0,
-        "passed": 3,
-        "total": 3,
+        "score": 0.0,
+        "passed": 0,
+        "total": 8,
         "tests": {
-          "test_input_path_mapping": true,
-          "test_output_path_mapping": true,
-          "test_property_path_validity": true
+          "test_create_model_step_creation": false,
+          "test_processing_step_creation": false,
+          "test_step_configuration_validity": false,
+          "test_step_dependencies_attachment": false,
+          "test_step_instantiation": false,
+          "test_step_name_generation": false,
+          "test_training_step_creation": false,
+          "test_transform_step_creation": false
         }
       },
       "level4_integration": {
@@ -194,7 +224,40 @@
         }
       }
     },
-    "failed_tests": []
+    "failed_tests": [
+      {
+        "name": "test_create_model_step_creation",
+        "error": "CreateModel step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      },
+      {
+        "name": "test_processing_step_creation",
+        "error": "Processing step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      },
+      {
+        "name": "test_step_configuration_validity",
+        "error": "Step configuration validity test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      },
+      {
+        "name": "test_step_dependencies_attachment",
+        "error": "Step dependencies attachment test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      },
+      {
+        "name": "test_step_instantiation",
+        "error": "Step instantiation failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      },
+      {
+        "name": "test_step_name_generation",
+        "error": "Step name generation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      },
+      {
+        "name": "test_training_step_creation",
+        "error": "Training step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      },
+      {
+        "name": "test_transform_step_creation",
+        "error": "Transform step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+      }
+    ]
   },
   "structured_report": {
     "builder_info": {
@@ -242,23 +305,7 @@
           "assertions": 1
         }
       },
-      "level3_path_mapping": {
-        "test_input_path_mapping": {
-          "passed": true,
-          "name": "test_input_path_mapping",
-          "assertions": 0
-        },
-        "test_output_path_mapping": {
-          "passed": true,
-          "name": "test_output_path_mapping",
-          "assertions": 0
-        },
-        "test_property_path_validity": {
-          "passed": true,
-          "name": "test_property_path_validity",
-          "assertions": 2
-        }
-      },
+      "level3_path_mapping": {},
       "level4_integration": {
         "test_dependency_resolution": {
           "passed": true,
@@ -272,6 +319,36 @@
         }
       },
       "step_type_specific": {
+        "test_create_model_step_creation": {
+          "passed": false,
+          "name": "test_create_model_step_creation",
+          "error": "CreateModel step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        "test_processing_step_creation": {
+          "passed": false,
+          "name": "test_processing_step_creation",
+          "error": "Processing step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        "test_step_type_compliance": {
+          "passed": true,
+          "error": null,
+          "details": {
+            "error_count": 0,
+            "warning_count": 0,
+            "info_count": 0,
+            "violations": []
+          }
+        },
+        "test_training_step_creation": {
+          "passed": false,
+          "name": "test_training_step_creation",
+          "error": "Training step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        "test_transform_step_creation": {
+          "passed": false,
+          "name": "test_transform_step_creation",
+          "error": "Transform step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
         "test_step_type_detection": {
           "passed": true,
           "error": null,
@@ -290,16 +367,6 @@
             "is_valid": true
           }
         },
-        "test_step_type_compliance": {
-          "passed": true,
-          "error": null,
-          "details": {
-            "error_count": 0,
-            "warning_count": 0,
-            "info_count": 0,
-            "violations": []
-          }
-        },
         "test_transform_transformer_methods": {
           "passed": true,
           "error": null,
@@ -316,19 +383,19 @@
       }
     },
     "summary": {
-      "total_tests": 24,
-      "passed_tests": 24,
-      "pass_rate": 100.0,
-      "overall_score": 100.0,
-      "score_rating": "Excellent"
+      "total_tests": 29,
+      "passed_tests": 21,
+      "pass_rate": 72.41379310344827,
+      "overall_score": 71.42857142857143,
+      "score_rating": "Satisfactory"
     },
     "scoring": {
       "overall": {
-        "score": 100.0,
-        "rating": "Excellent",
-        "passed": 14,
-        "total": 14,
-        "pass_rate": 100.0
+        "score": 71.42857142857143,
+        "rating": "Satisfactory",
+        "passed": 11,
+        "total": 19,
+        "pass_rate": 57.89473684210527
       },
       "levels": {
         "level1_interface": {
@@ -353,13 +420,18 @@
           }
         },
         "level3_path_mapping": {
-          "score": 100.0,
-          "passed": 3,
-          "total": 3,
+          "score": 0.0,
+          "passed": 0,
+          "total": 8,
           "tests": {
-            "test_input_path_mapping": true,
-            "test_output_path_mapping": true,
-            "test_property_path_validity": true
+            "test_create_model_step_creation": false,
+            "test_processing_step_creation": false,
+            "test_step_configuration_validity": false,
+            "test_step_dependencies_attachment": false,
+            "test_step_instantiation": false,
+            "test_step_name_generation": false,
+            "test_training_step_creation": false,
+            "test_transform_step_creation": false
           }
         },
         "level4_integration": {
@@ -374,12 +446,45 @@
           }
         }
       },
-      "failed_tests": []
+      "failed_tests": [
+        {
+          "name": "test_create_model_step_creation",
+          "error": "CreateModel step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        {
+          "name": "test_processing_step_creation",
+          "error": "Processing step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        {
+          "name": "test_step_configuration_validity",
+          "error": "Step configuration validity test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        {
+          "name": "test_step_dependencies_attachment",
+          "error": "Step dependencies attachment test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        {
+          "name": "test_step_instantiation",
+          "error": "Step instantiation failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        {
+          "name": "test_step_name_generation",
+          "error": "Step name generation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        {
+          "name": "test_training_step_creation",
+          "error": "Training step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        },
+        {
+          "name": "test_transform_step_creation",
+          "error": "Transform step creation test failed: BatchTransformStepBuilder requires a BatchTransformStepConfig instance."
+        }
+      ]
     }
   },
   "step_name": "BatchTransform",
   "step_type": "transform",
   "builder_class_name": "BatchTransformStepBuilder",
-  "timestamp": "2025-08-15T18:09:15.945512",
+  "timestamp": "2025-08-15T20:05:46.026427",
   "generator_version": "1.0.0"
 }

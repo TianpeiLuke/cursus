@@ -15,7 +15,7 @@ import numpy as np
 LEVEL_WEIGHTS = {
     "level1_interface": 1.0,    # Basic interface compliance
     "level2_specification": 1.5, # Specification and contract compliance
-    "level3_path_mapping": 2.0,  # Path mapping and property paths
+    "level3_path_mapping": 2.0,  # Step creation and configuration validation (formerly path mapping)
     "level4_integration": 2.5,   # System integration
 }
 
@@ -160,8 +160,13 @@ class StepBuilderScorer:
         if any(keyword in test_lower for keyword in level2_keywords):
             return "level2_specification"
         
-        # Level 3 keywords: path, mapping, input, output, container paths
+        # Level 3 keywords: step creation, configuration validation, and legacy path mapping
         level3_keywords = [
+            # New step creation tests
+            "step_instantiation", "step_configuration_validity", "step_dependencies_attachment",
+            "step_name_generation", "processing_step_creation", "training_step_creation",
+            "transform_step_creation", "create_model_step_creation", "configuration_validity",
+            # Legacy path mapping tests (for backward compatibility)
             "path_mapping", "input", "output", "property_path", "processing_inputs_outputs",
             "processing_code_handling", "processing_input_creation", "processing_output_creation",
             "container_path_mapping", "special_input_handling", "s3_path_normalization",

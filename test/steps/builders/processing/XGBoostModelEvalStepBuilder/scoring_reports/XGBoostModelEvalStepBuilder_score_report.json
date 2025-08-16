@@ -70,20 +70,55 @@
       "name": "test_specification_usage",
       "assertions": 1
     },
-    "test_input_path_mapping": {
+    "test_create_model_step_creation": {
       "passed": false,
-      "name": "test_input_path_mapping",
-      "error": "Input path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      "name": "test_create_model_step_creation",
+      "error": "CreateModel step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
     },
-    "test_output_path_mapping": {
+    "test_processing_step_creation": {
       "passed": false,
-      "name": "test_output_path_mapping",
-      "error": "Output path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      "name": "test_processing_step_creation",
+      "error": "Processing step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
     },
-    "test_property_path_validity": {
+    "test_step_configuration_validity": {
       "passed": false,
-      "name": "test_property_path_validity",
-      "error": "Property path validity test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      "name": "test_step_configuration_validity",
+      "error": "Step configuration validity test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+    },
+    "test_step_dependencies_attachment": {
+      "passed": false,
+      "name": "test_step_dependencies_attachment",
+      "error": "Step dependencies attachment test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+    },
+    "test_step_instantiation": {
+      "passed": false,
+      "name": "test_step_instantiation",
+      "error": "Step instantiation failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+    },
+    "test_step_name_generation": {
+      "passed": false,
+      "name": "test_step_name_generation",
+      "error": "Step name generation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+    },
+    "test_step_type_compliance": {
+      "passed": true,
+      "error": null,
+      "details": {
+        "error_count": 0,
+        "warning_count": 0,
+        "info_count": 0,
+        "violations": []
+      }
+    },
+    "test_training_step_creation": {
+      "passed": false,
+      "name": "test_training_step_creation",
+      "error": "Training step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+    },
+    "test_transform_step_creation": {
+      "passed": false,
+      "name": "test_transform_step_creation",
+      "error": "Transform step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
     },
     "test_dependency_resolution": {
       "passed": true,
@@ -118,16 +153,6 @@
         "is_valid": true
       }
     },
-    "test_step_type_compliance": {
-      "passed": true,
-      "error": null,
-      "details": {
-        "error_count": 0,
-        "warning_count": 0,
-        "info_count": 0,
-        "violations": []
-      }
-    },
     "test_processing_processor_methods": {
       "passed": true,
       "error": null,
@@ -155,8 +180,8 @@
       "score": 71.42857142857143,
       "rating": "Satisfactory",
       "passed": 11,
-      "total": 14,
-      "pass_rate": 78.57142857142857
+      "total": 19,
+      "pass_rate": 57.89473684210527
     },
     "levels": {
       "level1_interface": {
@@ -183,11 +208,16 @@
       "level3_path_mapping": {
         "score": 0.0,
         "passed": 0,
-        "total": 3,
+        "total": 8,
         "tests": {
-          "test_input_path_mapping": false,
-          "test_output_path_mapping": false,
-          "test_property_path_validity": false
+          "test_create_model_step_creation": false,
+          "test_processing_step_creation": false,
+          "test_step_configuration_validity": false,
+          "test_step_dependencies_attachment": false,
+          "test_step_instantiation": false,
+          "test_step_name_generation": false,
+          "test_training_step_creation": false,
+          "test_transform_step_creation": false
         }
       },
       "level4_integration": {
@@ -204,16 +234,36 @@
     },
     "failed_tests": [
       {
-        "name": "test_input_path_mapping",
-        "error": "Input path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        "name": "test_create_model_step_creation",
+        "error": "CreateModel step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
       },
       {
-        "name": "test_output_path_mapping",
-        "error": "Output path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        "name": "test_processing_step_creation",
+        "error": "Processing step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
       },
       {
-        "name": "test_property_path_validity",
-        "error": "Property path validity test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        "name": "test_step_configuration_validity",
+        "error": "Step configuration validity test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      },
+      {
+        "name": "test_step_dependencies_attachment",
+        "error": "Step dependencies attachment test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      },
+      {
+        "name": "test_step_instantiation",
+        "error": "Step instantiation failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      },
+      {
+        "name": "test_step_name_generation",
+        "error": "Step name generation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      },
+      {
+        "name": "test_training_step_creation",
+        "error": "Training step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+      },
+      {
+        "name": "test_transform_step_creation",
+        "error": "Transform step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
       }
     ]
   },
@@ -263,23 +313,7 @@
           "assertions": 1
         }
       },
-      "level3_path_mapping": {
-        "test_input_path_mapping": {
-          "passed": false,
-          "name": "test_input_path_mapping",
-          "error": "Input path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
-        },
-        "test_output_path_mapping": {
-          "passed": false,
-          "name": "test_output_path_mapping",
-          "error": "Output path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
-        },
-        "test_property_path_validity": {
-          "passed": false,
-          "name": "test_property_path_validity",
-          "error": "Property path validity test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
-        }
-      },
+      "level3_path_mapping": {},
       "level4_integration": {
         "test_dependency_resolution": {
           "passed": true,
@@ -293,6 +327,36 @@
         }
       },
       "step_type_specific": {
+        "test_create_model_step_creation": {
+          "passed": false,
+          "name": "test_create_model_step_creation",
+          "error": "CreateModel step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        "test_processing_step_creation": {
+          "passed": false,
+          "name": "test_processing_step_creation",
+          "error": "Processing step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        "test_step_type_compliance": {
+          "passed": true,
+          "error": null,
+          "details": {
+            "error_count": 0,
+            "warning_count": 0,
+            "info_count": 0,
+            "violations": []
+          }
+        },
+        "test_training_step_creation": {
+          "passed": false,
+          "name": "test_training_step_creation",
+          "error": "Training step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        "test_transform_step_creation": {
+          "passed": false,
+          "name": "test_transform_step_creation",
+          "error": "Transform step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
         "test_step_type_detection": {
           "passed": true,
           "error": null,
@@ -309,16 +373,6 @@
           "details": {
             "sagemaker_step_type": "Processing",
             "is_valid": true
-          }
-        },
-        "test_step_type_compliance": {
-          "passed": true,
-          "error": null,
-          "details": {
-            "error_count": 0,
-            "warning_count": 0,
-            "info_count": 0,
-            "violations": []
           }
         },
         "test_processing_processor_methods": {
@@ -345,9 +399,9 @@
       }
     },
     "summary": {
-      "total_tests": 25,
+      "total_tests": 30,
       "passed_tests": 22,
-      "pass_rate": 88.0,
+      "pass_rate": 73.33333333333333,
       "overall_score": 71.42857142857143,
       "score_rating": "Satisfactory"
     },
@@ -356,8 +410,8 @@
         "score": 71.42857142857143,
         "rating": "Satisfactory",
         "passed": 11,
-        "total": 14,
-        "pass_rate": 78.57142857142857
+        "total": 19,
+        "pass_rate": 57.89473684210527
       },
       "levels": {
         "level1_interface": {
@@ -384,11 +438,16 @@
         "level3_path_mapping": {
           "score": 0.0,
           "passed": 0,
-          "total": 3,
+          "total": 8,
           "tests": {
-            "test_input_path_mapping": false,
-            "test_output_path_mapping": false,
-            "test_property_path_validity": false
+            "test_create_model_step_creation": false,
+            "test_processing_step_creation": false,
+            "test_step_configuration_validity": false,
+            "test_step_dependencies_attachment": false,
+            "test_step_instantiation": false,
+            "test_step_name_generation": false,
+            "test_training_step_creation": false,
+            "test_transform_step_creation": false
           }
         },
         "level4_integration": {
@@ -405,16 +464,36 @@
       },
       "failed_tests": [
         {
-          "name": "test_input_path_mapping",
-          "error": "Input path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+          "name": "test_create_model_step_creation",
+          "error": "CreateModel step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
         },
         {
-          "name": "test_output_path_mapping",
-          "error": "Output path mapping test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+          "name": "test_processing_step_creation",
+          "error": "Processing step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
         },
         {
-          "name": "test_property_path_validity",
-          "error": "Property path validity test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+          "name": "test_step_configuration_validity",
+          "error": "Step configuration validity test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        {
+          "name": "test_step_dependencies_attachment",
+          "error": "Step dependencies attachment test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        {
+          "name": "test_step_instantiation",
+          "error": "Step instantiation failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        {
+          "name": "test_step_name_generation",
+          "error": "Step name generation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        {
+          "name": "test_training_step_creation",
+          "error": "Training step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
+        },
+        {
+          "name": "test_transform_step_creation",
+          "error": "Transform step creation test failed: XGBoostModelEvalStepBuilder requires a XGBoostModelEvalConfig instance."
         }
       ]
     }
@@ -422,6 +501,6 @@
   "step_name": "XGBoostModelEval",
   "step_type": "processing",
   "builder_class_name": "XGBoostModelEvalStepBuilder",
-  "timestamp": "2025-08-15T18:09:17.257092",
+  "timestamp": "2025-08-15T20:05:47.536776",
   "generator_version": "1.0.0"
 }
