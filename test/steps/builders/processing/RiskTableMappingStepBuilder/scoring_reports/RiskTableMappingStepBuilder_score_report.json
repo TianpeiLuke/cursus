@@ -459,6 +459,6 @@
   "step_name": "RiskTableMapping",
   "step_type": "processing",
   "builder_class_name": "RiskTableMappingStepBuilder",
-  "timestamp": "2025-08-16T09:15:50.618322",
+  "timestamp": "2025-08-16T10:00:08.311586",
   "generator_version": "1.0.0"
 }
