@@ -136,6 +136,23 @@ class UniversalStepBuilderTestBase(ABC):
         # Mock SageMaker session
         self.mock_session = MagicMock()
         self.mock_session.boto_session.client.return_value = MagicMock()
+        # Fix: Configure mock session with proper region string
+        self.mock_session.boto_region_name = 'us-east-1'
+        
+        # Fix: Provide proper SageMaker config structure instead of MagicMock
+        self.mock_session.sagemaker_config = {
+            'SchemaVersion': '1.0',
+            'SageMaker': {
+                'PythonSDK': {
+                    'Modules': {
+                        'Session': {
+                            'DefaultS3Bucket': 'test-bucket',
+                            'DefaultS3ObjectKeyPrefix': 'test-prefix'
+                        }
+                    }
+                }
+            }
+        }
         
         # Mock IAM role
         self.mock_role = 'arn:aws:iam::123456789012:role/MockRole'
@@ -145,9 +162,27 @@ class UniversalStepBuilderTestBase(ABC):
         self.mock_dependency_resolver = MagicMock()
         
         # Configure dependency resolver for successful resolution
-        self.mock_dependency_resolver.resolve_step_dependencies.return_value = {
-            dep: MagicMock() for dep in self._get_expected_dependencies()
-        }
+        mock_dependencies = self._create_mock_dependencies()
+        dependency_dict = {}
+        expected_deps = self._get_expected_dependencies()
+        
+        # Map expected dependency names to mock steps
+        for i, dep_name in enumerate(expected_deps):
+            if i < len(mock_dependencies):
+                dependency_dict[dep_name] = mock_dependencies[i]
+            else:
+                # Fallback to simple mock if we don't have enough mock dependencies
+                dependency_dict[dep_name] = MagicMock()
+        
+        # Configure multiple methods that builders might use to check for dependencies
+        self.mock_dependency_resolver.resolve_step_dependencies.return_value = dependency_dict
+        self.mock_dependency_resolver.get_resolved_dependencies.return_value = dependency_dict
+        self.mock_dependency_resolver.has_dependency.side_effect = lambda dep_name: dep_name in dependency_dict
+        self.mock_dependency_resolver.get_dependency.side_effect = lambda dep_name: dependency_dict.get(dep_name)
+        
+        # Also configure the registry manager to provide dependencies
+        self.mock_registry_manager.get_step_dependencies.return_value = dependency_dict
+        self.mock_registry_manager.resolve_dependencies.return_value = dependency_dict
         
         # Mock boto3 client
         self.mock_boto3_client = MagicMock()
@@ -183,6 +218,44 @@ class UniversalStepBuilderTestBase(ABC):
         
         return builder
     
+    def _get_required_dependencies_from_spec(self, builder: StepBuilderBase) -> List[str]:
+        """Extract required dependency logical names from builder specification."""
+        required_deps = []
+        
+        if hasattr(builder, 'spec') and builder.spec and hasattr(builder.spec, 'dependencies'):
+            for _, dependency_spec in builder.spec.dependencies.items():
+                if dependency_spec.required:
+                    required_deps.append(dependency_spec.logical_name)
+        
+        return required_deps
+    
+    def _create_mock_inputs_for_builder(self, builder: StepBuilderBase) -> Dict[str, str]:
+        """Create mock inputs dictionary for a builder based on its required dependencies."""
+        mock_inputs = {}
+        
+        # Get required dependencies from specification
+        required_deps = self._get_required_dependencies_from_spec(builder)
+        
+        # Generate mock S3 URIs for each required dependency
+        for logical_name in required_deps:
+            mock_inputs[logical_name] = self._generate_mock_s3_uri(logical_name)
+        
+        return mock_inputs
+    
+    def _generate_mock_s3_uri(self, logical_name: str) -> str:
+        """Generate a mock S3 URI for a given logical dependency name."""
+        # Create appropriate S3 URI based on dependency type
+        if logical_name.lower() in ['data', 'input_data']:
+            return f"s3://test-bucket/processing-data/{logical_name}"
+        elif logical_name.lower() in ['input_path']:
+            return f"s3://test-bucket/training-data/{logical_name}"
+        elif logical_name.lower() in ['model_input', 'model_artifacts']:
+            return f"s3://test-bucket/model-artifacts/{logical_name}"
+        elif logical_name.lower() in ['hyperparameters_s3_uri']:
+            return f"s3://test-bucket/hyperparameters/{logical_name}/hyperparameters.json"
+        else:
+            return f"s3://test-bucket/generic/{logical_name}"
+    
     def _create_mock_config(self) -> SimpleNamespace:
         """Create a mock configuration for the builder using the factory."""
         # Use the mock factory to create step type-specific config
@@ -197,7 +270,7 @@ class UniversalStepBuilderTestBase(ABC):
         return mock_config
     
     def _create_mock_dependencies(self) -> List[Step]:
-        """Create mock dependencies for the builder."""
+        """Create mock dependencies for the builder with enhanced property mapping."""
         # Create a list of mock steps
         dependencies = []
         
@@ -210,34 +283,87 @@ class UniversalStepBuilderTestBase(ABC):
             step = MagicMock()
             step.name = f"Mock{dep_name.capitalize()}Step"
             
-            # Add properties attribute with outputs
+            # Add properties attribute with comprehensive outputs
             step.properties = MagicMock()
             
-            # Add ProcessingOutputConfig for processing steps
-            if "Processing" in step.name:
+            # Configure properties based on dependency type
+            if dep_name.lower() in ['data', 'input_data']:
+                # Processing step output for data dependencies
                 step.properties.ProcessingOutputConfig = MagicMock()
-                step.properties.ProcessingOutputConfig.Outputs = {
-                    dep_name: MagicMock(
+                step.properties.ProcessingOutputConfig.Outputs = [
+                    MagicMock(
+                        OutputName=dep_name,
                         S3Output=MagicMock(
-                            S3Uri=f"s3://bucket/prefix/{dep_name}"
+                            S3Uri=f"s3://test-bucket/processing/{dep_name}",
+                            LocalPath=f"/opt/ml/processing/output/{dep_name}"
                         )
                     )
-                }
-            
-            # Add ModelArtifacts for training steps
-            if "Training" in step.name:
+                ]
+                # Also provide direct access pattern
+                setattr(step.properties.ProcessingOutputConfig, dep_name, 
+                       MagicMock(S3Uri=f"s3://test-bucket/processing/{dep_name}"))
+                
+            elif dep_name.lower() in ['input_path']:
+                # Training step input path - could come from processing or training step
+                step.properties.ProcessingOutputConfig = MagicMock()
+                step.properties.ProcessingOutputConfig.Outputs = [
+                    MagicMock(
+                        OutputName='training_data',
+                        S3Output=MagicMock(
+                            S3Uri=f"s3://test-bucket/training-data/{dep_name}",
+                            LocalPath="/opt/ml/processing/output/training_data"
+                        )
+                    )
+                ]
+                # Also add ModelArtifacts in case it's from a training step
                 step.properties.ModelArtifacts = MagicMock(
-                    S3ModelArtifacts=f"s3://bucket/prefix/{dep_name}"
+                    S3ModelArtifacts=f"s3://test-bucket/model-artifacts/{dep_name}"
+                )
+                
+            elif dep_name.lower() in ['model_input', 'model_artifacts']:
+                # Model artifacts from training steps
+                step.properties.ModelArtifacts = MagicMock(
+                    S3ModelArtifacts=f"s3://test-bucket/model-artifacts/{dep_name}"
+                )
+                # Also provide processing output format for model evaluation steps
+                step.properties.ProcessingOutputConfig = MagicMock()
+                step.properties.ProcessingOutputConfig.Outputs = [
+                    MagicMock(
+                        OutputName=dep_name,
+                        S3Output=MagicMock(
+                            S3Uri=f"s3://test-bucket/model/{dep_name}",
+                            LocalPath=f"/opt/ml/processing/output/{dep_name}"
+                        )
+                    )
+                ]
+                
+            else:
+                # Generic dependency - provide both processing and model artifact patterns
+                step.properties.ProcessingOutputConfig = MagicMock()
+                step.properties.ProcessingOutputConfig.Outputs = [
+                    MagicMock(
+                        OutputName=dep_name,
+                        S3Output=MagicMock(
+                            S3Uri=f"s3://test-bucket/generic/{dep_name}",
+                            LocalPath=f"/opt/ml/processing/output/{dep_name}"
+                        )
+                    )
+                ]
+                step.properties.ModelArtifacts = MagicMock(
+                    S3ModelArtifacts=f"s3://test-bucket/generic/{dep_name}"
                 )
             
-            # Add _spec attribute
+            # Add comprehensive _spec attribute for dependency resolution
             step._spec = MagicMock()
             step._spec.outputs = {
                 dep_name: MagicMock(
                     logical_name=dep_name,
-                    property_path=f"properties.Outputs['{dep_name}'].S3Uri"
+                    property_path=self._get_property_path_for_dependency(dep_name)
                 )
             }
+            
+            # Add step type information
+            step.step_type = self._infer_step_type_from_dependency(dep_name)
             
             dependencies.append(step)
         
@@ -247,6 +373,28 @@ class UniversalStepBuilderTestBase(ABC):
         """Get the list of expected dependency names for the builder."""
         # Use the mock factory to get expected dependencies
         return self.mock_factory.get_expected_dependencies()
+    
+    def _get_property_path_for_dependency(self, dep_name: str) -> str:
+        """Get the appropriate property path for a dependency based on its type."""
+        if dep_name.lower() in ['data', 'input_data', 'model_input']:
+            return f"ProcessingOutputConfig.Outputs[0].S3Output.S3Uri"
+        elif dep_name.lower() in ['input_path']:
+            return f"ProcessingOutputConfig.Outputs[0].S3Output.S3Uri"
+        elif dep_name.lower() in ['model_artifacts']:
+            return f"ModelArtifacts.S3ModelArtifacts"
+        else:
+            return f"ProcessingOutputConfig.Outputs[0].S3Output.S3Uri"
+    
+    def _infer_step_type_from_dependency(self, dep_name: str) -> str:
+        """Infer the step type that would produce this dependency."""
+        if dep_name.lower() in ['data', 'input_data']:
+            return 'Processing'
+        elif dep_name.lower() in ['input_path']:
+            return 'Processing'  # Training data usually comes from processing
+        elif dep_name.lower() in ['model_input', 'model_artifacts']:
+            return 'Training'  # Model artifacts come from training
+        else:
+            return 'Processing'  # Default to processing
     
     @contextlib.contextmanager
     def _assert_raises(self, expected_exception):

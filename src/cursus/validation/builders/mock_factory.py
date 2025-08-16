@@ -94,39 +94,52 @@ class StepTypeMockFactory:
             # First create base config with all required fields
             base_config = self._create_base_pipeline_config()
             if not base_config:
+                if self.test_mode:
+                    print(f"INFO: Could not create base config for {builder_name}")
                 return None
             
             # Then create specific config using from_base_config with enhanced parameters
+            config_instance = None
             if "Payload" in builder_name:
-                return self._create_payload_config_from_base(base_config)
+                config_instance = self._create_payload_config_from_base(base_config)
             elif "Package" in builder_name:
-                return self._create_package_config_from_base(base_config)
+                config_instance = self._create_package_config_from_base(base_config)
             elif "TabularPreprocessing" in builder_name:
-                return self._create_tabular_preprocessing_config_from_base(base_config)
+                config_instance = self._create_tabular_preprocessing_config_from_base(base_config)
             elif "CurrencyConversion" in builder_name:
-                return self._create_currency_conversion_config_from_base(base_config)
+                config_instance = self._create_currency_conversion_config_from_base(base_config)
             elif "RiskTableMapping" in builder_name:
-                return self._create_risk_table_mapping_config_from_base(base_config)
+                config_instance = self._create_risk_table_mapping_config_from_base(base_config)
             elif "ModelCalibration" in builder_name:
-                return self._create_model_calibration_config_from_base(base_config)
+                config_instance = self._create_model_calibration_config_from_base(base_config)
             elif "DummyTraining" in builder_name:
-                return self._create_dummy_training_config_from_base(base_config)
+                config_instance = self._create_dummy_training_config_from_base(base_config)
             elif "XGBoostModelEval" in builder_name:
-                return self._create_xgboost_model_eval_config_from_base(base_config)
+                config_instance = self._create_xgboost_model_eval_config_from_base(base_config)
             elif "XGBoostTraining" in builder_name:
-                return self._create_xgboost_training_config_from_base(base_config)
+                config_instance = self._create_xgboost_training_config_from_base(base_config)
             elif "PyTorchTraining" in builder_name:
-                return self._create_pytorch_training_config_from_base(base_config)
+                config_instance = self._create_pytorch_training_config_from_base(base_config)
             elif "XGBoostModel" in builder_name:
-                return self._create_xgboost_model_config_from_base(base_config)
+                config_instance = self._create_xgboost_model_config_from_base(base_config)
             elif "PyTorchModel" in builder_name:
-                return self._create_pytorch_model_config_from_base(base_config)
+                config_instance = self._create_pytorch_model_config_from_base(base_config)
             elif "BatchTransform" in builder_name:
-                return self._create_batch_transform_config_from_base(base_config)
+                config_instance = self._create_batch_transform_config_from_base(base_config)
             elif "Registration" in builder_name:
-                return self._create_registration_config_from_base(base_config)
+                config_instance = self._create_registration_config_from_base(base_config)
             elif "CradleDataLoading" in builder_name:
-                return self._create_cradle_data_loading_config_from_base(base_config)
+                config_instance = self._create_cradle_data_loading_config_from_base(base_config)
+            
+            if config_instance:
+                if self.test_mode:
+                    print(f"INFO: Successfully created {type(config_instance).__name__} for {builder_name}")
+                return config_instance
+            else:
+                if self.test_mode:
+                    print(f"INFO: No specific config creator found for {builder_name}")
+                return None
+                
         except Exception as e:
             if self.test_mode:
                 print(f"INFO: Could not create proper config for {builder_name}, using fallback: {e}")
@@ -148,7 +161,7 @@ class StepTypeMockFactory:
                 author='test-author',
                 bucket='test-bucket',
                 role='arn:aws:iam::123456789012:role/test-role',
-                region='us-east-1',  # Use valid region instead of 'NA'
+                region='NA',  # Use valid region code that passes validation
                 service_name='test-service',
                 pipeline_version='1.0.0',
                 model_class='xgboost',
@@ -378,8 +391,8 @@ class StepTypeMockFactory:
             return XGBoostModelEvalConfig.from_base_config(
                 base_config,
                 job_type='training',
-                processing_entry_point='model_evaluation_xgb.py',
-                processing_source_dir=None,  # Don't set source dir to avoid validation issues
+                processing_entry_point='xgboost_model_evaluation.py',  # Use correct script name
+                processing_source_dir='/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts',  # Use absolute path
                 xgboost_framework_version='1.7-1',
                 hyperparameters=mock_hp,
                 processing_instance_count=1,
@@ -452,7 +465,7 @@ class StepTypeMockFactory:
             from ...steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
             
             # Create comprehensive field lists that satisfy validation
-            full_field_list = ['feature1', 'feature2', 'feature3', 'feature4', 'target']
+            full_field_list = ['id', 'feature1', 'feature2', 'feature3', 'feature4', 'target']
             cat_field_list = ['feature1', 'feature2']  # Subset of full_field_list
             tab_field_list = ['feature3', 'feature4']  # Subset of full_field_list
             
@@ -492,7 +505,7 @@ class StepTypeMockFactory:
                 print(f"Failed to create XGBoostModelHyperparameters: {e}")
             # Fallback to SimpleNamespace with all required attributes
             mock_hp = SimpleNamespace()
-            mock_hp.full_field_list = ['feature1', 'feature2', 'feature3', 'feature4', 'target']
+            mock_hp.full_field_list = ['id', 'feature1', 'feature2', 'feature3', 'feature4', 'target']
             mock_hp.cat_field_list = ['feature1', 'feature2']
             mock_hp.tab_field_list = ['feature3', 'feature4']
             mock_hp.id_name = 'id'
@@ -512,8 +525,8 @@ class StepTypeMockFactory:
         try:
             from ...steps.hyperparams.hyperparameters_bsm import BSMModelHyperparameters
             
-            # Create comprehensive field lists that satisfy validation
-            full_field_list = ['feature1', 'feature2', 'text_field', 'target']
+            # Create comprehensive field lists that satisfy validation (include id_name)
+            full_field_list = ['id', 'feature1', 'feature2', 'text_field', 'target']
             cat_field_list = ['feature1']  # Subset of full_field_list
             tab_field_list = ['feature2']  # Subset of full_field_list
             
@@ -528,7 +541,7 @@ class StepTypeMockFactory:
                 # Required BSM-specific fields
                 tokenizer='bert-base-uncased',
                 text_name='text_field',
-                # Optional fields with comprehensive defaults
+                # Optional fields with comprehensive defaults (removed extra_forbidden fields)
                 lr_decay=0.05,
                 adam_epsilon=1e-08,
                 momentum=0.9,
@@ -557,10 +570,8 @@ class StepTypeMockFactory:
                 reinit_layers=2,
                 reinit_pooler=True,
                 hidden_common_dim=100,
-                # Additional fields that might be required
-                learning_rate=0.001,
-                batch_size=32,
-                epochs=10
+                batch_size=32
+                # Removed learning_rate and epochs as they cause extra_forbidden validation errors
             )
         except Exception as e:
             if self.test_mode:
@@ -587,7 +598,7 @@ class StepTypeMockFactory:
             from ...steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
             
             # Create minimal but valid hyperparameters for model evaluation
-            full_field_list = ['feature1', 'feature2', 'target']
+            full_field_list = ['id', 'feature1', 'feature2', 'target']
             cat_field_list = ['feature1']
             tab_field_list = ['feature2']
             
@@ -611,7 +622,7 @@ class StepTypeMockFactory:
             mock_hp = SimpleNamespace()
             mock_hp.id_name = 'id'
             mock_hp.label_name = 'target'
-            mock_hp.full_field_list = ['feature1', 'feature2', 'target']
+            mock_hp.full_field_list = ['id', 'feature1', 'feature2', 'target']
             mock_hp.cat_field_list = ['feature1']
             mock_hp.tab_field_list = ['feature2']
             mock_hp.model_dump = lambda: {'id_name': 'id', 'label_name': 'target'}
@@ -784,7 +795,7 @@ class StepTypeMockFactory:
     def _create_base_config(self) -> SimpleNamespace:
         """Create enhanced base configuration with better validation support."""
         mock_config = SimpleNamespace()
-        mock_config.region = 'us-east-1'  # Use valid region
+        mock_config.region = 'NA'  # Use valid region code
         mock_config.pipeline_name = 'test-pipeline'
         mock_config.pipeline_s3_loc = 's3://bucket/prefix'
         
@@ -1085,6 +1096,8 @@ class StepTypeMockFactory:
         
         if "TabularPreprocessing" in builder_name:
             return ["DATA"]
+        elif "XGBoostModelEval" in builder_name:
+            return ["model_input"]  # XGBoostModelEval only needs model_input
         elif "ModelEval" in builder_name:
             return ["model_input", "eval_data_input"]
         else:

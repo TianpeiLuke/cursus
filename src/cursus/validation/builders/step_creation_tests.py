@@ -55,8 +55,11 @@ class StepCreationTests(UniversalStepBuilderTestBase):
             # Create builder instance with mock config
             builder = self._create_builder_instance()
             
-            # Test step creation
-            step = builder.create_step()
+            # Create mock inputs based on builder's required dependencies
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            
+            # Test step creation with mock inputs
+            step = builder.create_step(inputs=mock_inputs)
             
             # Validate step instance
             self._assert(
@@ -73,6 +76,8 @@ class StepCreationTests(UniversalStepBuilderTestBase):
             # Log successful step creation
             step_type = type(step).__name__
             self._log(f"Successfully created step instance of type: {step_type}")
+            if mock_inputs:
+                self._log(f"Used mock inputs: {list(mock_inputs.keys())}")
             
         except Exception as e:
             self._assert(
@@ -93,8 +98,11 @@ class StepCreationTests(UniversalStepBuilderTestBase):
                 self._log("Skipping step type compliance test - unknown step type")
                 return
             
-            # Create step
-            step = builder.create_step()
+            # Create mock inputs based on builder's required dependencies
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            
+            # Create step with mock inputs
+            step = builder.create_step(inputs=mock_inputs)
             
             # Get actual step type
             actual_step_type = type(step).__name__
@@ -122,8 +130,11 @@ class StepCreationTests(UniversalStepBuilderTestBase):
             # Create builder instance with mock config
             builder = self._create_builder_instance()
             
-            # Create step
-            step = builder.create_step()
+            # Create mock inputs based on builder's required dependencies
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            
+            # Create step with mock inputs
+            step = builder.create_step(inputs=mock_inputs)
             
             # Validate step has required attributes
             required_attrs = ['name']
@@ -156,8 +167,11 @@ class StepCreationTests(UniversalStepBuilderTestBase):
             # Create builder instance with mock config
             builder = self._create_builder_instance()
             
-            # Create step
-            step = builder.create_step()
+            # Create mock inputs based on builder's required dependencies
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            
+            # Create step with mock inputs
+            step = builder.create_step(inputs=mock_inputs)
             
             # Validate step name format
             step_name = step.name
@@ -196,8 +210,11 @@ class StepCreationTests(UniversalStepBuilderTestBase):
             # Create builder instance with mock config
             builder = self._create_builder_instance()
             
-            # Create step
-            step = builder.create_step()
+            # Create mock inputs based on builder's required dependencies
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            
+            # Create step with mock inputs
+            step = builder.create_step(inputs=mock_inputs)
             
             # Check if step has dependency-related attributes
             # This varies by step type, so we do basic validation
@@ -225,9 +242,16 @@ class StepCreationTests(UniversalStepBuilderTestBase):
     
     def test_processing_step_creation(self) -> None:
         """Test Processing step-specific creation requirements."""
+        # Only run this test if the builder creates ProcessingStep
+        expected_step_type = self.step_info.get('sagemaker_step_type', 'Unknown')
+        if expected_step_type != 'Processing':
+            self._log(f"Skipping processing step test - builder creates {expected_step_type} steps")
+            return
+            
         try:
             builder = self._create_builder_instance()
-            step = builder.create_step()
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            step = builder.create_step(inputs=mock_inputs)
             
             # Validate ProcessingStep specific attributes
             self._assert(
@@ -258,9 +282,16 @@ class StepCreationTests(UniversalStepBuilderTestBase):
     
     def test_training_step_creation(self) -> None:
         """Test Training step-specific creation requirements."""
+        # Only run this test if the builder creates TrainingStep
+        expected_step_type = self.step_info.get('sagemaker_step_type', 'Unknown')
+        if expected_step_type != 'Training':
+            self._log(f"Skipping training step test - builder creates {expected_step_type} steps")
+            return
+            
         try:
             builder = self._create_builder_instance()
-            step = builder.create_step()
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            step = builder.create_step(inputs=mock_inputs)
             
             # Validate TrainingStep specific attributes
             self._assert(
@@ -291,9 +322,16 @@ class StepCreationTests(UniversalStepBuilderTestBase):
     
     def test_transform_step_creation(self) -> None:
         """Test Transform step-specific creation requirements."""
+        # Only run this test if the builder creates TransformStep
+        expected_step_type = self.step_info.get('sagemaker_step_type', 'Unknown')
+        if expected_step_type != 'Transform':
+            self._log(f"Skipping transform step test - builder creates {expected_step_type} steps")
+            return
+            
         try:
             builder = self._create_builder_instance()
-            step = builder.create_step()
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            step = builder.create_step(inputs=mock_inputs)
             
             # Validate TransformStep specific attributes
             self._assert(
@@ -319,9 +357,16 @@ class StepCreationTests(UniversalStepBuilderTestBase):
     
     def test_create_model_step_creation(self) -> None:
         """Test CreateModel step-specific creation requirements."""
+        # Only run this test if the builder creates CreateModelStep
+        expected_step_type = self.step_info.get('sagemaker_step_type', 'Unknown')
+        if expected_step_type != 'CreateModel':
+            self._log(f"Skipping create model step test - builder creates {expected_step_type} steps")
+            return
+            
         try:
             builder = self._create_builder_instance()
-            step = builder.create_step()
+            mock_inputs = self._create_mock_inputs_for_builder(builder)
+            step = builder.create_step(inputs=mock_inputs)
             
             # Validate CreateModelStep specific attributes
             self._assert(

@@ -71,34 +71,34 @@
       "assertions": 1
     },
     "test_create_model_step_creation": {
-      "passed": false,
+      "passed": true,
       "name": "test_create_model_step_creation",
-      "error": "CreateModel step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "assertions": 0
     },
     "test_processing_step_creation": {
-      "passed": false,
+      "passed": true,
       "name": "test_processing_step_creation",
-      "error": "Processing step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "assertions": 0
     },
     "test_step_configuration_validity": {
       "passed": false,
       "name": "test_step_configuration_validity",
-      "error": "Step configuration validity test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "error": "Step configuration validity test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
     },
     "test_step_dependencies_attachment": {
       "passed": false,
       "name": "test_step_dependencies_attachment",
-      "error": "Step dependencies attachment test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "error": "Step dependencies attachment test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
     },
     "test_step_instantiation": {
       "passed": false,
       "name": "test_step_instantiation",
-      "error": "Step instantiation failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "error": "Step instantiation failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
     },
     "test_step_name_generation": {
       "passed": false,
       "name": "test_step_name_generation",
-      "error": "Step name generation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "error": "Step name generation test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
     },
     "test_step_type_compliance": {
       "passed": true,
@@ -120,12 +120,12 @@
     "test_training_step_creation": {
       "passed": false,
       "name": "test_training_step_creation",
-      "error": "Training step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "error": "Training step creation test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
     },
     "test_transform_step_creation": {
-      "passed": false,
+      "passed": true,
       "name": "test_transform_step_creation",
-      "error": "Transform step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      "assertions": 0
     },
     "test_dependency_resolution": {
       "passed": true,
@@ -188,11 +188,11 @@
   },
   "scoring": {
     "overall": {
-      "score": 71.42857142857143,
-      "rating": "Satisfactory",
-      "passed": 11,
+      "score": 82.33766233766234,
+      "rating": "Good",
+      "passed": 14,
       "total": 19,
-      "pass_rate": 57.89473684210527
+      "pass_rate": 73.68421052631578
     },
     "levels": {
       "level1_interface": {
@@ -216,19 +216,19 @@
           "test_specification_usage": true
         }
       },
-      "level3_path_mapping": {
-        "score": 0.0,
-        "passed": 0,
+      "level3_step_creation": {
+        "score": 38.18181818181818,
+        "passed": 3,
         "total": 8,
         "tests": {
-          "test_create_model_step_creation": false,
-          "test_processing_step_creation": false,
+          "test_create_model_step_creation": true,
+          "test_processing_step_creation": true,
           "test_step_configuration_validity": false,
           "test_step_dependencies_attachment": false,
           "test_step_instantiation": false,
           "test_step_name_generation": false,
           "test_training_step_creation": false,
-          "test_transform_step_creation": false
+          "test_transform_step_creation": true
         }
       },
       "level4_integration": {
@@ -245,36 +245,24 @@
     },
     "failed_tests": [
       {
-        "name": "test_create_model_step_creation",
-        "error": "CreateModel step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
-      },
-      {
-        "name": "test_processing_step_creation",
-        "error": "Processing step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
-      },
-      {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+        "error": "Step configuration validity test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+        "error": "Step dependencies attachment test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+        "error": "Step instantiation failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+        "error": "Step name generation test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
       },
       {
         "name": "test_training_step_creation",
-        "error": "Training step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
-      },
-      {
-        "name": "test_transform_step_creation",
-        "error": "Transform step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+        "error": "Training step creation test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
       }
     ]
   },
@@ -324,7 +312,7 @@
           "assertions": 1
         }
       },
-      "level3_path_mapping": {},
+      "level3_step_creation": {},
       "level4_integration": {
         "test_dependency_resolution": {
           "passed": true,
@@ -339,14 +327,14 @@
       },
       "step_type_specific": {
         "test_create_model_step_creation": {
-          "passed": false,
+          "passed": true,
           "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "assertions": 0
         },
         "test_processing_step_creation": {
-          "passed": false,
+          "passed": true,
           "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "assertions": 0
         },
         "test_step_type_compliance": {
           "passed": true,
@@ -368,12 +356,12 @@
         "test_training_step_creation": {
           "passed": false,
           "name": "test_training_step_creation",
-          "error": "Training step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "error": "Training step creation test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
         },
         "test_transform_step_creation": {
-          "passed": false,
+          "passed": true,
           "name": "test_transform_step_creation",
-          "error": "Transform step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "assertions": 0
         },
         "test_step_type_detection": {
           "passed": true,
@@ -422,18 +410,18 @@
     },
     "summary": {
       "total_tests": 30,
-      "passed_tests": 22,
-      "pass_rate": 73.33333333333333,
-      "overall_score": 71.42857142857143,
-      "score_rating": "Satisfactory"
+      "passed_tests": 25,
+      "pass_rate": 83.33333333333334,
+      "overall_score": 82.33766233766234,
+      "score_rating": "Good"
     },
     "scoring": {
       "overall": {
-        "score": 71.42857142857143,
-        "rating": "Satisfactory",
-        "passed": 11,
+        "score": 82.33766233766234,
+        "rating": "Good",
+        "passed": 14,
         "total": 19,
-        "pass_rate": 57.89473684210527
+        "pass_rate": 73.68421052631578
       },
       "levels": {
         "level1_interface": {
@@ -457,19 +445,19 @@
             "test_specification_usage": true
           }
         },
-        "level3_path_mapping": {
-          "score": 0.0,
-          "passed": 0,
+        "level3_step_creation": {
+          "score": 38.18181818181818,
+          "passed": 3,
           "total": 8,
           "tests": {
-            "test_create_model_step_creation": false,
-            "test_processing_step_creation": false,
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
             "test_step_configuration_validity": false,
             "test_step_dependencies_attachment": false,
             "test_step_instantiation": false,
             "test_step_name_generation": false,
             "test_training_step_creation": false,
-            "test_transform_step_creation": false
+            "test_transform_step_creation": true
           }
         },
         "level4_integration": {
@@ -486,36 +474,24 @@
       },
       "failed_tests": [
         {
-          "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
-        },
-        {
-          "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
-        },
-        {
           "name": "test_step_configuration_validity",
-          "error": "Step configuration validity test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "error": "Step configuration validity test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
         },
         {
           "name": "test_step_dependencies_attachment",
-          "error": "Step dependencies attachment test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "error": "Step dependencies attachment test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
         },
         {
           "name": "test_step_instantiation",
-          "error": "Step instantiation failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "error": "Step instantiation failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
         },
         {
           "name": "test_step_name_generation",
-          "error": "Step name generation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "error": "Step name generation test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
         },
         {
           "name": "test_training_step_creation",
-          "error": "Training step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
-        },
-        {
-          "name": "test_transform_step_creation",
-          "error": "Transform step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+          "error": "Training step creation test failed: Spec-Contract alignment errors: [\"Contract outputs missing from specification outputs: {'checkpoints'}\"]"
         }
       ]
     }
@@ -523,6 +499,6 @@
   "step_name": "PyTorchTraining",
   "step_type": "training",
   "builder_class_name": "PyTorchTrainingStepBuilder",
-  "timestamp": "2025-08-15T20:05:45.504146",
+  "timestamp": "2025-08-15T21:32:00.402943",
   "generator_version": "1.0.0"
 }

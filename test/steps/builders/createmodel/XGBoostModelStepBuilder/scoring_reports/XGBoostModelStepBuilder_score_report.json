@@ -3,7 +3,7 @@
     "test_configuration_validation": {
       "passed": true,
       "name": "test_configuration_validation",
-      "assertions": 0
+      "assertions": 1
     },
     "test_documentation_standards": {
       "passed": true,
@@ -23,7 +23,7 @@
     "test_method_return_types": {
       "passed": true,
       "name": "test_method_return_types",
-      "assertions": 0
+      "assertions": 2
     },
     "test_naming_conventions": {
       "passed": true,
@@ -73,32 +73,32 @@
     "test_create_model_step_creation": {
       "passed": false,
       "name": "test_create_model_step_creation",
-      "error": "CreateModel step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "error": "CreateModel step creation test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
     },
     "test_processing_step_creation": {
-      "passed": false,
+      "passed": true,
       "name": "test_processing_step_creation",
-      "error": "Processing step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "assertions": 0
     },
     "test_step_configuration_validity": {
       "passed": false,
       "name": "test_step_configuration_validity",
-      "error": "Step configuration validity test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "error": "Step configuration validity test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
     },
     "test_step_dependencies_attachment": {
       "passed": false,
       "name": "test_step_dependencies_attachment",
-      "error": "Step dependencies attachment test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "error": "Step dependencies attachment test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
     },
     "test_step_instantiation": {
       "passed": false,
       "name": "test_step_instantiation",
-      "error": "Step instantiation failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "error": "Step instantiation failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
     },
     "test_step_name_generation": {
       "passed": false,
       "name": "test_step_name_generation",
-      "error": "Step name generation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "error": "Step name generation test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
     },
     "test_step_type_compliance": {
       "passed": true,
@@ -111,14 +111,14 @@
       }
     },
     "test_training_step_creation": {
-      "passed": false,
+      "passed": true,
       "name": "test_training_step_creation",
-      "error": "Training step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "assertions": 0
     },
     "test_transform_step_creation": {
-      "passed": false,
+      "passed": true,
       "name": "test_transform_step_creation",
-      "error": "Transform step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+      "assertions": 0
     },
     "test_dependency_resolution": {
       "passed": true,
@@ -169,11 +169,11 @@
   },
   "scoring": {
     "overall": {
-      "score": 71.42857142857143,
-      "rating": "Satisfactory",
-      "passed": 11,
+      "score": 82.33766233766234,
+      "rating": "Good",
+      "passed": 14,
       "total": 19,
-      "pass_rate": 57.89473684210527
+      "pass_rate": 73.68421052631578
     },
     "levels": {
       "level1_interface": {
@@ -197,19 +197,19 @@
           "test_specification_usage": true
         }
       },
-      "level3_path_mapping": {
-        "score": 0.0,
-        "passed": 0,
+      "level3_step_creation": {
+        "score": 38.18181818181818,
+        "passed": 3,
         "total": 8,
         "tests": {
           "test_create_model_step_creation": false,
-          "test_processing_step_creation": false,
+          "test_processing_step_creation": true,
           "test_step_configuration_validity": false,
           "test_step_dependencies_attachment": false,
           "test_step_instantiation": false,
           "test_step_name_generation": false,
-          "test_training_step_creation": false,
-          "test_transform_step_creation": false
+          "test_training_step_creation": true,
+          "test_transform_step_creation": true
         }
       },
       "level4_integration": {
@@ -227,35 +227,23 @@
     "failed_tests": [
       {
         "name": "test_create_model_step_creation",
-        "error": "CreateModel step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
-      },
-      {
-        "name": "test_processing_step_creation",
-        "error": "Processing step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+        "error": "CreateModel step creation test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
       },
       {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+        "error": "Step configuration validity test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+        "error": "Step dependencies attachment test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+        "error": "Step instantiation failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
-      },
-      {
-        "name": "test_training_step_creation",
-        "error": "Training step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
-      },
-      {
-        "name": "test_transform_step_creation",
-        "error": "Transform step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+        "error": "Step name generation test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
       }
     ]
   },
@@ -305,7 +293,7 @@
           "assertions": 1
         }
       },
-      "level3_path_mapping": {},
+      "level3_step_creation": {},
       "level4_integration": {
         "test_dependency_resolution": {
           "passed": true,
@@ -322,12 +310,12 @@
         "test_create_model_step_creation": {
           "passed": false,
           "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "error": "CreateModel step creation test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
         },
         "test_processing_step_creation": {
-          "passed": false,
+          "passed": true,
           "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "assertions": 0
         },
         "test_step_type_compliance": {
           "passed": true,
@@ -340,14 +328,14 @@
           }
         },
         "test_training_step_creation": {
-          "passed": false,
+          "passed": true,
           "name": "test_training_step_creation",
-          "error": "Training step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "assertions": 0
         },
         "test_transform_step_creation": {
-          "passed": false,
+          "passed": true,
           "name": "test_transform_step_creation",
-          "error": "Transform step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "assertions": 0
         },
         "test_step_type_detection": {
           "passed": true,
@@ -384,18 +372,18 @@
     },
     "summary": {
       "total_tests": 29,
-      "passed_tests": 21,
-      "pass_rate": 72.41379310344827,
-      "overall_score": 71.42857142857143,
-      "score_rating": "Satisfactory"
+      "passed_tests": 24,
+      "pass_rate": 82.75862068965517,
+      "overall_score": 82.33766233766234,
+      "score_rating": "Good"
     },
     "scoring": {
       "overall": {
-        "score": 71.42857142857143,
-        "rating": "Satisfactory",
-        "passed": 11,
+        "score": 82.33766233766234,
+        "rating": "Good",
+        "passed": 14,
         "total": 19,
-        "pass_rate": 57.89473684210527
+        "pass_rate": 73.68421052631578
       },
       "levels": {
         "level1_interface": {
@@ -419,19 +407,19 @@
             "test_specification_usage": true
           }
         },
-        "level3_path_mapping": {
-          "score": 0.0,
-          "passed": 0,
+        "level3_step_creation": {
+          "score": 38.18181818181818,
+          "passed": 3,
           "total": 8,
           "tests": {
             "test_create_model_step_creation": false,
-            "test_processing_step_creation": false,
+            "test_processing_step_creation": true,
             "test_step_configuration_validity": false,
             "test_step_dependencies_attachment": false,
             "test_step_instantiation": false,
             "test_step_name_generation": false,
-            "test_training_step_creation": false,
-            "test_transform_step_creation": false
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
           }
         },
         "level4_integration": {
@@ -449,35 +437,23 @@
       "failed_tests": [
         {
           "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
-        },
-        {
-          "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "error": "CreateModel step creation test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
         },
         {
           "name": "test_step_configuration_validity",
-          "error": "Step configuration validity test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "error": "Step configuration validity test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
         },
         {
           "name": "test_step_dependencies_attachment",
-          "error": "Step dependencies attachment test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "error": "Step dependencies attachment test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
         },
         {
           "name": "test_step_instantiation",
-          "error": "Step instantiation failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "error": "Step instantiation failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
         },
         {
           "name": "test_step_name_generation",
-          "error": "Step name generation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
-        },
-        {
-          "name": "test_training_step_creation",
-          "error": "Training step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
-        },
-        {
-          "name": "test_transform_step_creation",
-          "error": "Transform step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
+          "error": "Step name generation test failed: 'XGBoostModelStepBuilder' object has no attribute '_extract_param'"
         }
       ]
     }
@@ -485,6 +461,6 @@
   "step_name": "XGBoostModel",
   "step_type": "createmodel",
   "builder_class_name": "XGBoostModelStepBuilder",
-  "timestamp": "2025-08-15T20:05:46.448281",
+  "timestamp": "2025-08-15T21:32:03.788643",
   "generator_version": "1.0.0"
 }

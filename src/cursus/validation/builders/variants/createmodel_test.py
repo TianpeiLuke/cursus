@@ -17,7 +17,7 @@ import logging
 
 from .createmodel_interface_tests import CreateModelInterfaceTests
 from .createmodel_specification_tests import CreateModelSpecificationTests
-from .createmodel_path_mapping_tests import CreateModelPathMappingTests
+from ..step_creation_tests import StepCreationTests
 from .createmodel_integration_tests import CreateModelIntegrationTests
 
 logger = logging.getLogger(__name__)
