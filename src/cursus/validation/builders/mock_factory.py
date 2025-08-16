@@ -127,8 +127,8 @@ class StepTypeMockFactory:
                 base_config,
                 # Payload-specific fields
                 model_owner='test-team',
-                model_registration_domain='test-domain',
-                model_registration_objective='test-objective',
+                model_domain='test-domain',
+                model_objective='test-objective',
                 source_model_inference_output_variable_list={'prediction': 'NUMERIC'},
                 source_model_inference_input_variable_list={'feature1': 'NUMERIC', 'feature2': 'TEXT'},
                 expected_tps=100,
@@ -526,8 +526,8 @@ class StepTypeMockFactory:
             return RegistrationConfig.from_base_config(
                 base_config,
                 model_owner='test-team',
-                model_registration_domain='test-domain',
-                model_registration_objective='test-objective'
+                model_domain='test-domain',
+                model_objective='test-objective'
             )
         except Exception as e:
             print(f"Failed to create RegistrationConfig from base: {e}")
