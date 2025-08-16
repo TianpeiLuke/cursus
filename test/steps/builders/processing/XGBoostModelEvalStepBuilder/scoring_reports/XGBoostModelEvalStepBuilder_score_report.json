@@ -76,29 +76,29 @@
       "assertions": 0
     },
     "test_processing_step_creation": {
-      "passed": false,
+      "passed": true,
       "name": "test_processing_step_creation",
-      "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+      "assertions": 1
     },
     "test_step_configuration_validity": {
       "passed": false,
       "name": "test_step_configuration_validity",
-      "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+      "error": "Step configuration validity test failed: The step_args of ProcessingStep must be obtained from processor.run()."
     },
     "test_step_dependencies_attachment": {
       "passed": false,
       "name": "test_step_dependencies_attachment",
-      "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+      "error": "Step dependencies attachment test failed: The step_args of ProcessingStep must be obtained from processor.run()."
     },
     "test_step_instantiation": {
       "passed": false,
       "name": "test_step_instantiation",
-      "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+      "error": "Step instantiation failed: The step_args of ProcessingStep must be obtained from processor.run()."
     },
     "test_step_name_generation": {
       "passed": false,
       "name": "test_step_name_generation",
-      "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+      "error": "Step name generation test failed: The step_args of ProcessingStep must be obtained from processor.run()."
     },
     "test_step_type_compliance": {
       "passed": true,
@@ -177,11 +177,11 @@
   },
   "scoring": {
     "overall": {
-      "score": 82.33766233766234,
+      "score": 85.97402597402596,
       "rating": "Good",
-      "passed": 14,
+      "passed": 15,
       "total": 19,
-      "pass_rate": 73.68421052631578
+      "pass_rate": 78.94736842105263
     },
     "levels": {
       "level1_interface": {
@@ -206,12 +206,12 @@
         }
       },
       "level3_step_creation": {
-        "score": 38.18181818181818,
-        "passed": 3,
+        "score": 50.90909090909091,
+        "passed": 4,
         "total": 8,
         "tests": {
           "test_create_model_step_creation": true,
-          "test_processing_step_creation": false,
+          "test_processing_step_creation": true,
           "test_step_configuration_validity": false,
           "test_step_dependencies_attachment": false,
           "test_step_instantiation": false,
@@ -234,24 +234,20 @@
     },
     "failed_tests": [
       {
-        "name": "test_processing_step_creation",
-        "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
-      },
-      {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+        "error": "Step configuration validity test failed: The step_args of ProcessingStep must be obtained from processor.run()."
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+        "error": "Step dependencies attachment test failed: The step_args of ProcessingStep must be obtained from processor.run()."
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+        "error": "Step instantiation failed: The step_args of ProcessingStep must be obtained from processor.run()."
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+        "error": "Step name generation test failed: The step_args of ProcessingStep must be obtained from processor.run()."
       }
     ]
   },
@@ -321,9 +317,9 @@
           "assertions": 0
         },
         "test_processing_step_creation": {
-          "passed": false,
+          "passed": true,
           "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+          "assertions": 1
         },
         "test_step_type_compliance": {
           "passed": true,
@@ -388,18 +384,18 @@
     },
     "summary": {
       "total_tests": 30,
-      "passed_tests": 25,
-      "pass_rate": 83.33333333333334,
-      "overall_score": 82.33766233766234,
+      "passed_tests": 26,
+      "pass_rate": 86.66666666666667,
+      "overall_score": 85.97402597402596,
       "score_rating": "Good"
     },
     "scoring": {
       "overall": {
-        "score": 82.33766233766234,
+        "score": 85.97402597402596,
         "rating": "Good",
-        "passed": 14,
+        "passed": 15,
         "total": 19,
-        "pass_rate": 73.68421052631578
+        "pass_rate": 78.94736842105263
       },
       "levels": {
         "level1_interface": {
@@ -424,12 +420,12 @@
           }
         },
         "level3_step_creation": {
-          "score": 38.18181818181818,
-          "passed": 3,
+          "score": 50.90909090909091,
+          "passed": 4,
           "total": 8,
           "tests": {
             "test_create_model_step_creation": true,
-            "test_processing_step_creation": false,
+            "test_processing_step_creation": true,
             "test_step_configuration_validity": false,
             "test_step_dependencies_attachment": false,
             "test_step_instantiation": false,
@@ -452,24 +448,20 @@
       },
       "failed_tests": [
         {
-          "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
-        },
-        {
           "name": "test_step_configuration_validity",
-          "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+          "error": "Step configuration validity test failed: The step_args of ProcessingStep must be obtained from processor.run()."
         },
         {
           "name": "test_step_dependencies_attachment",
-          "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+          "error": "Step dependencies attachment test failed: The step_args of ProcessingStep must be obtained from processor.run()."
         },
         {
           "name": "test_step_instantiation",
-          "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+          "error": "Step instantiation failed: The step_args of ProcessingStep must be obtained from processor.run()."
         },
         {
           "name": "test_step_name_generation",
-          "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
+          "error": "Step name generation test failed: The step_args of ProcessingStep must be obtained from processor.run()."
         }
       ]
     }
@@ -477,6 +469,6 @@
   "step_name": "XGBoostModelEval",
   "step_type": "processing",
   "builder_class_name": "XGBoostModelEvalStepBuilder",
-  "timestamp": "2025-08-15T22:16:15.291228",
+  "timestamp": "2025-08-15T23:19:04.411874",
   "generator_version": "1.0.0"
 }

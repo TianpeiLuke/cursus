@@ -73,7 +73,7 @@
     "test_create_model_step_creation": {
       "passed": false,
       "name": "test_create_model_step_creation",
-      "error": "CreateModel step creation test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+      "error": "CreateModel step creation test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
     },
     "test_processing_step_creation": {
       "passed": true,
@@ -83,22 +83,22 @@
     "test_step_configuration_validity": {
       "passed": false,
       "name": "test_step_configuration_validity",
-      "error": "Step configuration validity test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+      "error": "Step configuration validity test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
     },
     "test_step_dependencies_attachment": {
       "passed": false,
       "name": "test_step_dependencies_attachment",
-      "error": "Step dependencies attachment test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+      "error": "Step dependencies attachment test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
     },
     "test_step_instantiation": {
       "passed": false,
       "name": "test_step_instantiation",
-      "error": "Step instantiation failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+      "error": "Step instantiation failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
     },
     "test_step_name_generation": {
       "passed": false,
       "name": "test_step_name_generation",
-      "error": "Step name generation test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+      "error": "Step name generation test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
     },
     "test_step_type_compliance": {
       "passed": true,
@@ -227,23 +227,23 @@
     "failed_tests": [
       {
         "name": "test_create_model_step_creation",
-        "error": "CreateModel step creation test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+        "error": "CreateModel step creation test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
       },
       {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+        "error": "Step configuration validity test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+        "error": "Step dependencies attachment test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+        "error": "Step instantiation failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+        "error": "Step name generation test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
       }
     ]
   },
@@ -310,7 +310,7 @@
         "test_create_model_step_creation": {
           "passed": false,
           "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+          "error": "CreateModel step creation test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
         },
         "test_processing_step_creation": {
           "passed": true,
@@ -437,23 +437,23 @@
       "failed_tests": [
         {
           "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+          "error": "CreateModel step creation test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
         },
         {
           "name": "test_step_configuration_validity",
-          "error": "Step configuration validity test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+          "error": "Step configuration validity test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
         },
         {
           "name": "test_step_dependencies_attachment",
-          "error": "Step dependencies attachment test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+          "error": "Step dependencies attachment test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
         },
         {
           "name": "test_step_instantiation",
-          "error": "Step instantiation failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+          "error": "Step instantiation failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
         },
         {
           "name": "test_step_name_generation",
-          "error": "Step name generation test failed: 'PyTorchModelStepBuilder' object has no attribute '_extract_param'"
+          "error": "Step name generation test failed: Failed to create PyTorchModelStep: sequence item 0: expected str instance, MagicMock found"
         }
       ]
     }
@@ -461,6 +461,6 @@
   "step_name": "PyTorchModel",
   "step_type": "createmodel",
   "builder_class_name": "PyTorchModelStepBuilder",
-  "timestamp": "2025-08-15T22:16:04.980050",
+  "timestamp": "2025-08-15T23:18:54.981125",
   "generator_version": "1.0.0"
 }
