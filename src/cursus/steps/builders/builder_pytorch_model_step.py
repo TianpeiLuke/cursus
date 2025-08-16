@@ -211,39 +211,64 @@ class PyTorchModelStepBuilder(StepBuilderBase):
         Returns:
             A configured ModelStep instance.
         """
+        # Extract common parameters
+        inputs_raw = kwargs.get('inputs', {})
+        model_data = kwargs.get('model_data')
+        dependencies = kwargs.get('dependencies', [])
+        enable_caching = kwargs.get('enable_caching', True)
+        
         self.log_info("Creating PyTorch ModelStep...")
-
-        # Extract parameters
-        dependencies = self._extract_param(kwargs, 'dependencies', [])
         
-        # Use dependency resolver to extract inputs
+        # Get the step name using standardized automatic step type detection
+        step_name = self._get_step_name()
+        
+        # Handle inputs
+        inputs = {}
+        
+        # If dependencies are provided, extract inputs from them using the resolver
         if dependencies:
-            extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
-        else:
-            # Handle direct parameters for backward compatibility
-            extracted_inputs = self._normalize_inputs(kwargs.get('inputs', {}))
-            model_data = self._extract_param(kwargs, 'model_data')
-            if model_data:
-                extracted_inputs['model_data'] = model_data
+            try:
+                extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                inputs.update(extracted_inputs)
+            except Exception as e:
+                self.log_warning("Failed to extract inputs from dependencies: %s", e)
+                
+        # Add explicitly provided inputs (overriding any extracted ones)
+        inputs.update(inputs_raw)
         
+        # Add direct parameters if provided (for backward compatibility)
+        if model_data is not None:
+            inputs["model_data"] = model_data
+            
         # Use specification-driven input processing
-        model_inputs = self._get_inputs(extracted_inputs)
+        model_inputs = self._get_inputs(inputs)
         model_data_value = model_inputs['model_data']
 
         # Create the model
         model = self._create_model(model_data_value)
-
-        step_name = self._get_step_name()
         
-        model_step = CreateModelStep(
-            name=step_name,
-            step_args=model.create(
-                instance_type=self.config.instance_type,
-                accelerator_type=getattr(self.config, 'accelerator_type', None),
-                tags=getattr(self.config, 'tags', None),
-                model_name=self.config.get_model_name() if hasattr(self.config, 'get_model_name') else None
-            ),
-            depends_on=dependencies or []
-        )
-        self.log_info("Created ModelStep with name: %s", model_step.name)
-        return model_step
+        # Create the model step
+        try:
+            model_step = CreateModelStep(
+                name=step_name,
+                step_args=model.create(
+                    instance_type=self.config.instance_type,
+                    accelerator_type=getattr(self.config, 'accelerator_type', None),
+                    tags=getattr(self.config, 'tags', None),
+                    model_name=self.config.get_model_name() if hasattr(self.config, 'get_model_name') else None
+                ),
+                depends_on=dependencies,
+                cache_config=self._get_cache_config(enable_caching)
+            )
+            
+            # Attach specification to the step for future reference
+            setattr(model_step, '_spec', self.spec)
+            
+            # Log successful creation
+            self.log_info("Created ModelStep with name: %s", model_step.name)
+            
+            return model_step
+            
+        except Exception as e:
+            self.log_warning("Error creating PyTorch ModelStep: %s", str(e))
+            raise ValueError(f"Failed to create PyTorchModelStep: {str(e)}") from e

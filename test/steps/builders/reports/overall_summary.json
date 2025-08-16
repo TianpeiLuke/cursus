@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-08-15T21:32:00.397258",
+  "timestamp": "2025-08-15T22:16:01.899829",
   "base_path": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders",
   "step_types": {
     "training": {
@@ -20,7 +20,7 @@
         }
       ],
       "errors": [],
-      "timestamp": "2025-08-15T21:32:00.397272"
+      "timestamp": "2025-08-15T22:16:01.899846"
     },
     "transform": {
       "step_type": "transform",
@@ -34,7 +34,7 @@
         }
       ],
       "errors": [],
-      "timestamp": "2025-08-15T21:32:02.860930"
+      "timestamp": "2025-08-15T22:16:04.262316"
     },
     "createmodel": {
       "step_type": "createmodel",
@@ -54,7 +54,7 @@
         }
       ],
       "errors": [],
-      "timestamp": "2025-08-15T21:32:03.586376"
+      "timestamp": "2025-08-15T22:16:04.973905"
     },
     "processing": {
       "step_type": "processing",
@@ -110,7 +110,7 @@
         }
       ],
       "errors": [],
-      "timestamp": "2025-08-15T21:32:03.983189"
+      "timestamp": "2025-08-15T22:16:05.368316"
     }
   },
   "total_steps_processed": 13,

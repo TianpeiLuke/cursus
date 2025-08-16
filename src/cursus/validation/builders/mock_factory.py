@@ -1135,4 +1135,4 @@ class StepTypeMockFactory:
     
     def _get_createmodel_dependencies(self) -> List[str]:
         """Get expected dependencies for CreateModel steps."""
-        return ["model_artifacts"]
+        return ["model_data"]

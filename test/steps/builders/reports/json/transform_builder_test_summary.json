@@ -23,13 +23,13 @@
       "info_issues": 20,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T22:06:59.999105",
+      "validation_timestamp": "2025-08-15T22:37:23.646740",
       "is_passing": false
     }
   },
   "metadata": {
     "step_type": "Transform",
-    "generation_timestamp": "2025-08-15T22:06:59.999706",
+    "generation_timestamp": "2025-08-15T22:37:23.647496",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   }

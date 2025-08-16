@@ -82,7 +82,7 @@
       "test_configuration_validation": {
         "test_name": "test_configuration_validation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610001",
+        "timestamp": "2025-08-15T22:37:22.168229",
         "test_level": "interface",
         "issues": [
           {
@@ -100,7 +100,7 @@
       "test_documentation_standards": {
         "test_name": "test_documentation_standards",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610013",
+        "timestamp": "2025-08-15T22:37:22.168237",
         "test_level": "interface",
         "issues": [
           {
@@ -118,7 +118,7 @@
       "test_error_handling": {
         "test_name": "test_error_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610015",
+        "timestamp": "2025-08-15T22:37:22.168240",
         "test_level": "interface",
         "issues": [
           {
@@ -136,7 +136,7 @@
       "test_inheritance": {
         "test_name": "test_inheritance",
         "passed": false,
-        "timestamp": "2025-08-15T22:06:58.610017",
+        "timestamp": "2025-08-15T22:37:22.168242",
         "test_level": "interface",
         "issues": [
           {
@@ -154,7 +154,7 @@
       "test_method_return_types": {
         "test_name": "test_method_return_types",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610020",
+        "timestamp": "2025-08-15T22:37:22.168246",
         "test_level": "interface",
         "issues": [
           {
@@ -172,7 +172,7 @@
       "test_naming_conventions": {
         "test_name": "test_naming_conventions",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610023",
+        "timestamp": "2025-08-15T22:37:22.168249",
         "test_level": "interface",
         "issues": [
           {
@@ -190,7 +190,7 @@
       "test_registry_integration": {
         "test_name": "test_registry_integration",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610025",
+        "timestamp": "2025-08-15T22:37:22.168252",
         "test_level": "interface",
         "issues": [
           {
@@ -208,7 +208,7 @@
       "test_required_methods": {
         "test_name": "test_required_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610029",
+        "timestamp": "2025-08-15T22:37:22.168257",
         "test_level": "interface",
         "issues": [
           {
@@ -226,7 +226,7 @@
       "test_type_hints": {
         "test_name": "test_type_hints",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610031",
+        "timestamp": "2025-08-15T22:37:22.168261",
         "test_level": "interface",
         "issues": [
           {
@@ -283,7 +283,7 @@
       "test_contract_alignment": {
         "test_name": "test_contract_alignment",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610033",
+        "timestamp": "2025-08-15T22:37:22.168263",
         "test_level": "specification",
         "issues": [
           {
@@ -301,7 +301,7 @@
       "test_environment_variable_handling": {
         "test_name": "test_environment_variable_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610035",
+        "timestamp": "2025-08-15T22:37:22.168266",
         "test_level": "specification",
         "issues": [
           {
@@ -319,7 +319,7 @@
       "test_job_arguments": {
         "test_name": "test_job_arguments",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610037",
+        "timestamp": "2025-08-15T22:37:22.168268",
         "test_level": "specification",
         "issues": [
           {
@@ -337,7 +337,7 @@
       "test_specification_usage": {
         "test_name": "test_specification_usage",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610039",
+        "timestamp": "2025-08-15T22:37:22.168271",
         "test_level": "specification",
         "issues": [
           {
@@ -391,7 +391,7 @@
       "test_dependency_resolution": {
         "test_name": "test_dependency_resolution",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610061",
+        "timestamp": "2025-08-15T22:37:22.168297",
         "test_level": "integration",
         "issues": [
           {
@@ -409,7 +409,7 @@
       "test_step_creation": {
         "test_name": "test_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610063",
+        "timestamp": "2025-08-15T22:37:22.168300",
         "test_level": "integration",
         "issues": [
           {
@@ -427,7 +427,7 @@
       "test_step_name": {
         "test_name": "test_step_name",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610064",
+        "timestamp": "2025-08-15T22:37:22.168302",
         "test_level": "integration",
         "issues": [
           {
@@ -532,7 +532,7 @@
       "test_processing_step_creation": {
         "test_name": "test_processing_step_creation",
         "passed": false,
-        "timestamp": "2025-08-15T22:06:58.610043",
+        "timestamp": "2025-08-15T22:37:22.168275",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -550,7 +550,7 @@
       "test_step_type_compliance": {
         "test_name": "test_step_type_compliance",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610054",
+        "timestamp": "2025-08-15T22:37:22.168288",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -578,7 +578,7 @@
       "test_training_step_creation": {
         "test_name": "test_training_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610057",
+        "timestamp": "2025-08-15T22:37:22.168291",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -596,7 +596,7 @@
       "test_step_type_detection": {
         "test_name": "test_step_type_detection",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610066",
+        "timestamp": "2025-08-15T22:37:22.168305",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -624,7 +624,7 @@
       "test_step_type_classification": {
         "test_name": "test_step_type_classification",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610069",
+        "timestamp": "2025-08-15T22:37:22.168308",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -648,7 +648,7 @@
       "test_processing_processor_methods": {
         "test_name": "test_processing_processor_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610071",
+        "timestamp": "2025-08-15T22:37:22.168311",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -682,7 +682,7 @@
       "test_processing_io_methods": {
         "test_name": "test_processing_io_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:58.610073",
+        "timestamp": "2025-08-15T22:37:22.168314",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -721,7 +721,7 @@
     "info_issues": 21,
     "highest_severity": "ERROR",
     "overall_status": "PARTIALLY_PASSING",
-    "validation_timestamp": "2025-08-15T22:06:58.610080",
+    "validation_timestamp": "2025-08-15T22:37:22.168320",
     "is_passing": false
   },
   "recommendations": [],
@@ -729,7 +729,7 @@
     "builder_name": "RiskTableMapping",
     "builder_class": "RiskTableMappingStepBuilder",
     "sagemaker_step_type": "Processing",
-    "validation_timestamp": "2025-08-15T22:06:58.610080",
+    "validation_timestamp": "2025-08-15T22:37:22.168320",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   },

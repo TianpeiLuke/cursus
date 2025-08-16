@@ -16,14 +16,14 @@
       "passed_tests": 21,
       "failed_tests": 2,
       "pass_rate": 91.30434782608695,
-      "total_issues": 23,
+      "total_issues": 2,
       "critical_issues": 0,
       "error_issues": 2,
       "warning_issues": 0,
-      "info_issues": 21,
+      "info_issues": 0,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T22:06:59.987955",
+      "validation_timestamp": "2025-08-15T22:41:45.926957",
       "is_passing": false
     },
     "XGBoostTraining": {
@@ -34,20 +34,20 @@
       "passed_tests": 21,
       "failed_tests": 2,
       "pass_rate": 91.30434782608695,
-      "total_issues": 23,
+      "total_issues": 2,
       "critical_issues": 0,
       "error_issues": 2,
       "warning_issues": 0,
-      "info_issues": 21,
+      "info_issues": 0,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T22:06:59.993409",
+      "validation_timestamp": "2025-08-15T22:41:45.933079",
       "is_passing": false
     }
   },
   "metadata": {
     "step_type": "Training",
-    "generation_timestamp": "2025-08-15T22:06:59.994150",
+    "generation_timestamp": "2025-08-15T22:41:45.933706",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   }

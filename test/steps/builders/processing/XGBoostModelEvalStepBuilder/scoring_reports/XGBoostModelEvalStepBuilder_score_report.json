@@ -78,27 +78,27 @@
     "test_processing_step_creation": {
       "passed": false,
       "name": "test_processing_step_creation",
-      "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+      "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
     },
     "test_step_configuration_validity": {
       "passed": false,
       "name": "test_step_configuration_validity",
-      "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+      "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
     },
     "test_step_dependencies_attachment": {
       "passed": false,
       "name": "test_step_dependencies_attachment",
-      "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+      "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
     },
     "test_step_instantiation": {
       "passed": false,
       "name": "test_step_instantiation",
-      "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+      "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
     },
     "test_step_name_generation": {
       "passed": false,
       "name": "test_step_name_generation",
-      "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+      "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
     },
     "test_step_type_compliance": {
       "passed": true,
@@ -235,23 +235,23 @@
     "failed_tests": [
       {
         "name": "test_processing_step_creation",
-        "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+        "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
       },
       {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+        "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+        "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+        "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+        "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
       }
     ]
   },
@@ -323,7 +323,7 @@
         "test_processing_step_creation": {
           "passed": false,
           "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+          "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
         },
         "test_step_type_compliance": {
           "passed": true,
@@ -453,23 +453,23 @@
       "failed_tests": [
         {
           "name": "test_processing_step_creation",
-          "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+          "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
         },
         {
           "name": "test_step_configuration_validity",
-          "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+          "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
         },
         {
           "name": "test_step_dependencies_attachment",
-          "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+          "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
         },
         {
           "name": "test_step_instantiation",
-          "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+          "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
         },
         {
           "name": "test_step_name_generation",
-          "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13689392832'>'"
+          "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13777017344'>'"
         }
       ]
     }
@@ -477,6 +477,6 @@
   "step_name": "XGBoostModelEval",
   "step_type": "processing",
   "builder_class_name": "XGBoostModelEvalStepBuilder",
-  "timestamp": "2025-08-15T21:32:12.802397",
+  "timestamp": "2025-08-15T22:16:15.291228",
   "generator_version": "1.0.0"
 }

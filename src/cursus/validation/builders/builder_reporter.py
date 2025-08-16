@@ -792,7 +792,7 @@ class BuilderTestReporter:
             test_level="unknown"  # Will be set when added to report
         )
         
-        # Convert error to issue if test failed
+        # Only create issues for failed tests - passed tests don't need issues
         if not result.get("passed", False):
             error_message = result.get("error", f"{test_name} failed")
             issue = BuilderTestIssue(
@@ -804,17 +804,8 @@ class BuilderTestReporter:
                 test_name=test_name
             )
             test_result.add_issue(issue)
-        else:
-            # Add info issue for passed test
-            issue = BuilderTestIssue(
-                severity="INFO",
-                category="test_success",
-                message=f"{test_name} passed successfully",
-                details=result.get("details", {}),
-                recommendation="No action needed - test passed",
-                test_name=test_name
-            )
-            test_result.add_issue(issue)
+        # Don't add INFO issues for passed tests - this inflates the issue count
+        # The test_result.passed=True is sufficient to indicate success
         
         return test_result
     
@@ -871,7 +862,7 @@ class BuilderTestReporter:
                 # Fallback to generic naming
                 module_name = f"builder_{step_name.lower()}_step"
             
-            module_path = f"cursus.steps.builders.{module_name}"
+            module_path = f"src.cursus.steps.builders.{module_name}"
             module = importlib.import_module(module_path)
             return getattr(module, builder_class_name)
         except (ImportError, AttributeError) as e:
