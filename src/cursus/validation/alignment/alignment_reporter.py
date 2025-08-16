@@ -2,7 +2,7 @@
 Alignment validation reporting system.
 
 Provides comprehensive reporting capabilities for alignment validation results,
-including summary generation, issue analysis, and export functionality.
+including summary generation, issue analysis, scoring, and export functionality.
 """
 
 import json
@@ -15,6 +15,7 @@ from .alignment_utils import (
     group_issues_by_severity, get_highest_severity,
     format_alignment_issue
 )
+from .alignment_scorer import AlignmentScorer
 
 
 class ValidationResult(BaseModel):
@@ -169,7 +170,7 @@ class AlignmentReport:
     Comprehensive report of alignment validation results.
     
     Contains results from all four alignment levels with detailed
-    analysis and actionable recommendations.
+    analysis, scoring, and actionable recommendations.
     """
     
     def __init__(self):
@@ -180,6 +181,7 @@ class AlignmentReport:
         self.summary: Optional[AlignmentSummary] = None
         self.recommendations: List[AlignmentRecommendation] = []
         self.metadata: Dict[str, Any] = {}
+        self._scorer: Optional[AlignmentScorer] = None
         
     def add_level1_result(self, test_name: str, result: ValidationResult):
         """Add a Level 1 (Script ↔ Contract) validation result."""
@@ -243,6 +245,87 @@ class AlignmentReport:
     def is_passing(self) -> bool:
         """Check if the overall alignment validation is passing."""
         return not self.has_critical_issues() and not self.has_errors()
+    
+    def get_scorer(self) -> AlignmentScorer:
+        """Get the alignment scorer for this report."""
+        if self._scorer is None:
+            # Convert validation results to scorer format
+            scorer_results = self._convert_to_scorer_format()
+            self._scorer = AlignmentScorer(scorer_results)
+        return self._scorer
+    
+    def _convert_to_scorer_format(self) -> Dict[str, Any]:
+        """Convert validation results to format expected by AlignmentScorer."""
+        scorer_results = {}
+        
+        # Add level results with proper naming
+        if self.level1_results:
+            scorer_results['level1_script_contract'] = {
+                name: {
+                    'passed': result.passed,
+                    'issues': [issue.model_dump() for issue in result.issues],
+                    'details': result.details
+                }
+                for name, result in self.level1_results.items()
+            }
+        
+        if self.level2_results:
+            scorer_results['level2_contract_specification'] = {
+                name: {
+                    'passed': result.passed,
+                    'issues': [issue.model_dump() for issue in result.issues],
+                    'details': result.details
+                }
+                for name, result in self.level2_results.items()
+            }
+        
+        if self.level3_results:
+            scorer_results['level3_specification_dependencies'] = {
+                name: {
+                    'passed': result.passed,
+                    'issues': [issue.model_dump() for issue in result.issues],
+                    'details': result.details
+                }
+                for name, result in self.level3_results.items()
+            }
+        
+        if self.level4_results:
+            scorer_results['level4_builder_configuration'] = {
+                name: {
+                    'passed': result.passed,
+                    'issues': [issue.model_dump() for issue in result.issues],
+                    'details': result.details
+                }
+                for name, result in self.level4_results.items()
+            }
+        
+        return scorer_results
+    
+    def get_alignment_score(self) -> float:
+        """Get the overall alignment score (0.0 to 100.0)."""
+        return self.get_scorer().calculate_overall_score()
+    
+    def get_level_scores(self) -> Dict[str, float]:
+        """Get alignment scores for each level."""
+        scorer = self.get_scorer()
+        return {
+            'level1_script_contract': scorer.calculate_level_score('level1_script_contract')[0],
+            'level2_contract_specification': scorer.calculate_level_score('level2_contract_specification')[0],
+            'level3_specification_dependencies': scorer.calculate_level_score('level3_specification_dependencies')[0],
+            'level4_builder_configuration': scorer.calculate_level_score('level4_builder_configuration')[0]
+        }
+    
+    def generate_alignment_chart(self, output_path: str = None) -> str:
+        """Generate alignment score visualization chart."""
+        return self.get_scorer().generate_chart(output_path)
+    
+    def get_scoring_report(self) -> Dict[str, Any]:
+        """Get comprehensive scoring report."""
+        return self.get_scorer().generate_report()
+    
+    def print_scoring_summary(self):
+        """Print alignment scoring summary to console."""
+        self.get_scorer().print_summary()
         
     def get_recommendations(self) -> List[AlignmentRecommendation]:
         """Get actionable recommendations for fixing alignment issues."""
@@ -387,12 +470,17 @@ class AlignmentReport:
         self.recommendations.append(recommendation)
         
     def export_to_json(self) -> str:
-        """Export report to JSON format."""
+        """Export report to JSON format with scoring information."""
         if not self.summary:
             self.generate_summary()
             
         report_data = {
             'summary': self.summary.to_dict(),
+            'scoring': {
+                'overall_score': self.get_alignment_score(),
+                'level_scores': self.get_level_scores(),
+                'scoring_report': self.get_scoring_report()
+            },
             'level1_results': {k: v.to_dict() for k, v in self.level1_results.items()},
             'level2_results': {k: v.to_dict() for k, v in self.level2_results.items()},
             'level3_results': {k: v.to_dict() for k, v in self.level3_results.items()},
@@ -404,10 +492,14 @@ class AlignmentReport:
         return json.dumps(report_data, indent=2, default=str)
         
     def export_to_html(self) -> str:
-        """Export report to HTML format with visualizations."""
+        """Export report to HTML format with scoring visualizations."""
         if not self.summary:
             self.generate_summary()
             
+        # Get scoring information
+        overall_score = self.get_alignment_score()
+        level_scores = self.get_level_scores()
+        
         html_template = """<!DOCTYPE html>
 <html>
 <head>
@@ -422,6 +514,14 @@ class AlignmentReport:
         .passing {{ color: #28a745; }}
         .failing {{ color: #dc3545; }}
         .warning {{ color: #ffc107; }}
+        .scoring-section {{ margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; }}
+        .score-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }}
+        .score-card {{ background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; text-align: center; }}
+        .score-excellent {{ border-left-color: #28a745; }}
+        .score-good {{ border-left-color: #17a2b8; }}
+        .score-fair {{ border-left-color: #ffc107; }}
+        .score-poor {{ border-left-color: #dc3545; }}
+        .score-value {{ font-size: 2em; font-weight: bold; margin: 10px 0; }}
         .level-section {{ margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }}
         .level-header {{ background-color: #e9ecef; padding: 10px; font-weight: bold; }}
         .test-result {{ padding: 10px; border-bottom: 1px solid #eee; }}
@@ -444,6 +544,7 @@ class AlignmentReport:
         <h1>Alignment Validation Report</h1>
         <p>Generated: {timestamp}</p>
         <p>Overall Status: <span class="{status_class}">{status}</span></p>
+        <p>Overall Alignment Score: <strong>{overall_score:.1f}/100</strong></p>
     </div>
     
     <div class="summary">
@@ -462,6 +563,13 @@ class AlignmentReport:
         <div class="metric">
             <h3>{critical_issues}</h3>
             <p>Critical Issues</p>
+        </div>
+    </div>
+    
+    <div class="scoring-section">
+        <h2>Alignment Scoring</h2>
+        <div class="score-grid">
+            {score_cards}
         </div>
     </div>
     
@@ -500,14 +608,19 @@ class AlignmentReport:
             </div>
             """
         
+        # Generate score cards
+        score_cards = self._generate_score_cards(overall_score, level_scores)
+        
         return html_template.format(
             timestamp=self.summary.validation_timestamp.strftime("%Y-%m-%d %H:%M:%S"),
             status="PASSING" if self.is_passing() else "FAILING",
             status_class="passing" if self.is_passing() else "failing",
+            overall_score=overall_score,
             pass_rate=self.summary.pass_rate,
             total_tests=self.summary.total_tests,
             total_issues=self.summary.total_issues,
             critical_issues=self.summary.critical_issues,
+            score_cards=score_cards,
             level_sections=level_sections,
             recommendations_html=recommendations_html
         )
@@ -542,6 +655,66 @@ class AlignmentReport:
         
         level_html += "</div>"
         return level_html
+    
+    def _generate_score_cards(self, overall_score: float, level_scores: Dict[str, float]) -> str:
+        """Generate HTML score cards for alignment levels."""
+        def get_score_class(score: float) -> str:
+            """Get CSS class based on score."""
+            if score >= 90:
+                return "score-excellent"
+            elif score >= 75:
+                return "score-good"
+            elif score >= 60:
+                return "score-fair"
+            else:
+                return "score-poor"
+        
+        def get_score_quality(score: float) -> str:
+            """Get quality description based on score."""
+            if score >= 90:
+                return "Excellent"
+            elif score >= 75:
+                return "Good"
+            elif score >= 60:
+                return "Fair"
+            else:
+                return "Poor"
+        
+        # Overall score card
+        overall_class = get_score_class(overall_score)
+        overall_quality = get_score_quality(overall_score)
+        
+        score_cards = f"""
+        <div class="score-card {overall_class}">
+            <h4>Overall Alignment</h4>
+            <div class="score-value">{overall_score:.1f}</div>
+            <p>{overall_quality}</p>
+        </div>
+        """
+        
+        # Level score cards
+        level_names = {
+            'level1_script_contract': 'Script ↔ Contract',
+            'level2_contract_specification': 'Contract ↔ Specification',
+            'level3_specification_dependencies': 'Specification ↔ Dependencies',
+            'level4_builder_configuration': 'Builder ↔ Configuration'
+        }
+        
+        for level_key, level_name in level_names.items():
+            if level_key in level_scores:
+                score = level_scores[level_key]
+                score_class = get_score_class(score)
+                quality = get_score_quality(score)
+                
+                score_cards += f"""
+        <div class="score-card {score_class}">
+            <h4>{level_name}</h4>
+            <div class="score-value">{score:.1f}</div>
+            <p>{quality}</p>
+        </div>
+                """
+        
+        return score_cards
     
     def print_summary(self):
         """Print a formatted summary to console."""
