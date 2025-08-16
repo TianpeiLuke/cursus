@@ -139,6 +139,10 @@ class UniversalStepBuilderTestBase(ABC):
         # Fix: Configure mock session with proper region string
         self.mock_session.boto_region_name = 'us-east-1'
         
+        # CRITICAL FIX: Configure all S3-related methods to return strings, not MagicMock
+        self.mock_session.default_bucket.return_value = 'test-bucket'
+        self.mock_session.default_bucket_prefix = 'test-prefix'
+        
         # Fix: Provide proper SageMaker config structure instead of MagicMock
         self.mock_session.sagemaker_config = {
             'SchemaVersion': '1.0',
@@ -160,6 +164,96 @@ class UniversalStepBuilderTestBase(ABC):
         mock_settings.default_bucket = 'test-bucket'
         mock_settings.s3_kms_key = None
         self.mock_session.settings = mock_settings
+        
+        # CRITICAL FIX: Mock S3 upload methods to prevent actual S3 operations
+        self.mock_session.upload_data.return_value = 's3://test-bucket/uploaded-code/model.tar.gz'
+        
+        # CRITICAL FIX: Mock boto3 S3 client methods that are called during model creation
+        mock_s3_client = MagicMock()
+        mock_s3_client.head_object.return_value = {'ContentLength': 1024}
+        mock_s3_client.download_file.return_value = None  # Mock successful download
+        self.mock_session.boto_session.client.return_value = mock_s3_client
+        
+        # CRITICAL FIX: Mock file operations to prevent actual file system operations
+        import tempfile
+        import os
+        
+        # Create a temporary directory that actually exists
+        self.temp_dir = tempfile.mkdtemp()
+        
+        # Create a mock model tar.gz file
+        mock_model_file = os.path.join(self.temp_dir, 'model.tar.gz')
+        with open(mock_model_file, 'wb') as f:
+            f.write(b'mock model data')
+        
+        # ENHANCED FIX: Mock the download and tar extraction process
+        def mock_download_file(bucket, key, local_path):
+            import shutil
+            import tarfile
+            import os
+            
+            # Copy our mock model file to the requested location
+            shutil.copy2(mock_model_file, local_path)
+            
+            # If the local_path is a tar file, create a proper tar structure
+            if local_path.endswith('.tar.gz') or 'tar_file' in local_path:
+                # Create a temporary directory for tar contents
+                tar_extract_dir = os.path.dirname(local_path)
+                model_dir = os.path.join(tar_extract_dir, 'model')
+                os.makedirs(model_dir, exist_ok=True)
+                
+                # Create mock model files that SageMaker expects
+                mock_model_py = os.path.join(model_dir, 'model.py')
+                with open(mock_model_py, 'w') as f:
+                    f.write('# Mock model file\nprint("Mock model loaded")\n')
+                
+                mock_requirements = os.path.join(model_dir, 'requirements.txt')
+                with open(mock_requirements, 'w') as f:
+                    f.write('torch>=1.0.0\n')
+                
+                # Create a proper tar.gz file with the model contents
+                with tarfile.open(local_path, 'w:gz') as tar:
+                    tar.add(model_dir, arcname='.')
+        
+        mock_s3_client.download_file.side_effect = mock_download_file
+        
+        # CRITICAL FIX: Mock tarfile operations to handle model extraction
+        import tarfile
+        original_tarfile_open = tarfile.open
+        
+        def mock_tarfile_open(name, mode='r', **kwargs):
+            # If it's our mock tar file, return a mock that can extract properly
+            if name and (name.endswith('.tar.gz') or 'tar_file' in str(name)):
+                mock_tar = MagicMock()
+                
+                # Mock extractall to create expected files - handle filter parameter for newer Python versions
+                def mock_extractall(path=None, members=None, numeric_owner=False, filter=None):
+                    if path:
+                        os.makedirs(path, exist_ok=True)
+                        # Create expected model files
+                        model_py = os.path.join(path, 'model.py')
+                        with open(model_py, 'w') as f:
+                            f.write('# Mock model file\nprint("Mock model loaded")\n')
+                        
+                        requirements_txt = os.path.join(path, 'requirements.txt')
+                        with open(requirements_txt, 'w') as f:
+                            f.write('torch>=1.0.0\n')
+                
+                mock_tar.extractall = mock_extractall
+                mock_tar.close = MagicMock()
+                mock_tar.__enter__ = lambda self: self
+                mock_tar.__exit__ = lambda self, *args: None
+                
+                return mock_tar
+            else:
+                # For other files, use the original tarfile.open
+                return original_tarfile_open(name, mode, **kwargs)
+        
+        # Patch tarfile.open globally during tests
+        import builtins
+        if not hasattr(builtins, '_original_tarfile_open'):
+            builtins._original_tarfile_open = tarfile.open
+            tarfile.open = mock_tarfile_open
         
         # Fix: Configure processor.run() to return proper step arguments
         # This is needed for Pattern B ProcessingStep creation (XGBoost, etc.)

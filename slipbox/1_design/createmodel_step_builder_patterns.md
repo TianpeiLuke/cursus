@@ -290,12 +290,7 @@ def create_step(self, **kwargs) -> CreateModelStep:
     # Create the CreateModelStep
     model_step = CreateModelStep(
         name=step_name,
-        step_args=model.create(
-            instance_type=self.config.instance_type,
-            accelerator_type=getattr(self.config, 'accelerator_type', None),
-            tags=getattr(self.config, 'tags', None),
-            model_name=self.config.get_model_name() if hasattr(self.config, 'get_model_name') else None
-        ),
+        model=model,
         depends_on=dependencies or []
     )
     
@@ -305,31 +300,137 @@ def create_step(self, **kwargs) -> CreateModelStep:
     return model_step
 ```
 
-### 8. Model Creation Arguments Pattern
+### 8. CreateModelStep Creation Patterns
 
-CreateModel steps use the model.create() method with specific arguments:
+CreateModel steps use two distinct patterns for step creation based on the model source:
+
+#### Pattern A: Model Object Pattern (Framework-Specific Models)
+Used by framework-specific model builders (PyTorchModelStepBuilder, XGBoostModelStepBuilder):
 
 ```python
 def create_step(self, **kwargs) -> CreateModelStep:
-    # ... input processing ...
+    """
+    Creates CreateModelStep using a framework-specific model object.
+    This pattern is used when we create PyTorchModel, XGBoostModel, etc.
+    """
+    # Extract parameters
+    dependencies = self._extract_param(kwargs, 'dependencies', [])
     
-    # Create the model
+    # Use dependency resolver to extract inputs
+    if dependencies:
+        extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+    else:
+        # Handle direct parameters for backward compatibility
+        extracted_inputs = self._normalize_inputs(kwargs.get('inputs', {}))
+        model_data = self._extract_param(kwargs, 'model_data')
+        if model_data:
+            extracted_inputs['model_data'] = model_data
+    
+    # Use specification-driven input processing
+    model_inputs = self._get_inputs(extracted_inputs)
+    model_data_value = model_inputs['model_data']
+
+    # Create the framework-specific model object
     model = self._create_model(model_data_value)
+
+    # Get standardized step name
+    step_name = self._get_step_name()
     
-    # Create the CreateModelStep with model.create() arguments
+    # Pattern A: Use model parameter directly
     model_step = CreateModelStep(
         name=step_name,
-        step_args=model.create(
-            instance_type=self.config.instance_type,
-            accelerator_type=getattr(self.config, 'accelerator_type', None),
-            tags=getattr(self.config, 'tags', None),
-            model_name=self.config.get_model_name() if hasattr(self.config, 'get_model_name') else None
-        ),
+        model=model,  # ✅ Pass model object directly
         depends_on=dependencies or []
     )
     
+    # Attach specification for future reference
+    setattr(model_step, '_spec', self.spec)
+    
     return model_step
 ```
+
+#### Pattern B: Estimator.create_model() + step_args Pattern (Training-Based Models)
+Used when creating models from trained estimators (TensorFlow, PyTorch training estimators):
+
+```python
+def create_step(self, **kwargs) -> CreateModelStep:
+    """
+    Creates CreateModelStep using estimator.create_model() result.
+    This pattern is used when we have a trained estimator and want to
+    create a model step from it.
+    """
+    # Extract parameters
+    dependencies = self._extract_param(kwargs, 'dependencies', [])
+    
+    # Assume we have access to a trained estimator
+    # (This could come from a training step dependency)
+    estimator = self._get_trained_estimator(dependencies)
+    
+    # Pattern B: Call estimator's create_model() method
+    model_args = estimator.create_model(
+        # Optional parameters for model creation
+        instance_type=getattr(self.config, 'instance_type', 'ml.m5.large'),
+        accelerator_type=getattr(self.config, 'accelerator_type', None),
+        model_name=getattr(self.config, 'model_name', None),
+        tags=getattr(self.config, 'tags', None)
+    )
+    
+    # Get standardized step name
+    step_name = self._get_step_name()
+    
+    # Pattern B: Use step_args parameter with estimator.create_model() result
+    model_step = CreateModelStep(
+        name=step_name,
+        step_args=model_args,  # ✅ Pass create_model() result to step_args
+        depends_on=dependencies or []
+    )
+    
+    # Attach specification for future reference
+    setattr(model_step, '_spec', self.spec)
+    
+    return model_step
+```
+
+**Key Differences:**
+- **Pattern A**: Direct model object creation using framework-specific classes (PyTorchModel, XGBoostModel)
+- **Pattern B**: Uses trained estimator's `create_model()` method result passed to `step_args`
+- **Usage**: Pattern A for inference-focused models, Pattern B for training-to-deployment workflows
+- **Model Configuration**: Pattern A configures model during object creation, Pattern B configures during `create_model()` call
+- **Framework Support**: Pattern A supports any framework with model classes, Pattern B requires estimator with `create_model()` method
+
+**Example of Pattern B Usage:**
+```python
+from sagemaker.workflow.steps import CreateModelStep
+from sagemaker.tensorflow import TensorFlow
+
+# 1. Assume you have a trained estimator
+estimator = TensorFlow(...)
+estimator.fit(...)
+
+# 2. Call the estimator's create_model() method to get the arguments
+#    This method packages up the model_data, image_uri, role, etc.
+model_args = estimator.create_model()
+
+# 3. Pass the result DIRECTLY to the step_args parameter.
+#    Notice the `model` parameter is NOT used here.
+step_create_model = CreateModelStep(
+    name="MyTensorFlowCreateModel",
+    step_args=model_args,
+)
+```
+
+**Pattern Selection Guidelines:**
+- Use **Pattern A** when:
+  - Creating inference models from pre-trained artifacts
+  - Working with framework-specific model classes (PyTorchModel, XGBoostModel)
+  - Need fine-grained control over model configuration
+  - Building inference-focused pipelines
+
+- Use **Pattern B** when:
+  - Creating models from trained estimators
+  - Following training-to-deployment workflows
+  - Working with SageMaker training jobs that produce estimators
+  - Need to preserve training job metadata in the model
 
 ## Configuration Validation Patterns
 
@@ -396,16 +497,56 @@ def validate_configuration(self) -> None:
 
 CreateModel step builders should be tested for:
 
-1. **Model Creation**: Correct model class instantiation and configuration
-2. **Image URI Generation**: Proper container image URI generation
-3. **Model Data Processing**: Correct handling of model artifacts from training steps
-4. **Environment Variables**: Proper environment variable construction
-5. **Step Arguments**: Correct model.create() argument handling
+1. **Step Creation Pattern Compliance**:
+   - **Pattern A steps**: Use `model` parameter with framework-specific model objects
+   - **Pattern B steps**: Use `step_args` parameter with estimator.create_model() result
+2. **Model Creation**: Correct model class instantiation and configuration
+3. **Image URI Generation**: Proper container image URI generation
+4. **Model Data Processing**: Correct handling of model artifacts from training steps
+5. **Environment Variables**: Proper environment variable construction
 6. **Instance Type Configuration**: Proper instance type and accelerator configuration
 7. **Model Name Handling**: Both automatic and explicit model naming
 8. **Specification Compliance**: Adherence to step specifications
 9. **Framework-Specific Features**: Framework-specific validation and handling
 10. **Dependency Integration**: Proper integration with training step outputs
+11. **Cache Configuration Limitation**: Verify CreateModelStep does not receive cache_config
+12. **Pattern-Specific Validation**:
+    - **Pattern A**: Model object creation and configuration
+    - **Pattern B**: Estimator integration and create_model() method usage
+
+### Recommended Test Categories by Pattern Type
+
+#### Pattern A Steps (Model Object Pattern)
+- Framework-specific model object creation validation
+- Model parameter passing to CreateModelStep
+- Image URI generation and framework version compatibility
+- Environment variable construction for inference
+- Model data input processing from training artifacts
+
+#### Pattern B Steps (Estimator Pattern)
+- Estimator.create_model() method invocation validation
+- step_args parameter passing to CreateModelStep
+- Training job metadata preservation in model creation
+- Estimator dependency resolution and integration
+- Training-to-deployment workflow validation
+
+#### Common Testing Areas (Both Patterns)
+- CreateModelStep constructor parameter validation
+- Specification compliance and contract alignment
+- Dependency resolution and input processing
+- Step naming consistency and generation
+- Error handling for missing inputs and invalid configurations
+
+#### Framework-Specific Testing
+- **XGBoost Models**: Framework version validation, region handling (us-east-1 constraint)
+- **PyTorch Models**: Framework version compatibility, GPU/accelerator support
+- **Custom Frameworks**: Image URI generation, container configuration
+
+#### Critical API Testing
+- Verify Pattern A uses `model` parameter (not `step_args`)
+- Verify Pattern B uses `step_args` parameter (not `model`)
+- Confirm no `cache_config` parameter is passed to CreateModelStep
+- Validate proper parameter combinations for each pattern
 
 ## Special Considerations
 
@@ -448,12 +589,12 @@ def create_step(self, **kwargs) -> CreateModelStep:
         cache_config=self._get_cache_config(enable_caching)  # ❌ NOT SUPPORTED
     )
     
-# CORRECT - No cache_config parameter
+# CORRECT - No cache_config parameter, use model parameter
 def create_step(self, **kwargs) -> CreateModelStep:
     model_step = CreateModelStep(
         name=step_name,
-        step_args=model.create(...),
-        depends_on=dependencies  # ✅ CORRECT
+        model=model,  # ✅ CORRECT: Use model parameter
+        depends_on=dependencies
     )
 ```
 
@@ -475,10 +616,10 @@ class ModelStepBuilder(StepBuilderBase):
         if enable_caching:
             self.log_warning("CreateModelStep does not support caching - ignoring enable_caching=True")
         
-        # Create step without cache_config
+        # Create step without cache_config, using correct model parameter
         model_step = CreateModelStep(
             name=step_name,
-            step_args=model.create(...),
+            model=model,  # ✅ CORRECT: Use model parameter
             depends_on=dependencies
         )
         return model_step
@@ -494,20 +635,18 @@ CreateModel steps can receive model_data from various sources:
 
 ### 3. Model Naming Strategy
 ```python
-# Automatic model naming (recommended)
+# CORRECT: Automatic model naming (recommended)
 model_step = CreateModelStep(
     name=step_name,
-    step_args=model.create(instance_type=self.config.instance_type),
+    model=model,  # Model object handles instance_type internally
     depends_on=dependencies
 )
 
-# Explicit model naming (when needed)
+# CORRECT: Model configuration handled during model creation
+model = self._create_model(model_data_value)  # Model configured with instance_type, etc.
 model_step = CreateModelStep(
     name=step_name,
-    step_args=model.create(
-        instance_type=self.config.instance_type,
-        model_name=self.config.get_model_name()
-    ),
+    model=model,
     depends_on=dependencies
 )
 ```

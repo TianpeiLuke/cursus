@@ -254,12 +254,7 @@ class XGBoostModelStepBuilder(StepBuilderBase):
             
             model_step = CreateModelStep(
                 name=step_name,
-                step_args=model.create(
-                    instance_type=self.config.instance_type,
-                    accelerator_type=getattr(self.config, 'accelerator_type', None),
-                    tags=getattr(self.config, 'tags', None)
-                    # Note: model_name parameter removed - it's not accepted by model.create()
-                ),
+                model=model,  # Pass model directly instead of step_args
                 depends_on=dependencies
                 # Note: cache_config parameter removed - not supported by CreateModelStep
             )
