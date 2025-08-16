@@ -432,9 +432,33 @@
       "failed_tests": []
     }
   },
+  "processing_info": {
+    "step_type": "Processing",
+    "supported_processors": [
+      "SKLearnProcessor",
+      "XGBoostProcessor"
+    ],
+    "creation_patterns": {
+      "pattern_a": "Direct ProcessingStep creation (SKLearnProcessor)",
+      "pattern_b": "processor.run() + step_args (XGBoostProcessor)"
+    },
+    "job_type_support": "Multi-job-type (training/validation/testing/calibration)",
+    "special_features": {
+      "local_path_override": "Package step pattern for inference scripts",
+      "file_upload": "DummyTraining step pattern for model/config upload",
+      "s3_path_validation": "S3 URI normalization and validation",
+      "environment_variables": "JSON serialization for complex configurations"
+    },
+    "container_paths": {
+      "input_base": "/opt/ml/processing/input",
+      "output_base": "/opt/ml/processing/output",
+      "code_base": "/opt/ml/processing/input/code"
+    }
+  },
+  "test_suite": "ProcessingStepBuilderTest",
   "step_name": "Payload",
   "step_type": "processing",
   "builder_class_name": "PayloadStepBuilder",
-  "timestamp": "2025-08-16T00:23:28.043962",
+  "timestamp": "2025-08-16T07:55:47.461443",
   "generator_version": "1.0.0"
 }

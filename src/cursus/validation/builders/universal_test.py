@@ -114,14 +114,26 @@ class UniversalStepBuilderTest:
             verbose=verbose
         )
         
-        self.step_creation_tests = StepCreationTests(
-            builder_class=builder_class,
-            config=config,
-            spec=spec,
-            contract=contract,
-            step_name=step_name,
-            verbose=verbose
-        )
+        # Use processing-specific test variant for Processing step builders
+        if self._is_processing_step_builder():
+            from .variants.processing_step_creation_tests import ProcessingStepCreationTests
+            self.step_creation_tests = ProcessingStepCreationTests(
+                builder_class=builder_class,
+                config=config,
+                spec=spec,
+                contract=contract,
+                step_name=step_name,
+                verbose=verbose
+            )
+        else:
+            self.step_creation_tests = StepCreationTests(
+                builder_class=builder_class,
+                config=config,
+                spec=spec,
+                contract=contract,
+                step_name=step_name,
+                verbose=verbose
+            )
         
         self.integration_tests = IntegrationTests(
             builder_class=builder_class,
@@ -134,6 +146,20 @@ class UniversalStepBuilderTest:
         
         # Create SageMaker step type validator
         self.sagemaker_validator = SageMakerStepTypeValidator(builder_class)
+    
+    def _is_processing_step_builder(self) -> bool:
+        """Check if this is a Processing step builder."""
+        try:
+            step_type_info = self.sagemaker_validator.get_step_type_info()
+            return step_type_info.get("sagemaker_step_type") == "Processing"
+        except Exception:
+            # Fallback: check if builder class name suggests it's a processing builder
+            class_name = self.builder_class.__name__.lower()
+            processing_indicators = [
+                'processing', 'preprocess', 'eval', 'calibration', 
+                'package', 'payload', 'currency', 'tabular'
+            ]
+            return any(indicator in class_name for indicator in processing_indicators)
     
     def run_all_tests(self, include_scoring: bool = None, 
                       include_structured_report: bool = None) -> Dict[str, Any]:
