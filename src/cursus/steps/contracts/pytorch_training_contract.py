@@ -16,8 +16,7 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     },
     expected_output_paths={
         "model_output": "/opt/ml/model",
-        "data_output": "/opt/ml/output/data",
-        "checkpoints": "/opt/ml/checkpoints"
+        "data_output": "/opt/ml/output/data"
     },
     expected_arguments={
         # No expected arguments - using standard paths from contract
