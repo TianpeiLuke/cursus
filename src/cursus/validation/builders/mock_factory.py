@@ -102,6 +102,31 @@ class StepTypeMockFactory:
         """Create base pipeline config with all required fields."""
         try:
             from ...core.base.config_base import BasePipelineConfig
+            # Use a path that exists or disable validation for testing
+            import os
+            from pathlib import Path
+            
+            # Try to find an existing scripts directory
+            possible_paths = [
+                'src/cursus/steps/scripts',
+                'cursus/steps/scripts', 
+                'steps/scripts',
+                'scripts'
+            ]
+            
+            source_dir = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    source_dir = path
+                    break
+            
+            # If no path exists, create a temporary directory for testing
+            if not source_dir:
+                # Use a mock path that won't be validated in test mode
+                source_dir = '/tmp/mock_scripts'
+                # Create the directory if it doesn't exist
+                Path(source_dir).mkdir(parents=True, exist_ok=True)
+            
             return BasePipelineConfig(
                 author='test-author',
                 bucket='test-bucket',
@@ -113,7 +138,7 @@ class StepTypeMockFactory:
                 current_date='2025-08-15',
                 framework_version='1.7-1',
                 py_version='py3',
-                source_dir='src/cursus/steps/scripts'  # Point to actual scripts directory
+                source_dir=source_dir
             )
         except Exception as e:
             print(f"Failed to create BasePipelineConfig: {e}")
@@ -274,11 +299,21 @@ class StepTypeMockFactory:
         """Create proper DummyTrainingConfig instance using from_base_config."""
         try:
             from ...steps.configs.config_dummy_training_step import DummyTrainingConfig
+            from ...core.base.hyperparameters_base import ModelHyperparameters
+            from pathlib import Path
+            
+            # Create a temporary model file for testing
+            temp_model_path = '/tmp/test_model.tar.gz'
+            Path(temp_model_path).touch()  # Create empty file for validation
+            
+            # Create mock hyperparameters
+            mock_hp = ModelHyperparameters()
+            
             return DummyTrainingConfig.from_base_config(
                 base_config,
-                job_type='training',
-                model_type='xgboost',
-                pretrained_model_s3_uri='s3://bucket/pretrained/model.tar.gz',
+                pretrained_model_path=temp_model_path,  # Use correct field name
+                hyperparameters=mock_hp,
+                hyperparameters_s3_uri='s3://bucket/config/hyperparameters.json',
                 processing_entry_point='dummy_training.py',
                 processing_instance_count=1,
                 processing_volume_size=30,
@@ -506,14 +541,16 @@ class StepTypeMockFactory:
             from ...steps.configs.config_batch_transform_step import BatchTransformStepConfig
             return BatchTransformStepConfig.from_base_config(
                 base_config,
+                job_type='training',  # Required field
                 transform_instance_type='ml.m5.large',
                 transform_instance_count=1,
-                transform_max_concurrent_transforms=1,
-                transform_max_payload=6,
-                transform_accept='text/csv',
-                transform_content_type='text/csv',
-                transform_strategy='MultiRecord',
-                transform_assemble_with='Line'
+                content_type='text/csv',
+                accept='text/csv',
+                split_type='Line',
+                assemble_with='Line',
+                input_filter='$[1:]',
+                output_filter='$[-1]',
+                join_source='Input'
             )
         except Exception as e:
             print(f"Failed to create BatchTransformStepConfig from base: {e}")

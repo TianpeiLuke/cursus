@@ -1,97 +1,119 @@
 {
-  "timestamp": "2025-08-15T11:49:00.266509",
+  "timestamp": "2025-08-15T18:09:15.478190",
   "base_path": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders",
   "step_types": {
     "training": {
       "step_type": "training",
-      "steps_processed": 0,
-      "successful": [],
-      "errors": [
+      "steps_processed": 2,
+      "successful": [
         {
           "step_name": "PyTorchTraining",
-          "error": "Could not load builder class for PyTorchTraining"
+          "canonical_name": "PyTorchTrainingStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/training/PyTorchTrainingStepBuilder/scoring_reports/PyTorchTrainingStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/training/PyTorchTrainingStepBuilder/scoring_reports/PyTorchTrainingStepBuilder_score_chart.png"
         },
         {
           "step_name": "XGBoostTraining",
-          "error": "Could not load builder class for XGBoostTraining"
+          "canonical_name": "XGBoostTrainingStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/training/XGBoostTrainingStepBuilder/scoring_reports/XGBoostTrainingStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/training/XGBoostTrainingStepBuilder/scoring_reports/XGBoostTrainingStepBuilder_score_chart.png"
         }
       ],
-      "timestamp": "2025-08-15T11:49:00.266523"
+      "errors": [],
+      "timestamp": "2025-08-15T18:09:15.478205"
     },
     "transform": {
       "step_type": "transform",
-      "steps_processed": 0,
-      "successful": [],
-      "errors": [
+      "steps_processed": 1,
+      "successful": [
         {
           "step_name": "BatchTransform",
-          "error": "Error testing BatchTransform: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "BatchTransformStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/transform/BatchTransformStepBuilder/scoring_reports/BatchTransformStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/transform/BatchTransformStepBuilder/scoring_reports/BatchTransformStepBuilder_score_chart.png"
         }
       ],
-      "timestamp": "2025-08-15T11:49:00.267095"
+      "errors": [],
+      "timestamp": "2025-08-15T18:09:15.941864"
     },
     "createmodel": {
       "step_type": "createmodel",
-      "steps_processed": 0,
-      "successful": [],
-      "errors": [
+      "steps_processed": 2,
+      "successful": [
         {
           "step_name": "PyTorchModel",
-          "error": "Could not load builder class for PyTorchModel"
+          "canonical_name": "PyTorchModelStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/createmodel/PyTorchModelStepBuilder/scoring_reports/PyTorchModelStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/createmodel/PyTorchModelStepBuilder/scoring_reports/PyTorchModelStepBuilder_score_chart.png"
         },
         {
           "step_name": "XGBoostModel",
-          "error": "Could not load builder class for XGBoostModel"
+          "canonical_name": "XGBoostModelStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/createmodel/XGBoostModelStepBuilder/scoring_reports/XGBoostModelStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/createmodel/XGBoostModelStepBuilder/scoring_reports/XGBoostModelStepBuilder_score_chart.png"
         }
       ],
-      "timestamp": "2025-08-15T11:49:00.267291"
+      "errors": [],
+      "timestamp": "2025-08-15T18:09:16.119901"
     },
     "processing": {
       "step_type": "processing",
-      "steps_processed": 0,
-      "successful": [],
-      "errors": [
-        {
-          "step_name": "Processing",
-          "error": "Could not load builder class for Processing"
-        },
+      "steps_processed": 8,
+      "successful": [
         {
           "step_name": "TabularPreprocessing",
-          "error": "Error testing TabularPreprocessing: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "TabularPreprocessingStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/TabularPreprocessingStepBuilder/scoring_reports/TabularPreprocessingStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/TabularPreprocessingStepBuilder/scoring_reports/TabularPreprocessingStepBuilder_score_chart.png"
         },
         {
           "step_name": "RiskTableMapping",
-          "error": "Error testing RiskTableMapping: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "RiskTableMappingStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/RiskTableMappingStepBuilder/scoring_reports/RiskTableMappingStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/RiskTableMappingStepBuilder/scoring_reports/RiskTableMappingStepBuilder_score_chart.png"
         },
         {
           "step_name": "CurrencyConversion",
-          "error": "Error testing CurrencyConversion: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "CurrencyConversionStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/CurrencyConversionStepBuilder/scoring_reports/CurrencyConversionStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/CurrencyConversionStepBuilder/scoring_reports/CurrencyConversionStepBuilder_score_chart.png"
         },
         {
           "step_name": "DummyTraining",
-          "error": "Error testing DummyTraining: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "DummyTrainingStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/DummyTrainingStepBuilder/scoring_reports/DummyTrainingStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/DummyTrainingStepBuilder/scoring_reports/DummyTrainingStepBuilder_score_chart.png"
         },
         {
           "step_name": "XGBoostModelEval",
-          "error": "Could not load builder class for XGBoostModelEval"
+          "canonical_name": "XGBoostModelEvalStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/XGBoostModelEvalStepBuilder/scoring_reports/XGBoostModelEvalStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/XGBoostModelEvalStepBuilder/scoring_reports/XGBoostModelEvalStepBuilder_score_chart.png"
         },
         {
           "step_name": "ModelCalibration",
-          "error": "Error testing ModelCalibration: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "ModelCalibrationStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/ModelCalibrationStepBuilder/scoring_reports/ModelCalibrationStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/ModelCalibrationStepBuilder/scoring_reports/ModelCalibrationStepBuilder_score_chart.png"
         },
         {
           "step_name": "Package",
-          "error": "Error testing Package: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "PackageStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/PackageStepBuilder/scoring_reports/PackageStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/PackageStepBuilder/scoring_reports/PackageStepBuilder_score_chart.png"
         },
         {
           "step_name": "Payload",
-          "error": "Error testing Payload: UniversalStepBuilderTest.__init__() got an unexpected keyword argument 'enable_scoring'"
+          "canonical_name": "PayloadStepBuilder",
+          "json_report": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/PayloadStepBuilder/scoring_reports/PayloadStepBuilder_score_report.json",
+          "score_chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/builders/processing/PayloadStepBuilder/scoring_reports/PayloadStepBuilder_score_chart.png"
         }
       ],
-      "timestamp": "2025-08-15T11:49:00.267660"
+      "errors": [],
+      "timestamp": "2025-08-15T18:09:16.476053"
     }
   },
-  "total_steps_processed": 0,
-  "total_successful": 0,
-  "total_errors": 14
+  "total_steps_processed": 13,
+  "total_successful": 13,
+  "total_errors": 0
 }

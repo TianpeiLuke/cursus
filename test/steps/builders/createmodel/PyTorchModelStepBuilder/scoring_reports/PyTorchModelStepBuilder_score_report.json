@@ -1,0 +1,411 @@
+{
+  "test_results": {
+    "test_configuration_validation": {
+      "passed": true,
+      "name": "test_configuration_validation",
+      "assertions": 0
+    },
+    "test_documentation_standards": {
+      "passed": true,
+      "name": "test_documentation_standards",
+      "assertions": 2
+    },
+    "test_error_handling": {
+      "passed": true,
+      "name": "test_error_handling",
+      "assertions": 0
+    },
+    "test_inheritance": {
+      "passed": true,
+      "name": "test_inheritance",
+      "assertions": 1
+    },
+    "test_method_return_types": {
+      "passed": true,
+      "name": "test_method_return_types",
+      "assertions": 0
+    },
+    "test_naming_conventions": {
+      "passed": true,
+      "name": "test_naming_conventions",
+      "assertions": 14
+    },
+    "test_registry_integration": {
+      "passed": true,
+      "name": "test_registry_integration",
+      "assertions": 0
+    },
+    "<lambda>": {
+      "passed": true,
+      "name": "<lambda>",
+      "assertions": 0
+    },
+    "test_required_methods": {
+      "passed": true,
+      "name": "test_required_methods",
+      "assertions": 23
+    },
+    "test_type_hints": {
+      "passed": true,
+      "name": "test_type_hints",
+      "assertions": 0
+    },
+    "test_contract_alignment": {
+      "passed": true,
+      "name": "test_contract_alignment",
+      "assertions": 1
+    },
+    "test_environment_variable_handling": {
+      "passed": true,
+      "name": "test_environment_variable_handling",
+      "assertions": 1
+    },
+    "test_job_arguments": {
+      "passed": true,
+      "name": "test_job_arguments",
+      "assertions": 1
+    },
+    "test_specification_usage": {
+      "passed": true,
+      "name": "test_specification_usage",
+      "assertions": 1
+    },
+    "test_input_path_mapping": {
+      "passed": false,
+      "name": "test_input_path_mapping",
+      "error": "Input path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+    },
+    "test_output_path_mapping": {
+      "passed": false,
+      "name": "test_output_path_mapping",
+      "error": "Output path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+    },
+    "test_property_path_validity": {
+      "passed": false,
+      "name": "test_property_path_validity",
+      "error": "Property path validity test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+    },
+    "test_dependency_resolution": {
+      "passed": true,
+      "name": "test_dependency_resolution",
+      "assertions": 1
+    },
+    "test_step_creation": {
+      "passed": true,
+      "name": "test_step_creation",
+      "assertions": 1
+    },
+    "test_step_name": {
+      "passed": true,
+      "name": "test_step_name",
+      "assertions": 1
+    },
+    "test_step_type_detection": {
+      "passed": true,
+      "error": null,
+      "details": {
+        "builder_class": "PyTorchModelStepBuilder",
+        "detected_step_name": "PyTorchModel",
+        "sagemaker_step_type": "CreateModel",
+        "is_valid_step_type": true
+      }
+    },
+    "test_step_type_classification": {
+      "passed": true,
+      "error": null,
+      "details": {
+        "sagemaker_step_type": "CreateModel",
+        "is_valid": true
+      }
+    },
+    "test_step_type_compliance": {
+      "passed": true,
+      "error": null,
+      "details": {
+        "error_count": 0,
+        "warning_count": 0,
+        "info_count": 0,
+        "violations": []
+      }
+    },
+    "test_create_model_methods": {
+      "passed": true,
+      "error": null,
+      "details": {
+        "expected_methods": [
+          "_create_model",
+          "_get_model"
+        ],
+        "found_methods": [
+          "_create_model"
+        ]
+      }
+    }
+  },
+  "scoring": {
+    "overall": {
+      "score": 71.42857142857143,
+      "rating": "Satisfactory",
+      "passed": 11,
+      "total": 14,
+      "pass_rate": 78.57142857142857
+    },
+    "levels": {
+      "level1_interface": {
+        "score": 100.0,
+        "passed": 3,
+        "total": 3,
+        "tests": {
+          "test_error_handling": true,
+          "test_inheritance": true,
+          "test_required_methods": true
+        }
+      },
+      "level2_specification": {
+        "score": 100.0,
+        "passed": 4,
+        "total": 4,
+        "tests": {
+          "test_contract_alignment": true,
+          "test_environment_variable_handling": true,
+          "test_job_arguments": true,
+          "test_specification_usage": true
+        }
+      },
+      "level3_path_mapping": {
+        "score": 0.0,
+        "passed": 0,
+        "total": 3,
+        "tests": {
+          "test_input_path_mapping": false,
+          "test_output_path_mapping": false,
+          "test_property_path_validity": false
+        }
+      },
+      "level4_integration": {
+        "score": 100.0,
+        "passed": 4,
+        "total": 4,
+        "tests": {
+          "test_registry_integration": true,
+          "test_dependency_resolution": true,
+          "test_step_creation": true,
+          "test_step_name": true
+        }
+      }
+    },
+    "failed_tests": [
+      {
+        "name": "test_input_path_mapping",
+        "error": "Input path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+      },
+      {
+        "name": "test_output_path_mapping",
+        "error": "Output path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+      },
+      {
+        "name": "test_property_path_validity",
+        "error": "Property path validity test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+      }
+    ]
+  },
+  "structured_report": {
+    "builder_info": {
+      "builder_name": "PyTorchModel",
+      "builder_class": "PyTorchModelStepBuilder",
+      "sagemaker_step_type": "CreateModel"
+    },
+    "test_results": {
+      "level1_interface": {
+        "test_error_handling": {
+          "passed": true,
+          "name": "test_error_handling",
+          "assertions": 0
+        },
+        "test_inheritance": {
+          "passed": true,
+          "name": "test_inheritance",
+          "assertions": 1
+        },
+        "test_required_methods": {
+          "passed": true,
+          "name": "test_required_methods",
+          "assertions": 23
+        }
+      },
+      "level2_specification": {
+        "test_contract_alignment": {
+          "passed": true,
+          "name": "test_contract_alignment",
+          "assertions": 1
+        },
+        "test_environment_variable_handling": {
+          "passed": true,
+          "name": "test_environment_variable_handling",
+          "assertions": 1
+        },
+        "test_job_arguments": {
+          "passed": true,
+          "name": "test_job_arguments",
+          "assertions": 1
+        },
+        "test_specification_usage": {
+          "passed": true,
+          "name": "test_specification_usage",
+          "assertions": 1
+        }
+      },
+      "level3_path_mapping": {
+        "test_input_path_mapping": {
+          "passed": false,
+          "name": "test_input_path_mapping",
+          "error": "Input path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+        },
+        "test_output_path_mapping": {
+          "passed": false,
+          "name": "test_output_path_mapping",
+          "error": "Output path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+        },
+        "test_property_path_validity": {
+          "passed": false,
+          "name": "test_property_path_validity",
+          "error": "Property path validity test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+        }
+      },
+      "level4_integration": {
+        "test_dependency_resolution": {
+          "passed": true,
+          "name": "test_dependency_resolution",
+          "assertions": 1
+        },
+        "test_step_creation": {
+          "passed": true,
+          "name": "test_step_creation",
+          "assertions": 1
+        }
+      },
+      "step_type_specific": {
+        "test_step_type_detection": {
+          "passed": true,
+          "error": null,
+          "details": {
+            "builder_class": "PyTorchModelStepBuilder",
+            "detected_step_name": "PyTorchModel",
+            "sagemaker_step_type": "CreateModel",
+            "is_valid_step_type": true
+          }
+        },
+        "test_step_type_classification": {
+          "passed": true,
+          "error": null,
+          "details": {
+            "sagemaker_step_type": "CreateModel",
+            "is_valid": true
+          }
+        },
+        "test_step_type_compliance": {
+          "passed": true,
+          "error": null,
+          "details": {
+            "error_count": 0,
+            "warning_count": 0,
+            "info_count": 0,
+            "violations": []
+          }
+        },
+        "test_create_model_methods": {
+          "passed": true,
+          "error": null,
+          "details": {
+            "expected_methods": [
+              "_create_model",
+              "_get_model"
+            ],
+            "found_methods": [
+              "_create_model"
+            ]
+          }
+        }
+      }
+    },
+    "summary": {
+      "total_tests": 24,
+      "passed_tests": 21,
+      "pass_rate": 87.5,
+      "overall_score": 71.42857142857143,
+      "score_rating": "Satisfactory"
+    },
+    "scoring": {
+      "overall": {
+        "score": 71.42857142857143,
+        "rating": "Satisfactory",
+        "passed": 11,
+        "total": 14,
+        "pass_rate": 78.57142857142857
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_path_mapping": {
+          "score": 0.0,
+          "passed": 0,
+          "total": 3,
+          "tests": {
+            "test_input_path_mapping": false,
+            "test_output_path_mapping": false,
+            "test_property_path_validity": false
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": [
+        {
+          "name": "test_input_path_mapping",
+          "error": "Input path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+        },
+        {
+          "name": "test_output_path_mapping",
+          "error": "Output path mapping test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+        },
+        {
+          "name": "test_property_path_validity",
+          "error": "Property path validity test failed: PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
+        }
+      ]
+    }
+  },
+  "step_name": "PyTorchModel",
+  "step_type": "createmodel",
+  "builder_class_name": "PyTorchModelStepBuilder",
+  "timestamp": "2025-08-15T18:09:16.122594",
+  "generator_version": "1.0.0"
+}

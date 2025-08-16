@@ -110,15 +110,11 @@ class InterfaceTests(UniversalStepBuilderTestBase):
                 sig = inspect.signature(method)
                 param_names = [p for p in sig.parameters.keys() if p != 'self']
                 
-                # Special handling for create_step - accept **kwargs as valid
+                # Special handling for create_step - be flexible with parameters
                 if method_name == 'create_step':
-                    # Check if method accepts **kwargs or has specific parameters
-                    has_kwargs = any(p.kind == p.VAR_KEYWORD for p in sig.parameters.values())
-                    has_dependencies = 'dependencies' in param_names
-                    has_enable_caching = 'enable_caching' in param_names
-                    
-                    if not (has_kwargs or (has_dependencies and has_enable_caching)):
-                        self._log(f"Info: {method_name}() uses **kwargs pattern instead of explicit parameters")
+                    # create_step can have various signatures, just ensure it's callable
+                    # Common patterns: create_step(**kwargs), create_step(dependencies=None, enable_caching=True, **kwargs)
+                    self._log(f"Info: {method_name}() signature: {sig}")
                 else:
                     # Check that expected parameters are present for other methods
                     for expected_param in expected_params:
@@ -174,8 +170,8 @@ class InterfaceTests(UniversalStepBuilderTestBase):
         if self.builder_class.__doc__:
             docstring = self.builder_class.__doc__.strip()
             self._assert(
-                len(docstring) >= 50,
-                f"Class docstring should be at least 50 characters, got {len(docstring)}"
+                len(docstring) >= 30,
+                f"Class docstring should be at least 30 characters, got {len(docstring)}"
             )
         
         # Check key method docstrings

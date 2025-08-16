@@ -23,18 +23,57 @@ class RegistryStepDiscovery:
     adaptive to changes in the step builder ecosystem.
     """
     
+    # Steps that should be excluded from testing (abstract/base steps kept for parity)
+    EXCLUDED_FROM_TESTING = {
+        "Processing",  # Base processing step - no concrete implementation
+        "Base"         # Base step - abstract
+    }
+    
     @staticmethod
-    def get_steps_by_sagemaker_type(sagemaker_step_type: str) -> List[str]:
+    def get_steps_by_sagemaker_type(sagemaker_step_type: str, exclude_abstract: bool = True) -> List[str]:
         """
         Get all step names for a specific SageMaker step type from registry.
         
         Args:
             sagemaker_step_type: The SageMaker step type (e.g., 'Training', 'Transform', 'CreateModel')
+            exclude_abstract: Whether to exclude abstract/base steps from the results
             
         Returns:
             List of step names that match the specified SageMaker step type
         """
-        return get_steps_by_sagemaker_type(sagemaker_step_type)
+        steps = get_steps_by_sagemaker_type(sagemaker_step_type)
+        
+        if exclude_abstract:
+            steps = [step for step in steps if step not in RegistryStepDiscovery.EXCLUDED_FROM_TESTING]
+        
+        return steps
+    
+    @staticmethod
+    def get_testable_steps_by_sagemaker_type(sagemaker_step_type: str) -> List[str]:
+        """
+        Get all testable step names for a specific SageMaker step type from registry.
+        Excludes abstract/base steps that shouldn't be tested.
+        
+        Args:
+            sagemaker_step_type: The SageMaker step type (e.g., 'Training', 'Transform', 'CreateModel')
+            
+        Returns:
+            List of testable step names that match the specified SageMaker step type
+        """
+        return RegistryStepDiscovery.get_steps_by_sagemaker_type(sagemaker_step_type, exclude_abstract=True)
+    
+    @staticmethod
+    def is_step_testable(step_name: str) -> bool:
+        """
+        Check if a step should be included in testing.
+        
+        Args:
+            step_name: The step name to check
+            
+        Returns:
+            True if the step should be tested, False if it should be excluded
+        """
+        return step_name not in RegistryStepDiscovery.EXCLUDED_FROM_TESTING
     
     @staticmethod
     def get_builder_class_path(step_name: str) -> Tuple[str, str]:
@@ -61,8 +100,8 @@ class RegistryStepDiscovery:
         if not builder_class_name:
             raise ValueError(f"No builder_step_name found for step '{step_name}'")
         
-        # Convert step name to module name (CamelCase to snake_case)
-        module_name = RegistryStepDiscovery._camel_to_snake(step_name)
+        # Use dynamic file discovery to find the correct module name
+        module_name = RegistryStepDiscovery._find_builder_module_name(step_name)
         
         # Construct module path
         module_path = f"cursus.steps.builders.builder_{module_name}_step"
@@ -88,7 +127,7 @@ class RegistryStepDiscovery:
         
         try:
             # Import the module
-            module = importlib.import_module(f"src.{module_path}")
+            module = importlib.import_module(module_path)
             
             # Get the class from the module
             builder_class = getattr(module, class_name)
@@ -189,7 +228,7 @@ class RegistryStepDiscovery:
             
             # Check if module exists
             try:
-                module = importlib.import_module(f"src.{module_path}")
+                module = importlib.import_module(module_path)
                 result["module_exists"] = True
                 
                 # Check if class exists
@@ -254,6 +293,96 @@ class RegistryStepDiscovery:
         return report
     
     @staticmethod
+    def _find_builder_module_name(step_name: str) -> str:
+        """
+        Dynamically find the correct module name for a step builder by scanning the file system.
+        
+        Args:
+            step_name: The step name from the registry
+            
+        Returns:
+            The module name (without 'builder_' prefix and '_step' suffix)
+            
+        Raises:
+            ValueError: If no matching builder file is found
+        """
+        import os
+        import glob
+        
+        # Get the builders directory path
+        current_file = Path(__file__)
+        builders_dir = current_file.parent.parent.parent / "steps" / "builders"
+        
+        if not builders_dir.exists():
+            # Fallback to relative path discovery
+            possible_paths = [
+                "src/cursus/steps/builders",
+                "cursus/steps/builders", 
+                "steps/builders"
+            ]
+            
+            builders_dir = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    builders_dir = Path(path)
+                    break
+            
+            if not builders_dir:
+                raise ValueError(f"Could not find builders directory for step '{step_name}'")
+        
+        # Get all builder files
+        builder_files = list(builders_dir.glob("builder_*_step.py"))
+        
+        # Create a mapping of possible step names to file names
+        step_to_file = {}
+        for file_path in builder_files:
+            # Extract module name: builder_xyz_step.py -> xyz
+            file_name = file_path.stem  # removes .py
+            if file_name.startswith("builder_") and file_name.endswith("_step"):
+                module_name = file_name[8:-5]  # Remove "builder_" and "_step"
+                step_to_file[module_name] = module_name
+        
+        # Try different matching strategies
+        
+        # Strategy 1: Direct lowercase match
+        step_lower = step_name.lower()
+        if step_lower in step_to_file:
+            return step_to_file[step_lower]
+        
+        # Strategy 2: Standard camel_to_snake conversion
+        snake_case = RegistryStepDiscovery._camel_to_snake(step_name)
+        if snake_case in step_to_file:
+            return step_to_file[snake_case]
+        
+        # Strategy 3: Try partial matches for compound names
+        for module_name in step_to_file.keys():
+            # Check if step_name components match module_name
+            step_parts = step_name.lower().replace("_", "").replace("-", "")
+            module_parts = module_name.lower().replace("_", "").replace("-", "")
+            
+            if step_parts == module_parts:
+                return step_to_file[module_name]
+        
+        # Strategy 4: Fuzzy matching for known patterns
+        step_normalized = step_name.lower()
+        for module_name in step_to_file.keys():
+            module_normalized = module_name.lower()
+            
+            # Handle common abbreviations and variations
+            if (step_normalized.replace("pytorch", "pytorch") == module_normalized or
+                step_normalized.replace("xgboost", "xgboost") == module_normalized or
+                step_normalized.replace("_", "") == module_normalized.replace("_", "")):
+                return step_to_file[module_name]
+        
+        # If no match found, raise an error with helpful information
+        available_modules = list(step_to_file.keys())
+        raise ValueError(
+            f"Could not find builder module for step '{step_name}'. "
+            f"Available modules: {available_modules}. "
+            f"Tried: {step_lower}, {snake_case}"
+        )
+    
+    @staticmethod
     def _camel_to_snake(name: str) -> str:
         """
         Convert CamelCase to snake_case.
@@ -277,23 +406,23 @@ class RegistryStepDiscovery:
 
 # Convenience functions for backward compatibility and ease of use
 def get_training_steps_from_registry() -> List[str]:
-    """Get all training step names from registry."""
-    return RegistryStepDiscovery.get_steps_by_sagemaker_type("Training")
+    """Get all testable training step names from registry."""
+    return RegistryStepDiscovery.get_testable_steps_by_sagemaker_type("Training")
 
 
 def get_transform_steps_from_registry() -> List[str]:
-    """Get all transform step names from registry."""
-    return RegistryStepDiscovery.get_steps_by_sagemaker_type("Transform")
+    """Get all testable transform step names from registry."""
+    return RegistryStepDiscovery.get_testable_steps_by_sagemaker_type("Transform")
 
 
 def get_createmodel_steps_from_registry() -> List[str]:
-    """Get all createmodel step names from registry."""
-    return RegistryStepDiscovery.get_steps_by_sagemaker_type("CreateModel")
+    """Get all testable createmodel step names from registry."""
+    return RegistryStepDiscovery.get_testable_steps_by_sagemaker_type("CreateModel")
 
 
 def get_processing_steps_from_registry() -> List[str]:
-    """Get all processing step names from registry."""
-    return RegistryStepDiscovery.get_steps_by_sagemaker_type("Processing")
+    """Get all testable processing step names from registry."""
+    return RegistryStepDiscovery.get_testable_steps_by_sagemaker_type("Processing")
 
 
 def get_builder_class_path(step_name: str) -> Tuple[str, str]:
