@@ -1,0 +1,54 @@
+{
+  "step_type": "Training",
+  "summary": {
+    "total_builders": 2,
+    "passing_builders": 0,
+    "mostly_passing_builders": 0,
+    "partially_passing_builders": 2,
+    "failing_builders": 0
+  },
+  "builder_reports": {
+    "PyTorchTraining": {
+      "builder_name": "PyTorchTraining",
+      "builder_class": "PyTorchTrainingStepBuilder",
+      "sagemaker_step_type": "Training",
+      "total_tests": 23,
+      "passed_tests": 21,
+      "failed_tests": 2,
+      "pass_rate": 91.30434782608695,
+      "total_issues": 23,
+      "critical_issues": 0,
+      "error_issues": 2,
+      "warning_issues": 0,
+      "info_issues": 21,
+      "highest_severity": "ERROR",
+      "overall_status": "PARTIALLY_PASSING",
+      "validation_timestamp": "2025-08-15T22:06:59.987955",
+      "is_passing": false
+    },
+    "XGBoostTraining": {
+      "builder_name": "XGBoostTraining",
+      "builder_class": "XGBoostTrainingStepBuilder",
+      "sagemaker_step_type": "Training",
+      "total_tests": 23,
+      "passed_tests": 21,
+      "failed_tests": 2,
+      "pass_rate": 91.30434782608695,
+      "total_issues": 23,
+      "critical_issues": 0,
+      "error_issues": 2,
+      "warning_issues": 0,
+      "info_issues": 21,
+      "highest_severity": "ERROR",
+      "overall_status": "PARTIALLY_PASSING",
+      "validation_timestamp": "2025-08-15T22:06:59.993409",
+      "is_passing": false
+    }
+  },
+  "metadata": {
+    "step_type": "Training",
+    "generation_timestamp": "2025-08-15T22:06:59.994150",
+    "validator_version": "1.0.0",
+    "test_framework": "UniversalStepBuilderTest"
+  }
+}

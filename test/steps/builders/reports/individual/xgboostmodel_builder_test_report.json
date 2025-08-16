@@ -1,7 +1,7 @@
 {
-  "builder_name": "DummyTraining",
-  "builder_class": "DummyTrainingStepBuilder",
-  "sagemaker_step_type": "Processing",
+  "builder_name": "XGBoostModel",
+  "builder_class": "XGBoostModelStepBuilder",
+  "sagemaker_step_type": "CreateModel",
   "level1_interface": {
     "passed": false,
     "issues": [
@@ -32,7 +32,7 @@
       {
         "severity": "ERROR",
         "category": "test_failure",
-        "message": "DummyTrainingStepBuilder must inherit from StepBuilderBase",
+        "message": "XGBoostModelStepBuilder must inherit from StepBuilderBase",
         "details": {},
         "recommendation": "Fix test_inheritance failure",
         "test_name": "test_inheritance"
@@ -82,7 +82,7 @@
       "test_configuration_validation": {
         "test_name": "test_configuration_validation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963044",
+        "timestamp": "2025-08-15T22:07:00.007865",
         "test_level": "interface",
         "issues": [
           {
@@ -100,7 +100,7 @@
       "test_documentation_standards": {
         "test_name": "test_documentation_standards",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963053",
+        "timestamp": "2025-08-15T22:07:00.007871",
         "test_level": "interface",
         "issues": [
           {
@@ -118,7 +118,7 @@
       "test_error_handling": {
         "test_name": "test_error_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963055",
+        "timestamp": "2025-08-15T22:07:00.007874",
         "test_level": "interface",
         "issues": [
           {
@@ -136,13 +136,13 @@
       "test_inheritance": {
         "test_name": "test_inheritance",
         "passed": false,
-        "timestamp": "2025-08-15T22:06:59.963057",
+        "timestamp": "2025-08-15T22:07:00.007876",
         "test_level": "interface",
         "issues": [
           {
             "severity": "ERROR",
             "category": "test_failure",
-            "message": "DummyTrainingStepBuilder must inherit from StepBuilderBase",
+            "message": "XGBoostModelStepBuilder must inherit from StepBuilderBase",
             "details": {},
             "recommendation": "Fix test_inheritance failure",
             "test_name": "test_inheritance"
@@ -154,7 +154,7 @@
       "test_method_return_types": {
         "test_name": "test_method_return_types",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963060",
+        "timestamp": "2025-08-15T22:07:00.007878",
         "test_level": "interface",
         "issues": [
           {
@@ -172,7 +172,7 @@
       "test_naming_conventions": {
         "test_name": "test_naming_conventions",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963061",
+        "timestamp": "2025-08-15T22:07:00.007881",
         "test_level": "interface",
         "issues": [
           {
@@ -190,7 +190,7 @@
       "test_registry_integration": {
         "test_name": "test_registry_integration",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963064",
+        "timestamp": "2025-08-15T22:07:00.007883",
         "test_level": "interface",
         "issues": [
           {
@@ -208,7 +208,7 @@
       "test_required_methods": {
         "test_name": "test_required_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963067",
+        "timestamp": "2025-08-15T22:07:00.007887",
         "test_level": "interface",
         "issues": [
           {
@@ -226,7 +226,7 @@
       "test_type_hints": {
         "test_name": "test_type_hints",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963069",
+        "timestamp": "2025-08-15T22:07:00.007890",
         "test_level": "interface",
         "issues": [
           {
@@ -283,7 +283,7 @@
       "test_contract_alignment": {
         "test_name": "test_contract_alignment",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963071",
+        "timestamp": "2025-08-15T22:07:00.007892",
         "test_level": "specification",
         "issues": [
           {
@@ -301,7 +301,7 @@
       "test_environment_variable_handling": {
         "test_name": "test_environment_variable_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963073",
+        "timestamp": "2025-08-15T22:07:00.007894",
         "test_level": "specification",
         "issues": [
           {
@@ -319,7 +319,7 @@
       "test_job_arguments": {
         "test_name": "test_job_arguments",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963075",
+        "timestamp": "2025-08-15T22:07:00.007896",
         "test_level": "specification",
         "issues": [
           {
@@ -337,7 +337,7 @@
       "test_specification_usage": {
         "test_name": "test_specification_usage",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963077",
+        "timestamp": "2025-08-15T22:07:00.007899",
         "test_level": "specification",
         "issues": [
           {
@@ -391,7 +391,7 @@
       "test_dependency_resolution": {
         "test_name": "test_dependency_resolution",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963098",
+        "timestamp": "2025-08-15T22:07:00.007922",
         "test_level": "integration",
         "issues": [
           {
@@ -409,7 +409,7 @@
       "test_step_creation": {
         "test_name": "test_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963100",
+        "timestamp": "2025-08-15T22:07:00.007925",
         "test_level": "integration",
         "issues": [
           {
@@ -427,7 +427,7 @@
       "test_step_name": {
         "test_name": "test_step_name",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963102",
+        "timestamp": "2025-08-15T22:07:00.007927",
         "test_level": "integration",
         "issues": [
           {
@@ -445,14 +445,14 @@
     }
   },
   "step_type_specific": {
-    "passed": false,
+    "passed": true,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "test_failure",
-        "message": "Processing step creation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_processing_step_creation passed successfully",
         "details": {},
-        "recommendation": "Fix test_processing_step_creation failure",
+        "recommendation": "No action needed - test passed",
         "test_name": "test_processing_step_creation"
       },
       {
@@ -481,9 +481,9 @@
         "category": "test_success",
         "message": "test_step_type_detection passed successfully",
         "details": {
-          "builder_class": "DummyTrainingStepBuilder",
-          "detected_step_name": "DummyTraining",
-          "sagemaker_step_type": "Processing",
+          "builder_class": "XGBoostModelStepBuilder",
+          "detected_step_name": "XGBoostModel",
+          "sagemaker_step_type": "CreateModel",
           "is_valid_step_type": true
         },
         "recommendation": "No action needed - test passed",
@@ -494,63 +494,36 @@
         "category": "test_success",
         "message": "test_step_type_classification passed successfully",
         "details": {
-          "sagemaker_step_type": "Processing",
+          "sagemaker_step_type": "CreateModel",
           "is_valid": true
         },
         "recommendation": "No action needed - test passed",
         "test_name": "test_step_type_classification"
-      },
-      {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_processing_processor_methods passed successfully",
-        "details": {
-          "expected_methods": [
-            "_create_processor",
-            "_get_processor"
-          ],
-          "found_methods": [
-            "_get_processor"
-          ]
-        },
-        "recommendation": "No action needed - test passed",
-        "test_name": "test_processing_processor_methods"
-      },
-      {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_processing_io_methods passed successfully",
-        "details": {
-          "has_get_inputs": true,
-          "has_get_outputs": true
-        },
-        "recommendation": "No action needed - test passed",
-        "test_name": "test_processing_io_methods"
       }
     ],
     "test_results": {
       "test_processing_step_creation": {
         "test_name": "test_processing_step_creation",
-        "passed": false,
-        "timestamp": "2025-08-15T22:06:59.963081",
+        "passed": true,
+        "timestamp": "2025-08-15T22:07:00.007903",
         "test_level": "step_type_specific",
         "issues": [
           {
-            "severity": "ERROR",
-            "category": "test_failure",
-            "message": "Processing step creation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_processing_step_creation passed successfully",
             "details": {},
-            "recommendation": "Fix test_processing_step_creation failure",
+            "recommendation": "No action needed - test passed",
             "test_name": "test_processing_step_creation"
           }
         ],
         "details": {},
-        "highest_severity": "ERROR"
+        "highest_severity": "INFO"
       },
       "test_step_type_compliance": {
         "test_name": "test_step_type_compliance",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963092",
+        "timestamp": "2025-08-15T22:07:00.007915",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -578,7 +551,7 @@
       "test_training_step_creation": {
         "test_name": "test_training_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963094",
+        "timestamp": "2025-08-15T22:07:00.007918",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -596,7 +569,7 @@
       "test_step_type_detection": {
         "test_name": "test_step_type_detection",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963104",
+        "timestamp": "2025-08-15T22:07:00.007929",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -604,9 +577,9 @@
             "category": "test_success",
             "message": "test_step_type_detection passed successfully",
             "details": {
-              "builder_class": "DummyTrainingStepBuilder",
-              "detected_step_name": "DummyTraining",
-              "sagemaker_step_type": "Processing",
+              "builder_class": "XGBoostModelStepBuilder",
+              "detected_step_name": "XGBoostModel",
+              "sagemaker_step_type": "CreateModel",
               "is_valid_step_type": true
             },
             "recommendation": "No action needed - test passed",
@@ -614,9 +587,9 @@
           }
         ],
         "details": {
-          "builder_class": "DummyTrainingStepBuilder",
-          "detected_step_name": "DummyTraining",
-          "sagemaker_step_type": "Processing",
+          "builder_class": "XGBoostModelStepBuilder",
+          "detected_step_name": "XGBoostModel",
+          "sagemaker_step_type": "CreateModel",
           "is_valid_step_type": true
         },
         "highest_severity": "INFO"
@@ -624,7 +597,7 @@
       "test_step_type_classification": {
         "test_name": "test_step_type_classification",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963106",
+        "timestamp": "2025-08-15T22:07:00.007932",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -632,7 +605,7 @@
             "category": "test_success",
             "message": "test_step_type_classification passed successfully",
             "details": {
-              "sagemaker_step_type": "Processing",
+              "sagemaker_step_type": "CreateModel",
               "is_valid": true
             },
             "recommendation": "No action needed - test passed",
@@ -640,66 +613,8 @@
           }
         ],
         "details": {
-          "sagemaker_step_type": "Processing",
+          "sagemaker_step_type": "CreateModel",
           "is_valid": true
-        },
-        "highest_severity": "INFO"
-      },
-      "test_processing_processor_methods": {
-        "test_name": "test_processing_processor_methods",
-        "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963108",
-        "test_level": "step_type_specific",
-        "issues": [
-          {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_processing_processor_methods passed successfully",
-            "details": {
-              "expected_methods": [
-                "_create_processor",
-                "_get_processor"
-              ],
-              "found_methods": [
-                "_get_processor"
-              ]
-            },
-            "recommendation": "No action needed - test passed",
-            "test_name": "test_processing_processor_methods"
-          }
-        ],
-        "details": {
-          "expected_methods": [
-            "_create_processor",
-            "_get_processor"
-          ],
-          "found_methods": [
-            "_get_processor"
-          ]
-        },
-        "highest_severity": "INFO"
-      },
-      "test_processing_io_methods": {
-        "test_name": "test_processing_io_methods",
-        "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963110",
-        "test_level": "step_type_specific",
-        "issues": [
-          {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_processing_io_methods passed successfully",
-            "details": {
-              "has_get_inputs": true,
-              "has_get_outputs": true
-            },
-            "recommendation": "No action needed - test passed",
-            "test_name": "test_processing_io_methods"
-          }
-        ],
-        "details": {
-          "has_get_inputs": true,
-          "has_get_outputs": true
         },
         "highest_severity": "INFO"
       }
@@ -707,29 +622,29 @@
   },
   "overall_status": "PARTIALLY_PASSING",
   "summary": {
-    "builder_name": "DummyTraining",
-    "builder_class": "DummyTrainingStepBuilder",
-    "sagemaker_step_type": "Processing",
-    "total_tests": 23,
-    "passed_tests": 21,
-    "failed_tests": 2,
-    "pass_rate": 91.30434782608695,
-    "total_issues": 23,
+    "builder_name": "XGBoostModel",
+    "builder_class": "XGBoostModelStepBuilder",
+    "sagemaker_step_type": "CreateModel",
+    "total_tests": 21,
+    "passed_tests": 20,
+    "failed_tests": 1,
+    "pass_rate": 95.23809523809523,
+    "total_issues": 21,
     "critical_issues": 0,
-    "error_issues": 2,
+    "error_issues": 1,
     "warning_issues": 0,
-    "info_issues": 21,
+    "info_issues": 20,
     "highest_severity": "ERROR",
     "overall_status": "PARTIALLY_PASSING",
-    "validation_timestamp": "2025-08-15T22:06:59.963114",
+    "validation_timestamp": "2025-08-15T22:07:00.007938",
     "is_passing": false
   },
   "recommendations": [],
   "metadata": {
-    "builder_name": "DummyTraining",
-    "builder_class": "DummyTrainingStepBuilder",
-    "sagemaker_step_type": "Processing",
-    "validation_timestamp": "2025-08-15T22:06:59.963114",
+    "builder_name": "XGBoostModel",
+    "builder_class": "XGBoostModelStepBuilder",
+    "sagemaker_step_type": "CreateModel",
+    "validation_timestamp": "2025-08-15T22:07:00.007938",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   },
@@ -768,8 +683,8 @@
         "passed": 3,
         "total": 8,
         "tests": {
-          "test_create_model_step_creation": true,
-          "test_processing_step_creation": false,
+          "test_create_model_step_creation": false,
+          "test_processing_step_creation": true,
           "test_step_configuration_validity": false,
           "test_step_dependencies_attachment": false,
           "test_step_instantiation": false,
@@ -793,27 +708,27 @@
     "failed_tests": [
       {
         "name": "test_inheritance",
-        "error": "DummyTrainingStepBuilder must inherit from StepBuilderBase"
+        "error": "XGBoostModelStepBuilder must inherit from StepBuilderBase"
       },
       {
-        "name": "test_processing_step_creation",
-        "error": "Processing step creation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "name": "test_create_model_step_creation",
+        "error": "CreateModel step creation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
       },
       {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step configuration validity test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step dependencies attachment test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step instantiation failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step name generation test failed: XGBoostModelStepBuilder requires a XGBoostModelStepConfig instance."
       }
     ]
   },

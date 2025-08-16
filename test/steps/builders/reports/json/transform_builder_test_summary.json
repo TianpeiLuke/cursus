@@ -1,0 +1,36 @@
+{
+  "step_type": "Transform",
+  "summary": {
+    "total_builders": 1,
+    "passing_builders": 0,
+    "mostly_passing_builders": 0,
+    "partially_passing_builders": 1,
+    "failing_builders": 0
+  },
+  "builder_reports": {
+    "BatchTransform": {
+      "builder_name": "BatchTransform",
+      "builder_class": "BatchTransformStepBuilder",
+      "sagemaker_step_type": "Transform",
+      "total_tests": 21,
+      "passed_tests": 20,
+      "failed_tests": 1,
+      "pass_rate": 95.23809523809523,
+      "total_issues": 21,
+      "critical_issues": 0,
+      "error_issues": 1,
+      "warning_issues": 0,
+      "info_issues": 20,
+      "highest_severity": "ERROR",
+      "overall_status": "PARTIALLY_PASSING",
+      "validation_timestamp": "2025-08-15T22:06:59.999105",
+      "is_passing": false
+    }
+  },
+  "metadata": {
+    "step_type": "Transform",
+    "generation_timestamp": "2025-08-15T22:06:59.999706",
+    "validator_version": "1.0.0",
+    "test_framework": "UniversalStepBuilderTest"
+  }
+}

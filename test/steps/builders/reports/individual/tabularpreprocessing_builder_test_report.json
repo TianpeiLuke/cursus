@@ -3,7 +3,7 @@
   "builder_class": "TabularPreprocessingStepBuilder",
   "sagemaker_step_type": "Processing",
   "level1_interface": {
-    "passed": true,
+    "passed": false,
     "issues": [
       {
         "severity": "INFO",
@@ -30,11 +30,11 @@
         "test_name": "test_error_handling"
       },
       {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_inheritance passed successfully",
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "TabularPreprocessingStepBuilder must inherit from StepBuilderBase",
         "details": {},
-        "recommendation": "No action needed - test passed",
+        "recommendation": "Fix test_inheritance failure",
         "test_name": "test_inheritance"
       },
       {
@@ -82,7 +82,7 @@
       "test_configuration_validation": {
         "test_name": "test_configuration_validation",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442332",
+        "timestamp": "2025-08-15T22:06:58.560097",
         "test_level": "interface",
         "issues": [
           {
@@ -100,7 +100,7 @@
       "test_documentation_standards": {
         "test_name": "test_documentation_standards",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442351",
+        "timestamp": "2025-08-15T22:06:58.560125",
         "test_level": "interface",
         "issues": [
           {
@@ -118,7 +118,7 @@
       "test_error_handling": {
         "test_name": "test_error_handling",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442356",
+        "timestamp": "2025-08-15T22:06:58.560130",
         "test_level": "interface",
         "issues": [
           {
@@ -135,26 +135,26 @@
       },
       "test_inheritance": {
         "test_name": "test_inheritance",
-        "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442359",
+        "passed": false,
+        "timestamp": "2025-08-15T22:06:58.560133",
         "test_level": "interface",
         "issues": [
           {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_inheritance passed successfully",
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "TabularPreprocessingStepBuilder must inherit from StepBuilderBase",
             "details": {},
-            "recommendation": "No action needed - test passed",
+            "recommendation": "Fix test_inheritance failure",
             "test_name": "test_inheritance"
           }
         ],
         "details": {},
-        "highest_severity": "INFO"
+        "highest_severity": "ERROR"
       },
       "test_method_return_types": {
         "test_name": "test_method_return_types",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442361",
+        "timestamp": "2025-08-15T22:06:58.560138",
         "test_level": "interface",
         "issues": [
           {
@@ -172,7 +172,7 @@
       "test_naming_conventions": {
         "test_name": "test_naming_conventions",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442364",
+        "timestamp": "2025-08-15T22:06:58.560141",
         "test_level": "interface",
         "issues": [
           {
@@ -190,7 +190,7 @@
       "test_registry_integration": {
         "test_name": "test_registry_integration",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442367",
+        "timestamp": "2025-08-15T22:06:58.560143",
         "test_level": "interface",
         "issues": [
           {
@@ -208,7 +208,7 @@
       "test_required_methods": {
         "test_name": "test_required_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442374",
+        "timestamp": "2025-08-15T22:06:58.560147",
         "test_level": "interface",
         "issues": [
           {
@@ -226,7 +226,7 @@
       "test_type_hints": {
         "test_name": "test_type_hints",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442378",
+        "timestamp": "2025-08-15T22:06:58.560149",
         "test_level": "interface",
         "issues": [
           {
@@ -283,7 +283,7 @@
       "test_contract_alignment": {
         "test_name": "test_contract_alignment",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442381",
+        "timestamp": "2025-08-15T22:06:58.560151",
         "test_level": "specification",
         "issues": [
           {
@@ -301,7 +301,7 @@
       "test_environment_variable_handling": {
         "test_name": "test_environment_variable_handling",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442386",
+        "timestamp": "2025-08-15T22:06:58.560153",
         "test_level": "specification",
         "issues": [
           {
@@ -319,7 +319,7 @@
       "test_job_arguments": {
         "test_name": "test_job_arguments",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442390",
+        "timestamp": "2025-08-15T22:06:58.560155",
         "test_level": "specification",
         "issues": [
           {
@@ -337,7 +337,7 @@
       "test_specification_usage": {
         "test_name": "test_specification_usage",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442392",
+        "timestamp": "2025-08-15T22:06:58.560157",
         "test_level": "specification",
         "issues": [
           {
@@ -354,90 +354,10 @@
       }
     }
   },
-  "level3_path_mapping": {
+  "level3_step_creation": {
     "passed": true,
-    "issues": [
-      {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_input_path_mapping passed successfully",
-        "details": {},
-        "recommendation": "No action needed - test passed",
-        "test_name": "test_input_path_mapping"
-      },
-      {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_output_path_mapping passed successfully",
-        "details": {},
-        "recommendation": "No action needed - test passed",
-        "test_name": "test_output_path_mapping"
-      },
-      {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_property_path_validity passed successfully",
-        "details": {},
-        "recommendation": "No action needed - test passed",
-        "test_name": "test_property_path_validity"
-      }
-    ],
-    "test_results": {
-      "test_input_path_mapping": {
-        "test_name": "test_input_path_mapping",
-        "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442394",
-        "test_level": "path_mapping",
-        "issues": [
-          {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_input_path_mapping passed successfully",
-            "details": {},
-            "recommendation": "No action needed - test passed",
-            "test_name": "test_input_path_mapping"
-          }
-        ],
-        "details": {},
-        "highest_severity": "INFO"
-      },
-      "test_output_path_mapping": {
-        "test_name": "test_output_path_mapping",
-        "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442396",
-        "test_level": "path_mapping",
-        "issues": [
-          {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_output_path_mapping passed successfully",
-            "details": {},
-            "recommendation": "No action needed - test passed",
-            "test_name": "test_output_path_mapping"
-          }
-        ],
-        "details": {},
-        "highest_severity": "INFO"
-      },
-      "test_property_path_validity": {
-        "test_name": "test_property_path_validity",
-        "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442399",
-        "test_level": "path_mapping",
-        "issues": [
-          {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_property_path_validity passed successfully",
-            "details": {},
-            "recommendation": "No action needed - test passed",
-            "test_name": "test_property_path_validity"
-          }
-        ],
-        "details": {},
-        "highest_severity": "INFO"
-      }
-    }
+    "issues": [],
+    "test_results": {}
   },
   "level4_integration": {
     "passed": true,
@@ -471,7 +391,7 @@
       "test_dependency_resolution": {
         "test_name": "test_dependency_resolution",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442401",
+        "timestamp": "2025-08-15T22:06:58.560179",
         "test_level": "integration",
         "issues": [
           {
@@ -489,7 +409,7 @@
       "test_step_creation": {
         "test_name": "test_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442403",
+        "timestamp": "2025-08-15T22:06:58.560181",
         "test_level": "integration",
         "issues": [
           {
@@ -507,7 +427,7 @@
       "test_step_name": {
         "test_name": "test_step_name",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442405",
+        "timestamp": "2025-08-15T22:06:58.560183",
         "test_level": "integration",
         "issues": [
           {
@@ -527,6 +447,35 @@
   "step_type_specific": {
     "passed": true,
     "issues": [
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_processing_step_creation passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_processing_step_creation"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_step_type_compliance passed successfully",
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        },
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_step_type_compliance"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_training_step_creation passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_training_step_creation"
+      },
       {
         "severity": "INFO",
         "category": "test_success",
@@ -550,19 +499,6 @@
         },
         "recommendation": "No action needed - test passed",
         "test_name": "test_step_type_classification"
-      },
-      {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_step_type_compliance passed successfully",
-        "details": {
-          "error_count": 0,
-          "warning_count": 0,
-          "info_count": 0,
-          "violations": []
-        },
-        "recommendation": "No action needed - test passed",
-        "test_name": "test_step_type_compliance"
       },
       {
         "severity": "INFO",
@@ -593,10 +529,74 @@
       }
     ],
     "test_results": {
+      "test_processing_step_creation": {
+        "test_name": "test_processing_step_creation",
+        "passed": true,
+        "timestamp": "2025-08-15T22:06:58.560161",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_processing_step_creation passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_processing_step_creation"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
+      "test_step_type_compliance": {
+        "test_name": "test_step_type_compliance",
+        "passed": true,
+        "timestamp": "2025-08-15T22:06:58.560172",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_step_type_compliance passed successfully",
+            "details": {
+              "error_count": 0,
+              "warning_count": 0,
+              "info_count": 0,
+              "violations": []
+            },
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_step_type_compliance"
+          }
+        ],
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        },
+        "highest_severity": "INFO"
+      },
+      "test_training_step_creation": {
+        "test_name": "test_training_step_creation",
+        "passed": true,
+        "timestamp": "2025-08-15T22:06:58.560175",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_training_step_creation passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_training_step_creation"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
       "test_step_type_detection": {
         "test_name": "test_step_type_detection",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442408",
+        "timestamp": "2025-08-15T22:06:58.560185",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -624,7 +624,7 @@
       "test_step_type_classification": {
         "test_name": "test_step_type_classification",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442410",
+        "timestamp": "2025-08-15T22:06:58.560188",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -645,38 +645,10 @@
         },
         "highest_severity": "INFO"
       },
-      "test_step_type_compliance": {
-        "test_name": "test_step_type_compliance",
-        "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442413",
-        "test_level": "step_type_specific",
-        "issues": [
-          {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_step_type_compliance passed successfully",
-            "details": {
-              "error_count": 0,
-              "warning_count": 0,
-              "info_count": 0,
-              "violations": []
-            },
-            "recommendation": "No action needed - test passed",
-            "test_name": "test_step_type_compliance"
-          }
-        ],
-        "details": {
-          "error_count": 0,
-          "warning_count": 0,
-          "info_count": 0,
-          "violations": []
-        },
-        "highest_severity": "INFO"
-      },
       "test_processing_processor_methods": {
         "test_name": "test_processing_processor_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442415",
+        "timestamp": "2025-08-15T22:06:58.560190",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -710,7 +682,7 @@
       "test_processing_io_methods": {
         "test_name": "test_processing_io_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.442419",
+        "timestamp": "2025-08-15T22:06:58.560192",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -733,32 +705,98 @@
       }
     }
   },
-  "overall_status": "PASSING",
+  "overall_status": "PARTIALLY_PASSING",
   "summary": {
     "builder_name": "TabularPreprocessing",
     "builder_class": "TabularPreprocessingStepBuilder",
     "sagemaker_step_type": "Processing",
-    "total_tests": 24,
-    "passed_tests": 24,
-    "failed_tests": 0,
-    "pass_rate": 100.0,
-    "total_issues": 24,
+    "total_tests": 23,
+    "passed_tests": 22,
+    "failed_tests": 1,
+    "pass_rate": 95.65217391304348,
+    "total_issues": 23,
     "critical_issues": 0,
-    "error_issues": 0,
+    "error_issues": 1,
     "warning_issues": 0,
-    "info_issues": 24,
-    "highest_severity": "INFO",
-    "overall_status": "PASSING",
-    "validation_timestamp": "2025-08-15T00:29:30.442424",
-    "is_passing": true
+    "info_issues": 22,
+    "highest_severity": "ERROR",
+    "overall_status": "PARTIALLY_PASSING",
+    "validation_timestamp": "2025-08-15T22:06:58.560202",
+    "is_passing": false
   },
   "recommendations": [],
   "metadata": {
     "builder_name": "TabularPreprocessing",
     "builder_class": "TabularPreprocessingStepBuilder",
     "sagemaker_step_type": "Processing",
-    "validation_timestamp": "2025-08-15T00:29:30.442424",
+    "validation_timestamp": "2025-08-15T22:06:58.560202",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
-  }
+  },
+  "scoring": {
+    "overall": {
+      "score": 95.53571428571429,
+      "rating": "Excellent",
+      "passed": 18,
+      "total": 19,
+      "pass_rate": 94.73684210526315
+    },
+    "levels": {
+      "level1_interface": {
+        "score": 68.75,
+        "passed": 2,
+        "total": 3,
+        "tests": {
+          "test_error_handling": true,
+          "test_inheritance": false,
+          "test_required_methods": true
+        }
+      },
+      "level2_specification": {
+        "score": 100.0,
+        "passed": 4,
+        "total": 4,
+        "tests": {
+          "test_contract_alignment": true,
+          "test_environment_variable_handling": true,
+          "test_job_arguments": true,
+          "test_specification_usage": true
+        }
+      },
+      "level3_step_creation": {
+        "score": 100.0,
+        "passed": 8,
+        "total": 8,
+        "tests": {
+          "test_create_model_step_creation": true,
+          "test_processing_step_creation": true,
+          "test_step_configuration_validity": true,
+          "test_step_dependencies_attachment": true,
+          "test_step_instantiation": true,
+          "test_step_name_generation": true,
+          "test_training_step_creation": true,
+          "test_transform_step_creation": true
+        }
+      },
+      "level4_integration": {
+        "score": 100.0,
+        "passed": 4,
+        "total": 4,
+        "tests": {
+          "test_registry_integration": true,
+          "test_dependency_resolution": true,
+          "test_step_creation": true,
+          "test_step_name": true
+        }
+      }
+    },
+    "failed_tests": [
+      {
+        "name": "test_inheritance",
+        "error": "TabularPreprocessingStepBuilder must inherit from StepBuilderBase"
+      }
+    ]
+  },
+  "quality_score": 95.53571428571429,
+  "quality_rating": "Excellent"
 }

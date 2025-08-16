@@ -353,18 +353,37 @@ class StepTypeMockFactory:
             from ...core.base.hyperparameters_base import ModelHyperparameters
             from pathlib import Path
             
-            # Create a temporary model file for testing
-            temp_model_path = '/tmp/test_model.tar.gz'
-            Path(temp_model_path).touch()  # Create empty file for validation
+            # Create a temporary model file for testing with proper .tar.gz extension
+            temp_model_dir = Path('/tmp/mock_models')
+            temp_model_dir.mkdir(parents=True, exist_ok=True)
+            temp_model_path = temp_model_dir / 'test_model.tar.gz'
             
-            # Create mock hyperparameters
-            mock_hp = ModelHyperparameters()
+            # Create empty tar.gz file for validation
+            if not temp_model_path.exists():
+                temp_model_path.write_bytes(b'mock tar.gz content')
+            
+            # Create proper ModelHyperparameters instance with required fields
+            try:
+                # Try to create a proper hyperparameters instance
+                mock_hp = ModelHyperparameters(
+                    full_field_list=['id', 'feature1', 'feature2', 'target'],
+                    cat_field_list=['feature1'],
+                    tab_field_list=['feature2'],
+                    id_name='id',
+                    label_name='target',
+                    multiclass_categories=['class_0', 'class_1']
+                )
+            except Exception as hp_error:
+                if self.test_mode:
+                    print(f"INFO: Failed to create proper ModelHyperparameters, using default: {hp_error}")
+                # Fall back to default constructor
+                mock_hp = ModelHyperparameters()
             
             return DummyTrainingConfig.from_base_config(
                 base_config,
-                pretrained_model_path=temp_model_path,  # Use correct field name
+                pretrained_model_path=str(temp_model_path),  # Use correct field name and ensure string
                 hyperparameters=mock_hp,
-                hyperparameters_s3_uri='s3://bucket/config/hyperparameters.json',
+                hyperparameters_s3_uri='s3://test-bucket/config/hyperparameters.json',
                 processing_entry_point='dummy_training.py',
                 processing_instance_count=1,
                 processing_volume_size=30,
@@ -376,6 +395,9 @@ class StepTypeMockFactory:
         except Exception as e:
             if self.test_mode:
                 print(f"INFO: Failed to create DummyTrainingConfig from base: {e}")
+                # Print more detailed error information for debugging
+                import traceback
+                print(f"DEBUG: Full traceback: {traceback.format_exc()}")
             else:
                 print(f"Failed to create DummyTrainingConfig from base: {e}")
             return None

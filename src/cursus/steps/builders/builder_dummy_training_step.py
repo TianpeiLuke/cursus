@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 @register_builder()
 class DummyTrainingStepBuilder(StepBuilderBase):
-    """Builder for DummyTraining processing step."""
+    """Builder for DummyTraining processing step that handles pretrained model processing with hyperparameters."""
     
     def __init__(
         self, 

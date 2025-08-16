@@ -1,7 +1,7 @@
 {
-  "builder_name": "DummyTraining",
-  "builder_class": "DummyTrainingStepBuilder",
-  "sagemaker_step_type": "Processing",
+  "builder_name": "PyTorchTraining",
+  "builder_class": "PyTorchTrainingStepBuilder",
+  "sagemaker_step_type": "Training",
   "level1_interface": {
     "passed": false,
     "issues": [
@@ -32,7 +32,7 @@
       {
         "severity": "ERROR",
         "category": "test_failure",
-        "message": "DummyTrainingStepBuilder must inherit from StepBuilderBase",
+        "message": "PyTorchTrainingStepBuilder must inherit from StepBuilderBase",
         "details": {},
         "recommendation": "Fix test_inheritance failure",
         "test_name": "test_inheritance"
@@ -82,7 +82,7 @@
       "test_configuration_validation": {
         "test_name": "test_configuration_validation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963044",
+        "timestamp": "2025-08-15T22:06:59.987889",
         "test_level": "interface",
         "issues": [
           {
@@ -100,7 +100,7 @@
       "test_documentation_standards": {
         "test_name": "test_documentation_standards",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963053",
+        "timestamp": "2025-08-15T22:06:59.987894",
         "test_level": "interface",
         "issues": [
           {
@@ -118,7 +118,7 @@
       "test_error_handling": {
         "test_name": "test_error_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963055",
+        "timestamp": "2025-08-15T22:06:59.987896",
         "test_level": "interface",
         "issues": [
           {
@@ -136,13 +136,13 @@
       "test_inheritance": {
         "test_name": "test_inheritance",
         "passed": false,
-        "timestamp": "2025-08-15T22:06:59.963057",
+        "timestamp": "2025-08-15T22:06:59.987898",
         "test_level": "interface",
         "issues": [
           {
             "severity": "ERROR",
             "category": "test_failure",
-            "message": "DummyTrainingStepBuilder must inherit from StepBuilderBase",
+            "message": "PyTorchTrainingStepBuilder must inherit from StepBuilderBase",
             "details": {},
             "recommendation": "Fix test_inheritance failure",
             "test_name": "test_inheritance"
@@ -154,7 +154,7 @@
       "test_method_return_types": {
         "test_name": "test_method_return_types",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963060",
+        "timestamp": "2025-08-15T22:06:59.987900",
         "test_level": "interface",
         "issues": [
           {
@@ -172,7 +172,7 @@
       "test_naming_conventions": {
         "test_name": "test_naming_conventions",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963061",
+        "timestamp": "2025-08-15T22:06:59.987902",
         "test_level": "interface",
         "issues": [
           {
@@ -190,7 +190,7 @@
       "test_registry_integration": {
         "test_name": "test_registry_integration",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963064",
+        "timestamp": "2025-08-15T22:06:59.987904",
         "test_level": "interface",
         "issues": [
           {
@@ -208,7 +208,7 @@
       "test_required_methods": {
         "test_name": "test_required_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963067",
+        "timestamp": "2025-08-15T22:06:59.987908",
         "test_level": "interface",
         "issues": [
           {
@@ -226,7 +226,7 @@
       "test_type_hints": {
         "test_name": "test_type_hints",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963069",
+        "timestamp": "2025-08-15T22:06:59.987910",
         "test_level": "interface",
         "issues": [
           {
@@ -283,7 +283,7 @@
       "test_contract_alignment": {
         "test_name": "test_contract_alignment",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963071",
+        "timestamp": "2025-08-15T22:06:59.987912",
         "test_level": "specification",
         "issues": [
           {
@@ -301,7 +301,7 @@
       "test_environment_variable_handling": {
         "test_name": "test_environment_variable_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963073",
+        "timestamp": "2025-08-15T22:06:59.987914",
         "test_level": "specification",
         "issues": [
           {
@@ -319,7 +319,7 @@
       "test_job_arguments": {
         "test_name": "test_job_arguments",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963075",
+        "timestamp": "2025-08-15T22:06:59.987916",
         "test_level": "specification",
         "issues": [
           {
@@ -337,7 +337,7 @@
       "test_specification_usage": {
         "test_name": "test_specification_usage",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963077",
+        "timestamp": "2025-08-15T22:06:59.987918",
         "test_level": "specification",
         "issues": [
           {
@@ -391,7 +391,7 @@
       "test_dependency_resolution": {
         "test_name": "test_dependency_resolution",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963098",
+        "timestamp": "2025-08-15T22:06:59.987939",
         "test_level": "integration",
         "issues": [
           {
@@ -409,7 +409,7 @@
       "test_step_creation": {
         "test_name": "test_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963100",
+        "timestamp": "2025-08-15T22:06:59.987941",
         "test_level": "integration",
         "issues": [
           {
@@ -427,7 +427,7 @@
       "test_step_name": {
         "test_name": "test_step_name",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963102",
+        "timestamp": "2025-08-15T22:06:59.987943",
         "test_level": "integration",
         "issues": [
           {
@@ -448,11 +448,11 @@
     "passed": false,
     "issues": [
       {
-        "severity": "ERROR",
-        "category": "test_failure",
-        "message": "Processing step creation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_processing_step_creation passed successfully",
         "details": {},
-        "recommendation": "Fix test_processing_step_creation failure",
+        "recommendation": "No action needed - test passed",
         "test_name": "test_processing_step_creation"
       },
       {
@@ -462,18 +462,25 @@
         "details": {
           "error_count": 0,
           "warning_count": 0,
-          "info_count": 0,
-          "violations": []
+          "info_count": 1,
+          "violations": [
+            {
+              "level": "INFO",
+              "category": "training_step_hyperparameters",
+              "message": "Training step may benefit from hyperparameter handling methods",
+              "details": "Consider implementing one of: ['_prepare_hyperparameters_file', '_get_hyperparameters']"
+            }
+          ]
         },
         "recommendation": "No action needed - test passed",
         "test_name": "test_step_type_compliance"
       },
       {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_training_step_creation passed successfully",
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "Training step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance.",
         "details": {},
-        "recommendation": "No action needed - test passed",
+        "recommendation": "Fix test_training_step_creation failure",
         "test_name": "test_training_step_creation"
       },
       {
@@ -481,9 +488,9 @@
         "category": "test_success",
         "message": "test_step_type_detection passed successfully",
         "details": {
-          "builder_class": "DummyTrainingStepBuilder",
-          "detected_step_name": "DummyTraining",
-          "sagemaker_step_type": "Processing",
+          "builder_class": "PyTorchTrainingStepBuilder",
+          "detected_step_name": "PyTorchTraining",
+          "sagemaker_step_type": "Training",
           "is_valid_step_type": true
         },
         "recommendation": "No action needed - test passed",
@@ -494,7 +501,7 @@
         "category": "test_success",
         "message": "test_step_type_classification passed successfully",
         "details": {
-          "sagemaker_step_type": "Processing",
+          "sagemaker_step_type": "Training",
           "is_valid": true
         },
         "recommendation": "No action needed - test passed",
@@ -503,54 +510,58 @@
       {
         "severity": "INFO",
         "category": "test_success",
-        "message": "test_processing_processor_methods passed successfully",
+        "message": "test_training_estimator_methods passed successfully",
         "details": {
           "expected_methods": [
-            "_create_processor",
-            "_get_processor"
+            "_create_estimator",
+            "_get_estimator"
           ],
           "found_methods": [
-            "_get_processor"
+            "_create_estimator"
           ]
         },
         "recommendation": "No action needed - test passed",
-        "test_name": "test_processing_processor_methods"
+        "test_name": "test_training_estimator_methods"
       },
       {
         "severity": "INFO",
         "category": "test_success",
-        "message": "test_processing_io_methods passed successfully",
+        "message": "test_training_hyperparameter_methods passed successfully",
         "details": {
-          "has_get_inputs": true,
-          "has_get_outputs": true
+          "expected_methods": [
+            "_prepare_hyperparameters_file",
+            "_get_hyperparameters"
+          ],
+          "found_methods": [],
+          "note": "Hyperparameter methods are recommended but not required"
         },
         "recommendation": "No action needed - test passed",
-        "test_name": "test_processing_io_methods"
+        "test_name": "test_training_hyperparameter_methods"
       }
     ],
     "test_results": {
       "test_processing_step_creation": {
         "test_name": "test_processing_step_creation",
-        "passed": false,
-        "timestamp": "2025-08-15T22:06:59.963081",
+        "passed": true,
+        "timestamp": "2025-08-15T22:06:59.987921",
         "test_level": "step_type_specific",
         "issues": [
           {
-            "severity": "ERROR",
-            "category": "test_failure",
-            "message": "Processing step creation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance.",
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_processing_step_creation passed successfully",
             "details": {},
-            "recommendation": "Fix test_processing_step_creation failure",
+            "recommendation": "No action needed - test passed",
             "test_name": "test_processing_step_creation"
           }
         ],
         "details": {},
-        "highest_severity": "ERROR"
+        "highest_severity": "INFO"
       },
       "test_step_type_compliance": {
         "test_name": "test_step_type_compliance",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963092",
+        "timestamp": "2025-08-15T22:06:59.987932",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -560,8 +571,15 @@
             "details": {
               "error_count": 0,
               "warning_count": 0,
-              "info_count": 0,
-              "violations": []
+              "info_count": 1,
+              "violations": [
+                {
+                  "level": "INFO",
+                  "category": "training_step_hyperparameters",
+                  "message": "Training step may benefit from hyperparameter handling methods",
+                  "details": "Consider implementing one of: ['_prepare_hyperparameters_file', '_get_hyperparameters']"
+                }
+              ]
             },
             "recommendation": "No action needed - test passed",
             "test_name": "test_step_type_compliance"
@@ -570,33 +588,40 @@
         "details": {
           "error_count": 0,
           "warning_count": 0,
-          "info_count": 0,
-          "violations": []
+          "info_count": 1,
+          "violations": [
+            {
+              "level": "INFO",
+              "category": "training_step_hyperparameters",
+              "message": "Training step may benefit from hyperparameter handling methods",
+              "details": "Consider implementing one of: ['_prepare_hyperparameters_file', '_get_hyperparameters']"
+            }
+          ]
         },
         "highest_severity": "INFO"
       },
       "test_training_step_creation": {
         "test_name": "test_training_step_creation",
-        "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963094",
+        "passed": false,
+        "timestamp": "2025-08-15T22:06:59.987935",
         "test_level": "step_type_specific",
         "issues": [
           {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_training_step_creation passed successfully",
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "Training step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance.",
             "details": {},
-            "recommendation": "No action needed - test passed",
+            "recommendation": "Fix test_training_step_creation failure",
             "test_name": "test_training_step_creation"
           }
         ],
         "details": {},
-        "highest_severity": "INFO"
+        "highest_severity": "ERROR"
       },
       "test_step_type_detection": {
         "test_name": "test_step_type_detection",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963104",
+        "timestamp": "2025-08-15T22:06:59.987945",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -604,9 +629,9 @@
             "category": "test_success",
             "message": "test_step_type_detection passed successfully",
             "details": {
-              "builder_class": "DummyTrainingStepBuilder",
-              "detected_step_name": "DummyTraining",
-              "sagemaker_step_type": "Processing",
+              "builder_class": "PyTorchTrainingStepBuilder",
+              "detected_step_name": "PyTorchTraining",
+              "sagemaker_step_type": "Training",
               "is_valid_step_type": true
             },
             "recommendation": "No action needed - test passed",
@@ -614,9 +639,9 @@
           }
         ],
         "details": {
-          "builder_class": "DummyTrainingStepBuilder",
-          "detected_step_name": "DummyTraining",
-          "sagemaker_step_type": "Processing",
+          "builder_class": "PyTorchTrainingStepBuilder",
+          "detected_step_name": "PyTorchTraining",
+          "sagemaker_step_type": "Training",
           "is_valid_step_type": true
         },
         "highest_severity": "INFO"
@@ -624,7 +649,7 @@
       "test_step_type_classification": {
         "test_name": "test_step_type_classification",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963106",
+        "timestamp": "2025-08-15T22:06:59.987947",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -632,7 +657,7 @@
             "category": "test_success",
             "message": "test_step_type_classification passed successfully",
             "details": {
-              "sagemaker_step_type": "Processing",
+              "sagemaker_step_type": "Training",
               "is_valid": true
             },
             "recommendation": "No action needed - test passed",
@@ -640,66 +665,74 @@
           }
         ],
         "details": {
-          "sagemaker_step_type": "Processing",
+          "sagemaker_step_type": "Training",
           "is_valid": true
         },
         "highest_severity": "INFO"
       },
-      "test_processing_processor_methods": {
-        "test_name": "test_processing_processor_methods",
+      "test_training_estimator_methods": {
+        "test_name": "test_training_estimator_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963108",
+        "timestamp": "2025-08-15T22:06:59.987949",
         "test_level": "step_type_specific",
         "issues": [
           {
             "severity": "INFO",
             "category": "test_success",
-            "message": "test_processing_processor_methods passed successfully",
+            "message": "test_training_estimator_methods passed successfully",
             "details": {
               "expected_methods": [
-                "_create_processor",
-                "_get_processor"
+                "_create_estimator",
+                "_get_estimator"
               ],
               "found_methods": [
-                "_get_processor"
+                "_create_estimator"
               ]
             },
             "recommendation": "No action needed - test passed",
-            "test_name": "test_processing_processor_methods"
+            "test_name": "test_training_estimator_methods"
           }
         ],
         "details": {
           "expected_methods": [
-            "_create_processor",
-            "_get_processor"
+            "_create_estimator",
+            "_get_estimator"
           ],
           "found_methods": [
-            "_get_processor"
+            "_create_estimator"
           ]
         },
         "highest_severity": "INFO"
       },
-      "test_processing_io_methods": {
-        "test_name": "test_processing_io_methods",
+      "test_training_hyperparameter_methods": {
+        "test_name": "test_training_hyperparameter_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:06:59.963110",
+        "timestamp": "2025-08-15T22:06:59.987952",
         "test_level": "step_type_specific",
         "issues": [
           {
             "severity": "INFO",
             "category": "test_success",
-            "message": "test_processing_io_methods passed successfully",
+            "message": "test_training_hyperparameter_methods passed successfully",
             "details": {
-              "has_get_inputs": true,
-              "has_get_outputs": true
+              "expected_methods": [
+                "_prepare_hyperparameters_file",
+                "_get_hyperparameters"
+              ],
+              "found_methods": [],
+              "note": "Hyperparameter methods are recommended but not required"
             },
             "recommendation": "No action needed - test passed",
-            "test_name": "test_processing_io_methods"
+            "test_name": "test_training_hyperparameter_methods"
           }
         ],
         "details": {
-          "has_get_inputs": true,
-          "has_get_outputs": true
+          "expected_methods": [
+            "_prepare_hyperparameters_file",
+            "_get_hyperparameters"
+          ],
+          "found_methods": [],
+          "note": "Hyperparameter methods are recommended but not required"
         },
         "highest_severity": "INFO"
       }
@@ -707,9 +740,9 @@
   },
   "overall_status": "PARTIALLY_PASSING",
   "summary": {
-    "builder_name": "DummyTraining",
-    "builder_class": "DummyTrainingStepBuilder",
-    "sagemaker_step_type": "Processing",
+    "builder_name": "PyTorchTraining",
+    "builder_class": "PyTorchTrainingStepBuilder",
+    "sagemaker_step_type": "Training",
     "total_tests": 23,
     "passed_tests": 21,
     "failed_tests": 2,
@@ -721,15 +754,15 @@
     "info_issues": 21,
     "highest_severity": "ERROR",
     "overall_status": "PARTIALLY_PASSING",
-    "validation_timestamp": "2025-08-15T22:06:59.963114",
+    "validation_timestamp": "2025-08-15T22:06:59.987955",
     "is_passing": false
   },
   "recommendations": [],
   "metadata": {
-    "builder_name": "DummyTraining",
-    "builder_class": "DummyTrainingStepBuilder",
-    "sagemaker_step_type": "Processing",
-    "validation_timestamp": "2025-08-15T22:06:59.963114",
+    "builder_name": "PyTorchTraining",
+    "builder_class": "PyTorchTrainingStepBuilder",
+    "sagemaker_step_type": "Training",
+    "validation_timestamp": "2025-08-15T22:06:59.987955",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   },
@@ -769,12 +802,12 @@
         "total": 8,
         "tests": {
           "test_create_model_step_creation": true,
-          "test_processing_step_creation": false,
+          "test_processing_step_creation": true,
           "test_step_configuration_validity": false,
           "test_step_dependencies_attachment": false,
           "test_step_instantiation": false,
           "test_step_name_generation": false,
-          "test_training_step_creation": true,
+          "test_training_step_creation": false,
           "test_transform_step_creation": true
         }
       },
@@ -793,27 +826,27 @@
     "failed_tests": [
       {
         "name": "test_inheritance",
-        "error": "DummyTrainingStepBuilder must inherit from StepBuilderBase"
-      },
-      {
-        "name": "test_processing_step_creation",
-        "error": "Processing step creation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "PyTorchTrainingStepBuilder must inherit from StepBuilderBase"
       },
       {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step configuration validity test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step dependencies attachment test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step instantiation failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: DummyTrainingStepBuilder requires a DummyTrainingConfig instance."
+        "error": "Step name generation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
+      },
+      {
+        "name": "test_training_step_creation",
+        "error": "Training step creation test failed: PyTorchTrainingStepBuilder requires a PyTorchTrainingConfig instance."
       }
     ]
   },

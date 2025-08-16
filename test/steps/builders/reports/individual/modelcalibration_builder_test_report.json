@@ -3,7 +3,7 @@
   "builder_class": "ModelCalibrationStepBuilder",
   "sagemaker_step_type": "Processing",
   "level1_interface": {
-    "passed": true,
+    "passed": false,
     "issues": [
       {
         "severity": "INFO",
@@ -30,11 +30,11 @@
         "test_name": "test_error_handling"
       },
       {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_inheritance passed successfully",
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "ModelCalibrationStepBuilder must inherit from StepBuilderBase",
         "details": {},
-        "recommendation": "No action needed - test passed",
+        "recommendation": "Fix test_inheritance failure",
         "test_name": "test_inheritance"
       },
       {
@@ -82,7 +82,7 @@
       "test_configuration_validation": {
         "test_name": "test_configuration_validation",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460060",
+        "timestamp": "2025-08-15T22:06:59.973536",
         "test_level": "interface",
         "issues": [
           {
@@ -100,7 +100,7 @@
       "test_documentation_standards": {
         "test_name": "test_documentation_standards",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460073",
+        "timestamp": "2025-08-15T22:06:59.973543",
         "test_level": "interface",
         "issues": [
           {
@@ -118,7 +118,7 @@
       "test_error_handling": {
         "test_name": "test_error_handling",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460076",
+        "timestamp": "2025-08-15T22:06:59.973545",
         "test_level": "interface",
         "issues": [
           {
@@ -135,26 +135,26 @@
       },
       "test_inheritance": {
         "test_name": "test_inheritance",
-        "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460079",
+        "passed": false,
+        "timestamp": "2025-08-15T22:06:59.973547",
         "test_level": "interface",
         "issues": [
           {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_inheritance passed successfully",
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "ModelCalibrationStepBuilder must inherit from StepBuilderBase",
             "details": {},
-            "recommendation": "No action needed - test passed",
+            "recommendation": "Fix test_inheritance failure",
             "test_name": "test_inheritance"
           }
         ],
         "details": {},
-        "highest_severity": "INFO"
+        "highest_severity": "ERROR"
       },
       "test_method_return_types": {
         "test_name": "test_method_return_types",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460083",
+        "timestamp": "2025-08-15T22:06:59.973550",
         "test_level": "interface",
         "issues": [
           {
@@ -172,7 +172,7 @@
       "test_naming_conventions": {
         "test_name": "test_naming_conventions",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460086",
+        "timestamp": "2025-08-15T22:06:59.973551",
         "test_level": "interface",
         "issues": [
           {
@@ -190,7 +190,7 @@
       "test_registry_integration": {
         "test_name": "test_registry_integration",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460088",
+        "timestamp": "2025-08-15T22:06:59.973553",
         "test_level": "interface",
         "issues": [
           {
@@ -208,7 +208,7 @@
       "test_required_methods": {
         "test_name": "test_required_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460093",
+        "timestamp": "2025-08-15T22:06:59.973557",
         "test_level": "interface",
         "issues": [
           {
@@ -226,7 +226,7 @@
       "test_type_hints": {
         "test_name": "test_type_hints",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460096",
+        "timestamp": "2025-08-15T22:06:59.973559",
         "test_level": "interface",
         "issues": [
           {
@@ -283,7 +283,7 @@
       "test_contract_alignment": {
         "test_name": "test_contract_alignment",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460099",
+        "timestamp": "2025-08-15T22:06:59.973561",
         "test_level": "specification",
         "issues": [
           {
@@ -301,7 +301,7 @@
       "test_environment_variable_handling": {
         "test_name": "test_environment_variable_handling",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460101",
+        "timestamp": "2025-08-15T22:06:59.973563",
         "test_level": "specification",
         "issues": [
           {
@@ -319,7 +319,7 @@
       "test_job_arguments": {
         "test_name": "test_job_arguments",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460103",
+        "timestamp": "2025-08-15T22:06:59.973565",
         "test_level": "specification",
         "issues": [
           {
@@ -337,7 +337,7 @@
       "test_specification_usage": {
         "test_name": "test_specification_usage",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460105",
+        "timestamp": "2025-08-15T22:06:59.973567",
         "test_level": "specification",
         "issues": [
           {
@@ -354,90 +354,10 @@
       }
     }
   },
-  "level3_path_mapping": {
-    "passed": false,
-    "issues": [
-      {
-        "severity": "ERROR",
-        "category": "test_failure",
-        "message": "Input path mapping test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
-        "details": {},
-        "recommendation": "Fix test_input_path_mapping failure",
-        "test_name": "test_input_path_mapping"
-      },
-      {
-        "severity": "ERROR",
-        "category": "test_failure",
-        "message": "Output path mapping test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
-        "details": {},
-        "recommendation": "Fix test_output_path_mapping failure",
-        "test_name": "test_output_path_mapping"
-      },
-      {
-        "severity": "ERROR",
-        "category": "test_failure",
-        "message": "Property path validity test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
-        "details": {},
-        "recommendation": "Fix test_property_path_validity failure",
-        "test_name": "test_property_path_validity"
-      }
-    ],
-    "test_results": {
-      "test_input_path_mapping": {
-        "test_name": "test_input_path_mapping",
-        "passed": false,
-        "timestamp": "2025-08-15T00:29:30.460107",
-        "test_level": "path_mapping",
-        "issues": [
-          {
-            "severity": "ERROR",
-            "category": "test_failure",
-            "message": "Input path mapping test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
-            "details": {},
-            "recommendation": "Fix test_input_path_mapping failure",
-            "test_name": "test_input_path_mapping"
-          }
-        ],
-        "details": {},
-        "highest_severity": "ERROR"
-      },
-      "test_output_path_mapping": {
-        "test_name": "test_output_path_mapping",
-        "passed": false,
-        "timestamp": "2025-08-15T00:29:30.460111",
-        "test_level": "path_mapping",
-        "issues": [
-          {
-            "severity": "ERROR",
-            "category": "test_failure",
-            "message": "Output path mapping test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
-            "details": {},
-            "recommendation": "Fix test_output_path_mapping failure",
-            "test_name": "test_output_path_mapping"
-          }
-        ],
-        "details": {},
-        "highest_severity": "ERROR"
-      },
-      "test_property_path_validity": {
-        "test_name": "test_property_path_validity",
-        "passed": false,
-        "timestamp": "2025-08-15T00:29:30.460113",
-        "test_level": "path_mapping",
-        "issues": [
-          {
-            "severity": "ERROR",
-            "category": "test_failure",
-            "message": "Property path validity test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
-            "details": {},
-            "recommendation": "Fix test_property_path_validity failure",
-            "test_name": "test_property_path_validity"
-          }
-        ],
-        "details": {},
-        "highest_severity": "ERROR"
-      }
-    }
+  "level3_step_creation": {
+    "passed": true,
+    "issues": [],
+    "test_results": {}
   },
   "level4_integration": {
     "passed": true,
@@ -471,7 +391,7 @@
       "test_dependency_resolution": {
         "test_name": "test_dependency_resolution",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460116",
+        "timestamp": "2025-08-15T22:06:59.973588",
         "test_level": "integration",
         "issues": [
           {
@@ -489,7 +409,7 @@
       "test_step_creation": {
         "test_name": "test_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460118",
+        "timestamp": "2025-08-15T22:06:59.973590",
         "test_level": "integration",
         "issues": [
           {
@@ -507,7 +427,7 @@
       "test_step_name": {
         "test_name": "test_step_name",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460120",
+        "timestamp": "2025-08-15T22:06:59.973591",
         "test_level": "integration",
         "issues": [
           {
@@ -525,8 +445,37 @@
     }
   },
   "step_type_specific": {
-    "passed": true,
+    "passed": false,
     "issues": [
+      {
+        "severity": "ERROR",
+        "category": "test_failure",
+        "message": "Processing step creation test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
+        "details": {},
+        "recommendation": "Fix test_processing_step_creation failure",
+        "test_name": "test_processing_step_creation"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_step_type_compliance passed successfully",
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        },
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_step_type_compliance"
+      },
+      {
+        "severity": "INFO",
+        "category": "test_success",
+        "message": "test_training_step_creation passed successfully",
+        "details": {},
+        "recommendation": "No action needed - test passed",
+        "test_name": "test_training_step_creation"
+      },
       {
         "severity": "INFO",
         "category": "test_success",
@@ -550,19 +499,6 @@
         },
         "recommendation": "No action needed - test passed",
         "test_name": "test_step_type_classification"
-      },
-      {
-        "severity": "INFO",
-        "category": "test_success",
-        "message": "test_step_type_compliance passed successfully",
-        "details": {
-          "error_count": 0,
-          "warning_count": 0,
-          "info_count": 0,
-          "violations": []
-        },
-        "recommendation": "No action needed - test passed",
-        "test_name": "test_step_type_compliance"
       },
       {
         "severity": "INFO",
@@ -593,10 +529,74 @@
       }
     ],
     "test_results": {
+      "test_processing_step_creation": {
+        "test_name": "test_processing_step_creation",
+        "passed": false,
+        "timestamp": "2025-08-15T22:06:59.973571",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "ERROR",
+            "category": "test_failure",
+            "message": "Processing step creation test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.",
+            "details": {},
+            "recommendation": "Fix test_processing_step_creation failure",
+            "test_name": "test_processing_step_creation"
+          }
+        ],
+        "details": {},
+        "highest_severity": "ERROR"
+      },
+      "test_step_type_compliance": {
+        "test_name": "test_step_type_compliance",
+        "passed": true,
+        "timestamp": "2025-08-15T22:06:59.973582",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_step_type_compliance passed successfully",
+            "details": {
+              "error_count": 0,
+              "warning_count": 0,
+              "info_count": 0,
+              "violations": []
+            },
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_step_type_compliance"
+          }
+        ],
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        },
+        "highest_severity": "INFO"
+      },
+      "test_training_step_creation": {
+        "test_name": "test_training_step_creation",
+        "passed": true,
+        "timestamp": "2025-08-15T22:06:59.973584",
+        "test_level": "step_type_specific",
+        "issues": [
+          {
+            "severity": "INFO",
+            "category": "test_success",
+            "message": "test_training_step_creation passed successfully",
+            "details": {},
+            "recommendation": "No action needed - test passed",
+            "test_name": "test_training_step_creation"
+          }
+        ],
+        "details": {},
+        "highest_severity": "INFO"
+      },
       "test_step_type_detection": {
         "test_name": "test_step_type_detection",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460123",
+        "timestamp": "2025-08-15T22:06:59.973593",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -624,7 +624,7 @@
       "test_step_type_classification": {
         "test_name": "test_step_type_classification",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460126",
+        "timestamp": "2025-08-15T22:06:59.973596",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -645,38 +645,10 @@
         },
         "highest_severity": "INFO"
       },
-      "test_step_type_compliance": {
-        "test_name": "test_step_type_compliance",
-        "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460129",
-        "test_level": "step_type_specific",
-        "issues": [
-          {
-            "severity": "INFO",
-            "category": "test_success",
-            "message": "test_step_type_compliance passed successfully",
-            "details": {
-              "error_count": 0,
-              "warning_count": 0,
-              "info_count": 0,
-              "violations": []
-            },
-            "recommendation": "No action needed - test passed",
-            "test_name": "test_step_type_compliance"
-          }
-        ],
-        "details": {
-          "error_count": 0,
-          "warning_count": 0,
-          "info_count": 0,
-          "violations": []
-        },
-        "highest_severity": "INFO"
-      },
       "test_processing_processor_methods": {
         "test_name": "test_processing_processor_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460132",
+        "timestamp": "2025-08-15T22:06:59.973598",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -710,7 +682,7 @@
       "test_processing_io_methods": {
         "test_name": "test_processing_io_methods",
         "passed": true,
-        "timestamp": "2025-08-15T00:29:30.460134",
+        "timestamp": "2025-08-15T22:06:59.973600",
         "test_level": "step_type_specific",
         "issues": [
           {
@@ -738,18 +710,18 @@
     "builder_name": "ModelCalibration",
     "builder_class": "ModelCalibrationStepBuilder",
     "sagemaker_step_type": "Processing",
-    "total_tests": 24,
+    "total_tests": 23,
     "passed_tests": 21,
-    "failed_tests": 3,
-    "pass_rate": 87.5,
-    "total_issues": 24,
+    "failed_tests": 2,
+    "pass_rate": 91.30434782608695,
+    "total_issues": 23,
     "critical_issues": 0,
-    "error_issues": 3,
+    "error_issues": 2,
     "warning_issues": 0,
     "info_issues": 21,
     "highest_severity": "ERROR",
     "overall_status": "PARTIALLY_PASSING",
-    "validation_timestamp": "2025-08-15T00:29:30.460140",
+    "validation_timestamp": "2025-08-15T22:06:59.973604",
     "is_passing": false
   },
   "recommendations": [],
@@ -757,8 +729,94 @@
     "builder_name": "ModelCalibration",
     "builder_class": "ModelCalibrationStepBuilder",
     "sagemaker_step_type": "Processing",
-    "validation_timestamp": "2025-08-15T00:29:30.460140",
+    "validation_timestamp": "2025-08-15T22:06:59.973604",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
-  }
+  },
+  "scoring": {
+    "overall": {
+      "score": 77.87337662337663,
+      "rating": "Satisfactory",
+      "passed": 13,
+      "total": 19,
+      "pass_rate": 68.42105263157895
+    },
+    "levels": {
+      "level1_interface": {
+        "score": 68.75,
+        "passed": 2,
+        "total": 3,
+        "tests": {
+          "test_error_handling": true,
+          "test_inheritance": false,
+          "test_required_methods": true
+        }
+      },
+      "level2_specification": {
+        "score": 100.0,
+        "passed": 4,
+        "total": 4,
+        "tests": {
+          "test_contract_alignment": true,
+          "test_environment_variable_handling": true,
+          "test_job_arguments": true,
+          "test_specification_usage": true
+        }
+      },
+      "level3_step_creation": {
+        "score": 38.18181818181818,
+        "passed": 3,
+        "total": 8,
+        "tests": {
+          "test_create_model_step_creation": true,
+          "test_processing_step_creation": false,
+          "test_step_configuration_validity": false,
+          "test_step_dependencies_attachment": false,
+          "test_step_instantiation": false,
+          "test_step_name_generation": false,
+          "test_training_step_creation": true,
+          "test_transform_step_creation": true
+        }
+      },
+      "level4_integration": {
+        "score": 100.0,
+        "passed": 4,
+        "total": 4,
+        "tests": {
+          "test_registry_integration": true,
+          "test_dependency_resolution": true,
+          "test_step_creation": true,
+          "test_step_name": true
+        }
+      }
+    },
+    "failed_tests": [
+      {
+        "name": "test_inheritance",
+        "error": "ModelCalibrationStepBuilder must inherit from StepBuilderBase"
+      },
+      {
+        "name": "test_processing_step_creation",
+        "error": "Processing step creation test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance."
+      },
+      {
+        "name": "test_step_configuration_validity",
+        "error": "Step configuration validity test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance."
+      },
+      {
+        "name": "test_step_dependencies_attachment",
+        "error": "Step dependencies attachment test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance."
+      },
+      {
+        "name": "test_step_instantiation",
+        "error": "Step instantiation failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance."
+      },
+      {
+        "name": "test_step_name_generation",
+        "error": "Step name generation test failed: ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance."
+      }
+    ]
+  },
+  "quality_score": 77.87337662337663,
+  "quality_rating": "Satisfactory"
 }
