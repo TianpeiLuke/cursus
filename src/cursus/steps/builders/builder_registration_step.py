@@ -103,8 +103,8 @@ class RegistrationStepBuilder(StepBuilderBase):
         # Validate required attributes that are actually defined in the config
         required_attrs = [
             'region',
-            'model_registration_domain',
-            'model_registration_objective',
+            'model_domain',
+            'model_objective',
             'framework',
             'inference_instance_type',
             'inference_entry_point',
@@ -146,12 +146,7 @@ class RegistrationStepBuilder(StepBuilderBase):
             
         Raises:
             ValueError: If required inputs are missing
-        """
-        if not self.spec:
-            # Fallback to legacy method if no specification available
-            self.log_warning("Step specification not available - using legacy input resolution")
-            return self._get_processing_inputs_legacy(inputs)
-            
+        """ 
         if not self.contract:
             self.log_warning("Script contract not available - path resolution will use hardcoded values")
             
@@ -227,62 +222,7 @@ class RegistrationStepBuilder(StepBuilderBase):
             None - registration step produces no outputs
         """
         return None
-
-    def _get_processing_inputs_legacy(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
-        """
-        Legacy method for backward compatibility when no specification is available.
         
-        Still enforces the MIMS SDK's strict requirements on input structure and order.
-        """
-        if not inputs:
-            raise ValueError("Inputs dictionary is empty")
-        
-        # Create a new list for properly ordered inputs
-        ordered_processing_inputs = []
-        
-        # Handle PackagedModel input (required) - must be first
-        model_logical_name = "PackagedModel"
-        if model_logical_name not in inputs:
-            raise ValueError(f"Required input '{model_logical_name}' not provided")
-            
-        # Use model source directly - upstream changes ensure it ends with .tar.gz
-        model_source = inputs[model_logical_name]
-        self.log_info("Using source for '%s' directly without wrapper", model_logical_name)
-        
-        # Add model input as the first input (order matters)
-        ordered_processing_inputs.append(
-            ProcessingInput(
-                input_name=model_logical_name,
-                source=model_source,
-                destination="/opt/ml/processing/input/model",
-                s3_data_distribution_type="FullyReplicated",
-                s3_input_mode="File"
-            )
-        )
-        
-        # Handle payload input (optional) - must be second if present
-        payload_keys = ["GeneratedPayloadSamples", "payload_s3_key", "payload_s3_uri"]
-        for key in payload_keys:
-            if key in inputs:
-                # Use payload source directly - upstream changes ensure it ends with .tar.gz
-                payload_source = inputs[key]
-                self.log_info("Using source for '%s' directly without wrapper", key)
-                    
-                ordered_processing_inputs.append(
-                    ProcessingInput(
-                        input_name="GeneratedPayloadSamples",  # Use consistent name for MIMS SDK
-                        source=payload_source,
-                        destination="/opt/ml/processing/mims_payload",
-                        s3_data_distribution_type="FullyReplicated",
-                        s3_input_mode="File"
-                    )
-                )
-                break
-        
-        self.log_info("Legacy method created %s ProcessingInput objects in required order", len(ordered_processing_inputs))
-        return ordered_processing_inputs
-        
-    
     def create_step(self, **kwargs) -> Step:
         """
         Creates a MimsModelRegistrationProcessingStep using specification-driven approach.
@@ -317,9 +257,6 @@ class RegistrationStepBuilder(StepBuilderBase):
         # Allow manual input override/supplement
         inputs.update(kwargs.get('inputs', {}))
         
-        # Handle legacy parameter formats for backward compatibility
-        legacy_inputs = self._handle_legacy_parameters(kwargs)
-        inputs.update(legacy_inputs)
         
         # Validate we have required inputs
         if not inputs:
@@ -354,34 +291,3 @@ class RegistrationStepBuilder(StepBuilderBase):
         except Exception as e:
             self.log_error("Error creating MimsModelRegistrationProcessingStep: %s", e)
             raise ValueError(f"Failed to create MimsModelRegistrationProcessingStep: {e}") from e
-
-    def _handle_legacy_parameters(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle legacy parameter formats for backward compatibility.
-        
-        Args:
-            kwargs: Original keyword arguments
-            
-        Returns:
-            Dictionary of normalized inputs
-        """
-        legacy_inputs = {}
-        
-        # Handle various legacy parameter names
-        legacy_mappings = {
-            'packaged_model_output': 'PackagedModel',
-            'PackagedModel': 'PackagedModel',
-            'packaged_model': 'PackagedModel',
-            'GeneratedPayloadSamples': 'GeneratedPayloadSamples',
-            'generated_payload_samples': 'GeneratedPayloadSamples',
-            'payload_sample': 'GeneratedPayloadSamples',
-            'payload_s3_key': 'GeneratedPayloadSamples',
-            'payload_s3_uri': 'GeneratedPayloadSamples'
-        }
-        
-        for legacy_key, standard_key in legacy_mappings.items():
-            if legacy_key in kwargs and kwargs[legacy_key]:
-                legacy_inputs[standard_key] = kwargs[legacy_key]
-                self.log_info("Mapped legacy parameter '%s' to '%s'", legacy_key, standard_key)
-        
-        return legacy_inputs

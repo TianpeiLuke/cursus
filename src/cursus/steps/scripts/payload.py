@@ -492,7 +492,7 @@ def main(
         # Extract pipeline name and version from hyperparams
         pipeline_name = hyperparams.get('pipeline_name', 'default_pipeline')
         pipeline_version = hyperparams.get('pipeline_version', '1.0.0')
-        model_objective = hyperparams.get('model_registration_objective', None)
+        model_objective = hyperparams.get('model_objective', None)
         
         # Ensure working and output directories exist
         ensure_directory(working_directory)

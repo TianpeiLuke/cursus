@@ -111,11 +111,11 @@ class RegistrationConfig(BasePipelineConfig):
         description="Team ID of model owner"
     )
     
-    model_registration_domain: str = Field(
+    model_domain: str = Field(
         description="Domain for model registration"
     )
     
-    model_registration_objective: str = Field(
+    model_objective: str = Field(
         description="Objective of model registration"
     )
     

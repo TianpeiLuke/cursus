@@ -42,11 +42,11 @@ class PayloadConfig(ProcessingStepConfigBase):
         description="Team ID of model owner"
     )
     
-    model_registration_domain: str = Field(
+    model_domain: str = Field(
         description="Domain for model registration"
     )
     
-    model_registration_objective: str = Field(
+    model_objective: str = Field(
         description="Objective of model registration"
     )
     
@@ -308,8 +308,8 @@ class PayloadConfig(ProcessingStepConfigBase):
 
         # Generate path without using model validators
         payload_file_name = f'payload_{self.pipeline_name}_{self.pipeline_version}'
-        if self.model_registration_objective:
-            payload_file_name += f'_{self.model_registration_objective}'
+        if self.model_objective:
+            payload_file_name += f'_{self.model_objective}'
         # Direct assignment to private field
         self._sample_payload_s3_key = f'mods/payload/{payload_file_name}.tar.gz'
 

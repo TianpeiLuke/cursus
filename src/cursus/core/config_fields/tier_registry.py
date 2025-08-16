@@ -47,7 +47,7 @@ class ConfigFieldTierRegistry:
         "calibration_start_datetime": 1,
         "calibration_end_datetime": 1,
         "model_owner": 1,
-        "model_registration_domain": 1,
+        "model_domain": 1,
         "expected_tps": 1,
         "max_latency_ms": 1,
         "max_error_rate": 1,

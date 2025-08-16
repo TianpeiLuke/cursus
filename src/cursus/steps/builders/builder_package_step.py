@@ -149,7 +149,7 @@ class PackageStepBuilder(StepBuilderBase):
             ('model_type', 'MODEL_TYPE'),
             ('bucket', 'BUCKET_NAME'),
             ('pipeline_version', 'PIPELINE_VERSION'),
-            ('model_registration_objective', 'MODEL_OBJECTIVE')
+            ('model_objective', 'MODEL_OBJECTIVE')
         ]:
             if hasattr(self.config, key) and getattr(self.config, key) is not None:
                 env_vars[env_key] = str(getattr(self.config, key))

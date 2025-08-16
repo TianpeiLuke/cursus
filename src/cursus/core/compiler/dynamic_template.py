@@ -862,8 +862,8 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         """
         # Check minimal required fields on registration config
         required_fields = [
-            'model_registration_domain', 
-            'model_registration_objective',
+            'model_domain',
+            'model_objective',
             'region'
         ]
         
