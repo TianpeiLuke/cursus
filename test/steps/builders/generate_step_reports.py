@@ -340,13 +340,13 @@ python test/steps/builders/generate_step_reports.py --step-type {step_type}
                     })
                     continue
                 
-                # Generate JSON report
+                # Generate JSON report (always overwrite)
                 json_path = scoring_dir / f"{canonical_name}_score_report.json"
                 with open(json_path, 'w') as f:
                     json.dump(results, f, indent=2)
                 print(f"✅ Generated JSON report: {json_path}")
                 
-                # Generate score chart
+                # Generate score chart (always overwrite)
                 chart_path = scoring_dir / f"{canonical_name}_score_chart.png"
                 self.generate_score_chart(results, chart_path)
                 

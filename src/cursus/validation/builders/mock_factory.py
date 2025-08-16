@@ -423,8 +423,8 @@ class StepTypeMockFactory:
             return XGBoostModelEvalConfig.from_base_config(
                 base_config,
                 job_type='training',
-                processing_entry_point='xgboost_model_evaluation.py',  # Use correct script name
-                processing_source_dir='/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts',  # Use absolute path
+                processing_entry_point='model_evaluation_xgb.py',  # Use correct script name that exists
+                processing_source_dir='/tmp/mock_scripts',  # Use test script directory
                 xgboost_framework_version='1.7-1',
                 hyperparameters=mock_hp,
                 processing_instance_count=1,
@@ -1128,6 +1128,8 @@ class StepTypeMockFactory:
         
         if "TabularPreprocessing" in builder_name:
             return ["DATA"]
+        elif "RiskTableMapping" in builder_name:
+            return ["risk_tables"]  # RiskTableMapping needs risk_tables dependency
         elif "XGBoostModelEval" in builder_name:
             return ["model_input"]  # XGBoostModelEval only needs model_input
         elif "ModelEval" in builder_name:
