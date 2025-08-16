@@ -443,7 +443,7 @@ class UniversalStepBuilderTest:
         
         # Print level summaries with scores
         print(f"\nLevel Performance:")
-        for level_name in ["level1_interface", "level2_specification", "level3_path_mapping", "level4_integration"]:
+        for level_name in ["level1_interface", "level2_specification", "level3_step_creation", "level4_integration"]:
             if level_name in level_scores:
                 level_data = level_scores[level_name]
                 display_name = level_name.replace("level", "Level ").replace("_", " ").title()
@@ -489,7 +489,7 @@ class UniversalStepBuilderTest:
             'test_results': {
                 'level1_interface': self._extract_level_results(raw_results, 'level1'),
                 'level2_specification': self._extract_level_results(raw_results, 'level2'),
-                'level3_path_mapping': self._extract_level_results(raw_results, 'level3'),
+                'level3_step_creation': self._extract_level_results(raw_results, 'level3'),
                 'level4_integration': self._extract_level_results(raw_results, 'level4'),
                 'step_type_specific': self._extract_step_type_results(raw_results)
             },
@@ -710,7 +710,7 @@ class UniversalStepBuilderTest:
         # Print level summaries
         print(f"\nLevel 1 (Interface): {l1_passed}/{l1_total} tests passed ({l1_rate:.1f}%)")
         print(f"Level 2 (Specification): {l2_passed}/{l2_total} tests passed ({l2_rate:.1f}%)")
-        print(f"Level 3 (Path Mapping): {l3_passed}/{l3_total} tests passed ({l3_rate:.1f}%)")
+        print(f"Level 3 (Step Creation): {l3_passed}/{l3_total} tests passed ({l3_rate:.1f}%)")
         print(f"Level 4 (Integration): {l4_passed}/{l4_total} tests passed ({l4_rate:.1f}%)")
         
         # Print failed tests if any

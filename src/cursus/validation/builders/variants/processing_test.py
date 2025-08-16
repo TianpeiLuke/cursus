@@ -23,7 +23,7 @@ from unittest.mock import Mock
 
 from .processing_interface_tests import ProcessingInterfaceTests
 from .processing_specification_tests import ProcessingSpecificationTests
-from .processing_path_mapping_tests import ProcessingPathMappingTests
+from ..step_creation_tests import StepCreationTests
 from .processing_integration_tests import ProcessingIntegrationTests
 from ..universal_test import UniversalStepBuilderTest
 
@@ -83,8 +83,8 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
             step_info=self.step_info
         )
         
-        # Level 3: Processing Path Mapping Tests
-        self.level3_tester = ProcessingPathMappingTests(
+        # Level 3: Processing Step Creation Tests
+        self.level3_tester = StepCreationTests(
             builder_class=self.builder_class,
             step_info=self.step_info
         )

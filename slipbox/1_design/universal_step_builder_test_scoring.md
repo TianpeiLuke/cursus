@@ -110,7 +110,7 @@ The scoring system classifies tests into four architectural levels with increasi
 |-------|------|--------|-------------------|-------------|
 | 1 | Interface | 1.0 | Basic | Fundamental interface compliance |
 | 2 | Specification | 1.5 | Moderate | Specification and contract usage |
-| 3 | Path Mapping | 2.0 | Advanced | Path and property mapping |
+| 3 | Step Creation | 2.0 | Advanced | Step creation and core builder functionality |
 | 4 | Integration | 2.5 | Expert | System integration and dependency handling |
 
 ```python
@@ -118,7 +118,7 @@ The scoring system classifies tests into four architectural levels with increasi
 LEVEL_WEIGHTS = {
     "level1_interface": 1.0,    # Basic interface compliance
     "level2_specification": 1.5, # Specification and contract compliance
-    "level3_path_mapping": 2.0,  # Path mapping and property paths
+    "level3_step_creation": 2.0,  # Step creation and core builder functionality
     "level4_integration": 2.5,   # System integration
 }
 ```
@@ -209,7 +209,7 @@ def _detect_level_from_test_name(self, test_name: str) -> Optional[str]:
     elif test_name.startswith("level2_"):
         return "level2_specification"
     elif test_name.startswith("level3_"):
-        return "level3_path_mapping"
+        return "level3_step_creation"
     elif test_name.startswith("level4_"):
         return "level4_integration"
     
@@ -267,12 +267,12 @@ TEST_LEVEL_MAP = {
     "test_processing_job_arguments": "level2_specification",
     "test_property_files_configuration": "level2_specification",
     
-    # Level 3: Path mapping tests
-    "test_input_path_mapping": "level3_path_mapping",
-    "test_output_path_mapping": "level3_path_mapping",
-    "test_property_path_validity": "level3_path_mapping",
-    "test_processing_inputs_outputs": "level3_path_mapping",
-    "test_processing_code_handling": "level3_path_mapping",
+    # Level 3: Step creation tests (transformed from path mapping in August 2025)
+    "test_input_path_mapping": "level3_step_creation",
+    "test_output_path_mapping": "level3_step_creation",
+    "test_property_path_validity": "level3_step_creation",
+    "test_processing_inputs_outputs": "level3_step_creation",
+    "test_processing_code_handling": "level3_step_creation",
     
     # Level 4: Integration tests
     "test_dependency_resolution": "level4_integration",
@@ -435,7 +435,7 @@ The score report has this comprehensive structure:
         "test_job_arguments": false
       }
     },
-    "level3_path_mapping": { /* Similar structure */ },
+    "level3_step_creation": { /* Similar structure */ },
     "level4_integration": { /* Similar structure */ }
   },
   "failed_tests": [
@@ -480,7 +480,7 @@ def generate_chart(self, builder_name: str, output_dir: str = "test_reports") ->
         scores = []
         colors = []
         
-        for level in ["level1_interface", "level2_specification", "level3_path_mapping", "level4_integration"]:
+        for level in ["level1_interface", "level2_specification", "level3_step_creation", "level4_integration"]:
             if level in report["levels"]:
                 # Get a nicer level name for display
                 display_level = level.replace("level", "L").replace("_", " ").title()

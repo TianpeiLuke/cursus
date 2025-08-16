@@ -24,7 +24,7 @@ Usage:
 from .universal_test import UniversalStepBuilderTest
 from .interface_tests import InterfaceTests
 from .specification_tests import SpecificationTests
-from .path_mapping_tests import PathMappingTests
+from .step_creation_tests import StepCreationTests
 from .integration_tests import IntegrationTests
 from .scoring import StepBuilderScorer, score_builder_results
 from .base_test import UniversalStepBuilderTestBase
@@ -52,7 +52,7 @@ __all__ = [
     'UniversalStepBuilderTest',
     'InterfaceTests',
     'SpecificationTests', 
-    'PathMappingTests',
+    'StepCreationTests',
     'IntegrationTests',
     'StepBuilderScorer',
     'score_builder_results',

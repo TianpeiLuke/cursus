@@ -17,7 +17,7 @@ import logging
 
 from .training_interface_tests import TrainingInterfaceTests
 from .training_specification_tests import TrainingSpecificationTests
-from .training_path_mapping_tests import TrainingPathMappingTests
+from ..step_creation_tests import StepCreationTests
 from .training_integration_tests import TrainingIntegrationTests
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class TrainingStepBuilderTest:
         # Initialize all test levels
         self.interface_tests = TrainingInterfaceTests(builder_instance, config)
         self.specification_tests = TrainingSpecificationTests(builder_instance, config)
-        self.path_mapping_tests = TrainingPathMappingTests(builder_instance, config)
+        self.path_mapping_tests = StepCreationTests(builder_instance, config)
         self.integration_tests = TrainingIntegrationTests(builder_instance, config)
         
         logger.info(f"Initialized Training test orchestrator for builder: {type(builder_instance).__name__}")

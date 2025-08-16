@@ -15,7 +15,7 @@ import numpy as np
 LEVEL_WEIGHTS = {
     "level1_interface": 1.0,    # Basic interface compliance
     "level2_specification": 1.5, # Specification and contract compliance
-    "level3_path_mapping": 2.0,  # Step creation and configuration validation (formerly path mapping)
+    "level3_step_creation": 2.0,  # Step creation and configuration validation
     "level4_integration": 2.5,   # System integration
 }
 
@@ -38,12 +38,21 @@ TEST_LEVEL_MAP = {
     "test_processing_job_arguments": "level2_specification",
     "test_property_files_configuration": "level2_specification",
     
-    # Level 3: Path mapping tests
-    "test_input_path_mapping": "level3_path_mapping",
-    "test_output_path_mapping": "level3_path_mapping",
-    "test_property_path_validity": "level3_path_mapping",
-    "test_processing_inputs_outputs": "level3_path_mapping",
-    "test_processing_code_handling": "level3_path_mapping",
+    # Level 3: Step creation tests (updated from path mapping)
+    "test_step_instantiation": "level3_step_creation",
+    "test_step_configuration_validity": "level3_step_creation",
+    "test_step_dependencies_attachment": "level3_step_creation",
+    "test_step_name_generation": "level3_step_creation",
+    "test_processing_step_creation": "level3_step_creation",
+    "test_training_step_creation": "level3_step_creation",
+    "test_transform_step_creation": "level3_step_creation",
+    "test_create_model_step_creation": "level3_step_creation",
+    # Legacy path mapping tests (for backward compatibility)
+    "test_input_path_mapping": "level3_step_creation",
+    "test_output_path_mapping": "level3_step_creation",
+    "test_property_path_validity": "level3_step_creation",
+    "test_processing_inputs_outputs": "level3_step_creation",
+    "test_processing_code_handling": "level3_step_creation",
     
     # Level 4: Integration tests
     "test_dependency_resolution": "level4_integration",
@@ -56,11 +65,27 @@ TEST_LEVEL_MAP = {
 # Define importance weights for specific tests
 TEST_IMPORTANCE = {
     # All tests default to 1.0, override specific tests if needed
+    # Level 1: Interface tests
     "test_inheritance": 1.0,
     "test_required_methods": 1.2,
+    
+    # Level 2: Specification and contract tests
     "test_specification_usage": 1.2,
     "test_contract_alignment": 1.3,
-    "test_property_path_validity": 1.3,
+    
+    # Level 3: Step creation tests (high importance)
+    "test_step_instantiation": 1.4,
+    "test_step_configuration_validity": 1.5,
+    "test_step_dependencies_attachment": 1.3,
+    "test_step_name_generation": 1.2,
+    "test_processing_step_creation": 1.4,
+    "test_training_step_creation": 1.4,
+    "test_transform_step_creation": 1.4,
+    "test_create_model_step_creation": 1.4,
+    # Legacy path mapping tests (lower importance)
+    "test_property_path_validity": 1.1,
+    
+    # Level 4: Integration tests
     "test_dependency_resolution": 1.4,
     "test_step_creation": 1.5,
 }
@@ -130,7 +155,7 @@ class StepBuilderScorer:
         elif test_name.startswith("level2_"):
             return "level2_specification"
         elif test_name.startswith("level3_"):
-            return "level3_path_mapping"
+            return "level3_step_creation"
         elif test_name.startswith("level4_"):
             return "level4_integration"
         
@@ -173,7 +198,7 @@ class StepBuilderScorer:
             "file_upload_patterns", "local_path_override_patterns", "dependency_input_extraction"
         ]
         if any(keyword in test_lower for keyword in level3_keywords):
-            return "level3_path_mapping"
+            return "level3_step_creation"
         
         # Level 4 keywords: integration, dependency, step_creation, end-to-end
         level4_keywords = [
@@ -509,7 +534,7 @@ class StepBuilderScorer:
             scores = []
             colors = []
             
-            for level in ["level1_interface", "level2_specification", "level3_path_mapping", "level4_integration"]:
+            for level in ["level1_interface", "level2_specification", "level3_step_creation", "level4_integration"]:
                 if level in report["levels"]:
                     # Get a nicer level name for display
                     display_level = level.replace("level", "L").replace("_", " ").title()

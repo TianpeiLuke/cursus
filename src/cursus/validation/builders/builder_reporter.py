@@ -237,7 +237,7 @@ class BuilderTestReport:
         
         self.level1_interface: Dict[str, BuilderTestResult] = {}
         self.level2_specification: Dict[str, BuilderTestResult] = {}
-        self.level3_path_mapping: Dict[str, BuilderTestResult] = {}
+        self.level3_step_creation: Dict[str, BuilderTestResult] = {}
         self.level4_integration: Dict[str, BuilderTestResult] = {}
         self.step_type_specific: Dict[str, BuilderTestResult] = {}
         
@@ -256,9 +256,9 @@ class BuilderTestReport:
         self.level2_specification[test_name] = result
         
     def add_level3_result(self, test_name: str, result: BuilderTestResult):
-        """Add a Level 3 (Path Mapping) test result."""
-        result.test_level = "path_mapping"
-        self.level3_path_mapping[test_name] = result
+        """Add a Level 3 (Step Creation) test result."""
+        result.test_level = "step_creation"
+        self.level3_step_creation[test_name] = result
         
     def add_level4_result(self, test_name: str, result: BuilderTestResult):
         """Add a Level 4 (Integration) test result."""
@@ -275,7 +275,7 @@ class BuilderTestReport:
         all_results = {}
         all_results.update(self.level1_interface)
         all_results.update(self.level2_specification)
-        all_results.update(self.level3_path_mapping)
+        all_results.update(self.level3_step_creation)
         all_results.update(self.level4_integration)
         all_results.update(self.step_type_specific)
         return all_results
@@ -483,10 +483,10 @@ class BuilderTestReport:
                 'issues': [issue.to_dict() for result in self.level2_specification.values() for issue in result.issues],
                 'test_results': {k: v.to_dict() for k, v in self.level2_specification.items()}
             },
-            'level3_path_mapping': {
-                'passed': all(r.passed for r in self.level3_path_mapping.values()),
-                'issues': [issue.to_dict() for result in self.level3_path_mapping.values() for issue in result.issues],
-                'test_results': {k: v.to_dict() for k, v in self.level3_path_mapping.items()}
+            'level3_step_creation': {
+                'passed': all(r.passed for r in self.level3_step_creation.values()),
+                'issues': [issue.to_dict() for result in self.level3_step_creation.values() for issue in result.issues],
+                'test_results': {k: v.to_dict() for k, v in self.level3_step_creation.items()}
             },
             'level4_integration': {
                 'passed': all(r.passed for r in self.level4_integration.values()),
@@ -560,7 +560,7 @@ class BuilderTestReport:
         levels = [
             ("Level 1 (Interface)", self.level1_interface, "level1_interface"),
             ("Level 2 (Specification)", self.level2_specification, "level2_specification"),
-            ("Level 3 (Path Mapping)", self.level3_path_mapping, "level3_path_mapping"),
+            ("Level 3 (Step Creation)", self.level3_step_creation, "level3_step_creation"),
             ("Level 4 (Integration)", self.level4_integration, "level4_integration"),
             ("Step Type Specific", self.step_type_specific, "step_type_specific")
         ]

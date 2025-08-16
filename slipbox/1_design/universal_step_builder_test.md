@@ -170,12 +170,15 @@ The implementation has been enhanced with a structured 4-level architecture:
 - Environment variable handling
 - Job type specification loading
 
-#### **Level 3: Path Mapping Tests** ✅ FULLY IMPLEMENTED
-**Implementation**: `src/cursus/validation/builders/path_mapping_tests.py`
-- Input/output path mapping
-- Property path validation
-- Container path handling
-- S3 path normalization
+#### **Level 3: Step Creation Tests** ✅ FULLY IMPLEMENTED (UPDATED 2025-08-15)
+**Implementation**: `src/cursus/validation/builders/step_creation_tests.py`
+- Step instantiation validation
+- Step configuration validity
+- Step dependencies attachment
+- Step name generation
+- Step type compliance testing
+
+**Note**: Level 3 was transformed from path mapping to step creation validation in August 2025 to eliminate redundancy with the Unified Alignment Tester and focus on core step builder functionality.
 
 #### **Level 4: Integration Tests** ✅ FULLY IMPLEMENTED
 **Implementation**: `src/cursus/validation/builders/integration_tests.py`

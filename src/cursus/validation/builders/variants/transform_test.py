@@ -17,7 +17,7 @@ import logging
 
 from .transform_interface_tests import TransformInterfaceTests
 from .transform_specification_tests import TransformSpecificationTests
-from .transform_path_mapping_tests import TransformPathMappingTests
+from ..step_creation_tests import StepCreationTests
 from .transform_integration_tests import TransformIntegrationTests
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class TransformStepBuilderTest:
         # Initialize all test levels
         self.interface_tests = TransformInterfaceTests(builder_instance, config)
         self.specification_tests = TransformSpecificationTests(builder_instance, config)
-        self.path_mapping_tests = TransformPathMappingTests(builder_instance, config)
+        self.path_mapping_tests = StepCreationTests(builder_instance, config)
         self.integration_tests = TransformIntegrationTests(builder_instance, config)
         
         logger.info(f"Initialized Transform test orchestrator for builder: {type(builder_instance).__name__}")
