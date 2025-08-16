@@ -73,7 +73,7 @@
     "test_create_model_step_creation": {
       "passed": false,
       "name": "test_create_model_step_creation",
-      "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+      "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
     },
     "test_processing_step_creation": {
       "passed": true,
@@ -83,22 +83,22 @@
     "test_step_configuration_validity": {
       "passed": false,
       "name": "test_step_configuration_validity",
-      "error": "Step configuration validity test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+      "error": "Step configuration validity test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
     },
     "test_step_dependencies_attachment": {
       "passed": false,
       "name": "test_step_dependencies_attachment",
-      "error": "Step dependencies attachment test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+      "error": "Step dependencies attachment test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
     },
     "test_step_instantiation": {
       "passed": false,
       "name": "test_step_instantiation",
-      "error": "Step instantiation failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+      "error": "Step instantiation failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
     },
     "test_step_name_generation": {
       "passed": false,
       "name": "test_step_name_generation",
-      "error": "Step name generation test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+      "error": "Step name generation test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
     },
     "test_step_type_compliance": {
       "passed": true,
@@ -227,23 +227,23 @@
     "failed_tests": [
       {
         "name": "test_create_model_step_creation",
-        "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+        "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
       },
       {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+        "error": "Step configuration validity test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+        "error": "Step dependencies attachment test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+        "error": "Step instantiation failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+        "error": "Step name generation test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
       }
     ]
   },
@@ -310,7 +310,7 @@
         "test_create_model_step_creation": {
           "passed": false,
           "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+          "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
         },
         "test_processing_step_creation": {
           "passed": true,
@@ -437,23 +437,23 @@
       "failed_tests": [
         {
           "name": "test_create_model_step_creation",
-          "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+          "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
         },
         {
           "name": "test_step_configuration_validity",
-          "error": "Step configuration validity test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+          "error": "Step configuration validity test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
         },
         {
           "name": "test_step_dependencies_attachment",
-          "error": "Step dependencies attachment test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+          "error": "Step dependencies attachment test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
         },
         {
           "name": "test_step_instantiation",
-          "error": "Step instantiation failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+          "error": "Step instantiation failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
         },
         {
           "name": "test_step_name_generation",
-          "error": "Step name generation test failed: Failed to create XGBoostModelStep: CreateModelStep.__init__() got an unexpected keyword argument 'cache_config'"
+          "error": "Step name generation test failed: Failed to create XGBoostModelStep: step_args and model are mutually exclusive. Either of them should be provided."
         }
       ]
     }
@@ -461,6 +461,6 @@
   "step_name": "XGBoostModel",
   "step_type": "createmodel",
   "builder_class_name": "XGBoostModelStepBuilder",
-  "timestamp": "2025-08-16T07:55:35.497916",
+  "timestamp": "2025-08-16T08:13:11.287304",
   "generator_version": "1.0.0"
 }

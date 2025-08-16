@@ -1110,14 +1110,27 @@ class StepTypeMockFactory:
         return mocks
     
     def _create_createmodel_mocks(self) -> Dict[str, Any]:
-        """Create CreateModel step-specific mocks."""
+        """Create CreateModel step-specific mocks that don't interfere with SageMaker validation."""
         mocks = {}
         
-        # Mock Model
+        # Mock Model with proper string attributes to avoid MagicMock issues
         mock_model = MagicMock()
         mock_model.name = 'test-model'
         mock_model.image_uri = 'mock-image-uri'
         mock_model.model_data = 's3://bucket/model.tar.gz'
+        
+        # Ensure model.create() returns proper step arguments without conflicts
+        # This prevents the "step_args and model are mutually exclusive" error
+        mock_model.create.return_value = {
+            'ModelName': 'test-model',
+            'PrimaryContainer': {
+                'Image': 'mock-image-uri',
+                'ModelDataUrl': 's3://bucket/model.tar.gz',
+                'Environment': {}
+            },
+            'ExecutionRoleArn': 'arn:aws:iam::123456789012:role/MockRole'
+        }
+        
         mocks['model'] = mock_model
         
         return mocks

@@ -329,15 +329,18 @@ class UniversalStepBuilderTestBase(ABC):
         """Generate a mock S3 URI for a given logical dependency name."""
         # Create appropriate S3 URI based on dependency type
         if logical_name.lower() in ['data', 'input_data']:
-            return f"s3://test-bucket/processing-data/{logical_name}"
+            uri = f"s3://test-bucket/processing-data/{logical_name}"
         elif logical_name.lower() in ['input_path']:
-            return f"s3://test-bucket/training-data/{logical_name}"
-        elif logical_name.lower() in ['model_input', 'model_artifacts']:
-            return f"s3://test-bucket/model-artifacts/{logical_name}"
+            uri = f"s3://test-bucket/training-data/{logical_name}"
+        elif logical_name.lower() in ['model_input', 'model_artifacts', 'model_data']:
+            uri = f"s3://test-bucket/model-artifacts/{logical_name}"
         elif logical_name.lower() in ['hyperparameters_s3_uri']:
-            return f"s3://test-bucket/hyperparameters/{logical_name}/hyperparameters.json"
+            uri = f"s3://test-bucket/hyperparameters/{logical_name}/hyperparameters.json"
         else:
-            return f"s3://test-bucket/generic/{logical_name}"
+            uri = f"s3://test-bucket/generic/{logical_name}"
+        
+        # Ensure we return an actual string, not a MagicMock
+        return str(uri)
     
     def _create_mock_config(self) -> SimpleNamespace:
         """Create a mock configuration for the builder using the factory."""
