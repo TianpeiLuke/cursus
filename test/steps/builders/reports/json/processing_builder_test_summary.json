@@ -23,7 +23,7 @@
       "info_issues": 0,
       "highest_severity": null,
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T22:57:50.908699",
+      "validation_timestamp": "2025-08-15T23:01:22.335374",
       "is_passing": true
     },
     "RiskTableMapping": {
@@ -41,7 +41,7 @@
       "info_issues": 0,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T22:57:50.958891",
+      "validation_timestamp": "2025-08-15T23:01:22.382346",
       "is_passing": false
     },
     "CurrencyConversion": {
@@ -59,7 +59,7 @@
       "info_issues": 0,
       "highest_severity": null,
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T22:57:52.336852",
+      "validation_timestamp": "2025-08-15T23:01:23.723326",
       "is_passing": true
     },
     "DummyTraining": {
@@ -77,7 +77,7 @@
       "info_issues": 0,
       "highest_severity": null,
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T22:57:53.684540",
+      "validation_timestamp": "2025-08-15T23:01:25.066531",
       "is_passing": true
     },
     "XGBoostModelEval": {
@@ -95,7 +95,7 @@
       "info_issues": 0,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T22:57:58.492546",
+      "validation_timestamp": "2025-08-15T23:01:35.122484",
       "is_passing": false
     },
     "ModelCalibration": {
@@ -113,7 +113,7 @@
       "info_issues": 0,
       "highest_severity": "ERROR",
       "overall_status": "PARTIALLY_PASSING",
-      "validation_timestamp": "2025-08-15T22:57:58.497599",
+      "validation_timestamp": "2025-08-15T23:01:35.128033",
       "is_passing": false
     },
     "Package": {
@@ -131,7 +131,7 @@
       "info_issues": 0,
       "highest_severity": null,
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T22:57:59.876155",
+      "validation_timestamp": "2025-08-15T23:01:36.483525",
       "is_passing": true
     },
     "Payload": {
@@ -149,13 +149,13 @@
       "info_issues": 0,
       "highest_severity": null,
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T22:58:01.239974",
+      "validation_timestamp": "2025-08-15T23:01:37.828017",
       "is_passing": true
     }
   },
   "metadata": {
     "step_type": "Processing",
-    "generation_timestamp": "2025-08-15T22:58:01.240715",
+    "generation_timestamp": "2025-08-15T23:01:37.829486",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   }

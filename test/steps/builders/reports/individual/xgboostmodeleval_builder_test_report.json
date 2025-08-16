@@ -9,7 +9,7 @@
       "test_configuration_validation": {
         "test_name": "test_configuration_validation",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492482",
+        "timestamp": "2025-08-15T23:01:35.122429",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -18,7 +18,7 @@
       "test_documentation_standards": {
         "test_name": "test_documentation_standards",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492491",
+        "timestamp": "2025-08-15T23:01:35.122438",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -27,7 +27,7 @@
       "test_error_handling": {
         "test_name": "test_error_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492493",
+        "timestamp": "2025-08-15T23:01:35.122440",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -36,7 +36,7 @@
       "test_inheritance": {
         "test_name": "test_inheritance",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492495",
+        "timestamp": "2025-08-15T23:01:35.122441",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -45,7 +45,7 @@
       "test_method_return_types": {
         "test_name": "test_method_return_types",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492496",
+        "timestamp": "2025-08-15T23:01:35.122442",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -54,7 +54,7 @@
       "test_naming_conventions": {
         "test_name": "test_naming_conventions",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492497",
+        "timestamp": "2025-08-15T23:01:35.122443",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -63,7 +63,7 @@
       "test_registry_integration": {
         "test_name": "test_registry_integration",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492499",
+        "timestamp": "2025-08-15T23:01:35.122444",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -72,7 +72,7 @@
       "test_required_methods": {
         "test_name": "test_required_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492502",
+        "timestamp": "2025-08-15T23:01:35.122446",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -81,7 +81,7 @@
       "test_type_hints": {
         "test_name": "test_type_hints",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492503",
+        "timestamp": "2025-08-15T23:01:35.122448",
         "test_level": "interface",
         "issues": [],
         "details": {},
@@ -96,7 +96,7 @@
       "test_contract_alignment": {
         "test_name": "test_contract_alignment",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492504",
+        "timestamp": "2025-08-15T23:01:35.122449",
         "test_level": "specification",
         "issues": [],
         "details": {},
@@ -105,7 +105,7 @@
       "test_environment_variable_handling": {
         "test_name": "test_environment_variable_handling",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492506",
+        "timestamp": "2025-08-15T23:01:35.122450",
         "test_level": "specification",
         "issues": [],
         "details": {},
@@ -114,7 +114,7 @@
       "test_job_arguments": {
         "test_name": "test_job_arguments",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492507",
+        "timestamp": "2025-08-15T23:01:35.122451",
         "test_level": "specification",
         "issues": [],
         "details": {},
@@ -123,7 +123,7 @@
       "test_specification_usage": {
         "test_name": "test_specification_usage",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492508",
+        "timestamp": "2025-08-15T23:01:35.122452",
         "test_level": "specification",
         "issues": [],
         "details": {},
@@ -143,7 +143,7 @@
       "test_dependency_resolution": {
         "test_name": "test_dependency_resolution",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492533",
+        "timestamp": "2025-08-15T23:01:35.122473",
         "test_level": "integration",
         "issues": [],
         "details": {},
@@ -152,7 +152,7 @@
       "test_step_creation": {
         "test_name": "test_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492535",
+        "timestamp": "2025-08-15T23:01:35.122474",
         "test_level": "integration",
         "issues": [],
         "details": {},
@@ -161,7 +161,7 @@
       "test_step_name": {
         "test_name": "test_step_name",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492536",
+        "timestamp": "2025-08-15T23:01:35.122475",
         "test_level": "integration",
         "issues": [],
         "details": {},
@@ -175,7 +175,7 @@
       {
         "severity": "ERROR",
         "category": "test_failure",
-        "message": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13570317568'>'",
+        "message": "Processing step creation test failed: either step_args or processor need to be given, but not both.",
         "details": {},
         "recommendation": "Fix test_processing_step_creation failure",
         "test_name": "test_processing_step_creation"
@@ -185,13 +185,13 @@
       "test_processing_step_creation": {
         "test_name": "test_processing_step_creation",
         "passed": false,
-        "timestamp": "2025-08-15T22:57:58.492510",
+        "timestamp": "2025-08-15T23:01:35.122454",
         "test_level": "step_type_specific",
         "issues": [
           {
             "severity": "ERROR",
             "category": "test_failure",
-            "message": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13570317568'>'",
+            "message": "Processing step creation test failed: either step_args or processor need to be given, but not both.",
             "details": {},
             "recommendation": "Fix test_processing_step_creation failure",
             "test_name": "test_processing_step_creation"
@@ -203,7 +203,7 @@
       "test_step_type_compliance": {
         "test_name": "test_step_type_compliance",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492529",
+        "timestamp": "2025-08-15T23:01:35.122469",
         "test_level": "step_type_specific",
         "issues": [],
         "details": {
@@ -217,7 +217,7 @@
       "test_training_step_creation": {
         "test_name": "test_training_step_creation",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492531",
+        "timestamp": "2025-08-15T23:01:35.122471",
         "test_level": "step_type_specific",
         "issues": [],
         "details": {},
@@ -226,7 +226,7 @@
       "test_step_type_detection": {
         "test_name": "test_step_type_detection",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492537",
+        "timestamp": "2025-08-15T23:01:35.122476",
         "test_level": "step_type_specific",
         "issues": [],
         "details": {
@@ -240,7 +240,7 @@
       "test_step_type_classification": {
         "test_name": "test_step_type_classification",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492539",
+        "timestamp": "2025-08-15T23:01:35.122477",
         "test_level": "step_type_specific",
         "issues": [],
         "details": {
@@ -252,7 +252,7 @@
       "test_processing_processor_methods": {
         "test_name": "test_processing_processor_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492540",
+        "timestamp": "2025-08-15T23:01:35.122479",
         "test_level": "step_type_specific",
         "issues": [],
         "details": {
@@ -269,7 +269,7 @@
       "test_processing_io_methods": {
         "test_name": "test_processing_io_methods",
         "passed": true,
-        "timestamp": "2025-08-15T22:57:58.492542",
+        "timestamp": "2025-08-15T23:01:35.122480",
         "test_level": "step_type_specific",
         "issues": [],
         "details": {
@@ -296,7 +296,7 @@
     "info_issues": 0,
     "highest_severity": "ERROR",
     "overall_status": "PARTIALLY_PASSING",
-    "validation_timestamp": "2025-08-15T22:57:58.492546",
+    "validation_timestamp": "2025-08-15T23:01:35.122484",
     "is_passing": false
   },
   "recommendations": [],
@@ -304,7 +304,7 @@
     "builder_name": "XGBoostModelEval",
     "builder_class": "XGBoostModelEvalStepBuilder",
     "sagemaker_step_type": "Processing",
-    "validation_timestamp": "2025-08-15T22:57:58.492546",
+    "validation_timestamp": "2025-08-15T23:01:35.122484",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   },
@@ -368,23 +368,23 @@
     "failed_tests": [
       {
         "name": "test_processing_step_creation",
-        "error": "Processing step creation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13570317568'>'"
+        "error": "Processing step creation test failed: either step_args or processor need to be given, but not both."
       },
       {
         "name": "test_step_configuration_validity",
-        "error": "Step configuration validity test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13570317568'>'"
+        "error": "Step configuration validity test failed: either step_args or processor need to be given, but not both."
       },
       {
         "name": "test_step_dependencies_attachment",
-        "error": "Step dependencies attachment test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13570317568'>'"
+        "error": "Step dependencies attachment test failed: either step_args or processor need to be given, but not both."
       },
       {
         "name": "test_step_instantiation",
-        "error": "Step instantiation failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13570317568'>'"
+        "error": "Step instantiation failed: either step_args or processor need to be given, but not both."
       },
       {
         "name": "test_step_name_generation",
-        "error": "Step name generation test failed: Inputted directory for storing newly generated temporary directory does not exist: '<MagicMock name='mock.settings.local_download_dir' id='13570317568'>'"
+        "error": "Step name generation test failed: either step_args or processor need to be given, but not both."
       }
     ]
   },

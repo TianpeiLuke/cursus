@@ -343,7 +343,7 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
             arguments=job_args,
         )
 
-        # Create and return the step
+        # Create and return the step - use only step_args, not processor
         processing_step = ProcessingStep(
             name=step_name,
             step_args=step_args,

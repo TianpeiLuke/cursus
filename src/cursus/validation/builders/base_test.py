@@ -154,6 +154,17 @@ class UniversalStepBuilderTestBase(ABC):
             }
         }
         
+        # Fix: Add proper settings mock with string values instead of MagicMock
+        mock_settings = MagicMock()
+        mock_settings.local_download_dir = '/tmp/test_downloads'  # Provide actual string path
+        mock_settings.default_bucket = 'test-bucket'
+        mock_settings.s3_kms_key = None
+        self.mock_session.settings = mock_settings
+        
+        # Fix: Configure processor.run() to return proper step arguments
+        # This is needed for Pattern B ProcessingStep creation (XGBoost, etc.)
+        self._setup_processor_run_mock()
+        
         # Mock IAM role
         self.mock_role = 'arn:aws:iam::123456789012:role/MockRole'
         
@@ -189,6 +200,78 @@ class UniversalStepBuilderTestBase(ABC):
         
         # Track assertions for reporting
         self.assertions = []
+    
+    def _setup_processor_run_mock(self) -> None:
+        """
+        Configure processor.run() mock to return proper step arguments.
+        
+        This fixes the issue where processor.run() returns None, causing
+        ProcessingStep creation to fail with "either step_args or processor 
+        need to be given, but not both" error.
+        """
+        # Import here to avoid circular imports
+        from unittest.mock import patch, MagicMock
+        
+        # Import the _StepArguments class that SageMaker expects
+        try:
+            from sagemaker.workflow.pipeline_context import _StepArguments
+        except ImportError:
+            # Fallback if the import path changes
+            from sagemaker.workflow.utilities import _StepArguments
+        
+        # Create a proper _StepArguments object that ProcessingStep expects
+        mock_step_args_dict = {
+            'ProcessingJobName': 'test-processing-job',
+            'ProcessingResources': {
+                'ClusterConfig': {
+                    'InstanceType': 'ml.m5.large',
+                    'InstanceCount': 1,
+                    'VolumeSizeInGB': 30
+                }
+            },
+            'RoleArn': 'arn:aws:iam::123456789012:role/MockRole',
+            'ProcessingInputs': [],
+            'ProcessingOutputConfig': {
+                'Outputs': []
+            },
+            'AppSpecification': {
+                'ImageUri': 'test-image-uri',
+                'ContainerEntrypoint': ['python3'],
+                'ContainerArguments': []
+            },
+            'Environment': {},
+            'StoppingCondition': {
+                'MaxRuntimeInSeconds': 86400
+            }
+        }
+        
+        # Create a _StepArguments object with the proper caller_name
+        mock_step_args = _StepArguments(
+            caller_name='run',  # This is what SageMaker expects for processor.run()
+            **mock_step_args_dict
+        )
+        
+        # Patch all processor classes to return proper _StepArguments from run()
+        processor_classes = [
+            'sagemaker.processing.Processor',
+            'sagemaker.xgboost.XGBoostProcessor',
+            'sagemaker.sklearn.SKLearnProcessor',
+            'sagemaker.pytorch.PyTorchProcessor',
+            'sagemaker.tensorflow.TensorFlowProcessor'
+        ]
+        
+        # Store patches for cleanup if needed
+        self._processor_patches = []
+        
+        for processor_class_path in processor_classes:
+            try:
+                # Patch the run method to return mock _StepArguments
+                patcher = patch(f'{processor_class_path}.run', return_value=mock_step_args)
+                patcher.start()
+                self._processor_patches.append(patcher)
+            except (ImportError, AttributeError):
+                # Skip if the processor class doesn't exist
+                continue
     
     def _create_builder_instance(self) -> StepBuilderBase:
         """Create a builder instance with mock configuration."""
