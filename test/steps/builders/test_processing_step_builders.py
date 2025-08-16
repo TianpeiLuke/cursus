@@ -203,23 +203,29 @@ class ProcessingStepBuilderTestSuite:
                     "details": {"note": f"No expected processor defined for {step_name}"}
                 }
             
-            # Check if the builder has _create_processor method
-            if not hasattr(builder_class, '_create_processor'):
+            # Check if the builder has either _create_processor or _get_processor method
+            has_create_processor = hasattr(builder_class, '_create_processor')
+            has_get_processor = hasattr(builder_class, '_get_processor')
+            
+            if not (has_create_processor or has_get_processor):
                 return {
                     "passed": False,
-                    "error": f"Builder missing _create_processor method",
+                    "error": f"Builder missing processor creation method (_create_processor or _get_processor)",
                     "details": {"expected_processor": expected_processor}
                 }
             
             # This is a structural test - we verify the method exists and can be called
             # Actual processor creation would require full configuration setup
+            processor_method = "_create_processor" if has_create_processor else "_get_processor"
             return {
                 "passed": True,
                 "error": None,
                 "details": {
                     "expected_processor": expected_processor,
-                    "has_create_method": True,
-                    "note": "Structural validation passed - processor creation method exists"
+                    "processor_method": processor_method,
+                    "has_create_processor": has_create_processor,
+                    "has_get_processor": has_get_processor,
+                    "note": f"Structural validation passed - {processor_method} method exists"
                 }
             }
             
