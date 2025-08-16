@@ -332,12 +332,22 @@ class StepTypeMockFactory:
                 id_field='id',
                 calibration_method='isotonic',
                 processing_entry_point='model_calibration.py',
+                processing_source_dir='/tmp/mock_scripts',  # Use the test script directory
                 processing_instance_count=1,
                 processing_volume_size=30,
                 processing_instance_type_large='ml.m5.xlarge',
                 processing_instance_type_small='ml.m5.large',
                 use_large_processing_instance=False,
-                processing_framework_version='1.2-1'
+                processing_framework_version='1.2-1',
+                # Add required fields for ModelCalibration
+                score_field='score',
+                is_binary=True,
+                monotonic_constraint=True,
+                gam_splines=10,
+                error_threshold=0.1,
+                num_classes=2,
+                score_field_prefix='score_',
+                multiclass_categories=['class_0', 'class_1']
             )
         except Exception as e:
             if self.test_mode:

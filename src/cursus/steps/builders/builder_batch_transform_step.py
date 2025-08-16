@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict, Any, Tuple
 from pathlib import Path
 import logging
 import importlib
@@ -149,7 +149,7 @@ class BatchTransformStepBuilder(StepBuilderBase):
             sagemaker_session=self.session,
         )
 
-    def _get_inputs(self, inputs: Dict[str, Any]) -> tuple[TransformInput, Union[str, Properties]]:
+    def _get_inputs(self, inputs: Dict[str, Any]) -> Tuple[TransformInput, Union[str, Properties]]:
         """
         Create transform input using specification and provided inputs.
         
