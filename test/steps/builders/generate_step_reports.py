@@ -28,6 +28,13 @@ from cursus.validation.builders.registry_discovery import (
     load_builder_class
 )
 
+# Import step-type-specific test frameworks
+try:
+    from cursus.validation.builders.variants.processing_test import ProcessingStepBuilderTest
+except ImportError:
+    ProcessingStepBuilderTest = None
+    print("Warning: ProcessingStepBuilderTest not available, using UniversalStepBuilderTest")
+
 
 class StepBuilderReportGenerator:
     """
@@ -176,15 +183,24 @@ python test/steps/builders/generate_step_reports.py --step-type {step_type}
                     "timestamp": datetime.now().isoformat()
                 }
             
-            # Run universal tests with scoring enabled
-            tester = UniversalStepBuilderTest(
-                builder_class,
-                verbose=False,
-                enable_scoring=True,
-                enable_structured_reporting=True
-            )
-            
-            results = tester.run_all_tests()
+            # Choose appropriate test framework based on step type
+            if step_type == "processing" and ProcessingStepBuilderTest is not None:
+                # Use processing-specific test framework with Pattern B auto-pass logic
+                tester = ProcessingStepBuilderTest(
+                    builder_class,
+                    enable_scoring=True,
+                    enable_structured_reporting=True
+                )
+                results = tester.run_processing_validation()
+            else:
+                # Use universal test framework for other step types
+                tester = UniversalStepBuilderTest(
+                    builder_class,
+                    verbose=False,
+                    enable_scoring=True,
+                    enable_structured_reporting=True
+                )
+                results = tester.run_all_tests()
             
             # Add metadata
             results.update({

@@ -42,6 +42,16 @@ RISK_TABLE_MAPPING_TRAINING_SPEC = StepSpecification(
             data_type="S3Uri",
             description="Optional external hyperparameters configuration file (will be overridden by internal generation)"
         ),
+        # Risk tables dependency - optional for training mode since training creates them
+        DependencySpec(
+            logical_name="risk_tables",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=False,
+            compatible_sources=["RiskTableMapping_Training", "ProcessingStep"],
+            semantic_keywords=["risk_tables", "bin_mapping", "categorical_mappings", "model_artifacts"],
+            data_type="S3Uri",
+            description="Optional pre-existing risk tables (training mode creates new ones if not provided)"
+        ),
     ],
     outputs=[
         OutputSpec(

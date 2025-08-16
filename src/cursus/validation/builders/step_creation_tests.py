@@ -253,7 +253,6 @@ class StepCreationTests(UniversalStepBuilderTestBase):
         builder_class_name = self.builder_class.__name__
         pattern_b_builders = [
             'XGBoostModelEvalStepBuilder',
-            'XGBoostTrainingStepBuilder',
             # Add other Pattern B builders here as needed
         ]
         

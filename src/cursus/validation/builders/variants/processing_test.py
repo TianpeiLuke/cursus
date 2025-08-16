@@ -23,7 +23,7 @@ from unittest.mock import Mock
 
 from .processing_interface_tests import ProcessingInterfaceTests
 from .processing_specification_tests import ProcessingSpecificationTests
-from ..step_creation_tests import StepCreationTests
+from .processing_step_creation_tests import ProcessingStepCreationTests
 from .processing_integration_tests import ProcessingIntegrationTests
 from ..universal_test import UniversalStepBuilderTest
 
@@ -59,9 +59,12 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
                 'special_features': ['local_path_override', 'file_upload', 's3_path_validation']
             }
         
+        # Store step_info for processing-specific use
+        self.step_info = step_info
+        
+        # Initialize parent class without step_info parameter
         super().__init__(
             builder_class=builder_class,
-            step_info=step_info,
             enable_scoring=enable_scoring,
             enable_structured_reporting=enable_structured_reporting
         )
@@ -84,7 +87,7 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
         )
         
         # Level 3: Processing Step Creation Tests
-        self.level3_tester = StepCreationTests(
+        self.level3_tester = ProcessingStepCreationTests(
             builder_class=self.builder_class,
             step_info=self.step_info
         )
@@ -140,7 +143,7 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
             levels = [1, 2, 3, 4]
         
         # Run the standard validation
-        results = self.run_tests(levels=levels)
+        results = self.run_all_tests()
         
         # Add Processing-specific information
         if isinstance(results, dict):
