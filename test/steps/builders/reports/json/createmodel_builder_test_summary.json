@@ -23,7 +23,7 @@
       "info_issues": 0,
       "highest_severity": null,
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T22:44:29.758557",
+      "validation_timestamp": "2025-08-15T22:46:50.267762",
       "is_passing": true
     },
     "XGBoostModel": {
@@ -41,13 +41,13 @@
       "info_issues": 0,
       "highest_severity": null,
       "overall_status": "PASSING",
-      "validation_timestamp": "2025-08-15T22:44:30.520946",
+      "validation_timestamp": "2025-08-15T22:46:51.039727",
       "is_passing": true
     }
   },
   "metadata": {
     "step_type": "CreateModel",
-    "generation_timestamp": "2025-08-15T22:44:30.521428",
+    "generation_timestamp": "2025-08-15T22:46:51.040255",
     "validator_version": "1.0.0",
     "test_framework": "UniversalStepBuilderTest"
   }

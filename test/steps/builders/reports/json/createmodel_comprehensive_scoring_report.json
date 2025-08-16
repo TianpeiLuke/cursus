@@ -1,0 +1,183 @@
+{
+  "step_type": "CreateModel",
+  "summary": {
+    "total_builders": 2,
+    "passing_builders": 2,
+    "average_quality_score": 82.33766233766234,
+    "test_timestamp": "2025-08-15T22:46:00"
+  },
+  "builder_details": {
+    "PyTorchModel": {
+      "status": "PASSING",
+      "pass_rate": 100.0,
+      "total_issues": 0,
+      "is_passing": true,
+      "scoring": {
+        "overall": {
+          "score": 82.33766233766234,
+          "rating": "Good",
+          "passed": 14,
+          "total": 19,
+          "pass_rate": 73.68421052631578
+        },
+        "levels": {
+          "level1_interface": {
+            "score": 100.0,
+            "passed": 3,
+            "total": 3,
+            "tests": {
+              "test_error_handling": true,
+              "test_inheritance": true,
+              "test_required_methods": true
+            }
+          },
+          "level2_specification": {
+            "score": 100.0,
+            "passed": 4,
+            "total": 4,
+            "tests": {
+              "test_contract_alignment": true,
+              "test_environment_variable_handling": true,
+              "test_job_arguments": true,
+              "test_specification_usage": true
+            }
+          },
+          "level3_step_creation": {
+            "score": 38.18181818181818,
+            "passed": 3,
+            "total": 8,
+            "tests": {
+              "test_create_model_step_creation": false,
+              "test_processing_step_creation": true,
+              "test_step_configuration_validity": false,
+              "test_step_dependencies_attachment": false,
+              "test_step_instantiation": false,
+              "test_step_name_generation": false,
+              "test_training_step_creation": true,
+              "test_transform_step_creation": true
+            }
+          },
+          "level4_integration": {
+            "score": 100.0,
+            "passed": 4,
+            "total": 4,
+            "tests": {
+              "test_registry_integration": true,
+              "test_dependency_resolution": true,
+              "test_step_creation": true,
+              "test_step_name": true
+            }
+          }
+        },
+        "failed_tests": [
+          {
+            "name": "test_create_model_step_creation",
+            "error": "CreateModel step creation test failed: Failed to create PyTorchModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_configuration_validity",
+            "error": "Step configuration validity test failed: Failed to create PyTorchModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_dependencies_attachment",
+            "error": "Step dependencies attachment test failed: Failed to create PyTorchModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_instantiation",
+            "error": "Step instantiation failed: Failed to create PyTorchModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_name_generation",
+            "error": "Step name generation test failed: Failed to create PyTorchModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          }
+        ]
+      }
+    },
+    "XGBoostModel": {
+      "status": "PASSING",
+      "pass_rate": 100.0,
+      "total_issues": 0,
+      "is_passing": true,
+      "scoring": {
+        "overall": {
+          "score": 82.33766233766234,
+          "rating": "Good",
+          "passed": 14,
+          "total": 19,
+          "pass_rate": 73.68421052631578
+        },
+        "levels": {
+          "level1_interface": {
+            "score": 100.0,
+            "passed": 3,
+            "total": 3,
+            "tests": {
+              "test_error_handling": true,
+              "test_inheritance": true,
+              "test_required_methods": true
+            }
+          },
+          "level2_specification": {
+            "score": 100.0,
+            "passed": 4,
+            "total": 4,
+            "tests": {
+              "test_contract_alignment": true,
+              "test_environment_variable_handling": true,
+              "test_job_arguments": true,
+              "test_specification_usage": true
+            }
+          },
+          "level3_step_creation": {
+            "score": 38.18181818181818,
+            "passed": 3,
+            "total": 8,
+            "tests": {
+              "test_create_model_step_creation": false,
+              "test_processing_step_creation": true,
+              "test_step_configuration_validity": false,
+              "test_step_dependencies_attachment": false,
+              "test_step_instantiation": false,
+              "test_step_name_generation": false,
+              "test_training_step_creation": true,
+              "test_transform_step_creation": true
+            }
+          },
+          "level4_integration": {
+            "score": 100.0,
+            "passed": 4,
+            "total": 4,
+            "tests": {
+              "test_registry_integration": true,
+              "test_dependency_resolution": true,
+              "test_step_creation": true,
+              "test_step_name": true
+            }
+          }
+        },
+        "failed_tests": [
+          {
+            "name": "test_create_model_step_creation",
+            "error": "CreateModel step creation test failed: Failed to create XGBoostModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_configuration_validity",
+            "error": "Step configuration validity test failed: Failed to create XGBoostModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_dependencies_attachment",
+            "error": "Step dependencies attachment test failed: Failed to create XGBoostModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_instantiation",
+            "error": "Step instantiation failed: Failed to create XGBoostModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          },
+          {
+            "name": "test_step_name_generation",
+            "error": "Step name generation test failed: Failed to create XGBoostModelStep: Model.create() got an unexpected keyword argument 'model_name'"
+          }
+        ]
+      }
+    }
+  }
+}

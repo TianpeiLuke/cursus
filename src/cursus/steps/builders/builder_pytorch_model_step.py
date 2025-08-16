@@ -254,8 +254,8 @@ class PyTorchModelStepBuilder(StepBuilderBase):
                 step_args=model.create(
                     instance_type=self.config.instance_type,
                     accelerator_type=getattr(self.config, 'accelerator_type', None),
-                    tags=getattr(self.config, 'tags', None),
-                    model_name=self.config.get_model_name() if hasattr(self.config, 'get_model_name') else None
+                    tags=getattr(self.config, 'tags', None)
+                    # Note: model_name parameter removed - it's not accepted by model.create()
                 ),
                 depends_on=dependencies,
                 cache_config=self._get_cache_config(enable_caching)
