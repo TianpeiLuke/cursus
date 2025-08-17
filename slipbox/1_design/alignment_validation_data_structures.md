@@ -790,6 +790,8 @@ These data structures represent the **foundation of the production-ready validat
 
 **Key Breakthrough**: The refactored `validate_contract` method now properly handles script-to-contract name mapping, resolving the critical issue where `xgboost_model_evaluation` script was failing validation due to contract name mismatch (`xgboost_model_eval_contract`).
 
+**August 2025 Registry Enhancement**: Fixed the `get_canonical_name_from_file_name()` function in the step registry to properly handle full framework names like `xgboost_model_evaluation` by adding `'xgboost': 'XGBoost'` to the abbreviation mapping. This ensures systematic registry-based resolution works correctly instead of falling back to pattern matching.
+
 The data structures successfully balance **performance, reliability, and flexibility** while maintaining **production system consistency** and providing **actionable developer feedback**.
 
 ---

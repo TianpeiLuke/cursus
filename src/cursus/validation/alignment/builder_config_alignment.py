@@ -474,9 +474,9 @@ class BuilderConfigurationAlignmentTester:
         """Validate that builder properly handles configuration fields."""
         issues = []
         
-        # Get configuration fields from analysis
+        # Get configuration fields from analysis (now includes inherited fields)
         config_fields = set(config_analysis.get('fields', {}).keys())
-        required_fields = config_analysis.get('required_fields', set())
+        required_fields = set(config_analysis.get('required_fields', []))
         
         # Get fields accessed in builder
         accessed_fields = set()
@@ -534,7 +534,7 @@ class BuilderConfigurationAlignmentTester:
         """Validate that builder properly validates required fields."""
         issues = []
         
-        required_fields = config_analysis.get('required_fields', set())
+        required_fields = set(config_analysis.get('required_fields', []))
         
         # Check if builder has validation logic
         has_validation = len(builder_analysis.get('validation_calls', [])) > 0

@@ -477,6 +477,37 @@ The implementation maintains backward compatibility through:
 3. **Gradual Integration**: Components adopt registry in phases
 4. **Format Preservation**: Maintains expected step name format for all consumers
 
+## Recent Enhancements (August 2025)
+
+### Enhanced Abbreviation Mapping
+
+**Issue Resolved**: The `get_canonical_name_from_file_name()` function was failing for `xgboost_model_evaluation` because the abbreviation mapping only included `'xgb': 'XGBoost'` but not `'xgboost': 'XGBoost'`.
+
+**Solution Implemented**: Enhanced the abbreviation mapping to include full framework names:
+
+```python
+abbreviation_map = {
+    'xgb': 'XGBoost',
+    'xgboost': 'XGBoost',  # Added for full framework name support
+    'pytorch': 'PyTorch',
+    'mims': '',  # Remove MIMS prefix
+    'tabular': 'Tabular',
+    'preprocess': 'Preprocessing'
+}
+```
+
+**Impact**: This enhancement ensures that both abbreviated (`xgb_model_evaluation`) and full framework names (`xgboost_model_evaluation`) are correctly mapped to their canonical registry names (`XGBoostModelEval`).
+
+### Comprehensive Test Coverage
+
+Added comprehensive unit tests in `test/steps/registry/test_step_names.py`:
+
+- `test_get_canonical_name_from_file_name()`: Tests all registry mapping scenarios
+- `test_xgboost_model_evaluation_registry_integration()`: Specific test for the fixed case
+- `test_get_canonical_name_from_file_name_abbreviations()`: Tests both `xgb` and `xgboost` mappings
+
+**Validation Results**: 100% success rate across all 9 scripts in alignment validation tests.
+
 ## Future Improvements
 
 1. **Namespace Support**: Add support for namespaces to avoid name collisions
@@ -484,6 +515,7 @@ The implementation maintains backward compatibility through:
 3. **Configuration Validation**: Add validation to ensure all used step names are in registry
 4. **Documentation Generation**: Generate documentation from registry metadata
 5. **Job Type Registry**: Extend registry with explicit job type variant support
+6. **Enhanced Abbreviation Support**: Continue expanding abbreviation mappings for new frameworks
 
 ## References
 

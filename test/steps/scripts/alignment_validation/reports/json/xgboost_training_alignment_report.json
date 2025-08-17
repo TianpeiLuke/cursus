@@ -33,9 +33,9 @@
         "details": {
           "script": "xgboost_training",
           "testability_parameters": [
-            "environ_vars",
-            "input_paths",
             "job_args",
+            "input_paths",
+            "environ_vars",
             "output_paths"
           ]
         },
@@ -53,16 +53,16 @@
       {
         "severity": "WARNING",
         "category": "testability_parameter_usage",
-        "message": "Testability parameters defined but not used: environ_vars, job_args",
+        "message": "Testability parameters defined but not used: job_args, environ_vars",
         "details": {
           "script": "xgboost_training",
           "unused_parameters": [
-            "environ_vars",
-            "job_args"
+            "job_args",
+            "environ_vars"
           ],
           "used_parameters": [
-            "output_paths",
-            "input_paths"
+            "input_paths",
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -334,9 +334,9 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
-              "TabularPreprocessing",
               "ProcessingStep",
+              "TabularPreprocessing",
+              "RiskTableMapping",
               "DataLoad"
             ],
             "data_type": "S3Uri",
@@ -347,8 +347,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -382,9 +382,9 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
-              "TabularPreprocessing",
               "ProcessingStep",
+              "TabularPreprocessing",
+              "RiskTableMapping",
               "DataLoad"
             ],
             "data_type": "S3Uri",
@@ -395,8 +395,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -429,9 +429,9 @@
               "dependency_type": "training_data",
               "required": true,
               "compatible_sources": [
-                "RiskTableMapping",
-                "TabularPreprocessing",
                 "ProcessingStep",
+                "TabularPreprocessing",
+                "RiskTableMapping",
                 "DataLoad"
               ],
               "data_type": "S3Uri",
@@ -442,8 +442,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "HyperparameterPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -473,9 +473,9 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
-            "TabularPreprocessing",
             "ProcessingStep",
+            "TabularPreprocessing",
+            "RiskTableMapping",
             "DataLoad"
           ],
           "data_type": "S3Uri",
@@ -486,8 +486,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -593,9 +593,9 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
-            "TabularPreprocessing",
             "ProcessingStep",
+            "TabularPreprocessing",
+            "RiskTableMapping",
             "DataLoad"
           ],
           "data_type": "S3Uri",
@@ -606,8 +606,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -636,17 +636,122 @@
     "issues": [
       {
         "severity": "INFO",
-        "category": "config_import",
-        "message": "Builder may not be properly importing configuration class xgboost_trainingConfig",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
-          "config_class": "xgboost_trainingConfig",
+          "required_fields": [
+            "author",
+            "region",
+            "role",
+            "training_entry_point",
+            "bucket",
+            "service_name",
+            "pipeline_version",
+            "hyperparameters"
+          ],
           "builder": "xgboost_training"
         },
-        "recommendation": "Ensure builder imports and uses xgboost_trainingConfig"
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
       }
     ],
     "builder_analysis": {
-      "config_accesses": [],
+      "config_accesses": [
+        {
+          "field_name": "training_entry_point",
+          "line_number": 134,
+          "context": "line_134"
+        },
+        {
+          "field_name": "source_dir",
+          "line_number": 135,
+          "context": "line_135"
+        },
+        {
+          "field_name": "framework_version",
+          "line_number": 136,
+          "context": "line_136"
+        },
+        {
+          "field_name": "py_version",
+          "line_number": 137,
+          "context": "line_137"
+        },
+        {
+          "field_name": "training_instance_type",
+          "line_number": 139,
+          "context": "line_139"
+        },
+        {
+          "field_name": "training_instance_count",
+          "line_number": 140,
+          "context": "line_140"
+        },
+        {
+          "field_name": "training_volume_size",
+          "line_number": 141,
+          "context": "line_141"
+        },
+        {
+          "field_name": "env",
+          "line_number": 161,
+          "context": "line_161"
+        },
+        {
+          "field_name": "env",
+          "line_number": 162,
+          "context": "line_162"
+        },
+        {
+          "field_name": "pipeline_s3_loc",
+          "line_number": 345,
+          "context": "line_345"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 419,
+          "context": "line_419"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 422,
+          "context": "line_422"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 423,
+          "context": "line_423"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 424,
+          "context": "line_424"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 425,
+          "context": "line_425"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 426,
+          "context": "line_426"
+        },
+        {
+          "field_name": "hyperparameters_s3_uri",
+          "line_number": 442,
+          "context": "line_442"
+        },
+        {
+          "field_name": "bucket",
+          "line_number": 445,
+          "context": "line_445"
+        },
+        {
+          "field_name": "pipeline_name",
+          "line_number": 446,
+          "context": "line_446"
+        }
+      ],
       "validation_calls": [],
       "default_assignments": [],
       "class_definitions": [
@@ -962,19 +1067,158 @@
       "config_class_usage": []
     },
     "config_analysis": {
-      "class_name": "xgboost_trainingConfig",
-      "fields": {},
-      "required_fields": [],
-      "optional_fields": [],
-      "default_values": {},
-      "load_error": "Configuration class not found in /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/configs/config_xgboost_training_step.py. Available classes: ['Any', 'BaseModel', 'BasePipelineConfig', 'Path', 'XGBoostModelHyperparameters', 'XGBoostTrainingConfig', 'datetime']"
+      "class_name": "XGBoostTrainingConfig",
+      "fields": {
+        "author": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "bucket": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "role": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "region": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "service_name": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "pipeline_version": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_class": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "current_date": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "py_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "training_entry_point": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "hyperparameters": {
+          "type": "<class 'src.cursus.steps.hyperparams.hyperparameters_xgboost.XGBoostModelHyperparameters'>",
+          "required": true
+        },
+        "training_instance_type": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "training_instance_count": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "training_volume_size": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "aws_region": {
+          "type": "property",
+          "required": false
+        },
+        "hyperparameter_file": {
+          "type": "property",
+          "required": false
+        },
+        "model_extra": {
+          "type": "property",
+          "required": false
+        },
+        "model_fields_set": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_description": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_name": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_s3_loc": {
+          "type": "property",
+          "required": false
+        },
+        "script_contract": {
+          "type": "property",
+          "required": false
+        }
+      },
+      "required_fields": [
+        "author",
+        "bucket",
+        "role",
+        "region",
+        "service_name",
+        "pipeline_version",
+        "training_entry_point",
+        "hyperparameters"
+      ],
+      "optional_fields": [
+        "model_class",
+        "current_date",
+        "framework_version",
+        "py_version",
+        "source_dir",
+        "training_instance_type",
+        "training_instance_count",
+        "training_volume_size",
+        "aws_region",
+        "hyperparameter_file",
+        "model_extra",
+        "model_fields_set",
+        "pipeline_description",
+        "pipeline_name",
+        "pipeline_s3_loc",
+        "script_contract"
+      ],
+      "default_values": {
+        "author": "PydanticUndefined",
+        "bucket": "PydanticUndefined",
+        "role": "PydanticUndefined",
+        "region": "PydanticUndefined",
+        "service_name": "PydanticUndefined",
+        "pipeline_version": "PydanticUndefined",
+        "model_class": "xgboost",
+        "current_date": "PydanticUndefined",
+        "framework_version": "1.7-1",
+        "py_version": "py3",
+        "source_dir": null,
+        "training_entry_point": "PydanticUndefined",
+        "hyperparameters": "PydanticUndefined",
+        "training_instance_type": "ml.m5.4xlarge",
+        "training_instance_count": 1,
+        "training_volume_size": 30
+      }
     }
   },
   "overall_status": "PASSING",
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py",
     "contract_mapping": "xgboost_training_contract",
-    "validation_timestamp": "2025-08-14T10:24:23.570671",
+    "validation_timestamp": "2025-08-17T13:52:22.996903",
     "validator_version": "1.0.0"
   }
 }

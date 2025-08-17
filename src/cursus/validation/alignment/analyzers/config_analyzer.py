@@ -73,24 +73,51 @@ class ConfigurationAnalyzer:
                     if path in sys.path:
                         sys.path.remove(path)
             
-            # Look for configuration class (CamelCase name)
-            possible_names = [
-                f"{builder_name.title().replace('_', '')}Config",
-                f"{''.join(word.capitalize() for word in builder_name.split('_'))}Config",
-                f"{''.join(word.capitalize() for word in builder_name.split('_'))}StepConfig",  # StepConfig pattern
-                f"CurrencyConversionConfig",  # Specific case
-                f"DummyTrainingConfig",       # Specific case
-                f"BatchTransformStepConfig"   # Specific case
-            ]
-            
+            # Use systematic approach with step registry
             config_class = None
             config_class_name = None
             
-            for name in possible_names:
-                if hasattr(module, name):
-                    config_class = getattr(module, name)
-                    config_class_name = name
-                    break
+            # Strategy 1: Use step registry to get the correct config class name
+            try:
+                # Import the registry functions - use absolute import path
+                project_root = str(self.configs_dir.parent.parent.parent)
+                if project_root not in sys.path:
+                    sys.path.insert(0, project_root)
+                
+                from src.cursus.steps.registry.step_names import get_canonical_name_from_file_name, get_config_class_name
+                
+                # Get canonical step name from builder name (script name)
+                canonical_name = get_canonical_name_from_file_name(builder_name)
+                
+                # Get the correct config class name from registry
+                registry_config_class_name = get_config_class_name(canonical_name)
+                
+                # Try to find this class in the module
+                if hasattr(module, registry_config_class_name):
+                    config_class = getattr(module, registry_config_class_name)
+                    config_class_name = registry_config_class_name
+                    
+            except Exception as registry_error:
+                # If registry approach fails, fall back to pattern matching
+                pass
+            
+            # Strategy 2: Fallback to pattern matching if registry approach failed
+            if config_class is None:
+                possible_names = [
+                    f"{builder_name.title().replace('_', '')}Config",
+                    f"{''.join(word.capitalize() for word in builder_name.split('_'))}Config",
+                    f"{''.join(word.capitalize() for word in builder_name.split('_'))}StepConfig",  # StepConfig pattern
+                    f"CurrencyConversionConfig",  # Specific case
+                    f"DummyTrainingConfig",       # Specific case
+                    f"BatchTransformStepConfig",  # Specific case
+                    f"XGBoostModelEvalConfig"     # Specific case for xgboost_model_evaluation
+                ]
+                
+                for name in possible_names:
+                    if hasattr(module, name):
+                        config_class = getattr(module, name)
+                        config_class_name = name
+                        break
             
             if config_class is None:
                 # List all classes in the module for debugging
@@ -125,8 +152,8 @@ class ConfigurationAnalyzer:
         analysis = {
             'class_name': class_name,
             'fields': {},
-            'required_fields': set(),
-            'optional_fields': set(),
+            'required_fields': [],
+            'optional_fields': [],
             'default_values': {}
         }
         
@@ -153,9 +180,9 @@ class ConfigurationAnalyzer:
             }
             
             if is_optional:
-                analysis['optional_fields'].add(field_name)
+                analysis['optional_fields'].append(field_name)
             else:
-                analysis['required_fields'].add(field_name)
+                analysis['required_fields'].append(field_name)
         
         # Check for Pydantic model fields (v2 style) - includes inherited fields
         if hasattr(config_class, 'model_fields'):
@@ -167,13 +194,17 @@ class ConfigurationAnalyzer:
                         is_required = field_info.is_required()
                         analysis['fields'][field_name]['required'] = is_required
                         
-                        # Update the sets
+                        # Update the lists
                         if is_required:
-                            analysis['optional_fields'].discard(field_name)
-                            analysis['required_fields'].add(field_name)
+                            if field_name in analysis['optional_fields']:
+                                analysis['optional_fields'].remove(field_name)
+                            if field_name not in analysis['required_fields']:
+                                analysis['required_fields'].append(field_name)
                         else:
-                            analysis['required_fields'].discard(field_name)
-                            analysis['optional_fields'].add(field_name)
+                            if field_name in analysis['required_fields']:
+                                analysis['required_fields'].remove(field_name)
+                            if field_name not in analysis['optional_fields']:
+                                analysis['optional_fields'].append(field_name)
                 else:
                     # Add field that wasn't in annotations
                     is_required = hasattr(field_info, 'is_required') and field_info.is_required()
@@ -183,9 +214,9 @@ class ConfigurationAnalyzer:
                     }
                     
                     if is_required:
-                        analysis['required_fields'].add(field_name)
+                        analysis['required_fields'].append(field_name)
                     else:
-                        analysis['optional_fields'].add(field_name)
+                        analysis['optional_fields'].append(field_name)
                 
                 # Extract default values from Pydantic field info
                 if hasattr(field_info, 'default') and field_info.default is not ...:
@@ -201,13 +232,17 @@ class ConfigurationAnalyzer:
                         is_required = field_info.required
                         analysis['fields'][field_name]['required'] = is_required
                         
-                        # Update the sets
+                        # Update the lists
                         if is_required:
-                            analysis['optional_fields'].discard(field_name)
-                            analysis['required_fields'].add(field_name)
+                            if field_name in analysis['optional_fields']:
+                                analysis['optional_fields'].remove(field_name)
+                            if field_name not in analysis['required_fields']:
+                                analysis['required_fields'].append(field_name)
                         else:
-                            analysis['required_fields'].discard(field_name)
-                            analysis['optional_fields'].add(field_name)
+                            if field_name in analysis['required_fields']:
+                                analysis['required_fields'].remove(field_name)
+                            if field_name not in analysis['optional_fields']:
+                                analysis['optional_fields'].append(field_name)
                 else:
                     # Add field that wasn't in annotations
                     is_required = hasattr(field_info, 'required') and field_info.required
@@ -217,9 +252,9 @@ class ConfigurationAnalyzer:
                     }
                     
                     if is_required:
-                        analysis['required_fields'].add(field_name)
+                        analysis['required_fields'].append(field_name)
                     else:
-                        analysis['optional_fields'].add(field_name)
+                        analysis['optional_fields'].append(field_name)
                 
                 # Extract default values from Pydantic field info
                 if hasattr(field_info, 'default') and field_info.default is not ...:
@@ -238,7 +273,7 @@ class ConfigurationAnalyzer:
                             'type': 'property',
                             'required': False  # Properties are typically computed, so optional
                         }
-                        analysis['optional_fields'].add(attr_name)
+                        analysis['optional_fields'].append(attr_name)
                 
                 # Check for default values (non-callable, non-descriptor attributes)
                 elif (attr_name in analysis['fields'] and 
@@ -248,7 +283,8 @@ class ConfigurationAnalyzer:
                     # If a field has a default value, it's optional
                     if attr_name in analysis['required_fields']:
                         analysis['required_fields'].remove(attr_name)
-                        analysis['optional_fields'].add(attr_name)
+                        if attr_name not in analysis['optional_fields']:
+                            analysis['optional_fields'].append(attr_name)
                         if attr_name in analysis['fields']:
                             analysis['fields'][attr_name]['required'] = False
         
@@ -324,8 +360,8 @@ class ConfigurationAnalyzer:
         """
         return {
             'configuration': {
-                'required': list(config_analysis.get('required_fields', set())),
-                'optional': list(config_analysis.get('optional_fields', set())),
+                'required': config_analysis.get('required_fields', []),
+                'optional': config_analysis.get('optional_fields', []),
                 'fields': config_analysis.get('fields', {}),
                 'defaults': config_analysis.get('default_values', {})
             }

@@ -304,6 +304,7 @@ def get_canonical_name_from_file_name(file_name: str) -> str:
     # Convert known abbreviations to full names
     abbreviation_map = {
         'xgb': 'XGBoost',
+        'xgboost': 'XGBoost',  # Add full xgboost mapping
         'pytorch': 'PyTorch',
         'mims': '',  # Remove MIMS prefix
         'tabular': 'Tabular',

@@ -33,6 +33,38 @@ class PatternRecognizer:
             'job_name', 'job_id', 'run_id', 'experiment_id'
         }
         
+        # Common inherited fields from BasePipelineConfig and ProcessingStepConfigBase
+        self.inherited_config_fields = {
+            # From BasePipelineConfig (Tier 1 - Essential User Inputs)
+            'author', 'bucket', 'role', 'region', 'service_name', 'pipeline_version',
+            
+            # From BasePipelineConfig (Tier 2 - System Inputs)
+            'model_class', 'current_date', 'framework_version', 'py_version', 'source_dir',
+            
+            # From BasePipelineConfig (Tier 3 - Derived Properties)
+            'aws_region', 'pipeline_name', 'pipeline_description', 'pipeline_s3_loc',
+            
+            # From ProcessingStepConfigBase
+            'processing_instance_count', 'processing_volume_size', 
+            'processing_instance_type_large', 'processing_instance_type_small',
+            'use_large_processing_instance', 'processing_source_dir',
+            'processing_entry_point', 'processing_script_arguments',
+            'processing_framework_version', 'effective_source_dir',
+            'effective_instance_type', 'script_path',
+            
+            # From TrainingStepConfigBase (for training builders)
+            'training_instance_count', 'training_volume_size',
+            'training_instance_type', 'training_entry_point',
+            
+            # Common hyperparameter fields
+            'hyperparameters', 'hyperparameters_s3_uri'
+        }
+        
+        # Environment variable access patterns (not configuration fields)
+        self.environment_access_patterns = {
+            'env', 'environ', 'environment_vars', 'env_vars'
+        }
+        
         # Patterns for inherited configuration fields
         self.inherited_patterns = [
             'base_', 'parent_', 'super_', 'common_', 'shared_'
@@ -69,19 +101,27 @@ class PatternRecognizer:
         if field_name in self.framework_fields:
             return True
         
-        # Pattern 2: Inherited configuration fields
+        # Pattern 2: Common inherited configuration fields (MAJOR FIX)
+        if field_name in self.inherited_config_fields:
+            return True
+        
+        # Pattern 3: Environment variable access patterns (not config fields)
+        if field_name in self.environment_access_patterns:
+            return True
+        
+        # Pattern 4: Inherited configuration fields by prefix
         if any(field_name.startswith(pattern) for pattern in self.inherited_patterns):
             return True
         
-        # Pattern 3: Dynamic configuration fields (runtime-determined)
+        # Pattern 5: Dynamic configuration fields (runtime-determined)
         if any(field_name.startswith(pattern) for pattern in self.dynamic_patterns):
             return True
         
-        # Pattern 4: Optional convenience fields that may not be accessed
+        # Pattern 6: Optional convenience fields that may not be accessed
         if issue_type == 'unaccessed_required' and field_name in self.convenience_fields:
             return True
         
-        # Pattern 5: Builder-specific patterns
+        # Pattern 7: Builder-specific patterns
         builder_patterns = self._get_builder_specific_patterns(builder_name)
         
         if field_name in builder_patterns.get('acceptable_undeclared', set()):
@@ -90,7 +130,7 @@ class PatternRecognizer:
         if field_name in builder_patterns.get('acceptable_unaccessed', set()):
             return issue_type == 'unaccessed_required'
         
-        # Pattern 6: Configuration fields that follow naming conventions
+        # Pattern 8: Configuration fields that follow naming conventions
         if issue_type == 'undeclared_access':
             # Fields that follow standard naming conventions are likely legitimate
             if any(field_name.endswith(suffix) for suffix in self.standard_suffixes):
