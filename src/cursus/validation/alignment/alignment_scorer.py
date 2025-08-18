@@ -184,25 +184,27 @@ class AlignmentScorer:
             
         total_weight = 0.0
         weighted_score = 0.0
+        passed_count = 0
+        total_count = 0
         
-        for test_name, result in level_tests.items():
+        for script_name, script_result in level_tests.items():
+            # Each script_result should have a 'passed' field
+            total_count += 1
+            
             # Get test importance weight (default to 1.0 if not specified)
-            importance = ALIGNMENT_TEST_IMPORTANCE.get(test_name, 1.0)
+            importance = ALIGNMENT_TEST_IMPORTANCE.get(script_name, 1.0)
             total_weight += importance
             
             # Determine if test passed based on result structure
-            test_passed = self._is_test_passed(result)
+            test_passed = self._is_test_passed(script_result)
             if test_passed:
                 weighted_score += importance
+                passed_count += 1
         
         # Calculate percentage score
         score = (weighted_score / total_weight) * 100.0 if total_weight > 0 else 0.0
         
-        # Count passed tests
-        passed = sum(1 for result in level_tests.values() if self._is_test_passed(result))
-        total = len(level_tests)
-        
-        return score, passed, total
+        return score, passed_count, total_count
     
     def _is_test_passed(self, result: Any) -> bool:
         """

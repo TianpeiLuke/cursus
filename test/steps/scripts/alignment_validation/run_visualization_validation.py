@@ -94,7 +94,7 @@ class VisualizedAlignmentValidator:
             json_content = self.tester.export_report(
                 format='json',
                 output_path=str(json_output_path),
-                generate_chart=True,
+                generate_chart=False,  # We'll generate chart separately to control location
                 script_name=script_name
             )
             
@@ -103,9 +103,20 @@ class VisualizedAlignmentValidator:
             html_content = self.tester.export_report(
                 format='html',
                 output_path=str(html_output_path),
-                generate_chart=False,  # Chart already generated with JSON export
+                generate_chart=False,  # We'll generate chart separately to control location
                 script_name=script_name
             )
+            
+            # Generate alignment score chart in the correct charts directory
+            try:
+                scorer = self.tester.report.get_scorer()
+                chart_path = scorer.generate_chart(script_name, str(self.charts_dir))
+                if chart_path:
+                    print(f"📊 Alignment score chart generated: {chart_path}")
+                else:
+                    print("⚠️  Chart generation skipped (matplotlib not available)")
+            except Exception as e:
+                print(f"⚠️  Chart generation failed: {e}")
             
             # Get scoring information from the populated report
             try:

@@ -3,38 +3,38 @@
   "passed_scripts": 9,
   "failed_scripts": 0,
   "error_scripts": 0,
-  "validation_timestamp": "2025-08-17T21:36:30.237744",
+  "validation_timestamp": "2025-08-18T00:10:15.330391",
   "visualization_enabled": true,
   "script_results": {
     "currency_conversion": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:30.682052",
+      "timestamp": "2025-08-18T00:10:15.765055",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -47,33 +47,33 @@
     },
     "dummy_training": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:30.795283",
+      "timestamp": "2025-08-18T00:10:15.879972",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -86,33 +86,33 @@
     },
     "model_calibration": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:30.920754",
+      "timestamp": "2025-08-18T00:10:16.006914",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -125,33 +125,33 @@
     },
     "package": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:31.036561",
+      "timestamp": "2025-08-18T00:10:16.119186",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -164,33 +164,33 @@
     },
     "payload": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:31.152567",
+      "timestamp": "2025-08-18T00:10:16.235306",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -203,33 +203,33 @@
     },
     "risk_table_mapping": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:31.273198",
+      "timestamp": "2025-08-18T00:10:16.357224",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -242,33 +242,33 @@
     },
     "tabular_preprocessing": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:31.387903",
+      "timestamp": "2025-08-18T00:10:16.479605",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -281,33 +281,33 @@
     },
     "xgboost_model_evaluation": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:31.510708",
+      "timestamp": "2025-08-18T00:10:16.600389",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -320,33 +320,33 @@
     },
     "xgboost_training": {
       "status": "PASSING",
-      "timestamp": "2025-08-17T21:36:31.639614",
+      "timestamp": "2025-08-18T00:10:16.727242",
       "scoring": {
-        "overall_score": 0.0,
-        "overall_rating": "Poor",
+        "overall_score": 100.0,
+        "overall_rating": "Excellent",
         "level_scores": {
           "level1_script_contract": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L1 Script\u2194Contract"
           },
           "level2_contract_spec": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L2 Contract\u2194Spec"
           },
           "level3_spec_dependencies": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L3 Spec\u2194Dependencies"
           },
           "level4_builder_config": {
-            "score": 0.0,
-            "passed": 0,
-            "total": 0,
+            "score": 100.0,
+            "passed": 1,
+            "total": 1,
             "name": "L4 Builder\u2194Config"
           }
         }
@@ -359,24 +359,24 @@
     }
   },
   "scoring_summary": {
-    "average_score": 0.0,
+    "average_score": 100.0,
     "score_distribution": {
-      "min": 0.0,
-      "max": 0.0,
+      "min": 100.0,
+      "max": 100.0,
       "scores": [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0
       ]
     },
     "quality_ratings": {
-      "Poor": 9
+      "Excellent": 9
     }
   }
 }

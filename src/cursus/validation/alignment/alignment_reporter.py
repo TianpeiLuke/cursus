@@ -258,9 +258,9 @@ class AlignmentReport:
         """Convert validation results to format expected by AlignmentScorer."""
         scorer_results = {}
         
-        # Add level results with proper naming
+        # Add level results with proper naming that matches AlignmentScorer expectations
         if self.level1_results:
-            scorer_results['level1_script_contract'] = {
+            scorer_results['level1_results'] = {
                 name: {
                     'passed': result.passed,
                     'issues': [issue.model_dump() for issue in result.issues],
@@ -270,7 +270,7 @@ class AlignmentReport:
             }
         
         if self.level2_results:
-            scorer_results['level2_contract_specification'] = {
+            scorer_results['level2_results'] = {
                 name: {
                     'passed': result.passed,
                     'issues': [issue.model_dump() for issue in result.issues],
@@ -280,7 +280,7 @@ class AlignmentReport:
             }
         
         if self.level3_results:
-            scorer_results['level3_specification_dependencies'] = {
+            scorer_results['level3_results'] = {
                 name: {
                     'passed': result.passed,
                     'issues': [issue.model_dump() for issue in result.issues],
@@ -290,7 +290,7 @@ class AlignmentReport:
             }
         
         if self.level4_results:
-            scorer_results['level4_builder_configuration'] = {
+            scorer_results['level4_results'] = {
                 name: {
                     'passed': result.passed,
                     'issues': [issue.model_dump() for issue in result.issues],
@@ -310,9 +310,9 @@ class AlignmentReport:
         scorer = self.get_scorer()
         return {
             'level1_script_contract': scorer.calculate_level_score('level1_script_contract')[0],
-            'level2_contract_specification': scorer.calculate_level_score('level2_contract_specification')[0],
-            'level3_specification_dependencies': scorer.calculate_level_score('level3_specification_dependencies')[0],
-            'level4_builder_configuration': scorer.calculate_level_score('level4_builder_configuration')[0]
+            'level2_contract_spec': scorer.calculate_level_score('level2_contract_spec')[0],
+            'level3_spec_dependencies': scorer.calculate_level_score('level3_spec_dependencies')[0],
+            'level4_builder_config': scorer.calculate_level_score('level4_builder_config')[0]
         }
     
     def generate_alignment_chart(self, output_path: str = None) -> str:
@@ -695,9 +695,9 @@ class AlignmentReport:
         # Level score cards
         level_names = {
             'level1_script_contract': 'Script ↔ Contract',
-            'level2_contract_specification': 'Contract ↔ Specification',
-            'level3_specification_dependencies': 'Specification ↔ Dependencies',
-            'level4_builder_configuration': 'Builder ↔ Configuration'
+            'level2_contract_spec': 'Contract ↔ Specification',
+            'level3_spec_dependencies': 'Specification ↔ Dependencies',
+            'level4_builder_config': 'Builder ↔ Configuration'
         }
         
         for level_key, level_name in level_names.items():
