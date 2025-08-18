@@ -223,6 +223,13 @@ class TestFullValidation(unittest.TestCase):
         
         self.assertIsInstance(json_output, str)
         self.assertIn('"test"', json_output)  # Should contain test name
+        
+        # Verify JSON contains scoring information (new functionality)
+        import json
+        parsed_json = json.loads(json_output)
+        self.assertIn('scoring', parsed_json)
+        self.assertIn('overall_score', parsed_json['scoring'])
+        self.assertIn('quality_rating', parsed_json['scoring'])
     
     def test_export_report_html(self):
         """Test exporting report to HTML format."""
@@ -238,6 +245,28 @@ class TestFullValidation(unittest.TestCase):
             
             self.assertIsInstance(html_output, str)
             self.assertIn('<html>', html_output)
+    
+    def test_export_report_with_chart_generation(self):
+        """Test exporting report with chart generation enabled."""
+        # Add some test data
+        test_result = ValidationResult(test_name="test", passed=True)
+        self.tester.report.add_level1_result("test", test_result)
+        
+        # Mock chart generation
+        with patch.object(self.tester.report, 'get_scorer') as mock_get_scorer:
+            mock_scorer = MagicMock()
+            mock_scorer.generate_chart.return_value = "/path/to/chart.png"
+            mock_get_scorer.return_value = mock_scorer
+            
+            json_output = self.tester.export_report(
+                format='json',
+                generate_chart=True,
+                script_name="test_script"
+            )
+            
+            self.assertIsInstance(json_output, str)
+            # Chart generation should be attempted
+            mock_scorer.generate_chart.assert_called_once()
     
     def test_export_report_invalid_format(self):
         """Test exporting report with invalid format."""
@@ -458,6 +487,12 @@ class TestFullValidation(unittest.TestCase):
             for level in ['level1', 'level2', 'level3', 'level4']:
                 self.assertIn('passed', result[level])
                 self.assertIn('issues', result[level])
+            
+            # Verify scoring information is included (new functionality)
+            self.assertIn('scoring', result)
+            self.assertIn('overall_score', result['scoring'])
+            self.assertIn('quality_rating', result['scoring'])
+            self.assertIn('level_scores', result['scoring'])
     
     def test_comprehensive_validation_workflow(self):
         """Test the complete validation workflow as used by the CLI and standalone scripts."""
@@ -543,6 +578,11 @@ class TestFullValidation(unittest.TestCase):
             self.assertIn('overall_status', summary)
             self.assertIn('total_tests', summary)
             self.assertIn('level_breakdown', summary)
+            
+            # Verify scoring information is included in summary (new functionality)
+            self.assertIn('scoring', summary)
+            self.assertIn('overall_score', summary['scoring'])
+            self.assertIn('quality_rating', summary['scoring'])
             
             # Verify specific script validation
             script_result = self.tester.validate_specific_script("payload")

@@ -86,13 +86,26 @@ class AlignmentScorer:
         """
         grouped = {level: {} for level in ALIGNMENT_LEVEL_WEIGHTS.keys()}
         
-        # If results have a 'tests' or 'validations' key, use that
-        test_results = self.results.get('tests', self.results.get('validations', self.results))
+        # Handle the actual alignment report format with level1, level2, etc.
+        for key, value in self.results.items():
+            if key.startswith('level') and isinstance(value, dict):
+                # Map level1 -> level1_script_contract, etc.
+                if key == 'level1':
+                    grouped['level1_script_contract'][key] = value
+                elif key == 'level2':
+                    grouped['level2_contract_spec'][key] = value
+                elif key == 'level3':
+                    grouped['level3_spec_dependencies'][key] = value
+                elif key == 'level4':
+                    grouped['level4_builder_config'][key] = value
         
-        for test_name, result in test_results.items():
-            level = self._detect_level_from_test_name(test_name)
-            if level:
-                grouped[level][test_name] = result
+        # Also handle individual test results if they exist
+        test_results = self.results.get('tests', self.results.get('validations', {}))
+        if isinstance(test_results, dict):
+            for test_name, result in test_results.items():
+                level = self._detect_level_from_test_name(test_name)
+                if level:
+                    grouped[level][test_name] = result
         
         return grouped
     

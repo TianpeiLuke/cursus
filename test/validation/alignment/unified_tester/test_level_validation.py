@@ -149,6 +149,12 @@ class TestLevelValidation(unittest.TestCase):
             self.assertTrue(result['level2']['passed'])
             self.assertTrue(result['level3']['passed'])
             self.assertTrue(result['level4']['passed'])
+            
+            # Verify scoring information is included (new functionality)
+            self.assertIn('scoring', result)
+            self.assertIn('overall_score', result['scoring'])
+            self.assertIn('quality_rating', result['scoring'])
+            self.assertIn('level_scores', result['scoring'])
     
     def test_validate_specific_script_with_failures(self):
         """Test validating a specific script with some failures."""
@@ -239,6 +245,11 @@ class TestLevelValidation(unittest.TestCase):
         self.assertIn('pass_rate', summary)
         self.assertIn('level_breakdown', summary)
         
+        # Verify scoring information is included (new functionality)
+        self.assertIn('scoring', summary)
+        self.assertIn('overall_score', summary['scoring'])
+        self.assertIn('quality_rating', summary['scoring'])
+        
         # Test get_critical_issues
         critical_issue = AlignmentIssue(
             level=SeverityLevel.CRITICAL,
@@ -303,6 +314,11 @@ class TestLevelValidation(unittest.TestCase):
         self.assertIn('total_tests', summary)
         self.assertIn('pass_rate', summary)
         self.assertIn('level_breakdown', summary)
+        
+        # Verify scoring information is included (new functionality)
+        self.assertIn('scoring', summary)
+        self.assertIn('overall_score', summary['scoring'])
+        self.assertIn('quality_rating', summary['scoring'])
     
     def test_discover_scripts(self):
         """Test script discovery."""

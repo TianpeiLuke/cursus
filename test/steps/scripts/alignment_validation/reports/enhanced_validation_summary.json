@@ -1,0 +1,382 @@
+{
+  "total_scripts": 9,
+  "passed_scripts": 9,
+  "failed_scripts": 0,
+  "error_scripts": 0,
+  "validation_timestamp": "2025-08-17T21:31:08.845009",
+  "visualization_enabled": true,
+  "script_results": {
+    "currency_conversion": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:09.311523",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/currency_conversion_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/currency_conversion_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/currency_conversion_alignment_score_chart.png"
+      }
+    },
+    "dummy_training": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:09.445244",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/dummy_training_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/dummy_training_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/dummy_training_alignment_score_chart.png"
+      }
+    },
+    "model_calibration": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:09.596704",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/model_calibration_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/model_calibration_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/model_calibration_alignment_score_chart.png"
+      }
+    },
+    "package": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:09.728760",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/package_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/package_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/package_alignment_score_chart.png"
+      }
+    },
+    "payload": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:09.864146",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/payload_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/payload_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/payload_alignment_score_chart.png"
+      }
+    },
+    "risk_table_mapping": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:10.002122",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/risk_table_mapping_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/risk_table_mapping_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/risk_table_mapping_alignment_score_chart.png"
+      }
+    },
+    "tabular_preprocessing": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:10.129312",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/tabular_preprocessing_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/tabular_preprocessing_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/tabular_preprocessing_alignment_score_chart.png"
+      }
+    },
+    "xgboost_model_evaluation": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:10.267198",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/xgboost_model_evaluation_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/xgboost_model_evaluation_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/xgboost_model_evaluation_alignment_score_chart.png"
+      }
+    },
+    "xgboost_training": {
+      "status": "PASSING",
+      "timestamp": "2025-08-17T21:31:10.413171",
+      "scoring": {
+        "overall_score": 0.0,
+        "overall_rating": "Poor",
+        "level_scores": {
+          "level1_script_contract": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L1 Script\u2194Contract"
+          },
+          "level2_contract_spec": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L2 Contract\u2194Spec"
+          },
+          "level3_spec_dependencies": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L3 Spec\u2194Dependencies"
+          },
+          "level4_builder_config": {
+            "score": 0.0,
+            "passed": 0,
+            "total": 0,
+            "name": "L4 Builder\u2194Config"
+          }
+        }
+      },
+      "reports": {
+        "json": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/json/xgboost_training_alignment_report.json",
+        "html": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/html/xgboost_training_alignment_report.html",
+        "chart": "/Users/tianpeixie/github_workspace/cursus/test/steps/scripts/alignment_validation/reports/charts/xgboost_training_alignment_score_chart.png"
+      }
+    }
+  },
+  "scoring_summary": {
+    "average_score": 0.0,
+    "score_distribution": {
+      "min": 0.0,
+      "max": 0.0,
+      "scores": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "quality_ratings": {
+      "Poor": 9
+    }
+  }
+}

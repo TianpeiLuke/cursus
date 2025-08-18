@@ -139,6 +139,29 @@ class UnifiedAlignmentTester:
         print("\n📊 Generating alignment report...")
         self.report.generate_summary()
         
+        # Print alignment scoring summary
+        print("\n📈 Alignment Quality Scoring:")
+        try:
+            scorer = self.report.get_scorer()
+            overall_score = scorer.calculate_overall_score()
+            overall_rating = scorer.get_rating(overall_score)
+            print(f"   Overall Score: {overall_score:.1f}/100 ({overall_rating})")
+            
+            # Print level scores
+            level_names = {
+                "level1_script_contract": "L1 Script↔Contract",
+                "level2_contract_spec": "L2 Contract↔Spec",
+                "level3_spec_dependencies": "L3 Spec↔Dependencies", 
+                "level4_builder_config": "L4 Builder↔Config"
+            }
+            
+            for level_key, level_name in level_names.items():
+                score, passed, total = scorer.calculate_level_score(level_key)
+                print(f"   {level_name}: {score:.1f}/100 ({passed}/{total} tests)")
+                
+        except Exception as e:
+            print(f"   ⚠️  Scoring calculation failed: {e}")
+        
         return self.report
     
     def run_level_validation(self, level: int, 
@@ -388,13 +411,16 @@ class UnifiedAlignmentTester:
             'recommendations_count': len(self.report.get_recommendations())
         }
     
-    def export_report(self, format: str = 'json', output_path: Optional[str] = None) -> str:
+    def export_report(self, format: str = 'json', output_path: Optional[str] = None, 
+                     generate_chart: bool = True, script_name: str = "alignment_validation") -> str:
         """
-        Export the alignment report in the specified format.
+        Export the alignment report in the specified format with optional visualization.
         
         Args:
             format: Export format ('json' or 'html')
             output_path: Optional path to save the report
+            generate_chart: Whether to generate alignment score chart
+            script_name: Name for the chart file
             
         Returns:
             Report content as string
@@ -409,7 +435,19 @@ class UnifiedAlignmentTester:
         if output_path:
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            print(f"Report exported to: {output_path}")
+            print(f"📄 Report exported to: {output_path}")
+            
+            # Generate alignment score chart if requested
+            if generate_chart:
+                try:
+                    output_dir = str(Path(output_path).parent)
+                    chart_path = self.report.get_scorer().generate_chart(script_name, output_dir)
+                    if chart_path:
+                        print(f"📊 Alignment score chart generated: {chart_path}")
+                    else:
+                        print("⚠️  Chart generation skipped (matplotlib not available)")
+                except Exception as e:
+                    print(f"⚠️  Chart generation failed: {e}")
         
         return content
     
