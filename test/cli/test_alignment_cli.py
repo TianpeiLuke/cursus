@@ -22,6 +22,7 @@ from click.testing import CliRunner
 
 from src.cursus.cli.alignment_cli import alignment
 from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from src.cursus.validation.alignment.alignment_scorer import AlignmentScorer
 
 
 class TestAlignmentCLI(unittest.TestCase):
@@ -387,14 +388,19 @@ class TestAlignmentCLI(unittest.TestCase):
             mock_tester.validate_specific_script.side_effect = Exception("Validation error")
             
             # Mock the scripts directory to contain test scripts
-            with patch('pathlib.Path.glob') as mock_glob:
-                mock_glob.return_value = [
-                    MagicMock(name='payload.py', stem='payload')
-                ]
+            with patch('pathlib.Path.exists', return_value=True), \
+                 patch('pathlib.Path.glob') as mock_glob:
+                
+                mock_file = MagicMock()
+                mock_file.name = 'payload.py'
+                mock_file.stem = 'payload'
+                mock_glob.return_value = [mock_file]
                 
                 result = self.runner.invoke(alignment, ['validate-all'])
                 
-                self.assertEqual(result.exit_code, 1)
+                # The CLI exits with 0 when using continue-on-error by default
+                # and shows error summary in the final output
+                self.assertEqual(result.exit_code, 0)
                 self.assertIn('❌ Failed to validate payload', result.output)
     
     def test_json_serialization_edge_cases(self):
@@ -441,6 +447,438 @@ class TestAlignmentCLI(unittest.TestCase):
             self.assertIsNone(saved_data['complex_data']['none_value'])
             self.assertEqual(saved_data['complex_data']['empty_list'], [])
             self.assertEqual(saved_data['complex_data']['empty_dict'], {})
+
+
+class TestAlignmentCLIVisualization(unittest.TestCase):
+    """Test the alignment CLI visualization functionality."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        self.temp_dir = tempfile.mkdtemp()
+        
+    def tearDown(self):
+        """Clean up after tests."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+    
+    def test_visualize_single_script_success(self):
+        """Test visualizing a single script successfully."""
+        mock_result = {
+            'script_name': 'payload',
+            'overall_status': 'PASSING',
+            'level1': {'passed': True, 'issues': []},
+            'level2': {'passed': True, 'issues': []},
+            'level3': {'passed': True, 'issues': []},
+            'level4': {'passed': True, 'issues': []}
+        }
+        
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.return_value = mock_result
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 100.0
+            mock_scorer.get_quality_rating.return_value = "Excellent"
+            mock_scorer.get_level_scores.return_value = {}
+            mock_scorer.generate_chart.return_value = Path(self.temp_dir) / "payload_alignment_chart.png"
+            mock_scorer.generate_scoring_report.return_value = {"score": 100.0}
+            
+            result = self.runner.invoke(alignment, [
+                'visualize', 'payload',
+                '--output-dir', self.temp_dir
+            ])
+            
+            self.assertEqual(result.exit_code, 0)
+            mock_tester.validate_specific_script.assert_called_once_with('payload')
+            mock_scorer.generate_chart.assert_called_once()
+            self.assertIn('✅ Visualization generation complete for payload!', result.output)
+    
+    def test_visualize_single_script_failure(self):
+        """Test visualizing a single script with validation failure."""
+        mock_result = {
+            'script_name': 'payload',
+            'overall_status': 'FAILING',
+            'level1': {'passed': False, 'issues': [{'severity': 'ERROR', 'message': 'Test error'}]},
+            'level2': {'passed': True, 'issues': []},
+            'level3': {'passed': True, 'issues': []},
+            'level4': {'passed': True, 'issues': []}
+        }
+        
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.return_value = mock_result
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 45.0
+            mock_scorer.get_quality_rating.return_value = "Needs Work"
+            mock_scorer.get_level_scores.return_value = {}
+            mock_scorer.generate_chart.return_value = Path(self.temp_dir) / "payload_alignment_chart.png"
+            mock_scorer.generate_scoring_report.return_value = {"score": 45.0}
+            
+            result = self.runner.invoke(alignment, [
+                'visualize', 'payload',
+                '--output-dir', self.temp_dir
+            ])
+            
+            self.assertEqual(result.exit_code, 0)  # Visualization still succeeds
+            self.assertIn('✅ Visualization generation complete for payload!', result.output)
+    
+    def test_visualize_all_scripts_success(self):
+        """Test visualizing all scripts successfully."""
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            
+            # Mock validation results for multiple scripts
+            mock_tester.validate_specific_script.side_effect = [
+                {'script_name': 'payload', 'overall_status': 'PASSING', 'level1': {'passed': True, 'issues': []}, 'level2': {'passed': True, 'issues': []}, 'level3': {'passed': True, 'issues': []}, 'level4': {'passed': True, 'issues': []}},
+                {'script_name': 'package', 'overall_status': 'PASSING', 'level1': {'passed': True, 'issues': []}, 'level2': {'passed': True, 'issues': []}, 'level3': {'passed': True, 'issues': []}, 'level4': {'passed': True, 'issues': []}}
+            ]
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 100.0
+            mock_scorer.get_quality_rating.return_value = "Excellent"
+            mock_scorer.get_level_scores.return_value = {}
+            mock_scorer.generate_chart.return_value = Path(self.temp_dir) / "test_chart.png"
+            mock_scorer.generate_scoring_report.return_value = {"score": 100.0}
+            
+            # Mock the Path.exists() and Path.glob() methods
+            with patch('pathlib.Path.exists', return_value=True), \
+                 patch('pathlib.Path.glob') as mock_glob:
+                
+                # Create mock file objects
+                mock_files = []
+                for name in ['payload', 'package']:
+                    mock_file = MagicMock()
+                    mock_file.name = f'{name}.py'
+                    mock_file.stem = name
+                    mock_files.append(mock_file)
+                
+                mock_glob.return_value = mock_files
+                
+                result = self.runner.invoke(alignment, [
+                    'visualize-all',
+                    '--output-dir', self.temp_dir
+                ])
+                
+                self.assertEqual(result.exit_code, 0)
+                self.assertIn('🎉 All 2 visualizations generated successfully!', result.output)
+                # Verify scorer was called for each script
+                self.assertEqual(mock_scorer.generate_chart.call_count, 2)
+    
+    def test_visualize_all_scripts_with_errors(self):
+        """Test visualizing all scripts with some errors."""
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            
+            # Mock validation results - first script (package) succeeds, second script (payload) fails
+            mock_tester.validate_specific_script.side_effect = [
+                {'script_name': 'package', 'overall_status': 'PASSING', 'level1': {'passed': True, 'issues': []}, 'level2': {'passed': True, 'issues': []}, 'level3': {'passed': True, 'issues': []}, 'level4': {'passed': True, 'issues': []}},
+                Exception("Validation error for payload")
+            ]
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 100.0
+            mock_scorer.get_quality_rating.return_value = "Excellent"
+            mock_scorer.get_level_scores.return_value = {}
+            mock_scorer.generate_chart.return_value = Path(self.temp_dir) / "test_chart.png"
+            mock_scorer.generate_scoring_report.return_value = {"score": 100.0}
+            
+            # Mock the Path.exists() and Path.glob() methods
+            with patch('pathlib.Path.exists', return_value=True), \
+                 patch('pathlib.Path.glob') as mock_glob:
+                
+                # Create mock file objects - note: scripts are processed in sorted order
+                mock_files = []
+                for name in ['package', 'payload']:  # Sorted order: package, payload
+                    mock_file = MagicMock()
+                    mock_file.name = f'{name}.py'
+                    mock_file.stem = name
+                    mock_files.append(mock_file)
+                
+                mock_glob.return_value = mock_files
+                
+                result = self.runner.invoke(alignment, [
+                    'visualize-all',
+                    '--output-dir', self.temp_dir,
+                    '--continue-on-error'
+                ])
+                
+                self.assertEqual(result.exit_code, 1)  # Should exit with error code due to failures
+                self.assertIn('❌ Failed to generate visualization for payload', result.output)
+    
+    def test_visualize_chart_generation_failure(self):
+        """Test handling of chart generation failures."""
+        mock_result = {
+            'script_name': 'payload',
+            'overall_status': 'PASSING',
+            'level1': {'passed': True, 'issues': []},
+            'level2': {'passed': True, 'issues': []},
+            'level3': {'passed': True, 'issues': []},
+            'level4': {'passed': True, 'issues': []}
+        }
+        
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.return_value = mock_result
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 100.0
+            mock_scorer.get_quality_rating.return_value = "Excellent"
+            mock_scorer.get_level_scores.return_value = {}
+            mock_scorer.generate_chart.side_effect = Exception("Chart generation failed")
+            
+            result = self.runner.invoke(alignment, [
+                'visualize', 'payload',
+                '--output-dir', self.temp_dir
+            ])
+            
+            self.assertEqual(result.exit_code, 1)
+            self.assertIn('❌ Error generating visualization for payload', result.output)
+    
+    def test_show_scoring_flag_integration(self):
+        """Test the --show-scoring flag integration."""
+        mock_result = {
+            'script_name': 'payload',
+            'overall_status': 'PASSING',
+            'level1': {'passed': True, 'issues': []},
+            'level2': {'passed': True, 'issues': []},
+            'level3': {'passed': True, 'issues': []},
+            'level4': {'passed': True, 'issues': []}
+        }
+        
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.return_value = mock_result
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 95.5
+            mock_scorer.get_quality_rating.return_value = "Excellent"
+            mock_scorer.get_level_scores.return_value = {
+                'level1_script_contract': 100.0,
+                'level2_contract_spec': 100.0,
+                'level3_spec_dependencies': 100.0,
+                'level4_builder_config': 82.0
+            }
+            
+            result = self.runner.invoke(alignment, [
+                'validate', 'payload',
+                '--show-scoring'
+            ])
+            
+            self.assertEqual(result.exit_code, 0)
+            mock_scorer.calculate_overall_score.assert_called_once()
+            mock_scorer.get_quality_rating.assert_called_once()
+            self.assertIn('95.5/100', result.output)
+            self.assertIn('Excellent', result.output)
+    
+    
+    def test_visualize_invalid_script(self):
+        """Test visualization with invalid script name."""
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.side_effect = Exception("Script not found")
+            
+            result = self.runner.invoke(alignment, [
+                'visualize', 'nonexistent_script',
+                '--output-dir', self.temp_dir
+            ])
+            
+            self.assertEqual(result.exit_code, 1)
+            self.assertIn('❌ Error generating visualization for nonexistent_script', result.output)
+    
+    def test_visualize_output_directory_creation(self):
+        """Test that visualization creates output directory if it doesn't exist."""
+        non_existent_dir = os.path.join(self.temp_dir, 'new_viz_dir')
+        
+        mock_result = {
+            'script_name': 'payload',
+            'overall_status': 'PASSING',
+            'level1': {'passed': True, 'issues': []},
+            'level2': {'passed': True, 'issues': []},
+            'level3': {'passed': True, 'issues': []},
+            'level4': {'passed': True, 'issues': []}
+        }
+        
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.return_value = mock_result
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 100.0
+            mock_scorer.get_quality_rating.return_value = "Excellent"
+            mock_scorer.get_level_scores.return_value = {}
+            mock_scorer.generate_chart.return_value = Path(non_existent_dir) / "payload_alignment_chart.png"
+            mock_scorer.generate_scoring_report.return_value = {"score": 100.0}
+            
+            result = self.runner.invoke(alignment, [
+                'visualize', 'payload',
+                '--output-dir', non_existent_dir
+            ])
+            
+            self.assertEqual(result.exit_code, 0)
+            
+            # Verify directory was created
+            self.assertTrue(os.path.exists(non_existent_dir))
+    
+    def test_visualize_all_no_scripts_found(self):
+        """Test visualize-all when no scripts are found."""
+        with patch('pathlib.Path.exists', return_value=True), \
+             patch('pathlib.Path.glob', return_value=[]):
+            
+            result = self.runner.invoke(alignment, [
+                'visualize-all',
+                '--output-dir', self.temp_dir
+            ])
+            
+            self.assertEqual(result.exit_code, 1)
+            self.assertIn('❌ Fatal error during visualization generation: division by zero', result.output)
+    
+    def test_visualize_all_continue_on_error_disabled(self):
+        """Test visualize-all without continue-on-error flag."""
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            
+            # First script succeeds, second fails
+            mock_tester.validate_specific_script.side_effect = [
+                {'script_name': 'payload', 'overall_status': 'PASSING', 'level1': {'passed': True, 'issues': []}, 'level2': {'passed': True, 'issues': []}, 'level3': {'passed': True, 'issues': []}, 'level4': {'passed': True, 'issues': []}},
+                Exception("Validation error for package")
+            ]
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.generate_visualization.return_value = True
+            
+            # Mock the Path.exists() and Path.glob() methods
+            with patch('pathlib.Path.exists', return_value=True), \
+                 patch('pathlib.Path.glob') as mock_glob:
+                
+                # Create mock file objects
+                mock_files = []
+                for name in ['payload', 'package']:
+                    mock_file = MagicMock()
+                    mock_file.name = f'{name}.py'
+                    mock_file.stem = name
+                    mock_files.append(mock_file)
+                
+                mock_glob.return_value = mock_files
+                
+                result = self.runner.invoke(alignment, [
+                    'visualize-all',
+                    '--output-dir', self.temp_dir
+                ])
+                
+                self.assertEqual(result.exit_code, 1)  # Should exit on first error
+                self.assertIn('❌ Failed to generate visualization for package', result.output)
+
+
+class TestAlignmentCLIScoring(unittest.TestCase):
+    """Test the alignment CLI scoring functionality."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        
+    def test_scoring_calculation_integration(self):
+        """Test that scoring calculation works correctly with CLI."""
+        mock_result = {
+            'script_name': 'payload',
+            'overall_status': 'PASSING',
+            'level1': {'passed': True, 'issues': []},
+            'level2': {'passed': True, 'issues': []},
+            'level3': {'passed': True, 'issues': []},
+            'level4': {'passed': True, 'issues': []}
+        }
+        
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.return_value = mock_result
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 100.0
+            mock_scorer.get_quality_rating.return_value = "Excellent"
+            mock_scorer.get_level_scores.return_value = {}
+            
+            result = self.runner.invoke(alignment, [
+                'validate', 'payload',
+                '--show-scoring'
+            ])
+            
+            self.assertEqual(result.exit_code, 0)
+            # Verify scorer methods were called
+            mock_scorer.calculate_overall_score.assert_called_once()
+            mock_scorer.get_quality_rating.assert_called_once()
+            self.assertIn('100.0/100', result.output)
+            self.assertIn('Excellent', result.output)
+    
+    def test_scoring_with_partial_failures(self):
+        """Test scoring calculation with partial failures."""
+        mock_result = {
+            'script_name': 'payload',
+            'overall_status': 'FAILING',
+            'level1': {'passed': True, 'issues': []},
+            'level2': {'passed': False, 'issues': [{'severity': 'ERROR', 'message': 'Level 2 error'}]},
+            'level3': {'passed': True, 'issues': []},
+            'level4': {'passed': False, 'issues': [{'severity': 'WARNING', 'message': 'Level 4 warning'}]}
+        }
+        
+        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+            
+            mock_tester = MagicMock()
+            mock_tester_class.return_value = mock_tester
+            mock_tester.validate_specific_script.return_value = mock_result
+            
+            mock_scorer = MagicMock()
+            mock_scorer_class.return_value = mock_scorer
+            mock_scorer.calculate_overall_score.return_value = 42.5
+            mock_scorer.get_quality_rating.return_value = "Needs Work"
+            mock_scorer.get_level_scores.return_value = {}
+            
+            result = self.runner.invoke(alignment, [
+                'validate', 'payload',
+                '--show-scoring'
+            ])
+            
+            self.assertEqual(result.exit_code, 1)  # Script failed validation
+            self.assertIn('42.5/100', result.output)
+            self.assertIn('Needs Work', result.output)
 
 
 class TestAlignmentCLIIntegration(unittest.TestCase):

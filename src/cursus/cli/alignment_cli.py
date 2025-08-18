@@ -19,9 +19,10 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 from ..validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from ..validation.alignment.alignment_scorer import AlignmentScorer
 
 
-def print_validation_summary(results: Dict[str, Any], verbose: bool = False) -> None:
+def print_validation_summary(results: Dict[str, Any], verbose: bool = False, show_scoring: bool = False) -> None:
     """Print validation results in a formatted way."""
     script_name = results.get('script_name', 'Unknown')
     status = results.get('overall_status', 'UNKNOWN')
@@ -39,6 +40,47 @@ def print_validation_summary(results: Dict[str, Any], verbose: bool = False) -> 
     
     click.echo(f"\n{status_emoji} {script_name}: ", nl=False)
     click.secho(status, fg=status_color, bold=True)
+    
+    # Show scoring information if requested
+    if show_scoring:
+        try:
+            scorer = AlignmentScorer(results)
+            overall_score = scorer.calculate_overall_score()
+            quality_rating = scorer.get_quality_rating()
+            level_scores = scorer.get_level_scores()
+            
+            # Color-code the quality rating
+            rating_colors = {
+                'Excellent': 'green',
+                'Good': 'green', 
+                'Satisfactory': 'yellow',
+                'Needs Work': 'yellow',
+                'Poor': 'red'
+            }
+            rating_color = rating_colors.get(quality_rating, 'white')
+            
+            click.echo(f"📊 Overall Score: ", nl=False)
+            click.secho(f"{overall_score:.1f}/100", fg=rating_color, bold=True, nl=False)
+            click.echo(f" (", nl=False)
+            click.secho(quality_rating, fg=rating_color, bold=True, nl=False)
+            click.echo(")")
+            
+            if verbose:
+                click.echo("📈 Level Scores:")
+                level_names = {
+                    'level1_script_contract': 'Level 1 (Script ↔ Contract)',
+                    'level2_contract_spec': 'Level 2 (Contract ↔ Specification)',
+                    'level3_spec_dependencies': 'Level 3 (Specification ↔ Dependencies)',
+                    'level4_builder_config': 'Level 4 (Builder ↔ Configuration)'
+                }
+                
+                for level_key, score in level_scores.items():
+                    level_name = level_names.get(level_key, level_key)
+                    click.echo(f"  • {level_name}: {score:.1f}/100")
+                    
+        except Exception as e:
+            if verbose:
+                click.echo(f"⚠️  Could not calculate scoring: {e}")
     
     # Print level-by-level results
     level_names = [
@@ -353,9 +395,10 @@ def alignment(ctx):
 @click.option('--format', type=click.Choice(['json', 'html', 'both']), default='json',
               help='Output format for reports')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.option('--show-scoring', is_flag=True, help='Show alignment scoring information')
 @click.pass_context
 def validate(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_dir, 
-             configs_dir, output_dir, format, verbose):
+             configs_dir, output_dir, format, verbose, show_scoring):
     """
     Validate alignment for a specific script.
     
@@ -407,7 +450,7 @@ def validate(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_d
         }
         
         # Print results
-        print_validation_summary(results, verbose)
+        print_validation_summary(results, verbose, show_scoring)
         
         # Save reports if output directory specified
         if output_dir:
@@ -775,6 +818,372 @@ def validate_level(ctx, script_name, level, scripts_dir, contracts_dir, specs_di
 
 
 @alignment.command()
+@click.argument('script_name')
+@click.option('--scripts-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing scripts (default: src/cursus/steps/scripts)')
+@click.option('--contracts-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing contracts (default: src/cursus/steps/contracts)')
+@click.option('--specs-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing specifications (default: src/cursus/steps/specs)')
+@click.option('--builders-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing builders (default: src/cursus/steps/builders)')
+@click.option('--configs-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing configs (default: src/cursus/steps/configs)')
+@click.option('--output-dir', '-o', type=click.Path(path_type=Path), required=True,
+              help='Output directory for visualization files (required)')
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.pass_context
+def visualize(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_dir, 
+              configs_dir, output_dir, verbose):
+    """
+    Generate visualization charts and scoring reports for a specific script.
+    
+    This command runs full alignment validation and generates:
+    - High-resolution PNG chart with scoring breakdown
+    - JSON scoring report with detailed metrics
+    - Enhanced HTML report with scoring integration
+    
+    SCRIPT_NAME: Name of the script to validate (without .py extension)
+    
+    Example:
+        cursus alignment visualize currency_conversion --output-dir ./visualizations --verbose
+        cursus alignment visualize xgboost_model_evaluation --output-dir ./charts
+    """
+    # Set default directories if not provided
+    project_root = Path.cwd()
+    if not scripts_dir:
+        scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+    if not contracts_dir:
+        contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
+    if not specs_dir:
+        specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
+    if not builders_dir:
+        builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
+    if not configs_dir:
+        configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
+    
+    if verbose:
+        click.echo(f"🎨 Generating visualization for script: {script_name}")
+        click.echo(f"📁 Scripts directory: {scripts_dir}")
+        click.echo(f"📁 Output directory: {output_dir}")
+    
+    try:
+        # Initialize the unified alignment tester
+        tester = UnifiedAlignmentTester(
+            scripts_dir=str(scripts_dir),
+            contracts_dir=str(contracts_dir),
+            specs_dir=str(specs_dir),
+            builders_dir=str(builders_dir),
+            configs_dir=str(configs_dir)
+        )
+        
+        # Run validation
+        click.echo("🔍 Running alignment validation...")
+        results = tester.validate_specific_script(script_name)
+        
+        # Initialize scorer
+        scorer = AlignmentScorer(results)
+        overall_score = scorer.calculate_overall_score()
+        quality_rating = scorer.get_quality_rating()
+        level_scores = scorer.get_level_scores()
+        
+        # Print scoring summary
+        rating_colors = {
+            'Excellent': 'green',
+            'Good': 'green', 
+            'Satisfactory': 'yellow',
+            'Needs Work': 'yellow',
+            'Poor': 'red'
+        }
+        rating_color = rating_colors.get(quality_rating, 'white')
+        
+        click.echo(f"\n📊 Alignment Scoring Results:")
+        click.echo(f"Overall Score: ", nl=False)
+        click.secho(f"{overall_score:.1f}/100", fg=rating_color, bold=True, nl=False)
+        click.echo(f" (", nl=False)
+        click.secho(quality_rating, fg=rating_color, bold=True, nl=False)
+        click.echo(")")
+        
+        if verbose:
+            click.echo("\n📈 Level-by-Level Scores:")
+            level_names = {
+                'level1_script_contract': 'Level 1 (Script ↔ Contract)',
+                'level2_contract_spec': 'Level 2 (Contract ↔ Specification)',
+                'level3_spec_dependencies': 'Level 3 (Specification ↔ Dependencies)',
+                'level4_builder_config': 'Level 4 (Builder ↔ Configuration)'
+            }
+            
+            for level_key, score in level_scores.items():
+                level_name = level_names.get(level_key, level_key)
+                click.echo(f"  • {level_name}: {score:.1f}/100")
+        
+        # Create output directory
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate visualization chart
+        click.echo("\n🎨 Generating visualization chart...")
+        chart_path = scorer.generate_chart(
+            output_dir=str(output_dir),
+            script_name=script_name
+        )
+        click.echo(f"📊 Chart saved: {chart_path}")
+        
+        # Generate scoring report
+        click.echo("📄 Generating scoring report...")
+        scoring_report = scorer.generate_scoring_report()
+        scoring_file = output_dir / f"{script_name}_alignment_scoring_report.json"
+        
+        with open(scoring_file, 'w', encoding='utf-8') as f:
+            json.dump(scoring_report, f, indent=2)
+        click.echo(f"📄 Scoring report saved: {scoring_file}")
+        
+        # Generate enhanced HTML report
+        click.echo("🌐 Generating enhanced HTML report...")
+        results['metadata'] = {
+            'script_path': str(scripts_dir / f"{script_name}.py"),
+            'validation_timestamp': datetime.now().isoformat(),
+            'validator_version': '1.0.0',
+            'chart_path': str(chart_path),
+            'scoring_report_path': str(scoring_file)
+        }
+        
+        html_file = output_dir / f"{script_name}_alignment_report.html"
+        html_content = generate_html_report(script_name, results)
+        with open(html_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        click.echo(f"🌐 HTML report saved: {html_file}")
+        
+        # Summary
+        click.echo(f"\n✅ Visualization generation complete for {script_name}!")
+        click.echo(f"📁 Files generated in: {output_dir}")
+        click.echo(f"  • Chart: {chart_path.name}")
+        click.echo(f"  • Scoring Report: {scoring_file.name}")
+        click.echo(f"  • HTML Report: {html_file.name}")
+        
+        return 0
+        
+    except Exception as e:
+        click.echo(f"❌ Error generating visualization for {script_name}: {e}", err=True)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        ctx.exit(1)
+
+
+@alignment.command()
+@click.option('--scripts-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing scripts (default: src/cursus/steps/scripts)')
+@click.option('--contracts-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing contracts (default: src/cursus/steps/contracts)')
+@click.option('--specs-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing specifications (default: src/cursus/steps/specs)')
+@click.option('--builders-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing builders (default: src/cursus/steps/builders)')
+@click.option('--configs-dir', type=click.Path(exists=True, path_type=Path),
+              help='Directory containing configs (default: src/cursus/steps/configs)')
+@click.option('--output-dir', '-o', type=click.Path(path_type=Path), required=True,
+              help='Output directory for visualization files (required)')
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.option('--continue-on-error', is_flag=True, 
+              help='Continue visualization even if individual scripts fail')
+@click.pass_context
+def visualize_all(ctx, scripts_dir, contracts_dir, specs_dir, builders_dir, configs_dir,
+                  output_dir, verbose, continue_on_error):
+    """
+    Generate visualization charts and scoring reports for all scripts.
+    
+    Discovers all Python scripts and generates comprehensive visualizations
+    for each one, including charts, scoring reports, and enhanced HTML reports.
+    
+    Example:
+        cursus alignment visualize-all --output-dir ./visualizations --verbose
+    """
+    try:
+        # Set default directories if not provided
+        project_root = Path.cwd()
+        if not scripts_dir:
+            scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+        if not contracts_dir:
+            contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
+        if not specs_dir:
+            specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
+        if not builders_dir:
+            builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
+        if not configs_dir:
+            configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
+        
+        click.echo("🎨 Starting Comprehensive Alignment Visualization Generation")
+        if verbose:
+            click.echo(f"📁 Scripts directory: {scripts_dir}")
+            click.echo(f"📁 Output directory: {output_dir}")
+        
+        # Initialize the unified alignment tester
+        tester = UnifiedAlignmentTester(
+            scripts_dir=str(scripts_dir),
+            contracts_dir=str(contracts_dir),
+            specs_dir=str(specs_dir),
+            builders_dir=str(builders_dir),
+            configs_dir=str(configs_dir)
+        )
+        
+        # Discover all scripts
+        scripts = []
+        if scripts_dir.exists():
+            for script_file in scripts_dir.glob("*.py"):
+                if not script_file.name.startswith('__'):
+                    scripts.append(script_file.stem)
+        
+        scripts = sorted(scripts)
+        click.echo(f"\n📋 Discovered {len(scripts)} scripts: {', '.join(scripts)}")
+        
+        # Create output directory
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Visualization results summary
+        visualization_summary = {
+            'total_scripts': len(scripts),
+            'successful_visualizations': 0,
+            'failed_visualizations': 0,
+            'generation_timestamp': datetime.now().isoformat(),
+            'script_results': {},
+            'overall_statistics': {
+                'total_charts_generated': 0,
+                'total_scoring_reports_generated': 0,
+                'total_html_reports_generated': 0
+            }
+        }
+        
+        # Generate visualizations for each script
+        for script_name in scripts:
+            click.echo(f"\n{'='*60}")
+            click.echo(f"🎨 GENERATING VISUALIZATION: {script_name}")
+            click.echo(f"{'='*60}")
+            
+            try:
+                # Run validation
+                results = tester.validate_specific_script(script_name)
+                
+                # Initialize scorer
+                scorer = AlignmentScorer(results)
+                overall_score = scorer.calculate_overall_score()
+                quality_rating = scorer.get_quality_rating()
+                
+                # Print scoring summary
+                rating_color = {
+                    'Excellent': 'green', 'Good': 'green', 'Satisfactory': 'yellow',
+                    'Needs Work': 'yellow', 'Poor': 'red'
+                }.get(quality_rating, 'white')
+                
+                click.echo(f"📊 Score: ", nl=False)
+                click.secho(f"{overall_score:.1f}/100", fg=rating_color, bold=True, nl=False)
+                click.echo(f" (", nl=False)
+                click.secho(quality_rating, fg=rating_color, bold=True, nl=False)
+                click.echo(")")
+                
+                # Generate visualization files
+                chart_path = scorer.generate_chart(output_dir=str(output_dir), script_name=script_name)
+                scoring_report = scorer.generate_scoring_report()
+                
+                # Save scoring report
+                scoring_file = output_dir / f"{script_name}_alignment_scoring_report.json"
+                with open(scoring_file, 'w', encoding='utf-8') as f:
+                    json.dump(scoring_report, f, indent=2)
+                
+                # Generate enhanced HTML report
+                results['metadata'] = {
+                    'script_path': str(scripts_dir / f"{script_name}.py"),
+                    'validation_timestamp': datetime.now().isoformat(),
+                    'validator_version': '1.0.0',
+                    'chart_path': str(chart_path),
+                    'scoring_report_path': str(scoring_file)
+                }
+                
+                html_file = output_dir / f"{script_name}_alignment_report.html"
+                html_content = generate_html_report(script_name, results)
+                with open(html_file, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                
+                click.echo(f"✅ Generated: Chart, Scoring Report, HTML Report")
+                
+                # Update summary
+                visualization_summary['successful_visualizations'] += 1
+                visualization_summary['overall_statistics']['total_charts_generated'] += 1
+                visualization_summary['overall_statistics']['total_scoring_reports_generated'] += 1
+                visualization_summary['overall_statistics']['total_html_reports_generated'] += 1
+                
+                visualization_summary['script_results'][script_name] = {
+                    'status': 'SUCCESS',
+                    'overall_score': overall_score,
+                    'quality_rating': quality_rating,
+                    'chart_path': str(chart_path),
+                    'scoring_report_path': str(scoring_file),
+                    'html_report_path': str(html_file),
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+            except Exception as e:
+                click.echo(f"❌ Failed to generate visualization for {script_name}: {e}")
+                visualization_summary['failed_visualizations'] += 1
+                visualization_summary['script_results'][script_name] = {
+                    'status': 'ERROR',
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+                if not continue_on_error:
+                    click.echo("Stopping visualization due to error. Use --continue-on-error to continue.")
+                    ctx.exit(1)
+        
+        # Save visualization summary
+        summary_file = output_dir / "visualization_summary.json"
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            json.dump(visualization_summary, f, indent=2)
+        click.echo(f"\n📊 Visualization summary saved: {summary_file}")
+        
+        # Print final summary
+        click.echo(f"\n{'='*80}")
+        click.echo("🎯 VISUALIZATION GENERATION SUMMARY")
+        click.echo(f"{'='*80}")
+        
+        total = visualization_summary['total_scripts']
+        successful = visualization_summary['successful_visualizations']
+        failed = visualization_summary['failed_visualizations']
+        
+        click.echo(f"📊 Total Scripts: {total}")
+        click.secho(f"✅ Successful: {successful} ({successful/total*100:.1f}%)", fg='green')
+        click.secho(f"❌ Failed: {failed} ({failed/total*100:.1f}%)", fg='red')
+        
+        stats = visualization_summary['overall_statistics']
+        click.echo(f"\n📈 Files Generated:")
+        click.echo(f"  • Charts: {stats['total_charts_generated']}")
+        click.echo(f"  • Scoring Reports: {stats['total_scoring_reports_generated']}")
+        click.echo(f"  • HTML Reports: {stats['total_html_reports_generated']}")
+        
+        click.echo(f"\n📁 All files saved in: {output_dir}")
+        
+        # Return appropriate exit code
+        if failed > 0:
+            click.echo(f"\n⚠️  {failed} script(s) failed visualization generation.")
+            ctx.exit(1)
+        else:
+            click.echo(f"\n🎉 All {successful} visualizations generated successfully!")
+            ctx.exit(0)
+            
+    except click.exceptions.Exit:
+        # Re-raise Click's Exit exception to preserve proper exit handling
+        raise
+    except SystemExit:
+        # Re-raise SystemExit to preserve exit codes
+        raise
+    except Exception as e:
+        click.echo(f"❌ Fatal error during visualization generation: {e}", err=True)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        ctx.exit(1)
+
+
+@alignment.command()
 @click.option('--scripts-dir', type=click.Path(exists=True, path_type=Path),
               help='Directory containing scripts (default: src/cursus/steps/scripts)')
 @click.pass_context
@@ -810,9 +1219,11 @@ def list_scripts(ctx, scripts_dir):
             
             click.echo(f"\nTotal: {len(scripts)} scripts found")
             click.echo(f"\nUsage examples:")
-            click.echo(f"  cursus alignment validate {scripts[0]} --verbose")
+            click.echo(f"  cursus alignment validate {scripts[0]} --verbose --show-scoring")
             click.echo(f"  cursus alignment validate-all --output-dir ./reports")
             click.echo(f"  cursus alignment validate-level {scripts[0]} 1")
+            click.echo(f"  cursus alignment visualize {scripts[0]} --output-dir ./charts --verbose")
+            click.echo(f"  cursus alignment visualize-all --output-dir ./visualizations")
         else:
             click.echo("  No scripts found in the scripts directory.")
             click.echo(f"  Searched in: {scripts_dir}")
