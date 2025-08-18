@@ -25,6 +25,7 @@ date of note: 2025-08-12
 - **[Architecture](unified_alignment_tester_architecture.md)** - Core architectural patterns
 - **[SageMaker Step Type-Aware Unified Alignment Tester Design](sagemaker_step_type_aware_unified_alignment_tester_design.md)** - Step type-aware validation framework design
 - **[Implementation Guide](unified_alignment_tester_implementation.md)** - Production implementation details
+- **[Alignment Validation Visualization Integration Design](alignment_validation_visualization_integration_design.md)** - **VISUALIZATION FRAMEWORK** - Comprehensive design and implementation of the alignment validation visualization integration system, including scoring algorithms, chart generation infrastructure, and enhanced reporting capabilities that utilize the data structures documented here.
 - **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - **FOUNDATIONAL** - Comprehensive standardization rules that define the naming conventions, interface standards, and architectural constraints that these data structures implement validation for. The breakthrough data structures documented here enable enforcement of these standardization rules across all validation levels.
 - **[Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)** - Comprehensive analysis of validation challenges that drove the data structure design decisions documented here
 
@@ -794,9 +795,207 @@ These data structures represent the **foundation of the production-ready validat
 
 The data structures successfully balance **performance, reliability, and flexibility** while maintaining **production system consistency** and providing **actionable developer feedback**.
 
----
+## Scoring and Visualization Data Structures (August 2025)
 
-**Data Structures Document Updated**: August 12, 2025  
-**Status**: Production-Ready Data Models  
-**Success Rate**: 100% validation success across all 8 scripts  
-**Next Phase**: Continued optimization and feature enhancement
+### AlignmentScorer (Weighted Quality Scoring)
+```python
+@dataclass
+class AlignmentScorer:
+    """Scorer for evaluating alignment validation quality based on validation results."""
+    
+    results: Dict[str, Any]                    # Validation results to score
+    level_results: Dict[str, Dict[str, Any]]   # Results grouped by alignment level
+    
+    def __post_init__(self):
+        """Initialize level results grouping."""
+        self.level_results = self._group_by_level()
+    
+    def _group_by_level(self) -> Dict[str, Dict[str, Any]]:
+        """Group validation results by alignment level using smart pattern detection."""
+        grouped = {level: {} for level in ALIGNMENT_LEVEL_WEIGHTS.keys()}
+        
+        # Handle the actual alignment report format with level1_results, level2_results, etc.
+        for key, value in self.results.items():
+            if key.endswith('_results') and isinstance(value, dict):
+                # Map level1_results -> level1_script_contract, etc.
+                if key == 'level1_results':
+                    grouped['level1_script_contract'] = value
+                elif key == 'level2_results':
+                    grouped['level2_contract_spec'] = value
+                elif key == 'level3_results':
+                    grouped['level3_spec_dependencies'] = value
+                elif key == 'level4_results':
+                    grouped['level4_builder_config'] = value
+        
+        return grouped
+    
+    def calculate_level_score(self, level: str) -> Tuple[float, int, int]:
+        """Calculate score for a specific alignment level."""
+        # Returns (score, passed_tests, total_tests)
+        
+    def calculate_overall_score(self) -> float:
+        """Calculate weighted overall alignment score."""
+        # Uses ALIGNMENT_LEVEL_WEIGHTS for weighted calculation
+        
+    def get_rating(self, score: float) -> str:
+        """Get quality rating based on score thresholds."""
+        # Returns: Excellent, Good, Satisfactory, Needs Work, Poor
+        
+    def generate_chart(self, script_name: str, output_dir: str) -> Optional[str]:
+        """Generate alignment quality chart visualization."""
+        # Creates professional matplotlib charts with 300 DPI quality
+        
+    def generate_report(self) -> Dict[str, Any]:
+        """Generate comprehensive alignment score report."""
+        # Returns detailed scoring report with metadata
+
+# Scoring Configuration Constants
+ALIGNMENT_LEVEL_WEIGHTS = {
+    "level1_script_contract": 1.0,      # Basic script-contract alignment
+    "level2_contract_spec": 1.5,        # Contract-specification alignment
+    "level3_spec_dependencies": 2.0,    # Specification-dependencies alignment
+    "level4_builder_config": 2.5,       # Builder-configuration alignment
+}
+
+ALIGNMENT_RATING_LEVELS = {
+    90: "Excellent",     # 90-100: Excellent alignment
+    80: "Good",          # 80-89: Good alignment
+    70: "Satisfactory",  # 70-79: Satisfactory alignment
+    60: "Needs Work",    # 60-69: Needs improvement
+    0: "Poor"            # 0-59: Poor alignment
+}
+
+ALIGNMENT_TEST_IMPORTANCE = {
+    "script_contract_path_alignment": 1.5,
+    "contract_spec_logical_names": 1.4,
+    "spec_dependency_resolution": 1.3,
+    "builder_config_environment_vars": 1.2,
+    "script_contract_environment_vars": 1.2,
+    "contract_spec_dependency_mapping": 1.3,
+    "spec_dependency_property_paths": 1.4,
+    "builder_config_specification_alignment": 1.5,
+}
+```
+
+### Chart Generation Data Structures
+```python
+# Chart styling configuration
+CHART_CONFIG = {
+    "figure_size": (10, 6),
+    "colors": {
+        "excellent": "#28a745",    # Green
+        "good": "#90ee90",         # Light green
+        "satisfactory": "#ffa500", # Orange
+        "needs_work": "#fa8072",   # Salmon
+        "poor": "#dc3545"          # Red
+    },
+    "grid_style": {
+        "axis": "y",
+        "linestyle": "--",
+        "alpha": 0.7
+    }
+}
+
+@dataclass
+class ChartGenerationResult:
+    """Result of chart generation process."""
+    
+    chart_path: Optional[str]           # Path to generated chart file
+    success: bool                       # Whether chart generation succeeded
+    error_message: Optional[str]        # Error message if generation failed
+    chart_type: str                     # Type of chart generated
+    quality_dpi: int = 300             # Chart quality in DPI
+    
+    def is_available(self) -> bool:
+        """Check if chart is available for use."""
+        return self.success and self.chart_path and Path(self.chart_path).exists()
+```
+
+### Enhanced AlignmentReport (With Scoring Integration)
+```python
+@dataclass
+class AlignmentReport:
+    """Enhanced alignment report with scoring and visualization capabilities."""
+    
+    # Original validation results
+    level1_results: Dict[str, ValidationResult] = field(default_factory=dict)
+    level2_results: Dict[str, ValidationResult] = field(default_factory=dict)
+    level3_results: Dict[str, ValidationResult] = field(default_factory=dict)
+    level4_results: Dict[str, ValidationResult] = field(default_factory=dict)
+    summary: Optional[AlignmentSummary] = None
+    
+    # New scoring and visualization fields
+    scoring: Optional[Dict[str, Any]] = None           # Scoring data
+    chart_path: Optional[str] = None                   # Path to generated chart
+    scoring_metadata: Optional[Dict[str, Any]] = None  # Scoring system metadata
+    
+    def generate_scoring_report(self, script_name: str) -> Dict[str, Any]:
+        """Generate comprehensive scoring report for this alignment validation."""
+        # Create AlignmentScorer instance
+        scorer = AlignmentScorer(self.to_dict())
+        
+        # Generate scoring report
+        scoring_report = scorer.generate_report()
+        
+        # Store scoring data
+        self.scoring = scoring_report
+        self.scoring_metadata = {
+            "scoring_system": "alignment_validation",
+            "level_weights": ALIGNMENT_LEVEL_WEIGHTS,
+            "test_importance": ALIGNMENT_TEST_IMPORTANCE,
+            "generated_at": datetime.now().isoformat(),
+            "script_name": script_name
+        }
+        
+        return scoring_report
+    
+    def generate_chart(self, script_name: str, output_dir: str = "alignment_reports") -> ChartGenerationResult:
+        """Generate chart visualization for this alignment validation."""
+        try:
+            # Create AlignmentScorer instance
+            scorer = AlignmentScorer(self.to_dict())
+            
+            # Generate chart
+            chart_path = scorer.generate_chart(script_name, output_dir)
+            
+            if chart_path:
+                self.chart_path = chart_path
+                return ChartGenerationResult(
+                    chart_path=chart_path,
+                    success=True,
+                    error_message=None,
+                    chart_type="alignment_quality_bar_chart",
+                    quality_dpi=300
+                )
+            else:
+                return ChartGenerationResult(
+                    chart_path=None,
+                    success=False,
+                    error_message="Chart generation failed (matplotlib not available)",
+                    chart_type="alignment_quality_bar_chart"
+                )
+                
+        except Exception as e:
+            return ChartGenerationResult(
+                chart_path=None,
+                success=False,
+                error_message=str(e),
+                chart_type="alignment_quality_bar_chart"
+            )
+    
+    def export_enhanced_json(self, output_path: str, include_scoring: bool = True) -> None:
+        """Export enhanced JSON report with scoring data."""
+        report_data = self.to_dict()
+        
+        if include_scoring and self.scoring:
+            report_data['scoring'] = self.scoring
+            report_data['scoring_metadata'] = self.scoring_metadata
+            
+        if self.chart_path:
+            report_data['chart_path'] = self.chart_path
+            
+        with open(output_path, 'w') as f:
+            json.dump(report_data, f, indent=2, default=str)
+    
+    def get_overall_score(self) -> Optional[float]:
+        """Get overall alignment score if

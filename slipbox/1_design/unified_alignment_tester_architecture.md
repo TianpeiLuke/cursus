@@ -25,6 +25,7 @@ date of note: 2025-08-11
 - **[Master Design](unified_alignment_tester_master_design.md)** - Complete system overview
 - **[Data Structures](alignment_validation_data_structures.md)** - Core data structure designs
 - **[Implementation Guide](unified_alignment_tester_implementation.md)** - Production implementation details
+- **[Visualization Integration Design](alignment_validation_visualization_integration_design.md)** - **NEW** - Complete visualization framework design and implementation details
 - **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - **FOUNDATIONAL** - Comprehensive standardization rules that define the naming conventions, interface standards, and architectural constraints that this four-tier validation pyramid enforces. The architectural breakthroughs documented here directly implement validation of these standardization rules.
 - **[Pain Points Analysis](../4_analysis/unified_alignment_tester_pain_points_analysis.md)** - Comprehensive analysis of validation challenges that informed the architectural breakthroughs documented here
 
@@ -439,6 +440,224 @@ class CICDIntegration:
 - **Alerting**: Notifications for validation failures and degraded performance
 - **Dashboards**: Real-time visibility into validation system health
 - **Trend Analysis**: Historical analysis of validation patterns
+
+## Visualization Framework Architecture
+
+### August 2025 Visualization Integration
+**MAJOR ENHANCEMENT**: The alignment validation system now includes a comprehensive visualization framework that transforms validation results into actionable visual insights with professional-grade scoring and chart generation.
+
+### Visualization Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           Visualization Framework Architecture              │
+│        (August 2025 - Production Ready)                    │
+├─────────────────────────────────────────────────────────────┤
+│  src/cursus/validation/alignment/                           │
+│  ├── alignment_scorer.py         # Core scoring engine     │
+│  │   ├── AlignmentScorer         # Weighted scoring        │
+│  │   ├── Chart generation        # Matplotlib integration  │
+│  │   └── Quality rating system   # 5-tier rating scale    │
+│  │                                                         │
+│  ├── unified_alignment_tester.py # Enhanced orchestrator   │
+│  │   ├── Scoring integration     # AlignmentScorer usage   │
+│  │   ├── Visualization triggers  # Automatic chart gen    │
+│  │   └── Enhanced reporting      # JSON + PNG outputs     │
+│  │                                                         │
+│  └── alignment_report.py         # Enhanced report model   │
+│      ├── Scoring data fields     # Score + rating fields  │
+│      ├── Visualization metadata  # Chart file references  │
+│      └── Enhanced serialization  # JSON with scoring      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Core Visualization Components
+
+#### 1. **AlignmentScorer (Scoring Engine)**
+```python
+class AlignmentScorer:
+    """Production-grade scoring engine with weighted 4-level calculation."""
+    
+    # Weighted scoring system
+    ALIGNMENT_LEVEL_WEIGHTS = {
+        'level1_script_contract': 1.0,      # Foundation
+        'level2_contract_spec': 1.5,        # Interface
+        'level3_spec_dependencies': 2.0,    # Integration
+        'level4_builder_config': 2.5        # Infrastructure
+    }
+    
+    # Quality rating thresholds
+    QUALITY_THRESHOLDS = {
+        95.0: "Excellent",    # Green
+        85.0: "Good",         # Light Green
+        70.0: "Satisfactory", # Yellow
+        50.0: "Needs Work",   # Orange
+        0.0: "Poor"           # Red
+    }
+```
+
+#### 2. **Chart Generation System**
+Professional matplotlib integration with:
+- **Color-coded quality visualization**: Green (Excellent) to Red (Poor)
+- **High-resolution output**: 300 DPI PNG generation
+- **Professional styling**: Clean, publication-ready charts
+- **Level-specific breakdown**: Individual level scores with overall rating
+
+#### 3. **Enhanced Reporting Integration**
+```python
+class EnhancedAlignmentReport:
+    """Enhanced report model with visualization support."""
+    
+    def __init__(self, validation_results: Dict[str, Any]):
+        # Original validation data
+        self.validation_results = validation_results
+        
+        # NEW: Scoring and visualization data
+        self.scorer = AlignmentScorer(validation_results)
+        self.overall_score = self.scorer.calculate_overall_score()
+        self.quality_rating = self.scorer.get_quality_rating()
+        self.level_scores = self.scorer.get_level_scores()
+        
+        # NEW: Visualization metadata
+        self.chart_file_path = None
+        self.scoring_report_path = None
+```
+
+### Visualization Workflow Architecture
+
+#### 1. **Automatic Visualization Generation**
+```python
+class VisualizationWorkflow:
+    """Orchestrates automatic visualization generation during validation."""
+    
+    def run_validation_with_visualization(self, script_path: str) -> VisualizationResult:
+        """Complete validation workflow with automatic visualization."""
+        
+        # Step 1: Run standard 4-level validation
+        validation_results = self.unified_tester.run_full_validation([script_path])
+        
+        # Step 2: Generate scoring analysis
+        scorer = AlignmentScorer(validation_results)
+        overall_score = scorer.calculate_overall_score()
+        quality_rating = scorer.get_quality_rating()
+        
+        # Step 3: Generate visualization chart
+        chart_path = scorer.generate_chart(
+            output_dir=self.get_output_directory(script_path),
+            script_name=self.extract_script_name(script_path)
+        )
+        
+        # Step 4: Generate enhanced JSON report
+        scoring_report = scorer.generate_scoring_report()
+        
+        return VisualizationResult(
+            validation_results=validation_results,
+            overall_score=overall_score,
+            quality_rating=quality_rating,
+            chart_path=chart_path,
+            scoring_report=scoring_report
+        )
+```
+
+#### 2. **Multi-Format Output Generation**
+The visualization framework generates three complementary outputs:
+
+1. **PNG Charts**: Visual scoring breakdown with professional styling
+2. **JSON Scoring Reports**: Machine-readable scoring data with metadata
+3. **Enhanced HTML Reports**: Original validation reports with scoring integration
+
+### Scoring Algorithm Architecture
+
+#### 1. **Weighted 4-Level Scoring System**
+```python
+def calculate_overall_score(self) -> float:
+    """Calculate weighted overall score across all alignment levels."""
+    
+    total_weighted_score = 0.0
+    total_weight = 0.0
+    
+    for level_name, weight in ALIGNMENT_LEVEL_WEIGHTS.items():
+        level_data = self.grouped_results.get(level_name, {})
+        level_score = self._calculate_level_score(level_data)
+        
+        total_weighted_score += level_score * weight
+        total_weight += weight
+    
+    return (total_weighted_score / total_weight) if total_weight > 0 else 0.0
+```
+
+#### 2. **Level-Specific Scoring Logic**
+- **Pass/Fail Calculation**: Binary scoring based on validation success
+- **Issue Impact Assessment**: Severity-weighted issue scoring
+- **Weighted Aggregation**: Higher-level failures have greater impact
+- **Quality Rating Mapping**: Score ranges mapped to actionable quality ratings
+
+### Production Integration Architecture
+
+#### 1. **Seamless Integration with Existing Validation**
+- **Zero Breaking Changes**: Existing validation workflows unchanged
+- **Optional Enhancement**: Visualization can be enabled/disabled
+- **Backward Compatibility**: All existing APIs preserved
+- **Progressive Enhancement**: New features available without migration
+
+#### 2. **Performance Optimization**
+- **Lazy Chart Generation**: Charts generated only when requested
+- **Efficient File I/O**: Optimized PNG generation with matplotlib
+- **Memory Management**: Proper cleanup of matplotlib resources
+- **Caching Strategy**: Reuse scoring calculations across outputs
+
+### Visualization Data Flow Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                Visualization Data Flow                      │
+├─────────────────────────────────────────────────────────────┤
+│  1. Validation Results (Dict)                               │
+│     ↓                                                       │
+│  2. AlignmentScorer.parse_results()                         │
+│     ├─ Group by validation level                           │
+│     ├─ Calculate level-specific scores                     │
+│     └─ Apply weighted aggregation                          │
+│     ↓                                                       │
+│  3. Scoring Analysis                                        │
+│     ├─ Overall Score (0-100)                               │
+│     ├─ Quality Rating (Excellent/Good/etc.)                │
+│     └─ Level Breakdown (Individual scores)                 │
+│     ↓                                                       │
+│  4. Multi-Format Output Generation                         │
+│     ├─ PNG Chart (matplotlib)                              │
+│     ├─ JSON Scoring Report (structured data)               │
+│     └─ Enhanced HTML Report (with scoring)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Critical Implementation Fix Architecture
+
+#### Data Structure Parsing Enhancement
+**CRITICAL FIX**: The AlignmentScorer was enhanced to correctly parse validation results:
+
+```python
+def _group_by_level(self) -> Dict[str, Dict[str, Any]]:
+    """Group validation results by alignment level with correct key mapping."""
+    grouped = {level: {} for level in ALIGNMENT_LEVEL_WEIGHTS.keys()}
+    
+    # Handle the actual alignment report format with level1_results, level2_results, etc.
+    for key, value in self.results.items():
+        if key.endswith('_results') and isinstance(value, dict):
+            # Map level1_results -> level1_script_contract, etc.
+            if key == 'level1_results':
+                grouped['level1_script_contract'] = value
+            elif key == 'level2_results':
+                grouped['level2_contract_spec'] = value
+            elif key == 'level3_results':
+                grouped['level3_spec_dependencies'] = value
+            elif key == 'level4_results':
+                grouped['level4_builder_config'] = value
+    
+    return grouped
+```
+
+This fix resolved the data structure mismatch between expected keys (`level1_script_contract`) and actual keys (`level1_results`), enabling accurate scoring calculation.
 
 ## Security Architecture
 

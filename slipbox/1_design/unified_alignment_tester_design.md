@@ -58,8 +58,9 @@ The master design document provides:
 ## 📚 **Focused Design Documents**
 
 ### Core Architecture
-- **[Architecture](unified_alignment_tester_architecture.md)** - Four-tier validation pyramid and cross-level integration patterns
-- **[Data Structures](alignment_validation_data_structures.md)** - Critical data structures and breakthrough implementations (**UPDATED**: Script-to-contract name mapping)
+- **[Architecture](unified_alignment_tester_architecture.md)** - Four-tier validation pyramid and cross-level integration patterns (**UPDATED**: Visualization framework integration)
+- **[Data Structures](alignment_validation_data_structures.md)** - Critical data structures and breakthrough implementations (**UPDATED**: Script-to-contract name mapping + Visualization scoring)
+- **[Visualization Integration](alignment_validation_visualization_integration_design.md)** - **NEW** - Complete visualization framework with scoring and chart generation
 - **[Standardization Rules](../0_developer_guide/standardization_rules.md)** - Foundational standardization rules that define what the validation system validates
 
 ### Level-Specific Designs
