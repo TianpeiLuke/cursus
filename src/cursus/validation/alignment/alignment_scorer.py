@@ -86,10 +86,20 @@ class AlignmentScorer:
         """
         grouped = {level: {} for level in ALIGNMENT_LEVEL_WEIGHTS.keys()}
         
-        # Handle the actual alignment report format with level1, level2, etc.
+        # Handle the actual alignment report format with level1_results, level2_results, etc.
         for key, value in self.results.items():
-            if key.startswith('level') and isinstance(value, dict):
-                # Map level1 -> level1_script_contract, etc.
+            if key.endswith('_results') and isinstance(value, dict):
+                # Map level1_results -> level1_script_contract, etc.
+                if key == 'level1_results':
+                    grouped['level1_script_contract'] = value
+                elif key == 'level2_results':
+                    grouped['level2_contract_spec'] = value
+                elif key == 'level3_results':
+                    grouped['level3_spec_dependencies'] = value
+                elif key == 'level4_results':
+                    grouped['level4_builder_config'] = value
+            elif key.startswith('level') and isinstance(value, dict):
+                # Handle direct level keys (level1, level2, etc.)
                 if key == 'level1':
                     grouped['level1_script_contract'][key] = value
                 elif key == 'level2':

@@ -40,7 +40,7 @@
 <body>
     <div class="header">
         <h1>Alignment Validation Report</h1>
-        <p>Generated: 2025-08-17 21:31:09</p>
+        <p>Generated: 2025-08-17 21:36:30</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
         <p>Overall Alignment Score: <strong>0.0/100</strong></p>
     </div>
@@ -51,11 +51,11 @@
             <p>Pass Rate</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>2</h3>
             <p>Total Tests</p>
         </div>
         <div class="metric">
-            <h3>1</h3>
+            <h3>2</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -106,6 +106,122 @@
             <div class="level-header">Level 1: Script ↔ Contract</div>
         
             <div class="test-result test-passed">
+                <h4>currency_conversion</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Main function follows testability pattern with all required parameters
+                    <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper functions use direct environment access - consider parameter passing
+                    <br><em>Recommendation: Pass environment variables as parameters to helper functions instead of direct access</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
+                    <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
+                    <br><em>Recommendation: Add container detection to support both local and container execution</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper function 'None' accesses environment directly
+                    <br><em>Recommendation: Refactor 'None' to accept environment variables as parameters</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Processing script uses sklearn framework
+                    <br><em>Recommendation: Ensure sklearn dependencies are properly specified</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
                 <h4>dummy_training</h4>
                 <p>Status: PASSED</p>
                 
@@ -140,6 +256,32 @@
             <div class="level-header">Level 2: Contract ↔ Specification</div>
         
             <div class="test-result test-passed">
+                <h4>currency_conversion</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Smart Specification Selection: validated against 4 variants
+                    <br><em>Recommendation: Multi-variant validation completed successfully</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: CurrencyConversion_Training -> CurrencyConversion -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output converted_data: properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for currency_conversion_contract
+                    <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
                 <h4>dummy_training</h4>
                 <p>Status: PASSED</p>
                 
@@ -164,6 +306,12 @@
             <div class="level-header">Level 3: Specification ↔ Dependencies</div>
         
             <div class="test-result test-passed">
+                <h4>currency_conversion</h4>
+                <p>Status: PASSED</p>
+                
+            </div>
+            
+            <div class="test-result test-passed">
                 <h4>dummy_training</h4>
                 <p>Status: PASSED</p>
                 
@@ -177,6 +325,17 @@
         <div class="level-section">
             <div class="level-header">Level 4: Builder ↔ Configuration</div>
         
+            <div class="test-result test-passed">
+                <h4>currency_conversion</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
+                </div>
+                
+            </div>
+            
             <div class="test-result test-passed">
                 <h4>dummy_training</h4>
                 <p>Status: PASSED</p>

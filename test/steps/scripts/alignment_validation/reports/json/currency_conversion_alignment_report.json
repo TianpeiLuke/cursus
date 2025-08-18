@@ -10,7 +10,7 @@
     "warning_issues": 0,
     "info_issues": 1,
     "highest_severity": "INFO",
-    "validation_timestamp": "2025-08-17T21:31:08.890741",
+    "validation_timestamp": "2025-08-17T21:36:30.260846",
     "is_passing": true
   },
   "scoring": {
@@ -81,7 +81,7 @@
     "currency_conversion": {
       "test_name": "script_contract_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-17T21:31:08.877622",
+      "timestamp": "2025-08-17T21:36:30.249145",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -90,10 +90,10 @@
           "details": {
             "script": "currency_conversion",
             "testability_parameters": [
-              "input_paths",
               "environ_vars",
-              "job_args",
-              "output_paths"
+              "output_paths",
+              "input_paths",
+              "job_args"
             ]
           },
           "recommendation": "No action needed - script follows testability best practices",
@@ -499,10 +499,10 @@
             "details": {
               "script": "currency_conversion",
               "testability_parameters": [
-                "input_paths",
                 "environ_vars",
-                "job_args",
-                "output_paths"
+                "output_paths",
+                "input_paths",
+                "job_args"
               ]
             },
             "recommendation": "No action needed - script follows testability best practices"
@@ -1028,7 +1028,7 @@
     "currency_conversion": {
       "test_name": "contract_spec_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-17T21:31:08.882933",
+      "timestamp": "2025-08-17T21:36:30.253200",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -1244,9 +1244,9 @@
                 "dependency_type": "processing_output",
                 "required": true,
                 "compatible_sources": [
+                  "CradleDataLoading",
                   "ProcessingStep",
-                  "TabularPreprocessing",
-                  "CradleDataLoading"
+                  "TabularPreprocessing"
                 ],
                 "data_type": "S3Uri",
                 "description": "Processed training data requiring currency conversion"
@@ -1271,9 +1271,9 @@
                 "dependency_type": "processing_output",
                 "required": true,
                 "compatible_sources": [
+                  "CradleDataLoading",
                   "ProcessingStep",
-                  "TabularPreprocessing",
-                  "CradleDataLoading"
+                  "TabularPreprocessing"
                 ],
                 "data_type": "S3Uri",
                 "description": "Processed calibration data requiring currency conversion"
@@ -1298,9 +1298,9 @@
                 "dependency_type": "processing_output",
                 "required": true,
                 "compatible_sources": [
+                  "CradleDataLoading",
                   "ProcessingStep",
-                  "TabularPreprocessing",
-                  "CradleDataLoading"
+                  "TabularPreprocessing"
                 ],
                 "data_type": "S3Uri",
                 "description": "Processed validation data requiring currency conversion"
@@ -1325,9 +1325,9 @@
                 "dependency_type": "processing_output",
                 "required": true,
                 "compatible_sources": [
+                  "CradleDataLoading",
                   "ProcessingStep",
-                  "TabularPreprocessing",
-                  "CradleDataLoading"
+                  "TabularPreprocessing"
                 ],
                 "data_type": "S3Uri",
                 "description": "Processed testing data requiring currency conversion"
@@ -1354,9 +1354,9 @@
                 "dependency_type": "processing_output",
                 "required": true,
                 "compatible_sources": [
+                  "CradleDataLoading",
                   "ProcessingStep",
-                  "TabularPreprocessing",
-                  "CradleDataLoading"
+                  "TabularPreprocessing"
                 ],
                 "data_type": "S3Uri",
                 "description": "Processed training data requiring currency conversion"
@@ -1382,9 +1382,9 @@
                   "dependency_type": "processing_output",
                   "required": true,
                   "compatible_sources": [
+                    "CradleDataLoading",
                     "ProcessingStep",
-                    "TabularPreprocessing",
-                    "CradleDataLoading"
+                    "TabularPreprocessing"
                   ],
                   "data_type": "S3Uri",
                   "description": "Processed training data requiring currency conversion"
@@ -1409,9 +1409,9 @@
                   "dependency_type": "processing_output",
                   "required": true,
                   "compatible_sources": [
+                    "CradleDataLoading",
                     "ProcessingStep",
-                    "TabularPreprocessing",
-                    "CradleDataLoading"
+                    "TabularPreprocessing"
                   ],
                   "data_type": "S3Uri",
                   "description": "Processed testing data requiring currency conversion"
@@ -1436,9 +1436,9 @@
                   "dependency_type": "processing_output",
                   "required": true,
                   "compatible_sources": [
+                    "CradleDataLoading",
                     "ProcessingStep",
-                    "TabularPreprocessing",
-                    "CradleDataLoading"
+                    "TabularPreprocessing"
                   ],
                   "data_type": "S3Uri",
                   "description": "Processed validation data requiring currency conversion"
@@ -1463,9 +1463,9 @@
                   "dependency_type": "processing_output",
                   "required": true,
                   "compatible_sources": [
+                    "CradleDataLoading",
                     "ProcessingStep",
-                    "TabularPreprocessing",
-                    "CradleDataLoading"
+                    "TabularPreprocessing"
                   ],
                   "data_type": "S3Uri",
                   "description": "Processed calibration data requiring currency conversion"
@@ -1488,9 +1488,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
+                "CradleDataLoading",
                 "ProcessingStep",
-                "TabularPreprocessing",
-                "CradleDataLoading"
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed calibration data requiring currency conversion"
@@ -1531,7 +1531,7 @@
     "currency_conversion": {
       "test_name": "spec_dependency_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-17T21:31:08.887845",
+      "timestamp": "2025-08-17T21:36:30.257837",
       "issues": [],
       "details": {
         "passed": true,
@@ -1545,9 +1545,9 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
+                "CradleDataLoading",
                 "ProcessingStep",
-                "TabularPreprocessing",
-                "CradleDataLoading"
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Processed testing data requiring currency conversion"
@@ -1571,7 +1571,7 @@
     "currency_conversion": {
       "test_name": "builder_config_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-17T21:31:08.890723",
+      "timestamp": "2025-08-17T21:36:30.260831",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -1579,16 +1579,16 @@
           "message": "Builder has required fields but no explicit validation logic detected",
           "details": {
             "required_fields": [
-              "pipeline_version",
-              "role",
-              "bucket",
-              "region",
-              "currency_conversion_dict",
               "label_field",
+              "region",
+              "bucket",
+              "author",
+              "currency_conversion_dict",
               "marketplace_info",
+              "role",
               "marketplace_id_col",
-              "service_name",
-              "author"
+              "pipeline_version",
+              "service_name"
             ],
             "builder": "currency_conversion"
           },
@@ -1605,16 +1605,16 @@
             "message": "Builder has required fields but no explicit validation logic detected",
             "details": {
               "required_fields": [
-                "pipeline_version",
-                "role",
-                "bucket",
-                "region",
-                "currency_conversion_dict",
                 "label_field",
+                "region",
+                "bucket",
+                "author",
+                "currency_conversion_dict",
                 "marketplace_info",
+                "role",
                 "marketplace_id_col",
-                "service_name",
-                "author"
+                "pipeline_version",
+                "service_name"
               ],
               "builder": "currency_conversion"
             },

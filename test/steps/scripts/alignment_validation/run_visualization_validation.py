@@ -82,42 +82,34 @@ class VisualizedAlignmentValidator:
         print(f"{'='*60}")
         
         try:
-            # Run validation across all levels
-            results = self.tester.validate_specific_script(script_name)
+            # Run full validation for this specific script to populate the report
+            self.tester.run_full_validation(target_scripts=[script_name])
             
-            # Create a new report for this script
-            script_tester = UnifiedAlignmentTester(
-                scripts_dir=str(self.scripts_dir),
-                contracts_dir=str(self.contracts_dir),
-                specs_dir=str(self.specs_dir),
-                builders_dir=str(self.builders_dir),
-                configs_dir=str(self.configs_dir)
-            )
+            # Get the validation results for status determination
+            results = self.tester.get_validation_summary()
+            results['script_name'] = script_name
             
-            # Run full validation to populate the report
-            script_tester.run_full_validation(target_scripts=[script_name])
-            
-            # Export JSON report with scoring
+            # Export JSON report with scoring using the populated report
             json_output_path = self.json_reports_dir / f"{script_name}_alignment_report.json"
-            json_content = script_tester.export_report(
+            json_content = self.tester.export_report(
                 format='json',
                 output_path=str(json_output_path),
                 generate_chart=True,
                 script_name=script_name
             )
             
-            # Export HTML report with scoring
+            # Export HTML report with scoring using the populated report
             html_output_path = self.html_reports_dir / f"{script_name}_alignment_report.html"
-            html_content = script_tester.export_report(
+            html_content = self.tester.export_report(
                 format='html',
                 output_path=str(html_output_path),
                 generate_chart=False,  # Chart already generated with JSON export
                 script_name=script_name
             )
             
-            # Get scoring information
+            # Get scoring information from the populated report
             try:
-                scorer = script_tester.report.get_scorer()
+                scorer = self.tester.report.get_scorer()
                 overall_score = scorer.calculate_overall_score()
                 overall_rating = scorer.get_rating(overall_score)
                 
