@@ -410,16 +410,22 @@ def validate(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_d
     """
     # Set default directories if not provided
     project_root = Path.cwd()
+    # Check if we're already in the src directory
+    if project_root.name == "src":
+        base_path = project_root / "cursus" / "steps"
+    else:
+        base_path = project_root / "src" / "cursus" / "steps"
+    
     if not scripts_dir:
-        scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+        scripts_dir = base_path / "scripts"
     if not contracts_dir:
-        contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
+        contracts_dir = base_path / "contracts"
     if not specs_dir:
-        specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
+        specs_dir = base_path / "specs"
     if not builders_dir:
-        builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
+        builders_dir = base_path / "builders"
     if not configs_dir:
-        configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
+        configs_dir = base_path / "configs"
     
     if verbose:
         click.echo(f"🔍 Validating script: {script_name}")
@@ -510,16 +516,22 @@ def validate_all(ctx, scripts_dir, contracts_dir, specs_dir, builders_dir, confi
     try:
         # Set default directories if not provided
         project_root = Path.cwd()
+        # Check if we're already in the src directory
+        if project_root.name == "src":
+            base_path = project_root / "cursus" / "steps"
+        else:
+            base_path = project_root / "src" / "cursus" / "steps"
+        
         if not scripts_dir:
-            scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+            scripts_dir = base_path / "scripts"
         if not contracts_dir:
-            contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
+            contracts_dir = base_path / "contracts"
         if not specs_dir:
-            specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
+            specs_dir = base_path / "specs"
         if not builders_dir:
-            builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
+            builders_dir = base_path / "builders"
         if not configs_dir:
-            configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
+            configs_dir = base_path / "configs"
         
         click.echo("🚀 Starting Comprehensive Script Alignment Validation")
         if verbose:
@@ -726,16 +738,22 @@ def validate_level(ctx, script_name, level, scripts_dir, contracts_dir, specs_di
     try:
         # Set default directories if not provided
         project_root = Path.cwd()
+        # Check if we're already in the src directory
+        if project_root.name == "src":
+            base_path = project_root / "cursus" / "steps"
+        else:
+            base_path = project_root / "src" / "cursus" / "steps"
+        
         if not scripts_dir:
-            scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+            scripts_dir = base_path / "scripts"
         if not contracts_dir:
-            contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
+            contracts_dir = base_path / "contracts"
         if not specs_dir:
-            specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
+            specs_dir = base_path / "specs"
         if not builders_dir:
-            builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
+            builders_dir = base_path / "builders"
         if not configs_dir:
-            configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
+            configs_dir = base_path / "configs"
         
         click.echo(f"🔍 Validating {script_name} at Level {level} ({level_names[level]})")
         
@@ -851,16 +869,22 @@ def visualize(ctx, script_name, scripts_dir, contracts_dir, specs_dir, builders_
     """
     # Set default directories if not provided
     project_root = Path.cwd()
+    # Check if we're already in the src directory
+    if project_root.name == "src":
+        base_path = project_root / "cursus" / "steps"
+    else:
+        base_path = project_root / "src" / "cursus" / "steps"
+    
     if not scripts_dir:
-        scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+        scripts_dir = base_path / "scripts"
     if not contracts_dir:
-        contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
+        contracts_dir = base_path / "contracts"
     if not specs_dir:
-        specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
+        specs_dir = base_path / "specs"
     if not builders_dir:
-        builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
+        builders_dir = base_path / "builders"
     if not configs_dir:
-        configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
+        configs_dir = base_path / "configs"
     
     if verbose:
         click.echo(f"🎨 Generating visualization for script: {script_name}")
@@ -1199,8 +1223,14 @@ def list_scripts(ctx, scripts_dir):
     try:
         # Set default directory if not provided
         project_root = Path.cwd()
+        # Check if we're already in the src directory
+        if project_root.name == "src":
+            base_path = project_root / "cursus" / "steps"
+        else:
+            base_path = project_root / "src" / "cursus" / "steps"
+        
         if not scripts_dir:
-            scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
+            scripts_dir = base_path / "scripts"
         
         click.echo("📋 Available Scripts for Alignment Validation:")
         click.echo("=" * 50)

@@ -63,9 +63,13 @@ class ConfigurationAnalyzer:
                 module = importlib.util.module_from_spec(spec)
                 
                 # Set up the module's __package__ to help with relative imports
-                module.__package__ = 'src.cursus.steps.configs'
+                # Use the correct package path based on the project structure
+                module.__package__ = 'cursus.steps.configs'
                 
-                sys.modules[module_name] = module  # Add to sys.modules to help with relative imports
+                # Add the module to sys.modules with the correct package structure
+                sys.modules[module_name] = module
+                sys.modules[f'cursus.steps.configs.{module_name}'] = module
+                
                 spec.loader.exec_module(module)
             finally:
                 # Clean up sys.path
