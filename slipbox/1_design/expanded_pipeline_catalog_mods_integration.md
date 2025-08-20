@@ -441,8 +441,180 @@ MODS integration enables:
 - Multi-environment deployment
 - Cost optimization tracking
 
+## MODS Global Registry Integration
+
+The expanded pipeline catalog integrates with MODS's global registry system to provide operational visibility and automatic template registration without complex synchronization mechanisms.
+
+### MODS Global Registry Overview
+
+MODS maintains a global registry of all decorated templates:
+
+```python
+memorize = []  # Global list storing all MODS-decorated templates
+
+def extract_template_list():
+    """Get all registered MODS templates."""
+    return memorize
+```
+
+Every template decorated with `@MODSTemplate` is automatically added to this registry.
+
+### Integration Strategy
+
+#### 1. Automatic Registration During Catalog Operations
+
+When users create MODS pipelines through the catalog, templates are automatically registered in the MODS global registry:
+
+```python
+# From enhanced catalog utilities
+def create_pipeline_from_catalog(pipeline_id, config_path, session, role, **kwargs):
+    catalog_entry = get_pipeline_info(pipeline_id)
+    
+    if catalog_entry["compiler_type"] == "mods":
+        # This automatically registers the template in MODS global registry
+        return module.create_pipeline(config_path, session, role, **mods_kwargs)
+```
+
+#### 2. Read-Only Registry Visibility
+
+The catalog provides visibility into the MODS global registry without attempting synchronization:
+
+```python
+# Enhanced utils.py - Read-only registry access
+def get_mods_registered_templates():
+    """Get all MODS templates from global registry (read-only)."""
+    try:
+        from mods.mods_template import extract_template_list
+        return extract_template_list()
+    except ImportError:
+        return []
+
+def get_registry_template_info(template):
+    """Extract info from a registry template (read-only)."""
+    return {
+        'author': template.extract_author(),
+        'version': template.extract_version(),
+        'description': template.extract_description(),
+        'module': template.extract_module(),
+        'name': template.extract_name(),
+        'gitfarm_package': template.extract_gitfarm_package_name(),
+        'commit_id': template.extract_commit_id()
+    }
+```
+
+#### 3. Operational Visibility Features
+
+The catalog provides insights into registry status for operational monitoring:
+
+```python
+def get_mods_registry_status():
+    """Get read-only status of MODS global registry."""
+    registered_templates = get_mods_registered_templates()
+    
+    status_report = {
+        'total_registered': len(registered_templates),
+        'templates_by_author': _group_by_author(registered_templates),
+        'templates_by_version': _group_by_version(registered_templates),
+        'catalog_mods_count': len(get_mods_pipelines()),
+        'registry_available': len(registered_templates) > 0
+    }
+    
+    return status_report
+
+def _group_by_author(templates):
+    """Group templates by author."""
+    groups = {}
+    for template in templates:
+        author = template.extract_author()
+        groups[author] = groups.get(author, 0) + 1
+    return groups
+
+def _group_by_version(templates):
+    """Group templates by version."""
+    groups = {}
+    for template in templates:
+        version = template.extract_version()
+        groups[version] = groups.get(version, 0) + 1
+    return groups
+```
+
+#### 4. Enhanced CLI for Registry Visibility
+
+CLI commands provide registry information without modification capabilities:
+
+```bash
+# Show registry status (read-only)
+cursus catalog mods registry-status
+
+# List templates in registry (read-only)
+cursus catalog mods list-registry
+
+# Show if a template is in registry
+cursus catalog mods check-registry xgboost-simple-mods
+
+# Show registry template details
+cursus catalog mods registry-info <template-name>
+```
+
+### Integration Benefits
+
+#### 1. Automatic Registration
+- Templates are registered in MODS global registry when used through catalog
+- No manual registration steps required
+- Seamless integration with MODS operational capabilities
+
+#### 2. Operational Visibility
+- Monitor template usage patterns across the organization
+- Track template lifecycle and adoption
+- Identify popular templates and usage trends
+
+#### 3. Clean Architecture
+- No complex synchronization logic to maintain
+- Catalog remains authoritative source for pipeline definitions
+- MODS registry naturally accumulates operational data
+
+#### 4. Enhanced Discoverability
+- Cross-reference catalog entries with live registry data
+- Identify templates that exist in registry but not in catalog
+- Provide comprehensive template ecosystem visibility
+
+### Implementation Considerations
+
+#### 1. Error Handling
+```python
+def safe_registry_access(func):
+    """Decorator for safe registry access with fallbacks."""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ImportError:
+            logger.warning("MODS not available, registry features disabled")
+            return None
+        except Exception as e:
+            logger.error(f"Registry access failed: {e}")
+            return None
+    return wrapper
+
+@safe_registry_access
+def get_mods_registered_templates():
+    from mods.mods_template import extract_template_list
+    return extract_template_list()
+```
+
+#### 2. Performance Optimization
+- Cache registry queries to avoid repeated access
+- Lazy loading of registry information
+- Efficient template metadata extraction
+
+#### 3. Security Considerations
+- Read-only access to prevent accidental registry modification
+- Proper error handling for missing MODS dependencies
+- Graceful degradation when registry is unavailable
+
 ## Conclusion
 
 This dual-compiler architecture provides a clean, extensible solution for integrating MODS pipelines into the existing catalog while maintaining code reuse and backward compatibility. The shared DAG layer ensures consistency while the enhanced indexing system provides clear discovery and selection capabilities.
+
+The MODS global registry integration adds operational visibility and automatic template registration without complex synchronization, making the catalog a comprehensive pipeline management system that works seamlessly with the MODS ecosystem.
 
 The design positions the pipeline catalog for future growth while solving the immediate need for MODS integration without code duplication.
