@@ -4,19 +4,19 @@ tags:
   - validation
   - alignment
   - static_analysis
-  - script_analyzer
+  - script_analysis
 keywords:
   - script analyzer
   - AST parsing
-  - static code analysis
+  - static analysis
   - path references
   - environment variables
-  - import statements
+  - argument parsing
   - file operations
 topics:
-  - alignment validation
-  - static analysis
-  - script analysis
+  - validation framework
+  - static code analysis
+  - script pattern extraction
 language: python
 date of note: 2025-08-19
 ---
@@ -25,26 +25,32 @@ date of note: 2025-08-19
 
 ## Overview
 
-The `ScriptAnalyzer` class performs comprehensive static analysis of Python scripts using AST (Abstract Syntax Tree) parsing to extract usage patterns. This component identifies path references, environment variable access, import statements, argument parsing patterns, and file operations, providing the foundational data for script-contract alignment validation.
+The `ScriptAnalyzer` class provides comprehensive static analysis of Python scripts using AST (Abstract Syntax Tree) parsing. It extracts usage patterns including path references, environment variable access, import statements, argument parsing patterns, and file operations to support alignment validation and script compliance checking.
 
-## Core Functionality
+## Architecture
 
-### Static Analysis Features
+### Core Capabilities
 
-The Script Analyzer provides comprehensive script analysis capabilities:
+1. **AST-Based Analysis**: Deep parsing of Python source code using Abstract Syntax Trees
+2. **Pattern Extraction**: Identification of various usage patterns and code constructs
+3. **Multi-Dimensional Analysis**: Comprehensive extraction across multiple code aspects
+4. **Step Type Awareness**: Enhanced analysis with step type and framework detection
+5. **Context Preservation**: Maintains line numbers and code context for all findings
 
-1. **Path Reference Extraction**: Identifies hardcoded paths and path construction patterns
-2. **Environment Variable Analysis**: Detects environment variable access patterns
-3. **Import Statement Analysis**: Extracts module imports and framework detection
-4. **Argument Definition Analysis**: Identifies command-line argument parsing
-5. **File Operation Analysis**: Detects file I/O operations across multiple frameworks
-6. **Step Type Detection**: Determines SageMaker step types and ML frameworks
+### Analysis Dimensions
 
-### Key Components
+The analyzer provides comprehensive analysis across multiple code dimensions:
 
-#### ScriptAnalyzer Class
+- **Path Usage**: Hardcoded paths and dynamic path construction
+- **Environment Access**: Environment variable access patterns
+- **Import Analysis**: Module imports and dependencies
+- **Argument Parsing**: Command-line argument definitions
+- **File Operations**: File read/write operations across multiple libraries
+- **Code Structure**: Main functions and execution blocks
 
-The main analyzer class that orchestrates all static analysis operations:
+## Implementation Details
+
+### Class Structure
 
 ```python
 class ScriptAnalyzer:
@@ -60,371 +66,364 @@ class ScriptAnalyzer:
     """
 ```
 
-## Core Analysis Methods
+### Key Methods
 
-### Path Reference Analysis
+#### `extract_path_references() -> List[PathReference]`
 
-#### extract_path_references()
+Extracts all path references from the script using AST traversal:
 
-Extracts all path references from the script using AST parsing:
+**Detection Patterns:**
+- Hardcoded path strings: `/opt/ml/processing/input/data.csv`
+- Dynamic path construction: `os.path.join()` calls
+- Path-like string identification using heuristics
+- Context preservation with line numbers
 
-**Detection Strategies**:
-- **String Literal Analysis**: Identifies path-like strings in the code
-- **Path Construction Detection**: Recognizes `os.path.join` and pathlib operations
-- **Heuristic Path Identification**: Uses patterns to identify path-like strings
-
-**Path Indicators**:
-- SageMaker paths: `/opt/ml/`, `/tmp/`, `/var/`
-- Relative paths: `./`, `../`
-- File extensions and multiple path separators
-- Windows path patterns with backslashes
-
-**PathReference Objects**:
+**PathReference Object:**
 ```python
 PathReference(
-    path="/opt/ml/input/data",
-    line_number=42,
-    context="data_path = '/opt/ml/input/data'",
-    is_hardcoded=True,
-    construction_method=None
+    path: str,
+    line_number: int,
+    context: str,
+    is_hardcoded: bool,
+    construction_method: Optional[str]
 )
 ```
 
-**Construction Pattern Detection**:
-- Identifies `os.path.join()` calls
-- Extracts path components from construction
-- Marks constructed paths as non-hardcoded
-- Provides construction method information
+#### `extract_env_var_access() -> List[EnvVarAccess]`
 
-### Environment Variable Analysis
+Identifies environment variable access patterns:
 
-#### extract_env_var_access()
+**Supported Patterns:**
+- `os.environ['VAR']`: Direct dictionary access
+- `os.getenv('VAR', 'default')`: Function call with optional default
+- `os.environ.get('VAR', 'default')`: Method call with optional default
 
-Detects all environment variable access patterns:
-
-**Supported Access Patterns**:
-- `os.environ['VAR']` - Direct dictionary access
-- `os.getenv('VAR', 'default')` - Function-based access with optional default
-- `os.environ.get('VAR', 'default')` - Method-based access with optional default
-
-**EnvVarAccess Objects**:
+**EnvVarAccess Object:**
 ```python
 EnvVarAccess(
-    variable_name="SM_MODEL_DIR",
-    line_number=15,
-    context="model_dir = os.getenv('SM_MODEL_DIR', '/opt/ml/model')",
-    access_method="os.getenv",
-    has_default=True,
-    default_value="/opt/ml/model"
+    variable_name: str,
+    line_number: int,
+    context: str,
+    access_method: str,
+    has_default: bool,
+    default_value: Optional[str]
 )
 ```
 
-**Default Value Detection**:
-- Identifies when default values are provided
-- Extracts default value literals
-- Tracks access methods for validation purposes
-
-### Import Statement Analysis
-
-#### extract_imports()
+#### `extract_imports() -> List[ImportStatement]`
 
 Extracts all import statements from the script:
 
-**Import Types Supported**:
-- Standard imports: `import pandas as pd`
+**Import Types:**
+- Direct imports: `import pandas as pd`
 - From imports: `from sklearn.ensemble import RandomForestClassifier`
-- Multiple imports: `from module import item1, item2`
+- Module aliases and imported items tracking
 
-**ImportStatement Objects**:
-```python
-ImportStatement(
-    module_name="pandas",
-    import_alias="pd",
-    line_number=5,
-    is_from_import=False,
-    imported_items=[]
-)
-```
+#### `extract_argument_definitions() -> List[ArgumentDefinition]`
 
-**Framework Detection Integration**:
-- Provides import data for framework detection
-- Supports step type classification
-- Enables framework-specific validation
+Identifies command-line argument definitions from argparse usage:
 
-### Argument Definition Analysis
+**Extracted Properties:**
+- Argument names (normalized from `--arg-name` to `arg_name`)
+- Required/optional status
+- Default values
+- Argument types
+- Choice constraints
 
-#### extract_argument_definitions()
-
-Identifies command-line argument parsing patterns:
-
-**Argument Parser Detection**:
-- Recognizes `add_argument()` calls
-- Extracts argument names, types, and properties
-- Handles required/optional argument classification
-
-**ArgumentDefinition Objects**:
+**ArgumentDefinition Object:**
 ```python
 ArgumentDefinition(
-    argument_name="input_path",
-    line_number=25,
-    is_required=True,
-    has_default=False,
-    default_value=None,
-    argument_type="str",
-    choices=None
+    argument_name: str,
+    line_number: int,
+    is_required: bool,
+    has_default: bool,
+    default_value: Any,
+    argument_type: Optional[str],
+    choices: Optional[List[str]]
 )
 ```
 
-**Property Extraction**:
-- **Required Status**: Identifies required vs optional arguments
-- **Default Values**: Extracts default values when provided
-- **Type Information**: Captures argument type specifications
-- **Choices**: Identifies valid argument choices when specified
+#### `extract_file_operations() -> List[FileOperation]`
 
-### File Operation Analysis
+Comprehensive extraction of file operations across multiple libraries:
 
-#### extract_file_operations()
+**Supported Operations:**
+- **Standard Library**: `open()`, `with open()`
+- **Archive Operations**: `tarfile.open()`
+- **File System**: `shutil.copy()`, `shutil.move()`
+- **Path Operations**: `pathlib.Path` methods
+- **Data Science**: `pandas.read_csv()`, `DataFrame.to_csv()`
+- **Serialization**: `pickle.load()`, `json.dump()`
+- **ML Models**: `model.save_model()`, `model.load_model()`
+- **Visualization**: `plt.savefig()`
+- **Directory Operations**: `Path.glob()`
 
-Comprehensive file operation detection across multiple frameworks:
-
-**Standard Python I/O**:
-- `open()` calls with mode detection
-- File mode analysis (read/write/append)
-- Context manager usage
-
-**Framework-Specific Operations**:
-- **Pandas**: `pd.read_csv()`, `df.to_csv()`
-- **Pickle**: `pickle.load()`, `pickle.dump()`
-- **JSON**: `json.load()`, `json.dump()`
-- **Tarfile**: `tarfile.open()` with mode detection
-- **Shutil**: `shutil.copy()`, `shutil.move()`
-- **Pathlib**: `Path.read_text()`, `Path.write_text()`
-- **XGBoost**: `model.load_model()`, `model.save_model()`
-- **Matplotlib**: `plt.savefig()`
-
-**FileOperation Objects**:
+**FileOperation Object:**
 ```python
 FileOperation(
-    file_path="/opt/ml/output/model.pkl",
-    operation_type="write",
-    line_number=78,
-    context="pickle.dump(model, open('/opt/ml/output/model.pkl', 'wb'))",
-    mode="wb",
-    method="pickle.dump"
+    file_path: str,
+    operation_type: str,  # 'read', 'write', 'unknown'
+    line_number: int,
+    context: str,
+    mode: Optional[str],
+    method: str
 )
 ```
 
-**Operation Type Classification**:
-- **Read Operations**: File input, data loading
-- **Write Operations**: File output, data saving
-- **Directory Operations**: Directory creation, traversal
-
-### Advanced Analysis Features
-
-#### get_all_analysis_results()
+#### `get_all_analysis_results() -> Dict[str, Any]`
 
 Provides comprehensive analysis results with step type awareness:
 
-**Enhanced Analysis**:
-- Basic pattern extraction (paths, environment variables, imports, arguments, file operations)
-- Step type detection using registry integration
-- Framework detection from import analysis
-- Step type-specific pattern detection
-
-**Step Type Integration**:
-- Uses `detect_step_type_from_registry()` for canonical step type identification
-- Applies `detect_framework_from_imports()` for ML framework detection
-- Includes training-specific pattern detection for training scripts
-
-**Comprehensive Results Structure**:
 ```python
 {
-    'script_path': '/path/to/script.py',
-    'path_references': [PathReference, ...],
-    'env_var_accesses': [EnvVarAccess, ...],
-    'imports': [ImportStatement, ...],
-    'argument_definitions': [ArgumentDefinition, ...],
-    'file_operations': [FileOperation, ...],
-    'step_type': 'Training',
-    'framework': 'xgboost',
-    'step_type_patterns': {...}
+    'script_path': str,
+    'path_references': List[PathReference],
+    'env_var_accesses': List[EnvVarAccess],
+    'imports': List[ImportStatement],
+    'argument_definitions': List[ArgumentDefinition],
+    'file_operations': List[FileOperation],
+    'step_type': str,  # Detected step type
+    'framework': str,  # Detected framework
+    'step_type_patterns': Dict[str, Any]  # Step-specific patterns
 }
 ```
 
-### Utility Methods
+#### `has_main_function() -> bool`
 
-#### has_main_function()
+Checks for the presence of a `main()` function definition.
 
-Detects presence of a main function in the script:
+#### `has_main_block() -> bool`
 
-**Detection Logic**:
-- Scans AST for function definitions named 'main'
-- Returns boolean indicating presence
-- Supports testability pattern validation
+Checks for the presence of a `if __name__ == '__main__':` block.
 
-#### has_main_block()
-
-Detects presence of `if __name__ == '__main__':` block:
-
-**Detection Logic**:
-- Identifies the standard Python main block pattern
-- Supports entry point structure validation
-- Enables testability pattern analysis
-
-## AST Visitor Patterns
-
-### Specialized Visitor Classes
-
-The Script Analyzer uses specialized AST visitor classes for different analysis types:
-
-#### PathVisitor
-- **String Literal Analysis**: Examines all string literals for path patterns
-- **Path Construction**: Detects `os.path.join` and pathlib operations
-- **Heuristic Identification**: Uses multiple indicators to identify paths
-
-#### EnvVarVisitor
-- **Subscript Operations**: Detects `os.environ['VAR']` patterns
-- **Function Calls**: Identifies `os.getenv()` and `os.environ.get()` calls
-- **Default Value Extraction**: Captures default values when provided
-
-#### ImportVisitor
-- **Import Statements**: Processes both `import` and `from ... import` statements
-- **Alias Handling**: Captures import aliases and renamed imports
-- **Module Tracking**: Maintains complete import information
-
-#### ArgumentVisitor
-- **Argparse Detection**: Identifies `add_argument()` method calls
-- **Property Extraction**: Captures argument properties from keyword arguments
-- **Type Analysis**: Extracts type information and validation constraints
-
-#### FileOpVisitor
-- **Multi-Framework Support**: Handles operations from various Python libraries
-- **Operation Classification**: Determines read vs write operations
-- **Path Extraction**: Extracts file paths from various call patterns
-
-## Integration Points
-
-### Alignment Validation Framework
-- **Script Analysis Models**: Uses data models from script_analysis_models
-- **Validation Input**: Provides structured data for validation processes
-- **Pattern Recognition**: Supports pattern-based validation rules
-
-### Step Type Detection
-- **Registry Integration**: Uses step registry for canonical step type detection
-- **Framework Detection**: Integrates with framework detection utilities
-- **Pattern Analysis**: Supports step type-specific pattern recognition
-
-### Testability Validation
-- **Structure Analysis**: Provides data for testability pattern validation
-- **Main Function Detection**: Supports testability structure requirements
-- **Entry Point Analysis**: Enables testability compliance checking
-
-## Usage Patterns
+## Usage Examples
 
 ### Basic Script Analysis
 
 ```python
-analyzer = ScriptAnalyzer('/path/to/script.py')
+from cursus.validation.alignment.static_analysis.script_analyzer import ScriptAnalyzer
 
-# Extract specific patterns
-path_refs = analyzer.extract_path_references()
-env_vars = analyzer.extract_env_var_access()
-imports = analyzer.extract_imports()
-arguments = analyzer.extract_argument_definitions()
-file_ops = analyzer.extract_file_operations()
+# Initialize analyzer with script path
+script_path = "/path/to/processing_script.py"
+analyzer = ScriptAnalyzer(script_path)
 
-# Print analysis results
-for path_ref in path_refs:
-    print(f"Path: {path_ref.path} (line {path_ref.line_number})")
-```
-
-### Comprehensive Analysis
-
-```python
-analyzer = ScriptAnalyzer('/path/to/script.py')
-
-# Get complete analysis results
+# Get comprehensive analysis
 results = analyzer.get_all_analysis_results()
 
 print(f"Script: {results['script_path']}")
-print(f"Step Type: {results['step_type']}")
+print(f"Step type: {results['step_type']}")
 print(f"Framework: {results['framework']}")
-print(f"Paths found: {len(results['path_references'])}")
-print(f"Environment variables: {len(results['env_var_accesses'])}")
-print(f"File operations: {len(results['file_operations'])}")
 ```
 
-### Validation Integration
+### Path Reference Analysis
 
 ```python
-def analyze_script_for_validation(script_path):
-    """Analyze script for alignment validation."""
-    try:
-        analyzer = ScriptAnalyzer(script_path)
-        return analyzer.get_all_analysis_results()
-    except ValueError as e:
-        return {'error': str(e), 'script_path': script_path}
+# Extract path references
+path_refs = analyzer.extract_path_references()
 
-# Use in validation pipeline
-analysis_results = analyze_script_for_validation('training_script.py')
-if 'error' not in analysis_results:
-    # Proceed with validation using analysis results
-    validation_issues = validate_script_contract_alignment(
-        analysis_results, contract, script_name
-    )
+for path_ref in path_refs:
+    print(f"Line {path_ref.line_number}: {path_ref.path}")
+    print(f"  Hardcoded: {path_ref.is_hardcoded}")
+    if path_ref.construction_method:
+        print(f"  Method: {path_ref.construction_method}")
+    print(f"  Context: {path_ref.context[:50]}...")
 ```
 
-## Benefits
+### Environment Variable Analysis
 
-### Comprehensive Analysis
-- **Multi-Pattern Detection**: Identifies various code patterns in single pass
-- **Framework Awareness**: Recognizes patterns from multiple ML frameworks
-- **Context Preservation**: Maintains code context for detailed reporting
+```python
+# Extract environment variable access
+env_accesses = analyzer.extract_env_var_access()
 
-### Robust Parsing
-- **AST-Based Analysis**: Uses Python's built-in AST parsing for accuracy
-- **Error Handling**: Graceful handling of syntax errors and parsing issues
-- **Line Number Tracking**: Provides precise location information for all patterns
+for env_access in env_accesses:
+    print(f"Line {env_access.line_number}: {env_access.variable_name}")
+    print(f"  Method: {env_access.access_method}")
+    print(f"  Has default: {env_access.has_default}")
+    if env_access.default_value:
+        print(f"  Default: {env_access.default_value}")
+```
 
-### Extensible Architecture
-- **Visitor Pattern**: Easy addition of new analysis patterns
-- **Modular Design**: Separate analysis methods for different pattern types
-- **Integration Ready**: Designed for integration with validation frameworks
+### Argument Definition Analysis
 
-## Design Considerations
+```python
+# Extract argument definitions
+arguments = analyzer.extract_argument_definitions()
 
-### Performance Optimization
-- **Single AST Parse**: Parses script once and reuses AST for all analysis
-- **Efficient Visitors**: Optimized AST traversal patterns
-- **Lazy Evaluation**: Analysis methods called only when needed
+for arg in arguments:
+    print(f"Argument: {arg.argument_name}")
+    print(f"  Required: {arg.is_required}")
+    print(f"  Type: {arg.argument_type}")
+    if arg.has_default:
+        print(f"  Default: {arg.default_value}")
+    if arg.choices:
+        print(f"  Choices: {arg.choices}")
+```
 
-### Accuracy and Reliability
-- **Heuristic Validation**: Multiple indicators for pattern identification
-- **Context Analysis**: Considers surrounding code for accurate detection
-- **Error Resilience**: Continues analysis despite individual pattern failures
+### File Operation Analysis
 
-### Extensibility
-- **Plugin Architecture**: Easy addition of new visitor classes
-- **Pattern Extension**: Simple addition of new detection patterns
-- **Framework Support**: Extensible framework-specific operation detection
+```python
+# Extract file operations
+file_ops = analyzer.extract_file_operations()
+
+for file_op in file_ops:
+    print(f"Line {file_op.line_number}: {file_op.operation_type}")
+    print(f"  Path: {file_op.file_path}")
+    print(f"  Method: {file_op.method}")
+    if file_op.mode:
+        print(f"  Mode: {file_op.mode}")
+```
+
+### Import Analysis
+
+```python
+# Extract imports
+imports = analyzer.extract_imports()
+
+for import_stmt in imports:
+    print(f"Line {import_stmt.line_number}: {import_stmt.module_name}")
+    if import_stmt.import_alias:
+        print(f"  Alias: {import_stmt.import_alias}")
+    if import_stmt.is_from_import:
+        print(f"  Items: {import_stmt.imported_items}")
+```
+
+### Code Structure Analysis
+
+```python
+# Check code structure
+has_main_func = analyzer.has_main_function()
+has_main_block = analyzer.has_main_block()
+
+print(f"Has main function: {has_main_func}")
+print(f"Has main block: {has_main_block}")
+```
+
+## Integration Points
+
+### Alignment Validation Framework
+
+The ScriptAnalyzer integrates with the alignment validation system:
+
+```python
+class AlignmentValidator:
+    def validate_script_patterns(self, script_path):
+        analyzer = ScriptAnalyzer(script_path)
+        results = analyzer.get_all_analysis_results()
+        
+        # Validate path usage
+        path_issues = self.validate_path_references(results['path_references'])
+        
+        # Validate environment variable usage
+        env_issues = self.validate_env_var_access(results['env_var_accesses'])
+        
+        # Validate argument definitions
+        arg_issues = self.validate_arguments(results['argument_definitions'])
+        
+        return {
+            'path_issues': path_issues,
+            'env_issues': env_issues,
+            'arg_issues': arg_issues,
+            'step_type': results['step_type'],
+            'framework': results['framework']
+        }
+```
+
+### Static Analysis Pipeline
+
+Works as the central component of static analysis:
+
+- **AST Foundation**: Provides AST parsing foundation for other analyzers
+- **Pattern Extraction**: Extracts patterns for specialized analyzers
+- **Context Preservation**: Maintains code context for validation reporting
+- **Integration Hub**: Coordinates with ImportAnalyzer and PathExtractor
+
+### Contract Validation
+
+Supports contract alignment validation:
+
+- **Argument Validation**: Validates script arguments against contracts
+- **Path Validation**: Ensures path usage matches contract specifications
+- **Environment Validation**: Validates environment variable usage
+- **Import Validation**: Checks import requirements against contracts
+
+## Advanced Features
+
+### AST Visitor Pattern
+
+Sophisticated AST traversal using the visitor pattern:
+
+- **Specialized Visitors**: Custom visitors for different analysis types
+- **Context Preservation**: Maintains line numbers and code context
+- **Error Resilience**: Graceful handling of AST parsing issues
+- **Extensibility**: Easy addition of new pattern detection
+
+### Multi-Library File Operation Detection
+
+Comprehensive file operation detection across libraries:
+
+- **Standard Library**: Built-in file operations
+- **Data Science**: pandas, numpy file operations
+- **Machine Learning**: Model save/load operations
+- **Visualization**: Plot saving operations
+- **Archive Operations**: tar, zip file handling
+
+### Step Type Awareness
+
+Enhanced analysis with step type detection:
+
+- **Registry Integration**: Uses step type registry for classification
+- **Framework Detection**: Identifies ML frameworks from imports
+- **Pattern Specialization**: Step-specific pattern detection
+- **Training Patterns**: Specialized training script analysis
+
+### Context-Rich Reporting
+
+Detailed context preservation for all findings:
+
+- **Line Numbers**: Precise location of all patterns
+- **Code Context**: Surrounding code for better understanding
+- **Method Attribution**: Identifies the method used for operations
+- **Relationship Tracking**: Links related patterns and operations
+
+## Error Handling
+
+Comprehensive error handling throughout analysis:
+
+1. **File Reading**: Graceful handling of file access issues
+2. **AST Parsing**: Recovery from syntax errors and malformed code
+3. **Pattern Extraction**: Continues analysis when specific patterns fail
+4. **Context Extraction**: Provides fallback when context is unavailable
+
+## Performance Considerations
+
+Optimized for large script analysis:
+
+- **Single AST Parse**: Reuses parsed AST across all analysis methods
+- **Efficient Traversal**: Optimized visitor patterns for AST traversal
+- **Memory Management**: Efficient handling of large script files
+- **Lazy Evaluation**: On-demand analysis of specific pattern types
+
+## Testing and Validation
+
+The analyzer supports comprehensive testing:
+
+- **Mock Scripts**: Can analyze synthetic script content
+- **Pattern Testing**: Validates pattern detection accuracy
+- **AST Testing**: Tests AST parsing and traversal
+- **Integration Testing**: Validates integration with validation framework
 
 ## Future Enhancements
 
-### Advanced Analysis
-- **Control Flow Analysis**: Understanding of conditional logic and loops
-- **Data Flow Analysis**: Tracking data flow through script execution
-- **Semantic Analysis**: Enhanced understanding of code semantics
+Potential improvements for the analyzer:
 
-### Enhanced Detection
-- **Machine Learning Patterns**: ML-specific pattern recognition
-- **Custom Framework Support**: Support for custom and proprietary frameworks
-- **Dynamic Analysis**: Runtime behavior analysis integration
-
-### Integration Improvements
-- **IDE Integration**: Real-time analysis in development environments
-- **Incremental Analysis**: Efficient re-analysis of changed code sections
-- **Parallel Processing**: Concurrent analysis of multiple scripts
+1. **Enhanced Patterns**: Support for more complex code patterns
+2. **Type Analysis**: Variable type inference and tracking
+3. **Control Flow**: Analysis of conditional and loop structures
+4. **Performance Metrics**: Analysis performance tracking
+5. **Custom Patterns**: Configurable pattern detection rules
 
 ## Conclusion
 
-The Script Analyzer provides essential static analysis capabilities for the alignment validation framework, extracting comprehensive usage patterns from Python scripts through sophisticated AST parsing. By identifying paths, environment variables, imports, arguments, and file operations across multiple frameworks, it enables accurate script-contract alignment validation. This component is fundamental to understanding script behavior and ensuring proper alignment with contract specifications.
+The ScriptAnalyzer provides comprehensive static analysis of Python scripts using AST parsing, serving as the foundation for alignment validation and script compliance checking. Its multi-dimensional analysis approach ensures thorough extraction of usage patterns while maintaining context and supporting step type-aware validation.
+
+The analyzer serves as a critical component in the validation framework, enabling automated detection of script patterns and supporting comprehensive alignment validation across the entire system.

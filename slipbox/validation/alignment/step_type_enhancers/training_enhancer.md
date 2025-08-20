@@ -3,22 +3,19 @@ tags:
   - code
   - validation
   - alignment
-  - step_type_enhancement
-  - training_validation
+  - step_type_enhancers
+  - training
 keywords:
-  - training step enhancer
-  - training validation
+  - training enhancer
+  - step type validation
+  - training script validation
   - model training validation
-  - SageMaker training
-  - framework-specific validation
-  - XGBoost validation
-  - PyTorch validation
-  - training patterns
+  - framework patterns
+  - training loops
 topics:
-  - alignment validation
+  - validation framework
   - step type enhancement
-  - training validation
-  - machine learning training
+  - training patterns
 language: python
 date of note: 2025-08-19
 ---
@@ -27,353 +24,559 @@ date of note: 2025-08-19
 
 ## Overview
 
-The `TrainingStepEnhancer` class provides training step-specific validation enhancement for the alignment validation system. It offers comprehensive validation for training scripts including framework-specific patterns, model saving, hyperparameter loading, and training loop validation for machine learning workflows.
+The `TrainingStepEnhancer` class provides specialized validation enhancement for Training steps in SageMaker pipelines. It focuses on comprehensive validation of training scripts including framework-specific patterns, model saving, hyperparameter loading, training loop validation, and training infrastructure patterns.
 
-## Core Components
+## Architecture
 
-### TrainingStepEnhancer Class
+### Core Capabilities
 
-Extends `BaseStepEnhancer` to provide training-specific validation enhancement.
+1. **Training Script Pattern Validation**: Ensures proper training loops, model saving, and data handling
+2. **Framework-Specific Validation**: Provides specialized validation for ML frameworks (XGBoost, PyTorch, etc.)
+3. **Training Specification Alignment**: Validates training specifications and configuration
+4. **Training Dependencies Validation**: Verifies framework dependencies and requirements
+5. **Training Builder Validation**: Validates training builder patterns and implementation
 
-#### Initialization
+### Validation Levels
 
-```python
-def __init__(self)
-```
+The enhancer implements a four-level validation approach specific to Training steps:
 
-Initializes the training enhancer with:
-- **step_type**: "Training"
-- **reference_examples**: Training script examples for validation
-- **framework_validators**: Framework-specific validation methods
+- **Level 1**: Training script patterns validation
+- **Level 2**: Training specifications alignment
+- **Level 3**: Training dependencies validation
+- **Level 4**: Training builder patterns validation
 
-#### Reference Examples
-- `xgboost_training.py`: XGBoost training example
-- `pytorch_training.py`: PyTorch training example
-- `builder_xgboost_training_step.py`: Training builder example
+## Implementation Details
 
-#### Framework Validators
-- **xgboost**: `_validate_xgboost_training`
-- **pytorch**: `_validate_pytorch_training`
-
-## Key Methods
-
-### Main Enhancement Method
+### Class Structure
 
 ```python
-def enhance_validation(self, existing_results: Dict[str, Any], script_name: str) -> Dict[str, Any]
+class TrainingStepEnhancer(BaseStepEnhancer):
+    """
+    Training step-specific validation enhancement.
+    
+    Provides validation for:
+    - Training script patterns (training loops, model saving, hyperparameter loading)
+    - Framework-specific validation (XGBoost, PyTorch, etc.)
+    - Training specifications alignment
+    - Training dependencies validation
+    - Training builder patterns
+    """
 ```
 
-Performs comprehensive training validation through four levels:
+### Key Methods
 
-#### Level 1: Training Script Patterns
-Validates training-specific script patterns including:
-- Training loop implementation (fit, train, epoch, batch)
-- Model saving to `/opt/ml/model/`
-- Hyperparameter loading from `/opt/ml/input/data/config/`
-- Training data loading from `/opt/ml/input/data/train/`
-- Model evaluation and metrics calculation
+#### `enhance_validation(existing_results: Dict[str, Any], script_name: str) -> Dict[str, Any]`
 
-#### Level 2: Training Specifications
-Validates training specification alignment:
-- Checks for existence of training specification files
-- Validates specification-script alignment
-- Ensures proper training step configuration
+Main validation enhancement method that orchestrates Training-specific validation:
 
-#### Level 3: Training Dependencies
-Validates training dependencies:
-- Framework-specific dependency validation
-- Required library imports and usage
-- Dependency declaration consistency
+**Validation Flow:**
+1. Training script patterns validation (Level 1)
+2. Training specifications alignment (Level 2)
+3. Training dependencies validation (Level 3)
+4. Training builder patterns validation (Level 4)
+5. Framework-specific validation
 
-#### Level 4: Training Builder Patterns
-Validates training builder patterns:
-- Estimator creation methods (`_create_estimator`)
-- Builder configuration patterns
-- SageMaker estimator integration
-
-### Pattern Validation Methods
-
-```python
-def _validate_training_script_patterns(self, script_analysis: Dict[str, Any], framework: Optional[str], script_name: str) -> List[Dict[str, Any]]
-```
-
-Validates core training patterns:
-
-#### Training Loop Patterns
-Checks for training loop implementation:
-- Keywords: `fit`, `train`, `epoch`, `batch`, `forward`, `backward`
-- Severity: WARNING
-- Recommendation: Add model training loop
-
-#### Model Saving Patterns
-Validates model artifact saving:
-- Keywords: `save`, `dump`, `pickle`, `joblib`, `torch.save`, `/opt/ml/model`
-- Severity: ERROR
-- Expected path: `/opt/ml/model/`
-
-#### Hyperparameter Loading Patterns
-Validates hyperparameter loading:
-- Keywords: `hyperparameters`, `config`, `params`, `/opt/ml/input/data/config`
-- Severity: WARNING
-- Expected path: `/opt/ml/input/data/config/`
-
-#### Training Data Loading Patterns
-Checks for training data loading:
-- Keywords: `read_csv`, `load`, `data`, `/opt/ml/input/data/train`
-- Severity: WARNING
-- Expected path: `/opt/ml/input/data/train/`
-
-#### Evaluation Patterns
-Validates model evaluation:
-- Keywords: `evaluate`, `score`, `metric`, `accuracy`, `loss`, `validation`
-- Severity: INFO
-- Purpose: Model performance assessment
-
-### Framework-Specific Validation
-
-```python
-def _validate_xgboost_training(self, script_analysis: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]
-```
-
-XGBoost-specific training validation:
-
-#### XGBoost Import Validation
-- Checks for XGBoost imports (`xgboost`, `xgb`)
-- Validates proper XGBoost usage patterns
-- Severity: ERROR for missing imports
-
-#### DMatrix Usage Validation
-- Keywords: `DMatrix`, `xgb.DMatrix`
-- Validates XGBoost data format usage
-- Severity: WARNING
-- Recommendation: Convert data to DMatrix format
-
-#### XGBoost Training Call Validation
-- Keywords: `xgb.train`, `train`
-- Validates XGBoost training function usage
-- Severity: ERROR
-- Recommendation: Add xgb.train() call
-
-```python
-def _validate_pytorch_training(self, script_analysis: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]
-```
-
-PyTorch-specific training validation:
-
-#### PyTorch Import Validation
-- Checks for PyTorch imports (`torch`, `pytorch`)
-- Validates proper PyTorch usage patterns
-- Severity: ERROR for missing imports
-
-#### Model Definition Validation
-- Keywords: `nn.Module`, `torch.nn`
-- Validates PyTorch model class definition
-- Severity: WARNING
-- Recommendation: Create model class inheriting from nn.Module
-
-#### Optimizer Usage Validation
-- Keywords: `optim`, `optimizer`
-- Validates optimizer usage in training loop
-- Severity: WARNING
-- Recommendation: Add optimizer to training loop
-
-### Specification and Builder Validation
-
-```python
-def _validate_training_specifications(self, script_name: str) -> List[Dict[str, Any]]
-```
-
-Validates training specification alignment:
-- Checks for specification file existence
-- Validates specification-script relationships
-- Provides guidance for missing specifications
-
-```python
-def _validate_training_builder(self, script_name: str) -> List[Dict[str, Any]]
-```
-
-Validates training builder patterns:
-- Checks for builder file existence
-- Validates estimator creation patterns
-- Ensures proper builder configuration
-
-### Dependency Validation
-
-```python
-def _validate_training_dependencies(self, script_name: str, framework: Optional[str]) -> List[Dict[str, Any]]
-```
-
-Validates framework-specific dependencies:
-- **xgboost**: xgboost, pandas, numpy
-- **pytorch**: torch, torchvision, numpy
-- **sklearn**: scikit-learn, pandas, numpy
-- **tensorflow**: tensorflow, numpy
-
-## Pattern Detection Methods
-
-### Training Pattern Detection
-
-```python
-def _has_training_loop_patterns(self, script_analysis: Dict[str, Any]) -> bool
-```
-
-Detects training loop patterns using keywords:
-- `fit`, `train`, `epoch`, `batch`, `forward`, `backward`
-
-```python
-def _has_model_saving_patterns(self, script_analysis: Dict[str, Any]) -> bool
-```
-
-Detects model saving patterns:
-- Function keywords: `save`, `dump`, `pickle`, `joblib`, `torch.save`
-- Path references: `/opt/ml/model`
-
-```python
-def _has_hyperparameter_loading_patterns(self, script_analysis: Dict[str, Any]) -> bool
-```
-
-Detects hyperparameter loading patterns:
-- Function keywords: `hyperparameters`, `config`, `params`
-- Path references: `/opt/ml/input/data/config`
-
-```python
-def _has_training_data_loading_patterns(self, script_analysis: Dict[str, Any]) -> bool
-```
-
-Detects training data loading patterns:
-- Function keywords: `read_csv`, `load`, `data`
-- Path references: `/opt/ml/input/data/train`
-
-```python
-def _has_evaluation_patterns(self, script_analysis: Dict[str, Any]) -> bool
-```
-
-Detects evaluation patterns:
-- Keywords: `evaluate`, `score`, `metric`, `accuracy`, `loss`, `validation`
-
-### Builder Pattern Detection
-
-```python
-def _has_estimator_creation_patterns(self, builder_analysis: Dict[str, Any]) -> bool
-```
-
-Detects estimator creation patterns in builders:
-- Keywords: `_create_estimator`, `Estimator`, `XGBoost`, `PyTorch`
-
-## Comprehensive Validation
-
-```python
-def validate_training_script_comprehensive(self, script_name: str, script_content: str) -> Dict[str, Any]
-```
-
-Performs comprehensive training script validation:
-
-#### Analysis Components
-- **Framework Detection**: Identifies training framework from content
-- **Pattern Analysis**: Detects training-specific patterns using framework pattern detection
-- **Framework Patterns**: Gets framework-specific pattern analysis
-- **Validation Results**: Comprehensive validation assessment
-
-#### Return Structure
+**Return Structure:**
 ```python
 {
-    'script_name': 'xgboost_training',
-    'framework': 'xgboost',
-    'training_patterns': {
-        'has_training_loop': True,
-        'has_model_saving': True,
-        'has_hyperparameter_loading': True,
-        'has_data_loading': True,
-        'has_evaluation': False
-    },
-    'framework_patterns': {...},
-    'validation_results': {...}
+    'enhanced_results': Dict[str, Any],
+    'additional_issues': List[Dict[str, Any]],
+    'step_type': 'Training',
+    'framework': Optional[str]
 }
 ```
 
-### Training Validation Requirements
+#### `_validate_training_script_patterns(script_analysis: Dict[str, Any], framework: Optional[str], script_name: str) -> List[Dict[str, Any]]`
+
+Validates training-specific script patterns (Level 1):
+
+**Validation Checks:**
+- Training loop patterns (`fit()`, `train()`, epoch/batch processing)
+- Model saving patterns (artifacts to `/opt/ml/model/`)
+- Hyperparameter loading patterns (from `/opt/ml/input/data/config/`)
+- Training data loading patterns (from `/opt/ml/input/data/train/`)
+- Evaluation patterns (metrics calculation and validation)
+
+#### `_validate_training_specifications(script_name: str) -> List[Dict[str, Any]]`
+
+Validates training specifications alignment (Level 2):
+
+**Validation Checks:**
+- Training specification file existence
+- Specification-script alignment
+- Configuration parameter validation
+- Training job specification compliance
+
+#### `_validate_training_dependencies(script_name: str, framework: Optional[str]) -> List[Dict[str, Any]]`
+
+Validates training dependencies (Level 3):
+
+**Validation Checks:**
+- Framework-specific dependency validation
+- Required package declarations
+- Version compatibility checks
+- Import statement validation
+
+#### `_validate_training_builder(script_name: str) -> List[Dict[str, Any]]`
+
+Validates training builder patterns (Level 4):
+
+**Validation Checks:**
+- Training builder file existence
+- Estimator creation method implementation
+- Builder configuration patterns
+- Training step creation logic
+
+### Framework-Specific Validators
+
+#### `_validate_xgboost_training(script_analysis: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]`
+
+XGBoost-specific training validation:
+
+**Validation Focus:**
+- XGBoost import patterns (`import xgboost as xgb`)
+- DMatrix usage for data handling (`xgb.DMatrix`)
+- XGBoost training calls (`xgb.train()`)
+- XGBoost-specific parameter handling
+- Model saving in XGBoost format
+
+#### `_validate_pytorch_training(script_analysis: Dict[str, Any], script_name: str) -> List[Dict[str, Any]]`
+
+PyTorch-specific training validation:
+
+**Validation Focus:**
+- PyTorch import patterns (`import torch`)
+- Model definition (`nn.Module` inheritance)
+- Optimizer usage (`torch.optim`)
+- Training loop implementation
+- Loss function and backpropagation
+
+## Usage Examples
+
+### Basic Training Validation
 
 ```python
-def get_training_validation_requirements(self) -> Dict[str, Any]
+from cursus.validation.alignment.step_type_enhancers.training_enhancer import TrainingStepEnhancer
+
+# Initialize enhancer
+enhancer = TrainingStepEnhancer()
+
+# Enhance existing validation results
+existing_results = {
+    'script_analysis': {...},
+    'contract_validation': {...}
+}
+
+# Enhance with Training-specific validation
+enhanced_results = enhancer.enhance_validation(existing_results, "xgboost_training")
+
+print(f"Enhanced validation issues: {len(enhanced_results['additional_issues'])}")
 ```
 
-Returns comprehensive training validation requirements:
+### XGBoost Training Validation
 
-#### Required Patterns
-- **Training Loop**: Training loop implementation (ERROR severity)
-- **Model Saving**: Model artifact saving (ERROR severity)
-- **Hyperparameter Loading**: SageMaker hyperparameter handling (WARNING severity)
-- **Data Loading**: Training data loading (WARNING severity)
+```python
+# Example XGBoost training script
+xgboost_training = """
+import xgboost as xgb
+import pandas as pd
+import pickle
+import json
+import os
 
-#### Framework Requirements
-- **XGBoost**: DMatrix creation, xgb.train usage, XGBoost imports
-- **PyTorch**: Model definition, training loop, optimizer usage
+def load_hyperparameters():
+    # Load hyperparameters from SageMaker
+    with open('/opt/ml/input/data/config/hyperparameters.json', 'r') as f:
+        hyperparams = json.load(f)
+    return hyperparams
 
-#### SageMaker Paths
+def load_training_data():
+    # Load training data
+    train_path = '/opt/ml/input/data/train/train.csv'
+    data = pd.read_csv(train_path)
+    
+    # Separate features and target
+    X = data.drop('target', axis=1)
+    y = data['target']
+    
+    return X, y
+
+def train_model(X, y, hyperparams):
+    # Create DMatrix for XGBoost
+    dtrain = xgb.DMatrix(X, label=y)
+    
+    # Set XGBoost parameters
+    params = {
+        'objective': 'binary:logistic',
+        'eval_metric': 'auc',
+        'learning_rate': hyperparams.get('learning_rate', 0.1),
+        'max_depth': hyperparams.get('max_depth', 6),
+        'subsample': hyperparams.get('subsample', 0.8)
+    }
+    
+    # Train model
+    num_rounds = hyperparams.get('num_rounds', 100)
+    model = xgb.train(params, dtrain, num_rounds)
+    
+    return model
+
+def save_model(model):
+    # Save model to SageMaker model directory
+    model_path = '/opt/ml/model/model.pkl'
+    with open(model_path, 'wb') as f:
+        pickle.dump(model, f)
+
+def evaluate_model(model, X, y):
+    # Evaluate model performance
+    dtest = xgb.DMatrix(X)
+    predictions = model.predict(dtest)
+    
+    # Calculate metrics (simplified)
+    accuracy = sum((predictions > 0.5) == y) / len(y)
+    return {'accuracy': accuracy}
+
+def main():
+    # Load hyperparameters
+    hyperparams = load_hyperparameters()
+    
+    # Load training data
+    X, y = load_training_data()
+    
+    # Train model
+    model = train_model(X, y, hyperparams)
+    
+    # Evaluate model
+    metrics = evaluate_model(model, X, y)
+    print(f"Training metrics: {metrics}")
+    
+    # Save model
+    save_model(model)
+
+if __name__ == "__main__":
+    main()
+"""
+
+# Validate XGBoost training patterns
+xgb_analysis = enhancer._create_script_analysis_from_content(xgboost_training)
+xgb_issues = enhancer._validate_xgboost_training(xgb_analysis, "xgboost_training.py")
+
+print(f"XGBoost training issues: {len(xgb_issues)}")
+```
+
+### PyTorch Training Validation
+
+```python
+# Example PyTorch training script
+pytorch_training = """
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import pandas as pd
+import json
+import os
+
+class SimpleModel(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(SimpleModel, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_size, output_size)
+        self.sigmoid = nn.Sigmoid()
+    
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = self.sigmoid(x)
+        return x
+
+def load_hyperparameters():
+    with open('/opt/ml/input/data/config/hyperparameters.json', 'r') as f:
+        hyperparams = json.load(f)
+    return hyperparams
+
+def load_training_data():
+    train_path = '/opt/ml/input/data/train/train.csv'
+    data = pd.read_csv(train_path)
+    
+    X = torch.tensor(data.drop('target', axis=1).values, dtype=torch.float32)
+    y = torch.tensor(data['target'].values, dtype=torch.float32).unsqueeze(1)
+    
+    return X, y
+
+def train_model(X, y, hyperparams):
+    # Initialize model
+    input_size = X.shape[1]
+    hidden_size = hyperparams.get('hidden_size', 64)
+    output_size = 1
+    
+    model = SimpleModel(input_size, hidden_size, output_size)
+    
+    # Initialize optimizer and loss function
+    learning_rate = hyperparams.get('learning_rate', 0.001)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.BCELoss()
+    
+    # Training loop
+    epochs = hyperparams.get('epochs', 100)
+    for epoch in range(epochs):
+        # Forward pass
+        outputs = model(X)
+        loss = criterion(outputs, y)
+        
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        if (epoch + 1) % 10 == 0:
+            print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
+    
+    return model
+
+def save_model(model):
+    model_path = '/opt/ml/model/model.pth'
+    torch.save(model.state_dict(), model_path)
+
+def evaluate_model(model, X, y):
+    model.eval()
+    with torch.no_grad():
+        outputs = model(X)
+        predictions = (outputs > 0.5).float()
+        accuracy = (predictions == y).float().mean()
+    
+    return {'accuracy': accuracy.item()}
+
+def main():
+    hyperparams = load_hyperparameters()
+    X, y = load_training_data()
+    
+    model = train_model(X, y, hyperparams)
+    metrics = evaluate_model(model, X, y)
+    print(f"Training metrics: {metrics}")
+    
+    save_model(model)
+
+if __name__ == "__main__":
+    main()
+"""
+
+# Validate PyTorch training patterns
+pytorch_analysis = enhancer._create_script_analysis_from_content(pytorch_training)
+pytorch_issues = enhancer._validate_pytorch_training(pytorch_analysis, "pytorch_training.py")
+
+print(f"PyTorch training issues: {len(pytorch_issues)}")
+```
+
+### Comprehensive Training Validation
+
+```python
+# Perform comprehensive training validation
+training_requirements = enhancer.get_training_validation_requirements()
+
+print("Training Validation Requirements:")
+print("Required patterns:")
+for pattern, details in training_requirements['required_patterns'].items():
+    print(f"  {pattern}: {details['description']} ({details['severity']})")
+
+print("\nFramework requirements:")
+for framework, reqs in training_requirements['framework_requirements'].items():
+    print(f"  {framework}:")
+    print(f"    Imports: {reqs['imports']}")
+    print(f"    Functions: {reqs['functions']}")
+    print(f"    Patterns: {reqs['patterns']}")
+
+# Comprehensive script validation
+comprehensive_results = enhancer.validate_training_script_comprehensive(
+    "xgboost_training.py",
+    xgboost_training
+)
+
+print("\nComprehensive Validation Results:")
+print(f"  Framework: {comprehensive_results['framework']}")
+print(f"  Training loop: {comprehensive_results['validation_results']['training_loop']}")
+print(f"  Model saving: {comprehensive_results['validation_results']['model_saving']}")
+print(f"  Hyperparameter loading: {comprehensive_results['validation_results']['hyperparameter_loading']}")
+```
+
+### Training Builder Validation
+
+```python
+# Check for training builder existence and patterns
+script_name = "xgboost_training"
+
+# Validate builder existence
+builder_issues = enhancer._validate_training_builder(script_name)
+
+for issue in builder_issues:
+    print(f"Builder Issue: {issue['category']}")
+    print(f"  Message: {issue['message']}")
+    print(f"  Recommendation: {issue['recommendation']}")
+    print(f"  Severity: {issue['severity']}")
+```
+
+## Integration Points
+
+### Alignment Validation Framework
+
+The TrainingStepEnhancer integrates with the alignment validation system:
+
+```python
+class AlignmentValidator:
+    def validate_training_step(self, script_name, existing_results):
+        enhancer = TrainingStepEnhancer()
+        
+        # Enhance validation with Training-specific checks
+        enhanced_results = enhancer.enhance_validation(existing_results, script_name)
+        
+        # Process Training-specific issues
+        training_issues = [
+            issue for issue in enhanced_results['additional_issues']
+            if issue['source'] == 'TrainingStepEnhancer'
+        ]
+        
+        return {
+            'step_type': 'Training',
+            'validation_results': enhanced_results,
+            'training_issues': training_issues
+        }
+```
+
+### Step Type Enhancement Pipeline
+
+Works as part of the step type enhancement system:
+
+- **Step Type Detection**: Identifies Training steps from script/builder names
+- **Specialized Validation**: Applies Training-specific validation rules
+- **Framework Integration**: Coordinates with framework-specific validators
+- **Builder Analysis**: Integrates with training builder validation
+
+### SageMaker Integration
+
+Specialized support for SageMaker Training patterns:
+
+- **Training Paths**: Validates SageMaker training path usage
+- **Model Artifacts**: Ensures proper model saving to `/opt/ml/model/`
+- **Hyperparameters**: Validates hyperparameter loading patterns
+- **Training Data**: Verifies training data access patterns
+
+## Advanced Features
+
+### Multi-Level Validation Architecture
+
+Sophisticated validation approach tailored to Training steps:
+
+- **Pattern-Centric**: Focuses on training loop and model lifecycle patterns
+- **Framework-Aware**: Validates framework-specific training patterns
+- **Infrastructure-Focused**: Emphasizes SageMaker training infrastructure
+- **Builder-Integrated**: Coordinates with training builder patterns
+
+### Pattern Detection System
+
+Comprehensive pattern detection for Training validation:
+
+- **Training Loop Patterns**: Detects training iteration and optimization logic
+- **Model Lifecycle Patterns**: Identifies model creation, training, and saving
+- **Data Handling Patterns**: Recognizes data loading and preprocessing
+- **Framework Patterns**: Detects framework-specific training implementations
+
+### Framework-Aware Validation
+
+Intelligent framework detection and specialized validation:
+
+- **Framework Detection**: Identifies ML frameworks from script analysis
+- **Specialized Validators**: Framework-specific validation logic
+- **Pattern Adaptation**: Adapts validation patterns based on framework
+- **Best Practice Enforcement**: Framework-specific best practice validation
+
+## Validation Requirements
+
+### Required Patterns
+
+The enhancer validates several required patterns:
+
+```python
+{
+    'training_loop': {
+        'keywords': ['fit', 'train', 'epoch', 'batch'],
+        'description': 'Training loop implementation',
+        'severity': 'ERROR'
+    },
+    'model_saving': {
+        'keywords': ['save', 'dump', 'pickle', '/opt/ml/model'],
+        'description': 'Model artifact saving',
+        'severity': 'ERROR'
+    },
+    'hyperparameter_loading': {
+        'keywords': ['hyperparameters', 'config', '/opt/ml/input/data/config'],
+        'description': 'Hyperparameter loading from SageMaker',
+        'severity': 'WARNING'
+    },
+    'data_loading': {
+        'keywords': ['read_csv', 'load', '/opt/ml/input/data/train'],
+        'description': 'Training data loading',
+        'severity': 'WARNING'
+    }
+}
+```
+
+### Framework Requirements
+
+Framework-specific validation requirements:
+
+- **XGBoost**: `xgboost` imports, `DMatrix` usage, `xgb.train()` calls
+- **PyTorch**: `torch` imports, `nn.Module` models, optimizer usage
+- **Scikit-learn**: `sklearn` imports, `fit()` methods, model persistence
+- **TensorFlow**: `tensorflow` imports, model compilation, training loops
+
+### SageMaker Paths
+
+Standard SageMaker training path validation:
+
 - **Model Output**: `/opt/ml/model`
 - **Hyperparameters**: `/opt/ml/input/data/config`
 - **Training Data**: `/opt/ml/input/data/train`
 - **Validation Data**: `/opt/ml/input/data/validation`
 
-#### Validation Levels
-- **Level 1**: Script pattern validation
-- **Level 2**: Specification alignment
-- **Level 3**: Dependency validation
-- **Level 4**: Builder pattern validation
+## Error Handling
 
-## Usage Examples
+Comprehensive error handling throughout validation:
 
-### Basic Training Enhancement
+1. **Script Analysis Failures**: Graceful handling when script analysis fails
+2. **Framework Detection Errors**: Continues validation with generic patterns
+3. **Pattern Matching Failures**: Provides fallback validation approaches
+4. **File System Access**: Handles missing files and directories gracefully
 
-```python
-# Initialize training enhancer
-enhancer = TrainingStepEnhancer()
+## Performance Considerations
 
-# Enhance existing validation results
-existing_results = {'issues': [], 'passed': True}
-enhanced_results = enhancer.enhance_validation(existing_results, 'xgboost_training')
+Optimized for Training validation workflows:
 
-print(f"Enhanced issues: {len(enhanced_results['issues'])}")
-```
+- **Training-Focused Analysis**: Efficient analysis of training-specific patterns
+- **Pattern Caching**: Caches frequently used pattern detection results
+- **Framework Detection**: Fast framework identification from script analysis
+- **Lazy Validation**: On-demand validation of specific pattern types
 
-### Comprehensive Script Validation
+## Testing and Validation
 
-```python
-# Validate training script comprehensively
-script_content = """
-import xgboost as xgb
-import pandas as pd
-import pickle
-import os
+The enhancer supports comprehensive testing:
 
-def train_model():
-    # Load hyperparameters
-    with open('/opt/ml/input/data/config/hyperparameters.json', 'r') as f:
-        hyperparameters = json.load(f)
-    
-    # Load training data
-    train_data = pd.read_csv('/opt/ml/input/data/train/train.csv')
-    dtrain = xgb.DMatrix(train_data.drop('target', axis=1), label=train_data['target'])
-    
-    # Train model
-    model = xgb.train(hyperparameters, dtrain, num_boost_round=100)
-    
-    # Save model
-    with open('/opt/ml/model/model.pkl', 'wb') as f:
-        pickle.dump(model, f)
+- **Mock Training Scripts**: Can validate synthetic training scripts
+- **Pattern Testing**: Validates pattern detection accuracy
+- **Framework Testing**: Tests framework-specific validation logic
+- **Integration Testing**: Validates integration with validation framework
 
-if __name__ == '__main__':
-    train_model()
-"""
+## Future Enhancements
 
-analysis = enhancer.validate_training_script_comprehensive(
-    'xgboost_training.py', 
-    script_content
-)
+Potential improvements for the enhancer:
 
-print(f"Framework: {analysis['framework']}")
-print(f"Training loop: {analysis['validation_results']['training_loop']}")
-print(f"Model saving: {analysis['validation_results']['model_saving']}")
-```
+1. **Advanced Training Patterns**: Enhanced training loop and optimization validation
+2. **Distributed Training**: Support for distributed training validation
+3. **Hyperparameter Optimization**: Integration with hyperparameter tuning validation
+4. **Model Versioning**: Enhanced model versioning and artifact management
+5. **Custom Framework Support**: Extensible framework validation system
 
-### Framework-Specific Validation
+## Conclusion
+
+The TrainingStepEnhancer provides specialized validation for SageMaker Training steps, focusing on training script patterns, framework-specific validation, and training infrastructure. Its multi-level validation approach ensures comprehensive coverage of training-specific patterns while supporting framework-aware validation and best practice enforcement.
+
+The enhancer serves as a critical component in maintaining Training step quality and consistency, enabling automated detection of training-related issues and ensuring proper training patterns across the validation framework.

@@ -8,17 +8,15 @@ tags:
 keywords:
   - builder analyzer
   - argument extraction
-  - AST parsing
   - step builder analysis
+  - AST parsing
   - job arguments
   - builder registry
-  - script mapping
-  - command line arguments
+  - config validation
 topics:
-  - alignment validation
-  - static analysis
-  - builder analysis
-  - argument validation
+  - validation framework
+  - static code analysis
+  - builder argument extraction
 language: python
 date of note: 2025-08-19
 ---
@@ -27,358 +25,305 @@ date of note: 2025-08-19
 
 ## Overview
 
-The Builder Analyzer provides AST-based analysis of step builder classes to extract command-line arguments from `_get_job_arguments()` methods. This enables validation of config-driven arguments that are provided by builders but may not be declared in script contracts, supporting comprehensive argument alignment validation.
+The Builder Analyzer module provides specialized analysis of step builder classes to extract command-line arguments from `_get_job_arguments()` methods. This enables validation of config-driven arguments that are provided by builders but may not be declared in script contracts, supporting comprehensive alignment validation.
 
-## Core Components
+## Architecture
 
-### BuilderArgumentExtractor Class
+### Core Components
 
-Extracts command-line arguments from step builder files using AST parsing.
+1. **BuilderArgumentExtractor**: AST-based extraction of job arguments from builder methods
+2. **BuilderRegistry**: Mapping system for associating scripts with their corresponding builders
+3. **Argument Analysis**: Comprehensive extraction of command-line arguments from builder code
+4. **Name Resolution**: Intelligent mapping between script names and builder files
 
-#### Initialization
+### Analysis Capabilities
 
-```python
-def __init__(self, builder_file_path: str)
-```
+The analyzer provides multi-faceted builder analysis:
 
-Initializes the extractor with a builder file path and automatically parses the file into an AST for analysis.
-
-#### Key Methods
-
-```python
-def extract_job_arguments(self) -> Set[str]
-```
-
-Extracts command-line arguments from the `_get_job_arguments()` method:
-- Finds the `_get_job_arguments` method in the AST
-- Extracts argument names from string literals
-- Returns set of argument names (without `--` prefix)
-- Handles both modern and legacy AST node types
-
-```python
-def get_method_source(self) -> Optional[str]
-```
-
-Returns the source code of the `_get_job_arguments` method for debugging purposes.
-
-### BuilderRegistry Class
-
-Registry for mapping script names to their corresponding step builders.
-
-#### Initialization
-
-```python
-def __init__(self, builders_dir: str)
-```
-
-Initializes the registry with a builders directory and automatically builds script-to-builder mappings.
-
-#### Key Methods
-
-```python
-def get_builder_for_script(self, script_name: str) -> Optional[str]
-```
-
-Returns the builder file path for a given script name.
-
-```python
-def get_all_mappings(self) -> Dict[str, str]
-```
-
-Returns all script-to-builder mappings for debugging and analysis.
+- **AST Parsing**: Deep analysis of builder Python files using Abstract Syntax Trees
+- **Argument Extraction**: Identification of command-line arguments from `_get_job_arguments()` methods
+- **Script Mapping**: Association of scripts with their corresponding step builders
+- **Name Variations**: Handling of common naming pattern variations
 
 ## Implementation Details
 
-### AST-Based Argument Extraction
-
-The extractor uses sophisticated AST parsing to find arguments:
+### BuilderArgumentExtractor Class
 
 ```python
-def _extract_arguments_from_method(self, method_node: ast.FunctionDef) -> Set[str]:
-    arguments = set()
+class BuilderArgumentExtractor:
+    """
+    Extracts command-line arguments from step builder _get_job_arguments() methods.
     
-    for node in ast.walk(method_node):
-        # Handle string constants (Python 3.8+)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            if node.value.startswith('--'):
-                arg_name = node.value[2:]  # Remove -- prefix
-                arguments.add(arg_name)
-        
-        # Handle legacy ast.Str nodes (Python < 3.8)
-        elif isinstance(node, ast.Str) and node.s.startswith('--'):
-            arg_name = node.s[2:]  # Remove -- prefix
-            arguments.add(arg_name)
-        
-        # Handle list literals containing arguments
-        elif isinstance(node, ast.List):
-            for element in node.elts:
-                # Extract arguments from list elements
-                # ...
-    
-    return arguments
+    This class uses AST parsing to analyze builder Python files and extract
+    the arguments that builders pass to scripts via the _get_job_arguments() method.
+    """
 ```
 
-### Script-to-Builder Mapping
+#### Key Methods
 
-The registry uses multiple strategies to map scripts to builders:
+##### `extract_job_arguments() -> Set[str]`
 
-#### Strategy 1: Filename Pattern Matching
-- Pattern: `builder_<script_name>_step.py`
-- Extracts script name from filename structure
-- Handles standard naming conventions
+Extracts command-line arguments from the `_get_job_arguments()` method:
 
-#### Strategy 2: Config Import Analysis
-- Searches for config imports: `from ..configs.config_<script>_step import`
-- Extracts script names from import statements
-- Links builders to their configuration dependencies
+**Extraction Process:**
+1. Parses builder file into AST
+2. Locates `_get_job_arguments()` method
+3. Identifies string literals starting with `--`
+4. Extracts argument names (without `--` prefix)
+5. Returns deduplicated set of argument names
 
-#### Strategy 3: Entry Point References
-- Searches for entry point patterns: `entry_point.*"<script>.py"`
-- Extracts script names from entry point declarations
-- Identifies script-builder relationships
+**Supported Patterns:**
+- Direct string literals: `"--learning-rate"`
+- List elements: `["--epochs", "--batch-size"]`
+- Both modern (`ast.Constant`) and legacy (`ast.Str`) AST nodes
 
-#### Strategy 4: Name Variation Generation
-Handles common naming variations:
+##### `get_method_source() -> Optional[str]`
+
+Retrieves the source code of the `_get_job_arguments()` method for debugging:
+
+- Extracts method source from original file
+- Provides context for argument extraction validation
+- Useful for troubleshooting extraction issues
+
+### BuilderRegistry Class
+
+```python
+class BuilderRegistry:
+    """
+    Registry for mapping script names to their corresponding step builders.
+    
+    This class helps find the appropriate builder file for a given script
+    to enable builder argument extraction during validation.
+    """
+```
+
+#### Key Methods
+
+##### `get_builder_for_script(script_name: str) -> Optional[str]`
+
+Finds the builder file path for a given script name:
+
+**Resolution Strategy:**
+1. Direct mapping from pre-built registry
+2. Filename pattern matching
+3. Content-based association analysis
+4. Name variation handling
+
+##### `_extract_script_names_from_builder(builder_file: Path) -> List[str]`
+
+Extracts associated script names from a builder file using multiple heuristics:
+
+**Extraction Heuristics:**
+1. **Filename Pattern**: `builder_<script_name>_step.py` → `<script_name>`
+2. **Config Imports**: `from ..configs.config_<name>_step import` → `<name>`
+3. **Entry Point References**: `entry_point.*"<name>.py"` → `<name>`
+4. **Name Variations**: Common naming pattern variations
+
+##### `_generate_name_variations(name: str) -> List[str]`
+
+Generates common naming variations for robust script-builder association:
+
+**Supported Variations:**
 - `preprocessing` ↔ `preprocess`
 - `evaluation` ↔ `eval`
 - `xgboost` ↔ `xgb`
-
-### Error Handling
-
-The analyzer provides robust error handling:
-- **File Parsing Errors**: Graceful handling of malformed Python files
-- **Missing Methods**: Returns empty sets for builders without `_get_job_arguments`
-- **AST Parsing Failures**: Continues processing other builders
-- **Import Errors**: Handles missing or invalid imports
+- Additional domain-specific patterns
 
 ## Usage Examples
 
 ### Basic Argument Extraction
 
 ```python
-# Extract arguments from a specific builder
-extractor = BuilderArgumentExtractor('builder_preprocessing_step.py')
+from cursus.validation.alignment.static_analysis.builder_analyzer import BuilderArgumentExtractor
+
+# Extract arguments from a specific builder file
+builder_path = "/path/to/builder_xgboost_training_step.py"
+extractor = BuilderArgumentExtractor(builder_path)
+
+# Get job arguments
 arguments = extractor.extract_job_arguments()
 print(f"Builder provides arguments: {arguments}")
-
-# Example output: {'input-data', 'output-data', 'config-file', 'verbose'}
+# Output: {'learning-rate', 'n-estimators', 'max-depth', 'subsample'}
 ```
 
 ### Builder Registry Usage
 
 ```python
-# Initialize registry
-registry = BuilderRegistry('src/cursus/steps/builders')
+from cursus.validation.alignment.static_analysis.builder_analyzer import BuilderRegistry
 
-# Find builder for script
-builder_file = registry.get_builder_for_script('preprocessing')
-print(f"Builder file: {builder_file}")
+# Initialize registry with builders directory
+builders_dir = "/path/to/builders"
+registry = BuilderRegistry(builders_dir)
 
-# Get all mappings
-mappings = registry.get_all_mappings()
-for script, builder in mappings.items():
-    print(f"{script} -> {builder}")
+# Find builder for a script
+script_name = "xgboost_training"
+builder_path = registry.get_builder_for_script(script_name)
+
+if builder_path:
+    print(f"Builder for {script_name}: {builder_path}")
+    
+    # Extract arguments from the found builder
+    extractor = BuilderArgumentExtractor(builder_path)
+    arguments = extractor.extract_job_arguments()
+    print(f"Arguments: {arguments}")
 ```
 
 ### Convenience Function
 
 ```python
-# Extract arguments using convenience function
-arguments = extract_builder_arguments('preprocessing', 'src/cursus/steps/builders')
-print(f"Arguments provided by builder: {arguments}")
+from cursus.validation.alignment.static_analysis.builder_analyzer import extract_builder_arguments
+
+# One-step argument extraction
+script_name = "model_evaluation_xgb"
+builders_dir = "/path/to/builders"
+
+arguments = extract_builder_arguments(script_name, builders_dir)
+print(f"Builder arguments for {script_name}: {arguments}")
 ```
 
-### Integration with Validation
+### Registry Exploration
 
 ```python
-# Use in validation context
-def validate_script_arguments(script_name, script_arguments, builders_dir):
-    # Get builder-provided arguments
-    builder_args = extract_builder_arguments(script_name, builders_dir)
-    
-    # Check for undeclared arguments that are provided by builder
-    undeclared_args = script_arguments - builder_args
-    
-    if undeclared_args:
-        print(f"Script uses undeclared arguments: {undeclared_args}")
-    
-    # Check for unused builder arguments
-    unused_builder_args = builder_args - script_arguments
-    
-    if unused_builder_args:
-        print(f"Builder provides unused arguments: {unused_builder_args}")
+# Get all script-to-builder mappings
+registry = BuilderRegistry("/path/to/builders")
+all_mappings = registry.get_all_mappings()
+
+for script, builder in all_mappings.items():
+    print(f"{script} -> {builder}")
+```
+
+### Method Source Debugging
+
+```python
+# Debug argument extraction by examining method source
+extractor = BuilderArgumentExtractor("/path/to/builder_file.py")
+
+# Get the actual method source code
+method_source = extractor.get_method_source()
+if method_source:
+    print("_get_job_arguments method source:")
+    print(method_source)
+
+# Compare with extracted arguments
+arguments = extractor.extract_job_arguments()
+print(f"Extracted arguments: {arguments}")
 ```
 
 ## Integration Points
 
-### Script Contract Validator
+### Alignment Validation Framework
 
-Integrates with script-contract validation to:
-- Identify builder-provided arguments
-- Reduce false positives for undeclared argument access
-- Validate argument consistency between scripts and builders
-- Support comprehensive argument alignment validation
+The Builder Analyzer integrates with the alignment validation system:
 
-### Alignment Validation System
+```python
+class AlignmentValidator:
+    def validate_script_builder_alignment(self, script_name, script_contract):
+        # Extract builder arguments
+        builder_args = extract_builder_arguments(script_name, self.builders_dir)
+        
+        # Get script contract arguments
+        contract_args = set(script_contract.get('arguments', {}).keys())
+        
+        # Find arguments provided by builder but not in contract
+        builder_only_args = builder_args - contract_args
+        
+        if builder_only_args:
+            return {
+                'status': 'warning',
+                'message': f'Builder provides arguments not in contract: {builder_only_args}',
+                'builder_args': builder_args,
+                'contract_args': contract_args
+            }
+        
+        return {'status': 'aligned'}
+```
 
-Provides builder analysis for:
-- Level 4 (Builder-Configuration) alignment validation
-- Builder pattern recognition and validation
-- Configuration field validation enhancement
-- Step builder consistency checking
+### Static Analysis Pipeline
 
-### Pattern Recognizer
+Works as part of comprehensive static analysis:
 
-Works with pattern recognition to:
-- Filter false positives for builder-provided arguments
-- Recognize legitimate builder argument patterns
-- Support architectural pattern validation
-- Enable builder-aware validation rules
+- **AST Integration**: Uses Python AST parsing for accurate code analysis
+- **Contract Validation**: Validates builder arguments against script contracts
+- **Registry Management**: Maintains script-to-builder associations
+- **Argument Reconciliation**: Identifies discrepancies between builders and contracts
 
-### Static Analysis Framework
+### Configuration Validation
 
-Integrates with static analysis for:
-- Comprehensive code analysis workflows
-- Multi-component validation coordination
-- AST-based analysis consistency
-- Validation result aggregation
+Supports configuration-driven validation:
 
-## Benefits
-
-### Comprehensive Argument Analysis
-- Extracts all builder-provided arguments automatically
-- Handles complex argument patterns and structures
-- Supports various argument declaration styles
-- Provides complete argument coverage
-
-### False Positive Reduction
-- Identifies legitimate builder-provided arguments
-- Reduces validation noise from expected arguments
-- Improves validation accuracy and usefulness
-- Focuses attention on actual issues
-
-### Flexible Builder Discovery
-- Supports multiple builder discovery strategies
-- Handles various naming conventions and patterns
-- Provides robust script-to-builder mapping
-- Adapts to different project structures
-
-### AST-Based Accuracy
-- Uses precise AST parsing for argument extraction
-- Handles complex Python code structures
-- Supports both modern and legacy Python versions
-- Provides reliable and accurate analysis
+- **Config-Builder Alignment**: Validates configuration classes against builder arguments
+- **Argument Consistency**: Ensures consistent argument handling across components
+- **Missing Argument Detection**: Identifies arguments missing from contracts
+- **Redundant Argument Detection**: Finds unused arguments in builders
 
 ## Advanced Features
 
-### Name Variation Handling
+### AST-Based Analysis
 
-The registry handles common naming variations:
+Sophisticated code analysis using Python's AST module:
 
-```python
-def _generate_name_variations(self, name: str) -> List[str]:
-    variations = []
-    
-    # Handle preprocessing variations
-    if 'preprocessing' in name:
-        variations.append(name.replace('preprocessing', 'preprocess'))
-    if 'preprocess' in name and 'preprocessing' not in name:
-        variations.append(name.replace('preprocess', 'preprocessing'))
-    
-    # Handle evaluation variations
-    if 'evaluation' in name:
-        variations.append(name.replace('evaluation', 'eval'))
-    if 'eval' in name and 'evaluation' not in name:
-        variations.append(name.replace('eval', 'evaluation'))
-    
-    return variations
-```
+- **Method Location**: Precise identification of `_get_job_arguments()` methods
+- **String Extraction**: Robust extraction of string literals from various AST node types
+- **List Processing**: Handles argument lists and complex data structures
+- **Version Compatibility**: Supports both modern and legacy AST node types
 
-### Multi-Strategy Script Discovery
+### Intelligent Name Mapping
 
-Uses multiple strategies for robust script-builder mapping:
+Advanced script-to-builder association:
 
-```python
-def _extract_script_names_from_builder(self, builder_file: Path) -> List[str]:
-    script_names = []
-    
-    # Strategy 1: Filename pattern
-    if filename.startswith('builder_') and filename.endswith('_step'):
-        middle_part = filename[8:-5]  # Extract script name
-        script_names.append(middle_part)
-    
-    # Strategy 2: Config imports
-    config_import_pattern = r'from\s+\.\.configs\.config_(\w+)_step\s+import'
-    matches = re.findall(config_import_pattern, content)
-    script_names.extend(matches)
-    
-    # Strategy 3: Entry point references
-    entry_point_pattern = r'entry_point.*["\'](\w+)\.py["\']'
-    matches = re.findall(entry_point_pattern, content)
-    script_names.extend(matches)
-    
-    return list(set(script_names))
-```
+- **Pattern Recognition**: Multiple heuristics for name association
+- **Content Analysis**: Code-based association discovery
+- **Variation Handling**: Common naming pattern variations
+- **Fallback Strategies**: Graceful handling of non-standard naming
 
-### Debugging Support
+### Error Resilience
 
-Provides debugging capabilities:
+Robust error handling throughout the analysis:
 
-```python
-# Get method source for debugging
-extractor = BuilderArgumentExtractor('builder_file.py')
-method_source = extractor.get_method_source()
-print("Method source:")
-print(method_source)
-
-# Get all registry mappings
-registry = BuilderRegistry('builders_dir')
-mappings = registry.get_all_mappings()
-print("All script-to-builder mappings:")
-for script, builder in mappings.items():
-    print(f"  {script} -> {builder}")
-```
+- **Parse Failures**: Graceful handling of malformed Python files
+- **Missing Methods**: Continues analysis when methods are not found
+- **File Access**: Handles file system access issues
+- **AST Errors**: Recovers from AST parsing failures
 
 ## Performance Considerations
 
-### Efficient AST Parsing
-- Parses each builder file only once
-- Caches AST structures for reuse
-- Uses efficient AST traversal algorithms
-- Minimizes memory usage during analysis
+Optimized for large-scale builder analysis:
 
-### Registry Optimization
-- Builds mappings once during initialization
-- Caches script-to-builder relationships
-- Uses efficient lookup structures
-- Supports batch processing operations
+- **Lazy Loading**: On-demand file parsing and analysis
+- **Registry Caching**: Pre-built mappings for fast lookup
+- **AST Reuse**: Efficient AST parsing and reuse
+- **Memory Management**: Efficient handling of large builder directories
 
-### Scalability
-- Handles large numbers of builder files efficiently
-- Supports parallel processing for batch analysis
-- Optimized for repeated argument extraction
-- Memory-conscious handling of large codebases
+## Testing and Validation
 
-## Error Recovery
+The analyzer supports comprehensive testing:
 
-The analyzer provides comprehensive error recovery:
-- **Parse Errors**: Continues with other builders when one fails
-- **Missing Methods**: Returns empty sets gracefully
-- **Invalid Syntax**: Handles malformed Python files
-- **Import Failures**: Processes available builders despite failures
+- **Mock Builders**: Can analyze synthetic builder files
+- **AST Testing**: Validates AST parsing accuracy
+- **Registry Testing**: Tests script-to-builder mapping
+- **Argument Testing**: Verifies argument extraction accuracy
+
+## Error Handling
+
+Comprehensive error handling strategies:
+
+1. **File Parsing**: Graceful handling of syntax errors and encoding issues
+2. **Method Missing**: Continues analysis when `_get_job_arguments()` is not found
+3. **AST Failures**: Recovers from AST parsing and traversal errors
+4. **Registry Errors**: Handles missing or inaccessible builder directories
 
 ## Future Enhancements
 
-### Planned Improvements
-- Support for dynamic argument generation
-- Enhanced pattern recognition for complex builders
-- Integration with IDE tooling for real-time analysis
-- Support for custom argument extraction patterns
-- Advanced caching and memoization
-- Integration with external analysis tools
-- Support for builder inheritance analysis
-- Enhanced debugging and diagnostic capabilities
+Potential improvements for the analyzer:
+
+1. **Enhanced Patterns**: Support for more complex argument patterns
+2. **Type Analysis**: Argument type inference from builder code
+3. **Documentation Extraction**: Extract argument documentation from builders
+4. **Performance Metrics**: Track analysis performance and accuracy
+5. **Integration APIs**: Enhanced integration with validation frameworks
 
 ## Conclusion
 
-The Builder Analyzer provides essential functionality for comprehensive argument validation in the alignment validation system. By extracting builder-provided arguments through AST analysis, it enables accurate validation while reducing false positives and improving the overall validation experience.
+The Builder Analyzer provides essential static analysis capabilities for step builder argument extraction, enabling comprehensive validation of config-driven arguments in the alignment validation framework. Its AST-based approach ensures accurate and reliable extraction of builder-provided arguments, supporting robust validation of script-builder alignment.
+
+The analyzer serves as a critical component in maintaining consistency between step builders and script contracts, enabling automated detection of argument mismatches and ensuring proper configuration-driven argument handling across the validation framework.
