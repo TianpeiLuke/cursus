@@ -96,6 +96,18 @@ mods_compiler = MODSPipelineDAGCompiler(
     role=role
 )
 pipeline = mods_compiler.compile(dag)
+
+# Method 3: Advanced usage - get the decorated class
+MODSDecoratedTemplate = mods_compiler.create_decorated_class()
+
+# Get template parameters
+template_params = mods_compiler.create_template_params(dag)
+
+# Create instance with specific initialization
+template = MODSDecoratedTemplate(**template_params)
+
+# Generate pipeline with custom name
+pipeline = template.generate_pipeline("custom-name")
 ```
 
 ## Key Features
@@ -103,6 +115,7 @@ pipeline = mods_compiler.compile(dag)
 1. **Automatic metadata extraction**: Extracts author, version, and description from the base config
 2. **Metaclass conflict resolution**: Properly applies the MODSTemplate decorator to avoid conflicts
 3. **API consistency**: Provides the same interface as the standard DAG compiler
+4. **Flexible decorated class access**: Allows direct access to the MODSTemplate-decorated DynamicPipelineTemplate class
 
 ## Implementation Details
 
@@ -113,3 +126,52 @@ The compiler automatically:
 - Instantiates the decorated class with the provided parameters
 
 This approach avoids the metaclass conflict by applying the decorator to the class definition rather than an already instantiated object.
+
+## Enhanced Features
+
+The compiler provides additional methods for more advanced use cases:
+
+### `create_decorated_class()`
+
+Creates and returns the MODSTemplate-decorated DynamicPipelineTemplate class:
+
+```python
+def create_decorated_class(self, dag=None, author=None, version=None, description=None):
+    """
+    Creates and returns the MODSTemplate decorated DynamicPipelineTemplate class.
+    
+    Args:
+        dag: Optional pipeline DAG (not used for class creation but might be used for metadata)
+        author: Author name for MODS metadata (defaults to extracting from config)
+        version: Version for MODS metadata (defaults to extracting from config)
+        description: Description for MODS metadata (defaults to extracting from config)
+        
+    Returns:
+        The DynamicPipelineTemplate class decorated with MODSTemplate
+    """
+```
+
+### `create_template_params()`
+
+Creates and returns the parameters needed to instantiate a template:
+
+```python
+def create_template_params(self, dag, **template_kwargs):
+    """
+    Creates and returns the parameters needed to instantiate a template.
+    
+    Args:
+        dag: Pipeline DAG to compile
+        **template_kwargs: Additional template parameters
+        
+    Returns:
+        Dictionary of parameters to instantiate a template
+    """
+```
+
+### Benefits of Direct Class Access
+
+1. **Customization**: Access to the decorated class allows for custom initialization
+2. **Reusability**: The same class can be used to create multiple template instances
+3. **Extended control**: Users can manage the full lifecycle of template instances
+4. **Integration**: Easier to integrate with other components that expect class objects
