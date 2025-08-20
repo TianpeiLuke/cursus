@@ -1,4 +1,5 @@
 {
+  "schema_version": "2.0",
   "pipelines": [
     {
       "id": "xgboost-simple",
@@ -8,7 +9,9 @@
       "complexity": "simple",
       "features": ["training"],
       "description": "Basic XGBoost training pipeline",
-      "tags": ["xgboost", "training", "beginner"]
+      "tags": ["xgboost", "training", "beginner"],
+      "compiler_type": "standard",
+      "shared_dag": "shared_dags/xgboost/simple_dag.py"
     },
     {
       "id": "xgboost-train-evaluate",
@@ -18,7 +21,9 @@
       "complexity": "standard",
       "features": ["training", "evaluation"],
       "description": "XGBoost pipeline with training and evaluation steps",
-      "tags": ["xgboost", "training", "evaluation"]
+      "tags": ["xgboost", "training", "evaluation"],
+      "compiler_type": "standard",
+      "shared_dag": "shared_dags/xgboost/training_with_evaluation_dag.py"
     },
     {
       "id": "xgboost-train-calibrate",
@@ -28,7 +33,9 @@
       "complexity": "standard",
       "features": ["training", "calibration"],
       "description": "XGBoost pipeline with model calibration",
-      "tags": ["xgboost", "training", "calibration"]
+      "tags": ["xgboost", "training", "calibration"],
+      "compiler_type": "standard",
+      "shared_dag": "shared_dags/xgboost/training_with_calibration_dag.py"
     },
     {
       "id": "xgboost-complete-e2e",
@@ -38,27 +45,9 @@
       "complexity": "advanced",
       "features": ["training", "calibration", "evaluation", "registration"],
       "description": "Complete end-to-end XGBoost pipeline with all components",
-      "tags": ["xgboost", "end-to-end", "calibration", "evaluation", "registration"]
-    },
-    {
-      "id": "xgboost-e2e-no-calibrate",
-      "name": "XGBoost End-to-End Pipeline without Calibration",
-      "path": "frameworks/xgboost/end_to_end/standard_e2e.py",
-      "framework": "xgboost",
-      "complexity": "advanced",
-      "features": ["training", "evaluation", "registration"],
-      "description": "End-to-end XGBoost pipeline without calibration step",
-      "tags": ["xgboost", "end-to-end", "evaluation", "registration"]
-    },
-    {
-      "id": "xgboost-dataload-preprocess",
-      "name": "XGBoost Data Loading and Preprocessing",
-      "path": "frameworks/xgboost/components/data_loading.py",
-      "framework": "xgboost",
-      "complexity": "simple",
-      "features": ["data_loading", "preprocessing"],
-      "description": "Pipeline focused on data loading and preprocessing for XGBoost",
-      "tags": ["xgboost", "data loading", "preprocessing"]
+      "tags": ["xgboost", "end-to-end", "calibration", "evaluation", "registration"],
+      "compiler_type": "standard",
+      "shared_dag": "shared_dags/xgboost/complete_e2e_dag.py"
     },
     {
       "id": "pytorch-training",
@@ -68,7 +57,9 @@
       "complexity": "simple",
       "features": ["training"],
       "description": "Basic PyTorch model training pipeline",
-      "tags": ["pytorch", "training", "beginner"]
+      "tags": ["pytorch", "training", "beginner"],
+      "compiler_type": "standard",
+      "shared_dag": "shared_dags/pytorch/training_dag.py"
     },
     {
       "id": "pytorch-e2e",
@@ -78,27 +69,20 @@
       "complexity": "advanced",
       "features": ["training", "evaluation", "registration"],
       "description": "End-to-end PyTorch pipeline with registration",
-      "tags": ["pytorch", "end-to-end", "evaluation", "registration"]
-    },
-    {
-      "id": "pytorch-model-registration",
-      "name": "PyTorch Model Registration Pipeline",
-      "path": "frameworks/pytorch/training/with_registration.py",
-      "framework": "pytorch",
-      "complexity": "standard",
-      "features": ["training", "registration"],
-      "description": "PyTorch pipeline focused on model registration",
-      "tags": ["pytorch", "registration"]
+      "tags": ["pytorch", "end-to-end", "evaluation", "registration"],
+      "compiler_type": "standard",
+      "shared_dag": "shared_dags/pytorch/standard_e2e_dag.py"
     },
     {
       "id": "cradle-dataload",
       "name": "Cradle Data Loading Pipeline",
-      "path": "frameworks/components/cradle_dataload.py",
+      "path": "components/cradle_dataload.py",
       "framework": "generic",
       "complexity": "simple",
       "features": ["data_loading"],
       "description": "Pipeline for loading data from Cradle",
-      "tags": ["cradle", "data loading"]
+      "tags": ["cradle", "data loading"],
+      "compiler_type": "standard"
     },
     {
       "id": "dummy-training",
@@ -108,7 +92,110 @@
       "complexity": "simple",
       "features": ["training", "registration"],
       "description": "Simple dummy pipeline for testing and demonstration",
-      "tags": ["dummy", "testing", "example"]
+      "tags": ["dummy", "testing", "example"],
+      "compiler_type": "standard"
+    },
+    {
+      "id": "xgboost-simple-mods",
+      "name": "XGBoost Simple Pipeline (MODS)",
+      "path": "mods_frameworks/xgboost/simple_mods.py",
+      "framework": "xgboost",
+      "complexity": "simple",
+      "features": ["training", "mods_integration"],
+      "description": "Basic XGBoost training pipeline with MODS integration",
+      "tags": ["xgboost", "training", "beginner", "mods"],
+      "compiler_type": "mods",
+      "shared_dag": "shared_dags/xgboost/simple_dag.py",
+      "mods_metadata": {
+        "template_registration": true,
+        "operational_integration": true,
+        "metadata_extraction": true
+      }
+    },
+    {
+      "id": "xgboost-train-evaluate-mods",
+      "name": "XGBoost Training and Evaluation Pipeline (MODS)",
+      "path": "mods_frameworks/xgboost/training/with_evaluation_mods.py",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "features": ["training", "evaluation", "mods_integration"],
+      "description": "XGBoost pipeline with training and evaluation steps, enhanced with MODS",
+      "tags": ["xgboost", "training", "evaluation", "mods"],
+      "compiler_type": "mods",
+      "shared_dag": "shared_dags/xgboost/training_with_evaluation_dag.py",
+      "mods_metadata": {
+        "template_registration": true,
+        "operational_integration": true,
+        "metadata_extraction": true
+      }
+    },
+    {
+      "id": "xgboost-train-calibrate-mods",
+      "name": "XGBoost Training with Calibration Pipeline (MODS)",
+      "path": "mods_frameworks/xgboost/training/with_calibration_mods.py",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "features": ["training", "calibration", "mods_integration"],
+      "description": "XGBoost pipeline with model calibration, enhanced with MODS",
+      "tags": ["xgboost", "training", "calibration", "mods"],
+      "compiler_type": "mods",
+      "shared_dag": "shared_dags/xgboost/training_with_calibration_dag.py",
+      "mods_metadata": {
+        "template_registration": true,
+        "operational_integration": true,
+        "metadata_extraction": true
+      }
+    },
+    {
+      "id": "xgboost-complete-e2e-mods",
+      "name": "XGBoost Complete End-to-End Pipeline (MODS)",
+      "path": "mods_frameworks/xgboost/end_to_end/complete_e2e_mods.py",
+      "framework": "xgboost",
+      "complexity": "advanced",
+      "features": ["training", "calibration", "evaluation", "registration", "mods_integration"],
+      "description": "Complete end-to-end XGBoost pipeline with all components, enhanced with MODS",
+      "tags": ["xgboost", "end-to-end", "calibration", "evaluation", "registration", "mods"],
+      "compiler_type": "mods",
+      "shared_dag": "shared_dags/xgboost/complete_e2e_dag.py",
+      "mods_metadata": {
+        "template_registration": true,
+        "operational_integration": true,
+        "metadata_extraction": true
+      }
+    },
+    {
+      "id": "pytorch-training-mods",
+      "name": "PyTorch Training Pipeline (MODS)",
+      "path": "mods_frameworks/pytorch/training/basic_training_mods.py",
+      "framework": "pytorch",
+      "complexity": "simple",
+      "features": ["training", "mods_integration"],
+      "description": "Basic PyTorch model training pipeline with MODS integration",
+      "tags": ["pytorch", "training", "beginner", "mods"],
+      "compiler_type": "mods",
+      "shared_dag": "shared_dags/pytorch/training_dag.py",
+      "mods_metadata": {
+        "template_registration": true,
+        "operational_integration": true,
+        "metadata_extraction": true
+      }
+    },
+    {
+      "id": "pytorch-e2e-mods",
+      "name": "PyTorch End-to-End Pipeline (MODS)",
+      "path": "mods_frameworks/pytorch/end_to_end/standard_e2e_mods.py",
+      "framework": "pytorch",
+      "complexity": "advanced",
+      "features": ["training", "evaluation", "registration", "mods_integration"],
+      "description": "End-to-end PyTorch pipeline with registration, enhanced with MODS",
+      "tags": ["pytorch", "end-to-end", "evaluation", "registration", "mods"],
+      "compiler_type": "mods",
+      "shared_dag": "shared_dags/pytorch/standard_e2e_dag.py",
+      "mods_metadata": {
+        "template_registration": true,
+        "operational_integration": true,
+        "metadata_extraction": true
+      }
     }
   ]
 }
