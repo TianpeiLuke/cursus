@@ -49,8 +49,9 @@ from typing import Dict, Any, Tuple, Optional, Union
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler
+from .....api.dag.base_dag import PipelineDAG
+from .....core.compiler.dag_compiler import PipelineDAGCompiler
+from ....shared_dags.pytorch.standard_e2e_dag import create_pytorch_standard_e2e_dag
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -61,41 +62,13 @@ def create_dag() -> PipelineDAG:
     """
     Create a complete end-to-end PyTorch pipeline DAG.
     
-    This DAG represents a comprehensive workflow for training,
-    evaluating, packaging, and registering a PyTorch model.
+    This function now uses the shared DAG definition to ensure consistency
+    between regular and MODS pipeline variants.
     
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
     """
-    dag = PipelineDAG()
-    
-    # Add all nodes - named to match configuration names exactly
-    dag.add_node("CradleDataLoading_training")       # Data load for training
-    dag.add_node("TabularPreprocessing_training")    # Tabular preprocessing for training
-    dag.add_node("PyTorchTraining")                  # PyTorch training step
-    dag.add_node("Package")                          # Package step
-    dag.add_node("Payload")                          # Payload step
-    dag.add_node("Registration")                     # Model registration step
-    dag.add_node("CradleDataLoading_validation")     # Data load for validation
-    dag.add_node("TabularPreprocessing_validation")  # Tabular preprocessing for validation
-    dag.add_node("PyTorchModelEval")                 # Model evaluation step
-    
-    # Training flow
-    dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
-    dag.add_edge("TabularPreprocessing_training", "PyTorchTraining")
-    
-    # Output flow
-    dag.add_edge("PyTorchTraining", "Package")      # Model is packaged
-    dag.add_edge("PyTorchTraining", "Payload")      # Model is used for payload generation
-    dag.add_edge("Package", "Registration")         # Packaged model is registered
-    dag.add_edge("Payload", "Registration")         # Payload is needed for registration
-    
-    # Evaluation flow
-    dag.add_edge("CradleDataLoading_validation", "TabularPreprocessing_validation")
-    dag.add_edge("TabularPreprocessing_validation", "PyTorchModelEval")
-    dag.add_edge("PyTorchTraining", "PyTorchModelEval")  # Model is input to evaluation
-    dag.add_edge("PyTorchModelEval", "Registration")     # Evaluation results are needed for registration
-    
+    dag = create_pytorch_standard_e2e_dag()
     logger.info(f"Created DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
     return dag
 

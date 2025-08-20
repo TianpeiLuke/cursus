@@ -44,8 +44,9 @@ from typing import Dict, Any, Tuple, Optional
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler
+from .....api.dag.base_dag import PipelineDAG
+from .....core.compiler.dag_compiler import PipelineDAGCompiler
+from ....shared_dags.xgboost.training_with_calibration_dag import create_xgboost_training_with_calibration_dag
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -56,33 +57,13 @@ def create_dag() -> PipelineDAG:
     """
     Create a DAG for training and calibrating an XGBoost model.
     
-    This DAG represents a workflow that includes training an XGBoost model
-    and then calibrating it with a separate calibration dataset.
+    This function now uses the shared DAG definition to ensure consistency
+    between regular and MODS pipeline variants.
     
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
     """
-    dag = PipelineDAG()
-    
-    # Add nodes
-    dag.add_node("CradleDataLoading_training")       # Data load for training
-    dag.add_node("TabularPreprocessing_training")    # Tabular preprocessing for training
-    dag.add_node("XGBoostTraining")                  # XGBoost training step
-    dag.add_node("ModelCalibration")                 # Model calibration step
-    dag.add_node("CradleDataLoading_calibration")    # Data load for calibration
-    dag.add_node("TabularPreprocessing_calibration") # Tabular preprocessing for calibration
-    
-    # Training flow
-    dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
-    dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
-    dag.add_edge("XGBoostTraining", "ModelCalibration")
-    
-    # Calibration flow
-    dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
-    
-    # Connect calibration data to model calibration
-    dag.add_edge("TabularPreprocessing_calibration", "ModelCalibration")
-    
+    dag = create_xgboost_training_with_calibration_dag()
     logger.info(f"Created DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
     return dag
 

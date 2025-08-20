@@ -49,8 +49,9 @@ from typing import Dict, Any, Tuple, Optional, Union
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler
+from .....api.dag.base_dag import PipelineDAG
+from .....core.compiler.dag_compiler import PipelineDAGCompiler
+from ....shared_dags.xgboost.complete_e2e_dag import create_xgboost_complete_e2e_dag
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -61,45 +62,13 @@ def create_dag() -> PipelineDAG:
     """
     Create a DAG matching the exact structure from demo/demo_pipeline.ipynb.
     
-    This DAG represents a complete end-to-end workflow including training,
-    calibration, packaging, registration, and evaluation of an XGBoost model.
+    This function now uses the shared DAG definition to ensure consistency
+    between regular and MODS pipeline variants.
     
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
     """
-    dag = PipelineDAG()
-    
-    # Add all nodes - exactly as in the demo notebook
-    dag.add_node("CradleDataLoading_training")       # Data load for training
-    dag.add_node("TabularPreprocessing_training")    # Tabular preprocessing for training
-    dag.add_node("XGBoostTraining")                  # XGBoost training step
-    dag.add_node("ModelCalibration")                 # Model calibration step
-    dag.add_node("Package")                          # Package step
-    dag.add_node("Registration")                     # MIMS registration step
-    dag.add_node("Payload")                          # Payload step
-    dag.add_node("CradleDataLoading_calibration")    # Data load for calibration
-    dag.add_node("TabularPreprocessing_calibration") # Tabular preprocessing for calibration
-    dag.add_node("XGBoostModelEval_calibration")     # Model evaluation step
-    
-    # Training flow
-    dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
-    dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
-    dag.add_edge("XGBoostTraining", "ModelCalibration")
-    
-    # Output flow
-    dag.add_edge("ModelCalibration", "Package")
-    dag.add_edge("XGBoostTraining", "Package")  # Raw model is also input to packaging
-    dag.add_edge("XGBoostTraining", "Payload")  # Payload test uses the raw model
-    dag.add_edge("Package", "Registration")
-    dag.add_edge("Payload", "Registration")
-    
-    # Calibration flow
-    dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
-    
-    # Evaluation flow
-    dag.add_edge("XGBoostTraining", "XGBoostModelEval_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
-    
+    dag = create_xgboost_complete_e2e_dag()
     logger.info(f"Created DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
     return dag
 

@@ -44,8 +44,9 @@ from typing import Dict, Any, Tuple, Optional
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler
+from .....api.dag.base_dag import PipelineDAG
+from .....core.compiler.dag_compiler import PipelineDAGCompiler
+from ....shared_dags.xgboost.training_with_evaluation_dag import create_xgboost_training_with_evaluation_dag
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -56,31 +57,13 @@ def create_dag() -> PipelineDAG:
     """
     Create a DAG for training and evaluating an XGBoost model.
     
-    This DAG represents a workflow that includes training an XGBoost model
-    and then evaluating it with a separate evaluation dataset.
+    This function now uses the shared DAG definition to ensure consistency
+    between regular and MODS pipeline variants.
     
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
     """
-    dag = PipelineDAG()
-    
-    # Add nodes
-    dag.add_node("CradleDataLoading_training")      # Data load for training
-    dag.add_node("TabularPreprocessing_training")   # Tabular preprocessing for training
-    dag.add_node("XGBoostTraining")                 # XGBoost training step
-    dag.add_node("CradleDataLoading_evaluation")    # Data load for evaluation
-    dag.add_node("TabularPreprocessing_evaluation") # Tabular preprocessing for evaluation
-    dag.add_node("XGBoostModelEval")                # Model evaluation step
-    
-    # Training flow
-    dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
-    dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
-    
-    # Evaluation flow
-    dag.add_edge("CradleDataLoading_evaluation", "TabularPreprocessing_evaluation")
-    dag.add_edge("TabularPreprocessing_evaluation", "XGBoostModelEval")
-    dag.add_edge("XGBoostTraining", "XGBoostModelEval")  # Model is input to evaluation
-    
+    dag = create_xgboost_training_with_evaluation_dag()
     logger.info(f"Created DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
     return dag
 
