@@ -4,7 +4,7 @@ Cradle Data Loading Pipeline (Task-based View)
 This is a reference to the Cradle data loading pipeline from the components directory.
 """
 
-from src.cursus.pipeline_catalog.components.cradle_dataload import (
+from ...components.cradle_dataload import (
     create_dag,
     create_pipeline,
     fill_execution_document,

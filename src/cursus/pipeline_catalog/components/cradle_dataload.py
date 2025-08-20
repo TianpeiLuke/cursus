@@ -43,8 +43,8 @@ from typing import Dict, Any, Tuple, Optional
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler
+from ...api.dag.base_dag import PipelineDAG
+from ...core.compiler.dag_compiler import PipelineDAGCompiler
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

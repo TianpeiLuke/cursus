@@ -4,7 +4,7 @@ PyTorch Registration Pipeline (Task-based View)
 This is a reference to the PyTorch end-to-end pipeline which includes model registration.
 """
 
-from src.cursus.pipeline_catalog.frameworks.pytorch.end_to_end.standard_e2e import (
+from ...frameworks.pytorch.end_to_end.standard_e2e import (
     create_dag,
     create_pipeline,
     fill_execution_document
