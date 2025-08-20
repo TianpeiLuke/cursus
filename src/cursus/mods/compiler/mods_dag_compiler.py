@@ -235,7 +235,7 @@ class MODSPipelineDAGCompiler(PipelineDAGCompiler):
                     version = version or '1.0.0'
                     description = description or 'MODS Pipeline'
             
-            self.logger.info(f"Creating MODS decorated template class with metadata: author={author}, version={version}")
+            self.logger.info(f"Creating MODS decorated template class with metadata: author={author}, version={version}, description={description}")
             
             # Decorate the DynamicPipelineTemplate class with MODSTemplate
             MODSDecoratedTemplate = MODSTemplate(
@@ -295,8 +295,18 @@ class MODSPipelineDAGCompiler(PipelineDAGCompiler):
         try:
             self.logger.info(f"Creating MODS template for DAG with {len(dag.nodes)} nodes")
             
-            # Get the decorated class
-            MODSDecoratedTemplate = self.create_decorated_class()
+            # Extract metadata parameters if provided in kwargs
+            author = kwargs.pop('author', None)
+            version = kwargs.pop('version', None)
+            description = kwargs.pop('description', None)
+            
+            # Get the decorated class with proper parameters
+            MODSDecoratedTemplate = self.create_decorated_class(
+                dag=dag,
+                author=author,
+                version=version,
+                description=description
+            )
             
             # Get the template parameters
             template_params = self.create_template_params(dag, **kwargs)
