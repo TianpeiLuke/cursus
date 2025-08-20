@@ -209,6 +209,7 @@ pip install cursus[all]        # Everything included
 ### Core Documentation
 - **[Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/README.md)** - Comprehensive guide for developing new pipeline steps and extending Cursus
 - **[Design Documentation](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/1_design/README.md)** - Detailed architectural documentation and design principles
+- **[Pipeline Catalog](https://github.com/TianpeiLuke/cursus/tree/main/src/cursus/pipeline_catalog/README.md)** - Comprehensive collection of prebuilt pipeline templates organized by framework and task
 - **[API Reference](https://github.com/TianpeiLuke/cursus/tree/main/src/cursus/)** - Detailed API documentation including core, api, steps, and other components
 - **[Examples](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/examples/)** - Ready-to-use pipeline blueprints and examples
 
@@ -217,6 +218,7 @@ pip install cursus[all]        # Everything included
 - **[Design Principles](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/1_design/design_principles.md)** - Core architectural principles
 - **[Best Practices](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/best_practices.md)** - Recommended development practices
 - **[Component Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/component_guide.md)** - Overview of key components
+- **[Validation System](https://github.com/TianpeiLuke/cursus/tree/main/src/cursus/validation/)** - Comprehensive validation framework for pipeline alignment and quality assurance
 
 ## 🤝 Contributing
 

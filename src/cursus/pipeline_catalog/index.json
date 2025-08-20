@@ -1,0 +1,114 @@
+{
+  "pipelines": [
+    {
+      "id": "xgboost-simple",
+      "name": "XGBoost Simple Pipeline",
+      "path": "frameworks/xgboost/simple.py",
+      "framework": "xgboost",
+      "complexity": "simple",
+      "features": ["training"],
+      "description": "Basic XGBoost training pipeline",
+      "tags": ["xgboost", "training", "beginner"]
+    },
+    {
+      "id": "xgboost-train-evaluate",
+      "name": "XGBoost Training and Evaluation Pipeline",
+      "path": "frameworks/xgboost/training/with_evaluation.py",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "features": ["training", "evaluation"],
+      "description": "XGBoost pipeline with training and evaluation steps",
+      "tags": ["xgboost", "training", "evaluation"]
+    },
+    {
+      "id": "xgboost-train-calibrate",
+      "name": "XGBoost Training with Calibration Pipeline",
+      "path": "frameworks/xgboost/training/with_calibration.py",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "features": ["training", "calibration"],
+      "description": "XGBoost pipeline with model calibration",
+      "tags": ["xgboost", "training", "calibration"]
+    },
+    {
+      "id": "xgboost-complete-e2e",
+      "name": "XGBoost Complete End-to-End Pipeline",
+      "path": "frameworks/xgboost/end_to_end/complete_e2e.py",
+      "framework": "xgboost",
+      "complexity": "advanced",
+      "features": ["training", "calibration", "evaluation", "registration"],
+      "description": "Complete end-to-end XGBoost pipeline with all components",
+      "tags": ["xgboost", "end-to-end", "calibration", "evaluation", "registration"]
+    },
+    {
+      "id": "xgboost-e2e-no-calibrate",
+      "name": "XGBoost End-to-End Pipeline without Calibration",
+      "path": "frameworks/xgboost/end_to_end/standard_e2e.py",
+      "framework": "xgboost",
+      "complexity": "advanced",
+      "features": ["training", "evaluation", "registration"],
+      "description": "End-to-end XGBoost pipeline without calibration step",
+      "tags": ["xgboost", "end-to-end", "evaluation", "registration"]
+    },
+    {
+      "id": "xgboost-dataload-preprocess",
+      "name": "XGBoost Data Loading and Preprocessing",
+      "path": "frameworks/xgboost/components/data_loading.py",
+      "framework": "xgboost",
+      "complexity": "simple",
+      "features": ["data_loading", "preprocessing"],
+      "description": "Pipeline focused on data loading and preprocessing for XGBoost",
+      "tags": ["xgboost", "data loading", "preprocessing"]
+    },
+    {
+      "id": "pytorch-training",
+      "name": "PyTorch Training Pipeline",
+      "path": "frameworks/pytorch/training/basic_training.py",
+      "framework": "pytorch",
+      "complexity": "simple",
+      "features": ["training"],
+      "description": "Basic PyTorch model training pipeline",
+      "tags": ["pytorch", "training", "beginner"]
+    },
+    {
+      "id": "pytorch-e2e",
+      "name": "PyTorch End-to-End Pipeline",
+      "path": "frameworks/pytorch/end_to_end/standard_e2e.py",
+      "framework": "pytorch",
+      "complexity": "advanced",
+      "features": ["training", "evaluation", "registration"],
+      "description": "End-to-end PyTorch pipeline with registration",
+      "tags": ["pytorch", "end-to-end", "evaluation", "registration"]
+    },
+    {
+      "id": "pytorch-model-registration",
+      "name": "PyTorch Model Registration Pipeline",
+      "path": "frameworks/pytorch/training/with_registration.py",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "features": ["training", "registration"],
+      "description": "PyTorch pipeline focused on model registration",
+      "tags": ["pytorch", "registration"]
+    },
+    {
+      "id": "cradle-dataload",
+      "name": "Cradle Data Loading Pipeline",
+      "path": "frameworks/components/cradle_dataload.py",
+      "framework": "generic",
+      "complexity": "simple",
+      "features": ["data_loading"],
+      "description": "Pipeline for loading data from Cradle",
+      "tags": ["cradle", "data loading"]
+    },
+    {
+      "id": "dummy-training",
+      "name": "Dummy Training Pipeline",
+      "path": "examples/dummy_training.py",
+      "framework": "generic",
+      "complexity": "simple",
+      "features": ["training", "registration"],
+      "description": "Simple dummy pipeline for testing and demonstration",
+      "tags": ["dummy", "testing", "example"]
+    }
+  ]
+}
