@@ -80,7 +80,7 @@ def create_pipeline(
     role: str,
     pipeline_name: Optional[str] = None,
     pipeline_description: Optional[str] = None
-) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler]:
+) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler, Any]:
     """
     Create a SageMaker Pipeline from the DAG for Cradle data loading.
     
@@ -96,6 +96,7 @@ def create_pipeline(
             - Pipeline: The created SageMaker pipeline
             - Dict: Conversion report with details about the compilation
             - PipelineDAGCompiler: The compiler instance for further operations
+            - Any: The pipeline template instance for further operations
     """
     dag = create_dag()
     

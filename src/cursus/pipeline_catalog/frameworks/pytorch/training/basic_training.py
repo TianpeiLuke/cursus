@@ -76,7 +76,7 @@ def create_pipeline(
     pipeline_name: Optional[str] = None,
     pipeline_description: Optional[str] = None,
     preview_resolution: bool = True
-) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler]:
+) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler, Any]:
     """
     Create a SageMaker Pipeline from the DAG for PyTorch training.
     
@@ -93,6 +93,7 @@ def create_pipeline(
             - Pipeline: The created SageMaker pipeline
             - Dict: Conversion report with details about the compilation
             - PipelineDAGCompiler: The compiler instance for further operations
+            - Any: The pipeline template instance for further operations
     """
     dag = create_dag()
     
@@ -126,11 +127,18 @@ def create_pipeline(
     # Compile the DAG into a pipeline
     pipeline, report = dag_compiler.compile_with_report(dag=dag)
     
+    # Get the pipeline template instance for further operations
+    pipeline_template = dag_compiler.get_last_template()
+    if pipeline_template is None:
+        logger.warning("Pipeline template instance not found after compilation")
+    else:
+        logger.info("Pipeline template instance retrieved for further operations")
+    
     # Log compilation details
     logger.info(f"Pipeline '{pipeline.name}' created successfully")
     logger.info(f"Average resolution confidence: {report.avg_confidence:.2f}")
     
-    return pipeline, report, dag_compiler
+    return pipeline, report, dag_compiler, pipeline_template
 
 
 def fill_execution_document(
@@ -181,7 +189,7 @@ if __name__ == "__main__":
             raise FileNotFoundError(f"Default config file not found: {config_path}")
     
     # Create the pipeline
-    pipeline, report, dag_compiler = create_pipeline(
+    pipeline, report, dag_compiler, pipeline_template = create_pipeline(
         config_path=config_path,
         session=pipeline_session,
         role=role,
