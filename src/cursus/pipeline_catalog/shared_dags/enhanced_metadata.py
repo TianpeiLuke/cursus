@@ -43,13 +43,31 @@ class ZettelkastenMetadata(BaseModel):
     5. Dual-form structure - Metadata separate from implementation
     """
     
-    # Atomicity metadata
+    # Core identification (matches catalog_index.json structure)
     atomic_id: str
+    title: str = ""
     single_responsibility: str
+    
+    # Atomicity metadata
     input_interface: List[str] = Field(default_factory=list)
     output_interface: List[str] = Field(default_factory=list)
     side_effects: str = "none"
     independence_level: str = "fully_self_contained"
+    node_count: int = 1
+    edge_count: int = 0
+    
+    # Core metadata (matches catalog structure)
+    framework: str = ""  # Single framework string to match catalog
+    complexity: str = ""  # Single complexity string to match catalog
+    use_case: str = ""
+    features: List[str] = Field(default_factory=list)
+    mods_compatible: bool = False
+    
+    # File tracking
+    source_file: str = ""
+    migration_source: str = ""
+    created_date: str = ""
+    priority: str = "medium"
     
     # Connectivity metadata
     connection_types: List[str] = Field(default_factory=lambda: ["alternatives", "related", "used_in"])
@@ -195,7 +213,13 @@ class EnhancedDAGMetadata:
         
         return ZettelkastenMetadata(
             atomic_id=atomic_id,
+            title=self._generate_title(),
             single_responsibility=self.description,
+            framework=self.framework.value,
+            complexity=self.complexity.value,
+            features=self.features,
+            node_count=self.node_count,
+            edge_count=self.edge_count,
             framework_tags=[self.framework.value],
             task_tags=self.features,
             complexity_tags=[self.complexity.value],
@@ -237,46 +261,35 @@ class EnhancedDAGMetadata:
         
         return {
             "id": zm.atomic_id,
-            "title": self._generate_title(),
+            "title": zm.title or self._generate_title(),
             "description": self.description,
             
             "atomic_properties": {
                 "single_responsibility": zm.single_responsibility,
-                "input_interface": zm.input_interface,
-                "output_interface": zm.output_interface,
-                "side_effects": zm.side_effects,
-                "dependencies": self._extract_dependencies(),
-                "independence": zm.independence_level
+                "independence_level": zm.independence_level,
+                "node_count": zm.node_count,
+                "edge_count": zm.edge_count
             },
             
             "zettelkasten_metadata": {
-                "framework": self.framework.value,
-                "complexity": self.complexity.value,
-                "creation_context": zm.creation_context,
-                "usage_frequency": zm.usage_frequency,
-                "stability": zm.stability
+                "framework": zm.framework or self.framework.value,
+                "complexity": zm.complexity or self.complexity.value,
+                "use_case": zm.use_case or self.description,
+                "features": zm.features or self.features,
+                "mods_compatible": zm.mods_compatible
             },
             
             "multi_dimensional_tags": {
                 "framework_tags": zm.framework_tags or [self.framework.value],
                 "task_tags": zm.task_tags or self.features,
-                "complexity_tags": zm.complexity_tags or [self.complexity.value],
-                "domain_tags": zm.domain_tags,
-                "pattern_tags": zm.pattern_tags or ["atomic_workflow", "independent"],
-                "integration_tags": zm.integration_tags,
-                "quality_tags": zm.quality_tags,
-                "data_tags": zm.data_tags
+                "complexity_tags": zm.complexity_tags or [self.complexity.value]
             },
             
+            "source_file": zm.source_file,
+            "migration_source": zm.migration_source,
             "connections": self._build_connections(),
-            
-            "discovery_metadata": {
-                "estimated_runtime": zm.estimated_runtime,
-                "resource_requirements": zm.resource_requirements,
-                "use_cases": zm.use_cases,
-                "skill_level": zm.skill_level,
-                "maintenance_burden": zm.maintenance_burden
-            }
+            "created_date": zm.created_date,
+            "priority": zm.priority
         }
     
     def _generate_title(self) -> str:
@@ -360,11 +373,23 @@ class EnhancedDAGMetadata:
             "edge_count": self.edge_count,
             "zettelkasten_metadata": {
                 "atomic_id": self.zettelkasten_metadata.atomic_id,
+                "title": self.zettelkasten_metadata.title,
                 "single_responsibility": self.zettelkasten_metadata.single_responsibility,
                 "input_interface": self.zettelkasten_metadata.input_interface,
                 "output_interface": self.zettelkasten_metadata.output_interface,
                 "side_effects": self.zettelkasten_metadata.side_effects,
                 "independence_level": self.zettelkasten_metadata.independence_level,
+                "node_count": self.zettelkasten_metadata.node_count,
+                "edge_count": self.zettelkasten_metadata.edge_count,
+                "framework": self.zettelkasten_metadata.framework,
+                "complexity": self.zettelkasten_metadata.complexity,
+                "use_case": self.zettelkasten_metadata.use_case,
+                "features": self.zettelkasten_metadata.features,
+                "mods_compatible": self.zettelkasten_metadata.mods_compatible,
+                "source_file": self.zettelkasten_metadata.source_file,
+                "migration_source": self.zettelkasten_metadata.migration_source,
+                "created_date": self.zettelkasten_metadata.created_date,
+                "priority": self.zettelkasten_metadata.priority,
                 "framework_tags": self.zettelkasten_metadata.framework_tags,
                 "task_tags": self.zettelkasten_metadata.task_tags,
                 "complexity_tags": self.zettelkasten_metadata.complexity_tags,

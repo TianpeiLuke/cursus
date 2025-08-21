@@ -173,9 +173,9 @@ class DAGMetadataRegistrySync:
             if field not in node_data:
                 raise RegistryValidationError(f"Node {node_id} missing required field: {field}")
         
-        # Validate atomic properties
+        # Validate atomic properties - match catalog_index.json structure
         atomic_props = node_data["atomic_properties"]
-        required_atomic_fields = ["single_responsibility", "input_interface", "output_interface"]
+        required_atomic_fields = ["single_responsibility", "independence_level", "node_count", "edge_count"]
         for field in required_atomic_fields:
             if field not in atomic_props:
                 raise RegistryValidationError(f"Node {node_id} missing atomic property: {field}")
@@ -290,31 +290,60 @@ class DAGMetadataRegistrySync:
                 for conn in connections:
                     curated_connections[conn["id"]] = conn["annotation"]
         
+        # Extract atomic properties
+        atomic_props = node.get("atomic_properties", {})
+        zettel_meta = node.get("zettelkasten_metadata", {})
+        multi_tags = node.get("multi_dimensional_tags", {})
+        
         return ZettelkastenMetadata(
             atomic_id=node["id"],
-            single_responsibility=node["atomic_properties"]["single_responsibility"],
-            input_interface=node["atomic_properties"]["input_interface"],
-            output_interface=node["atomic_properties"]["output_interface"],
-            side_effects=node["atomic_properties"].get("side_effects", "none"),
-            independence_level=node["atomic_properties"].get("independence", "fully_self_contained"),
+            title=node.get("title", ""),
+            single_responsibility=atomic_props.get("single_responsibility", ""),
+            
+            # Atomicity metadata
+            input_interface=atomic_props.get("input_interface", []),
+            output_interface=atomic_props.get("output_interface", []),
+            side_effects=atomic_props.get("side_effects", "none"),
+            independence_level=atomic_props.get("independence_level", "fully_self_contained"),
+            node_count=atomic_props.get("node_count", 1),
+            edge_count=atomic_props.get("edge_count", 0),
+            
+            # Core metadata (matches catalog structure)
+            framework=zettel_meta.get("framework", ""),
+            complexity=zettel_meta.get("complexity", ""),
+            use_case=zettel_meta.get("use_case", ""),
+            features=zettel_meta.get("features", []),
+            mods_compatible=zettel_meta.get("mods_compatible", False),
+            
+            # File tracking
+            source_file=node.get("source_file", ""),
+            migration_source=node.get("migration_source", ""),
+            created_date=node.get("created_date", ""),
+            priority=node.get("priority", "medium"),
+            
+            # Connections
             manual_connections=manual_connections,
             curated_connections=curated_connections,
-            framework_tags=node["multi_dimensional_tags"]["framework_tags"],
-            task_tags=node["multi_dimensional_tags"]["task_tags"],
-            complexity_tags=node["multi_dimensional_tags"]["complexity_tags"],
-            domain_tags=node["multi_dimensional_tags"]["domain_tags"],
-            pattern_tags=node["multi_dimensional_tags"]["pattern_tags"],
-            integration_tags=node["multi_dimensional_tags"]["integration_tags"],
-            quality_tags=node["multi_dimensional_tags"]["quality_tags"],
-            data_tags=node["multi_dimensional_tags"]["data_tags"],
-            creation_context=node["zettelkasten_metadata"].get("creation_context", ""),
-            usage_frequency=node["zettelkasten_metadata"].get("usage_frequency", "unknown"),
-            stability=node["zettelkasten_metadata"].get("stability", "experimental"),
-            maintenance_burden=node["discovery_metadata"].get("maintenance_burden", "unknown"),
-            estimated_runtime=node["discovery_metadata"].get("estimated_runtime", "unknown"),
-            resource_requirements=node["discovery_metadata"].get("resource_requirements", "unknown"),
-            use_cases=node["discovery_metadata"].get("use_cases", []),
-            skill_level=node["discovery_metadata"].get("skill_level", "unknown")
+            
+            # Tags
+            framework_tags=multi_tags.get("framework_tags", []),
+            task_tags=multi_tags.get("task_tags", []),
+            complexity_tags=multi_tags.get("complexity_tags", []),
+            domain_tags=multi_tags.get("domain_tags", []),
+            pattern_tags=multi_tags.get("pattern_tags", []),
+            integration_tags=multi_tags.get("integration_tags", []),
+            quality_tags=multi_tags.get("quality_tags", []),
+            data_tags=multi_tags.get("data_tags", []),
+            
+            # Discovery metadata
+            creation_context=zettel_meta.get("creation_context", ""),
+            usage_frequency=zettel_meta.get("usage_frequency", "unknown"),
+            stability=zettel_meta.get("stability", "experimental"),
+            maintenance_burden=zettel_meta.get("maintenance_burden", "unknown"),
+            estimated_runtime=zettel_meta.get("estimated_runtime", "unknown"),
+            resource_requirements=zettel_meta.get("resource_requirements", "unknown"),
+            use_cases=zettel_meta.get("use_cases", []),
+            skill_level=zettel_meta.get("skill_level", "unknown")
         )
     
     def validate_consistency(
