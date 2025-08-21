@@ -206,6 +206,9 @@ pip install cursus[all]        # Everything included
 ### 📚 [Complete Documentation Hub](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/README.md)
 **Your gateway to all Cursus documentation - start here for comprehensive navigation**
 
+### Knowledge Management Philosophy
+- **[Zettelkasten Principles](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/1_design/zettelkasten_knowledge_management_principles.md)** - The knowledge management principles behind our slipbox documentation system, explaining how we organize and connect information for maximum discoverability and organic growth
+
 ### Core Documentation
 - **[Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/README.md)** - Comprehensive guide for developing new pipeline steps and extending Cursus
 - **[Design Documentation](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/1_design/README.md)** - Detailed architectural documentation and design principles

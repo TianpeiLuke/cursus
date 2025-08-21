@@ -207,3 +207,32 @@ The current examples folder will be reorganized into this new pipeline catalog s
 4. Test imports and functionality from the new package structure
 5. Update documentation references to point to the new locations
 6. Develop the CLI tool integration with the main package's command system
+
+## Knowledge Management Principles
+
+This pipeline catalog design embodies several key knowledge management principles documented in our [Zettelkasten Knowledge Management Principles](zettelkasten_knowledge_management_principles.md):
+
+### Atomicity in Pipeline Organization
+- **Single-purpose pipelines**: Each pipeline file focuses on one specific workflow (e.g., `simple.py`, `basic_training.py`)
+- **Modular components**: Separate files for distinct concerns (data loading, preprocessing, training)
+- **Clear boundaries**: Each pipeline has a well-defined scope and responsibility
+
+### Connectivity Through Multiple Access Paths
+- **Framework-based organization**: Primary structure organized by ML framework
+- **Task-based views**: Alternative access through task-oriented symlinks
+- **Cross-references**: Machine-readable index enables discovery of related pipelines
+- **Explicit relationships**: JSON index documents connections between pipelines
+
+### Emergent Organization Over Rigid Categories
+- **Flexible tagging**: Pipelines can belong to multiple categories through tags
+- **Multiple classification schemes**: Framework-based and task-based views coexist
+- **Organic growth**: New frameworks and tasks can be added without restructuring
+- **Tag-based discovery**: Users can find pipelines through multiple dimensions
+
+### Manual Curation with Search Support
+- **Curated documentation**: Human-written descriptions and usage examples
+- **Structured metadata**: Machine-readable index for tooling integration
+- **CLI discovery tools**: Manual curation enhanced by search capabilities
+- **Decision trees**: Guided selection process for pipeline discovery
+
+This design demonstrates practical application of Zettelkasten principles to software organization, creating a system that balances structure with flexibility and supports both human navigation and automated tooling.

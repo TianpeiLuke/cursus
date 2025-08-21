@@ -686,3 +686,24 @@ This proves that the multiple inheritance complexity has been successfully resol
 The MODS DAG Compiler design provides a robust solution for integrating MODS capabilities with dynamic pipeline generation. By solving the metaclass conflict through class-level decoration and implementing resilient metadata extraction, it enables seamless MODS integration while maintaining full compatibility with the existing DAG compilation architecture.
 
 The design emphasizes error resilience, performance optimization, and extensibility, positioning it as a solid foundation for enhanced pipeline operations and monitoring capabilities.
+
+## Knowledge Management Principles
+
+This MODS DAG Compiler design exemplifies several key knowledge management principles documented in our [Zettelkasten Knowledge Management Principles](zettelkasten_knowledge_management_principles.md):
+
+### Atomicity in Component Design
+- **Single-responsibility components**: Each class (`MODSPipelineDAGCompiler`, `DynamicPipelineTemplate`, `MODSTemplate`) has a focused, atomic purpose
+- **Separation of concerns**: Metadata extraction, template decoration, and pipeline compilation are distinct responsibilities
+- **Modular architecture**: Components can be understood and modified independently
+
+### Connectivity Through Explicit Interfaces
+- **Clear inheritance patterns**: `MODSPipelineDAGCompiler` extends `PipelineDAGCompiler` with explicit interface contracts
+- **Explicit dependencies**: Template decoration dependencies are clearly documented and handled
+- **Interface compatibility**: Multiple inheritance between `DynamicPipelineTemplate` and `MODSTemplateInner` demonstrates successful connectivity design
+
+### Emergent Architecture Over Rigid Frameworks
+- **Flexible decoration**: MODS integration emerges from composition rather than rigid inheritance hierarchies
+- **Adaptive metadata extraction**: Multiple fallback strategies allow the system to adapt to different configuration structures
+- **Extensible design**: New MODS features can be added without restructuring the core architecture
+
+This design demonstrates how Zettelkasten principles apply beyond documentation to software architecture, creating systems that are both robust and adaptable through principled component organization and explicit relationship management.
