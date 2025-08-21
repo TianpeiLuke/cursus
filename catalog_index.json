@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "description": "Pipeline catalog connection registry - Zettelkasten-inspired knowledge network for independent pipelines",
+  "metadata": {
+    "total_pipelines": 0,
+    "frameworks": [],
+    "complexity_levels": [],
+    "last_updated": "2025-08-21T00:22:43.880145",
+    "connection_types": [
+      "alternatives",
+      "related",
+      "used_in"
+    ]
+  },
+  "nodes": {},
+  "connection_graph_metadata": {
+    "total_connections": 0,
+    "connection_density": 0.0,
+    "independent_pipelines": 0,
+    "composition_opportunities": 0,
+    "alternative_groups": 0,
+    "isolated_nodes": []
+  },
+  "tag_index": {
+    "framework_tags": {},
+    "task_tags": {},
+    "complexity_tags": {},
+    "independence_tags": {}
+  }
+}
