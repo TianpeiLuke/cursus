@@ -52,7 +52,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.xgboost.simple_dag import create_xgboost_simple_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -75,39 +75,40 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for xgb_mods_training_simple.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
+    # Create Zettelkasten metadata with comprehensive properties
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="xgb_mods_training_simple",
         title="MODS XGBoost Simple Training Pipeline",
         single_responsibility="MODS-enhanced simple XGBoost model training with basic configuration",
-        input_interface=["Training dataset path", "calibration dataset path", "model hyperparameters"],
+        input_interface=["Training dataset path", "calibration dataset path", "model hyperparameters", "MODS configuration"],
         output_interface=["Trained XGBoost model artifact", "MODS template registration"],
         side_effects="Creates model artifacts in S3 and registers template in MODS global registry",
-        independence_level="high",
+        independence_level="fully_self_contained",
         node_count=5,
         edge_count=4,
         framework="xgboost",
         complexity="simple",
         use_case="MODS-enhanced basic XGBoost training",
-        features=["training", "xgboost", "mods", "template_registration"],
+        features=["training", "xgboost", "mods_enhanced", "template_registration"],
         mods_compatible=True,
         source_file="mods_pipelines/xgb_mods_training_simple.py",
-        migration_source="mods_frameworks/xgboost/simple_mods.py",
-        created_date="2025-08-20",
+        migration_source="legacy_migration",
+        created_date="2025-08-21",
         priority="high",
-        framework_tags=["xgboost"],
-        task_tags=["training", "mods", "template_registration"],
+        framework_tags=["xgboost", "mods"],
+        task_tags=["training", "mods_enhanced", "template_registration"],
         complexity_tags=["simple", "basic"],
-        domain_tags=["machine_learning", "mods_integration"],
-        pattern_tags=["atomic_workflow", "mods_enhanced"],
-        integration_tags=["sagemaker", "s3", "mods_registry"],
-        quality_tags=["production_ready", "mods_validated"],
+        domain_tags=["machine_learning", "mods_operations"],
+        pattern_tags=["atomic_workflow", "mods_enhanced", "independent"],
+        integration_tags=["sagemaker", "s3", "mods_global_registry"],
+        quality_tags=["production_ready", "mods_enhanced"],
         data_tags=["tabular", "structured"],
         creation_context="MODS-enhanced basic XGBoost training with template registration",
         usage_frequency="high",
@@ -123,17 +124,19 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="beginner"
     )
     
-    return {
-        "pipeline_name": "xgb_mods_training_simple",
-        "description": "MODS-enhanced simple XGBoost training pipeline with template registration",
-        "framework": "xgboost",
-        "task_type": "training",
-        "complexity_level": "simple",
-        "estimated_duration_minutes": 25,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["xgboost", "sagemaker", "mods"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    # Create enhanced metadata using the new pattern
+    enhanced_metadata = EnhancedDAGMetadata(
+        dag_id="xgb_mods_training_simple",
+        description="MODS-enhanced simple XGBoost training pipeline with template registration",
+        complexity="simple",
+        features=["training", "xgboost", "mods_enhanced", "template_registration"],
+        framework="xgboost",
+        node_count=5,
+        edge_count=4,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+    
+    return enhanced_metadata
 
 
 def sync_to_registry() -> bool:
@@ -145,16 +148,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using the enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         
@@ -195,7 +197,7 @@ def create_pipeline(
     if enable_mods:
         try:
             # Try to import MODS compiler
-            from ...core.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
+            from ...mods.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
             dag_compiler = MODSPipelineDAGCompiler(
                 config_path=config_path,
                 sagemaker_session=session,

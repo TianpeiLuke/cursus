@@ -53,7 +53,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.pytorch.training_dag import create_pytorch_training_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -76,12 +76,12 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for pytorch_mods_training_basic.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="pytorch_mods_training_basic",
@@ -124,17 +124,17 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="beginner"
     )
     
-    return {
-        "pipeline_name": "pytorch_mods_training_basic",
-        "description": "MODS-enhanced PyTorch training pipeline with model evaluation and template registration",
-        "framework": "pytorch",
-        "task_type": "training",
-        "complexity_level": "simple",
-        "estimated_duration_minutes": 45,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["pytorch", "sagemaker", "mods"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    return EnhancedDAGMetadata(
+        pipeline_name="pytorch_mods_training_basic",
+        description="MODS-enhanced PyTorch training pipeline with model evaluation and template registration",
+        framework="pytorch",
+        task_type="training",
+        complexity_level="simple",
+        estimated_duration_minutes=45,
+        resource_requirements=["ml.m5.large"],
+        dependencies=["pytorch", "sagemaker", "mods"],
+        zettelkasten_metadata=zettelkasten_metadata
+    )
 
 
 def sync_to_registry() -> bool:
@@ -146,16 +146,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         
@@ -198,7 +197,7 @@ def create_pipeline(
     if enable_mods:
         try:
             # Try to import MODS compiler
-            from ...core.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
+            from ...mods.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
             dag_compiler = MODSPipelineDAGCompiler(
                 config_path=config_path,
                 sagemaker_session=session,

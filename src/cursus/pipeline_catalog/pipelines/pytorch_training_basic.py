@@ -48,7 +48,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.pytorch.training_dag import create_pytorch_training_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -71,13 +71,14 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for pytorch_training_basic.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
+    # Create Zettelkasten metadata with comprehensive properties
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="pytorch_training_basic",
         title="PyTorch Basic Training Pipeline",
@@ -85,17 +86,17 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         input_interface=["Training dataset path", "validation dataset path", "model hyperparameters"],
         output_interface=["Trained PyTorch model artifact", "evaluation metrics"],
         side_effects="Creates model artifacts and evaluation reports in S3",
-        independence_level="high",
-        node_count=4,
-        edge_count=3,
+        independence_level="fully_self_contained",
+        node_count=6,
+        edge_count=5,
         framework="pytorch",
         complexity="simple",
         use_case="Basic PyTorch training",
         features=["training", "pytorch", "deep_learning", "supervised"],
         mods_compatible=False,
         source_file="pipelines/pytorch_training_basic.py",
-        migration_source="frameworks/pytorch/training/basic_training.py",
-        created_date="2025-08-20",
+        migration_source="legacy_migration",
+        created_date="2025-08-21",
         priority="high",
         framework_tags=["pytorch"],
         task_tags=["training", "supervised", "deep_learning"],
@@ -119,17 +120,19 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="beginner"
     )
     
-    return {
-        "pipeline_name": "pytorch_training_basic",
-        "description": "PyTorch training pipeline with model evaluation",
-        "framework": "pytorch",
-        "task_type": "training",
-        "complexity_level": "simple",
-        "estimated_duration_minutes": 45,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["pytorch", "sagemaker"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    # Create enhanced metadata using the new pattern
+    enhanced_metadata = EnhancedDAGMetadata(
+        dag_id="pytorch_training_basic",
+        description="PyTorch training pipeline with model evaluation",
+        complexity="simple",
+        features=["training", "pytorch", "deep_learning", "supervised"],
+        framework="pytorch",
+        node_count=6,
+        edge_count=5,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+    
+    return enhanced_metadata
 
 
 def sync_to_registry() -> bool:
@@ -141,16 +144,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using the enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         

@@ -47,7 +47,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.xgboost.training_with_evaluation_dag import create_xgboost_training_with_evaluation_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -70,13 +70,14 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for xgb_training_evaluation.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
+    # Create Zettelkasten metadata with comprehensive properties
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="xgb_training_evaluation",
         title="XGBoost Training with Evaluation Pipeline",
@@ -84,7 +85,7 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         input_interface=["Training dataset path", "evaluation dataset path", "model hyperparameters"],
         output_interface=["Trained XGBoost model artifact", "evaluation metrics", "performance report"],
         side_effects="Creates model artifacts and evaluation reports in S3",
-        independence_level="high",
+        independence_level="fully_self_contained",
         node_count=6,
         edge_count=5,
         framework="xgboost",
@@ -93,14 +94,14 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         features=["training", "xgboost", "evaluation", "supervised"],
         mods_compatible=False,
         source_file="pipelines/xgb_training_evaluation.py",
-        migration_source="frameworks/xgboost/training/evaluation_training.py",
-        created_date="2025-08-20",
+        migration_source="legacy_migration",
+        created_date="2025-08-21",
         priority="high",
         framework_tags=["xgboost"],
         task_tags=["training", "evaluation", "supervised"],
         complexity_tags=["standard"],
         domain_tags=["machine_learning", "supervised_learning"],
-        pattern_tags=["atomic_workflow", "evaluation"],
+        pattern_tags=["atomic_workflow", "evaluation", "independent"],
         integration_tags=["sagemaker", "s3"],
         quality_tags=["production_ready", "tested", "evaluated"],
         data_tags=["tabular", "structured"],
@@ -118,17 +119,19 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="intermediate"
     )
     
-    return {
-        "pipeline_name": "xgb_training_evaluation",
-        "description": "XGBoost training pipeline with model evaluation",
-        "framework": "xgboost",
-        "task_type": "training",
-        "complexity_level": "standard",
-        "estimated_duration_minutes": 35,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["xgboost", "sagemaker"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    # Create enhanced metadata using the new pattern
+    enhanced_metadata = EnhancedDAGMetadata(
+        dag_id="xgb_training_evaluation",
+        description="XGBoost training pipeline with model evaluation",
+        complexity="standard",
+        features=["training", "xgboost", "evaluation", "supervised"],
+        framework="xgboost",
+        node_count=6,
+        edge_count=5,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+    
+    return enhanced_metadata
 
 
 def sync_to_registry() -> bool:
@@ -140,16 +143,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using the enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         

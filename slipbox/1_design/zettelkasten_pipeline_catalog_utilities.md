@@ -61,6 +61,26 @@ class CatalogRegistry:
     def get_all_pipelines(self) -> List[str]:
         """Get list of all pipeline IDs in the registry."""
         
+    def sync_enhanced_metadata(
+        self, 
+        enhanced_metadata: EnhancedDAGMetadata,
+        pipeline_file_path: str
+    ) -> bool:
+        """
+        Sync EnhancedDAGMetadata to registry.
+        
+        This is the primary method for pipeline files to sync their metadata
+        to the registry, implementing the proper EnhancedDAGMetadata flow.
+        
+        Args:
+            enhanced_metadata: Enhanced DAG metadata containing both technical
+                             DAG info and Zettelkasten knowledge metadata
+            pipeline_file_path: Path to the pipeline file
+            
+        Returns:
+            True if synced successfully, False otherwise
+        """
+        
     def validate_registry_integrity(self) -> RegistryValidationResult:
         """Validate registry structure and connection integrity."""
 ```
@@ -454,32 +474,67 @@ class CatalogCLI:
         """Show pipeline recommendations."""
 ```
 
+## Architecture Overview
+
+### Proper Metadata Flow Architecture
+
+The utilities implement a clean, type-safe metadata flow that properly integrates technical DAG information with Zettelkasten knowledge management:
+
+```
+┌─────────────────┐    ┌──────────────────────┐    ┌─────────────────┐
+│   Shared DAGs   │    │   Pipeline Files     │    │ CatalogRegistry │
+│                 │    │                      │    │                 │
+│  DAGMetadata    │───▶│  EnhancedDAGMetadata │───▶│ sync_enhanced_  │
+│  (Technical)    │    │  (Bridge Layer)      │    │ metadata()      │
+│                 │    │                      │    │                 │
+│ • description   │    │ • DAGMetadata        │    │                 │
+│ • complexity    │    │ • ZettelkastenMeta   │    │                 │
+│ • framework     │    │ • Type safety        │    │                 │
+│ • node_count    │    │ • Validation         │    │                 │
+│ • edge_count    │    │                      │    │                 │
+└─────────────────┘    └──────────────────────┘    └─────────────────┘
+                                │                           │
+                                │                           ▼
+                                │                  ┌─────────────────┐
+                                │                  │DAGMetadataRegistry│
+                                │                  │     Sync        │
+                                │                  │                 │
+                                │                  │ • Conversion    │
+                                │                  │ • Validation    │
+                                │                  │ • Persistence   │
+                                │                  └─────────────────┘
+                                │                           │
+                                │                           ▼
+                                │                  ┌─────────────────┐
+                                └─────────────────▶│catalog_index.json│
+                                  (Knowledge)      │                 │
+                                                   │ • Connections   │
+                                                   │ • Tags          │
+                                                   │ • Discovery     │
+                                                   │ • Navigation    │
+                                                   └─────────────────┘
+```
+
+### Key Architectural Principles
+
+1. **Separation of Concerns**: Shared DAGs focus on technical metadata, pipeline files add knowledge metadata
+2. **Type Safety**: EnhancedDAGMetadata provides strong typing throughout the flow
+3. **Single Source of Truth**: Technical data comes from shared DAGs, knowledge data from pipeline files
+4. **Clean Integration**: CatalogRegistry provides a unified interface for metadata operations
+5. **Automatic Validation**: Built-in consistency checks between technical and knowledge layers
+
 ## Integration with Existing Systems
 
-### DAGMetadata Integration
+### EnhancedDAGMetadata Integration
 
-The utilities integrate with the existing `DAGMetadata` system by:
+The utilities integrate with the existing metadata system through the **EnhancedDAGMetadata** bridge pattern. For detailed information about the EnhancedDAGMetadata system, DAGMetadata integration patterns, registry synchronization, and the proper metadata flow architecture, see **[Zettelkasten DAGMetadata Integration](zettelkasten_dag_metadata_integration.md)**.
 
-1. **Extracting metadata** from DAG definitions to populate registry
-2. **Validating consistency** between DAG metadata and registry entries
-3. **Synchronizing updates** when DAG metadata changes
-4. **Providing bridge functions** between DAG metadata and Zettelkasten metadata
+Key integration points:
 
-```python
-def sync_dag_metadata_to_registry(
-    dag_metadata: DAGMetadata,
-    pipeline_id: str,
-    registry: CatalogRegistry
-) -> None:
-    """Sync DAG metadata to registry entry."""
-
-def validate_dag_registry_consistency(
-    pipeline_id: str,
-    dag_metadata: DAGMetadata,
-    registry: CatalogRegistry
-) -> List[ConsistencyError]:
-    """Validate consistency between DAG metadata and registry."""
-```
+1. **Pipeline files** import DAGMetadata from shared DAGs and combine with ZettelkastenMetadata
+2. **EnhancedDAGMetadata** serves as the integration bridge between technical and knowledge layers
+3. **CatalogRegistry** accepts EnhancedDAGMetadata for seamless sync operations
+4. **Automatic consistency** validation between DAG technical data and registry knowledge data
 
 ### MODS Integration
 
@@ -610,7 +665,7 @@ This utility design integrates with and supports several related design document
 - **[Pipeline Catalog Zettelkasten Refactoring](pipeline_catalog_zettelkasten_refactoring.md)** - Primary implementation context that these utilities support, defining the registry schema and organizational structure
 
 ### Integration Points
-- **[DAGMetadata Integration Design](zettelkasten_dag_metadata_integration.md)** - Companion design document detailing how these utilities integrate with the existing DAGMetadata system
+- **[Zettelkasten DAGMetadata Integration](zettelkasten_dag_metadata_integration.md)** - Essential companion document detailing the EnhancedDAGMetadata system, DAGMetadata integration patterns, registry synchronization, and the proper metadata flow architecture that these utilities depend on
 
 ### Standards Compliance
 - **[Documentation YAML Frontmatter Standard](documentation_yaml_frontmatter_standard.md)** - Metadata standards that influence utility metadata handling and validation

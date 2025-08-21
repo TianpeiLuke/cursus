@@ -45,7 +45,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.xgboost.simple_dag import create_xgboost_simple_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -53,31 +53,32 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for xgb_training_simple.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
+    # Create Zettelkasten metadata with comprehensive properties
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="xgb_training_simple",
         title="XGBoost Simple Training Pipeline",
-        single_responsibility="XGBoost model training with basic configuration",
-        input_interface=["Training dataset path", "basic hyperparameters"],
+        single_responsibility="Basic XGBoost model training with data loading and preprocessing",
+        input_interface=["Training dataset path", "model hyperparameters"],
         output_interface=["Trained XGBoost model artifact"],
         side_effects="Creates model artifacts in S3",
-        independence_level="high",
-        node_count=3,
-        edge_count=2,
+        independence_level="fully_self_contained",
+        node_count=5,
+        edge_count=4,
         framework="xgboost",
         complexity="simple",
         use_case="Basic XGBoost training",
         features=["training", "xgboost", "supervised"],
         mods_compatible=False,
         source_file="pipelines/xgb_training_simple.py",
-        migration_source="frameworks/xgboost/simple.py",
-        created_date="2025-08-20",
+        migration_source="legacy_migration",
+        created_date="2025-08-21",
         priority="high",
         framework_tags=["xgboost"],
         task_tags=["training", "supervised"],
@@ -101,17 +102,19 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="beginner"
     )
     
-    return {
-        "pipeline_name": "xgb_training_simple",
-        "description": "Basic XGBoost training workflow with minimal configuration",
-        "framework": "xgboost",
-        "task_type": "training",
-        "complexity_level": "simple",
-        "estimated_duration_minutes": 25,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["xgboost", "sagemaker"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    # Create enhanced metadata using the new pattern
+    enhanced_metadata = EnhancedDAGMetadata(
+        dag_id="xgb_training_simple",
+        description="Simple XGBoost training pipeline with data loading and preprocessing",
+        complexity="simple",
+        features=["training", "xgboost", "supervised"],
+        framework="xgboost",
+        node_count=5,
+        edge_count=4,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+    
+    return enhanced_metadata
 
 
 def create_dag() -> PipelineDAG:
@@ -134,7 +137,8 @@ def create_pipeline(
     session: PipelineSession,
     role: str,
     pipeline_name: Optional[str] = None,
-    pipeline_description: Optional[str] = None
+    pipeline_description: Optional[str] = None,
+    validate: bool = True
 ) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler, Any]:
     """
     Create a SageMaker Pipeline from the DAG for simple XGBoost training.
@@ -168,7 +172,21 @@ def create_pipeline(
     if pipeline_description:
         dag_compiler.pipeline_description = pipeline_description
     
-    # Preview resolution (optional)
+    # Validate the DAG if requested
+    if validate:
+        validation = dag_compiler.validate_dag_compatibility(dag)
+        if not validation.is_valid:
+            logger.warning(f"DAG validation failed: {validation.summary()}")
+            if validation.missing_configs:
+                logger.warning(f"Missing configs: {validation.missing_configs}")
+            if validation.unresolvable_builders:
+                logger.warning(f"Unresolvable builders: {validation.unresolvable_builders}")
+            if validation.config_errors:
+                logger.warning(f"Config errors: {validation.config_errors}")
+            if validation.dependency_issues:
+                logger.warning(f"Dependency issues: {validation.dependency_issues}")
+    
+    # Preview resolution for logging
     preview = dag_compiler.preview_resolution(dag)
     logger.info("DAG node resolution preview:")
     for node, config_type in preview.node_config_map.items():
@@ -223,18 +241,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_pipeline_node(
-            pipeline_id=metadata["zettelkasten_metadata"].atomic_id,
-            node_data=metadata
-        )
+        # Add or update the pipeline node using the enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {metadata['zettelkasten_metadata'].atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {metadata['zettelkasten_metadata'].atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         

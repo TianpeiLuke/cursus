@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from ..shared_dags.registry_sync import DAGMetadataRegistrySync, RegistryValidationError
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,62 @@ class CatalogRegistry:
         except Exception as e:
             logger.error(f"Failed to get all pipelines: {e}")
             return []
+    
+    def add_or_update_enhanced_node(self, enhanced_metadata: EnhancedDAGMetadata) -> bool:
+        """
+        Add or update a pipeline node using EnhancedDAGMetadata.
+        
+        This is the preferred method for adding pipelines with the new enhanced metadata system.
+        It automatically converts the EnhancedDAGMetadata to the registry format and handles
+        all Zettelkasten metadata integration.
+        
+        Args:
+            enhanced_metadata: EnhancedDAGMetadata object containing all pipeline metadata
+            
+        Returns:
+            True if added/updated successfully, False otherwise
+        """
+        try:
+            # Use the registry sync to convert and add the metadata
+            # sync_metadata_to_registry returns None on success, raises exception on failure
+            self._sync.sync_metadata_to_registry(
+                dag_metadata=enhanced_metadata,
+                pipeline_file_path=enhanced_metadata.zettelkasten_metadata.source_file
+            )
+            
+            # Clear cache to force reload with updated data
+            self.clear_cache()
+            logger.info(f"Successfully added/updated enhanced node {enhanced_metadata.zettelkasten_metadata.atomic_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to add/update enhanced node: {e}")
+            return False
+    
+    def add_or_update_node(self, zettelkasten_metadata: ZettelkastenMetadata) -> bool:
+        """
+        Add or update a pipeline node using ZettelkastenMetadata (legacy method).
+        
+        This method is maintained for backward compatibility with existing pipeline files
+        that haven't been migrated to the EnhancedDAGMetadata system yet.
+        
+        Args:
+            zettelkasten_metadata: ZettelkastenMetadata object
+            
+        Returns:
+            True if added/updated successfully, False otherwise
+        """
+        try:
+            # Convert ZettelkastenMetadata to the registry node format
+            node_data = self._convert_zettelkasten_to_node_data(zettelkasten_metadata)
+            pipeline_id = zettelkasten_metadata.atomic_id
+            
+            # Use the existing add_pipeline_node method
+            return self.add_pipeline_node(pipeline_id, node_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to add/update node from ZettelkastenMetadata: {e}")
+            return False
     
     def add_pipeline_node(self, pipeline_id: str, node_data: Dict[str, Any]) -> bool:
         """
@@ -550,6 +607,80 @@ class CatalogRegistry:
                 
                 if pipeline_id not in tag_index[category][tag]:
                     tag_index[category][tag].append(pipeline_id)
+    
+    def _convert_zettelkasten_to_node_data(self, zettelkasten_metadata: ZettelkastenMetadata) -> Dict[str, Any]:
+        """
+        Convert ZettelkastenMetadata to registry node data format.
+        
+        This method provides backward compatibility for pipeline files that haven't
+        been migrated to the EnhancedDAGMetadata system yet. The format matches
+        exactly what EnhancedDAGMetadata.to_registry_node() produces.
+        
+        Args:
+            zettelkasten_metadata: ZettelkastenMetadata object to convert
+            
+        Returns:
+            Dict containing node data in registry format matching catalog_index.json
+        """
+        try:
+            # Build connections from manual connections
+            connections = {
+                "alternatives": [],
+                "related": [],
+                "used_in": []
+            }
+            
+            # Convert manual connections to registry format
+            for conn_type, target_ids in zettelkasten_metadata.manual_connections.items():
+                if conn_type in connections:
+                    for target_id in target_ids:
+                        annotation = zettelkasten_metadata.curated_connections.get(
+                            target_id, f"Connected via {conn_type}"
+                        )
+                        connections[conn_type].append({
+                            "id": target_id,
+                            "annotation": annotation
+                        })
+            
+            # Create the node data structure that matches EnhancedDAGMetadata.to_registry_node()
+            node_data = {
+                "id": zettelkasten_metadata.atomic_id,
+                "title": zettelkasten_metadata.title or zettelkasten_metadata.atomic_id.replace("_", " ").title(),
+                "description": zettelkasten_metadata.single_responsibility,
+                
+                "atomic_properties": {
+                    "single_responsibility": zettelkasten_metadata.single_responsibility,
+                    "independence_level": zettelkasten_metadata.independence_level,
+                    "node_count": zettelkasten_metadata.node_count,
+                    "edge_count": zettelkasten_metadata.edge_count
+                },
+                
+                "zettelkasten_metadata": {
+                    "framework": zettelkasten_metadata.framework,
+                    "complexity": zettelkasten_metadata.complexity,
+                    "use_case": zettelkasten_metadata.use_case or zettelkasten_metadata.single_responsibility,
+                    "features": zettelkasten_metadata.features,
+                    "mods_compatible": zettelkasten_metadata.mods_compatible
+                },
+                
+                "multi_dimensional_tags": {
+                    "framework_tags": zettelkasten_metadata.framework_tags,
+                    "task_tags": zettelkasten_metadata.task_tags,
+                    "complexity_tags": zettelkasten_metadata.complexity_tags
+                },
+                
+                "source_file": zettelkasten_metadata.source_file,
+                "migration_source": zettelkasten_metadata.migration_source,
+                "connections": connections,
+                "created_date": zettelkasten_metadata.created_date,
+                "priority": zettelkasten_metadata.priority
+            }
+            
+            return node_data
+            
+        except Exception as e:
+            logger.error(f"Failed to convert ZettelkastenMetadata to node data: {e}")
+            raise
     
     def clear_cache(self) -> None:
         """Clear the internal cache, forcing reload on next access."""

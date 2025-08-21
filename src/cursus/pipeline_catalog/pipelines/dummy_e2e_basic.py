@@ -46,7 +46,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.dummy.e2e_basic_dag import create_dummy_e2e_basic_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -69,13 +69,14 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for dummy_e2e_basic.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
+    # Create Zettelkasten metadata with comprehensive properties
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="dummy_e2e_basic",
         title="Dummy End-to-End Basic Pipeline",
@@ -83,23 +84,23 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         input_interface=["Dummy model configuration", "packaging parameters", "payload configuration", "registration config"],
         output_interface=["Dummy model artifact", "packaged model", "payload test results", "registered model"],
         side_effects="Creates dummy artifacts for testing purposes",
-        independence_level="high",
+        independence_level="fully_self_contained",
         node_count=4,
         edge_count=4,
-        framework="dummy",
+        framework="generic",
         complexity="simple",
         use_case="Testing and demonstration pipeline",
         features=["end_to_end", "dummy", "testing", "packaging", "registration"],
         mods_compatible=False,
         source_file="pipelines/dummy_e2e_basic.py",
-        migration_source="new",
+        migration_source="legacy_migration",
         created_date="2025-08-21",
         priority="low",
-        framework_tags=["dummy"],
+        framework_tags=["generic", "dummy"],
         task_tags=["end_to_end", "testing", "packaging", "registration"],
         complexity_tags=["simple", "basic"],
         domain_tags=["testing", "infrastructure"],
-        pattern_tags=["diamond_dependency", "testing_framework"],
+        pattern_tags=["diamond_dependency", "testing_framework", "atomic_workflow", "independent"],
         integration_tags=["sagemaker", "s3"],
         quality_tags=["testing", "demonstration"],
         data_tags=["dummy", "synthetic"],
@@ -117,17 +118,19 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="beginner"
     )
     
-    return {
-        "pipeline_name": "dummy_e2e_basic",
-        "description": "Basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration for testing purposes",
-        "framework": "dummy",
-        "task_type": "end_to_end",
-        "complexity_level": "simple",
-        "estimated_duration_minutes": 15,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["sagemaker", "boto3"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    # Create enhanced metadata using the new pattern
+    enhanced_metadata = EnhancedDAGMetadata(
+        dag_id="dummy_e2e_basic",
+        description="Basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration for testing purposes",
+        complexity="simple",
+        features=["end_to_end", "dummy", "testing", "packaging", "registration"],
+        framework="generic",
+        node_count=4,
+        edge_count=4,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+    
+    return enhanced_metadata
 
 
 def sync_to_registry() -> bool:
@@ -139,16 +142,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using the enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         

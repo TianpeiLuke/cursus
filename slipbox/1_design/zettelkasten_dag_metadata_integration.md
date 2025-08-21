@@ -1087,18 +1087,281 @@ complexity = metadata.complexity.value
 2. Add automated metadata extraction
 3. Integrate with CLI tools
 
+## Utility Integration and Pipeline Implementation
+
+### CatalogRegistry Integration
+
+The EnhancedDAGMetadata system integrates seamlessly with the CatalogRegistry utility class through the `sync_enhanced_metadata()` method:
+
+```python
+# Pipeline files create EnhancedDAGMetadata
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
+    """
+    Create unified metadata combining technical DAG info with Zettelkasten knowledge.
+    
+    This implements the proper integration bridge pattern where pipeline files
+    import DAG metadata from shared DAGs and combine it with rich Zettelkasten
+    metadata for comprehensive pipeline documentation.
+    """
+    # Import technical metadata from shared DAG
+    from ..shared_dags.xgboost.complete_e2e_dag import get_dag_metadata
+    dag_metadata = get_dag_metadata()
+    
+    # Create rich Zettelkasten metadata
+    zettelkasten_metadata = ZettelkastenMetadata(
+        atomic_id="xgb_e2e_comprehensive",
+        single_responsibility="Complete XGBoost ML lifecycle from data loading to model registration",
+        input_interface=["tabular_data"],
+        output_interface=["trained_model", "evaluation_metrics", "registered_model"],
+        framework_tags=["xgboost", "tree_based", "gradient_boosting"],
+        task_tags=["training", "evaluation", "registration", "end_to_end"],
+        complexity_tags=["comprehensive", "production_ready"],
+        domain_tags=["tabular", "structured_data", "ml_ops"],
+        pattern_tags=["atomic_workflow", "independent", "complete_lifecycle"],
+        # ... additional Zettelkasten fields
+    )
+    
+    # Return unified EnhancedDAGMetadata
+    return EnhancedDAGMetadata(
+        description=dag_metadata.description,
+        complexity=dag_metadata.complexity,
+        features=dag_metadata.features,
+        framework=dag_metadata.framework,
+        node_count=dag_metadata.node_count,
+        edge_count=dag_metadata.edge_count,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+
+# Simplified sync process
+def sync_to_registry() -> bool:
+    """Sync pipeline metadata to registry using EnhancedDAGMetadata bridge."""
+    try:
+        registry = CatalogRegistry()
+        enhanced_metadata = get_enhanced_dag_metadata()
+        return registry.sync_enhanced_metadata(enhanced_metadata, __file__)
+    except Exception as e:
+        logger.error(f"Error synchronizing to registry: {e}")
+        return False
+```
+
+### Integration Benefits
+
+1. **Type Safety**: Strong typing throughout the entire metadata flow
+2. **Unified Interface**: Single metadata object containing both technical and knowledge data
+3. **Automatic Validation**: Built-in consistency checks between DAG and registry data
+4. **Clean Architecture**: Clear separation between shared DAGs (technical) and pipeline files (knowledge)
+
+### Consistency Validation
+
+```python
+def validate_enhanced_metadata_consistency(
+    enhanced_metadata: EnhancedDAGMetadata,
+    registry: CatalogRegistry
+) -> List[ConsistencyError]:
+    """
+    Validate consistency between EnhancedDAGMetadata and registry.
+    
+    Ensures that technical DAG metadata and Zettelkasten knowledge metadata
+    remain synchronized and consistent.
+    """
+    errors = []
+    
+    # Validate technical metadata consistency
+    dag_part = enhanced_metadata.to_legacy_dag_metadata()
+    zettel_part = enhanced_metadata.zettelkasten_metadata
+    
+    # Check framework consistency
+    if dag_part.framework != zettel_part.framework_tags[0]:
+        errors.append(f"Framework mismatch: DAG={dag_part.framework} vs Zettel={zettel_part.framework_tags[0]}")
+    
+    # Check complexity consistency
+    if dag_part.complexity not in zettel_part.complexity_tags:
+        errors.append(f"Complexity mismatch: DAG={dag_part.complexity} not in Zettel={zettel_part.complexity_tags}")
+    
+    # Check feature consistency
+    missing_features = set(dag_part.features) - set(zettel_part.task_tags)
+    if missing_features:
+        errors.append(f"Missing task tags for features: {missing_features}")
+    
+    return errors
+```
+
+### Pipeline Implementation Pattern
+
+Enhanced pipeline files follow this standard pattern:
+
+```python
+"""
+Enhanced XGBoost Training Pipeline
+
+This pipeline implements Zettelkasten principles through DAGMetadata integration.
+"""
+
+import logging
+from pathlib import Path
+from typing import Dict, Any, Tuple, Optional
+
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline_context import PipelineSession
+
+from .....api.dag.base_dag import PipelineDAG
+from .....core.compiler.dag_compiler import PipelineDAGCompiler
+from ....shared_dags.xgboost.training_with_calibration_dag import create_xgboost_training_with_calibration_dag
+from ....shared_dags import EnhancedDAGMetadata, ComplexityLevel, PipelineFramework, ZettelkastenMetadata
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
+    """
+    Get enhanced DAG metadata with Zettelkasten principles.
+    
+    This replaces comment-based YAML frontmatter with enforceable,
+    type-safe metadata that integrates with the registry system.
+    """
+    
+    # Create Zettelkasten metadata
+    zettelkasten_metadata = ZettelkastenMetadata(
+        atomic_id="xgb_calibrated_training",
+        single_responsibility="XGBoost model training with probability calibration",
+        input_interface=["tabular_data"],
+        output_interface=["calibrated_xgboost_model", "training_metrics", "calibration_metrics"],
+        side_effects="none",
+        independence_level="fully_self_contained",
+        
+        # Tag-based organization (anti-categories principle)
+        framework_tags=["xgboost", "tree_based", "gradient_boosting"],
+        task_tags=["training", "calibration", "supervised_learning", "classification"],
+        complexity_tags=["standard", "intermediate", "production_ready"],
+        domain_tags=["tabular", "structured_data", "ml_ops", "probability_estimation"],
+        pattern_tags=["atomic_workflow", "independent", "enhanced_single_step", "stateless"],
+        integration_tags=["sagemaker", "standard_pipeline", "mods_compatible"],
+        quality_tags=["calibrated_probabilities", "uncertainty_quantification"],
+        data_tags=["accepts_raw_or_preprocessed", "flexible_input"],
+        
+        # Manual linking (curated connections)
+        manual_connections={
+            "alternatives": ["pytorch_lightning_training"],
+            "related": ["xgb_simple_training"],
+            "used_in": ["risk_modeling_e2e"]
+        },
+        curated_connections={
+            "pytorch_lightning_training": "Alternative framework with built-in calibration options",
+            "xgb_simple_training": "Same framework, basic version without calibration - conceptually similar",
+            "risk_modeling_e2e": "Calibrated models particularly useful in risk assessment workflows"
+        },
+        
+        # Dual-form structure metadata
+        creation_context="Enhanced training with probability calibration",
+        usage_frequency="medium",
+        stability="stable",
+        maintenance_burden="medium",
+        
+        # Discovery metadata
+        estimated_runtime="25-45 minutes",
+        resource_requirements="medium-high",
+        use_cases=["probability_estimation", "risk_modeling", "calibrated_classification"],
+        skill_level="intermediate"
+    )
+    
+    return EnhancedDAGMetadata(
+        description="XGBoost training pipeline with probability calibration - atomic, independent enhanced training workflow",
+        complexity=ComplexityLevel.STANDARD,
+        features=["training", "calibration"],
+        framework=PipelineFramework.XGBOOST,
+        node_count=6,  # Actual count from DAG
+        edge_count=5,  # Actual count from DAG
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+
+
+def create_dag() -> PipelineDAG:
+    """
+    Create a DAG for training and calibrating an XGBoost model.
+    
+    This function integrates with the enhanced metadata system.
+    """
+    dag = create_xgboost_training_with_calibration_dag()
+    
+    # Sync metadata to registry (if enabled)
+    metadata = get_enhanced_dag_metadata()
+    try:
+        from ....shared_dags import DAGMetadataRegistrySync
+        sync = DAGMetadataRegistrySync()
+        sync.sync_metadata_to_registry(metadata, __file__)
+    except Exception as e:
+        logger.warning(f"Failed to sync metadata to registry: {e}")
+    
+    logger.info(f"Created DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
+    return dag
+
+
+def create_pipeline(
+    config_path: str,
+    session: PipelineSession,
+    role: str,
+    pipeline_name: Optional[str] = None,
+    pipeline_description: Optional[str] = None,
+    validate: bool = True
+) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler, Any]:
+    """
+    Create a SageMaker Pipeline from the DAG for XGBoost training with calibration.
+    
+    Enhanced with metadata integration and Zettelkasten principles.
+    """
+    dag = create_dag()
+    metadata = get_enhanced_dag_metadata()
+    
+    # Create compiler with the configuration
+    dag_compiler = PipelineDAGCompiler(
+        config_path=config_path,
+        sagemaker_session=session,
+        role=role
+    )
+    
+    # Set pipeline properties from metadata
+    if pipeline_name:
+        dag_compiler.pipeline_name = pipeline_name
+    else:
+        dag_compiler.pipeline_name = metadata.zettelkasten_metadata.atomic_id.replace("_", "-")
+        
+    if pipeline_description:
+        dag_compiler.pipeline_description = pipeline_description
+    else:
+        dag_compiler.pipeline_description = metadata.description
+    
+    # Validate the DAG if requested
+    if validate:
+        validation = dag_compiler.validate_dag_compatibility(dag)
+        if not validation.is_valid:
+            logger.warning(f"DAG validation failed: {validation.summary()}")
+    
+    # Compile the DAG into a pipeline
+    pipeline, report = dag_compiler.compile_with_report(dag=dag)
+    
+    # Get the pipeline template instance
+    pipeline_template = dag_compiler.get_last_template()
+    
+    logger.info(f"Pipeline '{pipeline.name}' created successfully")
+    logger.info(f"Metadata atomic ID: {metadata.zettelkasten_metadata.atomic_id}")
+    
+    return pipeline, report, dag_compiler, pipeline_template
+```
+
 ## Related Design Documents
 
 This DAGMetadata integration design works in conjunction with several related design documents:
 
 ### Foundational Principles
-- **[Zettelkasten Knowledge Management Principles](zettelkasten_knowledge_management_principles.md)** - Theoretical foundation that guides the metadata structure and integration approach
+- **[Zettelkasten Knowledge Management Principles](zettelkasten_knowledge_management_principles.md)** - Essential theoretical foundation that defines the five core Zettelkasten principles (atomicity, connectivity, anti-categories, manual linking, dual-form structure) that guide the metadata structure and integration approach. This document provides the conceptual framework for all design decisions in the EnhancedDAGMetadata system.
 
 ### Implementation Context
-- **[Pipeline Catalog Zettelkasten Refactoring](pipeline_catalog_zettelkasten_refactoring.md)** - Primary refactoring design that this metadata integration supports, providing the registry schema and organizational structure
+- **[Pipeline Catalog Zettelkasten Refactoring](pipeline_catalog_zettelkasten_refactoring.md)** - Primary refactoring design that this metadata integration supports, providing the registry schema, organizational structure, and overall architectural vision. This document defines the target state that the EnhancedDAGMetadata system enables.
 
 ### Utility Support
-- **[Zettelkasten Pipeline Catalog Utilities](zettelkasten_pipeline_catalog_utilities.md)** - Utility functions that consume and manipulate the enhanced metadata, providing discovery and navigation capabilities
+- **[Zettelkasten Pipeline Catalog Utilities](zettelkasten_pipeline_catalog_utilities.md)** - Comprehensive utility functions that consume and manipulate the enhanced metadata, providing discovery and navigation capabilities. This document contains the CatalogRegistry class and other utilities that depend on the EnhancedDAGMetadata system defined here. The utilities implement the practical application of the metadata integration patterns.
 
 ### Standards Compliance
 - **[Documentation YAML Frontmatter Standard](documentation_yaml_frontmatter_standard.md)** - Documentation standards that inform the metadata schema design and validation requirements

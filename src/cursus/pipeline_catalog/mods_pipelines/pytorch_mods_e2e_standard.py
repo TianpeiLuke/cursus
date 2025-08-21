@@ -57,7 +57,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.pytorch.standard_e2e_dag import create_pytorch_standard_e2e_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -66,11 +66,12 @@ logger = logging.getLogger(__name__)
 
 # MODS imports with fallback
 try:
-    from ...mods_frameworks import check_mods_requirements, get_mods_compiler_class, MODSNotAvailableError
+    from ...mods.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
     MODS_AVAILABLE = True
 except ImportError:
     MODS_AVAILABLE = False
     logger.warning("MODS framework not available. Pipeline will use standard compiler.")
+    MODSPipelineDAGCompiler = None
     
     class MODSNotAvailableError(Exception):
         pass
@@ -91,13 +92,14 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for pytorch_mods_e2e_standard.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
+    # Create Zettelkasten metadata with comprehensive properties
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="pytorch_mods_e2e_standard",
         title="MODS PyTorch Standard End-to-End Pipeline",
@@ -105,7 +107,7 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         input_interface=["Training dataset path", "validation dataset path", "model hyperparameters", "registration config", "MODS configuration"],
         output_interface=["Trained PyTorch model artifact", "evaluation metrics", "packaged model", "registered model", "MODS template registration"],
         side_effects="Creates model artifacts, evaluation reports, registers model in SageMaker Model Registry, and registers template in MODS global registry",
-        independence_level="high",
+        independence_level="fully_self_contained",
         node_count=9,
         edge_count=8,
         framework="pytorch",
@@ -114,14 +116,14 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         features=["training", "pytorch", "evaluation", "registration", "packaging", "end_to_end", "mods_enhanced", "template_registration"],
         mods_compatible=True,
         source_file="mods_pipelines/pytorch_mods_e2e_standard.py",
-        migration_source="mods_frameworks/pytorch/end_to_end/standard_e2e_mods.py",
-        created_date="2025-08-20",
+        migration_source="legacy_migration",
+        created_date="2025-08-21",
         priority="high",
         framework_tags=["pytorch", "mods"],
         task_tags=["end_to_end", "training", "evaluation", "registration", "packaging", "mods_enhanced"],
         complexity_tags=["standard"],
         domain_tags=["deep_learning", "production_ml", "mods_operations"],
-        pattern_tags=["complete_lifecycle", "production_ready", "mods_enhanced"],
+        pattern_tags=["complete_lifecycle", "production_ready", "mods_enhanced", "atomic_workflow", "independent"],
         integration_tags=["sagemaker", "s3", "model_registry", "mods_global_registry"],
         quality_tags=["production_ready", "tested", "comprehensive", "mods_enhanced"],
         data_tags=["images", "text", "structured"],
@@ -139,17 +141,19 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="intermediate"
     )
     
-    return {
-        "pipeline_name": "pytorch_mods_e2e_standard",
-        "description": "MODS-enhanced complete PyTorch pipeline with training, evaluation, and registration",
-        "framework": "pytorch",
-        "task_type": "end_to_end",
-        "complexity_level": "standard",
-        "estimated_duration_minutes": 70,
-        "resource_requirements": ["ml.m5.xlarge"],
-        "dependencies": ["pytorch", "sagemaker", "numpy", "pandas", "torchvision", "mods"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    # Create enhanced metadata using the new pattern
+    enhanced_metadata = EnhancedDAGMetadata(
+        dag_id="pytorch_mods_e2e_standard",
+        description="MODS-enhanced complete PyTorch pipeline with training, evaluation, and registration",
+        complexity="standard",
+        features=["training", "pytorch", "evaluation", "registration", "packaging", "end_to_end", "mods_enhanced", "template_registration"],
+        framework="pytorch",
+        node_count=9,
+        edge_count=8,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+    
+    return enhanced_metadata
 
 
 def sync_to_registry() -> bool:
@@ -161,16 +165,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using the enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         
@@ -215,11 +218,6 @@ def create_pipeline(
     # Determine which compiler to use
     if enable_mods and MODS_AVAILABLE:
         try:
-            # Check MODS availability
-            check_mods_requirements()
-            
-            # Get MODS compiler class
-            MODSPipelineDAGCompiler = get_mods_compiler_class()
             if MODSPipelineDAGCompiler is None:
                 raise MODSNotAvailableError("MODSPipelineDAGCompiler is not available")
             

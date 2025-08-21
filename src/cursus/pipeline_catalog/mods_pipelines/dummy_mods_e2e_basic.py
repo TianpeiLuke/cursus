@@ -52,7 +52,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.dummy.e2e_basic_dag import create_dummy_e2e_basic_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 # MODS imports with fallback
 try:
-    from ...mods_frameworks import check_mods_requirements, get_mods_compiler_class, MODSNotAvailableError
+    from ...mods.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
     MODS_AVAILABLE = True
 except ImportError:
     MODS_AVAILABLE = False
@@ -86,13 +86,14 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for dummy_mods_e2e_basic.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
+    # Create Zettelkasten metadata with comprehensive properties
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="dummy_mods_e2e_basic",
         title="MODS Dummy End-to-End Basic Pipeline",
@@ -100,23 +101,23 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         input_interface=["Dummy model configuration", "packaging parameters", "payload configuration", "registration config", "MODS configuration"],
         output_interface=["Dummy model artifact", "packaged model", "payload test results", "registered model", "MODS template registration"],
         side_effects="Creates dummy artifacts for testing purposes and registers template in MODS global registry",
-        independence_level="high",
+        independence_level="fully_self_contained",
         node_count=4,
         edge_count=4,
-        framework="dummy",
+        framework="generic",
         complexity="simple",
         use_case="MODS-enhanced testing and demonstration pipeline",
         features=["end_to_end", "dummy", "testing", "packaging", "registration", "mods_enhanced", "template_registration"],
         mods_compatible=True,
         source_file="mods_pipelines/dummy_mods_e2e_basic.py",
-        migration_source="new",
+        migration_source="legacy_migration",
         created_date="2025-08-21",
         priority="low",
-        framework_tags=["dummy", "mods"],
+        framework_tags=["generic", "dummy", "mods"],
         task_tags=["end_to_end", "testing", "packaging", "registration", "mods_enhanced"],
         complexity_tags=["simple", "basic"],
         domain_tags=["testing", "infrastructure", "mods_operations"],
-        pattern_tags=["diamond_dependency", "testing_framework", "mods_enhanced"],
+        pattern_tags=["diamond_dependency", "testing_framework", "mods_enhanced", "atomic_workflow", "independent"],
         integration_tags=["sagemaker", "s3", "mods_global_registry"],
         quality_tags=["testing", "demonstration", "mods_enhanced"],
         data_tags=["dummy", "synthetic"],
@@ -134,17 +135,19 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="beginner"
     )
     
-    return {
-        "pipeline_name": "dummy_mods_e2e_basic",
-        "description": "MODS-enhanced basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration for testing purposes",
-        "framework": "dummy",
-        "task_type": "end_to_end",
-        "complexity_level": "simple",
-        "estimated_duration_minutes": 15,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["sagemaker", "boto3", "mods"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    # Create enhanced metadata using the new pattern
+    enhanced_metadata = EnhancedDAGMetadata(
+        dag_id="dummy_mods_e2e_basic",
+        description="MODS-enhanced basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration for testing purposes",
+        complexity="simple",
+        features=["end_to_end", "dummy", "testing", "packaging", "registration", "mods_enhanced", "template_registration"],
+        framework="generic",
+        node_count=4,
+        edge_count=4,
+        zettelkasten_metadata=zettelkasten_metadata
+    )
+    
+    return enhanced_metadata
 
 
 def sync_to_registry() -> bool:
@@ -156,16 +159,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using the enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         
@@ -210,14 +212,6 @@ def create_pipeline(
     # Determine which compiler to use
     if enable_mods and MODS_AVAILABLE:
         try:
-            # Check MODS availability
-            check_mods_requirements()
-            
-            # Get MODS compiler class
-            MODSPipelineDAGCompiler = get_mods_compiler_class()
-            if MODSPipelineDAGCompiler is None:
-                raise MODSNotAvailableError("MODSPipelineDAGCompiler is not available")
-            
             # Create MODS compiler with the configuration
             dag_compiler = MODSPipelineDAGCompiler(
                 config_path=config_path,
@@ -238,7 +232,7 @@ def create_pipeline(
             
             logger.info("Using MODS compiler for enhanced functionality")
             
-        except (MODSNotAvailableError, Exception) as e:
+        except Exception as e:
             logger.warning(f"MODS not available ({e}), falling back to standard compiler")
             enable_mods = False
     

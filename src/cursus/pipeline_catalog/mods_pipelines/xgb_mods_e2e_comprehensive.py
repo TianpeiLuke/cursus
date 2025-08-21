@@ -58,7 +58,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.xgboost.complete_e2e_dag import create_xgboost_complete_e2e_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -67,11 +67,12 @@ logger = logging.getLogger(__name__)
 
 # MODS imports with fallback
 try:
-    from ...mods_frameworks import check_mods_requirements, get_mods_compiler_class, MODSNotAvailableError
+    from ...mods.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
     MODS_AVAILABLE = True
 except ImportError:
     MODS_AVAILABLE = False
     logger.warning("MODS framework not available. Pipeline will use standard compiler.")
+    MODSPipelineDAGCompiler = None
     
     class MODSNotAvailableError(Exception):
         pass
@@ -92,12 +93,12 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for xgb_mods_e2e_comprehensive.
     
     Returns:
-        Dict: Enhanced metadata with Zettelkasten properties
+        EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="xgb_mods_e2e_comprehensive",
@@ -140,17 +141,17 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="advanced"
     )
     
-    return {
-        "pipeline_name": "xgb_mods_e2e_comprehensive",
-        "description": "MODS-enhanced complete XGBoost end-to-end pipeline with calibration, evaluation, and registration",
-        "framework": "xgboost",
-        "task_type": "end_to_end",
-        "complexity_level": "comprehensive",
-        "estimated_duration_minutes": 90,
-        "resource_requirements": ["ml.m5.xlarge"],
-        "dependencies": ["xgboost", "sagemaker", "pandas", "scikit-learn", "joblib", "mods"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    return EnhancedDAGMetadata(
+        pipeline_name="xgb_mods_e2e_comprehensive",
+        description="MODS-enhanced complete XGBoost end-to-end pipeline with calibration, evaluation, and registration",
+        framework="xgboost",
+        task_type="end_to_end",
+        complexity_level="comprehensive",
+        estimated_duration_minutes=90,
+        resource_requirements=["ml.m5.xlarge"],
+        dependencies=["xgboost", "sagemaker", "pandas", "scikit-learn", "joblib", "mods"],
+        zettelkasten_metadata=zettelkasten_metadata
+    )
 
 
 def sync_to_registry() -> bool:
@@ -162,16 +163,15 @@ def sync_to_registry() -> bool:
     """
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
+        enhanced_metadata = get_enhanced_dag_metadata()
         
-        # Add or update the pipeline node
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        # Add or update the pipeline node using enhanced metadata
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
         
@@ -216,11 +216,6 @@ def create_pipeline(
     # Determine which compiler to use
     if enable_mods and MODS_AVAILABLE:
         try:
-            # Check MODS availability
-            check_mods_requirements()
-            
-            # Get MODS compiler class
-            MODSPipelineDAGCompiler = get_mods_compiler_class()
             if MODSPipelineDAGCompiler is None:
                 raise MODSNotAvailableError("MODSPipelineDAGCompiler is not available")
             

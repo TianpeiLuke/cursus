@@ -50,7 +50,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.xgboost.training_with_evaluation_dag import create_xgboost_training_with_evaluation_dag
-from ..shared_dags.enhanced_metadata import ZettelkastenMetadata
+from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata, ZettelkastenMetadata
 from ..utils.catalog_registry import CatalogRegistry
 
 # Setup logging
@@ -65,7 +65,7 @@ def create_dag() -> PipelineDAG:
     return dag
 
 
-def get_enhanced_dag_metadata() -> Dict[str, Any]:
+def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """Get enhanced DAG metadata with Zettelkasten integration for xgb_mods_training_evaluation."""
     zettelkasten_metadata = ZettelkastenMetadata(
         atomic_id="xgb_mods_training_evaluation",
@@ -108,31 +108,30 @@ def get_enhanced_dag_metadata() -> Dict[str, Any]:
         skill_level="intermediate"
     )
     
-    return {
-        "pipeline_name": "xgb_mods_training_evaluation",
-        "description": "MODS-enhanced XGBoost training pipeline with model evaluation and template registration",
-        "framework": "xgboost",
-        "task_type": "training",
-        "complexity_level": "standard",
-        "estimated_duration_minutes": 35,
-        "resource_requirements": ["ml.m5.large"],
-        "dependencies": ["xgboost", "sagemaker", "mods"],
-        "zettelkasten_metadata": zettelkasten_metadata
-    }
+    return EnhancedDAGMetadata(
+        pipeline_name="xgb_mods_training_evaluation",
+        description="MODS-enhanced XGBoost training pipeline with model evaluation and template registration",
+        framework="xgboost",
+        task_type="training",
+        complexity_level="standard",
+        estimated_duration_minutes=35,
+        resource_requirements=["ml.m5.large"],
+        dependencies=["xgboost", "sagemaker", "mods"],
+        zettelkasten_metadata=zettelkasten_metadata
+    )
 
 
 def sync_to_registry() -> bool:
     """Synchronize this pipeline's metadata to the catalog registry."""
     try:
         registry = CatalogRegistry()
-        metadata = get_enhanced_dag_metadata()
-        zettelkasten_metadata = metadata["zettelkasten_metadata"]
-        success = registry.add_or_update_node(zettelkasten_metadata)
+        enhanced_metadata = get_enhanced_dag_metadata()
+        success = registry.add_or_update_enhanced_node(enhanced_metadata)
         
         if success:
-            logger.info(f"Successfully synchronized {zettelkasten_metadata.atomic_id} to registry")
+            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
         else:
-            logger.warning(f"Failed to synchronize {zettelkasten_metadata.atomic_id} to registry")
+            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
             
         return success
     except Exception as e:
@@ -155,7 +154,7 @@ def create_pipeline(
     # Create compiler with the configuration
     if enable_mods:
         try:
-            from ...core.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
+            from ...mods.compiler.mods_dag_compiler import MODSPipelineDAGCompiler
             dag_compiler = MODSPipelineDAGCompiler(config_path=config_path, sagemaker_session=session, role=role)
             logger.info("Using MODS-enhanced compiler")
         except ImportError:
