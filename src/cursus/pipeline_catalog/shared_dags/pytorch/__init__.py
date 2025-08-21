@@ -6,7 +6,7 @@ This module contains shared DAG definitions for PyTorch-based pipelines.
 
 __all__ = [
     "create_pytorch_training_dag",
-    "create_pytorch_end_to_end_dag"
+    "create_pytorch_standard_e2e_dag"
 ]
 
 # Import functions to make them available at package level
@@ -16,6 +16,6 @@ except ImportError:
     pass
 
 try:
-    from .end_to_end_dag import create_pytorch_end_to_end_dag, get_dag_metadata as get_end_to_end_metadata
+    from .standard_e2e_dag import create_pytorch_standard_e2e_dag, get_dag_metadata as get_standard_e2e_metadata
 except ImportError:
     pass

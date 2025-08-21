@@ -11,6 +11,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from enum import Enum
 import logging
 
+# Import DAGMetadata from the parent module
+from . import DAGMetadata
+
 logger = logging.getLogger(__name__)
 
 
@@ -166,70 +169,75 @@ class ZettelkastenMetadata(BaseModel):
         return list(set(all_tags))  # Remove duplicates
 
 
-class EnhancedDAGMetadata:
+class EnhancedDAGMetadata(DAGMetadata):
     """
     Enhanced DAGMetadata with Zettelkasten principles.
     
-    Extends the existing DAGMetadata class with Zettelkasten-specific
-    metadata while maintaining backward compatibility.
+    Inherits from DAGMetadata and extends it with Zettelkasten-specific
+    metadata while maintaining full backward compatibility.
     """
     
-    def __init__(
-        self,
-        # Core DAGMetadata fields
-        description: str,
-        complexity: Union[ComplexityLevel, str],
-        features: List[str],
-        framework: Union[PipelineFramework, str],
-        node_count: int,
-        edge_count: int,
-        
-        # Zettelkasten extensions
-        zettelkasten_metadata: Optional[ZettelkastenMetadata] = None,
-        
-        # Backward compatibility
-        **kwargs
-    ):
-        # Core metadata
-        self.description = description
-        self.complexity = complexity if isinstance(complexity, ComplexityLevel) else ComplexityLevel(complexity)
-        self.features = features
-        self.framework = framework if isinstance(framework, PipelineFramework) else PipelineFramework(framework)
-        self.node_count = node_count
-        self.edge_count = edge_count
-        
-        # Zettelkasten metadata
-        self.zettelkasten_metadata = zettelkasten_metadata or self._create_default_zettelkasten_metadata()
-        
-        # Extra metadata for extensibility
-        self.extra_metadata = kwargs
-        
-        # Validate the metadata
-        self._validate()
+    # Zettelkasten extensions (inherits all DAGMetadata fields)
+    zettelkasten_metadata: Optional[ZettelkastenMetadata] = Field(default=None, description="Zettelkasten-specific metadata")
+    
+    # Override field validators to handle enum conversion
+    @field_validator('complexity', mode='before')
+    @classmethod
+    def validate_complexity(cls, v):
+        """Convert string complexity to enum if needed, then validate with parent."""
+        if isinstance(v, str):
+            try:
+                return ComplexityLevel(v)
+            except ValueError:
+                # Fall back to parent validation for string values
+                return v
+        return v
+    
+    @field_validator('framework', mode='before')
+    @classmethod
+    def validate_framework(cls, v):
+        """Convert string framework to enum if needed, then validate with parent."""
+        if isinstance(v, str):
+            try:
+                return PipelineFramework(v)
+            except ValueError:
+                # Fall back to parent validation for string values
+                return v
+        return v
+    
+    def model_post_init(self, __context: Any) -> None:
+        """Post-initialization to create default Zettelkasten metadata if needed."""
+        if self.zettelkasten_metadata is None:
+            object.__setattr__(self, 'zettelkasten_metadata', self._create_default_zettelkasten_metadata())
     
     def _create_default_zettelkasten_metadata(self) -> ZettelkastenMetadata:
         """Create default Zettelkasten metadata from core metadata."""
         atomic_id = self._generate_atomic_id()
         
+        # Handle both enum and string values for framework/complexity
+        framework_value = self.framework.value if hasattr(self.framework, 'value') else self.framework
+        complexity_value = self.complexity.value if hasattr(self.complexity, 'value') else self.complexity
+        
         return ZettelkastenMetadata(
             atomic_id=atomic_id,
             title=self._generate_title(),
             single_responsibility=self.description,
-            framework=self.framework.value,
-            complexity=self.complexity.value,
+            framework=framework_value,
+            complexity=complexity_value,
             features=self.features,
             node_count=self.node_count,
             edge_count=self.edge_count,
-            framework_tags=[self.framework.value],
+            framework_tags=[framework_value],
             task_tags=self.features,
-            complexity_tags=[self.complexity.value],
+            complexity_tags=[complexity_value],
             pattern_tags=["atomic_workflow", "independent"]
         )
     
     def _generate_atomic_id(self) -> str:
         """Generate atomic ID from core metadata."""
-        framework_prefix = self.framework.value
-        complexity_suffix = self.complexity.value
+        # Handle both enum and string values
+        framework_prefix = self.framework.value if hasattr(self.framework, 'value') else self.framework
+        complexity_suffix = self.complexity.value if hasattr(self.complexity, 'value') else self.complexity
         
         # Extract primary feature for ID
         primary_feature = self.features[0] if self.features else "pipeline"
@@ -272,17 +280,17 @@ class EnhancedDAGMetadata:
             },
             
             "zettelkasten_metadata": {
-                "framework": zm.framework or self.framework.value,
-                "complexity": zm.complexity or self.complexity.value,
+                "framework": zm.framework or (self.framework.value if hasattr(self.framework, 'value') else self.framework),
+                "complexity": zm.complexity or (self.complexity.value if hasattr(self.complexity, 'value') else self.complexity),
                 "use_case": zm.use_case or self.description,
                 "features": zm.features or self.features,
                 "mods_compatible": zm.mods_compatible
             },
             
             "multi_dimensional_tags": {
-                "framework_tags": zm.framework_tags or [self.framework.value],
+                "framework_tags": zm.framework_tags or [self.framework.value if hasattr(self.framework, 'value') else self.framework],
                 "task_tags": zm.task_tags or self.features,
-                "complexity_tags": zm.complexity_tags or [self.complexity.value]
+                "complexity_tags": zm.complexity_tags or [self.complexity.value if hasattr(self.complexity, 'value') else self.complexity]
             },
             
             "source_file": zm.source_file,
@@ -294,9 +302,13 @@ class EnhancedDAGMetadata:
     
     def _generate_title(self) -> str:
         """Generate human-readable title from metadata."""
-        framework_name = self.framework.value.replace("_", " ").title()
+        # Handle both enum and string values
+        framework_value = self.framework.value if hasattr(self.framework, 'value') else self.framework
+        complexity_value = self.complexity.value if hasattr(self.complexity, 'value') else self.complexity
+        
+        framework_name = framework_value.replace("_", " ").title()
         primary_feature = self.features[0].replace("_", " ").title() if self.features else "Pipeline"
-        complexity_level = self.complexity.value.title()
+        complexity_level = complexity_value.title()
         
         return f"{framework_name} {primary_feature} {complexity_level}"
     
@@ -364,67 +376,27 @@ class EnhancedDAGMetadata:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format for serialization."""
-        return {
-            "description": self.description,
-            "complexity": self.complexity.value,
-            "features": self.features,
-            "framework": self.framework.value,
-            "node_count": self.node_count,
-            "edge_count": self.edge_count,
-            "zettelkasten_metadata": {
-                "atomic_id": self.zettelkasten_metadata.atomic_id,
-                "title": self.zettelkasten_metadata.title,
-                "single_responsibility": self.zettelkasten_metadata.single_responsibility,
-                "input_interface": self.zettelkasten_metadata.input_interface,
-                "output_interface": self.zettelkasten_metadata.output_interface,
-                "side_effects": self.zettelkasten_metadata.side_effects,
-                "independence_level": self.zettelkasten_metadata.independence_level,
-                "node_count": self.zettelkasten_metadata.node_count,
-                "edge_count": self.zettelkasten_metadata.edge_count,
-                "framework": self.zettelkasten_metadata.framework,
-                "complexity": self.zettelkasten_metadata.complexity,
-                "use_case": self.zettelkasten_metadata.use_case,
-                "features": self.zettelkasten_metadata.features,
-                "mods_compatible": self.zettelkasten_metadata.mods_compatible,
-                "source_file": self.zettelkasten_metadata.source_file,
-                "migration_source": self.zettelkasten_metadata.migration_source,
-                "created_date": self.zettelkasten_metadata.created_date,
-                "priority": self.zettelkasten_metadata.priority,
-                "framework_tags": self.zettelkasten_metadata.framework_tags,
-                "task_tags": self.zettelkasten_metadata.task_tags,
-                "complexity_tags": self.zettelkasten_metadata.complexity_tags,
-                "domain_tags": self.zettelkasten_metadata.domain_tags,
-                "pattern_tags": self.zettelkasten_metadata.pattern_tags,
-                "integration_tags": self.zettelkasten_metadata.integration_tags,
-                "quality_tags": self.zettelkasten_metadata.quality_tags,
-                "data_tags": self.zettelkasten_metadata.data_tags,
-                "manual_connections": self.zettelkasten_metadata.manual_connections,
-                "curated_connections": self.zettelkasten_metadata.curated_connections,
-                "connection_confidence": self.zettelkasten_metadata.connection_confidence,
-                "creation_context": self.zettelkasten_metadata.creation_context,
-                "usage_frequency": self.zettelkasten_metadata.usage_frequency,
-                "stability": self.zettelkasten_metadata.stability,
-                "maintenance_burden": self.zettelkasten_metadata.maintenance_burden,
-                "estimated_runtime": self.zettelkasten_metadata.estimated_runtime,
-                "resource_requirements": self.zettelkasten_metadata.resource_requirements,
-                "use_cases": self.zettelkasten_metadata.use_cases,
-                "skill_level": self.zettelkasten_metadata.skill_level
-            },
-            **self.extra_metadata
-        }
-    
-    def to_legacy_dag_metadata(self):
-        """Convert back to legacy DAGMetadata format for compatibility."""
-        from . import DAGMetadata
+        # Get base dict from parent class
+        base_dict = super().to_dict()
         
+        # Add Zettelkasten-specific fields
+        base_dict.update({
+            "zettelkasten_metadata": self.zettelkasten_metadata.model_dump() if self.zettelkasten_metadata else None
+        })
+        
+        return base_dict
+    
+    def to_legacy_dag_metadata(self) -> DAGMetadata:
+        """Convert back to legacy DAGMetadata format for compatibility."""
+        # Since we inherit from DAGMetadata, we can create a new instance with the same fields
         return DAGMetadata(
             description=self.description,
-            complexity=self.complexity.value,
+            complexity=self.complexity.value if hasattr(self.complexity, 'value') else self.complexity,
             features=self.features,
-            framework=self.framework.value,
+            framework=self.framework.value if hasattr(self.framework, 'value') else self.framework,
             node_count=self.node_count,
             edge_count=self.edge_count,
-            **self.extra_metadata
+            extra_metadata=self.extra_metadata
         )
 
 

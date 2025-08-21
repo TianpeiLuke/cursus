@@ -2,10 +2,10 @@
   "version": "1.0",
   "description": "Pipeline catalog connection registry - Zettelkasten-inspired knowledge network for independent pipelines",
   "metadata": {
-    "total_pipelines": 12,
-    "frameworks": ["xgboost", "pytorch"],
+    "total_pipelines": 13,
+    "frameworks": ["xgboost", "pytorch", "dummy"],
     "complexity_levels": ["simple", "standard", "comprehensive"],
-    "last_updated": "2025-08-20T22:23:00",
+    "last_updated": "2025-08-21T00:31:00",
     "connection_types": ["alternatives", "related", "used_in"]
   },
   "nodes": {
@@ -470,6 +470,44 @@
       },
       "created_date": "2025-08-20",
       "priority": "medium"
+    },
+    "dummy_e2e_basic": {
+      "id": "dummy_e2e_basic",
+      "title": "Dummy End-to-End Basic Pipeline",
+      "description": "Basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration for testing purposes",
+      "atomic_properties": {
+        "single_responsibility": "Basic dummy workflow for testing pipeline infrastructure",
+        "independence_level": "high",
+        "node_count": 4,
+        "edge_count": 4
+      },
+      "zettelkasten_metadata": {
+        "framework": "dummy",
+        "complexity": "simple",
+        "use_case": "Testing and demonstration pipeline",
+        "features": ["end_to_end", "dummy", "testing", "packaging", "registration"],
+        "mods_compatible": false
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["dummy"],
+        "task_tags": ["end_to_end", "testing", "packaging", "registration"],
+        "complexity_tags": ["simple", "basic"]
+      },
+      "source_file": "pipelines/dummy_e2e_basic.py",
+      "migration_source": "new",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_e2e_comprehensive", "annotation": "Production XGBoost alternative"},
+          {"id": "pytorch_e2e_standard", "annotation": "Production PyTorch alternative"}
+        ],
+        "related": [
+          {"id": "xgb_training_simple", "annotation": "Similar basic complexity"},
+          {"id": "pytorch_training_basic", "annotation": "Similar basic complexity"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-21",
+      "priority": "low"
     }
   },
   "connection_graph_metadata": {
@@ -483,26 +521,30 @@
   "tag_index": {
     "framework_tags": {
       "xgboost": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "xgb_e2e_comprehensive", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive"],
-      "pytorch": ["pytorch_training_basic", "pytorch_e2e_standard", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"]
+      "pytorch": ["pytorch_training_basic", "pytorch_e2e_standard", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"],
+      "dummy": ["dummy_e2e_basic"]
     },
     "task_tags": {
       "training": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "pytorch_training_basic", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "pytorch_mods_training_basic"],
-      "end_to_end": ["xgb_e2e_comprehensive", "pytorch_e2e_standard", "xgb_mods_e2e_comprehensive", "pytorch_mods_e2e_standard"],
+      "end_to_end": ["xgb_e2e_comprehensive", "pytorch_e2e_standard", "xgb_mods_e2e_comprehensive", "pytorch_mods_e2e_standard", "dummy_e2e_basic"],
       "supervised": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "xgb_e2e_comprehensive", "pytorch_training_basic", "pytorch_e2e_standard", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"],
       "calibration": ["xgb_training_calibrated", "xgb_mods_training_calibrated"],
       "evaluation": ["xgb_training_evaluation", "xgb_mods_training_evaluation"],
       "deep_learning": ["pytorch_training_basic", "pytorch_e2e_standard", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"],
-      "mods": ["xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"]
+      "mods": ["xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"],
+      "testing": ["dummy_e2e_basic"],
+      "packaging": ["dummy_e2e_basic"],
+      "registration": ["dummy_e2e_basic"]
     },
     "complexity_tags": {
-      "simple": ["xgb_training_simple", "pytorch_training_basic", "xgb_mods_training_simple", "pytorch_mods_training_basic"],
+      "simple": ["xgb_training_simple", "pytorch_training_basic", "xgb_mods_training_simple", "pytorch_mods_training_basic", "dummy_e2e_basic"],
       "standard": ["xgb_training_calibrated", "xgb_training_evaluation", "pytorch_e2e_standard", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "pytorch_mods_e2e_standard"],
       "comprehensive": ["xgb_e2e_comprehensive", "xgb_mods_e2e_comprehensive"],
-      "basic": ["xgb_training_simple", "pytorch_training_basic", "xgb_mods_training_simple", "pytorch_mods_training_basic"],
+      "basic": ["xgb_training_simple", "pytorch_training_basic", "xgb_mods_training_simple", "pytorch_mods_training_basic", "dummy_e2e_basic"],
       "complete": ["xgb_e2e_comprehensive", "xgb_mods_e2e_comprehensive"]
     },
     "independence_tags": {
-      "high": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "xgb_e2e_comprehensive", "pytorch_training_basic", "pytorch_e2e_standard", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"]
+      "high": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "xgb_e2e_comprehensive", "pytorch_training_basic", "pytorch_e2e_standard", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard", "dummy_e2e_basic"]
     }
   }
 }

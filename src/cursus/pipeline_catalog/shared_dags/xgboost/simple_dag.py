@@ -49,12 +49,12 @@ def create_xgboost_simple_dag() -> PipelineDAG:
     return dag
 
 
-def get_dag_metadata() -> dict:
+def get_dag_metadata() -> DAGMetadata:
     """
     Get metadata for the XGBoost simple DAG definition.
     
     Returns:
-        dict: Metadata including description, complexity, features
+        DAGMetadata: Metadata including description, complexity, features
     """
     metadata = DAGMetadata(
         description="Simple XGBoost training pipeline with data loading and preprocessing",
@@ -63,14 +63,15 @@ def get_dag_metadata() -> dict:
         framework="xgboost",
         node_count=5,
         edge_count=3,
-        # Additional metadata
-        training_nodes=["CradleDataLoading_training", "TabularPreprocessing_training", "XGBoostTraining"],
-        calibration_nodes=["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
-        parallel_paths=["training", "calibration"],
-        use_cases=["basic_training", "model_development", "proof_of_concept"]
+        extra_metadata={
+            "training_nodes": ["CradleDataLoading_training", "TabularPreprocessing_training", "XGBoostTraining"],
+            "calibration_nodes": ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
+            "parallel_paths": ["training", "calibration"],
+            "use_cases": ["basic_training", "model_development", "proof_of_concept"]
+        }
     )
     
-    return metadata.to_dict()
+    return metadata
 
 
 def validate_dag() -> bool:

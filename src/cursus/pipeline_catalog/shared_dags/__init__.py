@@ -7,6 +7,7 @@ code duplication.
 """
 
 from typing import Dict, Any, List
+from pydantic import BaseModel, Field, field_validator
 from ...api.dag.base_dag import PipelineDAG
 
 __all__ = [
@@ -16,26 +17,42 @@ __all__ = [
 ]
 
 
-class DAGMetadata:
+class DAGMetadata(BaseModel):
     """Standard metadata structure for shared DAG definitions."""
     
-    def __init__(
-        self,
-        description: str,
-        complexity: str,
-        features: List[str],
-        framework: str,
-        node_count: int,
-        edge_count: int,
-        **kwargs
-    ):
-        self.description = description
-        self.complexity = complexity  # simple, standard, advanced
-        self.features = features  # training, evaluation, calibration, registration, etc.
-        self.framework = framework  # xgboost, pytorch, generic
-        self.node_count = node_count
-        self.edge_count = edge_count
-        self.extra_metadata = kwargs
+    description: str = Field(..., description="Description of the DAG's purpose and functionality")
+    complexity: str = Field(..., description="Complexity level: simple, standard, advanced, comprehensive")
+    features: List[str] = Field(..., description="List of features: training, evaluation, calibration, registration, etc.")
+    framework: str = Field(..., description="Framework: xgboost, pytorch, generic, dummy")
+    node_count: int = Field(..., gt=0, description="Number of nodes in the DAG")
+    edge_count: int = Field(..., ge=0, description="Number of edges in the DAG")
+    extra_metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata fields")
+    
+    @field_validator('complexity')
+    @classmethod
+    def validate_complexity(cls, v):
+        """Validate complexity level."""
+        valid_complexities = {"simple", "standard", "advanced", "comprehensive"}
+        if v not in valid_complexities:
+            raise ValueError(f"Invalid complexity: {v}. Must be one of {valid_complexities}")
+        return v
+    
+    @field_validator('framework')
+    @classmethod
+    def validate_framework(cls, v):
+        """Validate framework."""
+        valid_frameworks = {"xgboost", "pytorch", "generic", "dummy"}
+        if v not in valid_frameworks:
+            raise ValueError(f"Invalid framework: {v}. Must be one of {valid_frameworks}")
+        return v
+    
+    @field_validator('features')
+    @classmethod
+    def validate_features(cls, v):
+        """Validate features list is not empty."""
+        if not v:
+            raise ValueError("Features list cannot be empty")
+        return v
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert metadata to dictionary format."""
@@ -60,28 +77,17 @@ def validate_dag_metadata(metadata: DAGMetadata) -> bool:
     Returns:
         bool: True if metadata is valid
         
-    Raises:
-        ValueError: If metadata is invalid
+    Note:
+        With Pydantic BaseModel, validation is automatic during instantiation.
+        This function is kept for backward compatibility.
     """
-    valid_complexities = {"simple", "standard", "advanced"}
-    valid_frameworks = {"xgboost", "pytorch", "generic"}
-    
-    if metadata.complexity not in valid_complexities:
-        raise ValueError(f"Invalid complexity: {metadata.complexity}. Must be one of {valid_complexities}")
-    
-    if metadata.framework not in valid_frameworks:
-        raise ValueError(f"Invalid framework: {metadata.framework}. Must be one of {valid_frameworks}")
-    
-    if metadata.node_count <= 0:
-        raise ValueError(f"Invalid node_count: {metadata.node_count}. Must be positive")
-    
-    if metadata.edge_count < 0:
-        raise ValueError(f"Invalid edge_count: {metadata.edge_count}. Must be non-negative")
-    
-    if not isinstance(metadata.features, list) or not metadata.features:
-        raise ValueError("Features must be a non-empty list")
-    
-    return True
+    # Pydantic handles validation automatically, but we can add custom logic here
+    try:
+        # Trigger validation by accessing model fields
+        _ = metadata.model_dump()
+        return True
+    except Exception as e:
+        raise ValueError(f"DAG metadata validation failed: {e}")
 
 
 def get_all_shared_dags() -> Dict[str, Dict[str, Any]]:
@@ -101,14 +107,20 @@ def get_all_shared_dags() -> Dict[str, Dict[str, Any]]:
         pass
     
     try:
-        from .xgboost.training_dag import get_dag_metadata as xgb_training_meta
-        shared_dags["xgboost.training"] = xgb_training_meta()
+        from .xgboost.training_with_calibration_dag import get_dag_metadata as xgb_training_meta
+        shared_dags["xgboost.training_calibrated"] = xgb_training_meta()
     except ImportError:
         pass
     
     try:
-        from .xgboost.end_to_end_dag import get_dag_metadata as xgb_e2e_meta
-        shared_dags["xgboost.end_to_end"] = xgb_e2e_meta()
+        from .xgboost.training_with_evaluation_dag import get_dag_metadata as xgb_training_eval_meta
+        shared_dags["xgboost.training_evaluation"] = xgb_training_eval_meta()
+    except ImportError:
+        pass
+    
+    try:
+        from .xgboost.complete_e2e_dag import get_dag_metadata as xgb_e2e_meta
+        shared_dags["xgboost.complete_e2e"] = xgb_e2e_meta()
     except ImportError:
         pass
     
@@ -120,8 +132,15 @@ def get_all_shared_dags() -> Dict[str, Dict[str, Any]]:
         pass
     
     try:
-        from .pytorch.end_to_end_dag import get_dag_metadata as pytorch_e2e_meta
-        shared_dags["pytorch.end_to_end"] = pytorch_e2e_meta()
+        from .pytorch.standard_e2e_dag import get_dag_metadata as pytorch_e2e_meta
+        shared_dags["pytorch.standard_e2e"] = pytorch_e2e_meta()
+    except ImportError:
+        pass
+    
+    # Dummy DAGs
+    try:
+        from .dummy.e2e_basic_dag import get_dag_metadata as dummy_e2e_basic_meta
+        shared_dags["dummy.e2e_basic"] = dummy_e2e_basic_meta()
     except ImportError:
         pass
     

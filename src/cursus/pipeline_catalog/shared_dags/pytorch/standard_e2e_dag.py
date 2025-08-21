@@ -77,25 +77,29 @@ def get_dag_metadata() -> DAGMetadata:
         DAGMetadata: Metadata describing the DAG structure and purpose
     """
     return DAGMetadata(
-        name="pytorch_standard_e2e",
         description="Complete PyTorch end-to-end pipeline with training, evaluation, packaging, and registration",
+        complexity="complex",
+        features=["training", "evaluation", "packaging", "registration"],
         framework="pytorch",
-        task_type="end_to_end",
         node_count=9,
         edge_count=9,
-        entry_points=["CradleDataLoading_training", "CradleDataLoading_validation"],
-        exit_points=["Registration"],
-        required_configs=[
-            "CradleDataLoading_training",
-            "TabularPreprocessing_training",
-            "PyTorchTraining",
-            "Package",
-            "Payload",
-            "Registration",
-            "CradleDataLoading_validation",
-            "TabularPreprocessing_validation",
-            "PyTorchModelEval"
-        ]
+        extra_metadata={
+            "name": "pytorch_standard_e2e",
+            "task_type": "end_to_end",
+            "entry_points": ["CradleDataLoading_training", "CradleDataLoading_validation"],
+            "exit_points": ["Registration"],
+            "required_configs": [
+                "CradleDataLoading_training",
+                "TabularPreprocessing_training",
+                "PyTorchTraining",
+                "Package",
+                "Payload",
+                "Registration",
+                "CradleDataLoading_validation",
+                "TabularPreprocessing_validation",
+                "PyTorchModelEval"
+            ]
+        }
     )
 
 
@@ -132,7 +136,8 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         validation_result["is_valid"] = False
     
     # Check required nodes exist
-    missing_nodes = set(metadata.required_configs) - set(dag.nodes)
+    required_configs = metadata.extra_metadata.get("required_configs", [])
+    missing_nodes = set(required_configs) - set(dag.nodes)
     if missing_nodes:
         validation_result["errors"].append(
             f"Missing required nodes: {missing_nodes}"
@@ -140,7 +145,8 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         validation_result["is_valid"] = False
     
     # Check entry points exist
-    missing_entry_points = set(metadata.entry_points) - set(dag.nodes)
+    entry_points = metadata.extra_metadata.get("entry_points", [])
+    missing_entry_points = set(entry_points) - set(dag.nodes)
     if missing_entry_points:
         validation_result["errors"].append(
             f"Missing entry points: {missing_entry_points}"
@@ -148,7 +154,8 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         validation_result["is_valid"] = False
     
     # Check exit points exist
-    missing_exit_points = set(metadata.exit_points) - set(dag.nodes)
+    exit_points = metadata.extra_metadata.get("exit_points", [])
+    missing_exit_points = set(exit_points) - set(dag.nodes)
     if missing_exit_points:
         validation_result["errors"].append(
             f"Missing exit points: {missing_exit_points}"

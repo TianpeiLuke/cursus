@@ -53,29 +53,30 @@ def create_pytorch_training_dag() -> PipelineDAG:
     return dag
 
 
-def get_dag_metadata() -> dict:
+def get_dag_metadata() -> DAGMetadata:
     """
     Get metadata for the PyTorch training DAG definition.
     
     Returns:
-        dict: Metadata including description, complexity, features
+        DAGMetadata: Metadata including description, complexity, features
     """
     metadata = DAGMetadata(
         description="PyTorch training pipeline with model evaluation",
-        complexity="standard",
+        complexity="medium",
         features=["training", "evaluation", "data_loading", "preprocessing"],
         framework="pytorch",
         node_count=6,
         edge_count=5,
-        # Additional metadata
-        training_nodes=["CradleDataLoading_training", "TabularPreprocessing_training", "PyTorchTraining"],
-        validation_nodes=["CradleDataLoading_validation", "TabularPreprocessing_validation", "PyTorchModelEval"],
-        parallel_paths=["training", "validation"],
-        evaluation_included=True,
-        use_cases=["deep_learning", "model_training", "performance_evaluation"]
+        extra_metadata={
+            "training_nodes": ["CradleDataLoading_training", "TabularPreprocessing_training", "PyTorchTraining"],
+            "validation_nodes": ["CradleDataLoading_validation", "TabularPreprocessing_validation", "PyTorchModelEval"],
+            "parallel_paths": ["training", "validation"],
+            "evaluation_included": True,
+            "use_cases": ["deep_learning", "model_training", "performance_evaluation"]
+        }
     )
     
-    return metadata.to_dict()
+    return metadata
 
 
 def validate_dag() -> bool:

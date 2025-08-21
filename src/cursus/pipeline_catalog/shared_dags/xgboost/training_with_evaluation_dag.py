@@ -64,22 +64,26 @@ def get_dag_metadata() -> DAGMetadata:
         DAGMetadata: Metadata describing the DAG structure and purpose
     """
     return DAGMetadata(
-        name="xgboost_training_with_evaluation",
         description="XGBoost training pipeline with model evaluation",
+        complexity="medium",
+        features=["training", "evaluation", "data_loading", "preprocessing"],
         framework="xgboost",
-        task_type="training",
         node_count=6,
         edge_count=5,
-        entry_points=["CradleDataLoading_training", "CradleDataLoading_evaluation"],
-        exit_points=["XGBoostModelEval"],
-        required_configs=[
-            "CradleDataLoading_training",
-            "TabularPreprocessing_training", 
-            "XGBoostTraining",
-            "CradleDataLoading_evaluation",
-            "TabularPreprocessing_evaluation",
-            "XGBoostModelEval"
-        ]
+        extra_metadata={
+            "name": "xgboost_training_with_evaluation",
+            "task_type": "training",
+            "entry_points": ["CradleDataLoading_training", "CradleDataLoading_evaluation"],
+            "exit_points": ["XGBoostModelEval"],
+            "required_configs": [
+                "CradleDataLoading_training",
+                "TabularPreprocessing_training", 
+                "XGBoostTraining",
+                "CradleDataLoading_evaluation",
+                "TabularPreprocessing_evaluation",
+                "XGBoostModelEval"
+            ]
+        }
     )
 
 
@@ -116,7 +120,8 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         validation_result["is_valid"] = False
     
     # Check required nodes exist
-    missing_nodes = set(metadata.required_configs) - set(dag.nodes)
+    required_configs = metadata.extra_metadata.get("required_configs", [])
+    missing_nodes = set(required_configs) - set(dag.nodes)
     if missing_nodes:
         validation_result["errors"].append(
             f"Missing required nodes: {missing_nodes}"
@@ -124,7 +129,8 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         validation_result["is_valid"] = False
     
     # Check entry points exist
-    missing_entry_points = set(metadata.entry_points) - set(dag.nodes)
+    entry_points = metadata.extra_metadata.get("entry_points", [])
+    missing_entry_points = set(entry_points) - set(dag.nodes)
     if missing_entry_points:
         validation_result["errors"].append(
             f"Missing entry points: {missing_entry_points}"
@@ -132,7 +138,8 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         validation_result["is_valid"] = False
     
     # Check exit points exist
-    missing_exit_points = set(metadata.exit_points) - set(dag.nodes)
+    exit_points = metadata.extra_metadata.get("exit_points", [])
+    missing_exit_points = set(exit_points) - set(dag.nodes)
     if missing_exit_points:
         validation_result["errors"].append(
             f"Missing exit points: {missing_exit_points}"
