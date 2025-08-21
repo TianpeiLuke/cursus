@@ -137,6 +137,9 @@ class CatalogRegistry:
             
             self._cache["nodes"][pipeline_id] = node_data
             
+            # Update tag index for the new pipeline
+            self._update_tag_index_for_pipeline(pipeline_id, node_data)
+            
             # Update metadata
             self._update_registry_metadata()
             

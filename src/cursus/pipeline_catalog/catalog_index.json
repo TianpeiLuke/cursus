@@ -2,25 +2,507 @@
   "version": "1.0",
   "description": "Pipeline catalog connection registry - Zettelkasten-inspired knowledge network for independent pipelines",
   "metadata": {
-    "total_pipelines": 0,
-    "frameworks": [],
-    "complexity_levels": [],
-    "last_updated": "2025-08-20T21:52:00",
+    "total_pipelines": 12,
+    "frameworks": ["xgboost", "pytorch"],
+    "complexity_levels": ["simple", "standard", "comprehensive"],
+    "last_updated": "2025-08-20T22:23:00",
     "connection_types": ["alternatives", "related", "used_in"]
   },
-  "nodes": {},
+  "nodes": {
+    "xgb_training_simple": {
+      "id": "xgb_training_simple",
+      "title": "XGBoost Simple Training Pipeline",
+      "description": "Basic XGBoost training workflow with minimal configuration",
+      "atomic_properties": {
+        "single_responsibility": "XGBoost model training with basic configuration",
+        "independence_level": "high",
+        "node_count": 3,
+        "edge_count": 2
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "simple",
+        "use_case": "Basic XGBoost training",
+        "features": ["training", "xgboost", "supervised"],
+        "mods_compatible": false
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["training", "supervised"],
+        "complexity_tags": ["simple", "basic"]
+      },
+      "source_file": "pipelines/xgb_training_simple.py",
+      "migration_source": "frameworks/xgboost/simple.py",
+      "connections": {
+        "alternatives": [
+          {"id": "pytorch_training_basic", "annotation": "Alternative framework for basic training"},
+          {"id": "xgb_mods_training_simple", "annotation": "MODS-compatible version"}
+        ],
+        "related": [
+          {"id": "xgb_training_calibrated", "annotation": "Progression to calibrated training"},
+          {"id": "xgb_training_evaluation", "annotation": "Progression to evaluated training"}
+        ],
+        "used_in": [
+          {"id": "xgb_e2e_comprehensive", "annotation": "Training component in comprehensive pipeline"}
+        ]
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "xgb_training_calibrated": {
+      "id": "xgb_training_calibrated",
+      "title": "XGBoost Calibrated Training Pipeline",
+      "description": "XGBoost training workflow with probability calibration",
+      "atomic_properties": {
+        "single_responsibility": "XGBoost model training with probability calibration",
+        "independence_level": "high",
+        "node_count": 4,
+        "edge_count": 3
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "standard",
+        "use_case": "XGBoost training with calibration",
+        "features": ["training", "xgboost", "calibration", "supervised"],
+        "mods_compatible": false
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["training", "supervised", "calibration"],
+        "complexity_tags": ["standard"]
+      },
+      "source_file": "pipelines/xgb_training_calibrated.py",
+      "migration_source": "frameworks/xgboost/training/with_calibration.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_training_evaluation", "annotation": "Alternative XGBoost training approach"},
+          {"id": "xgb_mods_training_calibrated", "annotation": "MODS-compatible version"}
+        ],
+        "related": [
+          {"id": "xgb_training_simple", "annotation": "Simpler version without calibration"},
+          {"id": "xgb_e2e_comprehensive", "annotation": "Used in comprehensive pipeline"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "xgb_training_evaluation": {
+      "id": "xgb_training_evaluation",
+      "title": "XGBoost Training with Evaluation Pipeline",
+      "description": "XGBoost training workflow with comprehensive model evaluation",
+      "atomic_properties": {
+        "single_responsibility": "XGBoost model training with evaluation metrics",
+        "independence_level": "high",
+        "node_count": 5,
+        "edge_count": 4
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "standard",
+        "use_case": "XGBoost training with evaluation",
+        "features": ["training", "xgboost", "evaluation", "supervised"],
+        "mods_compatible": false
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["training", "supervised", "evaluation"],
+        "complexity_tags": ["standard"]
+      },
+      "source_file": "pipelines/xgb_training_evaluation.py",
+      "migration_source": "frameworks/xgboost/training/with_evaluation.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_training_calibrated", "annotation": "Alternative XGBoost training approach"},
+          {"id": "xgb_mods_training_evaluation", "annotation": "MODS-compatible version"}
+        ],
+        "related": [
+          {"id": "xgb_training_simple", "annotation": "Simpler version without evaluation"},
+          {"id": "xgb_e2e_comprehensive", "annotation": "Used in comprehensive pipeline"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "xgb_e2e_comprehensive": {
+      "id": "xgb_e2e_comprehensive",
+      "title": "XGBoost Comprehensive End-to-End Pipeline",
+      "description": "Complete XGBoost pipeline from data processing to model evaluation",
+      "atomic_properties": {
+        "single_responsibility": "Complete XGBoost workflow from data to deployment",
+        "independence_level": "high",
+        "node_count": 8,
+        "edge_count": 7
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "comprehensive",
+        "use_case": "Complete XGBoost end-to-end pipeline",
+        "features": ["end_to_end", "xgboost", "comprehensive", "supervised"],
+        "mods_compatible": false
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["end_to_end", "supervised"],
+        "complexity_tags": ["comprehensive", "complete"]
+      },
+      "source_file": "pipelines/xgb_e2e_comprehensive.py",
+      "migration_source": "frameworks/xgboost/end_to_end/complete_e2e.py",
+      "connections": {
+        "alternatives": [
+          {"id": "pytorch_e2e_standard", "annotation": "Alternative framework for end-to-end"},
+          {"id": "xgb_mods_e2e_comprehensive", "annotation": "MODS-compatible version"}
+        ],
+        "related": [
+          {"id": "xgb_training_simple", "annotation": "Training component"},
+          {"id": "xgb_training_calibrated", "annotation": "Alternative training component"},
+          {"id": "xgb_training_evaluation", "annotation": "Alternative training component"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "medium"
+    },
+    "pytorch_training_basic": {
+      "id": "pytorch_training_basic",
+      "title": "PyTorch Basic Training Pipeline",
+      "description": "Basic PyTorch training workflow for deep learning models",
+      "atomic_properties": {
+        "single_responsibility": "PyTorch model training with basic configuration",
+        "independence_level": "high",
+        "node_count": 4,
+        "edge_count": 3
+      },
+      "zettelkasten_metadata": {
+        "framework": "pytorch",
+        "complexity": "simple",
+        "use_case": "Basic PyTorch training",
+        "features": ["training", "pytorch", "deep_learning", "supervised"],
+        "mods_compatible": false
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["pytorch"],
+        "task_tags": ["training", "supervised", "deep_learning"],
+        "complexity_tags": ["simple", "basic"]
+      },
+      "source_file": "pipelines/pytorch_training_basic.py",
+      "migration_source": "frameworks/pytorch/training/basic_training.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_training_simple", "annotation": "Alternative framework for basic training"},
+          {"id": "pytorch_mods_training_basic", "annotation": "MODS-compatible version"}
+        ],
+        "related": [
+          {"id": "pytorch_e2e_standard", "annotation": "Used in standard end-to-end pipeline"}
+        ],
+        "used_in": [
+          {"id": "pytorch_e2e_standard", "annotation": "Training component in standard pipeline"}
+        ]
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "pytorch_e2e_standard": {
+      "id": "pytorch_e2e_standard",
+      "title": "PyTorch Standard End-to-End Pipeline",
+      "description": "Standard PyTorch pipeline from data processing to model evaluation",
+      "atomic_properties": {
+        "single_responsibility": "Standard PyTorch workflow from data to evaluation",
+        "independence_level": "high",
+        "node_count": 6,
+        "edge_count": 5
+      },
+      "zettelkasten_metadata": {
+        "framework": "pytorch",
+        "complexity": "standard",
+        "use_case": "Standard PyTorch end-to-end pipeline",
+        "features": ["end_to_end", "pytorch", "deep_learning", "supervised"],
+        "mods_compatible": false
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["pytorch"],
+        "task_tags": ["end_to_end", "supervised", "deep_learning"],
+        "complexity_tags": ["standard"]
+      },
+      "source_file": "pipelines/pytorch_e2e_standard.py",
+      "migration_source": "frameworks/pytorch/end_to_end/standard_e2e.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_e2e_comprehensive", "annotation": "Alternative framework for end-to-end"},
+          {"id": "pytorch_mods_e2e_standard", "annotation": "MODS-compatible version"}
+        ],
+        "related": [
+          {"id": "pytorch_training_basic", "annotation": "Training component"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "medium"
+    },
+    "xgb_mods_training_simple": {
+      "id": "xgb_mods_training_simple",
+      "title": "XGBoost MODS Simple Training Pipeline",
+      "description": "Basic XGBoost MODS training workflow with minimal configuration",
+      "atomic_properties": {
+        "single_responsibility": "MODS-compatible XGBoost model training",
+        "independence_level": "high",
+        "node_count": 3,
+        "edge_count": 2
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "simple",
+        "use_case": "Basic XGBoost MODS training",
+        "features": ["training", "xgboost", "mods", "supervised"],
+        "mods_compatible": true
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["training", "supervised", "mods"],
+        "complexity_tags": ["simple", "basic"]
+      },
+      "source_file": "mods_pipelines/xgb_mods_training_simple.py",
+      "migration_source": "mods_frameworks/xgboost/simple_mods.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_training_simple", "annotation": "Non-MODS version"},
+          {"id": "pytorch_mods_training_basic", "annotation": "Alternative MODS framework"}
+        ],
+        "related": [
+          {"id": "xgb_mods_training_calibrated", "annotation": "Progression to calibrated training"},
+          {"id": "xgb_mods_training_evaluation", "annotation": "Progression to evaluated training"}
+        ],
+        "used_in": [
+          {"id": "xgb_mods_e2e_comprehensive", "annotation": "Training component in MODS comprehensive pipeline"}
+        ]
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "xgb_mods_training_calibrated": {
+      "id": "xgb_mods_training_calibrated",
+      "title": "XGBoost MODS Calibrated Training Pipeline",
+      "description": "XGBoost MODS training workflow with probability calibration",
+      "atomic_properties": {
+        "single_responsibility": "MODS-compatible XGBoost training with calibration",
+        "independence_level": "high",
+        "node_count": 4,
+        "edge_count": 3
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "standard",
+        "use_case": "XGBoost MODS training with calibration",
+        "features": ["training", "xgboost", "mods", "calibration", "supervised"],
+        "mods_compatible": true
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["training", "supervised", "mods", "calibration"],
+        "complexity_tags": ["standard"]
+      },
+      "source_file": "mods_pipelines/xgb_mods_training_calibrated.py",
+      "migration_source": "mods_frameworks/xgboost/training/with_calibration_mods.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_training_calibrated", "annotation": "Non-MODS version"},
+          {"id": "xgb_mods_training_evaluation", "annotation": "Alternative MODS training approach"}
+        ],
+        "related": [
+          {"id": "xgb_mods_training_simple", "annotation": "Simpler MODS version"},
+          {"id": "xgb_mods_e2e_comprehensive", "annotation": "Used in MODS comprehensive pipeline"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "xgb_mods_training_evaluation": {
+      "id": "xgb_mods_training_evaluation",
+      "title": "XGBoost MODS Training with Evaluation Pipeline",
+      "description": "XGBoost MODS training workflow with comprehensive model evaluation",
+      "atomic_properties": {
+        "single_responsibility": "MODS-compatible XGBoost training with evaluation",
+        "independence_level": "high",
+        "node_count": 5,
+        "edge_count": 4
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "standard",
+        "use_case": "XGBoost MODS training with evaluation",
+        "features": ["training", "xgboost", "mods", "evaluation", "supervised"],
+        "mods_compatible": true
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["training", "supervised", "mods", "evaluation"],
+        "complexity_tags": ["standard"]
+      },
+      "source_file": "mods_pipelines/xgb_mods_training_evaluation.py",
+      "migration_source": "mods_frameworks/xgboost/training/with_evaluation_mods.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_training_evaluation", "annotation": "Non-MODS version"},
+          {"id": "xgb_mods_training_calibrated", "annotation": "Alternative MODS training approach"}
+        ],
+        "related": [
+          {"id": "xgb_mods_training_simple", "annotation": "Simpler MODS version"},
+          {"id": "xgb_mods_e2e_comprehensive", "annotation": "Used in MODS comprehensive pipeline"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "xgb_mods_e2e_comprehensive": {
+      "id": "xgb_mods_e2e_comprehensive",
+      "title": "XGBoost MODS Comprehensive End-to-End Pipeline",
+      "description": "Complete XGBoost MODS pipeline from data processing to model evaluation",
+      "atomic_properties": {
+        "single_responsibility": "Complete MODS-compatible XGBoost workflow",
+        "independence_level": "high",
+        "node_count": 8,
+        "edge_count": 7
+      },
+      "zettelkasten_metadata": {
+        "framework": "xgboost",
+        "complexity": "comprehensive",
+        "use_case": "Complete XGBoost MODS end-to-end pipeline",
+        "features": ["end_to_end", "xgboost", "mods", "comprehensive", "supervised"],
+        "mods_compatible": true
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["xgboost"],
+        "task_tags": ["end_to_end", "supervised", "mods"],
+        "complexity_tags": ["comprehensive", "complete"]
+      },
+      "source_file": "mods_pipelines/xgb_mods_e2e_comprehensive.py",
+      "migration_source": "mods_frameworks/xgboost/end_to_end/complete_e2e_mods.py",
+      "connections": {
+        "alternatives": [
+          {"id": "xgb_e2e_comprehensive", "annotation": "Non-MODS version"},
+          {"id": "pytorch_mods_e2e_standard", "annotation": "Alternative MODS framework"}
+        ],
+        "related": [
+          {"id": "xgb_mods_training_simple", "annotation": "MODS training component"},
+          {"id": "xgb_mods_training_calibrated", "annotation": "Alternative MODS training component"},
+          {"id": "xgb_mods_training_evaluation", "annotation": "Alternative MODS training component"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "medium"
+    },
+    "pytorch_mods_training_basic": {
+      "id": "pytorch_mods_training_basic",
+      "title": "PyTorch MODS Basic Training Pipeline",
+      "description": "Basic PyTorch MODS training workflow for deep learning models",
+      "atomic_properties": {
+        "single_responsibility": "MODS-compatible PyTorch model training",
+        "independence_level": "high",
+        "node_count": 4,
+        "edge_count": 3
+      },
+      "zettelkasten_metadata": {
+        "framework": "pytorch",
+        "complexity": "simple",
+        "use_case": "Basic PyTorch MODS training",
+        "features": ["training", "pytorch", "mods", "deep_learning", "supervised"],
+        "mods_compatible": true
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["pytorch"],
+        "task_tags": ["training", "supervised", "mods", "deep_learning"],
+        "complexity_tags": ["simple", "basic"]
+      },
+      "source_file": "mods_pipelines/pytorch_mods_training_basic.py",
+      "migration_source": "mods_frameworks/pytorch/training/basic_training_mods.py",
+      "connections": {
+        "alternatives": [
+          {"id": "pytorch_training_basic", "annotation": "Non-MODS version"},
+          {"id": "xgb_mods_training_simple", "annotation": "Alternative MODS framework"}
+        ],
+        "related": [
+          {"id": "pytorch_mods_e2e_standard", "annotation": "Used in MODS standard end-to-end pipeline"}
+        ],
+        "used_in": [
+          {"id": "pytorch_mods_e2e_standard", "annotation": "Training component in MODS standard pipeline"}
+        ]
+      },
+      "created_date": "2025-08-20",
+      "priority": "high"
+    },
+    "pytorch_mods_e2e_standard": {
+      "id": "pytorch_mods_e2e_standard",
+      "title": "PyTorch MODS Standard End-to-End Pipeline",
+      "description": "Standard PyTorch MODS pipeline from data processing to model evaluation",
+      "atomic_properties": {
+        "single_responsibility": "Standard MODS-compatible PyTorch workflow",
+        "independence_level": "high",
+        "node_count": 6,
+        "edge_count": 5
+      },
+      "zettelkasten_metadata": {
+        "framework": "pytorch",
+        "complexity": "standard",
+        "use_case": "Standard PyTorch MODS end-to-end pipeline",
+        "features": ["end_to_end", "pytorch", "mods", "deep_learning", "supervised"],
+        "mods_compatible": true
+      },
+      "multi_dimensional_tags": {
+        "framework_tags": ["pytorch"],
+        "task_tags": ["end_to_end", "supervised", "mods", "deep_learning"],
+        "complexity_tags": ["standard"]
+      },
+      "source_file": "mods_pipelines/pytorch_mods_e2e_standard.py",
+      "migration_source": "mods_frameworks/pytorch/end_to_end/standard_e2e_mods.py",
+      "connections": {
+        "alternatives": [
+          {"id": "pytorch_e2e_standard", "annotation": "Non-MODS version"},
+          {"id": "xgb_mods_e2e_comprehensive", "annotation": "Alternative MODS framework"}
+        ],
+        "related": [
+          {"id": "pytorch_mods_training_basic", "annotation": "MODS training component"}
+        ],
+        "used_in": []
+      },
+      "created_date": "2025-08-20",
+      "priority": "medium"
+    }
+  },
   "connection_graph_metadata": {
-    "total_connections": 0,
-    "connection_density": 0.0,
-    "independent_pipelines": 0,
-    "composition_opportunities": 0,
-    "alternative_groups": 0,
+    "total_connections": 36,
+    "connection_density": 0.27,
+    "independent_pipelines": 12,
+    "composition_opportunities": 4,
+    "alternative_groups": 6,
     "isolated_nodes": []
   },
   "tag_index": {
-    "framework_tags": {},
-    "task_tags": {},
-    "complexity_tags": {},
-    "independence_tags": {}
+    "framework_tags": {
+      "xgboost": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "xgb_e2e_comprehensive", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive"],
+      "pytorch": ["pytorch_training_basic", "pytorch_e2e_standard", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"]
+    },
+    "task_tags": {
+      "training": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "pytorch_training_basic", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "pytorch_mods_training_basic"],
+      "end_to_end": ["xgb_e2e_comprehensive", "pytorch_e2e_standard", "xgb_mods_e2e_comprehensive", "pytorch_mods_e2e_standard"],
+      "supervised": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "xgb_e2e_comprehensive", "pytorch_training_basic", "pytorch_e2e_standard", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"],
+      "calibration": ["xgb_training_calibrated", "xgb_mods_training_calibrated"],
+      "evaluation": ["xgb_training_evaluation", "xgb_mods_training_evaluation"],
+      "deep_learning": ["pytorch_training_basic", "pytorch_e2e_standard", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"],
+      "mods": ["xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"]
+    },
+    "complexity_tags": {
+      "simple": ["xgb_training_simple", "pytorch_training_basic", "xgb_mods_training_simple", "pytorch_mods_training_basic"],
+      "standard": ["xgb_training_calibrated", "xgb_training_evaluation", "pytorch_e2e_standard", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "pytorch_mods_e2e_standard"],
+      "comprehensive": ["xgb_e2e_comprehensive", "xgb_mods_e2e_comprehensive"],
+      "basic": ["xgb_training_simple", "pytorch_training_basic", "xgb_mods_training_simple", "pytorch_mods_training_basic"],
+      "complete": ["xgb_e2e_comprehensive", "xgb_mods_e2e_comprehensive"]
+    },
+    "independence_tags": {
+      "high": ["xgb_training_simple", "xgb_training_calibrated", "xgb_training_evaluation", "xgb_e2e_comprehensive", "pytorch_training_basic", "pytorch_e2e_standard", "xgb_mods_training_simple", "xgb_mods_training_calibrated", "xgb_mods_training_evaluation", "xgb_mods_e2e_comprehensive", "pytorch_mods_training_basic", "pytorch_mods_e2e_standard"]
+    }
   }
 }
