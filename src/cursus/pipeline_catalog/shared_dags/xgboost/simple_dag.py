@@ -64,10 +64,17 @@ def get_dag_metadata() -> DAGMetadata:
         node_count=5,
         edge_count=3,
         extra_metadata={
-            "training_nodes": ["CradleDataLoading_training", "TabularPreprocessing_training", "XGBoostTraining"],
-            "calibration_nodes": ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
-            "parallel_paths": ["training", "calibration"],
-            "use_cases": ["basic_training", "model_development", "proof_of_concept"]
+            "name": "xgboost_simple",
+            "task_type": "training",
+            "entry_points": ["CradleDataLoading_training", "CradleDataLoading_calibration"],
+            "exit_points": ["XGBoostTraining", "TabularPreprocessing_calibration"],
+            "required_configs": [
+                "CradleDataLoading_training",
+                "CradleDataLoading_calibration",
+                "TabularPreprocessing_training",
+                "TabularPreprocessing_calibration",
+                "XGBoostTraining"
+            ]
         }
     )
     

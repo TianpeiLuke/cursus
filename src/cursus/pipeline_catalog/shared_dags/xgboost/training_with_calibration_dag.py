@@ -39,20 +39,20 @@ def create_xgboost_training_with_calibration_dag() -> PipelineDAG:
     dag.add_node("CradleDataLoading_training")       # Data load for training
     dag.add_node("TabularPreprocessing_training")    # Tabular preprocessing for training
     dag.add_node("XGBoostTraining")                  # XGBoost training step
-    dag.add_node("ModelCalibration")                 # Model calibration step
+    dag.add_node("ModelCalibration_training")        # Model calibration step with training variant
     dag.add_node("CradleDataLoading_calibration")    # Data load for calibration
     dag.add_node("TabularPreprocessing_calibration") # Tabular preprocessing for calibration
     
     # Training flow
     dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
     dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
-    dag.add_edge("XGBoostTraining", "ModelCalibration")
+    dag.add_edge("XGBoostTraining", "ModelCalibration_training")
     
     # Calibration flow
     dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
     
     # Connect calibration data to model calibration
-    dag.add_edge("TabularPreprocessing_calibration", "ModelCalibration")
+    dag.add_edge("TabularPreprocessing_calibration", "ModelCalibration_training")
     
     logger.info(f"Created XGBoost training with calibration DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
     return dag
@@ -76,14 +76,14 @@ def get_dag_metadata() -> DAGMetadata:
             "name": "xgboost_training_with_calibration",
             "task_type": "training",
             "entry_points": ["CradleDataLoading_training", "CradleDataLoading_calibration"],
-            "exit_points": ["ModelCalibration"],
+            "exit_points": ["ModelCalibration_training"],
             "required_configs": [
                 "CradleDataLoading_training",
-                "TabularPreprocessing_training", 
-                "XGBoostTraining",
-                "ModelCalibration",
                 "CradleDataLoading_calibration",
-                "TabularPreprocessing_calibration"
+                "TabularPreprocessing_training",
+                "TabularPreprocessing_calibration",
+                "XGBoostTraining",
+                "ModelCalibration_training"
             ]
         }
     )

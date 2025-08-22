@@ -43,7 +43,7 @@ def create_xgboost_complete_e2e_dag() -> PipelineDAG:
     dag.add_node("CradleDataLoading_training")       # Data load for training
     dag.add_node("TabularPreprocessing_training")    # Tabular preprocessing for training
     dag.add_node("XGBoostTraining")                  # XGBoost training step
-    dag.add_node("ModelCalibration")                 # Model calibration step
+    dag.add_node("ModelCalibration_calibration")     # Model calibration step with calibration variant
     dag.add_node("Package")                          # Package step
     dag.add_node("Registration")                     # MIMS registration step
     dag.add_node("Payload")                          # Payload step
@@ -54,14 +54,6 @@ def create_xgboost_complete_e2e_dag() -> PipelineDAG:
     # Training flow
     dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
     dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
-    dag.add_edge("XGBoostTraining", "ModelCalibration")
-    
-    # Output flow
-    dag.add_edge("ModelCalibration", "Package")
-    dag.add_edge("XGBoostTraining", "Package")  # Raw model is also input to packaging
-    dag.add_edge("XGBoostTraining", "Payload")  # Payload test uses the raw model
-    dag.add_edge("Package", "Registration")
-    dag.add_edge("Payload", "Registration")
     
     # Calibration flow
     dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
@@ -69,6 +61,16 @@ def create_xgboost_complete_e2e_dag() -> PipelineDAG:
     # Evaluation flow
     dag.add_edge("XGBoostTraining", "XGBoostModelEval_calibration")
     dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
+    
+    # Model calibration flow - depends on model evaluation
+    dag.add_edge("XGBoostModelEval_calibration", "ModelCalibration_calibration")
+    
+    # Output flow
+    dag.add_edge("ModelCalibration_calibration", "Package")
+    dag.add_edge("XGBoostTraining", "Package")  # Raw model is also input to packaging
+    dag.add_edge("XGBoostTraining", "Payload")  # Payload test uses the raw model
+    dag.add_edge("Package", "Registration")
+    dag.add_edge("Payload", "Registration")
     
     logger.info(f"Created XGBoost complete E2E DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
     return dag
@@ -92,18 +94,18 @@ def get_dag_metadata() -> DAGMetadata:
             "name": "xgboost_complete_e2e",
             "task_type": "end_to_end",
             "entry_points": ["CradleDataLoading_training", "CradleDataLoading_calibration"],
-            "exit_points": ["Registration", "XGBoostModelEval_calibration"],
+            "exit_points": ["Registration"],
             "required_configs": [
                 "CradleDataLoading_training",
-                "TabularPreprocessing_training",
-                "XGBoostTraining",
-                "ModelCalibration",
-                "Package",
-                "Registration",
-                "Payload",
                 "CradleDataLoading_calibration",
+                "TabularPreprocessing_training",
                 "TabularPreprocessing_calibration",
-                "XGBoostModelEval_calibration"
+                "XGBoostTraining",
+                "XGBoostModelEval_calibration",
+                "ModelCalibration_calibration",
+                "Package",
+                "Payload",
+                "Registration"
             ]
         }
     )

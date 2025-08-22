@@ -68,11 +68,18 @@ def get_dag_metadata() -> DAGMetadata:
         node_count=6,
         edge_count=5,
         extra_metadata={
-            "training_nodes": ["CradleDataLoading_training", "TabularPreprocessing_training", "PyTorchTraining"],
-            "validation_nodes": ["CradleDataLoading_validation", "TabularPreprocessing_validation", "PyTorchModelEval"],
-            "parallel_paths": ["training", "validation"],
-            "evaluation_included": True,
-            "use_cases": ["deep_learning", "model_training", "performance_evaluation"]
+            "name": "pytorch_training",
+            "task_type": "training",
+            "entry_points": ["CradleDataLoading_training", "CradleDataLoading_validation"],
+            "exit_points": ["PyTorchModelEval"],
+            "required_configs": [
+                "CradleDataLoading_training",
+                "CradleDataLoading_validation",
+                "TabularPreprocessing_training",
+                "TabularPreprocessing_validation",
+                "PyTorchTraining",
+                "PyTorchModelEval"
+            ]
         }
     )
     

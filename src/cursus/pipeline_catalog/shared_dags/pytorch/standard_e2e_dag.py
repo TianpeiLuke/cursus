@@ -90,14 +90,14 @@ def get_dag_metadata() -> DAGMetadata:
             "exit_points": ["Registration"],
             "required_configs": [
                 "CradleDataLoading_training",
+                "CradleDataLoading_validation",
                 "TabularPreprocessing_training",
+                "TabularPreprocessing_validation",
                 "PyTorchTraining",
+                "PyTorchModelEval",
                 "Package",
                 "Payload",
-                "Registration",
-                "CradleDataLoading_validation",
-                "TabularPreprocessing_validation",
-                "PyTorchModelEval"
+                "Registration"
             ]
         }
     )

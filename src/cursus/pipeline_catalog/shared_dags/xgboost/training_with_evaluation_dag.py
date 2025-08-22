@@ -77,10 +77,10 @@ def get_dag_metadata() -> DAGMetadata:
             "exit_points": ["XGBoostModelEval"],
             "required_configs": [
                 "CradleDataLoading_training",
-                "TabularPreprocessing_training", 
-                "XGBoostTraining",
                 "CradleDataLoading_evaluation",
+                "TabularPreprocessing_training",
                 "TabularPreprocessing_evaluation",
+                "XGBoostTraining",
                 "XGBoostModelEval"
             ]
         }
