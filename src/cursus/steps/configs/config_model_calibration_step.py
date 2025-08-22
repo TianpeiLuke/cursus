@@ -94,6 +94,12 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
         description="List of class names/values for multi-class calibration"
     )
     
+    # Job type parameter for variant handling
+    job_type: str = Field(
+        default="calibration",
+        description="Which data split to use for calibration (e.g., 'training', 'calibration', 'validation', 'test')."
+    )
+    
     # Processing parameters - set defaults specific to calibration
     processing_entry_point: str = Field(
         default="model_calibration.py",
@@ -101,7 +107,7 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
     )
     
     processing_source_dir: str = Field(
-        default="dockers/xgboost_atoz/pipeline_scripts",
+        default="dockers/xgboost_atoz/scripts",
         description="Directory containing the processing script"
     )
     
@@ -159,6 +165,11 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
         if self.calibration_method.lower() not in valid_methods:
             raise ValueError(f"Invalid calibration method: {self.calibration_method}. "
                             f"Must be one of: {valid_methods}")
+        
+        # Validate job_type
+        valid_job_types = {"training", "calibration", "validation", "testing"}
+        if self.job_type not in valid_job_types:
+            raise ValueError(f"job_type must be one of {valid_job_types}, got '{self.job_type}'")
         
         # Validate multi-class parameters
         if self.is_binary and self.num_classes != 2:
@@ -335,6 +346,7 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
             'num_classes': self.num_classes,
             'score_field': self.score_field,
             'score_field_prefix': self.score_field_prefix,
+            'job_type': self.job_type,
         }
         
         # Add multiclass_categories if set to non-default value

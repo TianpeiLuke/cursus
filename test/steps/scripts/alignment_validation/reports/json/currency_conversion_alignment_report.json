@@ -10,7 +10,7 @@
     "warning_issues": 0,
     "info_issues": 1,
     "highest_severity": "INFO",
-    "validation_timestamp": "2025-08-18T00:10:15.356895",
+    "validation_timestamp": "2025-08-21T19:08:39.810479",
     "is_passing": true
   },
   "scoring": {
@@ -89,7 +89,7 @@
     "currency_conversion": {
       "test_name": "script_contract_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-18T00:10:15.341819",
+      "timestamp": "2025-08-21T19:08:39.795633",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -99,9 +99,9 @@
             "script": "currency_conversion",
             "testability_parameters": [
               "output_paths",
-              "environ_vars",
+              "job_args",
               "input_paths",
-              "job_args"
+              "environ_vars"
             ]
           },
           "recommendation": "No action needed - script follows testability best practices",
@@ -508,9 +508,9 @@
               "script": "currency_conversion",
               "testability_parameters": [
                 "output_paths",
-                "environ_vars",
+                "job_args",
                 "input_paths",
-                "job_args"
+                "environ_vars"
               ]
             },
             "recommendation": "No action needed - script follows testability best practices"
@@ -1036,7 +1036,7 @@
     "currency_conversion": {
       "test_name": "contract_spec_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-18T00:10:15.347811",
+      "timestamp": "2025-08-21T19:08:39.801312",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -1539,7 +1539,7 @@
     "currency_conversion": {
       "test_name": "spec_dependency_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-18T00:10:15.353660",
+      "timestamp": "2025-08-21T19:08:39.807014",
       "issues": [],
       "details": {
         "passed": true,
@@ -1579,7 +1579,7 @@
     "currency_conversion": {
       "test_name": "builder_config_currency_conversion",
       "passed": true,
-      "timestamp": "2025-08-18T00:10:15.356875",
+      "timestamp": "2025-08-21T19:08:39.810453",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -1587,16 +1587,16 @@
           "message": "Builder has required fields but no explicit validation logic detected",
           "details": {
             "required_fields": [
-              "currency_conversion_dict",
-              "marketplace_info",
               "bucket",
               "region",
               "pipeline_version",
-              "marketplace_id_col",
               "label_field",
               "service_name",
               "role",
-              "author"
+              "marketplace_info",
+              "marketplace_id_col",
+              "author",
+              "currency_conversion_dict"
             ],
             "builder": "currency_conversion"
           },
@@ -1613,16 +1613,16 @@
             "message": "Builder has required fields but no explicit validation logic detected",
             "details": {
               "required_fields": [
-                "currency_conversion_dict",
-                "marketplace_info",
                 "bucket",
                 "region",
                 "pipeline_version",
-                "marketplace_id_col",
                 "label_field",
                 "service_name",
                 "role",
-                "author"
+                "marketplace_info",
+                "marketplace_id_col",
+                "author",
+                "currency_conversion_dict"
               ],
               "builder": "currency_conversion"
             },

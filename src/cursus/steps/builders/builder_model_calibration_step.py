@@ -7,6 +7,7 @@ and script contract.
 """
 
 import logging
+import importlib
 from typing import Dict, List, Any, Optional, Union, Set
 from pathlib import Path
 
@@ -17,8 +18,18 @@ from sagemaker.workflow.entities import PipelineVariable
 
 from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_model_calibration_step import ModelCalibrationConfig
-from ..specs.model_calibration_spec import MODEL_CALIBRATION_SPEC
 from ..registry.builder_registry import register_builder
+
+# Import specifications based on job type
+try:
+    from ..specs.model_calibration_training_spec import MODEL_CALIBRATION_TRAINING_SPEC
+    from ..specs.model_calibration_calibration_spec import MODEL_CALIBRATION_CALIBRATION_SPEC
+    from ..specs.model_calibration_validation_spec import MODEL_CALIBRATION_VALIDATION_SPEC
+    from ..specs.model_calibration_testing_spec import MODEL_CALIBRATION_TESTING_SPEC
+    SPECS_AVAILABLE = True
+except ImportError:
+    MODEL_CALIBRATION_TRAINING_SPEC = MODEL_CALIBRATION_CALIBRATION_SPEC = MODEL_CALIBRATION_VALIDATION_SPEC = MODEL_CALIBRATION_TESTING_SPEC = None
+    SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +52,7 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
         registry_manager=None,
         dependency_resolver=None
     ):
-        """Initialize the ModelCalibrationStepBuilder.
+        """Initialize the ModelCalibrationStepBuilder with specification based on job type.
         
         Args:
             config: Configuration object for this step
@@ -52,14 +63,46 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             dependency_resolver: Resolver for step dependencies
             
         Raises:
-            ValueError: If config is not a ModelCalibrationConfig instance
+            ValueError: If config is not a ModelCalibrationConfig instance or no specification found
         """
         if not isinstance(config, ModelCalibrationConfig):
             raise ValueError("ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance.")
+        
+        # Get the appropriate spec based on job type
+        spec = None
+        if not hasattr(config, 'job_type'):
+            raise ValueError("config.job_type must be specified")
+            
+        job_type = config.job_type.lower()
+        
+        # Get specification based on job type
+        if job_type == "training" and MODEL_CALIBRATION_TRAINING_SPEC is not None:
+            spec = MODEL_CALIBRATION_TRAINING_SPEC
+        elif job_type == "calibration" and MODEL_CALIBRATION_CALIBRATION_SPEC is not None:
+            spec = MODEL_CALIBRATION_CALIBRATION_SPEC
+        elif job_type == "validation" and MODEL_CALIBRATION_VALIDATION_SPEC is not None:
+            spec = MODEL_CALIBRATION_VALIDATION_SPEC
+        elif job_type == "testing" and MODEL_CALIBRATION_TESTING_SPEC is not None:
+            spec = MODEL_CALIBRATION_TESTING_SPEC
+        else:
+            # Try dynamic import
+            try:
+                module_path = f"..specs.model_calibration_{job_type}_spec"
+                module = importlib.import_module(module_path, package=__package__)
+                spec_var_name = f"MODEL_CALIBRATION_{job_type.upper()}_SPEC"
+                if hasattr(module, spec_var_name):
+                    spec = getattr(module, spec_var_name)
+            except (ImportError, AttributeError):
+                self.log_warning("Could not import specification for job type: %s", job_type)
+                
+        if not spec:
+            raise ValueError(f"No specification found for job type: {job_type}")
+                
+        self.log_info("Using specification for %s", job_type)
             
         super().__init__(
             config=config,
-            spec=MODEL_CALIBRATION_SPEC,
+            spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
             notebook_root=notebook_root,
@@ -88,7 +131,8 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             'calibration_method',
             'label_field',
             'score_field',
-            'is_binary'  # Add required is_binary field
+            'is_binary',  # Add required is_binary field
+            'job_type'  # Add job_type to required attributes
         ]
         
         for attr in required_attrs:
@@ -100,6 +144,11 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
         if self.config.calibration_method.lower() not in valid_methods:
             raise ValueError(f"Invalid calibration method: {self.config.calibration_method}. "
                             f"Must be one of: {valid_methods}")
+        
+        # Validate job_type
+        valid_job_types = {"training", "calibration", "validation", "testing"}
+        if self.config.job_type not in valid_job_types:
+            raise ValueError(f"Invalid job_type: {self.config.job_type}")
         
         # Validate numeric parameters
         if self.config.gam_splines <= 0:
@@ -385,8 +434,8 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             if logical_name in outputs:
                 destination = outputs[logical_name]
             else:
-                # Generate destination from config
-                destination = f"{self.config.pipeline_s3_loc}/model_calibration/{logical_name}"
+                # Generate destination from config including job_type
+                destination = f"{self.config.pipeline_s3_loc}/model_calibration/{self.config.job_type}/{logical_name}"
                 self.log_info("Using generated destination for '%s': %s", logical_name, destination)
             
             processing_outputs.append(
@@ -422,16 +471,21 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             env=self._get_environment_variables()
         )
     
-    def _get_job_arguments(self) -> Optional[List[str]]:
+    def _get_job_arguments(self) -> List[str]:
         """
-        Returns None as job arguments since the calibration script now uses
-        standard paths defined directly in the script.
+        Constructs the list of command-line arguments to be passed to the processing script.
+        
+        This implementation uses job_type from the configuration.
         
         Returns:
-            None since no arguments are needed
+            A list of strings representing the command-line arguments.
         """
-        self.log_info("No command-line arguments needed for calibration script")
-        return None
+        # Get job_type from configuration
+        job_type = self.config.job_type
+        self.log_info("Setting job_type argument to: %s", job_type)
+        
+        # Return job_type argument
+        return ["--job_type", job_type]
         
     def create_step(self, **kwargs) -> ProcessingStep:
         """

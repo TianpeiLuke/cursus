@@ -40,7 +40,7 @@
 <body>
     <div class="header">
         <h1>Alignment Validation Report</h1>
-        <p>Generated: 2025-08-18 00:10:15</p>
+        <p>Generated: 2025-08-21 19:08:40</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
         <p>Overall Alignment Score: <strong>100.0/100</strong></p>
     </div>
@@ -236,7 +236,7 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Testability parameters defined but not used: environ_vars, job_args
+                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args, environ_vars
                     <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
                 </div>
                 
@@ -262,6 +262,11 @@
                 </div>
                 
                 <div class="issue info">
+                    <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
+                    <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
+                </div>
+                
+                <div class="issue info">
                     <strong>INFO:</strong> Main function follows testability pattern with all required parameters
                     <br><em>Recommendation: No action needed - script follows testability best practices</em>
                 </div>
@@ -274,11 +279,6 @@
                 <div class="issue warning">
                     <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
                     <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args
-                    <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
                 </div>
                 
                 <div class="issue info">
@@ -349,6 +349,16 @@
                 <div class="issue info">
                     <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
                     <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
                 </div>
                 
                 <div class="issue info">
@@ -428,7 +438,12 @@
                 <p>Status: PASSED</p>
                 
                 <div class="issue info">
-                    <strong>INFO:</strong> Step type resolved via registry: ModelCalibration -> ModelCalibration -> Processing
+                    <strong>INFO:</strong> Smart Specification Selection: validated against 4 variants
+                    <br><em>Recommendation: Multi-variant validation completed successfully</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: ModelCalibration_Training -> ModelCalibration -> Processing
                     <br><em>Recommendation: Using Processing step property paths for validation</em>
                 </div>
                 

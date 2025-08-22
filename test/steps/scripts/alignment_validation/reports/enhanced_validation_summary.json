@@ -3,12 +3,12 @@
   "passed_scripts": 9,
   "failed_scripts": 0,
   "error_scripts": 0,
-  "validation_timestamp": "2025-08-18T00:10:15.330391",
+  "validation_timestamp": "2025-08-21T19:08:39.784920",
   "visualization_enabled": true,
   "script_results": {
     "currency_conversion": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:15.765055",
+      "timestamp": "2025-08-21T19:08:40.579574",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -47,7 +47,7 @@
     },
     "dummy_training": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:15.879972",
+      "timestamp": "2025-08-21T19:08:40.702139",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -86,7 +86,7 @@
     },
     "model_calibration": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:16.006914",
+      "timestamp": "2025-08-21T19:08:40.835246",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -125,7 +125,7 @@
     },
     "package": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:16.119186",
+      "timestamp": "2025-08-21T19:08:40.954540",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -164,7 +164,7 @@
     },
     "payload": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:16.235306",
+      "timestamp": "2025-08-21T19:08:41.075235",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -203,7 +203,7 @@
     },
     "risk_table_mapping": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:16.357224",
+      "timestamp": "2025-08-21T19:08:41.198727",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -242,7 +242,7 @@
     },
     "tabular_preprocessing": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:16.479605",
+      "timestamp": "2025-08-21T19:08:41.317680",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -281,7 +281,7 @@
     },
     "xgboost_model_evaluation": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:16.600389",
+      "timestamp": "2025-08-21T19:08:41.442410",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",
@@ -320,7 +320,7 @@
     },
     "xgboost_training": {
       "status": "PASSING",
-      "timestamp": "2025-08-18T00:10:16.727242",
+      "timestamp": "2025-08-21T19:08:41.576075",
       "scoring": {
         "overall_score": 100.0,
         "overall_rating": "Excellent",

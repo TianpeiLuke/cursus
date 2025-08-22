@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Alignment Validation for Model Calibration Script
+Alignment Validation for Model Calibration Script with Job Type Variants
 
 This program runs comprehensive alignment validation for the model_calibration.py script
-across all four alignment levels and generates detailed reports.
+across all four alignment levels and generates detailed reports. Updated to support
+job type variants (training, calibration, validation, testing).
 """
 
 import sys
@@ -17,16 +18,17 @@ from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmen
 
 
 def main():
-    """Run alignment validation for model_calibration script."""
-    print("🔍 Model Calibration Script Alignment Validation")
-    print("=" * 60)
+    """Run alignment validation for model_calibration script with job type variants."""
+    print("🔍 Model Calibration Script Alignment Validation (Job Type Variants)")
+    print("=" * 70)
     
     # Initialize the tester
     tester = UnifiedAlignmentTester(
         scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
         contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
         specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
-        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders")
+        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
+        configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
     )
     
     # Run validation for model_calibration script
@@ -37,11 +39,24 @@ def main():
         
         # Print detailed results
         print(f"\n📊 VALIDATION RESULTS FOR: {script_name}")
-        print("=" * 60)
+        print("=" * 70)
         
         status = results.get('overall_status', 'UNKNOWN')
         status_emoji = '✅' if status == 'PASSING' else '❌' if status == 'FAILING' else '⚠️'
         print(f"{status_emoji} Overall Status: {status}")
+        
+        # Check for job type variant support
+        level2_result = results.get('level2', {})
+        level2_details = level2_result.get('details', {})
+        unified_spec = level2_details.get('unified_specification', {})
+        variants = unified_spec.get('variants', {})
+        
+        if variants:
+            print(f"\n🎯 Job Type Variants Detected: {len(variants)} variants")
+            for variant_name in sorted(variants.keys()):
+                print(f"   • {variant_name}")
+        else:
+            print(f"\n⚠️  No job type variants detected - may need specification updates")
         
         for level_num, level_name in enumerate([
             "Script ↔ Contract",
@@ -69,6 +84,29 @@ def main():
                 print(f"   • {severity} [{category}]: {message}")
                 if recommendation:
                     print(f"     💡 Recommendation: {recommendation}")
+            
+            # Print additional details for Level 2 (Contract ↔ Specification)
+            if level_num == 2 and level_result.get('details'):
+                details = level_result['details']
+                if 'unified_specification' in details:
+                    unified_spec = details['unified_specification']
+                    variant_count = unified_spec.get('variant_count', 0)
+                    if variant_count > 1:
+                        print(f"   📋 Multi-variant validation: {variant_count} job type variants")
+                        
+                        # Show dependency and output coverage
+                        dep_sources = unified_spec.get('dependency_sources', {})
+                        output_sources = unified_spec.get('output_sources', {})
+                        
+                        if dep_sources:
+                            print(f"   📥 Dependencies covered by variants:")
+                            for dep_name, variants_list in dep_sources.items():
+                                print(f"      • {dep_name}: {', '.join(variants_list)}")
+                        
+                        if output_sources:
+                            print(f"   📤 Outputs covered by variants:")
+                            for output_name, variants_list in output_sources.items():
+                                print(f"      • {output_name}: {', '.join(variants_list)}")
         
         # Save reports
         output_dir = Path(__file__).parent / "reports" / "individual"

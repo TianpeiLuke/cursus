@@ -1,0 +1,2059 @@
+{
+  "script_name": "model_calibration",
+  "level1": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "WARNING",
+        "category": "environment_variables",
+        "message": "Optional environment variable accessed without default: MULTICLASS_CATEGORIES",
+        "details": {
+          "variable": "MULTICLASS_CATEGORIES",
+          "line": 1216,
+          "script": "model_calibration"
+        },
+        "recommendation": "Provide default value when accessing optional variable MULTICLASS_CATEGORIES"
+      },
+      {
+        "severity": "INFO",
+        "category": "arguments",
+        "message": "Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)",
+        "details": {
+          "cli_argument": "job-type",
+          "python_attribute": "job_type",
+          "script": "model_calibration",
+          "source": "builder"
+        },
+        "recommendation": "Argument --job-type is provided by builder - no action needed"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "model_calibration",
+          "testability_parameters": [
+            "job_args",
+            "environ_vars",
+            "input_paths",
+            "output_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_env_access",
+        "message": "Helper functions use direct environment access - consider parameter passing",
+        "details": {
+          "script": "model_calibration",
+          "helper_accesses": [
+            {
+              "function": "from_env",
+              "variable": "IS_BINARY",
+              "line_number": 97
+            },
+            {
+              "function": "from_env",
+              "variable": "MULTICLASS_CATEGORIES",
+              "line_number": 98
+            },
+            {
+              "function": "from_env",
+              "variable": "CALIBRATION_METHOD",
+              "line_number": 112
+            },
+            {
+              "function": "from_env",
+              "variable": "LABEL_FIELD",
+              "line_number": 113
+            },
+            {
+              "function": "from_env",
+              "variable": "SCORE_FIELD",
+              "line_number": 114
+            },
+            {
+              "function": "from_env",
+              "variable": "IS_BINARY",
+              "line_number": 115
+            },
+            {
+              "function": "from_env",
+              "variable": "MONOTONIC_CONSTRAINT",
+              "line_number": 116
+            },
+            {
+              "function": "from_env",
+              "variable": "GAM_SPLINES",
+              "line_number": 117
+            },
+            {
+              "function": "from_env",
+              "variable": "ERROR_THRESHOLD",
+              "line_number": 118
+            },
+            {
+              "function": "from_env",
+              "variable": "NUM_CLASSES",
+              "line_number": 119
+            },
+            {
+              "function": "from_env",
+              "variable": "SCORE_FIELD_PREFIX",
+              "line_number": 120
+            },
+            {
+              "function": null,
+              "variable": "CALIBRATION_METHOD",
+              "line_number": 1207
+            },
+            {
+              "function": null,
+              "variable": "LABEL_FIELD",
+              "line_number": 1208
+            },
+            {
+              "function": null,
+              "variable": "SCORE_FIELD",
+              "line_number": 1209
+            },
+            {
+              "function": null,
+              "variable": "IS_BINARY",
+              "line_number": 1210
+            },
+            {
+              "function": null,
+              "variable": "MONOTONIC_CONSTRAINT",
+              "line_number": 1211
+            },
+            {
+              "function": null,
+              "variable": "GAM_SPLINES",
+              "line_number": 1212
+            },
+            {
+              "function": null,
+              "variable": "ERROR_THRESHOLD",
+              "line_number": 1213
+            },
+            {
+              "function": null,
+              "variable": "NUM_CLASSES",
+              "line_number": 1214
+            },
+            {
+              "function": null,
+              "variable": "SCORE_FIELD_PREFIX",
+              "line_number": 1215
+            },
+            {
+              "function": null,
+              "variable": "MULTICLASS_CATEGORIES",
+              "line_number": 1216
+            }
+          ]
+        },
+        "recommendation": "Pass environment variables as parameters to helper functions instead of direct access"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "model_calibration"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 947
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 948
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 949
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for output_paths",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "output_paths",
+          "current_pattern": "output_paths.get",
+          "line_number": 950
+        },
+        "recommendation": "Use output_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 951
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 952
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 953
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 954
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 955
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 956
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 957
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 958
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 959
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 960
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "job_args",
+          "current_pattern": "job_args.job_type",
+          "line_number": 974
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "model_calibration",
+          "parameter": "job_args",
+          "current_pattern": "args.job_type",
+          "line_number": 1197
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "model_calibration"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'from_env' accesses environment directly",
+        "details": {
+          "script": "model_calibration",
+          "function": "from_env",
+          "env_variables": [
+            "IS_BINARY",
+            "MULTICLASS_CATEGORIES",
+            "CALIBRATION_METHOD",
+            "LABEL_FIELD",
+            "SCORE_FIELD",
+            "IS_BINARY",
+            "MONOTONIC_CONSTRAINT",
+            "GAM_SPLINES",
+            "ERROR_THRESHOLD",
+            "NUM_CLASSES",
+            "SCORE_FIELD_PREFIX"
+          ],
+          "line_numbers": [
+            97,
+            98,
+            112,
+            113,
+            114,
+            115,
+            116,
+            117,
+            118,
+            119,
+            120
+          ]
+        },
+        "recommendation": "Refactor 'from_env' to accept environment variables as parameters"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'None' accesses environment directly",
+        "details": {
+          "script": "model_calibration",
+          "function": null,
+          "env_variables": [
+            "CALIBRATION_METHOD",
+            "LABEL_FIELD",
+            "SCORE_FIELD",
+            "IS_BINARY",
+            "MONOTONIC_CONSTRAINT",
+            "GAM_SPLINES",
+            "ERROR_THRESHOLD",
+            "NUM_CLASSES",
+            "SCORE_FIELD_PREFIX",
+            "MULTICLASS_CATEGORIES"
+          ],
+          "line_numbers": [
+            1207,
+            1208,
+            1209,
+            1210,
+            1211,
+            1212,
+            1213,
+            1214,
+            1215,
+            1216
+          ]
+        },
+        "recommendation": "Refactor 'None' to accept environment variables as parameters"
+      },
+      {
+        "severity": "INFO",
+        "category": "framework_detected",
+        "message": "Processing script uses sklearn framework",
+        "details": {
+          "script": "model_calibration",
+          "step_type": "Processing",
+          "framework": "sklearn"
+        },
+        "recommendation": "Ensure sklearn dependencies are properly specified"
+      }
+    ],
+    "script_analysis": {
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py",
+      "path_references": [
+        "path='Model Calibration Script for SageMaker Processing.\\n\\nThis script calibrates model prediction scores to accurate probabilities,\\nwhich is essential for risk-based decision-making and threshold setting.\\nIt supports multiple calibration methods including GAM, Isotonic Regression,\\nand Platt Scaling, with options for monotonicity constraints.\\nIt supports both binary and multi-class classification scenarios.\\n' line_number=2 context='#!/usr/bin/env python\\n>>> \"\"\"Model Calibration Script for SageMaker Processing.\\n\\nThis script calibrates model prediction scores to accurate probabilities,' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/eval_data' line_number=41 context='\\n# Define standard SageMaker paths\\n>>> INPUT_DATA_PATH = \"/opt/ml/processing/input/eval_data\"\\nOUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\nOUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibration' line_number=42 context='# Define standard SageMaker paths\\nINPUT_DATA_PATH = \"/opt/ml/processing/input/eval_data\"\\n>>> OUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\nOUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"\\nOUTPUT_CALIBRATED_DATA_PATH = \"/opt/ml/processing/output/calibrated_data\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/metrics' line_number=43 context='INPUT_DATA_PATH = \"/opt/ml/processing/input/eval_data\"\\nOUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\n>>> OUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"\\nOUTPUT_CALIBRATED_DATA_PATH = \"/opt/ml/processing/output/calibrated_data\"\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibrated_data' line_number=44 context='OUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\nOUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"\\n>>> OUTPUT_CALIBRATED_DATA_PATH = \"/opt/ml/processing/output/calibrated_data\"\\n\\nclass CalibrationConfig:' is_hardcoded=True construction_method=None",
+        "path='Configuration class for model calibration.' line_number=47 context='\\nclass CalibrationConfig:\\n>>>     \"\"\"Configuration class for model calibration.\"\"\"\\n    \\n    def __init__(' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/eval_data' line_number=51 context='    def __init__(\\n        self,\\n>>>         input_data_path: str = \"/opt/ml/processing/input/eval_data\",\\n        output_calibration_path: str = \"/opt/ml/processing/output/calibration\",\\n        output_metrics_path: str = \"/opt/ml/processing/output/metrics\",' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibration' line_number=52 context='        self,\\n        input_data_path: str = \"/opt/ml/processing/input/eval_data\",\\n>>>         output_calibration_path: str = \"/opt/ml/processing/output/calibration\",\\n        output_metrics_path: str = \"/opt/ml/processing/output/metrics\",\\n        output_calibrated_data_path: str = \"/opt/ml/processing/output/calibrated_data\",' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/metrics' line_number=53 context='        input_data_path: str = \"/opt/ml/processing/input/eval_data\",\\n        output_calibration_path: str = \"/opt/ml/processing/output/calibration\",\\n>>>         output_metrics_path: str = \"/opt/ml/processing/output/metrics\",\\n        output_calibrated_data_path: str = \"/opt/ml/processing/output/calibrated_data\",\\n        calibration_method: str = \"gam\",' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibrated_data' line_number=54 context='        output_calibration_path: str = \"/opt/ml/processing/output/calibration\",\\n        output_metrics_path: str = \"/opt/ml/processing/output/metrics\",\\n>>>         output_calibrated_data_path: str = \"/opt/ml/processing/output/calibrated_data\",\\n        calibration_method: str = \"gam\",\\n        label_field: str = \"label\",' is_hardcoded=True construction_method=None",
+        "path='Initialize configuration with paths and parameters.' line_number=66 context='        multiclass_categories: Optional[List[str]] = None\\n    ):\\n>>>         \"\"\"Initialize configuration with paths and parameters.\"\"\"\\n        # I/O Paths\\n        self.input_data_path = input_data_path' is_hardcoded=True construction_method=None",
+        "path='Create configuration from environment variables.' line_number=94 context='    @classmethod\\n    def from_env(cls):\\n>>>         \"\"\"Create configuration from environment variables.\"\"\"\\n        # Parse multiclass categories from environment\\n        multiclass_categories = None' is_hardcoded=True construction_method=None",
+        "path='0.05' line_number=118 context='            monotonic_constraint=os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\").lower() == \"true\",\\n            gam_splines=int(os.environ.get(\"GAM_SPLINES\", \"10\")),\\n>>>             error_threshold=float(os.environ.get(\"ERROR_THRESHOLD\", \"0.05\")),\\n            num_classes=int(os.environ.get(\"NUM_CLASSES\", \"2\")),\\n            score_field_prefix=os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),' is_hardcoded=True construction_method=None",
+        "path=\"Create output directories if they don't exist.\" line_number=126 context='\\ndef create_directories(config=None):\\n>>>     \"\"\"Create output directories if they don\\'t exist.\"\"\"\\n    config = config or CalibrationConfig.from_env()\\n    os.makedirs(config.output_calibration_path, exist_ok=True)' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=153 context='    \\n    for fname in sorted(os.listdir(data_dir)):\\n>>>         if fname.lower().endswith((\".csv\", \".parquet\", \".json\")):\\n            return os.path.join(data_dir, fname)\\n    ' is_hardcoded=True construction_method=None",
+        "path='.json' line_number=153 context='    \\n    for fname in sorted(os.listdir(data_dir)):\\n>>>         if fname.lower().endswith((\".csv\", \".parquet\", \".json\")):\\n            return os.path.join(data_dir, fname)\\n    ' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=178 context=\"    if data_file.endswith('.parquet'):\\n        df = pd.read_parquet(data_file)\\n>>>     elif data_file.endswith('.csv'):\\n        df = pd.read_csv(data_file)\\n    else:\" is_hardcoded=True construction_method=None",
+        "path='Log a section title with delimiters for better visibility.' line_number=212 context='\\ndef log_section(title):\\n>>>     \"\"\"Log a section title with delimiters for better visibility.\"\"\"\\n    delimiter = \"=\" * 80\\n    logger.info(delimiter)' is_hardcoded=True construction_method=None",
+        "path=\"Extract and load data from nested tar.gz files in SageMaker output structure.\\n    \\n    Handles SageMaker's specific output structure:\\n    - output.tar.gz (outer archive)\\n      - val.tar.gz (inner archive)\\n        - val/predictions.csv (actual data)\\n        - val_metrics/... (metrics and plots)\\n      - test.tar.gz (inner archive)\\n        - test/predictions.csv (actual data)\\n        - test_metrics/... (metrics and plots)\\n    \\n    Also handles cases where the input path contains:\\n    - Direct output.tar.gz file\\n    - Path to a job directory that contains output/output.tar.gz\\n    - Path to a parent directory with job subdirectories\\n    \\n    Args:\\n        config: Configuration object (optional, created from environment if not provided)\\n        \\n    Returns:\\n        pd.DataFrame: Combined dataset with predictions from extracted tar.gz files\\n        \\n    Raises:\\n        FileNotFoundError: If necessary tar.gz files or prediction data not found\\n    \" line_number=220 context='\\ndef extract_and_load_nested_tarball_data(config=None):\\n>>>     \"\"\"Extract and load data from nested tar.gz files in SageMaker output structure.\\n    \\n    Handles SageMaker\\'s specific output structure:' is_hardcoded=True construction_method=None",
+        "path='output.tar.gz' line_number=267 context='    output_archive = None\\n    for fname in os.listdir(input_dir):\\n>>>         if fname.lower() == \"output.tar.gz\":\\n            output_archive = os.path.join(input_dir, fname)\\n            logger.info(f\"Found output.tar.gz directly in input directory\")' is_hardcoded=True construction_method=None",
+        "path='output' line_number=279 context='            if os.path.isdir(item_path):\\n                # Check if this directory has an output/output.tar.gz file\\n>>>                 output_dir = os.path.join(item_path, \"output\")\\n                if os.path.isdir(output_dir):\\n                    nested_archive = os.path.join(output_dir, \"output.tar.gz\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='output.tar.gz' line_number=281 context='                output_dir = os.path.join(item_path, \"output\")\\n                if os.path.isdir(output_dir):\\n>>>                     nested_archive = os.path.join(output_dir, \"output.tar.gz\")\\n                    if os.path.isfile(nested_archive):\\n                        output_archive = nested_archive' is_hardcoded=False construction_method='os.path.join'",
+        "path='output.tar.gz' line_number=281 context='                output_dir = os.path.join(item_path, \"output\")\\n                if os.path.isdir(output_dir):\\n>>>                     nested_archive = os.path.join(output_dir, \"output.tar.gz\")\\n                    if os.path.isfile(nested_archive):\\n                        output_archive = nested_archive' is_hardcoded=True construction_method=None",
+        "path='output.tar.gz' line_number=292 context='        for root, _, files in os.walk(input_dir):\\n            for fname in files:\\n>>>                 if fname.lower() == \"output.tar.gz\":\\n                    output_archive = os.path.join(root, fname)\\n                    logger.info(f\"Found output.tar.gz from recursive search at {output_archive}\")' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=305 context='    \\n    logger.info(f\"Found SageMaker output archive: {output_archive}\")\\n>>>     logger.info(f\"File size: {os.path.getsize(output_archive) / (1024*1024):.2f} MB\")\\n    \\n    # Create temporary directories for extraction' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=320 context='            logger.info(f\"Outer archive contains {len(members)} files:\")\\n            for member in members:\\n>>>                 logger.info(f\"  - {member.name} ({member.size / 1024:.2f} KB)\")\\n            tar.extractall(path=outer_temp_dir)\\n        logger.info(f\"Extracted to: {outer_temp_dir}\")' is_hardcoded=True construction_method=None",
+        "path='.tar.gz' line_number=327 context=\"        inner_archives = []\\n        for fname in os.listdir(outer_temp_dir):\\n>>>             if fname.lower().endswith('.tar.gz'):\\n                inner_archives.append(os.path.join(outer_temp_dir, fname))\\n        \" is_hardcoded=True construction_method=None",
+        "path='No val.tar.gz or test.tar.gz found in output.tar.gz' line_number=331 context='        \\n        if not inner_archives:\\n>>>             raise FileNotFoundError(\"No val.tar.gz or test.tar.gz found in output.tar.gz\")\\n            \\n        logger.info(f\"Found {len(inner_archives)} inner archives: {[os.path.basename(a) for a in inner_archives]}\")' is_hardcoded=True construction_method=None",
+        "path='.' line_number=337 context='        # Process each inner archive (val.tar.gz, test.tar.gz)\\n        for inner_archive in inner_archives:\\n>>>             archive_name = os.path.basename(inner_archive).split(\\'.\\')[0]  # \\'val\\' or \\'test\\'\\n            logger.info(f\"Processing {archive_name} archive: {inner_archive}\")\\n            ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=349 context='                logger.info(f\"Inner archive contains {len(members)} files:\")\\n                for member in members:\\n>>>                     logger.info(f\"  - {member.name} ({member.size / 1024:.2f} KB)\")\\n                tar.extractall(path=inner_extract_dir)\\n            logger.info(f\"Extracted inner archive to: {inner_extract_dir}\")' is_hardcoded=True construction_method=None",
+        "path='predictions.csv' line_number=354 context='            \\n            # Look for predictions.csv in the correct structure\\n>>>             predictions_path = os.path.join(inner_extract_dir, archive_name, \"predictions.csv\")\\n            if not os.path.exists(predictions_path):\\n                logger.warning(f\"Could not find predictions.csv in {inner_archive}, skipping\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='predictions.csv' line_number=354 context='            \\n            # Look for predictions.csv in the correct structure\\n>>>             predictions_path = os.path.join(inner_extract_dir, archive_name, \"predictions.csv\")\\n            if not os.path.exists(predictions_path):\\n                logger.warning(f\"Could not find predictions.csv in {inner_archive}, skipping\")' is_hardcoded=True construction_method=None",
+        "path='Column mismatch between datasets. Common columns will be used.' line_number=377 context='                # Check if columns match\\n                if set(df.columns) != set(combined_df.columns):\\n>>>                     logger.warning(f\"Column mismatch between datasets. Common columns will be used.\")\\n                    common_cols = list(set(df.columns).intersection(set(combined_df.columns)))\\n                    combined_df = pd.concat([combined_df[common_cols], df[common_cols]])' is_hardcoded=True construction_method=None",
+        "path='Compute comprehensive calibration metrics including ECE, MCE, and reliability diagram.\\n    \\n    This function calculates:\\n    - Expected Calibration Error (ECE): weighted average of absolute calibration errors\\n    - Maximum Calibration Error (MCE): maximum calibration error across all bins\\n    - Reliability diagram data: points for plotting calibration curve\\n    - Bin statistics: detailed information about each probability bin\\n    - Brier score: quadratic scoring rule for probabilistic predictions\\n    - Preservation of discrimination: comparison of AUC before/after calibration\\n    \\n    Args:\\n        y_true: Ground truth binary labels (0/1)\\n        y_prob: Predicted probabilities\\n        n_bins: Number of bins for calibration curve\\n        \\n    Returns:\\n        Dict: Dictionary containing calibration metrics\\n    ' line_number=622 context='\\ndef compute_calibration_metrics(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> Dict[str, Any]:\\n>>>     \"\"\"Compute comprehensive calibration metrics including ECE, MCE, and reliability diagram.\\n    \\n    This function calculates:' is_hardcoded=True construction_method=None",
+        "path='reliability_diagram.png' line_number=831 context='    \\n    # Save figure\\n>>>     figure_path = os.path.join(config.output_metrics_path, \"reliability_diagram.png\")\\n    plt.savefig(figure_path)\\n    plt.close(fig)' is_hardcoded=False construction_method='os.path.join'",
+        "path='reliability_diagram.png' line_number=831 context='    \\n    # Save figure\\n>>>     figure_path = os.path.join(config.output_metrics_path, \"reliability_diagram.png\")\\n    plt.savefig(figure_path)\\n    plt.close(fig)' is_hardcoded=True construction_method=None",
+        "path='multiclass_reliability_diagram.png' line_number=917 context='    \\n    plt.tight_layout()\\n>>>     figure_path = os.path.join(config.output_metrics_path, \"multiclass_reliability_diagram.png\")\\n    plt.savefig(figure_path)\\n    plt.close(fig)' is_hardcoded=False construction_method='os.path.join'",
+        "path='multiclass_reliability_diagram.png' line_number=917 context='    \\n    plt.tight_layout()\\n>>>     figure_path = os.path.join(config.output_metrics_path, \"multiclass_reliability_diagram.png\")\\n    plt.savefig(figure_path)\\n    plt.close(fig)' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/eval_data' line_number=947 context='        if config is None:\\n            config = CalibrationConfig(\\n>>>                 input_data_path=input_paths.get(\"eval_data\", \"/opt/ml/processing/input/eval_data\"),\\n                output_calibration_path=output_paths.get(\"calibration\", \"/opt/ml/processing/output/calibration\"),\\n                output_metrics_path=output_paths.get(\"metrics\", \"/opt/ml/processing/output/metrics\"),' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibration' line_number=948 context='            config = CalibrationConfig(\\n                input_data_path=input_paths.get(\"eval_data\", \"/opt/ml/processing/input/eval_data\"),\\n>>>                 output_calibration_path=output_paths.get(\"calibration\", \"/opt/ml/processing/output/calibration\"),\\n                output_metrics_path=output_paths.get(\"metrics\", \"/opt/ml/processing/output/metrics\"),\\n                output_calibrated_data_path=output_paths.get(\"calibrated_data\", \"/opt/ml/processing/output/calibrated_data\"),' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/metrics' line_number=949 context='                input_data_path=input_paths.get(\"eval_data\", \"/opt/ml/processing/input/eval_data\"),\\n                output_calibration_path=output_paths.get(\"calibration\", \"/opt/ml/processing/output/calibration\"),\\n>>>                 output_metrics_path=output_paths.get(\"metrics\", \"/opt/ml/processing/output/metrics\"),\\n                output_calibrated_data_path=output_paths.get(\"calibrated_data\", \"/opt/ml/processing/output/calibrated_data\"),\\n                calibration_method=environ_vars.get(\"CALIBRATION_METHOD\", \"gam\"),' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibrated_data' line_number=950 context='                output_calibration_path=output_paths.get(\"calibration\", \"/opt/ml/processing/output/calibration\"),\\n                output_metrics_path=output_paths.get(\"metrics\", \"/opt/ml/processing/output/metrics\"),\\n>>>                 output_calibrated_data_path=output_paths.get(\"calibrated_data\", \"/opt/ml/processing/output/calibrated_data\"),\\n                calibration_method=environ_vars.get(\"CALIBRATION_METHOD\", \"gam\"),\\n                label_field=environ_vars.get(\"LABEL_FIELD\", \"label\"),' is_hardcoded=True construction_method=None",
+        "path='0.05' line_number=957 context='                monotonic_constraint=environ_vars.get(\"MONOTONIC_CONSTRAINT\", \"True\").lower() == \"true\",\\n                gam_splines=int(environ_vars.get(\"GAM_SPLINES\", \"10\")),\\n>>>                 error_threshold=float(environ_vars.get(\"ERROR_THRESHOLD\", \"0.05\")),\\n                num_classes=int(environ_vars.get(\"NUM_CLASSES\", \"2\")),\\n                score_field_prefix=environ_vars.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),' is_hardcoded=True construction_method=None",
+        "path='calibration_metrics.json' line_number=1037 context='            \\n            # Save metrics report\\n>>>             metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n                json.dump(metrics_report, f, indent=2)' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibration_metrics.json' line_number=1037 context='            \\n            # Save metrics report\\n>>>             metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n                json.dump(metrics_report, f, indent=2)' is_hardcoded=True construction_method=None",
+        "path='calibration_model.joblib' line_number=1042 context='            \\n            # Save calibrator model\\n>>>             calibrator_path = os.path.join(config.output_calibration_path, \"calibration_model.joblib\")\\n            joblib.dump(calibrator, calibrator_path)\\n            ' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibrated_data.parquet' line_number=1047 context='            # Add calibrated scores to dataframe and save\\n            df[\"calibrated_\" + config.score_field] = y_prob_calibrated\\n>>>             output_path = os.path.join(config.output_calibrated_data_path, \"calibrated_data.parquet\")\\n            df.to_parquet(output_path, index=False)\\n            ' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibration_summary.json' line_number=1065 context='            }\\n            \\n>>>             summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n                json.dump(summary, f, indent=2)' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibration_summary.json' line_number=1065 context='            }\\n            \\n>>>             summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n                json.dump(summary, f, indent=2)' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=1075 context='                logger.warning(\"Calibration only marginally improved expected calibration error\")\\n                \\n>>>             logger.info(f\"Binary calibration complete. ECE reduced from {uncalibrated_metrics[\\'expected_calibration_error\\']:.4f} to {calibrated_metrics[\\'expected_calibration_error\\']:.4f}\")\\n            \\n        else:' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=1075 context='                logger.warning(\"Calibration only marginally improved expected calibration error\")\\n                \\n>>>             logger.info(f\"Binary calibration complete. ECE reduced from {uncalibrated_metrics[\\'expected_calibration_error\\']:.4f} to {calibrated_metrics[\\'expected_calibration_error\\']:.4f}\")\\n            \\n        else:' is_hardcoded=True construction_method=None",
+        "path='calibration_metrics.json' line_number=1126 context='            \\n            # Save metrics report\\n>>>             metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n                json.dump(metrics_report, f, indent=2)' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibration_metrics.json' line_number=1126 context='            \\n            # Save metrics report\\n>>>             metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n                json.dump(metrics_report, f, indent=2)' is_hardcoded=True construction_method=None",
+        "path='calibration_models' line_number=1131 context='            \\n            # Save calibrator models\\n>>>             calibrator_dir = os.path.join(config.output_calibration_path, \"calibration_models\")\\n            os.makedirs(calibrator_dir, exist_ok=True)\\n            ' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibrated_data.parquet' line_number=1147 context='                df[f\"calibrated_{col_name}\"] = y_prob_calibrated[:, i]\\n            \\n>>>             output_path = os.path.join(config.output_calibrated_data_path, \"calibrated_data.parquet\")\\n            df.to_parquet(output_path, index=False)\\n            ' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibration_summary.json' line_number=1168 context='            }\\n            \\n>>>             summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n                json.dump(summary, f, indent=2)' is_hardcoded=False construction_method='os.path.join'",
+        "path='calibration_summary.json' line_number=1168 context='            }\\n            \\n>>>             summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n                json.dump(summary, f, indent=2)' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=1179 context='                \\n            logger.info(f\"Multi-class calibration complete. Macro ECE reduced from \" +\\n>>>                       f\"{uncalibrated_metrics[\\'macro_expected_calibration_error\\']:.4f} to \" +\\n                      f\"{calibrated_metrics[\\'macro_expected_calibration_error\\']:.4f}\")\\n        ' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=1180 context='            logger.info(f\"Multi-class calibration complete. Macro ECE reduced from \" +\\n                      f\"{uncalibrated_metrics[\\'macro_expected_calibration_error\\']:.4f} to \" +\\n>>>                       f\"{calibrated_metrics[\\'macro_expected_calibration_error\\']:.4f}\")\\n        \\n        logger.info(f\"All outputs saved to: {config.output_calibration_path}, {config.output_metrics_path}, and {config.output_calibrated_data_path}\")' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/eval_data' line_number=1200 context='    \\n    # Define standard SageMaker paths\\n>>>     INPUT_DATA_PATH = \"/opt/ml/processing/input/eval_data\"\\n    OUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\n    OUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibration' line_number=1201 context='    # Define standard SageMaker paths\\n    INPUT_DATA_PATH = \"/opt/ml/processing/input/eval_data\"\\n>>>     OUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\n    OUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"\\n    OUTPUT_CALIBRATED_DATA_PATH = \"/opt/ml/processing/output/calibrated_data\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/metrics' line_number=1202 context='    INPUT_DATA_PATH = \"/opt/ml/processing/input/eval_data\"\\n    OUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\n>>>     OUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"\\n    OUTPUT_CALIBRATED_DATA_PATH = \"/opt/ml/processing/output/calibrated_data\"\\n    ' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/calibrated_data' line_number=1203 context='    OUTPUT_CALIBRATION_PATH = \"/opt/ml/processing/output/calibration\"\\n    OUTPUT_METRICS_PATH = \"/opt/ml/processing/output/metrics\"\\n>>>     OUTPUT_CALIBRATED_DATA_PATH = \"/opt/ml/processing/output/calibrated_data\"\\n    \\n    # Parse environment variables' is_hardcoded=True construction_method=None",
+        "path='0.05' line_number=1213 context='        \"MONOTONIC_CONSTRAINT\": os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\"),\\n        \"GAM_SPLINES\": os.environ.get(\"GAM_SPLINES\", \"10\"),\\n>>>         \"ERROR_THRESHOLD\": os.environ.get(\"ERROR_THRESHOLD\", \"0.05\"),\\n        \"NUM_CLASSES\": os.environ.get(\"NUM_CLASSES\", \"2\"),\\n        \"SCORE_FIELD_PREFIX\": os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),' is_hardcoded=True construction_method=None"
+      ],
+      "env_var_accesses": [
+        "variable_name='IS_BINARY' line_number=97 context='        # Parse multiclass categories from environment\\n        multiclass_categories = None\\n>>>         if os.environ.get(\"IS_BINARY\", \"True\").lower() != \"true\":\\n            multiclass_cats = os.environ.get(\"MULTICLASS_CATEGORIES\", None)\\n            if multiclass_cats:' access_method='os.environ.get' has_default=True default_value='True'",
+        "variable_name='MULTICLASS_CATEGORIES' line_number=98 context='        multiclass_categories = None\\n        if os.environ.get(\"IS_BINARY\", \"True\").lower() != \"true\":\\n>>>             multiclass_cats = os.environ.get(\"MULTICLASS_CATEGORIES\", None)\\n            if multiclass_cats:\\n                try:' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='CALIBRATION_METHOD' line_number=112 context='            output_metrics_path=OUTPUT_METRICS_PATH,\\n            output_calibrated_data_path=OUTPUT_CALIBRATED_DATA_PATH,\\n>>>             calibration_method=os.environ.get(\"CALIBRATION_METHOD\", \"gam\"),\\n            label_field=os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            score_field=os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),' access_method='os.environ.get' has_default=True default_value='gam'",
+        "variable_name='LABEL_FIELD' line_number=113 context='            output_calibrated_data_path=OUTPUT_CALIBRATED_DATA_PATH,\\n            calibration_method=os.environ.get(\"CALIBRATION_METHOD\", \"gam\"),\\n>>>             label_field=os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            score_field=os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n            is_binary=os.environ.get(\"IS_BINARY\", \"True\").lower() == \"true\",' access_method='os.environ.get' has_default=True default_value='label'",
+        "variable_name='SCORE_FIELD' line_number=114 context='            calibration_method=os.environ.get(\"CALIBRATION_METHOD\", \"gam\"),\\n            label_field=os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>             score_field=os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n            is_binary=os.environ.get(\"IS_BINARY\", \"True\").lower() == \"true\",\\n            monotonic_constraint=os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\").lower() == \"true\",' access_method='os.environ.get' has_default=True default_value='prob_class_1'",
+        "variable_name='IS_BINARY' line_number=115 context='            label_field=os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            score_field=os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n>>>             is_binary=os.environ.get(\"IS_BINARY\", \"True\").lower() == \"true\",\\n            monotonic_constraint=os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\").lower() == \"true\",\\n            gam_splines=int(os.environ.get(\"GAM_SPLINES\", \"10\")),' access_method='os.environ.get' has_default=True default_value='True'",
+        "variable_name='MONOTONIC_CONSTRAINT' line_number=116 context='            score_field=os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n            is_binary=os.environ.get(\"IS_BINARY\", \"True\").lower() == \"true\",\\n>>>             monotonic_constraint=os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\").lower() == \"true\",\\n            gam_splines=int(os.environ.get(\"GAM_SPLINES\", \"10\")),\\n            error_threshold=float(os.environ.get(\"ERROR_THRESHOLD\", \"0.05\")),' access_method='os.environ.get' has_default=True default_value='True'",
+        "variable_name='GAM_SPLINES' line_number=117 context='            is_binary=os.environ.get(\"IS_BINARY\", \"True\").lower() == \"true\",\\n            monotonic_constraint=os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\").lower() == \"true\",\\n>>>             gam_splines=int(os.environ.get(\"GAM_SPLINES\", \"10\")),\\n            error_threshold=float(os.environ.get(\"ERROR_THRESHOLD\", \"0.05\")),\\n            num_classes=int(os.environ.get(\"NUM_CLASSES\", \"2\")),' access_method='os.environ.get' has_default=True default_value='10'",
+        "variable_name='ERROR_THRESHOLD' line_number=118 context='            monotonic_constraint=os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\").lower() == \"true\",\\n            gam_splines=int(os.environ.get(\"GAM_SPLINES\", \"10\")),\\n>>>             error_threshold=float(os.environ.get(\"ERROR_THRESHOLD\", \"0.05\")),\\n            num_classes=int(os.environ.get(\"NUM_CLASSES\", \"2\")),\\n            score_field_prefix=os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),' access_method='os.environ.get' has_default=True default_value='0.05'",
+        "variable_name='NUM_CLASSES' line_number=119 context='            gam_splines=int(os.environ.get(\"GAM_SPLINES\", \"10\")),\\n            error_threshold=float(os.environ.get(\"ERROR_THRESHOLD\", \"0.05\")),\\n>>>             num_classes=int(os.environ.get(\"NUM_CLASSES\", \"2\")),\\n            score_field_prefix=os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),\\n            multiclass_categories=multiclass_categories' access_method='os.environ.get' has_default=True default_value='2'",
+        "variable_name='SCORE_FIELD_PREFIX' line_number=120 context='            error_threshold=float(os.environ.get(\"ERROR_THRESHOLD\", \"0.05\")),\\n            num_classes=int(os.environ.get(\"NUM_CLASSES\", \"2\")),\\n>>>             score_field_prefix=os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),\\n            multiclass_categories=multiclass_categories\\n        )' access_method='os.environ.get' has_default=True default_value='prob_class_'",
+        "variable_name='CALIBRATION_METHOD' line_number=1207 context='    # Parse environment variables\\n    environ_vars = {\\n>>>         \"CALIBRATION_METHOD\": os.environ.get(\"CALIBRATION_METHOD\", \"gam\"),\\n        \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n        \"SCORE_FIELD\": os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),' access_method='os.environ.get' has_default=True default_value='gam'",
+        "variable_name='LABEL_FIELD' line_number=1208 context='    environ_vars = {\\n        \"CALIBRATION_METHOD\": os.environ.get(\"CALIBRATION_METHOD\", \"gam\"),\\n>>>         \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n        \"SCORE_FIELD\": os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n        \"IS_BINARY\": os.environ.get(\"IS_BINARY\", \"True\"),' access_method='os.environ.get' has_default=True default_value='label'",
+        "variable_name='SCORE_FIELD' line_number=1209 context='        \"CALIBRATION_METHOD\": os.environ.get(\"CALIBRATION_METHOD\", \"gam\"),\\n        \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>         \"SCORE_FIELD\": os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n        \"IS_BINARY\": os.environ.get(\"IS_BINARY\", \"True\"),\\n        \"MONOTONIC_CONSTRAINT\": os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\"),' access_method='os.environ.get' has_default=True default_value='prob_class_1'",
+        "variable_name='IS_BINARY' line_number=1210 context='        \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n        \"SCORE_FIELD\": os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n>>>         \"IS_BINARY\": os.environ.get(\"IS_BINARY\", \"True\"),\\n        \"MONOTONIC_CONSTRAINT\": os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\"),\\n        \"GAM_SPLINES\": os.environ.get(\"GAM_SPLINES\", \"10\"),' access_method='os.environ.get' has_default=True default_value='True'",
+        "variable_name='MONOTONIC_CONSTRAINT' line_number=1211 context='        \"SCORE_FIELD\": os.environ.get(\"SCORE_FIELD\", \"prob_class_1\"),\\n        \"IS_BINARY\": os.environ.get(\"IS_BINARY\", \"True\"),\\n>>>         \"MONOTONIC_CONSTRAINT\": os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\"),\\n        \"GAM_SPLINES\": os.environ.get(\"GAM_SPLINES\", \"10\"),\\n        \"ERROR_THRESHOLD\": os.environ.get(\"ERROR_THRESHOLD\", \"0.05\"),' access_method='os.environ.get' has_default=True default_value='True'",
+        "variable_name='GAM_SPLINES' line_number=1212 context='        \"IS_BINARY\": os.environ.get(\"IS_BINARY\", \"True\"),\\n        \"MONOTONIC_CONSTRAINT\": os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\"),\\n>>>         \"GAM_SPLINES\": os.environ.get(\"GAM_SPLINES\", \"10\"),\\n        \"ERROR_THRESHOLD\": os.environ.get(\"ERROR_THRESHOLD\", \"0.05\"),\\n        \"NUM_CLASSES\": os.environ.get(\"NUM_CLASSES\", \"2\"),' access_method='os.environ.get' has_default=True default_value='10'",
+        "variable_name='ERROR_THRESHOLD' line_number=1213 context='        \"MONOTONIC_CONSTRAINT\": os.environ.get(\"MONOTONIC_CONSTRAINT\", \"True\"),\\n        \"GAM_SPLINES\": os.environ.get(\"GAM_SPLINES\", \"10\"),\\n>>>         \"ERROR_THRESHOLD\": os.environ.get(\"ERROR_THRESHOLD\", \"0.05\"),\\n        \"NUM_CLASSES\": os.environ.get(\"NUM_CLASSES\", \"2\"),\\n        \"SCORE_FIELD_PREFIX\": os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),' access_method='os.environ.get' has_default=True default_value='0.05'",
+        "variable_name='NUM_CLASSES' line_number=1214 context='        \"GAM_SPLINES\": os.environ.get(\"GAM_SPLINES\", \"10\"),\\n        \"ERROR_THRESHOLD\": os.environ.get(\"ERROR_THRESHOLD\", \"0.05\"),\\n>>>         \"NUM_CLASSES\": os.environ.get(\"NUM_CLASSES\", \"2\"),\\n        \"SCORE_FIELD_PREFIX\": os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),\\n        \"MULTICLASS_CATEGORIES\": os.environ.get(\"MULTICLASS_CATEGORIES\")' access_method='os.environ.get' has_default=True default_value='2'",
+        "variable_name='SCORE_FIELD_PREFIX' line_number=1215 context='        \"ERROR_THRESHOLD\": os.environ.get(\"ERROR_THRESHOLD\", \"0.05\"),\\n        \"NUM_CLASSES\": os.environ.get(\"NUM_CLASSES\", \"2\"),\\n>>>         \"SCORE_FIELD_PREFIX\": os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),\\n        \"MULTICLASS_CATEGORIES\": os.environ.get(\"MULTICLASS_CATEGORIES\")\\n    }' access_method='os.environ.get' has_default=True default_value='prob_class_'",
+        "variable_name='MULTICLASS_CATEGORIES' line_number=1216 context='        \"NUM_CLASSES\": os.environ.get(\"NUM_CLASSES\", \"2\"),\\n        \"SCORE_FIELD_PREFIX\": os.environ.get(\"SCORE_FIELD_PREFIX\", \"prob_class_\"),\\n>>>         \"MULTICLASS_CATEGORIES\": os.environ.get(\"MULTICLASS_CATEGORIES\")\\n    }\\n    ' access_method='os.environ.get' has_default=False default_value=None"
+      ],
+      "imports": [
+        "module_name='os' import_alias=None line_number=11 is_from_import=False imported_items=[]",
+        "module_name='sys' import_alias=None line_number=12 is_from_import=False imported_items=[]",
+        "module_name='json' import_alias=None line_number=13 is_from_import=False imported_items=[]",
+        "module_name='logging' import_alias=None line_number=14 is_from_import=False imported_items=[]",
+        "module_name='traceback' import_alias=None line_number=15 is_from_import=False imported_items=[]",
+        "module_name='argparse' import_alias=None line_number=16 is_from_import=False imported_items=[]",
+        "module_name='typing' import_alias=None line_number=17 is_from_import=True imported_items=['Dict', 'List', 'Any', 'Optional', 'Tuple']",
+        "module_name='numpy' import_alias='np' line_number=19 is_from_import=False imported_items=[]",
+        "module_name='pandas' import_alias='pd' line_number=20 is_from_import=False imported_items=[]",
+        "module_name='joblib' import_alias=None line_number=21 is_from_import=False imported_items=[]",
+        "module_name='matplotlib.pyplot' import_alias='plt' line_number=22 is_from_import=False imported_items=[]",
+        "module_name='sklearn.isotonic' import_alias=None line_number=23 is_from_import=True imported_items=['IsotonicRegression']",
+        "module_name='sklearn.linear_model' import_alias=None line_number=24 is_from_import=True imported_items=['LogisticRegression']",
+        "module_name='sklearn.calibration' import_alias=None line_number=25 is_from_import=True imported_items=['calibration_curve']",
+        "module_name='sklearn.metrics' import_alias=None line_number=26 is_from_import=True imported_items=['brier_score_loss', 'roc_auc_score']",
+        "module_name='pygam' import_alias=None line_number=30 is_from_import=True imported_items=['LogisticGAM', 's']",
+        "module_name='tarfile' import_alias=None line_number=245 is_from_import=False imported_items=[]",
+        "module_name='tempfile' import_alias=None line_number=246 is_from_import=False imported_items=[]",
+        "module_name='shutil' import_alias=None line_number=247 is_from_import=False imported_items=[]"
+      ],
+      "argument_definitions": [
+        "argument_name='job_type' line_number=1193 is_required=False has_default=True default_value='calibration' argument_type='str' choices=None"
+      ],
+      "file_operations": [
+        "file_path='<file_object>' operation_type='write' line_number=1039 context='            metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n>>>                 json.dump(metrics_report, f, indent=2)\\n            \\n            # Save calibrator model' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=1067 context='            summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n>>>                 json.dump(summary, f, indent=2)\\n            \\n            # Check if calibration improved by error threshold' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=1128 context='            metrics_path = os.path.join(config.output_metrics_path, \"calibration_metrics.json\")\\n            with open(metrics_path, \"w\") as f:\\n>>>                 json.dump(metrics_report, f, indent=2)\\n            \\n            # Save calibrator models' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=1170 context='            summary_path = os.path.join(config.output_calibration_path, \"calibration_summary.json\")\\n            with open(summary_path, \"w\") as f:\\n>>>                 json.dump(summary, f, indent=2)\\n            \\n            # Check if calibration improved by error threshold' mode=None method='json.dump'"
+      ],
+      "step_type": "Processing",
+      "framework": "sklearn",
+      "step_type_patterns": {}
+    },
+    "contract": {
+      "entry_point": "model_calibration.py",
+      "inputs": {
+        "evaluation_data": {
+          "path": "/opt/ml/processing/input/eval_data"
+        }
+      },
+      "outputs": {
+        "calibration_output": {
+          "path": "/opt/ml/processing/output/calibration"
+        },
+        "metrics_output": {
+          "path": "/opt/ml/processing/output/metrics"
+        },
+        "calibrated_data": {
+          "path": "/opt/ml/processing/output/calibrated_data"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [
+          "CALIBRATION_METHOD",
+          "LABEL_FIELD",
+          "SCORE_FIELD",
+          "IS_BINARY"
+        ],
+        "optional": {
+          "MONOTONIC_CONSTRAINT": "True",
+          "GAM_SPLINES": "10",
+          "ERROR_THRESHOLD": "0.05",
+          "NUM_CLASSES": "2",
+          "SCORE_FIELD_PREFIX": "prob_class_",
+          "MULTICLASS_CATEGORIES": "[0, 1]"
+        }
+      },
+      "description": "Contract for model calibration processing step.\n    \n    The model calibration step takes a trained model's raw prediction scores and\n    calibrates them to better reflect true probabilities, which is essential for\n    risk-based decision-making, threshold setting, and confidence in model outputs.\n    Supports both binary and multi-class classification scenarios.\n    \n    Input Structure:\n    - /opt/ml/processing/input/eval_data: Evaluation dataset with ground truth labels and model predictions\n    \n    Output Structure:\n    - /opt/ml/processing/output/calibration: Calibration mapping and artifacts\n    - /opt/ml/processing/output/metrics: Calibration quality metrics\n    - /opt/ml/processing/output/calibrated_data: Dataset with calibrated probabilities\n    \n    Environment Variables:\n    - CALIBRATION_METHOD: Method to use for calibration (gam, isotonic, platt)\n    - LABEL_FIELD: Name of the label column\n    - SCORE_FIELD: Name of the prediction score column (for binary classification)\n    - IS_BINARY: Whether this is a binary classification task (true/false)\n    - MONOTONIC_CONSTRAINT: Whether to enforce monotonicity in GAM (optional)\n    - GAM_SPLINES: Number of splines for GAM (optional)\n    - ERROR_THRESHOLD: Acceptable calibration error threshold (optional)\n    - NUM_CLASSES: Number of classes for multi-class classification (optional, default=2)\n    - SCORE_FIELD_PREFIX: Prefix for probability columns in multi-class scenario (optional)\n    - MULTICLASS_CATEGORIES: JSON string of class names/values for multi-class (optional)\n    ",
+      "framework_requirements": {
+        "scikit-learn": ">=0.23.2,<1.0.0",
+        "pandas": ">=1.2.0,<2.0.0",
+        "numpy": ">=1.20.0",
+        "pygam": ">=0.8.0",
+        "matplotlib": ">=3.3.0"
+      }
+    }
+  },
+  "level2": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "multi_variant_validation",
+        "message": "Smart Specification Selection: validated against 4 variants",
+        "details": {
+          "contract": "model_calibration_contract",
+          "variants": [
+            "training",
+            "testing",
+            "validation",
+            "calibration"
+          ],
+          "total_dependencies": 1,
+          "total_outputs": 3,
+          "contract_inputs": 1,
+          "contract_outputs": 3
+        },
+        "recommendation": "Multi-variant validation completed successfully"
+      },
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: ModelCalibration_Training -> ModelCalibration -> Processing",
+        "details": {
+          "contract": "model_calibration_contract",
+          "original_spec_type": "ModelCalibration_Training",
+          "canonical_name": "ModelCalibration",
+          "resolved_sagemaker_type": "Processing",
+          "registry_available": true
+        },
+        "recommendation": "Using Processing step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output calibration_output: properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+        "details": {
+          "contract": "model_calibration_contract",
+          "logical_name": "calibration_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output metrics_output: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+        "details": {
+          "contract": "model_calibration_contract",
+          "logical_name": "metrics_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output calibrated_data: properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+        "details": {
+          "contract": "model_calibration_contract",
+          "logical_name": "calibrated_data",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for model_calibration_contract",
+        "details": {
+          "contract": "model_calibration_contract",
+          "step_type": "processing",
+          "node_type": "internal",
+          "total_outputs": 3,
+          "outputs_with_property_paths": 3,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 3/3 outputs with property paths against SageMaker documentation"
+      }
+    ],
+    "contract": {
+      "entry_point": "model_calibration.py",
+      "inputs": {
+        "evaluation_data": {
+          "path": "/opt/ml/processing/input/eval_data"
+        }
+      },
+      "outputs": {
+        "calibration_output": {
+          "path": "/opt/ml/processing/output/calibration"
+        },
+        "metrics_output": {
+          "path": "/opt/ml/processing/output/metrics"
+        },
+        "calibrated_data": {
+          "path": "/opt/ml/processing/output/calibrated_data"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [
+          "CALIBRATION_METHOD",
+          "LABEL_FIELD",
+          "SCORE_FIELD",
+          "IS_BINARY"
+        ],
+        "optional": {
+          "MONOTONIC_CONSTRAINT": "True",
+          "GAM_SPLINES": "10",
+          "ERROR_THRESHOLD": "0.05",
+          "NUM_CLASSES": "2",
+          "SCORE_FIELD_PREFIX": "prob_class_",
+          "MULTICLASS_CATEGORIES": "[0, 1]"
+        }
+      },
+      "description": "Contract for model calibration processing step.\n    \n    The model calibration step takes a trained model's raw prediction scores and\n    calibrates them to better reflect true probabilities, which is essential for\n    risk-based decision-making, threshold setting, and confidence in model outputs.\n    Supports both binary and multi-class classification scenarios.\n    \n    Input Structure:\n    - /opt/ml/processing/input/eval_data: Evaluation dataset with ground truth labels and model predictions\n    \n    Output Structure:\n    - /opt/ml/processing/output/calibration: Calibration mapping and artifacts\n    - /opt/ml/processing/output/metrics: Calibration quality metrics\n    - /opt/ml/processing/output/calibrated_data: Dataset with calibrated probabilities\n    \n    Environment Variables:\n    - CALIBRATION_METHOD: Method to use for calibration (gam, isotonic, platt)\n    - LABEL_FIELD: Name of the label column\n    - SCORE_FIELD: Name of the prediction score column (for binary classification)\n    - IS_BINARY: Whether this is a binary classification task (true/false)\n    - MONOTONIC_CONSTRAINT: Whether to enforce monotonicity in GAM (optional)\n    - GAM_SPLINES: Number of splines for GAM (optional)\n    - ERROR_THRESHOLD: Acceptable calibration error threshold (optional)\n    - NUM_CLASSES: Number of classes for multi-class classification (optional, default=2)\n    - SCORE_FIELD_PREFIX: Prefix for probability columns in multi-class scenario (optional)\n    - MULTICLASS_CATEGORIES: JSON string of class names/values for multi-class (optional)\n    ",
+      "framework_requirements": {
+        "scikit-learn": ">=0.23.2,<1.0.0",
+        "pandas": ">=1.2.0,<2.0.0",
+        "numpy": ">=1.20.0",
+        "pygam": ">=0.8.0",
+        "matplotlib": ">=3.3.0"
+      }
+    },
+    "specifications": {
+      "model_calibration_training_spec": {
+        "step_type": "ModelCalibration_Training",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "CrossValidation",
+              "ModelEvaluation",
+              "PytorchTraining",
+              "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval"
+            ],
+            "data_type": "S3Uri",
+            "description": "Training evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Training calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Training calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Training dataset with calibrated probabilities"
+          }
+        ]
+      },
+      "model_calibration_spec": {
+        "step_type": "ModelCalibration",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "CrossValidation",
+              "ModelEvaluation",
+              "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval"
+            ],
+            "data_type": "S3Uri",
+            "description": "Evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Dataset with calibrated probabilities"
+          }
+        ]
+      },
+      "model_calibration_validation_spec": {
+        "step_type": "ModelCalibration_Validation",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "CrossValidation",
+              "ModelEvaluation",
+              "PytorchTraining",
+              "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval"
+            ],
+            "data_type": "S3Uri",
+            "description": "Validation evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Validation calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Validation calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Validation dataset with calibrated probabilities"
+          }
+        ]
+      },
+      "model_calibration_calibration_spec": {
+        "step_type": "ModelCalibration_Calibration",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "CrossValidation",
+              "ModelEvaluation",
+              "PytorchTraining",
+              "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval"
+            ],
+            "data_type": "S3Uri",
+            "description": "Calibration evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Calibration dataset with calibrated probabilities"
+          }
+        ]
+      },
+      "model_calibration_testing_spec": {
+        "step_type": "ModelCalibration_Testing",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "CrossValidation",
+              "ModelEvaluation",
+              "PytorchTraining",
+              "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval"
+            ],
+            "data_type": "S3Uri",
+            "description": "Testing evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Testing calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Testing calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Testing dataset with calibrated probabilities"
+          }
+        ]
+      }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "ModelCalibration_Training",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "evaluation_data",
+            "dependency_type": "processing_output",
+            "required": true,
+            "compatible_sources": [
+              "CrossValidation",
+              "ModelEvaluation",
+              "PytorchTraining",
+              "XGBoostTraining",
+              "TrainingEvaluation",
+              "XGBoostModelEval"
+            ],
+            "data_type": "S3Uri",
+            "description": "Training evaluation dataset with ground truth labels and model predictions"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "calibration_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Training calibration mapping and artifacts"
+          },
+          {
+            "logical_name": "metrics_output",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Training calibration quality metrics and visualizations"
+          },
+          {
+            "logical_name": "calibrated_data",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Training dataset with calibrated probabilities"
+          }
+        ]
+      },
+      "variants": {
+        "training": {
+          "step_type": "ModelCalibration_Training",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "evaluation_data",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "CrossValidation",
+                "ModelEvaluation",
+                "PytorchTraining",
+                "XGBoostTraining",
+                "TrainingEvaluation",
+                "XGBoostModelEval"
+              ],
+              "data_type": "S3Uri",
+              "description": "Training evaluation dataset with ground truth labels and model predictions"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "calibration_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Training calibration mapping and artifacts"
+            },
+            {
+              "logical_name": "metrics_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Training calibration quality metrics and visualizations"
+            },
+            {
+              "logical_name": "calibrated_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Training dataset with calibrated probabilities"
+            }
+          ]
+        },
+        "testing": {
+          "step_type": "ModelCalibration_Testing",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "evaluation_data",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "CrossValidation",
+                "ModelEvaluation",
+                "PytorchTraining",
+                "XGBoostTraining",
+                "TrainingEvaluation",
+                "XGBoostModelEval"
+              ],
+              "data_type": "S3Uri",
+              "description": "Testing evaluation dataset with ground truth labels and model predictions"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "calibration_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Testing calibration mapping and artifacts"
+            },
+            {
+              "logical_name": "metrics_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Testing calibration quality metrics and visualizations"
+            },
+            {
+              "logical_name": "calibrated_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Testing dataset with calibrated probabilities"
+            }
+          ]
+        },
+        "validation": {
+          "step_type": "ModelCalibration_Validation",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "evaluation_data",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "CrossValidation",
+                "ModelEvaluation",
+                "PytorchTraining",
+                "XGBoostTraining",
+                "TrainingEvaluation",
+                "XGBoostModelEval"
+              ],
+              "data_type": "S3Uri",
+              "description": "Validation evaluation dataset with ground truth labels and model predictions"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "calibration_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Validation calibration mapping and artifacts"
+            },
+            {
+              "logical_name": "metrics_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Validation calibration quality metrics and visualizations"
+            },
+            {
+              "logical_name": "calibrated_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Validation dataset with calibrated probabilities"
+            }
+          ]
+        },
+        "calibration": {
+          "step_type": "ModelCalibration_Calibration",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "evaluation_data",
+              "dependency_type": "processing_output",
+              "required": true,
+              "compatible_sources": [
+                "CrossValidation",
+                "ModelEvaluation",
+                "PytorchTraining",
+                "XGBoostTraining",
+                "TrainingEvaluation",
+                "XGBoostModelEval"
+              ],
+              "data_type": "S3Uri",
+              "description": "Calibration evaluation dataset with ground truth labels and model predictions"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "calibration_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Calibration mapping and artifacts"
+            },
+            {
+              "logical_name": "metrics_output",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Calibration quality metrics and visualizations"
+            },
+            {
+              "logical_name": "calibrated_data",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Calibration dataset with calibrated probabilities"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "evaluation_data": {
+          "logical_name": "evaluation_data",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "CrossValidation",
+            "ModelEvaluation",
+            "PytorchTraining",
+            "XGBoostTraining",
+            "TrainingEvaluation",
+            "XGBoostModelEval"
+          ],
+          "data_type": "S3Uri",
+          "description": "Calibration evaluation dataset with ground truth labels and model predictions"
+        }
+      },
+      "unified_outputs": {
+        "calibration_output": {
+          "logical_name": "calibration_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration mapping and artifacts"
+        },
+        "metrics_output": {
+          "logical_name": "metrics_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration quality metrics and visualizations"
+        },
+        "calibrated_data": {
+          "logical_name": "calibrated_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration dataset with calibrated probabilities"
+        }
+      },
+      "dependency_sources": {
+        "evaluation_data": [
+          "training",
+          "testing",
+          "validation",
+          "calibration"
+        ]
+      },
+      "output_sources": {
+        "calibration_output": [
+          "training",
+          "testing",
+          "validation",
+          "calibration"
+        ],
+        "metrics_output": [
+          "training",
+          "testing",
+          "validation",
+          "calibration"
+        ],
+        "calibrated_data": [
+          "training",
+          "testing",
+          "validation",
+          "calibration"
+        ]
+      },
+      "variant_count": 4
+    }
+  },
+  "level3": {
+    "passed": true,
+    "issues": [],
+    "specification": {
+      "step_type": "ModelCalibration_Calibration",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "evaluation_data",
+          "dependency_type": "processing_output",
+          "required": true,
+          "compatible_sources": [
+            "CrossValidation",
+            "ModelEvaluation",
+            "PytorchTraining",
+            "XGBoostTraining",
+            "TrainingEvaluation",
+            "XGBoostModelEval"
+          ],
+          "data_type": "S3Uri",
+          "description": "Calibration evaluation dataset with ground truth labels and model predictions"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "calibration_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration mapping and artifacts"
+        },
+        {
+          "logical_name": "metrics_output",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration quality metrics and visualizations"
+        },
+        {
+          "logical_name": "calibrated_data",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Calibration dataset with calibrated probabilities"
+        }
+      ]
+    }
+  },
+  "level4": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
+        "details": {
+          "required_fields": [
+            "region",
+            "service_name",
+            "bucket",
+            "author",
+            "label_field",
+            "role",
+            "pipeline_version"
+          ],
+          "builder": "model_calibration"
+        },
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
+      }
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "job_type",
+          "line_number": 76,
+          "context": "line_76"
+        },
+        {
+          "field_name": "calibration_method",
+          "line_number": 144,
+          "context": "line_144"
+        },
+        {
+          "field_name": "calibration_method",
+          "line_number": 145,
+          "context": "line_145"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 150,
+          "context": "line_150"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 151,
+          "context": "line_151"
+        },
+        {
+          "field_name": "gam_splines",
+          "line_number": 154,
+          "context": "line_154"
+        },
+        {
+          "field_name": "gam_splines",
+          "line_number": 155,
+          "context": "line_155"
+        },
+        {
+          "field_name": "error_threshold",
+          "line_number": 157,
+          "context": "line_157"
+        },
+        {
+          "field_name": "error_threshold",
+          "line_number": 158,
+          "context": "line_158"
+        },
+        {
+          "field_name": "processing_source_dir",
+          "line_number": 162,
+          "context": "line_162"
+        },
+        {
+          "field_name": "processing_entry_point",
+          "line_number": 163,
+          "context": "line_163"
+        },
+        {
+          "field_name": "calibration_method",
+          "line_number": 317,
+          "context": "line_317"
+        },
+        {
+          "field_name": "label_field",
+          "line_number": 318,
+          "context": "line_318"
+        },
+        {
+          "field_name": "score_field",
+          "line_number": 319,
+          "context": "line_319"
+        },
+        {
+          "field_name": "monotonic_constraint",
+          "line_number": 320,
+          "context": "line_320"
+        },
+        {
+          "field_name": "gam_splines",
+          "line_number": 321,
+          "context": "line_321"
+        },
+        {
+          "field_name": "error_threshold",
+          "line_number": 322,
+          "context": "line_322"
+        },
+        {
+          "field_name": "is_binary",
+          "line_number": 324,
+          "context": "line_324"
+        },
+        {
+          "field_name": "num_classes",
+          "line_number": 325,
+          "context": "line_325"
+        },
+        {
+          "field_name": "score_field_prefix",
+          "line_number": 326,
+          "context": "line_326"
+        },
+        {
+          "field_name": "is_binary",
+          "line_number": 330,
+          "context": "line_330"
+        },
+        {
+          "field_name": "multiclass_categories",
+          "line_number": 330,
+          "context": "line_330"
+        },
+        {
+          "field_name": "multiclass_categories",
+          "line_number": 332,
+          "context": "line_332"
+        },
+        {
+          "field_name": "pipeline_s3_loc",
+          "line_number": 438,
+          "context": "line_438"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 438,
+          "context": "line_438"
+        },
+        {
+          "field_name": "use_large_processing_instance",
+          "line_number": 458,
+          "context": "line_458"
+        },
+        {
+          "field_name": "processing_instance_type_large",
+          "line_number": 458,
+          "context": "line_458"
+        },
+        {
+          "field_name": "processing_instance_type_small",
+          "line_number": 458,
+          "context": "line_458"
+        },
+        {
+          "field_name": "processing_instance_count",
+          "line_number": 467,
+          "context": "line_467"
+        },
+        {
+          "field_name": "processing_volume_size",
+          "line_number": 468,
+          "context": "line_468"
+        },
+        {
+          "field_name": "job_type",
+          "line_number": 484,
+          "context": "line_484"
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "ModelCalibrationStepBuilder",
+          "line_number": 37,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 46,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 114,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_is_pipeline_variable",
+          "line_number": 169,
+          "args": [
+            "self",
+            "value"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_normalize_s3_uri",
+          "line_number": 180,
+          "args": [
+            "self",
+            "uri"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_s3_directory_path",
+          "line_number": 209,
+          "args": [
+            "self",
+            "s3_uri"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_validate_s3_uri",
+          "line_number": 238,
+          "args": [
+            "self",
+            "uri"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_detect_circular_references",
+          "line_number": 268,
+          "args": [
+            "self",
+            "var",
+            "visited"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 304,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 336,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 396,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_processor",
+          "line_number": 451,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 474,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 490,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        }
+      ],
+      "import_statements": [
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 9
+        },
+        {
+          "type": "import",
+          "module": "importlib",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Union",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Set",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 14
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 14
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 15
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 16
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.entities",
+          "name": "PipelineVariable",
+          "alias": null,
+          "line_number": 17
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 19
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_model_calibration_step",
+          "name": "ModelCalibrationConfig",
+          "alias": null,
+          "line_number": 20
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 21
+        },
+        {
+          "type": "from_import",
+          "module": "specs.model_calibration_training_spec",
+          "name": "MODEL_CALIBRATION_TRAINING_SPEC",
+          "alias": null,
+          "line_number": 25
+        },
+        {
+          "type": "from_import",
+          "module": "specs.model_calibration_calibration_spec",
+          "name": "MODEL_CALIBRATION_CALIBRATION_SPEC",
+          "alias": null,
+          "line_number": 26
+        },
+        {
+          "type": "from_import",
+          "module": "specs.model_calibration_validation_spec",
+          "name": "MODEL_CALIBRATION_VALIDATION_SPEC",
+          "alias": null,
+          "line_number": 27
+        },
+        {
+          "type": "from_import",
+          "module": "specs.model_calibration_testing_spec",
+          "name": "MODEL_CALIBRATION_TESTING_SPEC",
+          "alias": null,
+          "line_number": 28
+        },
+        {
+          "type": "import",
+          "module": "json",
+          "alias": null,
+          "line_number": 331
+        }
+      ],
+      "config_class_usage": []
+    },
+    "config_analysis": {
+      "class_name": "ModelCalibrationConfig",
+      "fields": {
+        "author": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "bucket": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "role": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "region": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "service_name": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "pipeline_version": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_class": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "current_date": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "py_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "processing_instance_count": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "processing_volume_size": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "processing_instance_type_large": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_instance_type_small": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "use_large_processing_instance": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "processing_source_dir": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_entry_point": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_script_arguments": {
+          "type": "typing.Optional[typing.List[str]]",
+          "required": false
+        },
+        "processing_framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "label_field": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "calibration_method": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "monotonic_constraint": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "gam_splines": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "error_threshold": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "is_binary": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "num_classes": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "score_field": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "score_field_prefix": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "multiclass_categories": {
+          "type": "typing.List[typing.Union[str, int]]",
+          "required": false
+        },
+        "job_type": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "aws_region": {
+          "type": "property",
+          "required": false
+        },
+        "effective_instance_type": {
+          "type": "property",
+          "required": false
+        },
+        "effective_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "model_extra": {
+          "type": "property",
+          "required": false
+        },
+        "model_fields_set": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_description": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_name": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_s3_loc": {
+          "type": "property",
+          "required": false
+        },
+        "script_contract": {
+          "type": "property",
+          "required": false
+        },
+        "script_path": {
+          "type": "property",
+          "required": false
+        }
+      },
+      "required_fields": [
+        "author",
+        "bucket",
+        "role",
+        "region",
+        "service_name",
+        "pipeline_version",
+        "label_field"
+      ],
+      "optional_fields": [
+        "model_class",
+        "current_date",
+        "framework_version",
+        "py_version",
+        "source_dir",
+        "processing_instance_count",
+        "processing_volume_size",
+        "processing_instance_type_large",
+        "processing_instance_type_small",
+        "use_large_processing_instance",
+        "processing_source_dir",
+        "processing_entry_point",
+        "processing_script_arguments",
+        "processing_framework_version",
+        "calibration_method",
+        "monotonic_constraint",
+        "gam_splines",
+        "error_threshold",
+        "is_binary",
+        "num_classes",
+        "score_field",
+        "score_field_prefix",
+        "multiclass_categories",
+        "job_type",
+        "aws_region",
+        "effective_instance_type",
+        "effective_source_dir",
+        "model_extra",
+        "model_fields_set",
+        "pipeline_description",
+        "pipeline_name",
+        "pipeline_s3_loc",
+        "script_contract",
+        "script_path"
+      ],
+      "default_values": {
+        "author": "PydanticUndefined",
+        "bucket": "PydanticUndefined",
+        "role": "PydanticUndefined",
+        "region": "PydanticUndefined",
+        "service_name": "PydanticUndefined",
+        "pipeline_version": "PydanticUndefined",
+        "model_class": "xgboost",
+        "current_date": "PydanticUndefined",
+        "framework_version": "2.1.0",
+        "py_version": "py310",
+        "source_dir": null,
+        "processing_instance_count": 1,
+        "processing_volume_size": 500,
+        "processing_instance_type_large": "ml.m5.4xlarge",
+        "processing_instance_type_small": "ml.m5.2xlarge",
+        "use_large_processing_instance": false,
+        "processing_source_dir": "dockers/xgboost_atoz/scripts",
+        "processing_entry_point": "model_calibration.py",
+        "processing_script_arguments": null,
+        "processing_framework_version": "1.2-1",
+        "label_field": "PydanticUndefined",
+        "calibration_method": "gam",
+        "monotonic_constraint": true,
+        "gam_splines": 10,
+        "error_threshold": 0.05,
+        "is_binary": true,
+        "num_classes": 2,
+        "score_field": "prob_class_1",
+        "score_field_prefix": "prob_class_",
+        "multiclass_categories": "PydanticUndefined",
+        "job_type": "calibration"
+      }
+    }
+  },
+  "overall_status": "PASSING",
+  "metadata": {
+    "script_name": "model_calibration",
+    "validation_timestamp": "2025-08-21T19:13:02.212898",
+    "validator_version": "1.0.0",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py"
+  }
+}

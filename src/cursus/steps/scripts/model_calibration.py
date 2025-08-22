@@ -208,11 +208,203 @@ def load_data(config=None):
     return df
 
 
-def load_and_prepare_data(config=None):
+def log_section(title):
+    """Log a section title with delimiters for better visibility."""
+    delimiter = "=" * 80
+    logger.info(delimiter)
+    logger.info(f"  {title}")
+    logger.info(delimiter)
+
+
+def extract_and_load_nested_tarball_data(config=None):
+    """Extract and load data from nested tar.gz files in SageMaker output structure.
+    
+    Handles SageMaker's specific output structure:
+    - output.tar.gz (outer archive)
+      - val.tar.gz (inner archive)
+        - val/predictions.csv (actual data)
+        - val_metrics/... (metrics and plots)
+      - test.tar.gz (inner archive)
+        - test/predictions.csv (actual data)
+        - test_metrics/... (metrics and plots)
+    
+    Also handles cases where the input path contains:
+    - Direct output.tar.gz file
+    - Path to a job directory that contains output/output.tar.gz
+    - Path to a parent directory with job subdirectories
+    
+    Args:
+        config: Configuration object (optional, created from environment if not provided)
+        
+    Returns:
+        pd.DataFrame: Combined dataset with predictions from extracted tar.gz files
+        
+    Raises:
+        FileNotFoundError: If necessary tar.gz files or prediction data not found
+    """
+    import tarfile
+    import tempfile
+    import shutil
+    
+    config = config or CalibrationConfig.from_env()
+    input_dir = config.input_data_path
+    log_section("NESTED TARBALL EXTRACTION")
+    logger.info(f"Looking for SageMaker output archive in {input_dir}")
+    
+    # Check if we have a direct data file first (non-tarball case)
+    try:
+        direct_file = find_first_data_file(input_dir)
+        if direct_file:
+            logger.info(f"Found direct data file: {direct_file}, using standard loading")
+            return load_data(config)
+    except FileNotFoundError:
+        # No direct data file, continue with tarball extraction
+        pass
+    
+    # First check: Direct tarball in the input directory
+    output_archive = None
+    for fname in os.listdir(input_dir):
+        if fname.lower() == "output.tar.gz":
+            output_archive = os.path.join(input_dir, fname)
+            logger.info(f"Found output.tar.gz directly in input directory")
+            break
+    
+    # Second check: Look for job-specific directories containing output/output.tar.gz
+    if not output_archive:
+        logger.info("No output.tar.gz found directly in input directory, checking for job directories")
+        for item in os.listdir(input_dir):
+            item_path = os.path.join(input_dir, item)
+            if os.path.isdir(item_path):
+                # Check if this directory has an output/output.tar.gz file
+                output_dir = os.path.join(item_path, "output")
+                if os.path.isdir(output_dir):
+                    nested_archive = os.path.join(output_dir, "output.tar.gz")
+                    if os.path.isfile(nested_archive):
+                        output_archive = nested_archive
+                        logger.info(f"Found nested output.tar.gz at {output_archive}")
+                        break
+    
+    # Third check: Recursive search for output.tar.gz (most robust but potentially slower)
+    if not output_archive:
+        logger.info("No output.tar.gz found in expected locations, performing recursive search")
+        for root, _, files in os.walk(input_dir):
+            for fname in files:
+                if fname.lower() == "output.tar.gz":
+                    output_archive = os.path.join(root, fname)
+                    logger.info(f"Found output.tar.gz from recursive search at {output_archive}")
+                    break
+            if output_archive:
+                break
+    
+    # If we still don't have it, fall back to standard data loading
+    if not output_archive:
+        logger.warning("No output.tar.gz found anywhere, falling back to standard data loading")
+        return load_data(config)
+    
+    logger.info(f"Found SageMaker output archive: {output_archive}")
+    logger.info(f"File size: {os.path.getsize(output_archive) / (1024*1024):.2f} MB")
+    
+    # Create temporary directories for extraction
+    outer_temp_dir = tempfile.mkdtemp(prefix="outer_")
+    inner_temp_dir = tempfile.mkdtemp(prefix="inner_")
+    combined_df = None
+    
+    try:
+        # Step 1: Extract the outer archive (output.tar.gz)
+        logger.info(f"Extracting outer archive: {output_archive}")
+        with tarfile.open(output_archive, "r:gz") as tar:
+            # Log the contents of the tar file
+            members = tar.getmembers()
+            logger.info(f"Outer archive contains {len(members)} files:")
+            for member in members:
+                logger.info(f"  - {member.name} ({member.size / 1024:.2f} KB)")
+            tar.extractall(path=outer_temp_dir)
+        logger.info(f"Extracted to: {outer_temp_dir}")
+        
+        # Step 2: Find and extract the inner archives (val.tar.gz, test.tar.gz)
+        inner_archives = []
+        for fname in os.listdir(outer_temp_dir):
+            if fname.lower().endswith('.tar.gz'):
+                inner_archives.append(os.path.join(outer_temp_dir, fname))
+        
+        if not inner_archives:
+            raise FileNotFoundError("No val.tar.gz or test.tar.gz found in output.tar.gz")
+            
+        logger.info(f"Found {len(inner_archives)} inner archives: {[os.path.basename(a) for a in inner_archives]}")
+        
+        # Process each inner archive (val.tar.gz, test.tar.gz)
+        for inner_archive in inner_archives:
+            archive_name = os.path.basename(inner_archive).split('.')[0]  # 'val' or 'test'
+            logger.info(f"Processing {archive_name} archive: {inner_archive}")
+            
+            # Extract the inner archive
+            inner_extract_dir = os.path.join(inner_temp_dir, archive_name)
+            os.makedirs(inner_extract_dir, exist_ok=True)
+            
+            with tarfile.open(inner_archive, "r:gz") as tar:
+                # Log the contents of the tar file
+                members = tar.getmembers()
+                logger.info(f"Inner archive contains {len(members)} files:")
+                for member in members:
+                    logger.info(f"  - {member.name} ({member.size / 1024:.2f} KB)")
+                tar.extractall(path=inner_extract_dir)
+            logger.info(f"Extracted inner archive to: {inner_extract_dir}")
+            
+            # Look for predictions.csv in the correct structure
+            predictions_path = os.path.join(inner_extract_dir, archive_name, "predictions.csv")
+            if not os.path.exists(predictions_path):
+                logger.warning(f"Could not find predictions.csv in {inner_archive}, skipping")
+                continue
+                
+            # Load the predictions
+            df = pd.read_csv(predictions_path)
+            logger.info(f"Loaded {len(df)} rows from {predictions_path}")
+            # Log data preview and column info for debugging
+            logger.info(f"Columns in {predictions_path}: {df.columns.tolist()}")
+            logger.info(f"Data types: {df.dtypes.to_dict()}")
+            if len(df) > 0:
+                logger.info(f"First row sample: {df.iloc[0].to_dict()}")
+            
+            # Add dataset origin column
+            df['dataset_origin'] = archive_name
+            
+            # Combine with previous data
+            if combined_df is None:
+                combined_df = df
+            else:
+                # Check if columns match
+                if set(df.columns) != set(combined_df.columns):
+                    logger.warning(f"Column mismatch between datasets. Common columns will be used.")
+                    common_cols = list(set(df.columns).intersection(set(combined_df.columns)))
+                    combined_df = pd.concat([combined_df[common_cols], df[common_cols]])
+                else:
+                    combined_df = pd.concat([combined_df, df])
+        
+        if combined_df is None or len(combined_df) == 0:
+            raise FileNotFoundError("No valid prediction data found in extracted archives")
+        
+        # Log information about the final combined dataset
+        logger.info(f"Combined dataset contains {len(combined_df)} rows with {len(combined_df.columns)} columns")
+        logger.info(f"Final columns: {combined_df.columns.tolist()}")
+        # Check for NaN values
+        nan_counts = combined_df.isna().sum()
+        if nan_counts.sum() > 0:
+            logger.warning(f"Dataset contains NaN values: {nan_counts[nan_counts > 0].to_dict()}")
+            
+        return combined_df
+        
+    finally:
+        # Clean up temporary directories
+        shutil.rmtree(outer_temp_dir, ignore_errors=True)
+        shutil.rmtree(inner_temp_dir, ignore_errors=True)
+
+
+def load_and_prepare_data(config=None, job_type="calibration"):
     """Load evaluation data and prepare it for calibration based on classification type.
     
     Args:
         config: Configuration object (optional, created from environment if not provided)
+        job_type: The job type to determine how to load data
         
     Returns:
         tuple: Different return values based on classification type:
@@ -224,7 +416,24 @@ def load_and_prepare_data(config=None):
         ValueError: If required columns are missing
     """
     config = config or CalibrationConfig.from_env()
-    df = load_data(config)
+    
+    log_section("DATA PREPARATION")
+    
+    # Load data differently based on job_type
+    if job_type == "training":
+        # Training job outputs are nested tarballs from XGBoostTraining output
+        logger.info(f"Loading data for job_type=training using nested tarball extraction")
+        try:
+            df = extract_and_load_nested_tarball_data(config)
+        except Exception as e:
+            logger.warning(f"Failed to extract data from nested tarballs: {e}")
+            logger.warning(f"Exception details: {traceback.format_exc()}")
+            logger.info("Falling back to standard data loading")
+            df = load_data(config)
+    else:
+        # Calibration, validation, and testing job outputs are direct files from XGBoostModelEval
+        logger.info(f"Loading data for job_type={job_type} using standard loading")
+        df = load_data(config)
     
     if config.is_binary:
         # Binary case - single score field
@@ -759,10 +968,16 @@ def main(
         
         results = {}
         
+        # Get job_type from command line arguments if available
+        job_type = "calibration"  # default
+        if job_args and hasattr(job_args, 'job_type'):
+            job_type = job_args.job_type
+            logger.info(f"Using job_type from command line: {job_type}")
+        
         if config.is_binary:
             # Binary classification workflow
-            # Load data and extract features and target
-            df, y_true, y_prob_uncalibrated, _ = load_and_prepare_data(config)
+            # Load data and extract features and target based on job_type
+            df, y_true, y_prob_uncalibrated, _ = load_and_prepare_data(config, job_type)
             
             # Select and train calibration model
             if config.calibration_method == "gam":
@@ -861,8 +1076,8 @@ def main(
             
         else:
             # Multi-class classification workflow
-            # Load data with all probability columns
-            df, y_true, _, y_prob_matrix = load_and_prepare_data(config)
+            # Load data with all probability columns based on job_type
+            df, y_true, _, y_prob_matrix = load_and_prepare_data(config, job_type)
             
             # Train calibration models for each class
             logger.info(f"Training {config.calibration_method} calibration for {config.num_classes} classes")
@@ -973,6 +1188,14 @@ def main(
 
 
 if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Model Calibration Script for SageMaker Processing")
+    parser.add_argument("--job_type", type=str, default="calibration",
+                        help="Job type - one of: training, calibration, validation, testing")
+    args = parser.parse_args()
+    
+    logger.info(f"Starting model calibration with job_type: {args.job_type}")
+    
     # Define standard SageMaker paths
     INPUT_DATA_PATH = "/opt/ml/processing/input/eval_data"
     OUTPUT_CALIBRATION_PATH = "/opt/ml/processing/output/calibration"
@@ -1004,10 +1227,7 @@ if __name__ == "__main__":
         "calibrated_data": OUTPUT_CALIBRATED_DATA_PATH
     }
     
-    # No command line arguments for this script, but include for consistency
-    args = argparse.Namespace()
-    
-    # Call the main function
+    # Call the main function with parsed arguments
     try:
         main(input_paths, output_paths, environ_vars, args)
         logger.info("Calibration completed successfully")

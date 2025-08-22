@@ -107,7 +107,7 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         if not self.processing_entry_point:
             raise ValueError("evaluation step requires a processing_entry_point")
             
-        valid_job_types = {"training", "calibration", "validation", "test"}
+        valid_job_types = {"training", "calibration", "validation", "testing"}
         if self.job_type not in valid_job_types:
             raise ValueError(f"job_type must be one of {valid_job_types}, got '{self.job_type}'")
         
