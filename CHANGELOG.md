@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-08-21
+
+### Added
+- **MODS Pipeline Support** - Major new feature for advanced pipeline management
+  - **MODS DAG Compiler** - New compiler specifically designed for MODS (Model Operations and Data Science) pipelines
+  - **MODS Pipeline Integration** - Full integration with existing pipeline infrastructure
+  - **MODS Pipeline Catalog** - Dedicated catalog for MODS-specific pipeline templates and examples
+  - **Enhanced Pipeline Metadata** - Extended metadata system to support MODS pipeline requirements
+
+- **Pipeline Catalog Restructuring** - Complete reorganization of pipeline catalog architecture
+  - **Shared DAG Structure** - New shared DAG architecture for better reusability and maintainability
+  - **Catalog Folder Restructuring** - Improved organization with clear separation of concerns
+  - **Enhanced Pipeline Templates** - Updated pipeline templates with better structure and documentation
+  - **Catalog Index System** - New indexing system for better pipeline discovery and management
+
+- **Model Calibration Enhancements** - Expanded model calibration capabilities
+  - **Flexible Calibration Dependencies** - Model calibration steps can now depend on either training or evaluation steps
+  - **Enhanced Calibration Workflows** - Improved calibration workflow patterns for better flexibility
+  - **Calibration Step Variants** - Support for different calibration step configurations and dependencies
+
+### Enhanced
+- **CLI System Improvements** - Major enhancements to command-line interface
+  - **Registry Updates** - Improved registry system with better component discovery and management
+  - **Enhanced CLI Commands** - Updated CLI commands with better functionality and user experience
+  - **Improved Error Handling** - Better error messages and handling in CLI operations
+
+- **Pipeline Metadata System** - Significant improvements to pipeline metadata handling
+  - **EnhancedDAGMetadata** - New enhanced metadata system with extended capabilities
+  - **DAGMetadata Updates** - Improved core metadata system with better data structures
+  - **Metadata Integration** - Better integration of metadata across pipeline components
+
+- **Pipeline Output Management** - Improved pipeline output handling
+  - **Non-MODS Pipeline Output Fix** - Fixed issues with non-MODS pipeline output generation
+  - **Output Consistency** - Improved consistency in pipeline output across different pipeline types
+  - **Better Output Validation** - Enhanced validation of pipeline outputs
+
+### Fixed
+- **Pipeline Catalog Issues** - Resolved various issues in pipeline catalog management
+  - **Structure Cleanup** - Removed old structure and maintained only new, improved structure
+  - **Catalog Consistency** - Fixed inconsistencies in catalog organization and structure
+  - **Template Validation** - Improved validation of pipeline templates and examples
+
+- **Registry System Fixes** - Enhanced registry system reliability
+  - **Component Registration** - Fixed issues with component registration and discovery
+  - **Registry Consistency** - Improved consistency in registry operations
+  - **Better Error Recovery** - Enhanced error recovery in registry operations
+
+### Technical Details
+- **MODS Architecture** - Complete MODS pipeline architecture with dedicated compiler and catalog system
+- **Catalog Restructuring** - New folder structure with shared DAGs and improved organization
+- **Metadata Enhancement** - Extended metadata system supporting both traditional and MODS pipelines
+- **CLI Integration** - Full integration of new features into command-line interface
+- **Backward Compatibility** - Maintained backward compatibility while adding new MODS features
+
+### Quality Assurance
+- **Comprehensive Testing** - Extensive testing of new MODS pipeline features and catalog restructuring
+- **Documentation Updates** - Updated documentation to reflect new features and architectural changes
+- **Integration Validation** - Thorough validation of integration between MODS and existing pipeline systems
+- **Performance Optimization** - Optimized performance for new features and improved existing functionality
+
+### Performance Improvements
+- **Catalog Performance** - Improved performance of pipeline catalog operations with new structure
+- **Metadata Processing** - Enhanced performance of metadata processing and management
+- **CLI Responsiveness** - Improved responsiveness of CLI operations with optimized registry system
+
 ## [1.0.12] - 2025-08-19
 
 ### Added
