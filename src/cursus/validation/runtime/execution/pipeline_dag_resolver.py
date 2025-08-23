@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Use relative imports for external cursus modules
 from ....api.dag import PipelineDAG
-from ....steps.configs import StepConfig
+from ....core.base.config_base import BasePipelineConfig
 
 class PipelineExecutionPlan(BaseModel):
     """Execution plan for pipeline with topological ordering."""
