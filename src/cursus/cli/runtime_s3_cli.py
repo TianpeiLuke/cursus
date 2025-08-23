@@ -7,9 +7,9 @@ from pathlib import Path
 import sys
 import logging
 
-from ..integration.s3_data_downloader import S3DataDownloader
-from ..integration.real_data_tester import RealDataTester
-from ..integration.workspace_manager import WorkspaceManager, WorkspaceConfig
+from ..validation.runtime.integration.s3_data_downloader import S3DataDownloader
+from ..validation.runtime.integration.real_data_tester import RealDataTester
+from ..validation.runtime.integration.workspace_manager import WorkspaceManager, WorkspaceConfig
 
 logger = logging.getLogger(__name__)
 

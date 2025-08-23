@@ -16,11 +16,24 @@ cursus/
 │       ├── api/                     # Public API modules
 │       │   └── dag/                 # DAG construction and management
 │       ├── cli/                     # Command-line interface
+│       │   ├── alignment_cli.py     # Alignment validation CLI
+│       │   ├── builder_test_cli.py  # Builder testing CLI
+│       │   ├── catalog_cli.py       # Pipeline catalog CLI
+│       │   ├── runtime_cli.py       # Runtime testing CLI
+│       │   ├── runtime_s3_cli.py    # S3 runtime operations CLI
+│       │   └── validation_cli.py    # General validation CLI
 │       ├── core/                    # Core functionality
 │       │   ├── assembler/           # Pipeline assembly and template management
 │       │   ├── base/                # Base classes and enums
 │       │   ├── compiler/            # DAG compilation and validation
 │       │   └── config_fields/       # Configuration field management
+│       ├── mods/                    # MODS (Model Operations Data Science) integration
+│       │   └── compiler/            # MODS-specific compilation
+│       ├── pipeline_catalog/        # Pre-built pipeline catalog
+│       │   ├── mods_pipelines/      # MODS-specific pipelines
+│       │   ├── pipelines/           # Standard pipelines
+│       │   ├── shared_dags/         # Shared DAG components
+│       │   └── utils/               # Catalog utilities
 │       ├── processing/              # Data processing utilities
 │       ├── steps/                   # Pipeline step implementations
 │       │   ├── builders/            # Step builders for different step types
@@ -31,18 +44,45 @@ cursus/
 │       │   ├── scripts/             # Execution scripts for steps
 │       │   └── specs/               # Step specifications
 │       └── validation/              # Validation utilities
+│           ├── alignment/           # Alignment validation
+│           ├── builders/            # Builder validation
+│           ├── interface/           # Interface validation
+│           ├── naming/              # Naming validation
+│           ├── runtime/             # Runtime testing and validation
+│           │   ├── config/          # Runtime configuration
+│           │   ├── core/            # Core runtime testing components
+│           │   ├── data/            # Data management and flow
+│           │   ├── execution/       # Pipeline execution management
+│           │   ├── integration/     # S3 and external service integration
+│           │   ├── jupyter/         # Jupyter notebook integration
+│           │   ├── testing/         # Testing utilities
+│           │   └── utils/           # Runtime utilities
+│           └── shared/              # Shared validation utilities
 ├── slipbox/                        # Comprehensive documentation system
 │   ├── 0_developer_guide/          # Developer guides and best practices
 │   ├── 1_design/                   # Architectural documentation
 │   ├── 2_project_planning/         # Project planning and implementation notes
 │   ├── 3_llm_developer/            # LLM development tools
+│   ├── 4_analysis/                 # Analysis and reports
 │   ├── api/                        # API documentation
+│   ├── cli/                        # CLI documentation
 │   ├── core/                       # Core component documentation
 │   ├── examples/                   # Usage examples and templates
 │   ├── ml/                         # ML-specific documentation
+│   ├── mods/                       # MODS documentation
+│   ├── pipeline_catalog/           # Pipeline catalog documentation
 │   ├── steps/                      # Step-specific documentation
-│   └── test/                       # Test documentation and reports
+│   ├── test/                       # Test documentation and reports
+│   └── validation/                 # Validation documentation
 ├── test/                           # Test suite
+│   ├── api/                        # API tests
+│   ├── circular_imports/           # Circular import tests
+│   ├── cli/                        # CLI tests
+│   ├── core/                       # Core functionality tests
+│   ├── integration/                # Integration tests
+│   ├── pipeline_catalog/           # Pipeline catalog tests
+│   ├── steps/                      # Step implementation tests
+│   └── validation/                 # Validation tests
 ├── pyproject.toml                  # Modern Python packaging configuration
 ├── MANIFEST.in                     # Additional files to include in package
 ├── README.md                       # Package documentation
@@ -61,6 +101,7 @@ cursus/
   - `xgboost`: XGBoost training pipelines (included in core)
   - `nlp`: NLP models and processing with transformers
   - `processing`: Advanced data processing with pandas/numpy
+  - `jupyter`: Jupyter notebook integration for interactive testing
   - `dev`: Development tools (pytest, black, mypy, etc.)
   - `docs`: Documentation tools (sphinx, themes)
   - `all`: Everything included
@@ -85,6 +126,7 @@ Includes basic DAG compilation, SageMaker integration, and XGBoost support.
 pip install cursus[pytorch]    # PyTorch Lightning models
 pip install cursus[nlp]        # NLP models and processing
 pip install cursus[processing] # Advanced data processing
+pip install cursus[jupyter]    # Jupyter notebook integration
 ```
 
 ### Development
@@ -196,6 +238,7 @@ pip install cursus
 - **PyTorch ecosystem**: torch, pytorch-lightning, torchmetrics, lightning
 - **NLP ecosystem**: transformers, spacy, tokenizers, huggingface-hub
 - **Processing ecosystem**: pandas, numpy, scipy, pyarrow (enhanced versions)
+- **Jupyter ecosystem**: jupyter, ipywidgets, plotly, nbformat, jinja2, seaborn, jupyterlab, ipython
 
 ## Quality Assurance
 

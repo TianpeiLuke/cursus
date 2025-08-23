@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional
 from ..utils.error_handling import DataFlowError
 
 class DataFlowManager:
-    """Manages data flow between script executions"""
+    """Basic data flow manager for script executions (Phase 1 implementation)"""
     
     def __init__(self, workspace_dir: str):
         """Initialize data flow manager with workspace directory"""

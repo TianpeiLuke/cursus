@@ -66,10 +66,16 @@ src/cursus/validation/runtime/
 ├── core/                    # Core execution engine
 ├── data/                    # Data management layer
 ├── testing/                 # Testing modes
+├── execution/               # Pipeline execution
 ├── jupyter/                 # Jupyter integration
-├── cli/                     # CLI interface
 ├── integration/             # System integration
 └── utils/                   # Utilities and models
+
+src/cursus/cli/              # All CLI commands consolidated
+├── __init__.py
+├── runtime_cli.py           # Main runtime testing commands
+├── runtime_s3_cli.py        # S3-specific runtime commands
+└── [other existing CLI modules]
 ```
 
 ### Integration Points

@@ -8,8 +8,9 @@ from pathlib import Path
 import os
 
 from ..validation.runtime.core.pipeline_script_executor import PipelineScriptExecutor
-from ..validation.runtime.testing.pipeline_executor import PipelineExecutor
+from ..validation.runtime.execution.pipeline_executor import PipelineExecutor
 from ..validation.runtime.utils.result_models import TestResult
+from .runtime_s3_cli import s3
 
 @click.group()
 @click.version_option(version="0.1.0")
@@ -20,6 +21,9 @@ def runtime():
     data flow compatibility, and performance.
     """
     pass
+
+# Add S3 commands as a subgroup
+runtime.add_command(s3)
 
 @runtime.command()
 @click.argument('script_name')

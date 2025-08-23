@@ -82,7 +82,8 @@ src/cursus/validation/runtime/
 
 src/cursus/cli/
 ├── __init__.py
-└── runtime_cli.py
+├── runtime_cli.py           # Main runtime testing commands
+└── runtime_s3_cli.py        # S3-specific commands (added in Phase 3)
 ```
 
 **Implementation Details**:

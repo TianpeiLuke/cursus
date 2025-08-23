@@ -91,6 +91,17 @@ processing = [
     "scipy>=1.10.0",
     "pyarrow>=14.0.0",
 ]
+# Jupyter notebook integration dependencies
+jupyter = [
+    "jupyter>=1.0.0",
+    "ipywidgets>=8.0.0",
+    "plotly>=5.0.0",
+    "nbformat>=5.0.0",
+    "jinja2>=3.0.0",
+    "seaborn>=0.12.0",
+    "jupyterlab>=4.0.0",
+    "ipython>=8.0.0",
+]
 # Development dependencies
 dev = [
     "pytest>=7.0.0",
@@ -110,7 +121,7 @@ docs = [
 ]
 # Full installation
 all = [
-    "cursus[pytorch,xgboost,nlp,processing]"
+    "cursus[pytorch,xgboost,nlp,processing,jupyter]"
 ]
 
 [project.scripts]
