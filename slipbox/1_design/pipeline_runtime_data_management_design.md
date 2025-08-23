@@ -2,7 +2,7 @@
 tags:
   - design
   - testing
-  - script_functionality
+  - runtime
   - data_management
   - synthetic_data
 keywords:
@@ -20,11 +20,11 @@ language: python
 date of note: 2025-08-21
 ---
 
-# Pipeline Script Functionality Testing - Data Management Layer Design
+# Pipeline Runtime Testing - Data Management Layer Design
 
 ## Overview
 
-The Data Management Layer provides comprehensive data handling capabilities for the Pipeline Script Functionality Testing System, supporting both synthetic data generation and real S3 data integration. This layer ensures data compatibility, manages data flow between pipeline steps, and provides flexible testing scenarios.
+The Data Management Layer provides comprehensive data handling capabilities for the Pipeline Runtime Testing System, supporting both synthetic data generation and real S3 data integration. This layer ensures data compatibility, manages data flow between pipeline steps, and provides flexible testing scenarios.
 
 ## Architecture Components
 
@@ -483,13 +483,13 @@ data_management:
 
 ## Cross-References
 
-**Parent Document**: [Pipeline Script Functionality Testing Master Design](pipeline_script_functionality_testing_master_design.md)
+**Parent Document**: [Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design.md)
 
 **Related Documents**:
-- [Core Execution Engine Design](pipeline_script_functionality_core_engine_design.md)
-- [Testing Modes Design](pipeline_script_functionality_testing_modes_design.md) *(to be created)*
-- [System Integration Design](pipeline_script_functionality_system_integration_design.md) *(to be created)*
+- [Core Execution Engine Design](pipeline_runtime_core_engine_design.md)
+- [Testing Modes Design](pipeline_runtime_testing_modes_design.md) *(to be created)*
+- [System Integration Design](pipeline_runtime_system_integration_design.md) *(to be created)*
 
 **Implementation Plans**:
-- [Data Flow Testing Phase Implementation Plan](2025-08-21_pipeline_script_functionality_data_flow_testing_implementation_plan.md) *(to be created)*
-- [S3 Integration Phase Implementation Plan](2025-08-21_pipeline_script_functionality_s3_integration_implementation_plan.md) *(to be created)*
+- [Data Flow Testing Phase Implementation Plan](2025-08-21_pipeline_runtime_data_flow_testing_implementation_plan.md) *(to be created)*
+- [S3 Integration Phase Implementation Plan](2025-08-21_pipeline_runtime_s3_integration_implementation_plan.md) *(to be created)*

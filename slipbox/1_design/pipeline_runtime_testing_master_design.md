@@ -2,7 +2,7 @@
 tags:
   - design
   - testing
-  - script_functionality
+  - runtime
   - pipeline_validation
   - master_document
 keywords:
@@ -20,7 +20,7 @@ language: python
 date of note: 2025-08-21
 ---
 
-# Pipeline Script Functionality Testing System - Master Design
+# Pipeline Runtime Testing System - Master Design
 
 **Date**: August 21, 2025  
 **Status**: Design Phase  
@@ -29,7 +29,7 @@ date of note: 2025-08-21
 
 ## 🎯 Executive Summary
 
-This master document presents the comprehensive design for a **Pipeline Script Functionality Testing System** that addresses the critical gap between DAG compilation and actual script execution validation in the Cursus pipeline system. The system provides multi-mode testing capabilities: **individual script isolation testing**, **end-to-end pipeline testing**, and **deep dive analysis** with both synthetic and real S3 data, all integrated into a Jupyter notebook environment.
+This master document presents the comprehensive design for a **Pipeline Runtime Testing System** that addresses the critical gap between DAG compilation and actual script execution validation in the Cursus pipeline system. The system provides multi-mode testing capabilities: **individual script isolation testing**, **end-to-end pipeline testing**, and **deep dive analysis** with both synthetic and real S3 data, all integrated into a Jupyter notebook environment.
 
 ## 📋 Problem Statement
 
@@ -62,10 +62,10 @@ The Cursus package currently excels at:
 
 ### System Architecture
 
-The Pipeline Script Functionality Testing System implements a **multi-layer testing architecture** that leverages the consistent script interface pattern discovered in the Cursus codebase:
+The Pipeline Runtime Testing System implements a **multi-layer testing architecture** that leverages the consistent script interface pattern discovered in the Cursus codebase:
 
 ```
-Pipeline Script Functionality Testing System
+Pipeline Runtime Testing System
 ├── Core Execution Engine
 │   ├── PipelineScriptExecutor (orchestrates execution)
 │   ├── ScriptImportManager (dynamic imports & execution)
@@ -114,31 +114,36 @@ def main(
 - **Real S3 Data**: Downloaded from actual pipeline executions for deep analysis
 - **Hybrid Approach**: Combine both for comprehensive testing
 
+#### **4. Modern Data Handling**
+- **Pydantic V2 Models**: Type-safe data validation and serialization
+- **Runtime Type Checking**: Detect type errors early during testing
+- **Self-documenting API**: Clear interface boundaries and validation
+
 ## 📦 Detailed Design Documents
 
 This master design is supported by the following focused design documents:
 
 ### **System Overview**
-- **[Pipeline Script Functionality Testing System Design](pipeline_script_functionality_testing_system_design.md)**: Comprehensive system design document with detailed technical specifications
+- **[Pipeline Runtime Testing System Design](pipeline_runtime_testing_system_design.md)**: Comprehensive system design document with detailed technical specifications
 
 ### **Core System Components**
-- **[Core Execution Engine Design](pipeline_script_functionality_core_engine_design.md)**: Detailed design for PipelineScriptExecutor, ScriptImportManager, and DataFlowManager
-- **[Data Management Layer Design](pipeline_script_functionality_data_management_design.md)**: Comprehensive design for synthetic data generation, S3 integration, and data compatibility validation
-- **[Testing Modes Design](pipeline_script_functionality_testing_modes_design.md)**: Detailed design for isolation testing, pipeline testing, and deep dive analysis modes
+- **[Core Execution Engine Design](pipeline_runtime_core_engine_design.md)**: Detailed design for PipelineScriptExecutor, ScriptImportManager, and DataFlowManager
+- **[Data Management Layer Design](pipeline_runtime_data_management_design.md)**: Comprehensive design for synthetic data generation, S3 integration, and data compatibility validation
+- **[Testing Modes Design](pipeline_runtime_testing_modes_design.md)**: Detailed design for isolation testing, pipeline testing, and deep dive analysis modes
 
 ### **Integration and User Experience**
-- **[Jupyter Integration Design](pipeline_script_functionality_jupyter_integration_design.md)**: Complete design for notebook interface, visualization, and interactive debugging
-- **[System Integration Design](pipeline_script_functionality_system_integration_design.md)**: Integration with existing Cursus components (configuration, contracts, DAG, validation)
+- **[Jupyter Integration Design](pipeline_runtime_jupyter_integration_design.md)**: Complete design for notebook interface, visualization, and interactive debugging
+- **[System Integration Design](pipeline_runtime_system_integration_design.md)**: Integration with existing Cursus components (configuration, contracts, DAG, validation)
 
 ### **Implementation and Operations**
-- **[Usage Examples and API Design](pipeline_script_functionality_usage_examples_design.md)**: Comprehensive usage examples for Jupyter notebooks and CLI
-- **[Reporting and Visualization Design](pipeline_script_functionality_reporting_design.md)**: Test result reporting, HTML generation, and visualization capabilities
+- **[Usage Examples and API Design](pipeline_runtime_usage_examples_design.md)**: Comprehensive usage examples for Jupyter notebooks and CLI
+- **[Reporting and Visualization Design](pipeline_runtime_reporting_design.md)**: Test result reporting, HTML generation, and visualization capabilities
 
 ## 🚀 Quick Start Examples
 
 ### Jupyter Notebook Usage
 ```python
-from cursus.validation.script_functionality import PipelineTestingNotebook
+from cursus.validation.runtime import PipelineTestingNotebook
 
 # Initialize testing environment
 tester = PipelineTestingNotebook()
@@ -155,13 +160,13 @@ pipeline_result.visualize_flow()
 ### CLI Usage
 ```bash
 # Test single script
-cursus script-functionality test-script currency_conversion
+cursus runtime test-script currency_conversion
 
 # Test pipeline end-to-end
-cursus script-functionality test-pipeline xgb_training_simple
+cursus runtime test-pipeline xgb_training_simple
 
 # Deep dive analysis with real S3 data
-cursus script-functionality deep-dive-analysis --pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:...
+cursus runtime deep-dive-analysis --pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:...
 ```
 
 ## 📈 Success Metrics
@@ -211,11 +216,11 @@ The system is designed as an **independent but complementary** addition to the e
 - **[Validation Engine](validation_engine.md)**: Core validation framework for integration
 
 ### **Implementation Planning**
-- **[Pipeline Script Functionality Testing Implementation Plan](../2_project_planning/2025-08-21_pipeline_script_functionality_testing_master_implementation_plan.md)**: Master implementation plan with detailed project roadmap
+- **[Pipeline Runtime Testing Implementation Plan](../2_project_planning/2025-08-21_pipeline_runtime_testing_master_implementation_plan.md)**: Master implementation plan with detailed project roadmap
 
 ## 🎯 Conclusion
 
-The Pipeline Script Functionality Testing System addresses the critical gap between DAG compilation/connectivity validation and actual script execution validation in the Cursus pipeline system. By providing comprehensive testing capabilities across multiple modes with both synthetic and real data sources, the system ensures that pipelines work correctly not just in terms of connectivity but also in terms of actual functionality.
+The Pipeline Runtime Testing System addresses the critical gap between DAG compilation/connectivity validation and actual script execution validation in the Cursus pipeline system. By providing comprehensive testing capabilities across multiple modes with both synthetic and real data sources, the system ensures that pipelines work correctly not just in terms of connectivity but also in terms of actual functionality.
 
 ### **Key Benefits**
 - **Risk Reduction**: Early detection of script execution and data compatibility issues
@@ -230,4 +235,4 @@ The system provides a foundation for reliable, scalable pipeline development by 
 
 **Master Design Document Status**: Complete  
 **Next Steps**: Review detailed design documents and proceed with implementation planning  
-**Related Implementation Plan**: [Pipeline Script Functionality Testing Master Implementation Plan](../2_project_planning/2025-08-21_pipeline_script_functionality_testing_master_implementation_plan.md)
+**Related Implementation Plan**: [Pipeline Runtime Testing Master Implementation Plan](../2_project_planning/2025-08-21_pipeline_runtime_testing_master_implementation_plan.md)

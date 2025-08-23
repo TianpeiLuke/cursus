@@ -3,7 +3,7 @@ tags:
   - project
   - planning
   - implementation
-  - script_functionality
+  - runtime
   - foundation_phase
 keywords:
   - foundation phase implementation
@@ -20,7 +20,7 @@ language: python
 date of note: 2025-08-21
 ---
 
-# Pipeline Script Functionality Testing - Foundation Phase Implementation Plan
+# Pipeline Runtime Testing - Foundation Phase Implementation Plan
 
 **Phase**: Foundation (Weeks 1-2)  
 **Duration**: 2 weeks  
@@ -29,7 +29,7 @@ date of note: 2025-08-21
 
 ## 🎯 Phase Overview
 
-The Foundation Phase establishes the core infrastructure and basic framework for the Pipeline Script Functionality Testing System. This phase focuses on creating the fundamental components that all other phases will build upon.
+The Foundation Phase establishes the core infrastructure and basic framework for the Pipeline Runtime Testing System. This phase focuses on creating the fundamental components that all other phases will build upon.
 
 ## 📋 Phase Objectives
 
@@ -61,7 +61,7 @@ The Foundation Phase establishes the core infrastructure and basic framework for
 
 **Deliverables**:
 ```
-src/cursus/validation/script_functionality/
+src/cursus/validation/runtime/
 ├── __init__.py
 ├── core/
 │   ├── __init__.py
@@ -71,9 +71,6 @@ src/cursus/validation/script_functionality/
 ├── data/
 │   ├── __init__.py
 │   └── synthetic_data_generator.py
-├── cli/
-│   ├── __init__.py
-│   └── script_functionality_cli.py
 ├── utils/
 │   ├── __init__.py
 │   ├── execution_context.py
@@ -82,6 +79,10 @@ src/cursus/validation/script_functionality/
 └── config/
     ├── __init__.py
     └── default_config.py
+
+src/cursus/cli/
+├── __init__.py
+└── runtime_cli.py
 ```
 
 **Implementation Details**:
@@ -89,7 +90,7 @@ src/cursus/validation/script_functionality/
 **Module Initialization** (`__init__.py`):
 ```python
 """
-Pipeline Script Functionality Testing System
+Pipeline Runtime Testing System
 
 A comprehensive testing framework for validating pipeline script functionality,
 data flow compatibility, and end-to-end execution.
@@ -133,7 +134,7 @@ __all__ = [
 
 **PipelineScriptExecutor** (Basic Implementation):
 ```python
-# src/cursus/validation/script_functionality/core/pipeline_script_executor.py
+# src/cursus/validation/runtime/core/pipeline_script_executor.py
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -233,11 +234,14 @@ class PipelineScriptExecutor:
         input_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Basic job args for Phase 1
+        job_args = None  # Will be enhanced in later phases
+        
         return ExecutionContext(
             input_paths={"input": str(input_dir)},
             output_paths={"output": str(output_dir)},
             environ_vars={},
-            job_args=None  # Will be enhanced in later phases
+            job_args=job_args
         )
     
     def _generate_basic_recommendations(self, execution_result: ExecutionResult) -> list:
@@ -269,19 +273,23 @@ class PipelineScriptExecutor:
 
 **ScriptImportManager** (Basic Implementation):
 ```python
-# src/cursus/validation/script_functionality/core/script_import_manager.py
+# src/cursus/validation/runtime/core/script_import_manager.py
 import importlib.util
 import sys
 import time
 import traceback
-import psutil
 import os
 from pathlib import Path
 from typing import Callable, Dict, Any
 
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 from ..utils.execution_context import ExecutionContext
 from ..utils.result_models import ExecutionResult
-from ..utils.error_handling import ScriptExecutionError
+from ..utils.error_handling import ScriptExecutionError, ScriptImportError
 
 class ScriptImportManager:
     """Handles dynamic import and execution of pipeline scripts"""
@@ -301,14 +309,15 @@ class ScriptImportManager:
             # Load module from file
             spec = importlib.util.spec_from_file_location("script_module", script_path)
             if spec is None or spec.loader is None:
-                raise ImportError(f"Cannot load script from {script_path}")
+                raise ScriptImportError(f"Cannot load script from {script_path}")
             
             module = importlib.util.module_from_spec(spec)
+            sys.modules["script_module"] = module
             spec.loader.exec_module(module)
             
             # Get main function
             if not hasattr(module, 'main'):
-                raise AttributeError(f"Script {script_path} does not have a 'main' function")
+                raise ScriptImportError(f"Script {script_path} does not have a 'main' function")
             
             main_func = getattr(module, 'main')
             
@@ -319,7 +328,10 @@ class ScriptImportManager:
             return main_func
             
         except Exception as e:
-            raise ScriptExecutionError(f"Failed to import script {script_path}: {str(e)}")
+            # Convert to ScriptImportError for consistent error handling
+            if not isinstance(e, ScriptImportError):
+                raise ScriptImportError(f"Failed to import script {script_path}: {str(e)}")
+            raise
     
     def execute_script_main(self, main_func: Callable, 
                            context: ExecutionContext) -> ExecutionResult:
@@ -329,12 +341,13 @@ class ScriptImportManager:
         start_memory = self._get_memory_usage()
         
         try:
-            # Execute main function
-            # Phase 1: Basic execution without job_args
+            # Execute main function using Pydantic model_dump() method
+            context_dict = context.model_dump()
             result = main_func(
-                input_paths=context.input_paths,
-                output_paths=context.output_paths,
-                environ_vars=context.environ_vars
+                input_paths=context_dict["input_paths"],
+                output_paths=context_dict["output_paths"],
+                environ_vars=context_dict["environ_vars"],
+                job_args=context_dict["job_args"]
             )
             
             end_time = time.time()
@@ -364,6 +377,9 @@ class ScriptImportManager:
     def _get_memory_usage(self) -> int:
         """Get current memory usage in MB"""
         try:
+            if psutil is None:
+                return 0
+                
             process = psutil.Process(os.getpid())
             return int(process.memory_info().rss / 1024 / 1024)  # Convert to MB
         except:
@@ -373,7 +389,7 @@ class ScriptImportManager:
 #### **Day 5: Data Models and Utilities**
 
 **Tasks**:
-- Implement core data models (TestResult, ExecutionResult, ExecutionContext)
+- Implement core data models using Pydantic V2
 - Create basic error handling classes
 - Establish configuration management
 
@@ -381,13 +397,12 @@ class ScriptImportManager:
 
 **Result Models**:
 ```python
-# src/cursus/validation/script_functionality/utils/result_models.py
-from dataclasses import dataclass, field
+# src/cursus/validation/runtime/utils/result_models.py
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from pydantic import BaseModel, Field
 
-@dataclass
-class ExecutionResult:
+class ExecutionResult(BaseModel):
     """Result of script execution"""
     success: bool
     execution_time: float
@@ -396,16 +411,15 @@ class ExecutionResult:
     error_message: Optional[str] = None
     stack_trace: Optional[str] = None
 
-@dataclass
-class TestResult:
+class TestResult(BaseModel):
     """Result of script functionality test"""
     script_name: str
     status: str  # PASS, FAIL, SKIP
     execution_time: float
     memory_usage: int
     error_message: Optional[str] = None
-    recommendations: List[str] = field(default_factory=list)
-    timestamp: datetime = field(default_factory=datetime.now)
+    recommendations: List[str] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=datetime.now)
     
     def is_successful(self) -> bool:
         """Check if test was successful"""
@@ -414,27 +428,17 @@ class TestResult:
 
 **Execution Context**:
 ```python
-# src/cursus/validation/script_functionality/utils/execution_context.py
-from dataclasses import dataclass
+# src/cursus/validation/runtime/utils/execution_context.py
 from typing import Dict, Any, Optional
 import argparse
+from pydantic import BaseModel
 
-@dataclass
-class ExecutionContext:
+class ExecutionContext(BaseModel):
     """Context for script execution"""
     input_paths: Dict[str, str]
     output_paths: Dict[str, str]
     environ_vars: Dict[str, str]
     job_args: Optional[argparse.Namespace] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for script main function call"""
-        return {
-            'input_paths': self.input_paths,
-            'output_paths': self.output_paths,
-            'environ_vars': self.environ_vars,
-            'job_args': self.job_args
-        }
 ```
 
 ### Week 2: Basic Framework Implementation
@@ -450,7 +454,7 @@ class ExecutionContext:
 
 **SyntheticDataGenerator** (Basic Implementation):
 ```python
-# src/cursus/validation/script_functionality/data/synthetic_data_generator.py
+# src/cursus/validation/runtime/data/synthetic_data_generator.py
 import pandas as pd
 import numpy as np
 import json
@@ -461,9 +465,9 @@ from datetime import datetime, timedelta
 class SyntheticDataGenerator:
     """Generates basic synthetic data for testing - Phase 1 implementation"""
     
-    def __init__(self):
-        """Initialize data generator"""
-        self.random_seed = 42
+    def __init__(self, random_seed: int = 42):
+        """Initialize data generator with optional random seed for reproducibility"""
+        self.random_seed = random_seed
         np.random.seed(self.random_seed)
     
     def generate_for_script(self, script_name: str, 
@@ -471,112 +475,18 @@ class SyntheticDataGenerator:
         """Generate synthetic data for specific script - Phase 1 implementation"""
         
         # Basic data generation based on script name patterns
-        if "currency" in script_name.lower():
+        if "currency" in script_name.lower() or "conversion" in script_name.lower():
             return self._generate_currency_data(data_size)
         elif "tabular" in script_name.lower() or "preprocessing" in script_name.lower():
             return self._generate_tabular_data(data_size)
         elif "xgboost" in script_name.lower() or "training" in script_name.lower():
             return self._generate_training_data(data_size)
+        elif "calibration" in script_name.lower():
+            return self._generate_calibration_data(data_size)
         else:
             return self._generate_generic_data(data_size)
     
-    def _generate_currency_data(self, data_size: str) -> Dict[str, str]:
-        """Generate currency conversion test data"""
-        
-        size_map = {"small": 100, "medium": 1000, "large": 10000}
-        num_records = size_map.get(data_size, 100)
-        
-        # Generate currency data
-        currencies = ["USD", "EUR", "GBP", "JPY", "CAD"]
-        
-        data = []
-        for _ in range(num_records):
-            from_currency = np.random.choice(currencies)
-            to_currency = np.random.choice([c for c in currencies if c != from_currency])
-            
-            data.append({
-                "from_currency": from_currency,
-                "to_currency": to_currency,
-                "amount": np.random.uniform(1, 10000),
-                "date": (datetime.now() - timedelta(days=np.random.randint(0, 365))).strftime("%Y-%m-%d")
-            })
-        
-        df = pd.DataFrame(data)
-        
-        # Save to temporary file
-        output_path = Path("./temp_currency_data.csv")
-        df.to_csv(output_path, index=False)
-        
-        return {"input": str(output_path)}
-    
-    def _generate_tabular_data(self, data_size: str) -> Dict[str, str]:
-        """Generate tabular preprocessing test data"""
-        
-        size_map = {"small": 500, "medium": 5000, "large": 50000}
-        num_records = size_map.get(data_size, 500)
-        
-        # Generate tabular data with various data types
-        data = {
-            "id": range(1, num_records + 1),
-            "feature_1": np.random.normal(0, 1, num_records),
-            "feature_2": np.random.uniform(-10, 10, num_records),
-            "feature_3": np.random.choice(["A", "B", "C"], num_records),
-            "target": np.random.choice([0, 1], num_records)
-        }
-        
-        df = pd.DataFrame(data)
-        
-        # Add some missing values
-        missing_indices = np.random.choice(num_records, size=int(num_records * 0.05), replace=False)
-        df.loc[missing_indices, "feature_1"] = np.nan
-        
-        # Save to temporary file
-        output_path = Path("./temp_tabular_data.csv")
-        df.to_csv(output_path, index=False)
-        
-        return {"input": str(output_path)}
-    
-    def _generate_training_data(self, data_size: str) -> Dict[str, str]:
-        """Generate training data for ML scripts"""
-        
-        size_map = {"small": 1000, "medium": 10000, "large": 100000}
-        num_records = size_map.get(data_size, 1000)
-        
-        # Generate training dataset
-        num_features = 10
-        X = np.random.normal(0, 1, (num_records, num_features))
-        y = (X[:, 0] + X[:, 1] * 0.5 + np.random.normal(0, 0.1, num_records) > 0).astype(int)
-        
-        # Create DataFrame
-        feature_names = [f"feature_{i}" for i in range(num_features)]
-        data = pd.DataFrame(X, columns=feature_names)
-        data["target"] = y
-        
-        # Save to temporary file
-        output_path = Path("./temp_training_data.csv")
-        data.to_csv(output_path, index=False)
-        
-        return {"input": str(output_path)}
-    
-    def _generate_generic_data(self, data_size: str) -> Dict[str, str]:
-        """Generate generic test data"""
-        
-        size_map = {"small": 100, "medium": 1000, "large": 10000}
-        num_records = size_map.get(data_size, 100)
-        
-        data = {
-            "id": range(1, num_records + 1),
-            "value": np.random.normal(0, 1, num_records),
-            "category": np.random.choice(["X", "Y", "Z"], num_records)
-        }
-        
-        df = pd.DataFrame(data)
-        
-        # Save to temporary file
-        output_path = Path("./temp_generic_data.csv")
-        df.to_csv(output_path, index=False)
-        
-        return {"input": str(output_path)}
+    # Additional generator methods omitted for brevity
 ```
 
 #### **Day 8-9: CLI Foundation**
@@ -590,25 +500,27 @@ class SyntheticDataGenerator:
 
 **CLI Implementation**:
 ```python
-# src/cursus/validation/script_functionality/cli/script_functionality_cli.py
+# src/cursus/cli/runtime_cli.py
 import click
 import sys
+import json
 from pathlib import Path
+import os
 
-from ..core.pipeline_script_executor import PipelineScriptExecutor
-from ..utils.result_models import TestResult
+from ..validation.runtime.core.pipeline_script_executor import PipelineScriptExecutor
+from ..validation.runtime.utils.result_models import TestResult
 
 @click.group()
 @click.version_option(version="0.1.0")
-def script_functionality():
-    """Pipeline Script Functionality Testing CLI
+def runtime():
+    """Pipeline Runtime Testing CLI
     
     Test individual scripts and complete pipelines for functionality,
     data flow compatibility, and performance.
     """
     pass
 
-@script_functionality.command()
+@runtime.command()
 @click.argument('script_name')
 @click.option('--data-source', default='synthetic', 
               help='Data source for testing (synthetic)')
@@ -652,87 +564,12 @@ def test_script(script_name: str, data_source: str, data_size: str,
         click.echo(f"Error: {str(e)}", err=True)
         sys.exit(1)
 
-@script_functionality.command()
-@click.option('--workspace-dir', default='./pipeline_testing',
-              help='Workspace directory to list')
-def list_results(workspace_dir: str):
-    """List previous test results"""
-    
-    workspace_path = Path(workspace_dir)
-    if not workspace_path.exists():
-        click.echo(f"Workspace directory does not exist: {workspace_dir}")
-        return
-    
-    click.echo(f"Test results in: {workspace_dir}")
-    click.echo("-" * 50)
-    
-    # List output directories
-    outputs_dir = workspace_path / "outputs"
-    if outputs_dir.exists():
-        for script_dir in outputs_dir.iterdir():
-            if script_dir.is_dir():
-                click.echo(f"Script: {script_dir.name}")
-    else:
-        click.echo("No test results found")
-
-@script_functionality.command()
-@click.option('--workspace-dir', default='./pipeline_testing',
-              help='Workspace directory to clean')
-@click.confirmation_option(prompt='Are you sure you want to clean the workspace?')
-def clean_workspace(workspace_dir: str):
-    """Clean workspace directory"""
-    
-    import shutil
-    
-    workspace_path = Path(workspace_dir)
-    if workspace_path.exists():
-        shutil.rmtree(workspace_path)
-        click.echo(f"Cleaned workspace: {workspace_dir}")
-    else:
-        click.echo(f"Workspace directory does not exist: {workspace_dir}")
-
-def _display_text_result(result: TestResult):
-    """Display test result in text format"""
-    
-    status_color = 'green' if result.is_successful() else 'red'
-    
-    click.echo(f"Status: ", nl=False)
-    click.secho(result.status, fg=status_color, bold=True)
-    click.echo(f"Execution Time: {result.execution_time:.2f} seconds")
-    click.echo(f"Memory Usage: {result.memory_usage} MB")
-    
-    if result.error_message:
-        click.echo(f"Error: {result.error_message}")
-    
-    if result.recommendations:
-        click.echo("\nRecommendations:")
-        for rec in result.recommendations:
-            click.echo(f"  - {rec}")
-
-def _display_json_result(result: TestResult):
-    """Display test result in JSON format"""
-    
-    import json
-    
-    result_dict = {
-        "script_name": result.script_name,
-        "status": result.status,
-        "execution_time": result.execution_time,
-        "memory_usage": result.memory_usage,
-        "error_message": result.error_message,
-        "recommendations": result.recommendations,
-        "timestamp": result.timestamp.isoformat()
-    }
-    
-    click.echo(json.dumps(result_dict, indent=2))
+# Additional CLI methods omitted for brevity
 
 # Entry point for CLI
 def main():
     """Main entry point for CLI"""
-    script_functionality()
-
-if __name__ == '__main__':
-    main()
+    runtime()
 ```
 
 #### **Day 10: Integration and Testing**
@@ -753,8 +590,8 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from cursus.validation.script_functionality import PipelineScriptExecutor
-from cursus.validation.script_functionality.data import SyntheticDataGenerator
+from cursus.validation.runtime import PipelineScriptExecutor
+from cursus.validation.runtime.data import SyntheticDataGenerator
 
 class TestFoundationIntegration:
     """Integration tests for foundation phase components"""
@@ -769,53 +606,12 @@ class TestFoundationIntegration:
         """Cleanup test environment"""
         shutil.rmtree(self.temp_dir)
     
-    def test_synthetic_data_generation(self):
-        """Test synthetic data generation"""
-        
-        # Test currency data generation
-        currency_data = self.data_generator.generate_for_script("currency_conversion", "small")
-        assert "input" in currency_data
-        assert Path(currency_data["input"]).exists()
-        
-        # Test tabular data generation
-        tabular_data = self.data_generator.generate_for_script("tabular_preprocessing", "medium")
-        assert "input" in tabular_data
-        assert Path(tabular_data["input"]).exists()
-    
-    def test_script_execution_flow(self):
-        """Test basic script execution flow"""
-        
-        # This test would require actual script files
-        # For foundation phase, we'll test the error handling
-        
-        try:
-            result = self.executor.test_script_isolation("nonexistent_script")
-            assert result.status == "FAIL"
-            assert "not found" in result.error_message.lower()
-        except Exception:
-            # Expected for foundation phase
-            pass
-    
-    def test_workspace_creation(self):
-        """Test workspace directory creation"""
-        
-        workspace_path = Path(self.temp_dir)
-        assert workspace_path.exists()
-        
-        # Test subdirectory creation
-        inputs_dir = workspace_path / "inputs" / "test_script"
-        outputs_dir = workspace_path / "outputs" / "test_script"
-        
-        # These should be created during execution context preparation
-        context = self.executor._prepare_basic_execution_context("test_script")
-        
-        assert inputs_dir.exists()
-        assert outputs_dir.exists()
+    # Test methods omitted for brevity
 ```
 
 **Basic Documentation**:
 ```markdown
-# Pipeline Script Functionality Testing - Foundation Phase
+# Pipeline Runtime Testing - Foundation Phase
 
 ## Quick Start
 
@@ -829,18 +625,18 @@ pip install -e .
 #### CLI
 ```bash
 # Test a script
-cursus script-functionality test-script currency_conversion
+cursus runtime test-script currency_conversion
 
 # List results
-cursus script-functionality list-results
+cursus runtime list-results
 
 # Clean workspace
-cursus script-functionality clean-workspace
+cursus runtime clean-workspace
 ```
 
 #### Python API
 ```python
-from cursus.validation.script_functionality import PipelineScriptExecutor
+from cursus.validation.runtime import PipelineScriptExecutor
 
 # Initialize executor
 executor = PipelineScriptExecutor()
@@ -872,35 +668,39 @@ The foundation phase provides the basic infrastructure. Subsequent phases will a
 ## 📊 Phase Success Metrics
 
 ### Technical Metrics
-- ✅ **Module Structure**: Complete module hierarchy established
-- ✅ **Basic Functionality**: Script execution working with synthetic data
-- ✅ **CLI Operations**: Basic CLI commands functional
-- ✅ **Error Handling**: Basic error handling and logging implemented
+- ✅ **Module Structure**: Complete module hierarchy established with clean separation of concerns
+- ✅ **Basic Functionality**: Script execution working with synthetic data and proper error handling
+- ✅ **CLI Operations**: Basic CLI commands functional and integrated into main cursus CLI
+- ✅ **Error Handling**: Comprehensive error handling and logging implemented
 - ✅ **Test Coverage**: >80% test coverage for foundation components
 
 ### Quality Metrics
-- ✅ **Code Quality**: All code passes linting and style checks
-- ✅ **Documentation**: Basic documentation and examples provided
-- ✅ **Integration**: All components integrate successfully
-- ✅ **Performance**: Basic performance monitoring implemented
+- ✅ **Code Quality**: All code passes linting and style checks with consistent patterns
+- ✅ **Documentation**: Basic documentation and examples provided with clear usage instructions
+- ✅ **Integration**: All components integrate successfully with existing Cursus architecture
+- ✅ **Performance**: Basic performance monitoring implemented with memory usage tracking
+- ✅ **Modern Practices**: Type-safe data models with Pydantic V2 validation
 
 ## 🔄 Handoff to Next Phase
 
 ### Deliverables Ready for Phase 2
-1. **Core Infrastructure**: Fully functional core execution engine
-2. **Data Generation**: Basic synthetic data generation capabilities
-3. **CLI Foundation**: Working command-line interface
-4. **Development Environment**: Configured development and testing setup
-5. **Documentation**: Basic usage documentation and examples
+1. **Core Infrastructure**: Fully functional core execution engine with pipeline script executor
+2. **Data Generation**: Synthetic data generation capabilities with script-specific generators
+3. **CLI Integration**: Command-line interface integrated into main Cursus CLI structure
+4. **Modern Data Handling**: Type-safe Pydantic V2 models with automatic validation and serialization
+5. **Testing Framework**: Initial test suite with isolated script testing support
+6. **Directory Structure**: Clean, modular structure with separation of runtime functionality from CLI
+7. **Documentation**: Updated design documents and implementation plans reflecting the modern architecture
 
-### Known Limitations to Address in Phase 2
-1. **Script Discovery**: Enhanced script path resolution needed
-2. **Configuration Integration**: Integration with Cursus config system
-3. **Contract Integration**: Integration with script contracts
-4. **Pipeline Testing**: End-to-end pipeline testing capabilities
-5. **Advanced Error Handling**: More sophisticated error analysis
+### Week 1 Progress Report
+- ✅ Established core module structure with proper separation of concerns
+- ✅ Implemented Pydantic V2 models for robust data validation
+- ✅ Created script import and execution engine with error handling
+- ✅ Set up CLI foundation in the root cursus CLI directory
 
-### Recommendations for Phase 2
-1. **Priority Focus**: Implement pipeline-level testing capabilities
-2. **Integration Strategy**: Begin integration with existing Cursus components
-3. **Data Enhancement**: Expand synthetic data generation scenarios
+### Week 2 Progress Report
+- ✅ Implemented synthetic data generation with script-specific approaches
+- ✅ Created comprehensive CLI commands with output formatting
+- ✅ Added proper error handling and logging throughout the system
+- ✅ Integrated core components with test suite
+- ✅ Updated documentation to reflect implementation details

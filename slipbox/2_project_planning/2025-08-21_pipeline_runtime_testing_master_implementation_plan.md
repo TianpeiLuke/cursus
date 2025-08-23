@@ -3,7 +3,7 @@ tags:
   - project
   - planning
   - implementation
-  - script_functionality
+  - runtime
   - master_document
 keywords:
   - pipeline script testing implementation
@@ -20,7 +20,7 @@ language: python
 date of note: 2025-08-21
 ---
 
-# Pipeline Script Functionality Testing System - Master Implementation Plan
+# Pipeline Runtime Testing System - Master Implementation Plan
 
 **Date**: August 21, 2025  
 **Status**: Implementation Planning  
@@ -30,7 +30,7 @@ date of note: 2025-08-21
 
 ## 🎯 Executive Summary
 
-This master document outlines the comprehensive implementation plan for the **Pipeline Script Functionality Testing System** designed to address the critical gap between DAG compilation and actual script execution validation in the Cursus pipeline system. The implementation follows a phased approach over 12 weeks, delivering incremental value while building toward a complete testing solution.
+This master document outlines the comprehensive implementation plan for the **Pipeline Runtime Testing System** designed to address the critical gap between DAG compilation and actual script execution validation in the Cursus pipeline system. The implementation follows a phased approach over 12 weeks, delivering incremental value while building toward a complete testing solution.
 
 ## 📋 Project Overview
 
@@ -61,7 +61,7 @@ This master document outlines the comprehensive implementation plan for the **Pi
 ### Core Module Structure
 
 ```
-src/cursus/validation/script_functionality/
+src/cursus/validation/runtime/
 ├── __init__.py
 ├── core/                    # Core execution engine
 ├── data/                    # Data management layer
@@ -115,10 +115,10 @@ src/cursus/validation/script_functionality/
 This master implementation plan is supported by the following focused implementation documents:
 
 ### **Phase-Specific Implementation Plans**
-- **[Foundation Phase Implementation Plan](2025-08-21_pipeline_script_functionality_foundation_phase_plan.md)**: Detailed plan for Weeks 1-2 covering core infrastructure and basic framework
-- **[Data Flow Testing Phase Implementation Plan](2025-08-21_pipeline_script_functionality_data_flow_phase_plan.md)**: Detailed plan for Weeks 3-4 covering pipeline execution and data validation
-- **[S3 Integration Phase Implementation Plan](2025-08-21_pipeline_script_functionality_s3_integration_phase_plan.md)**: Detailed plan for Weeks 5-6 covering S3 integration and deep dive testing
-- **[Jupyter Integration Phase Implementation Plan](2025-08-21_pipeline_script_functionality_jupyter_integration_phase_plan.md)**: Detailed plan for Weeks 7-8 covering notebook interface and visualization
+- **[Foundation Phase Implementation Plan](2025-08-21_pipeline_runtime_foundation_phase_plan.md)**: Detailed plan for Weeks 1-2 covering core infrastructure and basic framework
+- **[Data Flow Testing Phase Implementation Plan](2025-08-21_pipeline_runtime_data_flow_phase_plan.md)**: Detailed plan for Weeks 3-4 covering pipeline execution and data validation
+- **[S3 Integration Phase Implementation Plan](2025-08-21_pipeline_runtime_s3_integration_phase_plan.md)**: Detailed plan for Weeks 5-6 covering S3 integration and deep dive testing
+- **[Jupyter Integration Phase Implementation Plan](2025-08-21_pipeline_runtime_jupyter_integration_phase_plan.md)**: Detailed plan for Weeks 7-8 covering notebook interface and visualization
 
 ### **Additional Implementation Phases** (To be created as needed)
 - **Advanced Features Phase Implementation Plan**: Detailed plan for Weeks 9-10 covering performance optimization and advanced features
@@ -177,12 +177,12 @@ This master implementation plan is supported by the following focused implementa
 ## 📚 Cross-References
 
 ### **Master Design Document**
-- **[Pipeline Script Functionality Testing Master Design](../1_design/pipeline_script_functionality_testing_master_design.md)**: Master design document that provides the foundation for this implementation plan
+- **[Pipeline Runtime Testing Master Design](../1_design/pipeline_runtime_testing_master_design.md)**: Master design document that provides the foundation for this implementation plan
 
 ### **Related Design Documents**
-- **[Core Execution Engine Design](../1_design/pipeline_script_functionality_core_engine_design.md)**: Core execution engine components design
-- **[Data Management Layer Design](../1_design/pipeline_script_functionality_data_management_design.md)**: Data generation, S3 integration, and compatibility validation design
-- **[Testing Modes Design](../1_design/pipeline_script_functionality_testing_modes_design.md)**: Isolation, pipeline, and deep dive testing modes design
+- **[Core Execution Engine Design](../1_design/pipeline_runtime_core_engine_design.md)**: Core execution engine components design
+- **[Data Management Layer Design](../1_design/pipeline_runtime_data_management_design.md)**: Data generation, S3 integration, and compatibility validation design
+- **[Testing Modes Design](../1_design/pipeline_runtime_testing_modes_design.md)**: Isolation, pipeline, and deep dive testing modes design
 
 ### **Foundation Documents**
 - **[Script Contract](../1_design/script_contract.md)**: Script contract specifications that define testing interfaces
@@ -191,7 +191,7 @@ This master implementation plan is supported by the following focused implementa
 
 ## 🎯 Conclusion
 
-This master implementation plan provides a comprehensive roadmap for developing the Pipeline Script Functionality Testing System over 12 weeks. The phased approach ensures incremental value delivery while building toward a complete, production-ready solution.
+This master implementation plan provides a comprehensive roadmap for developing the Pipeline Runtime Testing System over 12 weeks. The phased approach ensures incremental value delivery while building toward a complete, production-ready solution.
 
 ### Key Success Factors
 
@@ -214,10 +214,10 @@ This master implementation plan provides a comprehensive roadmap for developing 
 3. **Stakeholder Alignment**: Confirm requirements and success criteria
 4. **Phase 1 Kickoff**: Begin implementation with foundation phase
 
-The Pipeline Script Functionality Testing System will establish a new standard for comprehensive pipeline validation, ensuring both connectivity and functionality while providing the foundation for reliable, production-ready ML pipelines.
+The Pipeline Runtime Testing System will establish a new standard for comprehensive pipeline validation, ensuring both connectivity and functionality while providing the foundation for reliable, production-ready ML pipelines.
 
 ---
 
 **Master Implementation Plan Status**: Complete  
 **Next Steps**: Review detailed phase implementation plans and begin team assembly  
-**Related Design Document**: [Pipeline Script Functionality Testing Master Design](../1_design/pipeline_script_functionality_testing_master_design.md)
+**Related Design Document**: [Pipeline Runtime Testing Master Design](../1_design/pipeline_runtime_testing_master_design.md)

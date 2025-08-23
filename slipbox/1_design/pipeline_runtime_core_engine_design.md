@@ -2,7 +2,7 @@
 tags:
   - design
   - testing
-  - script_functionality
+  - runtime
   - core_engine
   - execution
 keywords:
@@ -19,16 +19,16 @@ language: python
 date of note: 2025-08-21
 ---
 
-# Pipeline Script Functionality Testing - Core Execution Engine Design
+# Pipeline Runtime Testing - Core Execution Engine Design
 
 **Date**: August 21, 2025  
 **Status**: Design Phase  
 **Priority**: High  
-**Scope**: Core execution engine components for pipeline script functionality testing
+**Scope**: Core execution engine components for pipeline runtime testing
 
 ## 🎯 Overview
 
-This document details the design of the **Core Execution Engine** for the Pipeline Script Functionality Testing System. The core engine is responsible for orchestrating script execution, managing dynamic imports, and handling data flow between pipeline steps.
+This document details the design of the **Core Execution Engine** for the Pipeline Runtime Testing System. The core engine is responsible for orchestrating script execution, managing dynamic imports, and handling data flow between pipeline steps.
 
 ## 📦 Core Components
 
@@ -312,12 +312,12 @@ class ContractIntegration:
 ## 📚 Cross-References
 
 ### **Master Design Document**
-- **[Pipeline Script Functionality Testing Master Design](pipeline_script_functionality_testing_master_design.md)**: Master design document that provides overall system architecture
+- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design.md)**: Master design document that provides overall system architecture
 
 ### **Related Component Designs**
-- **[Data Management Layer Design](pipeline_script_functionality_data_management_design.md)**: Data generation, S3 integration, and compatibility validation
-- **[Testing Modes Design](pipeline_script_functionality_testing_modes_design.md)**: Isolation, pipeline, and deep dive testing modes
-- **[System Integration Design](pipeline_script_functionality_system_integration_design.md)**: Integration with existing Cursus components
+- **[Data Management Layer Design](pipeline_runtime_data_management_design.md)**: Data generation, S3 integration, and compatibility validation
+- **[Testing Modes Design](pipeline_runtime_testing_modes_design.md)**: Isolation, pipeline, and deep dive testing modes
+- **[System Integration Design](pipeline_runtime_system_integration_design.md)**: Integration with existing Cursus components
 
 ### **Foundation Documents**
 - **[Script Contract](script_contract.md)**: Script contract specifications that define execution interfaces
@@ -325,10 +325,10 @@ class ContractIntegration:
 - **[Pipeline DAG](pipeline_dag.md)**: DAG structure that drives execution ordering
 
 ### **Implementation Planning**
-- **[Pipeline Script Functionality Testing Master Implementation Plan](../2_project_planning/2025-08-21_pipeline_script_functionality_testing_master_implementation_plan.md)**: Implementation plan with detailed development phases
+- **[Pipeline Runtime Testing Master Implementation Plan](../2_project_planning/2025-08-21_pipeline_runtime_testing_master_implementation_plan.md)**: Implementation plan with detailed development phases
 
 ---
 
 **Document Status**: Complete  
 **Next Steps**: Review related component designs and proceed with implementation  
-**Part of**: Pipeline Script Functionality Testing System Design
+**Part of**: Pipeline Runtime Testing System Design
