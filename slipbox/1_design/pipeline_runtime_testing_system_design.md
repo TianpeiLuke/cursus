@@ -636,13 +636,22 @@ result.visualize_performance()  # Performance charts
 
 #### **2. Pipeline End-to-End Testing**
 ```python
-# Test complete pipeline
+# Test complete pipeline with synthetic data
 pipeline_result = tester.quick_test_pipeline(
     "xgb_training_simple", 
     data_source="synthetic"
 )
 pipeline_result.visualize_flow()  # Interactive flow diagram
 pipeline_result.show_data_quality_evolution()  # Data quality tracking
+
+# Test with local real data
+local_result = tester.quick_test_pipeline(
+    "xgb_training_simple",
+    data_source="local",
+    local_data_dir="./test_data"
+)
+local_result.compare_with_synthetic()  # Compare local vs synthetic results
+local_result.show_data_lineage()  # Show data flow through pipeline
 
 # Test with real S3 data
 s3_result = tester.quick_test_pipeline(
@@ -686,6 +695,9 @@ debug_session.continue_execution()  # Continue from breakpoint
 # Test single script with synthetic data
 cursus runtime test-script currency_conversion --data-source synthetic --scenarios standard,edge_cases
 
+# Test with local real data
+cursus runtime test-script currency_conversion --data-source local --local-data-dir ./test_data --output-dir ./test_results
+
 # Test with S3 data
 cursus runtime test-script currency_conversion --data-source s3://bucket/path --output-dir ./test_results
 
@@ -695,23 +707,41 @@ cursus runtime benchmark-script currency_conversion --data-volumes small,medium,
 
 #### **2. Pipeline Testing**
 ```bash
-# Test pipeline end-to-end
+# Test pipeline end-to-end with synthetic data
 cursus runtime test-pipeline xgb_training_simple --data-source synthetic --output-dir ./pipeline_results
+
+# Test with local real data
+cursus runtime test-pipeline xgb_training_simple --data-source local --local-data-dir ./test_data --output-dir ./local_results
 
 # Test with real S3 data
 cursus runtime test-pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:... --output-dir ./s3_results
 
-# Performance testing
-cursus runtime test-pipeline-performance xgb_training_simple --data-volume large --output-dir ./perf_results
+# Performance testing with local data
+cursus runtime test-pipeline-performance xgb_training_simple --data-source local --local-data-dir ./test_data/large_volume --output-dir ./perf_results
 ```
 
 #### **3. Data Flow Analysis**
 ```bash
-# Analyze data flow between steps
+# Analyze data flow between steps with synthetic data
 cursus runtime analyze-data-flow --upstream tabular_preprocessing --downstream currency_conversion --data-source synthetic
 
-# Deep dive analysis
+# Analyze data flow with local real data
+cursus runtime analyze-data-flow --upstream tabular_preprocessing --downstream currency_conversion --data-source local --local-data-dir ./test_data
+
+# Deep dive analysis with S3 data
 cursus runtime deep-dive-analysis --pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:... --output-dir ./deep_dive
+```
+
+#### **4. Local Data Management**
+```bash
+# Discover local data files
+cursus runtime discover-local-data --directory ./test_data --create-manifest
+
+# Validate local data structure
+cursus runtime validate-local-data --manifest ./test_data/manifest.yaml
+
+# Convert local data formats
+cursus runtime convert-local-data --source ./test_data/raw_data --target-format parquet --output-dir ./test_data/converted
 ```
 
 ## 📊 Test Result Reporting

@@ -11,6 +11,7 @@ from ..utils.execution_context import ExecutionContext
 from ..utils.error_handling import ScriptExecutionError
 from .script_import_manager import ScriptImportManager
 from .data_flow_manager import DataFlowManager
+from ..data.local_data_manager import LocalDataManager
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class PipelineScriptExecutor:
         
         self.script_manager = ScriptImportManager()
         self.data_manager = DataFlowManager(str(self.workspace_dir))
+        self.local_data_manager = LocalDataManager(str(self.workspace_dir))
         self.execution_history = []
         
         # Setup logging
@@ -38,8 +40,8 @@ class PipelineScriptExecutor:
         logger.info(f"Starting isolation test for script: {script_name}")
         
         try:
-            # Phase 1: Basic implementation with synthetic data only
-            if data_source != "synthetic":
+            # Phase 1: Basic implementation with synthetic and local data
+            if data_source not in ["synthetic", "local"]:
                 raise NotImplementedError(f"Data source '{data_source}' not yet implemented")
             
             # Discover script path (basic implementation)
@@ -48,8 +50,8 @@ class PipelineScriptExecutor:
             # Import script main function
             main_func = self.script_manager.import_script_main(script_path)
             
-            # Prepare execution context (basic)
-            context = self._prepare_basic_execution_context(script_name)
+            # Prepare execution context with data source support
+            context = self._prepare_basic_execution_context(script_name, data_source)
             
             # Execute script
             execution_result = self.script_manager.execute_script_main(main_func, context)
@@ -110,14 +112,25 @@ class PipelineScriptExecutor:
                 
         raise FileNotFoundError(f"Script not found: {script_name}")
     
-    def _prepare_basic_execution_context(self, script_name: str) -> ExecutionContext:
-        """Prepare basic execution context - Phase 1 implementation"""
+    def _prepare_basic_execution_context(self, script_name: str, data_source: str = "synthetic") -> ExecutionContext:
+        """Prepare basic execution context with data source support - Phase 1 implementation"""
         
         input_dir = self.workspace_dir / "inputs" / script_name
         output_dir = self.workspace_dir / "outputs" / script_name
         
         input_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Handle local data source
+        if data_source == "local":
+            # Use LocalDataManager to prepare local data
+            local_data_paths = self.local_data_manager.get_data_for_script(script_name)
+            if local_data_paths:
+                # Copy local data to input directory
+                self.local_data_manager.prepare_data_for_execution(script_name, str(input_dir))
+                logger.info(f"Prepared local data for script {script_name}: {len(local_data_paths)} files")
+            else:
+                logger.warning(f"No local data found for script: {script_name}")
         
         # Basic job args for Phase 1
         job_args = argparse.Namespace()

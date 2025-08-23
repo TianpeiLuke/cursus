@@ -36,16 +36,17 @@ The Foundation Phase establishes the core infrastructure and basic framework for
 ### Primary Objectives
 1. **Establish Core Infrastructure**: Set up module structure, basic classes, and foundational architecture
 2. **Implement Basic Script Execution**: Create minimal viable script execution capabilities
-3. **Create Synthetic Data Generation**: Implement basic synthetic data generation for testing
-4. **Build CLI Foundation**: Establish command-line interface structure
+3. **Create Multi-Source Data Management**: Implement synthetic data generation and local real data support for testing
+4. **Build CLI Foundation**: Establish command-line interface structure with local data management commands
 5. **Setup Development Environment**: Configure development, testing, and CI/CD infrastructure
 
 ### Success Criteria
 - ✅ Core module structure established and functional
-- ✅ Basic script execution working with synthetic data
-- ✅ Simple CLI commands operational
+- ✅ Basic script execution working with synthetic and local real data
+- ✅ CLI commands operational with local data management capabilities
 - ✅ Development environment fully configured
 - ✅ Basic error handling and logging implemented
+- ✅ LocalDataManager component integrated for local data file management
 
 ## 🗓️ Detailed Implementation Schedule
 
@@ -70,7 +71,8 @@ src/cursus/validation/runtime/
 │   └── data_flow_manager.py
 ├── data/
 │   ├── __init__.py
-│   └── synthetic_data_generator.py
+│   ├── synthetic_data_generator.py
+│   └── local_data_manager.py
 ├── utils/
 │   ├── __init__.py
 │   ├── execution_context.py
@@ -105,6 +107,7 @@ from .core.data_flow_manager import DataFlowManager
 
 # Data management
 from .data.synthetic_data_generator import SyntheticDataGenerator
+from .data.local_data_manager import LocalDataManager
 
 # Utilities
 from .utils.result_models import TestResult, ExecutionResult
@@ -116,6 +119,7 @@ __all__ = [
     'ScriptImportManager', 
     'DataFlowManager',
     'SyntheticDataGenerator',
+    'LocalDataManager',
     'TestResult',
     'ExecutionResult',
     'ExecutionContext'
@@ -143,6 +147,7 @@ from ..utils.execution_context import ExecutionContext
 from ..utils.error_handling import ScriptExecutionError
 from .script_import_manager import ScriptImportManager
 from .data_flow_manager import DataFlowManager
+from ..data.local_data_manager import LocalDataManager
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +161,7 @@ class PipelineScriptExecutor:
         
         self.script_manager = ScriptImportManager()
         self.data_manager = DataFlowManager(str(self.workspace_dir))
+        self.local_data_manager = LocalDataManager(str(self.workspace_dir))
         
         # Setup logging
         self._setup_logging()
@@ -169,8 +175,8 @@ class PipelineScriptExecutor:
         logger.info(f"Starting isolation test for script: {script_name}")
         
         try:
-            # Phase 1: Basic implementation with synthetic data only
-            if data_source != "synthetic":
+            # Phase 1: Basic implementation with synthetic and local data
+            if data_source not in ["synthetic", "local"]:
                 raise NotImplementedError(f"Data source '{data_source}' not yet implemented")
             
             # Discover script path (basic implementation)
@@ -179,8 +185,8 @@ class PipelineScriptExecutor:
             # Import script main function
             main_func = self.script_manager.import_script_main(script_path)
             
-            # Prepare execution context (basic)
-            context = self._prepare_basic_execution_context(script_name)
+            # Prepare execution context with data source support
+            context = self._prepare_basic_execution_context(script_name, data_source)
             
             # Execute script
             execution_result = self.script_manager.execute_script_main(main_func, context)
@@ -224,14 +230,22 @@ class PipelineScriptExecutor:
                 
         raise FileNotFoundError(f"Script not found: {script_name}")
     
-    def _prepare_basic_execution_context(self, script_name: str) -> ExecutionContext:
-        """Prepare basic execution context - Phase 1 implementation"""
+    def _prepare_basic_execution_context(self, script_name: str, data_source: str = "synthetic") -> ExecutionContext:
+        """Prepare basic execution context with data source support - Phase 1 implementation"""
         
         input_dir = self.workspace_dir / "inputs" / script_name
         output_dir = self.workspace_dir / "outputs" / script_name
         
         input_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Handle local data source
+        if data_source == "local":
+            # Use LocalDataManager to prepare local data
+            local_data_paths = self.local_data_manager.get_data_for_script(script_name)
+            if local_data_paths:
+                # Copy local data to input directory
+                self.local_data_manager.prepare_data_for_execution(script_name, str(input_dir))
         
         # Basic job args for Phase 1
         job_args = None  # Will be enhanced in later phases
@@ -442,14 +456,98 @@ class ExecutionContext(BaseModel):
 
 ### Week 2: Basic Framework Implementation
 
-#### **Day 6-7: Synthetic Data Generation**
+#### **Day 6-7: Multi-Source Data Management**
 
 **Tasks**:
 - Implement basic synthetic data generator
+- Implement LocalDataManager for local real data support
 - Create simple data generation scenarios
-- Establish data format support
+- Establish data format support (CSV, JSON, Parquet, PKL, XLSX)
 
 **Deliverables**:
+
+**LocalDataManager** (Basic Implementation):
+```python
+# src/cursus/validation/runtime/data/local_data_manager.py
+import os
+import shutil
+import yaml
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+import pandas as pd
+import json
+
+class LocalDataManager:
+    """Manages local real data files for pipeline testing"""
+    
+    def __init__(self, workspace_dir: str):
+        """Initialize with workspace directory"""
+        self.workspace_dir = Path(workspace_dir)
+        self.local_data_dir = self.workspace_dir / "local_data"
+        self.local_data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create manifest file if it doesn't exist
+        self.manifest_path = self.local_data_dir / "data_manifest.yaml"
+        if not self.manifest_path.exists():
+            self._create_default_manifest()
+    
+    def get_data_for_script(self, script_name: str) -> Optional[Dict[str, str]]:
+        """Get local data file paths for a specific script"""
+        manifest = self._load_manifest()
+        
+        if script_name in manifest.get("scripts", {}):
+            script_data = manifest["scripts"][script_name]
+            data_paths = {}
+            
+            for data_key, file_info in script_data.items():
+                file_path = self.local_data_dir / file_info["path"]
+                if file_path.exists():
+                    data_paths[data_key] = str(file_path)
+            
+            return data_paths if data_paths else None
+        
+        return None
+    
+    def prepare_data_for_execution(self, script_name: str, target_dir: str):
+        """Copy local data files to execution directory"""
+        data_paths = self.get_data_for_script(script_name)
+        if not data_paths:
+            return
+        
+        target_path = Path(target_dir)
+        target_path.mkdir(parents=True, exist_ok=True)
+        
+        for data_key, source_path in data_paths.items():
+            target_file = target_path / Path(source_path).name
+            shutil.copy2(source_path, target_file)
+    
+    def _load_manifest(self) -> Dict[str, Any]:
+        """Load data manifest configuration"""
+        try:
+            with open(self.manifest_path, 'r') as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            return {}
+    
+    def _create_default_manifest(self):
+        """Create default manifest file"""
+        default_manifest = {
+            "version": "1.0",
+            "description": "Local data manifest for pipeline testing",
+            "scripts": {
+                "example_script": {
+                    "input_data": {
+                        "path": "example_script/input.csv",
+                        "format": "csv",
+                        "description": "Example input data"
+                    }
+                }
+            }
+        }
+        
+        with open(self.manifest_path, 'w') as f:
+            yaml.dump(default_manifest, f, default_flow_style=False)
+```
 
 **SyntheticDataGenerator** (Basic Implementation):
 ```python
@@ -522,7 +620,8 @@ def runtime():
 @runtime.command()
 @click.argument('script_name')
 @click.option('--data-source', default='synthetic', 
-              help='Data source for testing (synthetic)')
+              type=click.Choice(['synthetic', 'local']),
+              help='Data source for testing (synthetic, local)')
 @click.option('--data-size', default='small',
               type=click.Choice(['small', 'medium', 'large']),
               help='Size of test data')

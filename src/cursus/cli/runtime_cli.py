@@ -10,6 +10,7 @@ import os
 from ..validation.runtime.core.pipeline_script_executor import PipelineScriptExecutor
 from ..validation.runtime.execution.pipeline_executor import PipelineExecutor
 from ..validation.runtime.utils.result_models import TestResult
+from ..validation.runtime.data.local_data_manager import LocalDataManager
 from .runtime_s3_cli import s3
 
 @click.group()
@@ -28,7 +29,8 @@ runtime.add_command(s3)
 @runtime.command()
 @click.argument('script_name')
 @click.option('--data-source', default='synthetic', 
-              help='Data source for testing (synthetic)')
+              type=click.Choice(['synthetic', 'local']),
+              help='Data source for testing (synthetic, local)')
 @click.option('--data-size', default='small',
               type=click.Choice(['small', 'medium', 'large']),
               help='Size of test data')
@@ -229,6 +231,127 @@ def discover_script(script_path: str, workspace_dir: str):
             
     except Exception as e:
         click.echo(f"Script discovery failed: {str(e)}", err=True)
+        sys.exit(1)
+
+@runtime.command()
+@click.argument('script_name')
+@click.argument('data_files', nargs=-1, required=True)
+@click.option('--workspace-dir', default='./pipeline_testing',
+              help='Workspace directory for test execution')
+@click.option('--description', default='',
+              help='Description for the data files')
+def add_local_data(script_name: str, data_files: tuple, workspace_dir: str, description: str):
+    """Add local data files for a script
+    
+    SCRIPT_NAME: Name of the script
+    DATA_FILES: One or more local data file paths
+    """
+    
+    try:
+        manager = LocalDataManager(workspace_dir)
+        
+        for i, data_file in enumerate(data_files):
+            if not Path(data_file).exists():
+                click.echo(f"Error: File not found: {data_file}", err=True)
+                continue
+                
+            # Generate data key
+            data_key = f"input_data_{i+1}" if len(data_files) > 1 else "input_data"
+            
+            # Add the file
+            success = manager.add_data_for_script(
+                script_name, 
+                data_key, 
+                data_file, 
+                description or f"Local data file for {script_name}"
+            )
+            
+            if success:
+                click.echo(f"Added local data: {Path(data_file).name} for script {script_name}")
+            else:
+                click.echo(f"Failed to add local data: {data_file}", err=True)
+        
+        click.echo(f"Local data files added successfully for {script_name}")
+        
+    except Exception as e:
+        click.echo(f"Error adding local data: {str(e)}", err=True)
+        sys.exit(1)
+
+@runtime.command()
+@click.option('--workspace-dir', default='./pipeline_testing',
+              help='Workspace directory for test execution')
+@click.option('--script-name', default=None,
+              help='Show data for specific script only')
+def list_local_data(workspace_dir: str, script_name: str):
+    """List available local data files"""
+    
+    try:
+        manager = LocalDataManager(workspace_dir)
+        
+        if script_name:
+            # Show data for specific script
+            script_data = manager.list_data_for_script(script_name)
+            if not script_data:
+                click.echo(f"No local data files configured for script: {script_name}")
+                return
+            
+            click.echo(f"Local data files for script: {script_name}")
+            click.echo("-" * 40)
+            
+            for data_key, file_info in script_data.items():
+                file_path = manager.local_data_dir / file_info["path"]
+                status = "✓" if file_path.exists() else "✗"
+                click.echo(f"  {status} {data_key}: {file_info['path']} ({file_info.get('format', 'unknown')})")
+                if file_info.get('description'):
+                    click.echo(f"    Description: {file_info['description']}")
+        else:
+            # Show all scripts with local data
+            scripts = manager.list_all_scripts()
+            if not scripts:
+                click.echo("No local data files configured")
+                return
+            
+            click.echo("Available local data files:")
+            click.echo("-" * 40)
+            
+            for script in scripts:
+                click.echo(f"\nScript: {script}")
+                script_data = manager.list_data_for_script(script)
+                for data_key, file_info in script_data.items():
+                    file_path = manager.local_data_dir / file_info["path"]
+                    status = "✓" if file_path.exists() else "✗"
+                    click.echo(f"  {status} {data_key}: {file_info['path']} ({file_info.get('format', 'unknown')})")
+        
+    except Exception as e:
+        click.echo(f"Error listing local data: {str(e)}", err=True)
+        sys.exit(1)
+
+@runtime.command()
+@click.argument('script_name')
+@click.option('--data-key', default=None,
+              help='Remove specific data key (if not provided, removes all data for script)')
+@click.option('--workspace-dir', default='./pipeline_testing',
+              help='Workspace directory for test execution')
+@click.confirmation_option(prompt='Are you sure you want to remove the local data?')
+def remove_local_data(script_name: str, data_key: str, workspace_dir: str):
+    """Remove local data for a script"""
+    
+    try:
+        manager = LocalDataManager(workspace_dir)
+        
+        success = manager.remove_data_for_script(script_name, data_key)
+        
+        if success:
+            if data_key:
+                click.echo(f"Removed local data: {script_name}.{data_key}")
+            else:
+                click.echo(f"Removed all local data for script: {script_name}")
+        else:
+            click.echo(f"Failed to remove local data", err=True)
+            sys.exit(1)
+        
+    except Exception as e:
+        click.echo(f"Error removing local data: {str(e)}", err=True)
         sys.exit(1)
 
 def _display_text_result(result: TestResult):

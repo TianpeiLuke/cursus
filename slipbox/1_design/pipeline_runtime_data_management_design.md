@@ -28,7 +28,74 @@ The Data Management Layer provides comprehensive data handling capabilities for 
 
 ## Architecture Components
 
-### 1. SyntheticDataGenerator
+### 1. LocalDataManager
+
+**Purpose**: Manage local real data files for testing pipeline scripts with user-provided datasets stored on the local filesystem.
+
+**Core Responsibilities**:
+- Discover and catalog local data files in specified directories
+- Validate local data against pipeline requirements
+- Provide unified access to local data across different formats
+- Track data lineage and usage for local files
+- Convert between data formats as needed
+
+**Key Methods**:
+```python
+class LocalDataManager:
+    def __init__(self, base_data_dir: str = "./test_data"):
+        self.base_data_dir = Path(base_data_dir)
+        self.data_catalog = {}
+        self.metadata_cache = {}
+    
+    def discover_data_files(self, directory: str = None) -> Dict[str, List[str]]
+    def register_data_file(self, logical_name: str, file_path: str, metadata: Dict = None) -> None
+    def get_data_file(self, logical_name: str) -> Optional[str]
+    def load_data(self, file_path: str, format_hint: str = None) -> Any
+    def validate_data_structure(self, data: Any, expected_schema: Dict) -> ValidationResult
+    def convert_data_format(self, source_path: str, target_format: str, target_path: str) -> str
+    def create_data_manifest(self, directory: str) -> Dict[str, Any]
+    def cleanup_converted_files(self, max_age_hours: int = 24) -> None
+```
+
+**Local Data Organization Structure**:
+```
+test_data/
+├── step_outputs/           # Organized by pipeline step
+│   ├── preprocessing/
+│   │   ├── train_data.csv
+│   │   ├── test_data.csv
+│   │   └── metadata.json
+│   ├── feature_engineering/
+│   │   ├── features.parquet
+│   │   └── feature_names.json
+│   └── model_training/
+│       ├── model.pkl
+│       └── metrics.json
+├── scenarios/              # Organized by test scenario
+│   ├── edge_cases/
+│   ├── large_volume/
+│   └── standard/
+└── raw_data/              # Raw unprocessed data
+    ├── customer_data.csv
+    ├── transaction_logs.json
+    └── product_catalog.parquet
+```
+
+**Data Discovery and Cataloging**:
+- **Automatic Discovery**: Scan directories for supported file formats
+- **Metadata Extraction**: Extract schema and statistics from data files
+- **Logical Naming**: Map file paths to logical names for easy reference
+- **Format Detection**: Automatically detect file formats and encodings
+- **Validation**: Ensure data meets pipeline requirements
+
+**Integration Features**:
+- **Format Conversion**: Convert between CSV, JSON, Parquet, and other formats
+- **Schema Validation**: Validate data against expected schemas
+- **Data Sampling**: Create smaller samples for faster testing
+- **Caching**: Cache processed data and metadata for performance
+- **Lineage Tracking**: Track which local files are used in testing
+
+### 2. SyntheticDataGenerator
 
 **Purpose**: Generate realistic synthetic data for testing pipeline scripts without requiring access to production data.
 
@@ -251,6 +318,93 @@ class EnhancedDataFlowManager(DataFlowManager):
 ```
 
 ## Data Source Integration
+
+### Local Data Sources
+
+**Directory-Based Organization**:
+```yaml
+local_data:
+  base_directory: "./test_data"
+  organization_mode: "step_based"  # or "scenario_based"
+  supported_formats: ["csv", "json", "parquet", "pkl", "xlsx"]
+  auto_discovery: true
+  validation_rules:
+    - check_schema: true
+    - check_format: true
+    - check_size_limits: true
+  conversion:
+    auto_convert: true
+    target_formats: ["csv", "parquet"]
+    cache_converted: true
+```
+
+**Data Manifest Configuration**:
+```yaml
+# test_data/manifest.yaml
+data_catalog:
+  preprocessing:
+    train_data:
+      file_path: "step_outputs/preprocessing/train_data.csv"
+      format: "csv"
+      schema:
+        columns: ["customer_id", "purchase_amount", "date"]
+        types: ["int64", "float64", "datetime"]
+      metadata:
+        rows: 10000
+        size_mb: 2.5
+        created: "2025-08-20T10:00:00Z"
+    test_data:
+      file_path: "step_outputs/preprocessing/test_data.csv"
+      format: "csv"
+      schema:
+        columns: ["customer_id", "purchase_amount", "date"]
+        types: ["int64", "float64", "datetime"]
+      metadata:
+        rows: 2500
+        size_mb: 0.6
+        created: "2025-08-20T10:00:00Z"
+  
+  scenarios:
+    edge_cases:
+      missing_values:
+        file_path: "scenarios/edge_cases/missing_values.csv"
+        format: "csv"
+        description: "Dataset with various missing value patterns"
+      outliers:
+        file_path: "scenarios/edge_cases/outliers.parquet"
+        format: "parquet"
+        description: "Dataset with statistical outliers"
+```
+
+**Local Data Access Patterns**:
+- **Direct Path Access**: Use file paths directly for simple cases
+- **Logical Name Access**: Use manifest-based logical names for organized access
+- **Pattern-Based Discovery**: Automatically discover files matching patterns
+- **Scenario-Based Selection**: Select data based on testing scenarios
+
+**Integration with DataFlowManager**:
+```python
+class LocalDataIntegration:
+    """Integration between LocalDataManager and DataFlowManager"""
+    
+    def setup_local_data_inputs(self, step_name: str, local_data_config: Dict) -> Dict[str, str]:
+        """Setup step inputs using local data configuration"""
+        resolved_inputs = {}
+        
+        for logical_name, data_spec in local_data_config.items():
+            if isinstance(data_spec, str):
+                # Direct file path
+                resolved_inputs[logical_name] = data_spec
+            elif isinstance(data_spec, dict):
+                # Manifest-based reference
+                file_path = self.local_data_manager.get_data_file(data_spec['logical_name'])
+                if file_path:
+                    resolved_inputs[logical_name] = file_path
+                else:
+                    raise ValueError(f"Local data not found: {data_spec['logical_name']}")
+        
+        return resolved_inputs
+```
 
 ### Synthetic Data Sources
 
@@ -481,22 +635,76 @@ quality_rules = [
 **Flexible Configuration**:
 ```yaml
 data_management:
-  default_source: "synthetic"
+  default_source: "synthetic"  # Options: "synthetic", "local", "s3"
+  
+  # Local data configuration
+  local:
+    base_directory: "./test_data"
+    manifest_file: "manifest.yaml"
+    auto_discovery: true
+    supported_formats: ["csv", "json", "parquet", "pkl", "xlsx"]
+    organization_mode: "step_based"  # or "scenario_based"
+    validation:
+      check_schema: true
+      check_format: true
+      check_size_limits: true
+      max_file_size_mb: 100
+    conversion:
+      auto_convert: true
+      target_formats: ["csv", "parquet"]
+      cache_converted: true
+      cache_dir: "./test_data/.cache"
+      cache_ttl_hours: 24
+  
+  # Synthetic data configuration
   synthetic:
     generators:
       - type: "tabular"
         config: "configs/synthetic_tabular.yaml"
       - type: "time_series"
         config: "configs/synthetic_timeseries.yaml"
+    cache_generated: true
+    cache_dir: "./synthetic_cache"
+  
+  # S3 data configuration
   s3:
     bucket: "ml-pipeline-data"
     credentials: "aws_profile"
     cache_dir: "/tmp/pipeline_cache"
     cache_ttl_hours: 24
+    systematic_path_management: true
+  
+  # Data compatibility settings
   compatibility:
     strict_mode: false
     auto_convert: true
     quality_threshold: 0.9
+    fallback_order: ["local", "s3", "synthetic"]  # Fallback priority
+```
+
+**Data Source Selection Strategy**:
+```yaml
+# Example pipeline-specific data source configuration
+pipeline_data_sources:
+  preprocessing:
+    primary: "local"
+    config:
+      logical_name: "preprocessing.train_data"
+      fallback: "synthetic"
+  
+  feature_engineering:
+    primary: "s3"
+    config:
+      step_name: "preprocessing"
+      output_name: "processed_data"
+      fallback: "local"
+  
+  model_training:
+    primary: "local"
+    config:
+      directory: "./test_data/scenarios/large_volume/"
+      pattern: "*.parquet"
+      fallback: "synthetic"
 ```
 
 ### Extension Points

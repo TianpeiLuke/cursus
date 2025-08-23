@@ -12,6 +12,7 @@ from .core.data_flow_manager import DataFlowManager
 
 # Data management
 from .data.synthetic_data_generator import SyntheticDataGenerator
+from .data.local_data_manager import LocalDataManager
 
 # Utilities
 from .utils.result_models import TestResult, ExecutionResult
@@ -41,6 +42,7 @@ __all__ = [
     
     # Data management
     'SyntheticDataGenerator',
+    'LocalDataManager',
     
     # Utilities
     'TestResult',

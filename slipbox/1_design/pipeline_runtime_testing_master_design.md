@@ -71,6 +71,7 @@ Pipeline Runtime Testing System
 │   ├── ScriptImportManager (dynamic imports & execution)
 │   └── DataFlowManager (manages data between steps)
 ├── Data Management Layer
+│   ├── LocalDataManager (manages local real data files)
 │   ├── SyntheticDataGenerator (creates test data)
 │   ├── S3DataDownloader (fetches real pipeline outputs)
 │   └── DataCompatibilityValidator (validates data flow)
@@ -111,8 +112,9 @@ def main(
 
 #### **3. Flexible Data Sources**
 - **Synthetic Data**: Generated locally for fast iteration
+- **Local Real Data**: User-provided datasets stored on local filesystem
 - **Real S3 Data**: Downloaded from actual pipeline executions for deep analysis
-- **Hybrid Approach**: Combine both for comprehensive testing
+- **Hybrid Approach**: Combine all three sources for comprehensive testing
 
 #### **4. Modern Data Handling**
 - **Pydantic V2 Models**: Type-safe data validation and serialization
