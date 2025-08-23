@@ -176,21 +176,20 @@ class DataFlowManager:
 
 **Context Components**:
 ```python
-@dataclass
-class ExecutionContext:
+from pydantic import BaseModel
+from typing import Dict
+import argparse
+
+class ExecutionContext(BaseModel):
     input_paths: Dict[str, str]
     output_paths: Dict[str, str]
     environ_vars: Dict[str, str]
     job_args: argparse.Namespace
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for script main function call"""
-        return {
-            'input_paths': self.input_paths,
-            'output_paths': self.output_paths,
-            'environ_vars': self.environ_vars,
-            'job_args': self.job_args
-        }
+    class Config:
+        arbitrary_types_allowed = True  # Allow argparse.Namespace
+    
+    # Use built-in Pydantic serialization: context.model_dump() or dict(context)
 ```
 
 **Context Preparation Process**:
@@ -316,6 +315,7 @@ class ContractIntegration:
 
 ### **Related Component Designs**
 - **[Data Management Layer Design](pipeline_runtime_data_management_design.md)**: Data generation, S3 integration, and compatibility validation
+- **[S3 Output Path Management Design](pipeline_runtime_s3_output_path_management_design.md)**: Systematic S3 output path tracking and management
 - **[Testing Modes Design](pipeline_runtime_testing_modes_design.md)**: Isolation, pipeline, and deep dive testing modes
 - **[System Integration Design](pipeline_runtime_system_integration_design.md)**: Integration with existing Cursus components
 

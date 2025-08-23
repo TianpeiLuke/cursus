@@ -129,6 +129,7 @@ This master design is supported by the following focused design documents:
 ### **Core System Components**
 - **[Core Execution Engine Design](pipeline_runtime_core_engine_design.md)**: Detailed design for PipelineScriptExecutor, ScriptImportManager, and DataFlowManager
 - **[Data Management Layer Design](pipeline_runtime_data_management_design.md)**: Comprehensive design for synthetic data generation, S3 integration, and data compatibility validation
+- **[S3 Output Path Management Design](pipeline_runtime_s3_output_path_management_design.md)**: Systematic S3 output path tracking and management for pipeline runtime testing
 - **[Testing Modes Design](pipeline_runtime_testing_modes_design.md)**: Detailed design for isolation testing, pipeline testing, and deep dive analysis modes
 
 ### **Integration and User Experience**

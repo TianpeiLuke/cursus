@@ -56,29 +56,71 @@ class SyntheticDataGenerator:
 
 ### 2. S3DataDownloader
 
-**Purpose**: Download and manage real pipeline data from S3 for testing with production-like datasets.
+**Purpose**: Download and manage real pipeline data from S3 for testing with production-like datasets using the AWS Python SDK (boto3). **Integrates with the systematic S3 Output Path Management system** for centralized path tracking and discovery.
 
 **Core Responsibilities**:
-- Download data from S3 buckets with proper authentication
+- Download data from S3 buckets with proper authentication via boto3
 - Cache downloaded data locally for repeated testing
-- Manage data versioning and freshness
-- Handle large datasets efficiently
+- Manage data versioning and freshness using S3 versioning APIs
+- Handle large datasets efficiently with boto3's multipart download capabilities
+- **Integrate with S3OutputPathRegistry for systematic path resolution**
 
 **Key Methods**:
 ```python
+import boto3
+from botocore.exceptions import ClientError, NoCredentialsError
+from typing import List, Optional, Dict
+
 class S3DataDownloader:
+    def __init__(self, s3_output_registry: Optional['S3OutputPathRegistry'] = None):
+        self.s3_client = boto3.client('s3')
+        self.s3_resource = boto3.resource('s3')
+        self.s3_output_registry = s3_output_registry  # Integration with systematic path management
+    
     def download_step_output(self, s3_path: str, local_path: str) -> str
+    def download_step_output_by_logical_name(self, step_name: str, logical_name: str, local_path: str) -> str
     def list_available_outputs(self, pipeline_id: str) -> List[S3Object]
+    def discover_pipeline_outputs(self, pipeline_dag: Dict = None) -> Dict[str, List['S3OutputInfo']]
     def get_cached_data(self, s3_path: str) -> Optional[str]
     def cleanup_cache(self, max_age_days: int) -> None
     def verify_data_integrity(self, local_path: str, s3_metadata: Dict) -> bool
 ```
 
-**S3 Integration Features**:
-- **Authentication**: Support for AWS credentials and IAM roles
-- **Caching**: Local caching with configurable TTL
-- **Compression**: Handle compressed data formats
-- **Metadata**: Preserve S3 metadata for data lineage
+**S3 Integration Features (via AWS Python SDK)**:
+- **Authentication**: Support for AWS credentials and IAM roles through boto3 session management
+- **Caching**: Local caching with configurable TTL using S3 object metadata
+- **Compression**: Handle compressed data formats with boto3's streaming capabilities
+- **Metadata**: Preserve S3 metadata for data lineage using boto3's head_object operations
+- **Error Handling**: Comprehensive error handling using botocore exceptions
+- **Performance**: Leverage boto3's transfer manager for large file operations
+- **Systematic Path Resolution**: Integration with S3OutputPathRegistry for logical name-based access
+
+**Integration with S3 Output Path Management**:
+The S3DataDownloader now integrates with the [S3 Output Path Management System](pipeline_runtime_s3_output_path_management_design.md) to provide systematic access to pipeline outputs:
+
+```python
+# Enhanced integration example
+class EnhancedS3DataDownloader(S3DataDownloader):
+    """S3 downloader with systematic path management integration"""
+    
+    def download_by_step_and_output(self, step_name: str, logical_name: str, local_path: str) -> str:
+        """Download using systematic path registry"""
+        if not self.s3_output_registry:
+            raise ValueError("S3OutputPathRegistry required for logical name resolution")
+        
+        output_info = self.s3_output_registry.get_step_output_info(step_name, logical_name)
+        if not output_info:
+            raise ValueError(f"No S3 path found for {step_name}.{logical_name}")
+        
+        return self.download_step_output(output_info.s3_uri, local_path)
+    
+    def discover_all_pipeline_outputs(self) -> Dict[str, Dict[str, 'S3OutputInfo']]:
+        """Discover all outputs using systematic registry"""
+        if not self.s3_output_registry:
+            return {}
+        
+        return self.s3_output_registry.step_outputs
+```
 
 ### 3. DataCompatibilityValidator
 
@@ -107,28 +149,106 @@ class DataCompatibilityValidator:
 
 ### 4. DataFlowManager
 
-**Purpose**: Orchestrate data flow between pipeline steps, managing input/output dependencies.
+**Purpose**: Orchestrate data flow between pipeline steps, managing input/output dependencies. **Integrates with the systematic S3 Output Path Management system** for enhanced data flow tracking and resolution.
 
 **Core Responsibilities**:
 - Track data dependencies between steps
 - Manage data transformations and format conversions
 - Handle data routing and step input preparation
 - Monitor data flow performance and bottlenecks
+- **Leverage S3OutputPathRegistry for systematic path resolution and data lineage**
 
 **Key Methods**:
 ```python
 class DataFlowManager:
+    def __init__(self, workspace_dir: str, s3_output_registry: Optional['S3OutputPathRegistry'] = None):
+        self.workspace_dir = Path(workspace_dir)
+        self.s3_output_registry = s3_output_registry  # Integration with systematic path management
+        self.data_lineage = []
+    
     def prepare_step_inputs(self, step_config: StepConfig, available_data: Dict) -> Dict
+    def setup_step_inputs_with_registry(self, step_name: str, upstream_outputs: Dict, 
+                                       step_contract: 'ScriptContract') -> Dict[str, str]
     def route_step_outputs(self, step_outputs: Dict, downstream_steps: List[str]) -> None
     def convert_data_format(self, data: Any, source_format: str, target_format: str) -> Any
     def track_data_lineage(self, step_name: str, inputs: Dict, outputs: Dict) -> None
+    def create_data_lineage_report(self) -> Dict[str, Any]
 ```
 
 **Data Flow Features**:
 - **Dependency Resolution**: Automatic input preparation based on DAG
 - **Format Conversion**: Seamless conversion between data formats
-- **Lineage Tracking**: Complete data provenance tracking
+- **Lineage Tracking**: Complete data provenance tracking with S3 path integration
 - **Performance Monitoring**: Data flow timing and resource usage
+- **Systematic Path Resolution**: Integration with S3OutputPathRegistry for logical name-based data flow
+
+**Integration with S3 Output Path Management**:
+The DataFlowManager now integrates with the [S3 Output Path Management System](pipeline_runtime_s3_output_path_management_design.md) to provide systematic data flow management:
+
+```python
+# Enhanced integration example
+class EnhancedDataFlowManager(DataFlowManager):
+    """Data flow manager with systematic S3 path management integration"""
+    
+    def setup_step_inputs_with_systematic_resolution(self, step_name: str, 
+                                                   upstream_outputs: Dict, 
+                                                   step_contract: 'ScriptContract') -> Dict[str, str]:
+        """Enhanced input setup with systematic S3 path resolution"""
+        resolved_inputs = {}
+        
+        for logical_name, upstream_ref in upstream_outputs.items():
+            if isinstance(upstream_ref, PropertyReference):
+                # Use S3OutputPathRegistry to resolve upstream outputs
+                if self.s3_output_registry:
+                    output_info = self.s3_output_registry.get_step_output_info(
+                        upstream_ref.step_name, 
+                        upstream_ref.output_spec.logical_name
+                    )
+                    
+                    if output_info:
+                        resolved_inputs[logical_name] = output_info.s3_uri
+                        
+                        # Track data lineage with comprehensive metadata
+                        self.data_lineage.append({
+                            'from_step': upstream_ref.step_name,
+                            'from_output': upstream_ref.output_spec.logical_name,
+                            'to_step': step_name,
+                            'to_input': logical_name,
+                            's3_uri': output_info.s3_uri,
+                            'data_type': output_info.data_type,
+                            'job_type': output_info.job_type,
+                            'timestamp': datetime.now()
+                        })
+                    else:
+                        raise ValueError(
+                            f"No S3 path found for upstream output: "
+                            f"{upstream_ref.step_name}.{upstream_ref.output_spec.logical_name}"
+                        )
+                else:
+                    # Fallback to traditional property reference resolution
+                    resolved_inputs[logical_name] = str(upstream_ref)
+            else:
+                # Direct S3 URI provided
+                resolved_inputs[logical_name] = str(upstream_ref)
+        
+        return resolved_inputs
+    
+    def validate_data_availability_with_registry(self, step_name: str, 
+                                               required_inputs: List[str]) -> Dict[str, bool]:
+        """Validate data availability using systematic registry"""
+        availability = {}
+        
+        if not self.s3_output_registry:
+            # Fallback to basic availability check
+            return {input_name: False for input_name in required_inputs}
+        
+        for input_name in required_inputs:
+            # Check if we have the path registered and accessible
+            # This could be enhanced to actually check S3 object existence using boto3
+            availability[input_name] = input_name in self.s3_output_registry.step_outputs.get(step_name, {})
+        
+        return availability
+```
 
 ## Data Source Integration
 
@@ -166,11 +286,13 @@ synthetic_data:
 
 ### S3 Data Sources
 
-**Pipeline Output Integration**:
+**Pipeline Output Integration (using boto3)**:
 ```yaml
 s3_data:
   bucket: "ml-pipeline-outputs"
   prefix: "production/pipeline-v1.2/"
+  aws_profile: "default"  # For boto3 session configuration
+  region: "us-west-2"     # AWS region for boto3 client
   steps:
     - name: "preprocessing"
       output_path: "preprocessing/output/"
@@ -178,11 +300,33 @@ s3_data:
       output_path: "features/output/"
 ```
 
-**Data Selection Strategies**:
-- **Latest**: Use most recent pipeline outputs
-- **Versioned**: Use specific pipeline version outputs
-- **Sample**: Use representative sample of production data
-- **Custom**: User-specified data selection criteria
+**Data Selection Strategies (implemented with boto3 APIs)**:
+- **Latest**: Use most recent pipeline outputs via `list_objects_v2()` with sorting
+- **Versioned**: Use specific pipeline version outputs via `list_object_versions()`
+- **Sample**: Use representative sample of production data with `head_object()` for metadata
+- **Custom**: User-specified data selection criteria using boto3 filtering capabilities
+
+**Example boto3 Implementation**:
+```python
+import boto3
+from datetime import datetime
+
+class S3DataSelector:
+    def __init__(self, bucket_name: str, aws_profile: str = None):
+        session = boto3.Session(profile_name=aws_profile) if aws_profile else boto3.Session()
+        self.s3_client = session.client('s3')
+        self.bucket_name = bucket_name
+    
+    def get_latest_outputs(self, prefix: str) -> List[str]:
+        """Get latest pipeline outputs using boto3 list_objects_v2"""
+        response = self.s3_client.list_objects_v2(
+            Bucket=self.bucket_name,
+            Prefix=prefix
+        )
+        objects = sorted(response.get('Contents', []), 
+                        key=lambda x: x['LastModified'], reverse=True)
+        return [obj['Key'] for obj in objects]
+```
 
 ## Data Compatibility Framework
 
@@ -377,13 +521,51 @@ data_management:
 3. **Cached Data**: Use previously generated data if available
 4. **Manual Intervention**: Request user-provided data
 
-### Data Download Failures
+### Data Download Failures (boto3 Error Handling)
 
-**Retry Mechanisms**:
-- Exponential backoff for transient failures
-- Alternative S3 endpoints or regions
-- Partial download resumption
-- Graceful degradation to synthetic data
+**Retry Mechanisms (using boto3 and botocore)**:
+- Exponential backoff for transient failures using botocore's retry configuration
+- Alternative S3 endpoints or regions via boto3 client configuration
+- Partial download resumption with boto3's multipart download capabilities
+- Graceful degradation to synthetic data when S3 operations fail
+
+**Example boto3 Error Handling**:
+```python
+import boto3
+from botocore.exceptions import ClientError, NoCredentialsError, EndpointConnectionError
+from botocore.config import Config
+import time
+
+class S3ErrorHandler:
+    def __init__(self):
+        # Configure boto3 with retry settings
+        retry_config = Config(
+            retries={
+                'max_attempts': 3,
+                'mode': 'adaptive'
+            }
+        )
+        self.s3_client = boto3.client('s3', config=retry_config)
+    
+    def download_with_retry(self, bucket: str, key: str, local_path: str):
+        """Download with comprehensive boto3 error handling"""
+        try:
+            self.s3_client.download_file(bucket, key, local_path)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == 'NoSuchKey':
+                # Handle missing object
+                pass
+            elif error_code == 'AccessDenied':
+                # Handle permission issues
+                pass
+        except NoCredentialsError:
+            # Handle credential issues
+            pass
+        except EndpointConnectionError:
+            # Handle network connectivity issues
+            pass
+```
 
 ### Compatibility Failures
 
@@ -433,11 +615,54 @@ data_management:
 - Secure random number generation
 - Data pattern obfuscation
 
-**S3 Data Security**:
-- Encrypted data transfer and storage
-- IAM-based access control
-- Audit logging for data access
-- Temporary credential management
+**S3 Data Security (via boto3 and AWS SDK)**:
+- Encrypted data transfer and storage using boto3's SSE (Server-Side Encryption) support
+- IAM-based access control through boto3 session and credential management
+- Audit logging for data access via AWS CloudTrail integration with boto3 operations
+- Temporary credential management using boto3's STS (Security Token Service) integration
+
+**Example boto3 Security Implementation**:
+```python
+import boto3
+from botocore.exceptions import ClientError
+
+class S3SecurityManager:
+    def __init__(self, aws_profile: str = None):
+        # Use specific AWS profile for credential management
+        session = boto3.Session(profile_name=aws_profile) if aws_profile else boto3.Session()
+        self.s3_client = session.client('s3')
+        self.sts_client = session.client('sts')
+    
+    def download_with_encryption(self, bucket: str, key: str, local_path: str):
+        """Download with server-side encryption using boto3"""
+        try:
+            self.s3_client.download_file(
+                bucket, key, local_path,
+                ExtraArgs={
+                    'ServerSideEncryption': 'AES256'
+                }
+            )
+        except ClientError as e:
+            # Handle encryption-related errors
+            pass
+    
+    def assume_role_for_access(self, role_arn: str, session_name: str):
+        """Use temporary credentials via STS assume role"""
+        response = self.sts_client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName=session_name
+        )
+        credentials = response['Credentials']
+        
+        # Create new S3 client with temporary credentials
+        temp_s3_client = boto3.client(
+            's3',
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        )
+        return temp_s3_client
+```
 
 ### Privacy Compliance
 
@@ -487,6 +712,7 @@ data_management:
 
 **Related Documents**:
 - [Core Execution Engine Design](pipeline_runtime_core_engine_design.md)
+- [S3 Output Path Management Design](pipeline_runtime_s3_output_path_management_design.md)
 - [Testing Modes Design](pipeline_runtime_testing_modes_design.md) *(to be created)*
 - [System Integration Design](pipeline_runtime_system_integration_design.md) *(to be created)*
 
