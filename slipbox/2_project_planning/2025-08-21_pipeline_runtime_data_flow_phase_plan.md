@@ -32,17 +32,31 @@ date of note: 2025-08-21
 
 ## Phase Objectives
 
-1. Implement pipeline-level execution with dependency resolution
-2. Create data flow validation and compatibility checking
-3. Integrate with existing Cursus DAG and configuration systems
-4. Develop comprehensive error handling and recovery mechanisms
-5. Build pipeline visualization and monitoring capabilities
+1. Implement **pipeline-level execution** with dependency resolution and **systematic S3 path tracking**
+2. Create **data flow validation** with **dual-mode testing support** (pre-execution synthetic + post-execution real data)
+3. Integrate with existing Cursus DAG and configuration systems **plus PropertyReference system**
+4. Develop comprehensive error handling and recovery mechanisms with **timing-aware data flow**
+5. Build pipeline visualization and monitoring capabilities with **S3 output path registry integration**
+
+## Key Design Integration
+
+This phase implements core data flow management that supports the **[Pipeline Runtime Testing Timing and Data Flow Analysis](../4_analysis/pipeline_runtime_testing_timing_and_data_flow_analysis.md)** findings and prepares for the **[Systematic S3 Output Path Management Design](../1_design/pipeline_runtime_s3_output_path_management_design.md)**:
+
+### Critical Timing Support
+- **Pre-Execution Data Flow**: Synthetic data with local path simulation for Isolation & Pipeline testing modes
+- **Post-Execution Data Flow**: Real S3 data preparation for Deep Dive testing mode (implemented in Phase 3)
+- **Property Reference Integration**: Enhanced data flow manager supports both synthetic and real S3 path resolution
+
+### S3 Path Management Foundation
+- **Data Flow Manager**: Enhanced to support systematic S3 path tracking (foundation for Phase 3)
+- **Property Reference Handling**: Improved resolution of upstream outputs to downstream inputs
+- **Registry Integration**: Preparation for S3OutputPathRegistry integration in Phase 3
 
 ## Week 3: Pipeline Execution Engine
 
 ### Day 1-2: Pipeline DAG Integration
 ```python
-# src/cursus/testing/pipeline_dag_resolver.py
+# src/cursus/validation/runtime/execution/pipeline_dag_resolver.py
 from typing import Dict, List, Optional, Set
 from dataclasses import dataclass
 import networkx as nx
@@ -122,7 +136,7 @@ class PipelineDAGResolver:
         
         return data_flow
 
-# src/cursus/testing/pipeline_executor.py
+# src/cursus/validation/runtime/execution/pipeline_executor.py
 class PipelineExecutor:
     """Executes entire pipeline with data flow validation."""
     
@@ -178,13 +192,14 @@ class PipelineExecutor:
         )
 ```
 
-### Day 3-4: Data Flow Validation
+### Day 3-4: Enhanced Data Flow Management with S3 Path Foundation
 ```python
-# src/cursus/testing/data_flow_validator.py
+# src/cursus/validation/runtime/data/enhanced_data_flow_manager.py
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 import pandas as pd
 import json
+from datetime import datetime
 
 @dataclass
 class DataCompatibilityReport:
@@ -193,6 +208,94 @@ class DataCompatibilityReport:
     issues: List[str]
     warnings: List[str]
     data_summary: Dict[str, Any]
+
+class EnhancedDataFlowManager:
+    """Enhanced data flow manager with S3 path management foundation."""
+    
+    def __init__(self, workspace_dir: str, testing_mode: str = "pre_execution"):
+        self.workspace_dir = Path(workspace_dir)
+        self.testing_mode = testing_mode  # "pre_execution" or "post_execution"
+        self.data_lineage = []
+        self.s3_output_registry = None  # Will be integrated in Phase 3
+    
+    def setup_step_inputs(self, step_name: str, upstream_outputs: Dict, 
+                         step_contract: 'ScriptContract') -> Dict[str, str]:
+        """Enhanced input setup with timing-aware path resolution."""
+        resolved_inputs = {}
+        
+        for logical_name, upstream_ref in upstream_outputs.items():
+            if self.testing_mode == "pre_execution":
+                # Pre-execution: Use local synthetic data paths
+                resolved_inputs[logical_name] = self._resolve_synthetic_path(
+                    step_name, logical_name, upstream_ref
+                )
+            else:
+                # Post-execution: Prepare for real S3 path resolution (Phase 3)
+                resolved_inputs[logical_name] = self._prepare_s3_path_resolution(
+                    step_name, logical_name, upstream_ref
+                )
+            
+            # Track data lineage
+            self._track_data_lineage_entry(step_name, logical_name, upstream_ref)
+        
+        return resolved_inputs
+    
+    def _resolve_synthetic_path(self, step_name: str, logical_name: str, 
+                               upstream_ref: Any) -> str:
+        """Resolve synthetic local paths for pre-execution testing."""
+        if hasattr(upstream_ref, 'step_name') and hasattr(upstream_ref, 'output_spec'):
+            # PropertyReference-like object
+            synthetic_path = (
+                self.workspace_dir / "synthetic_data" / 
+                upstream_ref.step_name / f"{upstream_ref.output_spec.logical_name}.csv"
+            )
+            return str(synthetic_path)
+        else:
+            # Direct path provided
+            return str(upstream_ref)
+    
+    def _prepare_s3_path_resolution(self, step_name: str, logical_name: str, 
+                                   upstream_ref: Any) -> str:
+        """Prepare for S3 path resolution (foundation for Phase 3)."""
+        # This will be enhanced in Phase 3 with S3OutputPathRegistry
+        if hasattr(upstream_ref, 'step_name') and hasattr(upstream_ref, 'output_spec'):
+            # For now, return a placeholder that Phase 3 will resolve
+            return f"s3://placeholder/{upstream_ref.step_name}/{upstream_ref.output_spec.logical_name}"
+        else:
+            return str(upstream_ref)
+    
+    def _track_data_lineage_entry(self, step_name: str, logical_name: str, upstream_ref: Any):
+        """Track data lineage with comprehensive metadata."""
+        lineage_entry = {
+            'to_step': step_name,
+            'to_input': logical_name,
+            'timestamp': datetime.now(),
+            'testing_mode': self.testing_mode
+        }
+        
+        if hasattr(upstream_ref, 'step_name') and hasattr(upstream_ref, 'output_spec'):
+            lineage_entry.update({
+                'from_step': upstream_ref.step_name,
+                'from_output': upstream_ref.output_spec.logical_name,
+                'property_path': getattr(upstream_ref.output_spec, 'property_path', None),
+                'data_type': getattr(upstream_ref.output_spec, 'data_type', None)
+            })
+        
+        self.data_lineage.append(lineage_entry)
+    
+    def create_data_lineage_report(self) -> Dict[str, Any]:
+        """Create comprehensive data lineage report."""
+        return {
+            'lineage_entries': self.data_lineage,
+            'total_transfers': len(self.data_lineage),
+            'testing_mode': self.testing_mode,
+            'unique_steps': len(set(
+                entry.get('from_step', '') for entry in self.data_lineage
+            ) | set(
+                entry.get('to_step', '') for entry in self.data_lineage
+            )),
+            'generated_at': datetime.now().isoformat()
+        }
 
 class DataCompatibilityValidator:
     """Validates data compatibility between pipeline steps."""
@@ -266,7 +369,7 @@ class DataCompatibilityValidator:
 
 ### Day 5: Error Handling and Recovery
 ```python
-# src/cursus/testing/error_handling.py
+# src/cursus/validation/runtime/execution/error_handling.py
 from enum import Enum
 from typing import Optional, Callable, Any
 
@@ -335,7 +438,7 @@ class PipelineErrorHandler:
 
 ### Day 6-7: Cursus System Integration
 ```python
-# src/cursus/testing/cursus_integration.py
+# src/cursus/validation/runtime/integration/cursus_integration.py
 from cursus.core.config_manager import ConfigManager
 from cursus.core.contract_manager import ContractManager
 from cursus.steps.step_builder_registry import StepBuilderRegistry
@@ -383,7 +486,7 @@ class CursusIntegrationLayer:
 
 ### Day 8-9: Pipeline Monitoring and Visualization
 ```python
-# src/cursus/testing/pipeline_monitor.py
+# src/cursus/validation/runtime/monitoring/pipeline_monitor.py
 import time
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
@@ -501,8 +604,8 @@ class PipelineMonitor:
 # test/integration/test_pipeline_execution.py
 import pytest
 from pathlib import Path
-from cursus.testing.pipeline_executor import PipelineExecutor
-from cursus.testing.pipeline_dag_resolver import PipelineDAGResolver
+from cursus.validation.runtime.execution.pipeline_executor import PipelineExecutor
+from cursus.validation.runtime.execution.pipeline_dag_resolver import PipelineDAGResolver
 from cursus.core.dag import PipelineDAG
 
 class TestPipelineExecution:

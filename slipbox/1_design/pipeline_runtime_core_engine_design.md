@@ -327,6 +327,9 @@ class ContractIntegration:
 ### **Implementation Planning**
 - **[Pipeline Runtime Testing Master Implementation Plan](../2_project_planning/2025-08-21_pipeline_runtime_testing_master_implementation_plan.md)**: Implementation plan with detailed development phases
 
+### **Analysis Documents**
+- **[Pipeline Runtime Testing Timing and Data Flow Analysis](../4_analysis/pipeline_runtime_testing_timing_and_data_flow_analysis.md)**: Comprehensive analysis of testing timing (pre-execution vs post-execution) and data flow requirements
+
 ---
 
 **Document Status**: Complete  

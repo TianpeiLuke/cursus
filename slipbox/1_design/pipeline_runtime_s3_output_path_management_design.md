@@ -736,6 +736,9 @@ class TestDataPreparation:
 - **Step Specifications**: `src/cursus/steps/specs/`
 - **Step Builders**: `src/cursus/steps/builders/`
 
+### **Analysis Documents**
+- **[Pipeline Runtime Testing Timing and Data Flow Analysis](../4_analysis/pipeline_runtime_testing_timing_and_data_flow_analysis.md)**: Comprehensive analysis of testing timing (pre-execution vs post-execution) and data flow requirements
+
 ---
 
 **Document Status**: Complete  

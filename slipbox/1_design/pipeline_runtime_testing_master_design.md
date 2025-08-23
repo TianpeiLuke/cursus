@@ -140,6 +140,9 @@ This master design is supported by the following focused design documents:
 - **[Usage Examples and API Design](pipeline_runtime_usage_examples_design.md)**: Comprehensive usage examples for Jupyter notebooks and CLI
 - **[Reporting and Visualization Design](pipeline_runtime_reporting_design.md)**: Test result reporting, HTML generation, and visualization capabilities
 
+### **Analysis and Research**
+- **[Pipeline Runtime Testing Timing and Data Flow Analysis](../4_analysis/pipeline_runtime_testing_timing_and_data_flow_analysis.md)**: Comprehensive analysis of testing timing (pre-execution vs post-execution) and data flow requirements
+
 ## 🚀 Quick Start Examples
 
 ### Jupyter Notebook Usage

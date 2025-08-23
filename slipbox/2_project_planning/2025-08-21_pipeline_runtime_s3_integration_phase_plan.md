@@ -32,17 +32,129 @@ date of note: 2025-08-21
 
 ## Phase Objectives
 
-1. Implement S3 data download and management capabilities
-2. Create real pipeline data testing scenarios
-3. Develop data caching and workspace management
-4. Build production data validation workflows
-5. Integrate with existing pipeline output structures
+1. Implement **Systematic S3 Output Path Management System** with centralized registry
+2. Create **dual-mode testing capabilities** (pre-execution synthetic + post-execution real data)
+3. Develop **Enhanced S3 Data Management** with boto3 integration
+4. Build **production data validation workflows** for Deep Dive testing mode
+5. Integrate with **existing PropertyReference system** and step builders
 
-## Week 5: S3 Data Integration
+## Key Design Integration
 
-### Day 1-2: S3 Data Downloader Implementation
+This phase implements the **[Systematic S3 Output Path Management Design](../1_design/pipeline_runtime_s3_output_path_management_design.md)** and incorporates findings from the **[Pipeline Runtime Testing Timing and Data Flow Analysis](../4_analysis/pipeline_runtime_testing_timing_and_data_flow_analysis.md)**:
+
+### Critical Timing Distinction
+- **Pre-Execution Testing**: Uses synthetic data with local path simulation (Isolation & Pipeline modes)
+- **Post-Execution Testing**: Uses real S3 data for production debugging (Deep Dive mode)
+
+### Systematic S3 Path Management
+- **S3OutputPathRegistry**: Centralized tracking of all S3 output paths
+- **Enhanced S3DataDownloader**: Logical name-based data retrieval
+- **Property Reference Integration**: Seamless resolution of S3 paths from property references
+
+## Week 5: Systematic S3 Output Path Management
+
+### Day 1-2: Core S3 Output Path Registry Implementation
 ```python
-# src/cursus/testing/s3_data_downloader.py
+# src/cursus/validation/runtime/data/s3_output_registry.py
+from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Dict, Any, Optional, List
+
+class S3OutputInfo(BaseModel):
+    """Comprehensive S3 output information with metadata"""
+    
+    logical_name: str = Field(
+        ...,
+        description="Logical name of the output as defined in step specification"
+    )
+    s3_uri: str = Field(
+        ...,
+        description="Complete S3 URI where the output is stored"
+    )
+    property_path: str = Field(
+        ...,
+        description="SageMaker property path for runtime resolution"
+    )
+    data_type: str = Field(
+        ...,
+        description="Data type of the output (e.g., 'S3Uri', 'ModelArtifacts')"
+    )
+    step_name: str = Field(
+        ...,
+        description="Name of the step that produced this output"
+    )
+    job_type: Optional[str] = Field(
+        None,
+        description="Job type context (training, validation, testing, calibration)"
+    )
+    timestamp: datetime = Field(
+        default_factory=datetime.now,
+        description="When this output was registered"
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional metadata (container paths, output types, etc.)"
+    )
+
+class ExecutionMetadata(BaseModel):
+    """Metadata about pipeline execution context"""
+    
+    pipeline_name: Optional[str] = None
+    execution_id: Optional[str] = None
+    start_time: datetime = Field(default_factory=datetime.now)
+    end_time: Optional[datetime] = None
+    total_steps: int = 0
+    completed_steps: int = 0
+    
+    def mark_step_completed(self) -> None:
+        """Mark a step as completed"""
+        self.completed_steps += 1
+    
+    def is_complete(self) -> bool:
+        """Check if pipeline execution is complete"""
+        return self.completed_steps >= self.total_steps
+
+class S3OutputPathRegistry(BaseModel):
+    """Centralized registry for tracking S3 output paths across pipeline execution"""
+    
+    step_outputs: Dict[str, Dict[str, S3OutputInfo]] = Field(
+        default_factory=dict,
+        description="Nested dict: step_name -> logical_name -> S3OutputInfo"
+    )
+    execution_metadata: ExecutionMetadata = Field(
+        default_factory=ExecutionMetadata,
+        description="Metadata about the pipeline execution"
+    )
+    
+    def register_step_output(self, step_name: str, logical_name: str, output_info: S3OutputInfo) -> None:
+        """Register an S3 output for a specific step"""
+        if step_name not in self.step_outputs:
+            self.step_outputs[step_name] = {}
+        
+        self.step_outputs[step_name][logical_name] = output_info
+        self.execution_metadata.mark_step_completed()
+    
+    def get_step_output_info(self, step_name: str, logical_name: str) -> Optional[S3OutputInfo]:
+        """Get S3 output information for a specific step and logical name"""
+        return self.step_outputs.get(step_name, {}).get(logical_name)
+    
+    def get_step_output_path(self, step_name: str, logical_name: str) -> Optional[str]:
+        """Get S3 URI for a specific step output"""
+        output_info = self.get_step_output_info(step_name, logical_name)
+        return output_info.s3_uri if output_info else None
+    
+    def get_all_step_outputs(self, step_name: str) -> Dict[str, S3OutputInfo]:
+        """Get all outputs for a specific step"""
+        return self.step_outputs.get(step_name, {})
+    
+    def list_all_steps(self) -> List[str]:
+        """List all steps that have registered outputs"""
+        return list(self.step_outputs.keys())
+```
+
+### Day 3-4: Enhanced S3 Data Downloader Implementation
+```python
+# src/cursus/validation/runtime/data/s3_data_downloader.py
 import boto3
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
@@ -227,7 +339,7 @@ class S3DataDownloader:
 
 ### Day 3-4: Real Data Testing Framework
 ```python
-# src/cursus/testing/real_data_tester.py
+# src/cursus/validation/runtime/testing/real_data_tester.py
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from pathlib import Path

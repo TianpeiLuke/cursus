@@ -716,6 +716,9 @@ class S3SecurityManager:
 - [Testing Modes Design](pipeline_runtime_testing_modes_design.md) *(to be created)*
 - [System Integration Design](pipeline_runtime_system_integration_design.md) *(to be created)*
 
+**Analysis Documents**:
+- [Pipeline Runtime Testing Timing and Data Flow Analysis](../4_analysis/pipeline_runtime_testing_timing_and_data_flow_analysis.md) - Comprehensive analysis of testing timing (pre-execution vs post-execution) and data flow requirements
+
 **Implementation Plans**:
 - [Data Flow Testing Phase Implementation Plan](2025-08-21_pipeline_runtime_data_flow_testing_implementation_plan.md) *(to be created)*
 - [S3 Integration Phase Implementation Plan](2025-08-21_pipeline_runtime_s3_integration_implementation_plan.md) *(to be created)*
