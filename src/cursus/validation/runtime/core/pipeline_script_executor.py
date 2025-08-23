@@ -132,8 +132,11 @@ class PipelineScriptExecutor:
             f"cursus/steps/scripts/{script_name}.py",
             f"scripts/{script_name}.py",
             f"dockers/xgboost_atoz/scripts/{script_name}.py",
+            f"dockers/xgboost_atoz/{script_name}.py",
             f"dockers/pytorch_bsm_ext/scripts/{script_name}.py",
-            f"dockers/xgboost_pda/scripts/{script_name}.py"
+            f"dockers/pytorch_bsm_ext/{script_name}.py",
+            f"dockers/xgboost_pda/scripts/{script_name}.py",
+            f"dockers/xgboost_pda/{script_name}.py"
         ]
         
         for path in possible_paths:
