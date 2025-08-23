@@ -177,7 +177,7 @@ class PipelineScriptExecutor:
         try:
             # Phase 1: Basic implementation with synthetic and local data
             if data_source not in ["synthetic", "local"]:
-                raise NotImplementedError(f"Data source '{data_source}' not yet implemented")
+                raise ConfigurationError(f"Data source '{data_source}' not yet implemented")
             
             # Discover script path (basic implementation)
             script_path = self._discover_script_path(script_name)
@@ -204,14 +204,48 @@ class PipelineScriptExecutor:
             logger.info(f"Isolation test completed for {script_name}: {test_result.status}")
             return test_result
             
-        except Exception as e:
-            logger.error(f"Isolation test failed for {script_name}: {str(e)}")
+        except ScriptImportError as e:
+            logger.error(f"Script import failed for {script_name}: {str(e)}")
             return TestResult(
                 script_name=script_name,
                 status="FAIL",
                 execution_time=0.0,
                 memory_usage=0,
                 error_message=str(e),
+                error_type="import_error",
+                recommendations=self._generate_import_error_recommendations(e)
+            )
+        except ScriptExecutionError as e:
+            logger.error(f"Script execution failed for {script_name}: {str(e)}")
+            return TestResult(
+                script_name=script_name,
+                status="FAIL",
+                execution_time=0.0,
+                memory_usage=0,
+                error_message=str(e),
+                error_type="execution_error",
+                recommendations=self._generate_execution_error_recommendations(e)
+            )
+        except ConfigurationError as e:
+            logger.error(f"Configuration error for {script_name}: {str(e)}")
+            return TestResult(
+                script_name=script_name,
+                status="FAIL",
+                execution_time=0.0,
+                memory_usage=0,
+                error_message=str(e),
+                error_type="configuration_error",
+                recommendations=self._generate_config_error_recommendations(e)
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error for {script_name}: {str(e)}")
+            return TestResult(
+                script_name=script_name,
+                status="FAIL",
+                execution_time=0.0,
+                memory_usage=0,
+                error_message=str(e),
+                error_type="unknown_error",
                 recommendations=[f"Check script implementation: {str(e)}"]
             )
     
@@ -228,7 +262,7 @@ class PipelineScriptExecutor:
             if Path(path).exists():
                 return path
                 
-        raise FileNotFoundError(f"Script not found: {script_name}")
+        raise ScriptImportError(f"Script not found: {script_name}")
     
     def _prepare_basic_execution_context(self, script_name: str, data_source: str = "synthetic") -> ExecutionContext:
         """Prepare basic execution context with data source support - Phase 1 implementation"""
@@ -271,6 +305,33 @@ class PipelineScriptExecutor:
             recommendations.append(f"Address execution error: {execution_result.error_message}")
             
         return recommendations
+    
+    def _generate_import_error_recommendations(self, error: ScriptImportError) -> list:
+        """Generate recommendations for import errors"""
+        return [
+            "Check that the script file exists at the expected path",
+            "Verify script has a 'main' function defined",
+            "Check for syntax errors in the script",
+            "Ensure all script dependencies are installed"
+        ]
+    
+    def _generate_execution_error_recommendations(self, error: ScriptExecutionError) -> list:
+        """Generate recommendations for execution errors"""
+        return [
+            "Check input data format and availability",
+            "Verify script logic and error handling",
+            "Check system resources (memory, disk space)",
+            "Review script dependencies and imports"
+        ]
+    
+    def _generate_config_error_recommendations(self, error: ConfigurationError) -> list:
+        """Generate recommendations for configuration errors"""
+        return [
+            "Verify configuration parameters are valid",
+            "Check data source configuration",
+            "Ensure workspace directory is accessible",
+            "Review environment variable settings"
+        ]
     
     def _setup_logging(self):
         """Setup logging configuration"""
@@ -350,6 +411,12 @@ class ScriptImportManager:
                            context: ExecutionContext) -> ExecutionResult:
         """Execute script main function with comprehensive error handling"""
         
+        if not main_func:
+            raise ScriptExecutionError("Main function cannot be None")
+        
+        if not context:
+            raise ScriptExecutionError("Execution context cannot be None")
+        
         start_time = time.time()
         start_memory = self._get_memory_usage()
         
@@ -378,14 +445,12 @@ class ScriptImportManager:
             end_time = time.time()
             end_memory = self._get_memory_usage()
             
-            return ExecutionResult(
-                success=False,
-                execution_time=end_time - start_time,
-                memory_usage=max(end_memory - start_memory, 0),
-                result_data=None,
-                error_message=str(e),
-                stack_trace=traceback.format_exc()
-            )
+            # Convert to ScriptExecutionError for consistent error handling
+            if not isinstance(e, ScriptExecutionError):
+                execution_error = ScriptExecutionError(f"Script execution failed: {str(e)}")
+                execution_error.__cause__ = e  # Preserve original exception
+                raise execution_error
+            raise
     
     def _get_memory_usage(self) -> int:
         """Get current memory usage in MB"""
@@ -407,6 +472,32 @@ class ScriptImportManager:
 - Establish configuration management
 
 **Deliverables**:
+
+**Error Handling Framework**:
+```python
+# src/cursus/validation/runtime/utils/error_handling.py
+"""Error handling utilities for the runtime testing system."""
+
+class ScriptExecutionError(Exception):
+    """Exception raised during script execution."""
+    pass
+
+class ScriptImportError(Exception):
+    """Exception raised when a script cannot be imported."""
+    pass
+
+class DataFlowError(Exception):
+    """Exception raised for data flow issues between pipeline steps."""
+    pass
+
+class ConfigurationError(Exception):
+    """Exception raised for configuration-related errors."""
+    pass
+
+class ValidationError(Exception):
+    """Exception raised for validation failures."""
+    pass
+```
 
 **Result Models**:
 ```python
@@ -431,6 +522,7 @@ class TestResult(BaseModel):
     execution_time: float
     memory_usage: int
     error_message: Optional[str] = None
+    error_type: Optional[str] = None  # import_error, execution_error, configuration_error, etc.
     recommendations: List[str] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=datetime.now)
     
@@ -444,10 +536,12 @@ class TestResult(BaseModel):
 # src/cursus/validation/runtime/utils/execution_context.py
 from typing import Dict, Any, Optional
 import argparse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class ExecutionContext(BaseModel):
     """Context for script execution"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # Allow argparse.Namespace
+    
     input_paths: Dict[str, str]
     output_paths: Dict[str, str]
     environ_vars: Dict[str, str]

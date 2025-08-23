@@ -8,7 +8,7 @@ import argparse
 
 from ..utils.result_models import TestResult, ExecutionResult
 from ..utils.execution_context import ExecutionContext
-from ..utils.error_handling import ScriptExecutionError
+from ..utils.error_handling import ScriptExecutionError, ScriptImportError, ConfigurationError
 from .script_import_manager import ScriptImportManager
 from .data_flow_manager import DataFlowManager
 from ..data.local_data_manager import LocalDataManager
@@ -42,7 +42,7 @@ class PipelineScriptExecutor:
         try:
             # Phase 1: Basic implementation with synthetic and local data
             if data_source not in ["synthetic", "local"]:
-                raise NotImplementedError(f"Data source '{data_source}' not yet implemented")
+                raise ConfigurationError(f"Data source '{data_source}' not yet implemented")
             
             # Discover script path (basic implementation)
             script_path = self._discover_script_path(script_name)
@@ -76,15 +76,45 @@ class PipelineScriptExecutor:
             logger.info(f"Isolation test completed for {script_name}: {test_result.status}")
             return test_result
             
-        except Exception as e:
-            logger.error(f"Isolation test failed for {script_name}: {str(e)}")
+        except (ScriptImportError, ScriptExecutionError, ConfigurationError) as e:
+            # Handle specific runtime testing errors with appropriate categorization
+            logger.error(f"Isolation test failed for {script_name} ({type(e).__name__}): {str(e)}")
+            error_type = type(e).__name__
+            recommendations = self._generate_error_specific_recommendations(e, error_type)
+            
             return TestResult(
                 script_name=script_name,
                 status="FAIL",
                 execution_time=0.0,
                 memory_usage=0,
-                error_message=str(e),
-                recommendations=[f"Check script implementation: {str(e)}"]
+                error_message=f"{error_type}: {str(e)}",
+                recommendations=recommendations
+            )
+        except FileNotFoundError as e:
+            # Handle script discovery failures
+            logger.error(f"Script discovery failed for {script_name}: {str(e)}")
+            return TestResult(
+                script_name=script_name,
+                status="FAIL",
+                execution_time=0.0,
+                memory_usage=0,
+                error_message=f"Script not found: {str(e)}",
+                recommendations=[
+                    f"Verify script '{script_name}' exists in one of the expected locations",
+                    "Check script name spelling and path configuration",
+                    "Ensure script file has .py extension"
+                ]
+            )
+        except Exception as e:
+            # Handle unexpected errors
+            logger.error(f"Unexpected error during isolation test for {script_name}: {str(e)}")
+            return TestResult(
+                script_name=script_name,
+                status="FAIL",
+                execution_time=0.0,
+                memory_usage=0,
+                error_message=f"Unexpected error: {str(e)}",
+                recommendations=[f"Check system logs for details: {str(e)}"]
             )
     
     def test_pipeline_e2e(self, pipeline_dag: Dict, 
@@ -156,6 +186,36 @@ class PipelineScriptExecutor:
         if not execution_result.success and execution_result.error_message:
             recommendations.append(f"Address execution error: {execution_result.error_message}")
             
+        return recommendations
+    
+    def _generate_error_specific_recommendations(self, error: Exception, error_type: str) -> list:
+        """Generate error-specific recommendations based on error type"""
+        recommendations = []
+        
+        if error_type == "ScriptImportError":
+            recommendations.extend([
+                "Check if the script has syntax errors or missing dependencies",
+                "Verify the script has a 'main' function defined",
+                "Ensure all required imports are available in the environment",
+                "Check if the script file is readable and properly formatted"
+            ])
+        elif error_type == "ScriptExecutionError":
+            recommendations.extend([
+                "Review script logic for runtime errors",
+                "Check input data format and availability",
+                "Verify script has proper error handling",
+                "Ensure all required environment variables are set"
+            ])
+        elif error_type == "ConfigurationError":
+            recommendations.extend([
+                "Check data source configuration",
+                "Verify workspace directory permissions",
+                "Review runtime testing configuration settings",
+                "Ensure all required parameters are provided"
+            ])
+        else:
+            recommendations.append(f"Review error details for {error_type}: {str(error)}")
+        
         return recommendations
     
     def _setup_logging(self):

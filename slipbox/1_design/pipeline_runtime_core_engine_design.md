@@ -227,34 +227,130 @@ class ExecutionContext(BaseModel):
 
 ## 🔒 Error Handling and Recovery
 
-### Error Categories
+### Custom Error Types
 
-**Import Errors**:
-- Missing script files
+The system uses specialized error types for better error categorization and handling:
+
+```python
+from cursus.validation.runtime.utils.error_handling import (
+    ScriptImportError,
+    ScriptExecutionError, 
+    DataFlowError,
+    ConfigurationError,
+    ValidationError
+)
+```
+
+**ScriptImportError**:
+- Missing script files or modules
 - Import dependency issues
 - Syntax errors in scripts
+- Missing main function in scripts
 
-**Execution Errors**:
-- Runtime exceptions in scripts
-- Resource exhaustion
-- Data compatibility issues
+**ScriptExecutionError**:
+- Runtime exceptions during script execution
+- Invalid execution context or parameters
+- Resource exhaustion during execution
+- Script timeout or interruption
 
-**Data Flow Errors**:
-- Missing input data
-- Schema mismatches
-- File format incompatibilities
+**DataFlowError**:
+- Missing upstream output data
+- Failed directory creation for data flow
+- File I/O errors during data management
+- Data lineage tracking failures
+
+**ConfigurationError**:
+- Invalid or missing configuration parameters
+- Configuration validation failures
+- Environment setup issues
+
+**ValidationError**:
+- Data schema compatibility issues
+- File format validation failures
+- Input/output specification mismatches
+- Data quality validation failures
+
+### Error Handling Implementation
+
+**PipelineScriptExecutor Error Handling**:
+```python
+def test_script_isolation(self, script_name: str, data_source: str = "synthetic") -> TestResult:
+    try:
+        # Script execution logic
+        pass
+    except ScriptImportError as e:
+        return TestResult(
+            success=False,
+            error_type="import_error",
+            recommendations=self._generate_import_error_recommendations(e)
+        )
+    except ScriptExecutionError as e:
+        return TestResult(
+            success=False,
+            error_type="execution_error", 
+            recommendations=self._generate_execution_error_recommendations(e)
+        )
+    except ConfigurationError as e:
+        return TestResult(
+            success=False,
+            error_type="configuration_error",
+            recommendations=self._generate_config_error_recommendations(e)
+        )
+```
+
+**ScriptImportManager Error Handling**:
+```python
+def execute_script_main(self, main_func: Callable, context: ExecutionContext) -> ExecutionResult:
+    if not main_func:
+        raise ScriptExecutionError("Main function cannot be None")
+    
+    if not context:
+        raise ScriptExecutionError("Execution context cannot be None")
+    
+    try:
+        # Execute script
+        result = main_func(...)
+        return ExecutionResult(success=True, result_data=result)
+    except Exception as e:
+        if not isinstance(e, ScriptExecutionError):
+            execution_error = ScriptExecutionError(f"Script execution failed: {str(e)}")
+            execution_error.__cause__ = e  # Preserve original exception
+            raise execution_error
+        raise
+```
+
+**DataFlowManager Error Handling**:
+```python
+def setup_step_inputs(self, step_name: str, upstream_outputs: Dict[str, str]) -> Dict[str, str]:
+    if not step_name:
+        raise DataFlowError("Step name cannot be empty")
+    
+    # Validate upstream output paths exist
+    for output_name, output_path in upstream_outputs.items():
+        if not os.path.exists(output_path):
+            raise DataFlowError(f"Upstream output '{output_name}' does not exist at path: {output_path}")
+```
 
 ### Recovery Strategies
 
 **Graceful Degradation**:
 - Continue execution with remaining scripts when possible
-- Provide detailed error reporting for failed steps
-- Offer recommendations for error resolution
+- Provide detailed error reporting with specific error types
+- Offer contextual recommendations based on error category
+- Preserve original exception context for debugging
+
+**Error-Specific Recommendations**:
+- **Import Errors**: Check script paths, dependencies, and syntax
+- **Execution Errors**: Validate input data, check resource limits
+- **Data Flow Errors**: Verify file paths, check permissions
+- **Configuration Errors**: Validate config parameters and environment
+- **Validation Errors**: Check data schemas and format compatibility
 
 **Retry Mechanisms**:
-- Automatic retry for transient failures
-- Configurable retry policies
+- Automatic retry for transient failures (DataFlowError, ScriptExecutionError)
+- Configurable retry policies based on error type
 - Circuit breaker patterns for persistent failures
+- Skip retry for permanent failures (ScriptImportError, ConfigurationError)
 
 ## 📚 Integration Points
 

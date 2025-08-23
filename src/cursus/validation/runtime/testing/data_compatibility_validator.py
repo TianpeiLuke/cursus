@@ -7,6 +7,8 @@ import numpy as np
 from pathlib import Path
 from pydantic import BaseModel, Field
 
+from ..utils.error_handling import ValidationError
+
 class DataCompatibilityReport(BaseModel):
     """Report on data compatibility between steps."""
     compatible: bool
@@ -34,6 +36,12 @@ class DataCompatibilityValidator:
                                producer_output: Dict[str, Any],
                                consumer_input_spec: Dict[str, Any]) -> DataCompatibilityReport:
         """Validate data compatibility between producer and consumer."""
+        if not producer_output:
+            raise ValidationError("Producer output cannot be empty")
+        
+        if not consumer_input_spec:
+            raise ValidationError("Consumer input specification cannot be empty")
+        
         issues = []
         warnings = []
         
@@ -140,6 +148,9 @@ class DataCompatibilityValidator:
     
     def analyze_file(self, file_path: Path) -> DataSchemaInfo:
         """Analyze a data file to extract schema information."""
+        if not file_path or not file_path.exists():
+            raise ValidationError(f"File does not exist: {file_path}")
+        
         file_format = file_path.suffix.lower().lstrip('.')
         schema_info = DataSchemaInfo(data_format=file_format)
         
@@ -273,6 +284,12 @@ class DataCompatibilityValidator:
     def check_compatibility(self, producer_schema: DataSchemaInfo, 
                           consumer_schema: DataSchemaInfo) -> DataCompatibilityReport:
         """Check compatibility between producer and consumer schemas."""
+        if not producer_schema:
+            raise ValidationError("Producer schema cannot be None")
+        
+        if not consumer_schema:
+            raise ValidationError("Consumer schema cannot be None")
+        
         issues = []
         warnings = []
         

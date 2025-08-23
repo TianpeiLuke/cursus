@@ -63,6 +63,12 @@ class ScriptImportManager:
                            context: ExecutionContext) -> ExecutionResult:
         """Execute script main function with comprehensive error handling"""
         
+        if not main_func:
+            raise ScriptExecutionError("Main function cannot be None")
+        
+        if not context:
+            raise ScriptExecutionError("Execution context cannot be None")
+        
         start_time = time.time()
         start_memory = self._get_memory_usage()
         
@@ -92,14 +98,12 @@ class ScriptImportManager:
             end_time = time.time()
             end_memory = self._get_memory_usage()
             
-            return ExecutionResult(
-                success=False,
-                execution_time=end_time - start_time,
-                memory_usage=max(end_memory - start_memory, 0),
-                result_data=None,
-                error_message=str(e),
-                stack_trace=traceback.format_exc()
-            )
+            # Convert to ScriptExecutionError for consistent error handling
+            if not isinstance(e, ScriptExecutionError):
+                execution_error = ScriptExecutionError(f"Script execution failed: {str(e)}")
+                execution_error.__cause__ = e  # Preserve original exception
+                raise execution_error
+            raise
     
     def _get_memory_usage(self) -> int:
         """Get current memory usage in MB"""
