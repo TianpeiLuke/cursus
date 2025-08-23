@@ -2,7 +2,7 @@
 tags:
   - design
   - testing
-  - script_functionality
+  - runtime
   - pipeline_validation
   - data_flow_testing
 keywords:
@@ -133,7 +133,7 @@ def main(
 
 ## 📦 System Components
 
-### Core Module Structure: `src/cursus/validation/script_functionality/`
+### Core Module Structure: `src/cursus/validation/runtime/`
 
 #### **1. Core Execution Engine**
 
@@ -616,7 +616,7 @@ class ValidationIntegration:
 #### **1. Quick Script Testing**
 ```python
 # In Jupyter Notebook
-from cursus.validation.script_functionality import PipelineTestingNotebook
+from cursus.validation.runtime import PipelineTestingNotebook
 
 # Initialize testing environment
 tester = PipelineTestingNotebook()
@@ -684,34 +684,34 @@ debug_session.continue_execution()  # Continue from breakpoint
 #### **1. Script Isolation Testing**
 ```bash
 # Test single script with synthetic data
-cursus script-functionality test-script currency_conversion --data-source synthetic --scenarios standard,edge_cases
+cursus runtime test-script currency_conversion --data-source synthetic --scenarios standard,edge_cases
 
 # Test with S3 data
-cursus script-functionality test-script currency_conversion --data-source s3://bucket/path --output-dir ./test_results
+cursus runtime test-script currency_conversion --data-source s3://bucket/path --output-dir ./test_results
 
 # Benchmark performance
-cursus script-functionality benchmark-script currency_conversion --data-volumes small,medium,large
+cursus runtime benchmark-script currency_conversion --data-volumes small,medium,large
 ```
 
 #### **2. Pipeline Testing**
 ```bash
 # Test pipeline end-to-end
-cursus script-functionality test-pipeline xgb_training_simple --data-source synthetic --output-dir ./pipeline_results
+cursus runtime test-pipeline xgb_training_simple --data-source synthetic --output-dir ./pipeline_results
 
 # Test with real S3 data
-cursus script-functionality test-pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:... --output-dir ./s3_results
+cursus runtime test-pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:... --output-dir ./s3_results
 
 # Performance testing
-cursus script-functionality test-pipeline-performance xgb_training_simple --data-volume large --output-dir ./perf_results
+cursus runtime test-pipeline-performance xgb_training_simple --data-volume large --output-dir ./perf_results
 ```
 
 #### **3. Data Flow Analysis**
 ```bash
 # Analyze data flow between steps
-cursus script-functionality analyze-data-flow --upstream tabular_preprocessing --downstream currency_conversion --data-source synthetic
+cursus runtime analyze-data-flow --upstream tabular_preprocessing --downstream currency_conversion --data-source synthetic
 
 # Deep dive analysis
-cursus script-functionality deep-dive-analysis --pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:... --output-dir ./deep_dive
+cursus runtime deep-dive-analysis --pipeline xgb_training_simple --s3-execution-arn arn:aws:sagemaker:... --output-dir ./deep_dive
 ```
 
 ## 📊 Test Result Reporting
