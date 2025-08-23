@@ -44,7 +44,7 @@ Configs provide **centralized configuration management** that:
 Configs support inheritance and composition for maximum reusability, now using Pydantic models:
 
 ```python
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, model_validator, field_validator, ConfigDict
 
 # Base configuration with common settings
 class BasePipelineConfig(BaseModel):
@@ -74,8 +74,7 @@ class BasePipelineConfig(BaseModel):
     py_version: str = Field(default='py310', description="Default Python version.")
     source_dir: Optional[str] = Field(default=None, description="Common source directory for scripts.")
     
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 # Specialized configuration inheriting from base
 class TrainingStepConfig(BasePipelineConfig):

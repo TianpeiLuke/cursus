@@ -97,8 +97,6 @@ A comprehensive testing framework for validating pipeline script functionality,
 data flow compatibility, and end-to-end execution.
 """
 
-__version__ = "0.1.0"
-__author__ = "Cursus Development Team"
 
 # Core components
 from .core.pipeline_script_executor import PipelineScriptExecutor

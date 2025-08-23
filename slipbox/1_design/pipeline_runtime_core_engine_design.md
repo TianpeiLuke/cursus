@@ -176,20 +176,19 @@ class DataFlowManager:
 
 **Context Components**:
 ```python
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Dict
 import argparse
 
 class ExecutionContext(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # Allow argparse.Namespace
+    
     input_paths: Dict[str, str]
     output_paths: Dict[str, str]
     environ_vars: Dict[str, str]
     job_args: argparse.Namespace
     
-    class Config:
-        arbitrary_types_allowed = True  # Allow argparse.Namespace
-    
-    # Use built-in Pydantic serialization: context.model_dump() or dict(context)
+    # Use built-in Pydantic v2 serialization: context.model_dump() or dict(context)
 ```
 
 **Context Preparation Process**:

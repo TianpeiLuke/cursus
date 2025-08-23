@@ -121,10 +121,11 @@ class S3OutputInfo(BaseModel):
         description="Additional metadata (container paths, output types, etc.)"
     )
     
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat()
         }
+    )
 ```
 
 ### 2. ExecutionMetadata
