@@ -71,9 +71,11 @@ def run_specific_module_tests(module_name):
     module_patterns = {
         'core': 'core/test_*.py',
         'utils': 'utils/test_*.py',
+        'data': 'data/test_*.py',
         'pipeline_script_executor': 'core/test_pipeline_script_executor.py',
         'script_import_manager': 'core/test_script_import_manager.py',
         'data_flow_manager': 'core/test_data_flow_manager.py',
+        'enhanced_data_flow_manager': 'data/test_enhanced_data_flow_manager.py',
         'result_models': 'utils/test_result_models.py',
         'execution_context': 'utils/test_execution_context.py',
         'error_handling': 'utils/test_error_handling.py'
