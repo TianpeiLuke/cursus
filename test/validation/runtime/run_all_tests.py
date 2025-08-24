@@ -76,6 +76,8 @@ def run_specific_module_tests(module_name):
         'script_import_manager': 'core/test_script_import_manager.py',
         'data_flow_manager': 'core/test_data_flow_manager.py',
         'enhanced_data_flow_manager': 'data/test_enhanced_data_flow_manager.py',
+        'local_data_manager': 'data/test_local_data_manager.py',
+        's3_output_registry': 'data/test_s3_output_registry.py',
         'result_models': 'utils/test_result_models.py',
         'execution_context': 'utils/test_execution_context.py',
         'error_handling': 'utils/test_error_handling.py'
