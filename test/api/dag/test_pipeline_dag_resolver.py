@@ -142,40 +142,51 @@ class TestPipelineDAGResolverEnhanced:
         )
     
     @patch('src.cursus.api.dag.pipeline_dag_resolver.importlib.import_module')
-    def test_get_step_specification_with_getter_function(self, mock_import):
+    @patch('src.cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
+    def test_get_step_specification_with_getter_function(self, mock_get_spec_type, mock_import):
         """Test specification retrieval with getter function."""
+        # Mock the spec type lookup
+        mock_get_spec_type.return_value = "XGBoostTrainingSpec"
+        
         # Mock module with getter function
         mock_module = Mock()
         mock_spec = Mock()
         mock_module.get_xgboost_training_spec = Mock(return_value=mock_spec)
         mock_import.return_value = mock_module
         
-        # Mock both the spec type lookup and module name conversion
-        with patch('src.cursus.api.dag.pipeline_dag_resolver.get_spec_step_type', return_value="XGBoostTrainingSpec"):
-            with patch.object(self.resolver, '_spec_type_to_module_name', return_value="xgboost_training_spec"):
-                result = self.resolver._get_step_specification("xgboost_training")
-                
-                assert result == mock_spec
-                mock_module.get_xgboost_training_spec.assert_called_once()
+        # Call with canonical name directly (this method expects canonical name, not step name)
+        result = self.resolver._get_step_specification("xgboost_training")
+        
+        assert result == mock_spec
+        mock_get_spec_type.assert_called_once_with("xgboost_training")
+        mock_import.assert_called_once_with("cursus.steps.specs.xgboost_training_spec")
+        mock_module.get_xgboost_training_spec.assert_called_once()
     
     @patch('src.cursus.api.dag.pipeline_dag_resolver.importlib.import_module')
-    def test_get_step_specification_with_class(self, mock_import):
-        """Test specification retrieval with direct class."""
-        # Mock module with spec class
-        mock_module = Mock()
-        mock_spec_class = Mock()
-        mock_spec_instance = Mock()
-        mock_spec_class.return_value = mock_spec_instance
-        mock_module.XGBoostTrainingSpec = mock_spec_class
+    @patch('src.cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
+    def test_get_step_specification_with_constant(self, mock_get_spec_type, mock_import):
+        """Test specification retrieval with spec constant (actual pattern used in codebase)."""
+        # Mock the spec type lookup
+        mock_get_spec_type.return_value = "XGBoostTrainingSpec"
+        
+        # Create a simple object that only has the constant we want
+        class MockModule:
+            def __init__(self):
+                self.XGBOOST_TRAINING_SPEC = Mock()
+            
+            def __getattr__(self, name):
+                # This ensures hasattr returns False for non-existent attributes
+                raise AttributeError(f"module has no attribute '{name}'")
+        
+        mock_module = MockModule()
         mock_import.return_value = mock_module
         
-        # Mock both the spec type lookup and module name conversion
-        with patch('src.cursus.api.dag.pipeline_dag_resolver.get_spec_step_type', return_value="XGBoostTrainingSpec"):
-            with patch.object(self.resolver, '_spec_type_to_module_name', return_value="xgboost_training_spec"):
-                result = self.resolver._get_step_specification("xgboost_training")
-                
-                assert result == mock_spec_instance
-                mock_spec_class.assert_called_once()
+        # Call with canonical name directly (this method expects canonical name, not step name)
+        result = self.resolver._get_step_specification("xgboost_training")
+        
+        assert result == mock_module.XGBOOST_TRAINING_SPEC
+        mock_get_spec_type.assert_called_once_with("xgboost_training")
+        mock_import.assert_called_once_with("cursus.steps.specs.xgboost_training_spec")
     
     def test_enhanced_data_flow_map_with_contracts(self):
         """Test enhanced data flow map creation with contracts."""
