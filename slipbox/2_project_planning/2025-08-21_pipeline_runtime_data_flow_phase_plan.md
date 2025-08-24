@@ -608,8 +608,8 @@ class PipelineMonitor:
 import pytest
 from pathlib import Path
 from cursus.validation.runtime.execution.pipeline_executor import PipelineExecutor
-from cursus.validation.runtime.execution.pipeline_dag_resolver import PipelineDAGResolver
-from cursus.core.dag import PipelineDAG
+from cursus.api.dag.pipeline_dag_resolver import PipelineDAGResolver
+from cursus.api.dag import PipelineDAG
 
 class TestPipelineExecution:
     """Integration tests for pipeline execution."""

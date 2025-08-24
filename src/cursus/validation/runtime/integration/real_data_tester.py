@@ -10,7 +10,7 @@ import logging
 from .s3_data_downloader import S3DataDownloader, S3DataSource
 from .workspace_manager import WorkspaceManager, WorkspaceConfig
 from ..core.pipeline_script_executor import PipelineScriptExecutor
-from ..testing.data_compatibility_validator import DataCompatibilityValidator
+# from ..testing.data_compatibility_validator import DataCompatibilityValidator
 
 class RealDataTestScenario(BaseModel):
     """Test scenario using real pipeline data."""
@@ -48,7 +48,7 @@ class RealDataTester:
         self.workspace_dir = Path(workspace_dir)
         self.s3_downloader = S3DataDownloader(workspace_dir=workspace_dir)
         self.script_executor = PipelineScriptExecutor(workspace_dir=workspace_dir)
-        self.data_validator = DataCompatibilityValidator()
+        # self.data_validator = DataCompatibilityValidator()
         self.logger = logging.getLogger(__name__)
         
         # Set up workspace manager
