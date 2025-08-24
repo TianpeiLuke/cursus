@@ -43,7 +43,7 @@ This document details the design of the **Execution Layer** for the Pipeline Run
 - Coordinate between DAG resolution and script execution
 - Manage step-by-step execution in topological order
 - Provide comprehensive pipeline execution reporting
-- Validate data compatibility between pipeline steps
+- Validate data compatibility between pipeline steps using DataCompatibilityValidator
 
 **Class Design**:
 ```python
@@ -147,6 +147,31 @@ from ....core.base.config_base import BasePipelineConfig
 # Uses NetworkX for graph operations
 import networkx as nx
 ```
+
+### 3. DataCompatibilityValidator
+
+**Purpose**: Validates data compatibility between pipeline steps
+
+**Location**: `src/cursus/validation/runtime/execution/data_compatibility_validator.py`
+
+**Key Responsibilities**:
+- Validate data schema compatibility between connected steps
+- Check data type consistency across step boundaries
+- Provide detailed compatibility reports for debugging
+- Support both synthetic and real data validation
+
+**Integration with Execution Layer**:
+```python
+# Used by PipelineExecutor for step-to-step data validation
+self.data_validator = DataCompatibilityValidator()
+
+# In _validate_step_outputs method:
+validation_report = self.data_validator.validate_compatibility(
+    step_outputs, next_step_requirements
+)
+```
+
+**Note**: This component was moved from the testing framework to the execution layer to eliminate architectural duplication and maintain proper dependency flow. The execution layer now contains all core execution components in a single location.
 
 ## 🔧 Data Models
 

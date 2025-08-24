@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from .pipeline_dag_resolver import PipelineDAGResolver, PipelineExecutionPlan
-from ..testing.data_compatibility_validator import DataCompatibilityValidator, DataCompatibilityReport
+from .data_compatibility_validator import DataCompatibilityValidator, DataCompatibilityReport
 from ..core.pipeline_script_executor import PipelineScriptExecutor
 from ..data.enhanced_data_flow_manager import EnhancedDataFlowManager
 from ..data.s3_output_registry import S3OutputPathRegistry, S3OutputInfo, ExecutionMetadata

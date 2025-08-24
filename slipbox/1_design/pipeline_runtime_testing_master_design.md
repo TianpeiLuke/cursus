@@ -70,6 +70,7 @@ graph TB
         subgraph "Execution Layer"
             PE[PipelineExecutor<br/>execution/pipeline_executor.py]
             PDR[PipelineDAGResolver<br/>execution/pipeline_dag_resolver.py]
+            DCV[DataCompatibilityValidator<br/>execution/data_compatibility_validator.py]
         end
         
         subgraph "Core Engine"
@@ -93,9 +94,8 @@ graph TB
         end
         
         subgraph "Testing Framework"
-            DCV[DataCompatibilityValidator<br/>testing/data_compatibility_validator.py]
-            TPDR[TestingPipelineDAGResolver<br/>testing/pipeline_dag_resolver.py]
-            TPE[TestingPipelineExecutor<br/>testing/pipeline_executor.py]
+            %% Note: Core execution components moved to Execution Layer
+            %% Testing framework now focuses on specialized testing utilities
         end
         
         subgraph "Production Support"
@@ -124,7 +124,9 @@ graph TB
     %% Execution Layer Relationships
     PE --> PDR
     PE --> PSE
+    PE --> DCV
     PDR --> DFM
+    DCV --> EDFM
     
     %% Core Engine Relationships
     PSE --> SIM
@@ -143,9 +145,7 @@ graph TB
     WM --> LDM
     
     %% Testing Framework Relationships
-    TPE --> PE
-    TPDR --> PDR
-    DCV --> EDFM
+    %% Note: Testing framework components consolidated into Execution Layer
     
     %% Production Relationships
     E2EV --> PE
@@ -176,11 +176,11 @@ graph TB
     classDef jupyter fill:#e0f2f1
     classDef utilities fill:#fafafa
     
-    class PE,PDR executionLayer
+    class PE,PDR,DCV executionLayer
     class PSE,SIM,DFM coreEngine
     class BSDG,DSDG,EDFM,LDM,SOR dataManagement
     class RDT,S3DD,WM integration
-    class DCV,TPDR,TPE testing
+    %% Testing framework styling removed - components moved to execution layer
     class DV,E2EV,HC,PO production
     class NI,VIZ,DBG,ADV,TMPL jupyter
     class EH,EC,RM,DC utilities
@@ -216,8 +216,7 @@ The system is organized into **8 distinct layers** with clear separation of conc
 
 #### **5. Testing Framework** (`testing/`)
 - **Specialized testing components and validation**
-- `DataCompatibilityValidator`: Data compatibility validation
-- `TestingPipelineDAGResolver` & `TestingPipelineExecutor`: Testing-specific execution
+- Note: Core execution components (DataCompatibilityValidator, PipelineDAGResolver, PipelineExecutor) have been consolidated into the Execution Layer to eliminate architectural duplication and maintain proper dependency flow
 
 #### **6. Production Support** (`production/`)
 - **Production deployment and monitoring capabilities**
