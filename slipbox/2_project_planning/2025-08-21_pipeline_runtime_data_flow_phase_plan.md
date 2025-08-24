@@ -55,87 +55,51 @@ This phase implements core data flow management that supports the **[Pipeline Ru
 ## Week 3: Pipeline Execution Engine
 
 ### Day 1-2: Pipeline DAG Integration
+
+**IMPLEMENTATION UPDATE**: The PipelineDAGResolver has been significantly enhanced and moved to a new location with expanded capabilities.
+
+**New Location**: `src/cursus/api/dag/pipeline_dag_resolver.py` (moved from validation/runtime/execution)
+
+**Enhanced Features**:
+- **Intelligent Step Configuration Resolution**: Optional integration with Dynamic Template System
+- **Contract-Based Data Flow Mapping**: Uses script contracts for precise channel mappings
+- **Dynamic Contract Discovery**: Registry-based step specification resolution
+- **Comprehensive Validation**: Enhanced DAG integrity checking with detailed reporting
+- **Multiple Channel Matching Strategies**: Direct, semantic, path-based, and fallback matching
+
+**Key Implementation Highlights**:
+
 ```python
-# src/cursus/validation/runtime/execution/pipeline_dag_resolver.py
-from typing import Dict, List, Optional, Set
-from dataclasses import dataclass
-import networkx as nx
-from cursus.core.dag import PipelineDAG
-from cursus.steps.configs import StepConfig
+# Enhanced PipelineDAGResolver with configuration support
+from cursus.api.dag.pipeline_dag_resolver import PipelineDAGResolver
 
-@dataclass
-class PipelineExecutionPlan:
-    """Execution plan for pipeline with topological ordering."""
-    execution_order: List[str]
-    step_configs: Dict[str, StepConfig]
-    dependencies: Dict[str, List[str]]
-    data_flow_map: Dict[str, Dict[str, str]]
+# Basic usage
+resolver = PipelineDAGResolver(dag)
+execution_plan = resolver.create_execution_plan()
 
-class PipelineDAGResolver:
-    """Resolves pipeline DAG into executable plan."""
-    
-    def __init__(self, dag: PipelineDAG):
-        self.dag = dag
-        self.graph = self._build_networkx_graph()
-    
-    def _build_networkx_graph(self) -> nx.DiGraph:
-        """Convert pipeline DAG to NetworkX graph."""
-        graph = nx.DiGraph()
-        
-        for step_name, step_config in self.dag.steps.items():
-            graph.add_node(step_name, config=step_config)
-            
-            # Add dependency edges
-            for dependency in step_config.depends_on:
-                graph.add_edge(dependency, step_name)
-        
-        return graph
-    
-    def create_execution_plan(self) -> PipelineExecutionPlan:
-        """Create topologically sorted execution plan."""
-        if not nx.is_directed_acyclic_graph(self.graph):
-            raise ValueError("Pipeline contains cycles")
-        
-        execution_order = list(nx.topological_sort(self.graph))
-        step_configs = {
-            name: self.graph.nodes[name]['config'] 
-            for name in execution_order
-        }
-        
-        dependencies = {
-            name: list(self.graph.predecessors(name))
-            for name in execution_order
-        }
-        
-        data_flow_map = self._build_data_flow_map()
-        
-        return PipelineExecutionPlan(
-            execution_order=execution_order,
-            step_configs=step_configs,
-            dependencies=dependencies,
-            data_flow_map=data_flow_map
-        )
-    
-    def _build_data_flow_map(self) -> Dict[str, Dict[str, str]]:
-        """Map data flow between steps."""
-        data_flow = {}
-        
-        for step_name in self.graph.nodes():
-            step_config = self.graph.nodes[step_name]['config']
-            inputs = {}
-            
-            # Map input dependencies
-            for dep_step in self.graph.predecessors(step_name):
-                dep_config = self.graph.nodes[dep_step]['config']
-                # Map outputs of dependency to inputs of current step
-                for output_key, output_path in dep_config.outputs.items():
-                    if output_key in step_config.inputs:
-                        inputs[output_key] = f"{dep_step}:{output_key}"
-            
-            data_flow[step_name] = inputs
-        
-        return data_flow
+# Enhanced usage with configuration resolution
+resolver = PipelineDAGResolver(
+    dag=my_pipeline_dag,
+    config_path="./config/pipeline_config.json",  # Optional
+    metadata={"config_types": {"step1": "XGBoostTraining"}}  # Optional
+)
 
+# Validate DAG integrity
+issues = resolver.validate_dag_integrity()
+if issues:
+    print(f"DAG validation issues: {issues}")
+
+# Get execution plan with populated step configs
+execution_plan = resolver.create_execution_plan()
+```
+
+**Enhanced Data Flow Mapping**:
+- **Before**: Generic placeholders like `inputs[f"input_{i}"] = f"{dep_step}:output"`
+- **After**: Contract-based mappings like `inputs["input_path"] = "preprocessing:data_output"`
+
+**For detailed implementation, architecture, and usage patterns, see**: **[Pipeline DAG Resolver Design](../1_design/pipeline_dag_resolver_design.md)**
+
+```
 # src/cursus/validation/runtime/execution/pipeline_executor.py
 class PipelineExecutor:
     """Executes entire pipeline with data flow validation."""
