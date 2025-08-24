@@ -7,7 +7,7 @@ import logging
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from .pipeline_dag_resolver import PipelineDAGResolver, PipelineExecutionPlan
+from ....api.dag.pipeline_dag_resolver import PipelineDAGResolver, PipelineExecutionPlan
 from .data_compatibility_validator import DataCompatibilityValidator, DataCompatibilityReport
 from ..core.pipeline_script_executor import PipelineScriptExecutor
 from ..data.enhanced_data_flow_manager import EnhancedDataFlowManager
@@ -54,12 +54,18 @@ class PipelineExecutor:
         self.execution_results = {}
         self.logger = logging.getLogger(__name__)
     
-    def execute_pipeline(self, dag, data_source: str = "synthetic") -> PipelineExecutionResult:
+    def execute_pipeline(self, dag, data_source: str = "synthetic", 
+                        config_path: Optional[str] = None,
+                        available_configs: Optional[Dict[str, Any]] = None,
+                        metadata: Optional[Dict[str, Any]] = None) -> PipelineExecutionResult:
         """Execute complete pipeline with data flow validation.
         
         Args:
             dag: PipelineDAG object representing the pipeline
             data_source: Source of data for testing ("synthetic" or "s3")
+            config_path: Path to configuration file (optional)
+            available_configs: Pre-loaded configuration instances (optional)
+            metadata: Configuration metadata for enhanced resolution (optional)
             
         Returns:
             PipelineExecutionResult object with execution results
@@ -68,8 +74,20 @@ class PipelineExecutor:
         memory_peak = 0
         
         try:
-            resolver = PipelineDAGResolver(dag)
+            # Create resolver with enhanced configuration support
+            resolver = PipelineDAGResolver(
+                dag=dag,
+                config_path=config_path,
+                available_configs=available_configs,
+                metadata=metadata
+            )
             execution_plan = resolver.create_execution_plan()
+            
+            # Log configuration resolution info if available
+            if resolver.config_resolver:
+                config_preview = resolver.get_config_resolution_preview()
+                if config_preview:
+                    self.logger.info(f"Configuration resolution preview: {config_preview}")
             
             # Validate DAG integrity
             integrity_issues = resolver.validate_dag_integrity()
@@ -170,7 +188,7 @@ class PipelineExecutor:
     def _prepare_step_inputs(self, step_name: str, 
                            execution_plan: PipelineExecutionPlan, 
                            step_outputs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-        """Prepare inputs for a step from previous step outputs.
+        """Prepare inputs for a step from previous step outputs using enhanced data flow mapping.
         
         Args:
             step_name: Name of the step
@@ -182,23 +200,32 @@ class PipelineExecutor:
         """
         inputs = {}
         
-        # Get dependencies from execution plan
-        dependencies = execution_plan.dependencies.get(step_name, [])
-        
-        # Get input mapping from data flow map
+        # Get input mapping from enhanced data flow map
         input_mapping = execution_plan.data_flow_map.get(step_name, {})
         
-        for dep_step in dependencies:
-            if dep_step in step_outputs:
-                dep_outputs = step_outputs[dep_step]
-                
-                # Map outputs to inputs based on data flow map
-                for input_key, output_ref in input_mapping.items():
-                    if ":" in output_ref:
-                        src_step, output_key = output_ref.split(":", 1)
-                        if src_step == dep_step and output_key in dep_outputs:
-                            inputs[input_key] = dep_outputs[output_key]
+        if input_mapping:
+            # Use contract-based data flow mapping
+            for input_key, output_ref in input_mapping.items():
+                if ":" in output_ref:
+                    src_step, output_key = output_ref.split(":", 1)
+                    if src_step in step_outputs and output_key in step_outputs[src_step]:
+                        inputs[input_key] = step_outputs[src_step][output_key]
+                        self.logger.debug(f"Mapped {src_step}:{output_key} -> {step_name}:{input_key}")
+                    else:
+                        self.logger.warning(f"Could not find output {output_ref} for input {input_key}")
+        else:
+            # Fallback to generic dependency-based mapping
+            dependencies = execution_plan.dependencies.get(step_name, [])
+            for i, dep_step in enumerate(dependencies):
+                if dep_step in step_outputs:
+                    # Use first available output from dependency
+                    dep_outputs = step_outputs[dep_step]
+                    if dep_outputs:
+                        first_output_key = next(iter(dep_outputs.keys()))
+                        inputs[f"input_{i}"] = dep_outputs[first_output_key]
+                        self.logger.debug(f"Fallback mapping: {dep_step}:{first_output_key} -> {step_name}:input_{i}")
         
+        self.logger.info(f"Prepared {len(inputs)} inputs for step {step_name}: {list(inputs.keys())}")
         return inputs
     
     def _execute_step(self, step_name: str, step_config: Dict[str, Any], 

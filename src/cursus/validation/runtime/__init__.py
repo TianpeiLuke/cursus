@@ -38,7 +38,7 @@ from .utils.result_models import TestResult, ExecutionResult
 from .utils.execution_context import ExecutionContext
 
 # Testing components
-from .execution.pipeline_dag_resolver import PipelineDAGResolver, PipelineExecutionPlan
+from ...api.dag.pipeline_dag_resolver import PipelineDAGResolver, PipelineExecutionPlan
 # from .testing.pipeline_executor import PipelineExecutor, PipelineExecutionResult, StepExecutionResult
 # from .testing.data_compatibility_validator import DataCompatibilityValidator, DataCompatibilityReport, DataSchemaInfo
 
