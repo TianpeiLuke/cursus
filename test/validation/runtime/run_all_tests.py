@@ -78,6 +78,8 @@ def run_specific_module_tests(module_name):
         'enhanced_data_flow_manager': 'data/test_enhanced_data_flow_manager.py',
         'local_data_manager': 'data/test_local_data_manager.py',
         's3_output_registry': 'data/test_s3_output_registry.py',
+        'base_synthetic_data_generator': 'data/test_base_synthetic_data_generator.py',
+        'default_synthetic_data_generator': 'data/test_default_synthetic_data_generator.py',
         'result_models': 'utils/test_result_models.py',
         'execution_context': 'utils/test_execution_context.py',
         'error_handling': 'utils/test_error_handling.py'
@@ -90,7 +92,7 @@ def run_specific_module_tests(module_name):
     
     pattern = module_patterns[module_name]
     
-    if '/' in pattern:
+    if '/' in pattern and not pattern.endswith('*.py'):
         # Specific file
         test_file = test_dir / pattern
         if test_file.exists():
@@ -99,10 +101,21 @@ def run_specific_module_tests(module_name):
             print(f"Test file not found: {test_file}")
             return 1
     else:
-        # Pattern-based discovery
+        # Pattern-based discovery (includes patterns like 'data/test_*.py')
+        if '/' in pattern:
+            # Extract directory and pattern
+            parts = pattern.split('/')
+            subdir = parts[0]
+            file_pattern = parts[1]
+            search_dir = test_dir / subdir
+        else:
+            # Simple pattern like 'test_*.py'
+            search_dir = test_dir
+            file_pattern = pattern
+        
         suite = loader.discover(
-            start_dir=str(test_dir),
-            pattern=pattern,
+            start_dir=str(search_dir),
+            pattern=file_pattern,
             top_level_dir=str(project_root)
         )
     
