@@ -1,184 +1,233 @@
-# XGBoost 3-Step Pipeline Runtime Test
+# XGBoost 3-Step Pipeline Runtime Testing Suite
 
-This directory contains a comprehensive test case for the Cursus Pipeline Runtime Testing System, specifically designed to test a 3-step XGBoost pipeline.
+This directory contains a comprehensive test suite for validating the Cursus pipeline runtime system using a real-world XGBoost machine learning pipeline.
 
 ## Overview
 
-The test validates a complete machine learning pipeline with the following steps:
-1. **XGBoost Training** - Trains an XGBoost model on synthetic data
-2. **XGBoost Model Evaluation** - Evaluates the trained model performance
-3. **Model Calibration** - Calibrates the model for better probability estimates
+The test suite validates a 3-step XGBoost pipeline:
+1. **XGBoost Training** - Train an XGBoost model on synthetic data
+2. **XGBoost Model Evaluation** - Evaluate the trained model and generate metrics
+3. **Model Calibration** - Calibrate model predictions for better probability estimates
 
-The pipeline follows the DAG: `XGBoost Training → XGBoost Model Eval → Model Calibration`
+**Pipeline Dependencies:**
+```
+XGBoost Training → XGBoost Model Eval → Model Calibration
+```
 
-## Files Structure
+## Test Suite Components
+
+### 1. Setup and Data Preparation
+**File:** `01_setup_and_data_preparation.ipynb`
+
+**Purpose:** Environment setup and synthetic dataset generation
+- Creates directory structure for the test suite
+- Generates synthetic training data (800 samples, 10 features)
+- Generates synthetic evaluation data (200 samples, 10 features)
+- Saves datasets as CSV files with metadata
+- Provides data exploration and validation
+
+**Outputs:**
+- `data/train_data.csv` - Training dataset
+- `data/eval_data.csv` - Evaluation dataset
+- `data/dataset_metadata.json` - Dataset metadata and statistics
+
+### 2. Pipeline Configuration
+**File:** `02_pipeline_configuration_complete.ipynb`
+
+**Purpose:** Pipeline definition and step configuration
+- Defines the 3-step pipeline with proper dependencies
+- Creates comprehensive JSON configurations for each step
+- Includes hyperparameters, input/output paths, and validation rules
+- Validates configurations and creates combined pipeline config
+
+**Outputs:**
+- `configs/xgboost_training_config.json` - Training step configuration
+- `configs/xgboost_eval_config.json` - Evaluation step configuration
+- `configs/model_calibration_config.json` - Calibration step configuration
+- `configs/pipeline_config.json` - Combined pipeline configuration
+
+### 3. Individual Step Testing
+**File:** `03_individual_step_testing.ipynb`
+
+**Purpose:** Test each pipeline step individually in isolation
+- Mock step tester implementation for isolated testing
+- Individual step validation and error handling
+- Output verification and data flow checks
+- Comprehensive test reporting and metrics
+
+**Key Features:**
+- `MockStepTester` class for step-by-step validation
+- Dependency validation between steps
+- Error handling and failure reporting
+- Execution time tracking
+- Output file verification
+
+**Outputs:**
+- `outputs/workspace/` - Step execution workspace
+- `outputs/results/individual_step_test_results.json` - Test results
+- `outputs/logs/` - Execution logs
+
+## Directory Structure
 
 ```
 test/integration/runtime/
 ├── README.md                                    # This documentation
-├── test_xgboost_3_step_pipeline.ipynb         # Main test notebook
-├── data/                                       # Generated test datasets
-├── configs/                                    # Configuration files
-└── outputs/                                    # Test execution outputs
-    ├── workspace/                              # Step workspaces
-    ├── logs/                                   # Execution logs
-    └── results/                                # Test results and reports
+├── 01_setup_and_data_preparation.ipynb        # Data setup notebook
+├── 02_pipeline_configuration_complete.ipynb   # Pipeline config notebook
+├── 03_individual_step_testing.ipynb          # Individual step testing
+├── step_testing_script.py                     # Python script version
+├── script_to_notebook.py                      # Script-to-notebook converter
+├── data/                                       # Generated datasets
+│   ├── train_data.csv
+│   ├── eval_data.csv
+│   └── dataset_metadata.json
+├── configs/                                    # Step configurations
+│   ├── xgboost_training_config.json
+│   ├── xgboost_eval_config.json
+│   ├── model_calibration_config.json
+│   └── pipeline_config.json
+└── outputs/                                    # Test outputs
+    ├── workspace/                              # Step execution files
+    ├── results/                                # Test results
+    └── logs/                                   # Execution logs
 ```
 
-## Test Notebook Sections
-
-The Jupyter notebook (`test_xgboost_3_step_pipeline.ipynb`) contains 8 comprehensive sections:
-
-### Section 1: Setup and Imports
-- Configures the test environment
-- Imports required Cursus components
-- Sets up logging and path configuration
-
-### Section 2: Pipeline Definition and Configuration
-- Defines the 3-step pipeline structure
-- Configures step dependencies and workspace directories
-- Sets up the test environment
-
-### Section 3: Test Data Preparation
-- Generates synthetic training and evaluation datasets
-- Creates realistic feature matrices and target variables
-- Saves datasets for pipeline consumption
-
-### Section 4: Individual Step Testing
-- Tests each pipeline step in isolation
-- Validates step execution, environment setup, and output generation
-- Tracks individual step performance metrics
-
-### Section 5: End-to-End Pipeline Testing
-- Executes the complete pipeline from start to finish
-- Validates data flow between steps
-- Tracks pipeline-level performance and status
-
-### Section 6: Performance Analysis and Visualization
-- Generates performance metrics and visualizations
-- Creates charts for execution time, memory usage, and success rates
-- Provides comprehensive performance analysis
-
-### Section 7: Error Handling and Edge Cases
-- Tests various error scenarios (missing data, invalid dependencies, etc.)
-- Validates edge cases (empty datasets, single samples, uniform targets)
-- Ensures robust error handling
-
-### Section 8: Results Summary and Reporting
-- Generates comprehensive test reports
-- Provides final summary of all test results
-- Creates detailed workspace structure documentation
-
-## How to Run the Test
+## Usage Instructions
 
 ### Prerequisites
-1. Ensure you have the Cursus package installed and configured
-2. Required Python packages: `pandas`, `numpy`, `matplotlib`, `seaborn`
-3. Jupyter notebook environment
+- Python 3.8+
+- Jupyter Notebook or JupyterLab
+- Required packages: pandas, numpy, scikit-learn, xgboost
+- Cursus framework (optional - mock implementations provided)
 
-### Execution Steps
-1. Navigate to the test directory:
+### Running the Test Suite
+
+1. **Setup and Data Generation**
    ```bash
-   cd test/integration/runtime/
+   jupyter notebook 01_setup_and_data_preparation.ipynb
    ```
+   Run all cells to generate synthetic datasets and setup directory structure.
 
-2. Launch Jupyter notebook:
+2. **Pipeline Configuration**
    ```bash
-   jupyter notebook test_xgboost_3_step_pipeline.ipynb
+   jupyter notebook 02_pipeline_configuration_complete.ipynb
    ```
+   Run all cells to create step configurations and pipeline definition.
 
-3. Execute all cells in sequence (or use "Run All" from the Cell menu)
+3. **Individual Step Testing**
+   ```bash
+   jupyter notebook 03_individual_step_testing.ipynb
+   ```
+   Run all cells to test each pipeline step individually.
 
-### Expected Outputs
-- **Synthetic datasets** in the `data/` directory
-- **Step workspaces** with individual step outputs
-- **Performance visualizations** showing execution metrics
-- **Comprehensive test report** in JSON format
-- **Final summary** with all test results
+### Alternative: Python Script Execution
 
-## Test Validation Points
+You can also run the individual step testing as a Python script:
+```bash
+cd test/integration/runtime
+python step_testing_script.py
+```
 
-The test validates the following aspects of the Pipeline Runtime Testing System:
+## Test Validation Features
 
-### ✅ Core Functionality
-- Pipeline script executor initialization and configuration
-- Notebook interface integration
-- Data flow manager functionality
-- Step registry integration
+### Mock Implementation
+- **MockStepTester**: Simulates Cursus runtime components when not available
+- **Synthetic Data**: Generates realistic ML datasets for testing
+- **Error Simulation**: Tests error handling and recovery mechanisms
 
-### ✅ Pipeline Execution
-- Individual step execution and validation
-- End-to-end pipeline orchestration
-- Data flow between pipeline steps
-- Environment variable management
+### Validation Checks
+- **Data Validation**: Ensures required columns and data types
+- **Dependency Validation**: Verifies step dependencies are satisfied
+- **Output Validation**: Confirms expected output files are created
+- **Configuration Validation**: Validates step configurations and parameters
 
-### ✅ Error Handling
-- Missing input data scenarios
-- Invalid step dependencies
-- Corrupted data format handling
-- Resource constraint simulation
+### Reporting
+- **Execution Metrics**: Tracks execution time for each step
+- **Success/Failure Rates**: Provides comprehensive test statistics
+- **Error Details**: Captures and reports detailed error information
+- **File Verification**: Confirms all expected outputs are generated
 
-### ✅ Performance Monitoring
-- Execution time tracking
-- Memory usage monitoring
-- Success rate calculation
-- Data flow transition tracking
+## Integration with Cursus Framework
 
-### ✅ Reporting and Visualization
-- Performance metrics generation
-- Visual analysis charts
-- Comprehensive test reporting
-- Workspace structure documentation
+### Runtime Components Used
+- `cursus.validation.runtime.jupyter.notebook_interface.NotebookInterface`
+- `cursus.validation.runtime.core.data_flow_manager.DataFlowManager`
+- `cursus.steps.registry.step_names.STEP_NAMES`
 
-## Integration with Cursus Components
-
-This test case integrates with the following Cursus components:
-
-- **`cursus.validation.runtime.core.pipeline_script_executor`** - Core pipeline execution engine
-- **`cursus.validation.runtime.jupyter.notebook_interface`** - Jupyter integration interface
-- **`cursus.validation.runtime.data.data_flow_manager`** - Data flow management
-- **`cursus.steps.registry.step_names`** - Step name registry for XGBoost components
-
-## Customization
-
-To adapt this test for different pipeline configurations:
-
-1. **Modify Step Configuration**: Update the `pipeline_config` in Section 2
-2. **Change Test Data**: Modify data generation in Section 3
-3. **Add New Steps**: Extend the step testing functions in Section 4
-4. **Custom Metrics**: Add additional performance metrics in Section 6
+### Step Registry Integration
+The test suite integrates with the Cursus step registry system:
+- **Step Names**: Uses registry-defined step names
+- **Step Specifications**: Validates against step specs in `cursus/steps/specs/`
+- **Step Contracts**: Ensures compliance with contracts in `cursus/steps/contracts/`
+- **Step Scripts**: Tests actual step scripts from `cursus/steps/scripts/`
 
 ## Troubleshooting
 
 ### Common Issues
-- **Import Errors**: Ensure Cursus package is properly installed and in Python path
-- **Missing Dependencies**: Install required packages (`pip install pandas numpy matplotlib seaborn`)
-- **Permission Errors**: Ensure write permissions for the test workspace directory
+
+1. **Import Errors**
+   - The test suite includes mock implementations for when Cursus components are unavailable
+   - Check that the Cursus framework is properly installed and accessible
+
+2. **Missing Data Files**
+   - Ensure you run notebooks in order: 01 → 02 → 03
+   - Check that data generation completed successfully in notebook 01
+
+3. **Configuration Errors**
+   - Verify that pipeline configuration was created successfully in notebook 02
+   - Check JSON configuration files for syntax errors
+
+4. **Step Failures**
+   - Review individual step error messages in the test output
+   - Check that input files exist and have correct format
+   - Verify step dependencies are satisfied
 
 ### Debug Mode
-To enable debug logging, modify the logging configuration in Section 1:
+To enable detailed debugging, modify the notebooks to include:
 ```python
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+import logging
+logging.basicConfig(level=logging.DEBUG)
 ```
 
-## Expected Results
+## Extension Points
 
-A successful test run should show:
-- ✅ All 3 pipeline steps executing successfully
-- ✅ End-to-end pipeline completion with SUCCESS status
-- ✅ Performance visualizations displaying execution metrics
-- ✅ Error scenarios handled appropriately
-- ✅ Comprehensive test report generated
+### Adding New Steps
+To add additional pipeline steps:
+1. Create step configuration in notebook 02
+2. Add step testing method to `MockStepTester` class
+3. Update the test execution flow in notebook 03
 
-## Contributing
+### Custom Validation
+To add custom validation logic:
+1. Extend the `MockStepTester` class with new validation methods
+2. Add validation calls to the individual step test functions
+3. Update the test summary generation to include new metrics
 
-When extending this test case:
-1. Follow the existing section structure
-2. Add appropriate error handling
-3. Include performance tracking
-4. Update this README with new features
-5. Ensure backward compatibility with existing test structure
+## Technical Notes
+
+### Script-to-Notebook Conversion
+The test suite uses a custom script-to-notebook converter (`script_to_notebook.py`) to avoid JSON truncation issues when creating large notebooks programmatically. This approach:
+- Writes complex logic as Python scripts first
+- Converts scripts to notebook format using AST parsing
+- Preserves code structure and comments
+- Avoids JSON size limitations
+
+### Mock vs Real Implementation
+The test suite is designed to work with both mock implementations (for testing) and real Cursus components (for production validation):
+- Mock implementations simulate step execution for testing purposes
+- Real implementations use actual Cursus runtime components
+- The test framework automatically detects and uses available components
+
+## Future Enhancements
+
+1. **End-to-End Pipeline Testing**: Complete pipeline execution testing
+2. **Performance Benchmarking**: Step execution performance analysis
+3. **Error Injection Testing**: Systematic error condition testing
+4. **Parallel Execution**: Multi-step parallel execution testing
+5. **Resource Monitoring**: Memory and CPU usage tracking during execution
 
 ---
 
-This test case serves as both a validation tool for the Cursus Pipeline Runtime Testing System and a reference implementation for creating additional pipeline tests.
+**Created:** August 2025  
+**Version:** 1.0  
+**Cursus Framework Integration:** Runtime Testing Suite
