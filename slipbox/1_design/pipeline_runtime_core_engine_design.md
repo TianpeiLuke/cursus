@@ -409,6 +409,7 @@ class ContractIntegration:
 - **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design.md)**: Master design document that provides overall system architecture
 
 ### **Related Component Designs**
+- **[Pipeline Runtime Execution Layer Design](pipeline_runtime_execution_layer_design.md)**: High-level pipeline orchestration layer that uses these core components
 - **[Data Management Layer Design](pipeline_runtime_data_management_design.md)**: Data generation, S3 integration, and compatibility validation
 - **[S3 Output Path Management Design](pipeline_runtime_s3_output_path_management_design.md)**: Systematic S3 output path tracking and management
 - **[Testing Modes Design](pipeline_runtime_testing_modes_design.md)**: Isolation, pipeline, and deep dive testing modes

@@ -64,27 +64,182 @@ The Cursus package currently excels at:
 
 The Pipeline Runtime Testing System implements a **multi-layer testing architecture** that leverages the consistent script interface pattern discovered in the Cursus codebase:
 
+```mermaid
+graph TB
+    subgraph "Pipeline Runtime Testing System (cursus/validation/runtime)"
+        subgraph "Execution Layer"
+            PE[PipelineExecutor<br/>execution/pipeline_executor.py]
+            PDR[PipelineDAGResolver<br/>execution/pipeline_dag_resolver.py]
+        end
+        
+        subgraph "Core Engine"
+            PSE[PipelineScriptExecutor<br/>core/pipeline_script_executor.py]
+            SIM[ScriptImportManager<br/>core/script_import_manager.py]
+            DFM[DataFlowManager<br/>core/data_flow_manager.py]
+        end
+        
+        subgraph "Data Management"
+            BSDG[BaseSyntheticDataGenerator<br/>data/base_synthetic_data_generator.py]
+            DSDG[DefaultSyntheticDataGenerator<br/>data/default_synthetic_data_generator.py]
+            EDFM[EnhancedDataFlowManager<br/>data/enhanced_data_flow_manager.py]
+            LDM[LocalDataManager<br/>data/local_data_manager.py]
+            SOR[S3OutputRegistry<br/>data/s3_output_registry.py]
+        end
+        
+        subgraph "Integration Layer"
+            RDT[RealDataTester<br/>integration/real_data_tester.py]
+            S3DD[S3DataDownloader<br/>integration/s3_data_downloader.py]
+            WM[WorkspaceManager<br/>integration/workspace_manager.py]
+        end
+        
+        subgraph "Testing Framework"
+            DCV[DataCompatibilityValidator<br/>testing/data_compatibility_validator.py]
+            TPDR[TestingPipelineDAGResolver<br/>testing/pipeline_dag_resolver.py]
+            TPE[TestingPipelineExecutor<br/>testing/pipeline_executor.py]
+        end
+        
+        subgraph "Production Support"
+            DV[DeploymentValidator<br/>production/deployment_validator.py]
+            E2EV[E2EValidator<br/>production/e2e_validator.py]
+            HC[HealthChecker<br/>production/health_checker.py]
+            PO[PerformanceOptimizer<br/>production/performance_optimizer.py]
+        end
+        
+        subgraph "Jupyter Integration"
+            NI[NotebookInterface<br/>jupyter/notebook_interface.py]
+            VIZ[Visualization<br/>jupyter/visualization.py]
+            DBG[Debugger<br/>jupyter/debugger.py]
+            ADV[Advanced<br/>jupyter/advanced.py]
+            TMPL[Templates<br/>jupyter/templates.py]
+        end
+        
+        subgraph "Utilities"
+            EH[ErrorHandling<br/>utils/error_handling.py]
+            EC[ExecutionContext<br/>utils/execution_context.py]
+            RM[ResultModels<br/>utils/result_models.py]
+            DC[DefaultConfig<br/>config/default_config.py]
+        end
+    end
+    
+    %% Execution Layer Relationships
+    PE --> PDR
+    PE --> PSE
+    PDR --> DFM
+    
+    %% Core Engine Relationships
+    PSE --> SIM
+    PSE --> DFM
+    PSE --> LDM
+    
+    %% Data Management Relationships
+    DSDG --> BSDG
+    EDFM --> DFM
+    PSE --> EDFM
+    
+    %% Integration Relationships
+    RDT --> S3DD
+    RDT --> PSE
+    S3DD --> SOR
+    WM --> LDM
+    
+    %% Testing Framework Relationships
+    TPE --> PE
+    TPDR --> PDR
+    DCV --> EDFM
+    
+    %% Production Relationships
+    E2EV --> PE
+    DV --> HC
+    PO --> PSE
+    
+    %% Jupyter Integration Relationships
+    NI --> PSE
+    NI --> PE
+    VIZ --> RM
+    DBG --> PSE
+    ADV --> RDT
+    
+    %% Utility Dependencies
+    PSE --> EC
+    PSE --> RM
+    SIM --> EH
+    PE --> EH
+    PSE --> DC
+    
+    %% Styling
+    classDef executionLayer fill:#e1f5fe
+    classDef coreEngine fill:#f3e5f5
+    classDef dataManagement fill:#e8f5e8
+    classDef integration fill:#fff3e0
+    classDef testing fill:#fce4ec
+    classDef production fill:#f1f8e9
+    classDef jupyter fill:#e0f2f1
+    classDef utilities fill:#fafafa
+    
+    class PE,PDR executionLayer
+    class PSE,SIM,DFM coreEngine
+    class BSDG,DSDG,EDFM,LDM,SOR dataManagement
+    class RDT,S3DD,WM integration
+    class DCV,TPDR,TPE testing
+    class DV,E2EV,HC,PO production
+    class NI,VIZ,DBG,ADV,TMPL jupyter
+    class EH,EC,RM,DC utilities
 ```
-Pipeline Runtime Testing System
-├── Core Execution Engine
-│   ├── PipelineScriptExecutor (orchestrates execution)
-│   ├── ScriptImportManager (dynamic imports & execution)
-│   └── DataFlowManager (manages data between steps)
-├── Data Management Layer
-│   ├── LocalDataManager (manages local real data files)
-│   ├── BaseSyntheticDataGenerator (abstract base class for data generators)
-│   ├── DefaultSyntheticDataGenerator (default implementation for test data creation)
-│   ├── S3DataDownloader (fetches real pipeline outputs)
-│   └── DataCompatibilityValidator (validates data flow)
-├── Testing Modes
-│   ├── IsolationTester (single script testing)
-│   ├── PipelineTester (end-to-end testing)
-│   └── DeepDiveTester (detailed analysis with real data)
-└── Jupyter Integration
-    ├── NotebookInterface (user-friendly API)
-    ├── VisualizationReporter (charts and metrics)
-    └── InteractiveDebugger (step-by-step execution)
-```
+
+### Architecture Layers
+
+The system is organized into **8 distinct layers** with clear separation of concerns:
+
+#### **1. Execution Layer** (`execution/`)
+- **High-level pipeline orchestration and DAG resolution**
+- `PipelineExecutor`: End-to-end pipeline execution with data flow validation
+- `PipelineDAGResolver`: DAG analysis, topological sorting, and execution planning
+
+#### **2. Core Engine** (`core/`)
+- **Individual script execution and management**
+- `PipelineScriptExecutor`: Script execution orchestration
+- `ScriptImportManager`: Dynamic script imports and execution
+- `DataFlowManager`: Basic data flow tracking and management
+
+#### **3. Data Management** (`data/`)
+- **Data generation, management, and enhanced flow control**
+- `BaseSyntheticDataGenerator` & `DefaultSyntheticDataGenerator`: Synthetic data generation
+- `EnhancedDataFlowManager`: Advanced data flow management
+- `LocalDataManager`: Local data file management
+- `S3OutputRegistry`: S3 output path tracking
+
+#### **4. Integration Layer** (`integration/`)
+- **External system integration and workspace management**
+- `RealDataTester`: Real data testing capabilities
+- `S3DataDownloader`: S3 data retrieval and management
+- `WorkspaceManager`: Test workspace organization
+
+#### **5. Testing Framework** (`testing/`)
+- **Specialized testing components and validation**
+- `DataCompatibilityValidator`: Data compatibility validation
+- `TestingPipelineDAGResolver` & `TestingPipelineExecutor`: Testing-specific execution
+
+#### **6. Production Support** (`production/`)
+- **Production deployment and monitoring capabilities**
+- `DeploymentValidator`: Production deployment validation
+- `E2EValidator`: End-to-end production testing
+- `HealthChecker`: System health monitoring
+- `PerformanceOptimizer`: Performance optimization
+
+#### **7. Jupyter Integration** (`jupyter/`)
+- **Notebook interface and interactive capabilities**
+- `NotebookInterface`: User-friendly Jupyter API
+- `Visualization`: Rich visualization and reporting
+- `Debugger`: Interactive debugging capabilities
+- `Advanced`: Advanced analysis features
+- `Templates`: Notebook templates
+
+#### **8. Utilities** (`utils/` & `config/`)
+- **Shared utilities and configuration**
+- `ErrorHandling`: Specialized error types and handling
+- `ExecutionContext`: Execution context management
+- `ResultModels`: Result data models
+- `DefaultConfig`: Default configuration settings
 
 ### Key Architectural Advantages
 
@@ -131,6 +286,7 @@ This master design is supported by the following focused design documents:
 
 ### **Core System Components**
 - **[Core Execution Engine Design](pipeline_runtime_core_engine_design.md)**: Detailed design for PipelineScriptExecutor, ScriptImportManager, and DataFlowManager
+- **[Execution Layer Design](pipeline_runtime_execution_layer_design.md)**: High-level pipeline orchestration with PipelineExecutor and PipelineDAGResolver for end-to-end execution planning
 - **[Data Management Layer Design](pipeline_runtime_data_management_design.md)**: Comprehensive design for synthetic data generation, S3 integration, and data compatibility validation
 - **[S3 Output Path Management Design](pipeline_runtime_s3_output_path_management_design.md)**: Systematic S3 output path tracking and management for pipeline runtime testing
 - **[Testing Modes Design](pipeline_runtime_testing_modes_design.md)**: Detailed design for isolation testing, pipeline testing, and deep dive analysis modes

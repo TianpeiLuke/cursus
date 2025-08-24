@@ -79,12 +79,15 @@ The Cursus package currently excels at:
 
 ### System Architecture Overview
 
-The Pipeline Script Functionality Testing System implements a **multi-layer testing architecture** that leverages the consistent script interface pattern discovered in the Cursus codebase:
+The Pipeline Script Functionality Testing System implements a **multi-layer testing architecture** with a **two-tier execution model** that leverages the consistent script interface pattern discovered in the Cursus codebase:
 
 ```
 Pipeline Script Functionality Testing System
-├── Core Execution Engine
-│   ├── PipelineScriptExecutor (orchestrates execution)
+├── Execution Layer (High-Level Orchestration)
+│   ├── PipelineExecutor (end-to-end pipeline orchestration)
+│   └── PipelineDAGResolver (DAG resolution & execution planning)
+├── Core Execution Engine (Individual Script Execution)
+│   ├── PipelineScriptExecutor (orchestrates script execution)
 │   ├── ScriptImportManager (dynamic imports & execution)
 │   └── DataFlowManager (manages data between steps)
 ├── Data Management Layer
@@ -100,6 +103,32 @@ Pipeline Script Functionality Testing System
     ├── NotebookInterface (user-friendly API)
     ├── VisualizationReporter (charts and metrics)
     └── InteractiveDebugger (step-by-step execution)
+```
+
+### Two-Tier Execution Architecture
+
+The system employs a **hierarchical execution model** with clear separation of concerns:
+
+#### **Tier 1: Execution Layer** (`cursus/validation/runtime/execution/`)
+- **PipelineExecutor**: High-level pipeline orchestration with data flow validation
+- **PipelineDAGResolver**: DAG analysis, topological sorting, and execution planning
+- **Responsibilities**: End-to-end pipeline coordination, DAG integrity validation, step sequencing
+
+#### **Tier 2: Core Execution Engine** (`cursus/validation/runtime/core/`)
+- **PipelineScriptExecutor**: Individual script execution orchestration
+- **ScriptImportManager**: Dynamic script imports and execution context management
+- **DataFlowManager**: Data flow tracking and lineage management
+- **Responsibilities**: Script-level execution, import management, data flow coordination
+
+#### **Integration Flow**
+```
+PipelineExecutor (Tier 1)
+    ↓ uses
+PipelineDAGResolver (Tier 1) → creates execution plan
+    ↓ delegates to
+PipelineScriptExecutor (Tier 2) → executes individual steps
+    ↓ uses
+ScriptImportManager + DataFlowManager (Tier 2)
 ```
 
 ### Key Architectural Advantages
@@ -1108,6 +1137,10 @@ cursus runtime convert-local-data --source ./test_data/raw_data --target-format 
 - **[Script Testability Refactoring](script_testability_refactoring.md)**: Script testability patterns and implementation that inform the testing approach
 - **[Step Specification](step_specification.md)**: Step specification format and validation that provides the specification layer for testing
 - **[Pipeline DAG](pipeline_dag.md)**: Pipeline DAG structure and dependency management that drives execution ordering
+
+### Core System Components
+- **[Pipeline Runtime Core Engine Design](pipeline_runtime_core_engine_design.md)**: Core execution engine components (PipelineScriptExecutor, ScriptImportManager, DataFlowManager)
+- **[Pipeline Runtime Execution Layer Design](pipeline_runtime_execution_layer_design.md)**: High-level pipeline orchestration layer (PipelineExecutor, PipelineDAGResolver)
 
 ### Existing Validation Framework Documents
 - **[Unified Alignment Tester Master Design](unified_alignment_tester_master_design.md)**: Multi-level alignment validation system that provides connectivity validation complementing this functionality testing
