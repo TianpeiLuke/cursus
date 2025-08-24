@@ -2,7 +2,7 @@
 tags:
   - design
   - testing
-  - script_functionality
+  - runtime
   - jupyter_integration
   - notebook_interface
 keywords:
@@ -20,11 +20,11 @@ language: python
 date of note: 2025-08-21
 ---
 
-# Pipeline Script Functionality Testing - Jupyter Integration Design
+# Pipeline Runtime Testing - Jupyter Integration Design
 
 ## Overview
 
-The Jupyter Integration Layer provides a user-friendly, interactive interface for pipeline script functionality testing within Jupyter notebooks. This layer enables data scientists and ML engineers to perform comprehensive testing with rich visualizations, interactive debugging, and one-liner APIs that integrate seamlessly into their existing notebook workflows.
+The Jupyter Integration Layer provides a user-friendly, interactive interface for pipeline runtime testing within Jupyter notebooks. This layer enables data scientists and ML engineers to perform comprehensive testing with rich visualizations, interactive debugging, and one-liner APIs that integrate seamlessly into their existing notebook workflows.
 
 ## Architecture Overview
 
@@ -53,7 +53,7 @@ Jupyter Integration Layer
 ## 1. NotebookInterface
 
 ### Purpose
-Provide intuitive, notebook-friendly APIs for pipeline script functionality testing with rich interactive features.
+Provide intuitive, notebook-friendly APIs for pipeline runtime testing with rich interactive features.
 
 ### Core Components
 
@@ -618,7 +618,7 @@ class ParameterTuner:
 #### Quick Script Testing
 ```python
 # In Jupyter Notebook
-from cursus.validation.script_functionality import quick_test_script
+from cursus.validation.runtime import quick_test_script
 
 # One-liner script testing
 result = quick_test_script("currency_conversion")
@@ -636,7 +636,7 @@ result.visualize_performance()  # Show performance charts
 
 #### Pipeline Testing
 ```python
-from cursus.validation.script_functionality import quick_test_pipeline
+from cursus.validation.runtime import quick_test_pipeline
 
 # One-liner pipeline testing
 result = quick_test_pipeline("xgb_training_simple")
@@ -656,7 +656,7 @@ result.analyze_bottlenecks()  # Show performance bottlenecks
 
 #### Interactive Debugging
 ```python
-from cursus.validation.script_functionality import PipelineTestingNotebook
+from cursus.validation.runtime import PipelineTestingNotebook
 
 # Initialize testing environment
 tester = PipelineTestingNotebook()
