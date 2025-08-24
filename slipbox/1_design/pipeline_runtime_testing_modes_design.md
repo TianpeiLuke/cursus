@@ -658,7 +658,7 @@ class ErrorAnalyzer:
 ### With Data Management Layer
 
 **Data Source Integration**:
-- **Synthetic Data**: Use synthetic data generator for isolation and pipeline testing
+- **Synthetic Data**: Use default synthetic data generator for isolation and pipeline testing
 - **S3 Data**: Use S3 downloader for deep dive testing
 - **Data Validation**: Leverage data compatibility validator
 - **Data Caching**: Use data caching for efficient testing

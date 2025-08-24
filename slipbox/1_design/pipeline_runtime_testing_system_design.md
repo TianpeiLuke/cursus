@@ -88,7 +88,8 @@ Pipeline Script Functionality Testing System
 │   ├── ScriptImportManager (dynamic imports & execution)
 │   └── DataFlowManager (manages data between steps)
 ├── Data Management Layer
-│   ├── SyntheticDataGenerator (creates test data)
+│   ├── BaseSyntheticDataGenerator (abstract base class for data generators)
+│   ├── DefaultSyntheticDataGenerator (default implementation for test data creation)
 │   ├── S3DataDownloader (fetches real pipeline outputs)
 │   └── DataCompatibilityValidator (validates data flow)
 ├── Testing Modes

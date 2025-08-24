@@ -573,10 +573,10 @@ class PipelineScriptTests(unittest.TestCase):
 
 #### Creating Custom Test Data
 ```python
-from cursus.validation.script_functionality.data import SyntheticDataGenerator
+from cursus.validation.runtime.data import BaseSyntheticDataGenerator, DefaultSyntheticDataGenerator
 
-# Create custom data generator
-data_generator = SyntheticDataGenerator()
+# Create default data generator
+data_generator = DefaultSyntheticDataGenerator()
 
 # Define custom data scenario
 custom_scenario = {

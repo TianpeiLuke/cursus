@@ -72,7 +72,8 @@ Pipeline Runtime Testing System
 │   └── DataFlowManager (manages data between steps)
 ├── Data Management Layer
 │   ├── LocalDataManager (manages local real data files)
-│   ├── SyntheticDataGenerator (creates test data)
+│   ├── BaseSyntheticDataGenerator (abstract base class for data generators)
+│   ├── DefaultSyntheticDataGenerator (default implementation for test data creation)
 │   ├── S3DataDownloader (fetches real pipeline outputs)
 │   └── DataCompatibilityValidator (validates data flow)
 ├── Testing Modes

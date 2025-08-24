@@ -1,19 +1,36 @@
-"""Synthetic data generator for testing pipeline scripts."""
+"""Default synthetic data generator for testing pipeline scripts."""
 
 import pandas as pd
 import numpy as np
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
-class SyntheticDataGenerator:
-    """Generates synthetic data for testing pipeline scripts without requiring access to production data."""
+from .base_synthetic_data_generator import BaseSyntheticDataGenerator
+
+class DefaultSyntheticDataGenerator(BaseSyntheticDataGenerator):
+    """
+    Default implementation of synthetic data generator.
     
-    def __init__(self, random_seed: int = 42):
-        """Initialize data generator with optional random seed for reproducibility."""
-        self.random_seed = random_seed
-        np.random.seed(self.random_seed)
+    Generates synthetic data for testing pipeline scripts without requiring access to production data.
+    Provides basic data generation for common script types.
+    
+    Users can either:
+    1. Use this class directly for basic data generation
+    2. Inherit from BaseSyntheticDataGenerator to create custom generators
+    3. Inherit from this class to extend the default behavior
+    """
+    
+    def get_supported_scripts(self) -> List[str]:
+        """Return list of supported script patterns."""
+        return [
+            "currency*", "conversion*",
+            "tabular*", "preprocessing*", 
+            "xgboost*", "training*",
+            "calibration*", "model_calibration*",
+            "*"  # Fallback for any script
+        ]
     
     def generate_for_script(self, script_name: str, 
                            data_size: str = "small") -> Dict[str, str]:

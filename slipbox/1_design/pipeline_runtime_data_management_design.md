@@ -95,9 +95,66 @@ test_data/
 - **Caching**: Cache processed data and metadata for performance
 - **Lineage Tracking**: Track which local files are used in testing
 
-### 2. SyntheticDataGenerator
+### 2. Synthetic Data Generation System
 
-**Purpose**: Generate realistic synthetic data for testing pipeline scripts without requiring access to production data.
+**Purpose**: Generate realistic synthetic data for testing pipeline scripts without requiring access to production data. The system provides an extensible architecture with a base class for custom implementations and a default implementation for common use cases.
+
+#### 2.1 BaseSyntheticDataGenerator (Abstract Base Class)
+
+**Purpose**: Abstract base class defining the interface for synthetic data generators, enabling users to create custom data generators for domain-specific requirements.
+
+**Core Responsibilities**:
+- Define standard interface for data generation methods
+- Provide common utility methods for data handling
+- Enable extensible architecture for custom data generators
+- Ensure consistent API across different generator implementations
+
+**Key Abstract Methods**:
+```python
+from abc import ABC, abstractmethod
+import pandas as pd
+from typing import Dict, Any, List, Tuple
+
+class BaseSyntheticDataGenerator(ABC):
+    """Abstract base class for synthetic data generators"""
+    
+    @abstractmethod
+    def generate_dataframe(self, schema: Dict, num_rows: int, **kwargs) -> pd.DataFrame:
+        """Generate tabular data as pandas DataFrame"""
+        pass
+    
+    @abstractmethod
+    def generate_json(self, schema: Dict, num_records: int, **kwargs) -> List[Dict]:
+        """Generate structured data as list of dictionaries"""
+        pass
+    
+    # Helper methods (implemented in base class)
+    def save_dataframe(self, df: pd.DataFrame, file_path: str, format: str = 'csv') -> None:
+        """Save DataFrame to file in specified format"""
+        # Implementation provided in base class
+    
+    def save_json_data(self, data: List[Dict], file_path: str) -> None:
+        """Save JSON data to file"""
+        # Implementation provided in base class
+    
+    def generate_random_string(self, length: int = 10) -> str:
+        """Generate random string of specified length"""
+        # Implementation provided in base class
+    
+    def generate_random_date(self, start_date: str, end_date: str) -> str:
+        """Generate random date within specified range"""
+        # Implementation provided in base class
+```
+
+**Extensibility Benefits**:
+- **Custom Domain Logic**: Users can implement domain-specific data generation patterns
+- **Specialized Formats**: Support for custom data formats and structures
+- **Business Rules**: Incorporate complex business rules and constraints
+- **External Integration**: Connect to external data generation services or tools
+
+#### 2.2 DefaultSyntheticDataGenerator (Concrete Implementation)
+
+**Purpose**: Default implementation of synthetic data generation providing comprehensive functionality for common testing scenarios.
 
 **Core Responsibilities**:
 - Generate data matching expected input schemas
@@ -107,12 +164,27 @@ test_data/
 
 **Key Methods**:
 ```python
-class SyntheticDataGenerator:
-    def generate_tabular_data(self, schema: Dict, num_rows: int) -> pd.DataFrame
-    def generate_time_series_data(self, config: TimeSeriesConfig) -> pd.DataFrame
-    def generate_text_data(self, patterns: List[str], count: int) -> List[str]
-    def generate_image_data(self, dimensions: Tuple, count: int) -> np.ndarray
-    def save_to_format(self, data: Any, format: str, path: str) -> None
+class DefaultSyntheticDataGenerator(BaseSyntheticDataGenerator):
+    def generate_dataframe(self, schema: Dict, num_rows: int, **kwargs) -> pd.DataFrame:
+        """Generate tabular data based on schema specification"""
+        # Concrete implementation
+    
+    def generate_json(self, schema: Dict, num_records: int, **kwargs) -> List[Dict]:
+        """Generate JSON data based on schema specification"""
+        # Concrete implementation
+    
+    # Additional specialized methods
+    def generate_time_series_data(self, config: TimeSeriesConfig) -> pd.DataFrame:
+        """Generate time series data with trends and seasonality"""
+    
+    def generate_text_data(self, patterns: List[str], count: int) -> List[str]:
+        """Generate text data following specified patterns"""
+    
+    def generate_image_data(self, dimensions: Tuple, count: int) -> np.ndarray:
+        """Generate synthetic image data"""
+    
+    def save_to_format(self, data: Any, format: str, path: str) -> None:
+        """Save data in specified format (CSV, JSON, Parquet, etc.)"""
 ```
 
 **Data Generation Strategies**:
@@ -120,6 +192,54 @@ class SyntheticDataGenerator:
 - **Pattern-based**: Create data following specific patterns or distributions
 - **Template-based**: Use existing data as templates for synthetic generation
 - **Constraint-aware**: Respect business rules and data constraints
+
+#### 2.3 Custom Data Generator Example
+
+**Creating Domain-Specific Generators**:
+```python
+class FinancialDataGenerator(BaseSyntheticDataGenerator):
+    """Custom generator for financial data with domain-specific logic"""
+    
+    def generate_dataframe(self, schema: Dict, num_rows: int, **kwargs) -> pd.DataFrame:
+        """Generate financial data with realistic patterns"""
+        # Custom implementation for financial data
+        # - Realistic price movements
+        # - Market correlation patterns
+        # - Trading volume distributions
+        pass
+    
+    def generate_json(self, schema: Dict, num_records: int, **kwargs) -> List[Dict]:
+        """Generate financial JSON data"""
+        # Custom implementation for financial JSON structures
+        pass
+    
+    def generate_market_data(self, symbols: List[str], date_range: Tuple) -> pd.DataFrame:
+        """Generate realistic market data with correlations"""
+        # Domain-specific method for market data
+        pass
+
+# Usage example
+financial_generator = FinancialDataGenerator()
+market_data = financial_generator.generate_market_data(
+    symbols=['AAPL', 'GOOGL', 'MSFT'],
+    date_range=('2023-01-01', '2024-01-01')
+)
+```
+
+**Integration with Testing System**:
+```python
+# Using default generator
+default_generator = DefaultSyntheticDataGenerator()
+test_data = default_generator.generate_dataframe(schema, 1000)
+
+# Using custom generator
+custom_generator = FinancialDataGenerator()
+financial_test_data = custom_generator.generate_dataframe(financial_schema, 1000)
+
+# Both generators work seamlessly with the testing system
+tester.test_script_with_data("currency_conversion", test_data)
+tester.test_script_with_data("financial_analysis", financial_test_data)
+```
 
 ### 2. S3DataDownloader
 
