@@ -20,7 +20,6 @@ import yaml
 from ..core.pipeline_script_executor import PipelineScriptExecutor
 from ..execution.pipeline_executor import PipelineExecutor
 from ..integration.real_data_tester import RealDataTester
-from ..utils.error_handling import ErrorHandler
 from ..utils.execution_context import ExecutionContext
 
 logger = logging.getLogger(__name__)
@@ -122,7 +121,6 @@ class EndToEndValidator:
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
         
         self.config = config or {}
-        self.error_handler = ErrorHandler()
         
         # Initialize components
         self.pipeline_executor = PipelineExecutor()
