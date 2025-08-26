@@ -71,50 +71,65 @@ class S3DataDownloader:
         )
     
     def discover_pipeline_data(self, bucket: str, pipeline_name: str, 
-                             execution_id: Optional[str] = None) -> List[S3DataSource]:
-        """Discover available pipeline data in S3.
+                             pipeline_version: Optional[str] = None) -> List[S3DataSource]:
+        """Discover available pipeline data in S3 using MODS structure.
+        
+        Expected structure: MODS/{pipeline_name}_{version}/{step_type}/...
         
         Args:
             bucket: S3 bucket name
             pipeline_name: Name of pipeline to discover
-            execution_id: Optional specific execution ID to locate
+            pipeline_version: Optional pipeline version. If not provided, will search for recent versions.
             
         Returns:
             List of S3DataSource objects representing available data
         """
-        if execution_id:
-            prefixes = [f"pipelines/{pipeline_name}/{execution_id}/"]
+        prefixes = []
+        
+        if pipeline_version:
+            # Use specific version
+            mods_prefix = f"MODS/{pipeline_name}_{pipeline_version}/"
+            prefixes.append(mods_prefix)
+            self.logger.info(f"Checking MODS structure: {mods_prefix}")
         else:
-            # Find recent executions
-            prefixes = self._find_recent_executions(bucket, pipeline_name)
+            # Find recent pipeline versions
+            prefixes = self._find_recent_mods_pipelines(bucket, pipeline_name)
         
         data_sources = []
         for prefix in prefixes:
             step_outputs = self._discover_step_outputs(bucket, prefix)
             if step_outputs:
+                # For MODS structure, use the pipeline_name_version as execution_id
+                execution_id_value = prefix.split('/')[1]  # e.g., "pipeline_name_v1.0"
+                
                 data_sources.append(S3DataSource(
                     bucket=bucket,
                     prefix=prefix,
                     pipeline_name=pipeline_name,
-                    execution_id=execution_id or prefix.split('/')[-2],
+                    execution_id=execution_id_value,
                     step_outputs=step_outputs
                 ))
+                
+                self.logger.info(f"Found pipeline data at: {prefix}")
+        
+        if not data_sources:
+            self.logger.warning(f"No pipeline data found for {pipeline_name}")
         
         return data_sources
     
-    def _find_recent_executions(self, bucket: str, pipeline_name: str, 
-                               limit: int = 5) -> List[str]:
-        """Find recent pipeline executions in S3.
+    def _find_recent_mods_pipelines(self, bucket: str, pipeline_name: str, 
+                                   limit: int = 5) -> List[str]:
+        """Find recent pipeline versions in MODS structure.
         
         Args:
             bucket: S3 bucket name
             pipeline_name: Name of the pipeline
-            limit: Maximum number of executions to return
+            limit: Maximum number of versions to return
             
         Returns:
-            List of S3 prefixes for recent executions
+            List of S3 prefixes for recent pipeline versions
         """
-        prefix = f"pipelines/{pipeline_name}/"
+        prefix = f"MODS/"
         
         try:
             response = self.s3_client.list_objects_v2(
@@ -123,65 +138,74 @@ class S3DataDownloader:
                 Delimiter='/'
             )
             
-            # Extract execution IDs from common prefixes
-            executions = []
+            # Extract pipeline versions that match the pipeline name
+            pipeline_versions = []
             for common_prefix in response.get('CommonPrefixes', []):
-                execution_prefix = common_prefix['Prefix']
-                executions.append(execution_prefix)
+                pipeline_prefix = common_prefix['Prefix']
+                # Extract pipeline identifier from MODS/{pipeline_name}_{version}/
+                pipeline_identifier = pipeline_prefix.replace('MODS/', '').rstrip('/')
+                
+                # Check if this matches our pipeline name
+                if pipeline_identifier.startswith(f"{pipeline_name}_"):
+                    pipeline_versions.append(pipeline_prefix)
             
-            # If available, sort by modification time (most recent first)
-            # This requires additional head requests to get metadata
+            # Sort by modification time (most recent first)
             try:
-                executions_with_dates = []
-                for execution_prefix in executions:
+                versions_with_dates = []
+                for version_prefix in pipeline_versions:
                     # Get a sample object from this prefix to check its date
                     list_resp = self.s3_client.list_objects_v2(
                         Bucket=bucket,
-                        Prefix=execution_prefix,
+                        Prefix=version_prefix,
                         MaxKeys=1
                     )
                     
                     if 'Contents' in list_resp and list_resp['Contents']:
                         obj = list_resp['Contents'][0]
-                        executions_with_dates.append({
-                            'prefix': execution_prefix,
+                        versions_with_dates.append({
+                            'prefix': version_prefix,
                             'date': obj['LastModified']
                         })
                     else:
                         # No objects found, just use the prefix
-                        executions_with_dates.append({
-                            'prefix': execution_prefix,
+                        versions_with_dates.append({
+                            'prefix': version_prefix,
                             'date': None
                         })
                 
                 # Sort by date (None values last)
-                executions_with_dates.sort(
+                versions_with_dates.sort(
                     key=lambda x: (x['date'] is None, x['date']),
                     reverse=True
                 )
                 
                 # Extract just the prefixes
-                executions = [item['prefix'] for item in executions_with_dates]
+                pipeline_versions = [item['prefix'] for item in versions_with_dates]
             except Exception as e:
                 # Fall back to simple alphabetical sorting if date sorting fails
-                self.logger.warning(f"Error sorting executions by date: {e}")
-                executions.sort(reverse=True)
+                self.logger.warning(f"Error sorting pipeline versions by date: {e}")
+                pipeline_versions.sort(reverse=True)
                 
-            return executions[:limit]
+            return pipeline_versions[:limit]
             
         except Exception as e:
-            self.logger.error(f"Error finding executions: {e}")
+            self.logger.error(f"Error finding MODS pipeline versions: {e}")
             return []
     
     def _discover_step_outputs(self, bucket: str, prefix: str) -> Dict[str, List[str]]:
-        """Discover step outputs within a pipeline execution.
+        """Discover step outputs within a pipeline execution using MODS structure.
+        
+        Expected MODS structure:
+        - MODS/{pipeline_name}_{version}/{step_type}/...
+        - MODS/{pipeline_name}_{version}/{step_type}/{job_name}-{timestamp}/output/...
+        - MODS/{pipeline_name}_{version}/{step_type}/{job_type}/{logical_name}/...
         
         Args:
             bucket: S3 bucket name
-            prefix: S3 prefix for the execution
+            prefix: S3 prefix for the pipeline version (e.g., "MODS/pipeline_name_v1.0/")
             
         Returns:
-            Dictionary mapping step names to lists of S3 keys
+            Dictionary mapping step types to lists of S3 keys
         """
         step_outputs = {}
         
@@ -192,14 +216,22 @@ class S3DataDownloader:
             for page in pages:
                 for obj in page.get('Contents', []):
                     key = obj['Key']
-                    # Extract step name from path structure
-                    # Expected: pipelines/{pipeline_name}/{execution_id}/{step_name}/output/...
-                    path_parts = key.replace(prefix, '').split('/')
-                    if len(path_parts) >= 2:
-                        step_name = path_parts[0]
-                        if step_name not in step_outputs:
-                            step_outputs[step_name] = []
-                        step_outputs[step_name].append(key)
+                    # Extract step type from MODS path structure
+                    # Remove the prefix (e.g., "MODS/pipeline_name_v1.0/") to get relative path
+                    relative_path = key.replace(prefix, '')
+                    path_parts = relative_path.split('/')
+                    
+                    if len(path_parts) >= 1 and path_parts[0]:
+                        # First directory after prefix is the step type
+                        step_type = path_parts[0]
+                        
+                        if step_type not in step_outputs:
+                            step_outputs[step_type] = []
+                        step_outputs[step_type].append(key)
+                        
+                        self.logger.debug(f"Found file in step '{step_type}': {key}")
+            
+            self.logger.info(f"Discovered {len(step_outputs)} step types: {list(step_outputs.keys())}")
             
         except Exception as e:
             self.logger.error(f"Error discovering step outputs: {e}")
