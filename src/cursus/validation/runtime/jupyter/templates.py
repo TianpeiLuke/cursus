@@ -64,7 +64,8 @@ class NotebookTemplateManager:
         self.jinja_env = Environment(
             loader=FileSystemLoader(str(self.template_dir)),
             trim_blocks=True,
-            lstrip_blocks=True
+            lstrip_blocks=True,
+            autoescape=True
         )
         
         # Initialize built-in templates
@@ -274,7 +275,8 @@ class NotebookTemplateManager:
         # Process cell templates
         for cell_template in template.cell_templates:
             cell_type = cell_template['cell_type']
-            source_template = Template(cell_template['source'])
+            # Use the environment with autoescape enabled instead of direct Template instantiation
+            source_template = self.jinja_env.from_string(cell_template['source'])
             source = source_template.render(**template_vars)
             
             if cell_type == 'code':
