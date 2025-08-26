@@ -12,6 +12,7 @@ from ..validation.runtime.execution.pipeline_executor import PipelineExecutor
 from ..validation.runtime.utils.result_models import TestResult
 from ..validation.runtime.data.local_data_manager import LocalDataManager
 from .runtime_s3_cli import s3
+from .production_cli import production_cli
 
 @click.group()
 @click.version_option(version="0.1.0")
@@ -25,6 +26,9 @@ def runtime():
 
 # Add S3 commands as a subgroup
 runtime.add_command(s3)
+
+# Add production commands as a subgroup
+runtime.add_command(production_cli)
 
 @runtime.command()
 @click.argument('script_name')
