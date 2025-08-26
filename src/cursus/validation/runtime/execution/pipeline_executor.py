@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 import time
 import logging
+import os
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -53,6 +54,7 @@ class PipelineExecutor:
         self.s3_output_registry = S3OutputPathRegistry()
         self.execution_results = {}
         self.logger = logging.getLogger(__name__)
+        self.resolver = None  # Will be set during pipeline execution
     
     def execute_pipeline(self, dag, data_source: str = "synthetic", 
                         config_path: Optional[str] = None,
@@ -81,6 +83,7 @@ class PipelineExecutor:
                 available_configs=available_configs,
                 metadata=metadata
             )
+            self.resolver = resolver  # Store resolver for use in other methods
             execution_plan = resolver.create_execution_plan()
             
             # Log configuration resolution info if available
@@ -88,6 +91,20 @@ class PipelineExecutor:
                 config_preview = resolver.get_config_resolution_preview()
                 if config_preview:
                     self.logger.info(f"Configuration resolution preview: {config_preview}")
+            
+            # Enhanced diagnostic information using resolver capabilities
+            self.logger.info("Pipeline dependency analysis:")
+            for step_name in execution_plan.execution_order:
+                dependencies = resolver.get_step_dependencies(step_name)
+                dependent_steps = resolver.get_dependent_steps(step_name)
+                self.logger.debug(f"  {step_name}: deps={dependencies}, dependents={dependent_steps}")
+                
+                # Log contract discovery status
+                contract = resolver._discover_step_contract(step_name)
+                if contract:
+                    self.logger.debug(f"  {step_name}: contract found - {contract.entry_point}")
+                else:
+                    self.logger.debug(f"  {step_name}: no contract found, using fallback")
             
             # Validate DAG integrity
             integrity_issues = resolver.validate_dag_integrity()
@@ -245,9 +262,25 @@ class PipelineExecutor:
         start_time = time.time()
         
         try:
-            # For now, we use the script executor to run the script
-            # In the future, this will use more sophisticated step execution logic
-            script_path = self._get_script_path(step_config)
+            # Enhancement 2: Use contract for enhanced validation and setup
+            contract = None
+            if self.resolver:
+                contract = self.resolver._discover_step_contract(step_name)
+                if contract:
+                    # Validate required environment variables
+                    missing_env_vars = [var for var in contract.required_env_vars 
+                                       if var not in os.environ]
+                    if missing_env_vars:
+                        self.logger.warning(f"Missing required env vars for {step_name}: {missing_env_vars}")
+                        # In a real implementation, you might want to fail here or set defaults
+                    
+                    # Log optional environment variables status
+                    for var, default in contract.optional_env_vars.items():
+                        if var not in os.environ:
+                            self.logger.debug(f"Optional env var {var} not set for {step_name}, default: {default}")
+            
+            # Get script path using enhanced contract discovery
+            script_path = self._get_script_path(step_name, step_config)
             
             # Create input/output paths for the step
             input_path = self.workspace_dir / "inputs" / step_name
@@ -255,18 +288,35 @@ class PipelineExecutor:
             input_path.mkdir(parents=True, exist_ok=True)
             output_path.mkdir(parents=True, exist_ok=True)
             
-            # Prepare inputs
-            # In a real implementation, this would copy or generate actual files
-            # For now, we just simulate this
-            input_paths = {
-                "input": str(input_path)
-            }
+            # Enhancement 3: Use contract paths for better input/output setup
+            if contract:
+                # Use contract-defined input/output paths
+                input_paths = {}
+                for input_name, input_path_template in contract.expected_input_paths.items():
+                    # Map contract paths to workspace paths
+                    workspace_input_path = self.workspace_dir / "inputs" / step_name / input_name
+                    workspace_input_path.mkdir(parents=True, exist_ok=True)
+                    input_paths[input_name] = str(workspace_input_path)
+                
+                output_paths = {}
+                for output_name, output_path_template in contract.expected_output_paths.items():
+                    # Map contract paths to workspace paths
+                    workspace_output_path = self.workspace_dir / "outputs" / step_name / output_name
+                    workspace_output_path.mkdir(parents=True, exist_ok=True)
+                    output_paths[output_name] = str(workspace_output_path)
+                
+                self.logger.debug(f"Using contract-based paths for {step_name}: inputs={list(input_paths.keys())}, outputs={list(output_paths.keys())}")
+            else:
+                # Fallback to generic paths
+                input_paths = {
+                    "input": str(input_path)
+                }
+                
+                output_paths = {
+                    "output": str(output_path)
+                }
             
-            output_paths = {
-                "output": str(output_path)
-            }
-            
-            # Add any specific input/output paths from step_config
+            # Add any specific input/output paths from step_config (override contract paths if needed)
             if "input_paths" in step_config:
                 input_paths.update(step_config["input_paths"])
             
@@ -349,18 +399,24 @@ class PipelineExecutor:
             input_spec
         )
     
-    def _get_script_path(self, step_config: Dict[str, Any]) -> str:
-        """Get script path from step configuration.
+    def _get_script_path(self, step_name: str, step_config: Dict[str, Any]) -> str:
+        """Get script path from step configuration using enhanced contract discovery.
         
         Args:
+            step_name: Name of the step
             step_config: Configuration for the step
             
         Returns:
             Path to the script
         """
-        # In a real implementation, this would resolve the script path
-        # based on the step configuration
-        # For now, we just use a placeholder
+        # Enhancement 1: Use contract discovery from resolver
+        if self.resolver:
+            contract = self.resolver._discover_step_contract(step_name)
+            if contract and contract.entry_point:
+                self.logger.debug(f"Using contract entry point for {step_name}: {contract.entry_point}")
+                return contract.entry_point
+        
+        # Existing fallback logic
         if "script_path" in step_config:
             return step_config["script_path"]
         
