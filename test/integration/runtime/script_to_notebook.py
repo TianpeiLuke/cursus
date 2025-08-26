@@ -268,6 +268,75 @@ class ScriptToNotebookConverter:
         
         return result
     
+    def _generate_notebook_title_and_description(self, script_path: Path, content: str) -> str:
+        """Generate appropriate title and description based on script content."""
+        script_name = script_path.stem
+        
+        # Extract docstring from script if available
+        try:
+            tree = ast.parse(content)
+            docstring = ast.get_docstring(tree)
+        except:
+            docstring = None
+        
+        # Generate title based on script name
+        if 'end_to_end' in script_name.lower():
+            title = "# XGBoost Pipeline - End-to-End Testing"
+            description = """This notebook performs comprehensive end-to-end testing of the complete XGBoost pipeline.
+
+**Pipeline Components:**
+1. Pipeline DAG validation and dependency resolution
+2. Sequential step execution with proper data flow
+3. Error handling and rollback mechanisms
+4. Output verification and result analysis
+
+**This notebook covers:**
+- Complete pipeline execution from start to finish
+- Dependency validation and execution ordering
+- Data flow verification between steps
+- Comprehensive result analysis and reporting"""
+        
+        elif 'performance' in script_name.lower():
+            title = "# XGBoost Pipeline - Performance Analysis"
+            description = """This notebook analyzes the performance characteristics of the XGBoost pipeline execution.
+
+**Analysis Components:**
+1. Execution time analysis across all pipeline steps
+2. Resource utilization and bottleneck identification
+3. Performance metrics and trend analysis
+4. Optimization recommendations
+
+**This notebook covers:**
+- Step-by-step performance profiling
+- Resource usage analysis
+- Performance visualization and reporting
+- Optimization insights and recommendations"""
+        
+        elif 'step_testing' in script_name.lower() or 'individual' in script_name.lower():
+            title = "# XGBoost Pipeline - Individual Step Testing"
+            description = """This notebook tests each pipeline step individually to ensure they work correctly in isolation.
+
+**Pipeline Steps:**
+1. XGBoost Training
+2. XGBoost Model Evaluation
+3. Model Calibration
+
+**This notebook covers:**
+- Mock step tester implementation
+- Individual step testing functions
+- Step validation and error handling
+- Output verification and data flow checks"""
+        
+        else:
+            # Generic title based on script name
+            title = f"# {script_name.replace('_', ' ').title()}"
+            if docstring:
+                description = f"This notebook is generated from `{script_path.name}`.\n\n{docstring}"
+            else:
+                description = f"This notebook is generated from `{script_path.name}` and contains the converted script functionality."
+        
+        return f"{title}\n\n{description}"
+    
     def convert_script_to_notebook(self, script_path: Path, output_path: Path):
         """Convert a Python script to a properly formatted Jupyter notebook."""
         print(f"Converting {script_path} to {output_path}")
@@ -293,22 +362,8 @@ class ScriptToNotebookConverter:
         notebook = self.notebook_template.copy()
         cells = []
         
-        # 1. Title cell
-        title_content = """# XGBoost Pipeline Test - Individual Step Testing
-
-This notebook tests each pipeline step individually to ensure they work correctly in isolation.
-
-**Pipeline Steps:**
-1. XGBoost Training
-2. XGBoost Model Evaluation
-3. Model Calibration
-
-**This notebook covers:**
-- Mock step tester implementation
-- Individual step testing functions
-- Step validation and error handling
-- Output verification and data flow checks"""
-        
+        # 1. Title cell - dynamically generated
+        title_content = self._generate_notebook_title_and_description(script_path, content)
         cells.append(self.create_markdown_cell(title_content))
         
         # 2. Setup and Imports section
@@ -359,10 +414,18 @@ This notebook tests each pipeline step individually to ensure they work correctl
 
 def main():
     """Main function to convert the script."""
+    import sys
+    
     converter = ScriptToNotebookConverter()
     
-    script_path = Path('step_testing_script.py')
-    notebook_path = Path('03_individual_step_testing.ipynb')
+    # Allow command line arguments for script and notebook names
+    if len(sys.argv) >= 3:
+        script_path = Path(sys.argv[1])
+        notebook_path = Path(sys.argv[2])
+    else:
+        # Default to step_testing_script.py
+        script_path = Path('step_testing_script.py')
+        notebook_path = Path('03_individual_step_testing.ipynb')
     
     if not script_path.exists():
         print(f"Error: Script file not found: {script_path}")
