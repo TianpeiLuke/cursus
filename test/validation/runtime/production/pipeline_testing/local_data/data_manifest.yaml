@@ -1,0 +1,8 @@
+description: Local data manifest for pipeline testing
+scripts:
+  example_script:
+    input_data:
+      description: Example input data file
+      format: csv
+      path: example_script/input.csv
+version: '1.0'
