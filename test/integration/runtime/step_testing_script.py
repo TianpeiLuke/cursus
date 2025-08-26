@@ -455,6 +455,7 @@ def generate_test_summary(step_tester, config_data):
     }
     
     results_path = directories['RESULTS_DIR'] / 'individual_step_test_results.json'
+    results_path.parent.mkdir(parents=True, exist_ok=True)
     with open(results_path, 'w') as f:
         json.dump(test_results, f, indent=2)
     
