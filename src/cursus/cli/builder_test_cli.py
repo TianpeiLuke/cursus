@@ -10,6 +10,7 @@ Enhanced with scoring, registry discovery, and export capabilities.
 import argparse
 import sys
 import importlib
+import inspect
 import json
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Type

@@ -46,7 +46,7 @@ class TestPrintViolations(unittest.TestCase):
         print_violations(violations)
         
         output = self.mock_stdout.getvalue()
-        self.assertIn("✅ No naming violations found!", output)
+        self.assertIn("✅ No violations found!", output)
     
     def test_print_violations_single_violation(self):
         """Test printing a single violation."""
@@ -172,7 +172,7 @@ class TestValidationFunctions(unittest.TestCase):
         self.mock_validator.validate_all_registry_entries.assert_called_once()
         output = self.mock_stdout.getvalue()
         self.assertIn("🔍 Validating registry entries...", output)
-        self.assertIn("✅ No naming violations found!", output)
+        self.assertIn("✅ No violations found!", output)
     
     def test_validate_registry_with_violations(self):
         """Test registry validation with violations."""
@@ -300,7 +300,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         self.mock_validate_registry.assert_called_once_with(False)
         output = self.mock_stdout.getvalue()
-        self.assertIn("✅ All naming conventions are compliant!", output)
+        self.assertIn("✅ All naming conventions checks passed!", output)
     
     @patch('sys.argv', ['validation_cli.py', '-v', 'registry'])
     def test_main_registry_command_verbose(self):
@@ -334,7 +334,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         self.mock_validate_file_name.assert_called_once_with('test_file.py', 'builder', False)
         output = self.mock_stdout.getvalue()
-        self.assertIn("✅ All naming conventions are compliant!", output)
+        self.assertIn("✅ All naming conventions checks passed!", output)
     
     @patch('sys.argv', ['validation_cli.py', '-v', 'file', 'test_file.py', 'builder'])
     def test_main_file_command_verbose(self):
@@ -368,7 +368,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         self.mock_validate_step_name.assert_called_once_with('XGBoostTraining', False)
         output = self.mock_stdout.getvalue()
-        self.assertIn("✅ All naming conventions are compliant!", output)
+        self.assertIn("✅ All naming conventions checks passed!", output)
     
     @patch('sys.argv', ['validation_cli.py', 'step', 'invalid_step_name'])
     def test_main_step_command_with_violations(self):
@@ -392,7 +392,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         self.mock_validate_logical_name.assert_called_once_with('input_data', False)
         output = self.mock_stdout.getvalue()
-        self.assertIn("✅ All naming conventions are compliant!", output)
+        self.assertIn("✅ All naming conventions checks passed!", output)
     
     @patch('sys.argv', ['validation_cli.py', 'logical', 'invalidLogicalName'])
     def test_main_logical_command_with_violations(self):
