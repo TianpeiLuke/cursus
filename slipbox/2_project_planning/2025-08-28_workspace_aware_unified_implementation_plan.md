@@ -370,26 +370,40 @@ class WorkspaceValidationOrchestrator:
 
 #### 3.1 Workspace Configuration Models
 **Deliverables**:
-- Implement `WorkspaceStepConfig` dataclass
-- Implement `WorkspacePipelineConfig` Pydantic model
+- Implement `WorkspaceStepConfig` Pydantic V2 model
+- Implement `WorkspacePipelineConfig` Pydantic V2 model
 - Add validation logic and error handling
 - Create serialization/deserialization methods
 
 **Implementation Tasks**:
 ```python
 # File: src/cursus/core/workspace/config.py
-@dataclass
-class WorkspaceStepConfig:
-    """Configuration for workspace step definitions."""
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Dict, List, Any, Optional
+
+class WorkspaceStepConfig(BaseModel):
+    """Pydantic V2 model for workspace step definitions."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False
+    )
+    
     step_name: str
     developer_id: str
     step_type: str
     config_data: Dict[str, Any]
     workspace_root: str
-    dependencies: List[str] = field(default_factory=list)
+    dependencies: List[str] = Field(default_factory=list)
 
 class WorkspacePipelineConfig(BaseModel):
-    """Pydantic model for workspace pipeline configuration."""
+    """Pydantic V2 model for workspace pipeline configuration."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False
+    )
+    
     pipeline_name: str
     workspace_root: str
     steps: List[WorkspaceStepConfig]
@@ -518,16 +532,24 @@ class WorkspaceAwareDAG(PipelineDAG):
 **Implementation Tasks**:
 ```python
 # File: src/cursus/registry/distributed/core_registry.py
-@dataclass
-class StepDefinition:
-    """Enhanced step definition with registry metadata."""
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Dict, Any, Optional
+
+class StepDefinition(BaseModel):
+    """Pydantic V2 model for enhanced step definition with registry metadata."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False
+    )
+    
     name: str
     registry_type: str  # 'core', 'workspace', 'override'
     sagemaker_step_type: Optional[str] = None
     workspace_id: Optional[str] = None
     builder_class_name: Optional[str] = None
     config_class_name: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class CoreStepRegistry:
     """Core step registry with workspace awareness."""

@@ -14,11 +14,13 @@ from .edge_types import (
     EdgeCollection
 )
 from .enhanced_dag import EnhancedPipelineDAG
+from .workspace_dag import WorkspaceAwareDAG
 
 __all__ = [
     # Core DAG classes
     "PipelineDAG",
     "EnhancedPipelineDAG",
+    "WorkspaceAwareDAG",
     
     # Edge types and management
     "EdgeType",

@@ -9,6 +9,7 @@ including DAG management and pipeline compilation.
 from .dag import (
     PipelineDAG,
     EnhancedPipelineDAG,
+    WorkspaceAwareDAG,
     EdgeType,
     DependencyEdge,
     ConditionalEdge,
@@ -20,6 +21,7 @@ __all__ = [
     # DAG classes
     "PipelineDAG",
     "EnhancedPipelineDAG",
+    "WorkspaceAwareDAG",
     
     # Edge types and management
     "EdgeType",
