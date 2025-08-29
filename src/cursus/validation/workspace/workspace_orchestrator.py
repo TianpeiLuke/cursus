@@ -78,31 +78,46 @@ class WorkspaceValidationOrchestrator:
         # Initialize workspace manager
         self.workspace_manager = WorkspaceManager(workspace_root=workspace_root)
         
-        # Initialize testers - create mock instances for tests that expect them
-        # These will be replaced by actual instances when needed
-        try:
-            self.alignment_tester = WorkspaceUnifiedAlignmentTester(
-                workspace_root=workspace_root,
-                developer_id="default"  # Will be switched as needed
-            )
-        except Exception:
-            # Create a mock-like object for tests
-            from unittest.mock import Mock
-            self.alignment_tester = Mock()
-            
-        try:
-            self.builder_tester = WorkspaceUniversalStepBuilderTest(
-                workspace_root=workspace_root,
-                developer_id="default",
-                builder_file_path=""  # Will be set as needed
-            )
-        except Exception:
-            # Create a mock-like object for tests
-            from unittest.mock import Mock
-            self.builder_tester = Mock()
+        # Initialize testers lazily to avoid slow initialization during tests
+        # These will be created when actually needed
+        self._alignment_tester = None
+        self._builder_tester = None
         
         logger.info(f"Initialized workspace validation orchestrator at '{workspace_root}' "
                    f"with parallel validation {'enabled' if enable_parallel_validation else 'disabled'}")
+    
+    @property
+    def alignment_tester(self):
+        """Lazy-loaded alignment tester property."""
+        if self._alignment_tester is None:
+            # Create alignment tester only when needed
+            self._alignment_tester = WorkspaceUnifiedAlignmentTester(
+                workspace_root=self.workspace_root,
+                developer_id="default"  # Will be overridden in actual usage
+            )
+        return self._alignment_tester
+    
+    @alignment_tester.setter
+    def alignment_tester(self, value):
+        """Setter for alignment tester property."""
+        self._alignment_tester = value
+    
+    @property
+    def builder_tester(self):
+        """Lazy-loaded builder tester property."""
+        if self._builder_tester is None:
+            # Create builder tester only when needed
+            self._builder_tester = WorkspaceUniversalStepBuilderTest(
+                workspace_root=self.workspace_root,
+                developer_id="default",  # Will be overridden in actual usage
+                builder_file_path=""
+            )
+        return self._builder_tester
+    
+    @builder_tester.setter
+    def builder_tester(self, value):
+        """Setter for builder tester property."""
+        self._builder_tester = value
     
     def validate_workspace(
         self,
@@ -314,7 +329,8 @@ class WorkspaceValidationOrchestrator:
     ) -> Dict[str, Any]:
         """Run alignment validation for a specific workspace."""
         try:
-            # Create alignment tester
+            # For now, create a fresh instance per validation to avoid state issues
+            # This is still better than creating in constructor since it's only created when needed
             alignment_tester = WorkspaceUnifiedAlignmentTester(
                 workspace_root=self.workspace_root,
                 developer_id=developer_id,
@@ -684,6 +700,63 @@ class WorkspaceValidationOrchestrator:
             )
             success_rate = successful_workspaces / len(all_results) if all_results else 0.0
             
+            # Analyze specific failure types
+            alignment_failures = 0
+            builder_failures = 0
+            contract_issues = 0
+            config_issues = 0
+            
+            for developer_id, result in all_results.items():
+                if isinstance(result, dict):
+                    # Check alignment results
+                    if 'alignment' in result:
+                        alignment_data = result['alignment']
+                        if isinstance(alignment_data, dict):
+                            for level, level_data in alignment_data.items():
+                                if isinstance(level_data, dict) and not level_data.get('passed', True):
+                                    alignment_failures += 1
+                                    # Check for specific error types
+                                    errors = level_data.get('errors', [])
+                                    for error in errors:
+                                        if isinstance(error, str):
+                                            if 'contract' in error.lower():
+                                                contract_issues += 1
+                                            elif 'config' in error.lower():
+                                                config_issues += 1
+                    
+                    # Check builder results
+                    if 'builders' in result:
+                        builder_data = result['builders']
+                        if isinstance(builder_data, dict):
+                            for builder, builder_result in builder_data.items():
+                                if isinstance(builder_result, dict) and not builder_result.get('passed', True):
+                                    builder_failures += 1
+            
+            # Generate specific recommendations based on failure types
+            if contract_issues > 0:
+                recommendations.append(
+                    f"Contract validation issues detected in {contract_issues} case(s). "
+                    "Review script-contract alignment and ensure contracts match script interfaces."
+                )
+            
+            if config_issues > 0:
+                recommendations.append(
+                    f"Configuration validation issues detected in {config_issues} case(s). "
+                    "Review builder configuration alignment and parameter validation."
+                )
+            
+            if alignment_failures > 0:
+                recommendations.append(
+                    f"Alignment validation issues detected in {alignment_failures} case(s). "
+                    "Check script-contract-spec-builder alignment across validation levels."
+                )
+            
+            if builder_failures > 0:
+                recommendations.append(
+                    f"Builder validation issues detected in {builder_failures} case(s). "
+                    "Review builder implementation and ensure proper inheritance from base classes."
+                )
+            
             # Recommendations based on success rate
             if success_rate < 0.5:
                 recommendations.append(
@@ -695,9 +768,9 @@ class WorkspaceValidationOrchestrator:
                     f"Moderate success rate ({success_rate:.1%}). "
                     "Address common issues to improve workspace validation."
                 )
-            else:
+            elif success_rate == 1.0 and len(recommendations) == 0:
                 recommendations.append(
-                    f"Good success rate ({success_rate:.1%}). "
+                    f"All workspaces passed validation successfully. "
                     "Consider standardizing successful patterns across all workspaces."
                 )
             

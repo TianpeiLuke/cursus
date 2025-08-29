@@ -85,16 +85,46 @@ class WorkspaceUnifiedAlignmentTester(UnifiedAlignmentTester):
         if workspace_info.developers and developer_id in workspace_info.developers:
             dev_workspace = workspace_info.developers[developer_id]
             scripts_dir = dev_workspace.workspace_path / "scripts"
+            contracts_dir = dev_workspace.workspace_path / "contracts"
+            specs_dir = dev_workspace.workspace_path / "specs"
+            builders_dir = dev_workspace.workspace_path / "builders"
+            configs_dir = dev_workspace.workspace_path / "configs"
             
             # Initialize parent with workspace-relative paths
             super().__init__(
-                scripts_directory=str(scripts_dir),
-                file_resolver=self.file_resolver,
+                scripts_dir=str(scripts_dir),
+                contracts_dir=str(contracts_dir),
+                specs_dir=str(specs_dir),
+                builders_dir=str(builders_dir),
+                configs_dir=str(configs_dir),
                 **kwargs
             )
         else:
-            # Fallback to default initialization
-            super().__init__(file_resolver=self.file_resolver, **kwargs)
+            # Fallback to shared workspace using src/cursus/steps as per design
+            if self.enable_shared_fallback:
+                # Use src/cursus/steps as the shared workspace
+                shared_steps_path = self.workspace_root / "src" / "cursus" / "steps"
+                if shared_steps_path.exists():
+                    scripts_dir = shared_steps_path / "scripts"
+                    contracts_dir = shared_steps_path / "contracts"
+                    specs_dir = shared_steps_path / "specs"
+                    builders_dir = shared_steps_path / "builders"
+                    configs_dir = shared_steps_path / "configs"
+                    
+                    super().__init__(
+                        scripts_dir=str(scripts_dir),
+                        contracts_dir=str(contracts_dir),
+                        specs_dir=str(specs_dir),
+                        builders_dir=str(builders_dir),
+                        configs_dir=str(configs_dir),
+                        **kwargs
+                    )
+                else:
+                    # Last resort: use default paths
+                    super().__init__(**kwargs)
+            else:
+                # Last resort: use default paths
+                super().__init__(**kwargs)
         
         logger.info(f"Initialized workspace alignment tester for developer '{developer_id}' "
                    f"at '{workspace_root}'")
@@ -124,10 +154,50 @@ class WorkspaceUnifiedAlignmentTester(UnifiedAlignmentTester):
                 target_scripts = self._discover_workspace_scripts()
             
             # Run standard validation with workspace context
-            validation_results = self.run_validation(
+            validation_report = self.run_full_validation(
                 target_scripts=target_scripts,
                 skip_levels=skip_levels
             )
+            
+            # Convert AlignmentReport to dictionary format
+            validation_results = {
+                'success': validation_report.is_passing(),
+                'results': {},
+                'summary': validation_report.summary.model_dump() if validation_report.summary else {}
+            }
+            
+            # Extract results from each level
+            for script_name, result in validation_report.level1_results.items():
+                if script_name not in validation_results['results']:
+                    validation_results['results'][script_name] = {}
+                validation_results['results'][script_name]['level1'] = {
+                    'passed': result.passed,
+                    'details': result.details
+                }
+            
+            for script_name, result in validation_report.level2_results.items():
+                if script_name not in validation_results['results']:
+                    validation_results['results'][script_name] = {}
+                validation_results['results'][script_name]['level2'] = {
+                    'passed': result.passed,
+                    'details': result.details
+                }
+            
+            for script_name, result in validation_report.level3_results.items():
+                if script_name not in validation_results['results']:
+                    validation_results['results'][script_name] = {}
+                validation_results['results'][script_name]['level3'] = {
+                    'passed': result.passed,
+                    'details': result.details
+                }
+            
+            for script_name, result in validation_report.level4_results.items():
+                if script_name not in validation_results['results']:
+                    validation_results['results'][script_name] = {}
+                validation_results['results'][script_name]['level4'] = {
+                    'passed': result.passed,
+                    'details': result.details
+                }
             
             # Enhance results with workspace-specific information
             workspace_results = self._enhance_results_with_workspace_context(

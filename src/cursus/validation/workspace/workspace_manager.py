@@ -628,3 +628,36 @@ class WorkspaceManager:
             summary["developers"].append(dev_summary)
         
         return summary
+    
+    def list_available_developers(self) -> List[str]:
+        """
+        Get list of available developer IDs.
+        
+        Returns:
+            List of developer IDs found in the workspace
+        """
+        if not self.workspace_info:
+            if self.workspace_root:
+                self.discover_workspaces()
+            else:
+                return []
+        
+        return [dev.developer_id for dev in self.workspace_info.developers]
+    
+    def get_workspace_info(self, developer_id: Optional[str] = None) -> WorkspaceInfo:
+        """
+        Get workspace information, optionally for a specific developer.
+        
+        Args:
+            developer_id: Optional developer ID to get info for
+            
+        Returns:
+            WorkspaceInfo object
+        """
+        if not self.workspace_info:
+            if self.workspace_root:
+                self.discover_workspaces()
+            else:
+                return WorkspaceInfo(workspace_root=str(self.workspace_root or ""))
+        
+        return self.workspace_info
