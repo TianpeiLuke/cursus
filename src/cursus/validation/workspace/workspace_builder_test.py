@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Optional, Dict, List, Any, Union, Type, Tuple
 import logging
 
-from ..builders.universal_step_builder_test import UniversalStepBuilderTest
+from ..builders.universal_test import UniversalStepBuilderTest
 from .workspace_file_resolver import DeveloperWorkspaceFileResolver
 from .workspace_module_loader import WorkspaceModuleLoader
 from .workspace_manager import WorkspaceManager

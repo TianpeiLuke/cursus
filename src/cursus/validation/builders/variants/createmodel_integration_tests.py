@@ -13,7 +13,7 @@ This module provides Level 4 validation for CreateModel step builders, focusing 
 from typing import Dict, Any, List, Optional
 import logging
 
-from cursus.validation.builders.integration_tests import IntegrationTests
+from ..integration_tests import IntegrationTests
 
 logger = logging.getLogger(__name__)
 
