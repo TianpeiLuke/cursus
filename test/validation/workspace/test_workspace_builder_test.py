@@ -36,9 +36,9 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
                 (dev_path / subdir).mkdir(parents=True, exist_ok=True)
         
         # Create mock workspace manager
-        self.mock_workspace_manager = Mock(spec=WorkspaceManager)
+        self.mock_workspace_manager = Mock()
         self.mock_workspace_manager.workspace_root = self.workspace_root
-        self.mock_workspace_manager.get_developer_workspaces.return_value = [
+        self.mock_workspace_manager.list_available_developers.return_value = [
             "developer_1", "developer_2"
         ]
         
@@ -48,8 +48,12 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
         
         # Create tester instance
         self.tester = WorkspaceUniversalStepBuilderTest(
-            workspace_manager=self.mock_workspace_manager
+            workspace_root=self.workspace_root,
+            developer_id="developer_1",
+            builder_file_path="test_builder.py"
         )
+        # Inject mock workspace manager for testing
+        self.tester.workspace_manager = self.mock_workspace_manager
     
     def tearDown(self):
         """Clean up test fixtures."""
@@ -76,7 +80,7 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
     
     def test_switch_developer_invalid(self):
         """Test switching to invalid developer."""
-        self.mock_workspace_manager.get_developer_workspaces.return_value = ["developer_1"]
+        self.mock_workspace_manager.list_available_developers.return_value = ["developer_1"]
         
         result = self.tester.switch_developer("invalid_developer")
         self.assertFalse(result)
@@ -255,12 +259,17 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
         }
         
         results = WorkspaceUniversalStepBuilderTest.test_all_workspace_builders(
-            self.mock_workspace_manager
+            workspace_root=self.workspace_root,
+            developer_id="developer_1"
         )
         
         self.assertIsNotNone(results)
-        mock_class.assert_called_once_with(workspace_manager=self.mock_workspace_manager)
-        mock_instance.run_workspace_builder_test.assert_called_once_with(all_developers=True)
+        mock_class.assert_called_once_with(
+            workspace_root=self.workspace_root,
+            developer_id="developer_1",
+            builder_file_path=unittest.mock.ANY
+        )
+        mock_instance.run_workspace_builder_test.assert_called_once_with(test_config=None)
     
     def test_workspace_context_management(self):
         """Test that workspace context is properly managed during testing."""
@@ -283,7 +292,11 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
         mock_init.return_value = None
         
         # Create instance to test inheritance
-        tester = WorkspaceUniversalStepBuilderTest(workspace_manager=self.mock_workspace_manager)
+        tester = WorkspaceUniversalStepBuilderTest(
+            workspace_root=self.workspace_root,
+            developer_id="developer_1",
+            builder_file_path="test_builder.py"
+        )
         
         # Verify that parent class __init__ was called
         mock_init.assert_called_once()

@@ -35,16 +35,19 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
                 (dev_path / subdir).mkdir(parents=True, exist_ok=True)
         
         # Create mock workspace manager
-        self.mock_workspace_manager = Mock(spec=WorkspaceManager)
+        self.mock_workspace_manager = Mock()
         self.mock_workspace_manager.workspace_root = self.workspace_root
-        self.mock_workspace_manager.get_developer_workspaces.return_value = [
+        self.mock_workspace_manager.list_available_developers.return_value = [
             "developer_1", "developer_2"
         ]
         
         # Create tester instance
         self.tester = WorkspaceUnifiedAlignmentTester(
-            workspace_manager=self.mock_workspace_manager
+            workspace_root=self.workspace_root,
+            developer_id="developer_1"
         )
+        # Inject mock workspace manager for testing
+        self.tester.workspace_manager = self.mock_workspace_manager
     
     def tearDown(self):
         """Clean up test fixtures."""
@@ -71,7 +74,7 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
     
     def test_switch_developer_invalid(self):
         """Test switching to invalid developer."""
-        self.mock_workspace_manager.get_developer_workspaces.return_value = ["developer_1"]
+        self.mock_workspace_manager.list_available_developers.return_value = ["developer_1"]
         
         result = self.tester.switch_developer("invalid_developer")
         self.assertFalse(result)
@@ -193,7 +196,10 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
         mock_init.return_value = None
         
         # Create instance to test inheritance
-        tester = WorkspaceUnifiedAlignmentTester(workspace_manager=self.mock_workspace_manager)
+        tester = WorkspaceUnifiedAlignmentTester(
+            workspace_root=self.workspace_root,
+            developer_id="developer_1"
+        )
         
         # Verify that parent class __init__ was called
         mock_init.assert_called_once()

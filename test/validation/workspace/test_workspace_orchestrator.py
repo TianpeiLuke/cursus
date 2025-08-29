@@ -37,16 +37,18 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
                 (dev_path / subdir).mkdir(parents=True, exist_ok=True)
         
         # Create mock workspace manager
-        self.mock_workspace_manager = Mock(spec=WorkspaceManager)
+        self.mock_workspace_manager = Mock()
         self.mock_workspace_manager.workspace_root = self.workspace_root
-        self.mock_workspace_manager.get_developer_workspaces.return_value = [
+        self.mock_workspace_manager.list_available_developers.return_value = [
             "developer_1", "developer_2"
         ]
         
         # Create orchestrator instance
         self.orchestrator = WorkspaceValidationOrchestrator(
-            workspace_manager=self.mock_workspace_manager
+            workspace_root=self.workspace_root
         )
+        # Inject mock workspace manager for testing
+        self.orchestrator.workspace_manager = self.mock_workspace_manager
     
     def tearDown(self):
         """Clean up test fixtures."""
@@ -66,10 +68,11 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         mock_builder_tester = Mock()
         
         orchestrator = WorkspaceValidationOrchestrator(
-            workspace_manager=self.mock_workspace_manager,
-            alignment_tester=mock_alignment_tester,
-            builder_tester=mock_builder_tester
+            workspace_root=self.workspace_root
         )
+        # Inject custom testers for testing
+        orchestrator.alignment_tester = mock_alignment_tester
+        orchestrator.builder_tester = mock_builder_tester
         
         self.assertEqual(orchestrator.alignment_tester, mock_alignment_tester)
         self.assertEqual(orchestrator.builder_tester, mock_builder_tester)
@@ -101,8 +104,9 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         
         # Create new orchestrator to use mocked classes
         orchestrator = WorkspaceValidationOrchestrator(
-            workspace_manager=self.mock_workspace_manager
+            workspace_root=self.workspace_root
         )
+        orchestrator.workspace_manager = self.mock_workspace_manager
         
         results = orchestrator.validate_workspace("developer_1")
         
@@ -144,8 +148,9 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         
         # Create new orchestrator to use mocked classes
         orchestrator = WorkspaceValidationOrchestrator(
-            workspace_manager=self.mock_workspace_manager
+            workspace_root=self.workspace_root
         )
+        orchestrator.workspace_manager = self.mock_workspace_manager
         
         results = orchestrator.validate_workspace("developer_1")
         
@@ -155,7 +160,7 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
     
     def test_validate_workspace_invalid_developer(self):
         """Test validation with invalid developer name."""
-        self.mock_workspace_manager.get_developer_workspaces.return_value = ["developer_1"]
+        self.mock_workspace_manager.list_available_developers.return_value = ["developer_1"]
         
         results = self.orchestrator.validate_workspace("invalid_developer")
         
@@ -197,8 +202,9 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         
         # Create new orchestrator to use mocked classes
         orchestrator = WorkspaceValidationOrchestrator(
-            workspace_manager=self.mock_workspace_manager
+            workspace_root=self.workspace_root
         )
+        orchestrator.workspace_manager = self.mock_workspace_manager
         
         results = orchestrator.validate_all_workspaces()
         
@@ -238,8 +244,9 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         
         # Create new orchestrator to use mocked classes
         orchestrator = WorkspaceValidationOrchestrator(
-            workspace_manager=self.mock_workspace_manager
+            workspace_root=self.workspace_root
         )
+        orchestrator.workspace_manager = self.mock_workspace_manager
         
         results = orchestrator.validate_all_workspaces(parallel=True)
         
@@ -407,10 +414,11 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         mock_builder_tester.run_workspace_builder_test.return_value = {}
         
         orchestrator = WorkspaceValidationOrchestrator(
-            workspace_manager=self.mock_workspace_manager,
-            alignment_tester=mock_alignment_tester,
-            builder_tester=mock_builder_tester
+            workspace_root=self.workspace_root
         )
+        orchestrator.workspace_manager = self.mock_workspace_manager
+        orchestrator.alignment_tester = mock_alignment_tester
+        orchestrator.builder_tester = mock_builder_tester
         
         results = orchestrator.validate_workspace("developer_1")
         
@@ -429,11 +437,11 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         }
         
         results = WorkspaceValidationOrchestrator.validate_all_workspaces_static(
-            self.mock_workspace_manager
+            workspace_root=self.workspace_root
         )
         
         self.assertIsNotNone(results)
-        mock_class.assert_called_once_with(workspace_manager=self.mock_workspace_manager)
+        mock_class.assert_called_once_with(workspace_root=self.workspace_root)
         mock_instance.validate_all_workspaces.assert_called_once()
 
 
