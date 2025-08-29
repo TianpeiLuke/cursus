@@ -547,6 +547,16 @@ The workspace-aware system components are designed to work together seamlessly:
 
 This master design document coordinates the following comprehensive workspace-aware system architecture:
 
+### Implementation Planning and Requirements
+
+#### Project Planning
+- **[2025-08-28 Workspace-Aware Unified Implementation Plan](../2_project_planning/2025-08-28_workspace_aware_unified_implementation_plan.md)** - Comprehensive implementation roadmap for workspace-aware system transformation
+- **Primary Focus**: Phase-based implementation strategy, resource allocation, timeline coordination
+
+#### Requirements Analysis
+- **[Step Names Integration Requirements Analysis](../4_analysis/step_names_integration_requirements_analysis.md)** - Analysis of step naming requirements for workspace integration
+- **Primary Focus**: Step naming conventions, integration requirements, compatibility analysis
+
 ### Core System Components
 
 #### 1. Multi-Developer Workspace Management
