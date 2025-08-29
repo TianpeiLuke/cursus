@@ -1,7 +1,7 @@
 ---
 tags:
-  - project
   - analysis
+  - project
   - workspace
   - registry
   - architecture
