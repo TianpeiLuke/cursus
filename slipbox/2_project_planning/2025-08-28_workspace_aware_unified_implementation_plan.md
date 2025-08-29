@@ -587,12 +587,179 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
 - [x] Meets performance targets for compilation operations
 - [x] Supports complex cross-workspace dependency scenarios
 
-### Phase 5: Distributed Registry System (Weeks 15-18) [MOVED FROM PHASE 4]
+### Phase 5: Workspace-Aware Pipeline Runtime Testing (Weeks 15-18) [MOVED FROM PHASE 6]
+**Duration**: 4 weeks  
+**Risk Level**: Medium  
+**Dependencies**: Phases 1, 3 completion
+
+> **Phase Reordering Rationale**: Phase 5 (Workspace-Aware Pipeline Runtime Testing) has been moved before Phase 6 (Distributed Registry) based on dependency analysis and risk assessment:
+> 
+> **Benefits of New Order:**
+> - **Lower Risk First**: Phase 5 is Medium risk vs Phase 6 High risk - tackle easier challenges first
+> - **Independent Implementation**: Phase 5 only depends on Phases 1 & 3, not Phase 6
+> - **Faster Value Delivery**: Provides workspace-aware testing capabilities sooner
+> - **Better Testing Foundation**: Having runtime testing ready helps validate the distributed registry when it's implemented
+> - **Shorter Duration**: Same 4 weeks but delivers testing capabilities earlier
+> 
+> **Technical Justification**: The WorkspacePipelineExecutor and testing components can use the existing WorkspaceComponentRegistry (from Phase 3) with current STEP_NAMES approach, then be enhanced later when Phase 6 distributed registry is complete.
+
+#### 5.1 Workspace-Aware Testing Infrastructure
+**Deliverables**:
+- Extend existing Pipeline Runtime Testing System for workspace support
+- Implement `WorkspaceScriptExecutor` with workspace-aware script discovery
+- Create `WorkspaceDataManager` for isolated test data management
+- Add workspace-specific test environment setup
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/workspace/workspace_script_executor.py
+class WorkspaceScriptExecutor(PipelineScriptExecutor):
+    """Workspace-aware script executor extending base functionality."""
+    
+    def __init__(self, workspace_context: WorkspaceContext):
+        self.workspace_context = workspace_context
+        self.workspace_script_manager = WorkspaceScriptImportManager(workspace_context)
+        self.workspace_data_manager = WorkspaceDataManager(workspace_context)
+    
+    def test_workspace_script_isolation(self, script_name: str, workspace_id: str,
+                                      data_source: str = "synthetic") -> WorkspaceTestResult:
+        """Test script in isolation within specific workspace."""
+        
+    def test_cross_workspace_script_compatibility(self, script_name: str, 
+                                                source_workspace: str,
+                                                target_workspaces: List[str]) -> CrossWorkspaceCompatibilityResult:
+        """Test script compatibility across multiple workspaces."""
+
+# File: src/cursus/validation/runtime/workspace/workspace_data_manager.py
+class WorkspaceDataManager:
+    """Manages test data across multiple workspaces with isolation."""
+    
+    def __init__(self, workspace_context: WorkspaceContext):
+        self.workspace_context = workspace_context
+        self.local_data_managers = {}
+        self.shared_data_registry = SharedTestDataRegistry()
+    
+    def get_workspace_test_data(self, workspace_id: str, data_type: str) -> WorkspaceTestData
+    def prepare_cross_workspace_test_data(self, workspace_mapping: Dict[str, str], data_scenario: str) -> CrossWorkspaceTestData
+```
+
+**Acceptance Criteria**:
+- [ ] Workspace-aware script discovery and execution
+- [ ] Isolated test data management per workspace
+- [ ] Cross-workspace script compatibility testing
+- [ ] Integration with existing runtime testing infrastructure
+- [ ] Backward compatibility with single-workspace testing
+
+#### 5.2 Cross-Workspace Pipeline Testing
+**Deliverables**:
+- Implement `WorkspacePipelineExecutor` for multi-workspace pipeline execution
+- Create `CrossWorkspaceValidator` for compatibility validation
+- Add workspace-aware pipeline execution orchestration
+- Implement cross-workspace data flow validation
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/workspace/workspace_pipeline_executor.py
+class WorkspacePipelineExecutor(PipelineExecutor):
+    """Executes pipelines across multiple developer workspaces."""
+    
+    def __init__(self, workspace_context: WorkspaceContext):
+        self.workspace_context = workspace_context
+        self.workspace_script_executor = WorkspaceScriptExecutor(workspace_context)
+        self.cross_workspace_validator = CrossWorkspaceValidator()
+    
+    def execute_workspace_pipeline(self, dag, workspace_id: str, 
+                                 data_source: str = "synthetic") -> WorkspacePipelineExecutionResult:
+        """Execute pipeline within a specific workspace context."""
+        
+    def execute_cross_workspace_pipeline(self, dag, workspace_mapping: Dict[str, str],
+                                       data_source: str = "synthetic") -> CrossWorkspacePipelineExecutionResult:
+        """Execute pipeline using components from multiple workspaces."""
+
+# File: src/cursus/validation/runtime/workspace/cross_workspace_validator.py
+class CrossWorkspaceValidator:
+    """Validates compatibility between workspace components."""
+    
+    def validate_cross_workspace_pipeline(self, pipeline_definition: Dict,
+                                        workspace_mapping: Dict[str, str]) -> CrossWorkspaceValidationResult:
+        """Validate pipeline that uses components from multiple workspaces."""
+        
+    def validate_workspace_component_compatibility(self, component_a: WorkspaceComponent,
+                                                 component_b: WorkspaceComponent) -> ComponentCompatibilityResult:
+        """Validate compatibility between two workspace components."""
+```
+
+**Acceptance Criteria**:
+- [ ] Multi-workspace pipeline execution capability
+- [ ] Cross-workspace compatibility validation
+- [ ] Workspace-aware data flow management
+- [ ] Integration with workspace component registry
+- [ ] Comprehensive cross-workspace testing reports
+
+#### 5.3 Workspace Test Management and Orchestration
+**Deliverables**:
+- Implement `WorkspaceTestManager` for comprehensive test orchestration
+- Create workspace-specific test environment management
+- Add test result aggregation across workspaces
+- Implement workspace test reporting and visualization
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/workspace/workspace_test_manager.py
+class WorkspaceTestManager:
+    """Manages testing across multiple developer workspaces."""
+    
+    def __init__(self, workspace_registry: WorkspaceComponentRegistry):
+        self.workspace_registry = workspace_registry
+        self.workspace_executors = {}
+        self.cross_workspace_validator = CrossWorkspaceValidator()
+    
+    def setup_workspace_testing_environment(self, workspace_id: str) -> WorkspaceTestingEnvironment:
+        """Set up isolated testing environment for a workspace."""
+        
+    def run_workspace_test_suite(self, workspace_id: str, 
+                               test_scenarios: List[TestScenario]) -> WorkspaceTestSuiteResult:
+        """Run complete test suite for a specific workspace."""
+        
+    def run_cross_workspace_compatibility_tests(self, 
+                                              workspace_combinations: List[Tuple[str, str]]) -> CrossWorkspaceCompatibilityReport:
+        """Run compatibility tests between workspace pairs."""
+```
+
+**Acceptance Criteria**:
+- [ ] Comprehensive workspace test orchestration
+- [ ] Isolated test environment management
+- [ ] Cross-workspace compatibility testing
+- [ ] Test result aggregation and reporting
+- [ ] Integration with existing Jupyter notebook interface
+
+#### 5.4 Integration with Existing Runtime Testing
+**Deliverables**:
+- Integrate workspace extensions with existing runtime testing components
+- Extend existing data models for workspace context
+- Update Jupyter integration for workspace-aware testing
+- Add workspace-aware CLI commands
+
+**Implementation Tasks**:
+- Extend existing `TestResult` and `ExecutionResult` models with workspace context
+- Update Jupyter notebook interface to support workspace selection
+- Add workspace-aware CLI commands to existing runtime testing CLI
+- Integrate with existing S3 data management and caching systems
+- Update existing visualization and reporting for workspace context
+
+**Acceptance Criteria**:
+- [ ] Seamless integration with existing runtime testing infrastructure
+- [ ] Workspace context in all test results and reports
+- [ ] Updated Jupyter interface with workspace support
+- [ ] Backward compatibility with existing runtime testing workflows
+- [ ] Enhanced CLI with workspace-aware commands
+
+### Phase 6: Distributed Registry System (Weeks 19-22) [MOVED FROM PHASE 5]
 **Duration**: 4 weeks  
 **Risk Level**: High  
 **Dependencies**: Phase 1 completion
 
-#### 5.1 Critical STEP_NAMES Integration Analysis
+#### 6.1 Critical STEP_NAMES Integration Analysis
 **Deliverables**:
 - Complete analysis of 232+ STEP_NAMES references across the codebase
 - Identify all derived registry structures that must be maintained
@@ -628,7 +795,7 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
 - [x] Risk assessment for backward compatibility across all system components
 - [x] Integration strategy documented in step_names_integration_requirements_analysis.md
 
-#### 5.2 Enhanced Backward Compatibility Layer
+#### 6.2 Enhanced Backward Compatibility Layer
 **Deliverables**:
 - Implement `EnhancedBackwardCompatibilityLayer` class
 - Create transparent replacement for step_names.py module
@@ -679,7 +846,7 @@ SPEC_STEP_TYPES = get_spec_step_types()
 - [ ] Drop-in replacement for existing step_names.py module
 - [ ] Performance equivalent to current static registry access
 
-#### 5.3 Base Class Integration Strategy
+#### 6.3 Base Class Integration Strategy
 **Deliverables**:
 - Update `StepBuilderBase` to use distributed registry with workspace context
 - Update `BasePipelineConfig` to use distributed registry with workspace context
@@ -713,309 +880,166 @@ class StepBuilderBase(ABC):
         # Check environment variable
         import os
         workspace_id = os.environ.get('CURSUS_WORKSPACE_ID')
-        if workspace_id:
-            return workspace_id
-        
-        # Check thread-local context
-        try:
-            return get_workspace_context()
-        except:
-            pass
-        
-        return None
-
-# File: src/cursus/core/base/config_base.py (UPDATED)
-class BasePipelineConfig(ABC):
-    _STEP_NAMES: ClassVar[Dict[str, str]] = {}
-    
-    @classmethod
-    def get_step_registry(cls) -> Dict[str, str]:
-        """Lazy load step registry with workspace context."""
-        if not cls._STEP_NAMES:
-            # Get workspace context
-            workspace_id = cls._get_workspace_context()
-            
-            compatibility_layer = get_enhanced_compatibility()
-            if workspace_id:
-                compatibility_layer.set_workspace_context(workspace_id)
-            
-            cls._STEP_NAMES = compatibility_layer.get_config_step_registry()
-        return cls._STEP_NAMES
-```
-
-**Acceptance Criteria**:
-- [ ] StepBuilderBase.STEP_NAMES property works with workspace context
-- [ ] BasePipelineConfig registry access works with workspace context
-- [ ] Workspace context detection from config, environment, and thread-local
-- [ ] Backward compatibility maintained for existing base class usage
-- [ ] Performance impact minimized through lazy loading and caching
-
-#### 5.4 Thread-Safe Workspace Context Management
-**Deliverables**:
-- Implement thread-safe workspace context using contextvars
-- Create context manager utilities for temporary workspace switching
-- Add environment variable and configuration-based context detection
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/registry/distributed/context.py
-import contextvars
-from typing import Optional, ContextManager
-from contextlib import contextmanager
-
-# Thread-local workspace context
-_workspace_context: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar('workspace_id', default=None)
-
-def set_workspace_context(workspace_id: str) -> None:
-    """Set the current workspace context."""
-    _workspace_context.set(workspace_id)
-    
-    # Also update the global compatibility layer
-    compatibility_layer = get_enhanced_compatibility()
-    compatibility_layer.set_workspace_context(workspace_id)
-
-def get_workspace_context() -> Optional[str]:
-    """Get the current workspace context."""
-    return _workspace_context.get()
-
-def clear_workspace_context() -> None:
-    """Clear the current workspace context."""
-    _workspace_context.set(None)
-    
-    # Also clear the global compatibility layer
-    compatibility_layer = get_enhanced_compatibility()
-    compatibility_layer.clear_workspace_context()
-
-@contextmanager
-def workspace_context(workspace_id: str) -> ContextManager[None]:
-    """Context manager for temporary workspace context."""
-    old_context = get_workspace_context()
-    try:
-        set_workspace_context(workspace_id)
-        yield
-    finally:
-        if old_context:
-            set_workspace_context(old_context)
-        else:
-            clear_workspace_context()
-```
-
-**Acceptance Criteria**:
-- [ ] Thread-safe workspace context management using contextvars
-- [ ] Context manager for temporary workspace switching
-- [ ] Environment variable support (CURSUS_WORKSPACE_ID)
-- [ ] Integration with global compatibility layer
-- [ ] Proper cleanup and restoration of previous context
-
-#### 5.5 Core Registry Enhancement
-**Deliverables**:
-- Enhance existing registry with workspace metadata
-- Create `StepDefinition` class with registry context
-- Implement core registry validation and management
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/registry/distributed/core_registry.py
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Dict, Any, Optional
-
-class StepDefinition(BaseModel):
-    """Pydantic V2 model for enhanced step definition with registry metadata."""
-    model_config = ConfigDict(
-        validate_assignment=True,
-        extra='forbid',
-        frozen=False
-    )
-    
-    name: str
-    registry_type: str  # 'core', 'workspace', 'override'
-    sagemaker_step_type: Optional[str] = None
-    workspace_id: Optional[str] = None
-    builder_class_name: Optional[str] = None
-    config_class_name: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    
-    def to_legacy_format(self) -> Dict[str, Any]:
-        """Convert to legacy STEP_NAMES format for backward compatibility."""
-        legacy_dict = {}
-        
-        if self.sagemaker_step_type:
-            legacy_dict['sagemaker_step_type'] = self.sagemaker_step_type
-        if self.builder_class_name:
-            legacy_dict['builder_step_name'] = self.builder_class_name
-        # Add other legacy fields...
-        
-        return legacy_dict
-
-class CoreStepRegistry:
-    """Core step registry with workspace awareness."""
-    
-    def __init__(self, registry_path: str = "src/cursus/steps/registry/step_names.py"):
-        # Load existing STEP_NAMES registry
-        # Convert to StepDefinition objects
-        # Implement registry validation
-        # Set up workspace integration points
-```
-
-**Acceptance Criteria**:
-- [ ] Maintains full backward compatibility with existing STEP_NAMES
-- [ ] Supports enhanced metadata for workspace awareness
-- [ ] Provides registry validation and health checking
-- [ ] Enables programmatic registry management
-- [ ] Integrates with workspace component discovery
-
-#### 5.6 WorkspaceComponentRegistry Integration
-**Deliverables**:
-- Integrate WorkspaceComponentRegistry with distributed registry system
-- Create unified component discovery that works with both systems
-- Implement step definition validation before component discovery
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/core/workspace/registry.py (UPDATED)
-class WorkspaceComponentRegistry:
-    """Enhanced to work with distributed registry system."""
-    
-    def __init__(self, workspace_root: str):
-        self.workspace_root = workspace_root
-        # Integration point: Use distributed registry for step definitions
-        self.registry_manager = get_global_registry_manager()
-        self.compatibility_layer = get_enhanced_compatibility()
-    
-    def find_builder_class(self, step_name: str, developer_id: str = None) -> Optional[Type]:
-        """Find builder class with distributed registry integration."""
-        # 1. Check if step exists in distributed registry
-        step_definition = self.registry_manager.get_step_definition(step_name, developer_id)
-        if not step_definition:
-            return None
-        
-        # 2. Set workspace context for component discovery
-        if developer_id:
-            with workspace_context(developer_id):
-                return self._discover_builder_class(step_name, step_definition)
-        else:
-            return self._discover_builder_class(step_name, step_definition)
-    
-    def _discover_builder_class(self, step_name: str, step_definition: StepDefinition) -> Optional[Type]:
-        """Discover builder class based on step definition."""
-        if step_definition.registry_type == 'workspace':
-            # Load from workspace using existing logic
-            return self._load_workspace_builder(step_name, step_definition.workspace_id)
-        else:
-            # Load from core system
-            return self._load_core_builder(step_name)
-```
-
-**Acceptance Criteria**:
-- [ ] WorkspaceComponentRegistry integrates with distributed registry
-- [ ] Step definition validation before component discovery
-- [ ] Workspace context management during component loading
-- [ ] Unified interface for both core and workspace components
-- [ ] Performance optimization through registry-guided discovery
-
-#### 5.7 Workspace Registry System
-**Deliverables**:
-- Create workspace-specific registry implementation
-- Implement registry inheritance from core registry
-- Add workspace registry validation and conflict detection
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/registry/distributed/workspace_registry.py
-class WorkspaceStepRegistry:
-    """Workspace-specific step registry extending core registry."""
-    
-    def __init__(self, workspace_path: str, core_registry: CoreStepRegistry):
-        # Load workspace registry file
-        # Set up inheritance from core registry
-        # Implement precedence resolution
-        # Configure conflict detection and resolution
-    
-    def get_step_definition(self, step_name: str) -> Optional[StepDefinition]
-    def register_workspace_step(self, step_definition: StepDefinition)
-    def validate_registry_consistency(self) -> Dict[str, Any]
-    def get_workspace_steps(self) -> List[StepDefinition]
-```
-
-**Acceptance Criteria**:
-- [ ] Supports workspace-specific step definitions
-- [ ] Implements proper inheritance from core registry
-- [ ] Handles registry conflicts with clear precedence rules
-- [ ] Provides workspace registry validation and diagnostics
-- [ ] Supports dynamic registry updates and management
-
-#### 5.8 Distributed Registry Manager
-**Deliverables**:
-- Create central coordinator for distributed registry system
-- Implement registry discovery and federation
-- Add comprehensive registry management capabilities
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/registry/distributed/registry_manager.py
-class DistributedRegistryManager:
-    """Central manager for distributed registry system."""
-    
-    def __init__(self, core_registry_path: str, workspaces_root: str):
-        # Initialize core registry
-        # Discover workspace registries
-        # Set up registry federation
-        # Configure registry synchronization
-    
-    def get_step_definition(self, step_name: str, workspace_id: str = None) -> Optional[StepDefinition]
-    def discover_all_steps(self) -> Dict[str, List[StepDefinition]]
-    def validate_registry_consistency(self) -> Dict[str, Any]
-    def get_registry_statistics(self) -> Dict[str, Any]
-```
-
-**Acceptance Criteria**:
-- [ ] Coordinates multiple workspace registries effectively
-- [ ] Provides unified interface for step definition resolution
-- [ ] Handles registry conflicts and provides clear diagnostics
-- [ ] Supports registry statistics and health monitoring
-- [ ] Enables registry federation and synchronization
-
-#### 5.9 Backward Compatibility Layer
-**Deliverables**:
-- Create compatibility layer for existing STEP_NAMES usage
-- Implement global functions for backward compatibility
-- Add workspace context management for legacy code
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/registry/distributed/compatibility.py
-class BackwardCompatibilityLayer:
-    """Backward compatibility for existing STEP_NAMES usage."""
-    
-    def __init__(self, registry_manager: DistributedRegistryManager):
-        # Initialize registry manager integration
-        # Set up compatibility mappings
-        # Configure legacy API support
-    
-    def get_step_names(self) -> Dict[str, Dict[str, Any]]
-    def get_steps_by_sagemaker_type(self, sagemaker_step_type: str) -> List[str]
-    def set_workspace_context(self, workspace_id: str)
-
-# Global functions for backward compatibility
-def get_step_names() -> Dict[str, Dict[str, Any]]:
-    # Global function replacing STEP_NAMES dictionary
-    
-def get_steps_by_sagemaker_type(sagemaker_step_type: str) -> List[str]:
-    # Global function for step type filtering
-```
-
-**Acceptance Criteria**:
-- [ ] Existing code using STEP_NAMES continues to work unchanged
-- [ ] Supports workspace context for enhanced functionality
-- [ ] Provides seamless migration path for legacy code
-- [ ] Maintains full API compatibility with existing functions
-- [ ] Enables gradual adoption of workspace-aware features
-
-
-### Phase 6: Integration and Testing (Weeks 19-22)
+        if workspace_
 **Duration**: 4 weeks  
 **Risk Level**: Medium  
-**Dependencies**: Phases 1-5 completion
+**Dependencies**: Phases 1, 3 completion
+
+#### 6.1 Workspace-Aware Testing Infrastructure
+**Deliverables**:
+- Extend existing Pipeline Runtime Testing System for workspace support
+- Implement `WorkspaceScriptExecutor` with workspace-aware script discovery
+- Create `WorkspaceDataManager` for isolated test data management
+- Add workspace-specific test environment setup
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/workspace/workspace_script_executor.py
+class WorkspaceScriptExecutor(PipelineScriptExecutor):
+    """Workspace-aware script executor extending base functionality."""
+    
+    def __init__(self, workspace_context: WorkspaceContext):
+        self.workspace_context = workspace_context
+        self.workspace_script_manager = WorkspaceScriptImportManager(workspace_context)
+        self.workspace_data_manager = WorkspaceDataManager(workspace_context)
+    
+    def test_workspace_script_isolation(self, script_name: str, workspace_id: str,
+                                      data_source: str = "synthetic") -> WorkspaceTestResult:
+        """Test script in isolation within specific workspace."""
+        
+    def test_cross_workspace_script_compatibility(self, script_name: str, 
+                                                source_workspace: str,
+                                                target_workspaces: List[str]) -> CrossWorkspaceCompatibilityResult:
+        """Test script compatibility across multiple workspaces."""
+
+# File: src/cursus/validation/runtime/workspace/workspace_data_manager.py
+class WorkspaceDataManager:
+    """Manages test data across multiple workspaces with isolation."""
+    
+    def __init__(self, workspace_context: WorkspaceContext):
+        self.workspace_context = workspace_context
+        self.local_data_managers = {}
+        self.shared_data_registry = SharedTestDataRegistry()
+    
+    def get_workspace_test_data(self, workspace_id: str, data_type: str) -> WorkspaceTestData
+    def prepare_cross_workspace_test_data(self, workspace_mapping: Dict[str, str], data_scenario: str) -> CrossWorkspaceTestData
+```
+
+**Acceptance Criteria**:
+- [ ] Workspace-aware script discovery and execution
+- [ ] Isolated test data management per workspace
+- [ ] Cross-workspace script compatibility testing
+- [ ] Integration with existing runtime testing infrastructure
+- [ ] Backward compatibility with single-workspace testing
+
+#### 6.2 Cross-Workspace Pipeline Testing
+**Deliverables**:
+- Implement `WorkspacePipelineExecutor` for multi-workspace pipeline execution
+- Create `CrossWorkspaceValidator` for compatibility validation
+- Add workspace-aware pipeline execution orchestration
+- Implement cross-workspace data flow validation
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/workspace/workspace_pipeline_executor.py
+class WorkspacePipelineExecutor(PipelineExecutor):
+    """Executes pipelines across multiple developer workspaces."""
+    
+    def __init__(self, workspace_context: WorkspaceContext):
+        self.workspace_context = workspace_context
+        self.workspace_script_executor = WorkspaceScriptExecutor(workspace_context)
+        self.cross_workspace_validator = CrossWorkspaceValidator()
+    
+    def execute_workspace_pipeline(self, dag, workspace_id: str, 
+                                 data_source: str = "synthetic") -> WorkspacePipelineExecutionResult:
+        """Execute pipeline within a specific workspace context."""
+        
+    def execute_cross_workspace_pipeline(self, dag, workspace_mapping: Dict[str, str],
+                                       data_source: str = "synthetic") -> CrossWorkspacePipelineExecutionResult:
+        """Execute pipeline using components from multiple workspaces."""
+
+# File: src/cursus/validation/runtime/workspace/cross_workspace_validator.py
+class CrossWorkspaceValidator:
+    """Validates compatibility between workspace components."""
+    
+    def validate_cross_workspace_pipeline(self, pipeline_definition: Dict,
+                                        workspace_mapping: Dict[str, str]) -> CrossWorkspaceValidationResult:
+        """Validate pipeline that uses components from multiple workspaces."""
+        
+    def validate_workspace_component_compatibility(self, component_a: WorkspaceComponent,
+                                                 component_b: WorkspaceComponent) -> ComponentCompatibilityResult:
+        """Validate compatibility between two workspace components."""
+```
+
+**Acceptance Criteria**:
+- [ ] Multi-workspace pipeline execution capability
+- [ ] Cross-workspace compatibility validation
+- [ ] Workspace-aware data flow management
+- [ ] Integration with workspace component registry
+- [ ] Comprehensive cross-workspace testing reports
+
+#### 6.3 Workspace Test Management and Orchestration
+**Deliverables**:
+- Implement `WorkspaceTestManager` for comprehensive test orchestration
+- Create workspace-specific test environment management
+- Add test result aggregation across workspaces
+- Implement workspace test reporting and visualization
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/workspace/workspace_test_manager.py
+class WorkspaceTestManager:
+    """Manages testing across multiple developer workspaces."""
+    
+    def __init__(self, workspace_registry: WorkspaceComponentRegistry):
+        self.workspace_registry = workspace_registry
+        self.workspace_executors = {}
+        self.cross_workspace_validator = CrossWorkspaceValidator()
+    
+    def setup_workspace_testing_environment(self, workspace_id: str) -> WorkspaceTestingEnvironment:
+        """Set up isolated testing environment for a workspace."""
+        
+    def run_workspace_test_suite(self, workspace_id: str, 
+                               test_scenarios: List[TestScenario]) -> WorkspaceTestSuiteResult:
+        """Run complete test suite for a specific workspace."""
+        
+    def run_cross_workspace_compatibility_tests(self, 
+                                              workspace_combinations: List[Tuple[str, str]]) -> CrossWorkspaceCompatibilityReport:
+        """Run compatibility tests between workspace pairs."""
+```
+
+**Acceptance Criteria**:
+- [ ] Comprehensive workspace test orchestration
+- [ ] Isolated test environment management
+- [ ] Cross-workspace compatibility testing
+- [ ] Test result aggregation and reporting
+- [ ] Integration with existing Jupyter notebook interface
+
+#### 6.4 Integration with Existing Runtime Testing
+**Deliverables**:
+- Integrate workspace extensions with existing runtime testing components
+- Extend existing data models for workspace context
+- Update Jupyter integration for workspace-aware testing
+- Add workspace-aware CLI commands
+
+**Implementation Tasks**:
+- Extend existing `TestResult` and `ExecutionResult` models with workspace context
+- Update Jupyter notebook interface to support workspace selection
+- Add workspace-aware CLI commands to existing runtime testing CLI
+- Integrate with existing S3 data management and caching systems
+- Update existing visualization and reporting for workspace context
+
+**Acceptance Criteria**:
+- [ ] Seamless integration with existing runtime testing infrastructure
+- [ ] Workspace context in all test results and reports
+- [ ] Updated Jupyter interface with workspace support
+- [ ] Backward compatibility with existing runtime testing workflows
+- [ ] Enhanced CLI with workspace-aware commands
+
+### Phase 7: Integration and Testing (Weeks 23-26)
+**Duration**: 4 weeks  
+**Risk Level**: Medium  
+**Dependencies**: Phases 1-6 completion
 
 #### 6.1 Comprehensive Integration Testing
 **Deliverables**:
@@ -1309,16 +1333,20 @@ Based on the consolidation of both plans, focus on core mechanisms and functiona
 - **Milestone 3**: Workspace core system extensions complete
 - **Deliverable**: Workspace-aware pipeline assembly and DAG compilation
 
-### Phase 4: Distributed Registry System (Weeks 12-15)
-- **Milestone 4**: Distributed registry system complete
-- **Deliverable**: Workspace-aware registry with backward compatibility
-
-### Phase 5: DAG Compilation Extensions (Weeks 16-18)
-- **Milestone 5**: Workspace DAG compilation complete
+### Phase 4: DAG Compilation Extensions (Weeks 12-14)
+- **Milestone 4**: Workspace DAG compilation complete
 - **Deliverable**: End-to-end workspace pipeline compilation
 
-### Phase 6: Integration and Testing (Weeks 19-22)
-- **Milestone 6**: System integration and testing complete
+### Phase 5: Workspace-Aware Pipeline Runtime Testing (Weeks 15-18)
+- **Milestone 5**: Workspace-aware testing system complete
+- **Deliverable**: Multi-workspace pipeline testing with cross-workspace compatibility validation
+
+### Phase 6: Distributed Registry System (Weeks 19-22)
+- **Milestone 6**: Distributed registry system complete
+- **Deliverable**: Workspace-aware registry with backward compatibility
+
+### Phase 7: Integration and Testing (Weeks 23-26)
+- **Milestone 7**: System integration and testing complete
 - **Deliverable**: Fully integrated workspace-aware system
 
 ### Phase 7: Testing and Validation (Weeks 23-25)

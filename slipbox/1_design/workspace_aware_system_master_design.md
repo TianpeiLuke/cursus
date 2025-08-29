@@ -234,6 +234,27 @@ cursus/
 
 **Design Document**: [Workspace-Aware Config Manager Design](workspace_aware_config_manager_design.md)
 
+### 6. Pipeline Runtime Testing Transformation
+
+**Current State**: Single-workspace pipeline testing without developer isolation
+**Workspace-Aware State**: Multi-workspace pipeline testing with isolated test environments and cross-workspace compatibility validation
+
+#### Key Components:
+- **WorkspacePipelineExecutor**: Multi-workspace pipeline execution and testing
+- **WorkspaceScriptExecutor**: Workspace-aware script discovery and execution
+- **WorkspaceTestManager**: Workspace test orchestration and environment management
+- **CrossWorkspaceValidator**: Cross-workspace compatibility validation
+- **WorkspaceDataManager**: Workspace-aware test data management
+
+#### Capabilities:
+- Isolated test environments for each developer workspace
+- Cross-workspace pipeline testing and validation
+- Workspace-aware script discovery and execution
+- Cross-workspace compatibility testing and reporting
+- Isolated test data management with shared test dataset access
+
+**Design Document**: [Workspace-Aware Pipeline Runtime Testing Design](workspace_aware_pipeline_runtime_testing_design.md)
+
 ## Integration Architecture
 
 The workspace-aware system components are designed to work together seamlessly:
