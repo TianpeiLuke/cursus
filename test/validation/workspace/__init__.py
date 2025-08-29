@@ -4,14 +4,23 @@ Test package for Cursus Validation Workspace functionality
 This package contains comprehensive unit tests for the multi-developer workspace
 management system, including tests for:
 
+Phase 1 - Foundation Infrastructure:
 - DeveloperWorkspaceFileResolver: Workspace-aware file discovery
 - WorkspaceModuleLoader: Dynamic module loading with workspace isolation  
 - WorkspaceManager: Workspace discovery, validation, and management
+
+Phase 2 - Validation Extensions:
+- WorkspaceUnifiedAlignmentTester: Workspace-aware alignment validation
+- WorkspaceUniversalStepBuilderTest: Multi-workspace builder testing
+- WorkspaceValidationOrchestrator: Comprehensive validation orchestration
 
 Test Structure:
 - test_workspace_file_resolver.py: Tests for file resolution functionality
 - test_workspace_module_loader.py: Tests for module loading functionality
 - test_workspace_manager.py: Tests for workspace management functionality
+- test_workspace_alignment_tester.py: Tests for workspace alignment validation
+- test_workspace_builder_test.py: Tests for workspace builder validation
+- test_workspace_orchestrator.py: Tests for validation orchestration
 
 Usage:
     # Run all workspace tests
@@ -19,6 +28,9 @@ Usage:
     
     # Run specific test module
     python -m pytest test/validation/workspace/test_workspace_manager.py
+    
+    # Run tests by category
+    python -c "from test.validation.workspace import test_validation_extensions_only; test_validation_extensions_only()"
     
     # Run with coverage
     python -m pytest test/validation/workspace/ --cov=src.cursus.validation.workspace
@@ -32,6 +44,11 @@ The test suite provides comprehensive coverage of:
 - Configuration management (JSON/YAML)
 - Error handling and edge cases
 - Backward compatibility with single workspace mode
+- Workspace-aware alignment validation across all 4 levels
+- Multi-workspace builder testing with dynamic loading
+- Comprehensive validation orchestration and reporting
+- Cross-workspace dependency analysis
+- Parallel validation processing
 """
 
 import unittest
@@ -47,10 +64,9 @@ if str(src_path) not in sys.path:
 from .test_workspace_file_resolver import TestDeveloperWorkspaceFileResolver
 from .test_workspace_module_loader import TestWorkspaceModuleLoader
 from .test_workspace_manager import TestWorkspaceManager
-
-# Test suite configuration
-__version__ = "1.0.0"
-__author__ = "Cursus Development Team"
+from .test_workspace_alignment_tester import TestWorkspaceUnifiedAlignmentTester
+from .test_workspace_builder_test import TestWorkspaceUniversalStepBuilderTest
+from .test_workspace_orchestrator import TestWorkspaceValidationOrchestrator
 
 # Test discovery patterns
 TEST_PATTERNS = [
@@ -68,6 +84,11 @@ TEST_CATEGORIES = {
     ],
     "workspace_management": [
         "test_workspace_manager.py"
+    ],
+    "validation_extensions": [
+        "test_workspace_alignment_tester.py",
+        "test_workspace_builder_test.py",
+        "test_workspace_orchestrator.py"
     ],
     "integration": [
         # Future integration tests
@@ -89,7 +110,10 @@ def create_test_suite():
     test_classes = [
         TestDeveloperWorkspaceFileResolver,
         TestWorkspaceModuleLoader,
-        TestWorkspaceManager
+        TestWorkspaceManager,
+        TestWorkspaceUnifiedAlignmentTester,
+        TestWorkspaceUniversalStepBuilderTest,
+        TestWorkspaceValidationOrchestrator
     ]
     
     for test_class in test_classes:
@@ -135,7 +159,12 @@ def run_category_tests(category, verbosity=2):
     category_classes = {
         "file_resolution": [TestDeveloperWorkspaceFileResolver],
         "module_loading": [TestWorkspaceModuleLoader],
-        "workspace_management": [TestWorkspaceManager]
+        "workspace_management": [TestWorkspaceManager],
+        "validation_extensions": [
+            TestWorkspaceUnifiedAlignmentTester,
+            TestWorkspaceUniversalStepBuilderTest,
+            TestWorkspaceValidationOrchestrator
+        ]
     }
     
     test_classes = category_classes.get(category, [])
@@ -156,12 +185,15 @@ def get_test_info():
         dict: Test information including categories and test counts
     """
     info = {
-        "total_test_classes": 3,
+        "total_test_classes": 6,
         "categories": list(TEST_CATEGORIES.keys()),
         "test_files": [
             "test_workspace_file_resolver.py",
             "test_workspace_module_loader.py", 
-            "test_workspace_manager.py"
+            "test_workspace_manager.py",
+            "test_workspace_alignment_tester.py",
+            "test_workspace_builder_test.py",
+            "test_workspace_orchestrator.py"
         ],
         "coverage_areas": [
             "Workspace mode detection and validation",
@@ -170,7 +202,12 @@ def get_test_info():
             "Workspace structure creation and validation",
             "Configuration management (JSON/YAML)",
             "Error handling and edge cases",
-            "Backward compatibility"
+            "Backward compatibility",
+            "Workspace-aware alignment validation",
+            "Multi-workspace builder testing",
+            "Comprehensive validation orchestration",
+            "Cross-workspace dependency analysis",
+            "Parallel validation processing"
         ]
     }
     
@@ -178,7 +215,16 @@ def get_test_info():
     loader = unittest.TestLoader()
     total_tests = 0
     
-    for test_class in [TestDeveloperWorkspaceFileResolver, TestWorkspaceModuleLoader, TestWorkspaceManager]:
+    all_test_classes = [
+        TestDeveloperWorkspaceFileResolver, 
+        TestWorkspaceModuleLoader, 
+        TestWorkspaceManager,
+        TestWorkspaceUnifiedAlignmentTester,
+        TestWorkspaceUniversalStepBuilderTest,
+        TestWorkspaceValidationOrchestrator
+    ]
+    
+    for test_class in all_test_classes:
         suite = loader.loadTestsFromTestCase(test_class)
         total_tests += suite.countTestCases()
     
@@ -201,6 +247,11 @@ def test_module_loading_only():
 def test_workspace_management_only():
     """Run only workspace management tests."""
     return run_category_tests("workspace_management")
+
+
+def test_validation_extensions_only():
+    """Run only validation extensions tests."""
+    return run_category_tests("validation_extensions")
 
 
 # Test execution entry point

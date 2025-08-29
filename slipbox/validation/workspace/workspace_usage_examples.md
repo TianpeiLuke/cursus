@@ -1,1057 +1,234 @@
----
-tags:
-  - validation
-  - workspace
-  - examples
-  - usage
-  - multi_developer
-keywords:
-  - workspace validation
-  - developer workspace
-  - file resolution
-  - module loading
-  - workspace management
-topics:
-  - workspace validation examples
-  - multi-developer workspace usage
-  - validation framework integration
-language: python
-date of note: 2025-08-28
----
+# Workspace-Aware Validation System Usage Examples
 
-# Workspace Validation Usage Examples
+This document serves as the main entry point for comprehensive examples of the workspace-aware validation system. The examples have been organized into focused files for better navigation and maintainability.
 
-This document provides comprehensive usage examples for the Cursus workspace validation system, demonstrating how to use the multi-developer workspace functionality for validation, file resolution, and module loading.
+## Documentation Structure
 
-## Table of Contents
+The workspace validation examples are split into the following focused files:
 
-1. [Basic Workspace Setup](#basic-workspace-setup)
-2. [File Resolution Examples](#file-resolution-examples)
-3. [Module Loading Examples](#module-loading-examples)
-4. [Workspace Management Examples](#workspace-management-examples)
-5. [Configuration Management](#configuration-management)
-6. [Integration Patterns](#integration-patterns)
-7. [Error Handling](#error-handling)
-8. [Advanced Usage](#advanced-usage)
+### 1. [Basic Setup Examples](./basic_setup_examples.md)
+**Getting started with workspace-aware validation**
+- Workspace structure and initialization
+- Basic workspace discovery and validation
+- Workspace creation and configuration
+- Simple validation workflows
+- Best practices for beginners
 
-## Basic Workspace Setup
+### 2. [File Resolution Examples](./file_resolution_examples.md)
+**Working with the workspace file resolution system**
+- Using DeveloperWorkspaceFileResolver
+- Switching between developer workspaces
+- Custom file extensions and paths
+- File existence checking and batch operations
+- Error handling and recovery patterns
+- Context managers for developer switching
 
-### Workspace Directory Structure
+### 3. [Module Loading Examples](./module_loading_examples.md)
+**Dynamic module loading in workspace contexts**
+- Using WorkspaceModuleLoader
+- Context manager usage for isolation
+- Dynamic class discovery
+- Module reloading during development
+- Cross-developer module comparison
+- Caching and health checks
 
-First, let's understand the expected workspace structure based on the real Cursus codebase:
+### 4. [Workspace Validation Examples](./workspace_validation_examples.md)
+**Core validation functionality and patterns**
+- Alignment validation across all levels
+- Builder validation and testing
+- Comprehensive validation with orchestrator
+- Multi-workspace validation
+- Custom validation pipelines
+- Performance optimization and monitoring
 
-```
-developer_workspaces/
-├── developers/
-│   ├── developer_1/
-│   │   └── src/cursus_dev/steps/
-│   │       ├── __init__.py
-│   │       ├── builders/
-│   │       │   ├── __init__.py
-│   │       │   ├── builder_custom_feature_engineering_step.py
-│   │       │   ├── builder_neural_network_training_step.py
-│   │       │   ├── builder_data_validation_step.py
-│   │       │   └── s3_utils.py
-│   │       ├── configs/
-│   │       │   ├── __init__.py
-│   │       │   ├── config_custom_feature_engineering_step.py
-│   │       │   ├── config_neural_network_training_step.py
-│   │       │   ├── config_data_validation_step.py
-│   │       │   └── utils.py
-│   │       ├── contracts/
-│   │       │   ├── __init__.py
-│   │       │   ├── custom_feature_engineering_contract.py
-│   │       │   ├── neural_network_training_contract.py
-│   │       │   ├── data_validation_contract.py
-│   │       │   └── contract_validator.py
-│   │       ├── scripts/
-│   │       │   ├── __init__.py
-│   │       │   ├── custom_feature_engineering.py
-│   │       │   ├── neural_network_training.py
-│   │       │   └── data_validation.py
-│   │       ├── specs/
-│   │       │   ├── __init__.py
-│   │       │   ├── custom_feature_engineering_spec.py
-│   │       │   ├── neural_network_training_spec.py
-│   │       │   ├── data_validation_training_spec.py
-│   │       │   └── data_validation_testing_spec.py
-│   │       ├── hyperparams/
-│   │       │   ├── __init__.py
-│   │       │   ├── hyperparameters_neural_network.py
-│   │       │   └── hyperparameters_custom_model.py
-│   │       └── registry/
-│   │           ├── __init__.py
-│   │           ├── builder_registry.py
-│   │           ├── exceptions.py
-│   │           ├── step_names.py
-│   │           └── step_type_test_variants.py
-│   └── developer_2/
-│       └── src/cursus_dev/steps/
-│           ├── __init__.py
-│           ├── builders/
-│           ├── configs/
-│           ├── contracts/
-│           ├── scripts/
-│           ├── specs/
-│           ├── hyperparams/
-│           └── registry/
-└── shared/
-    └── src/cursus_dev/steps/
-        ├── __init__.py
-        ├── builders/
-        ├── configs/
-        ├── contracts/
-        ├── scripts/
-        ├── specs/
-        ├── hyperparams/
-        └── registry/
-```
+### 5. [Configuration Management Examples](./configuration_management_examples.md)
+**Managing workspace configurations**
+- Creating and loading workspace configurations
+- Configuration templates and inheritance
+- Validation and schema checking
+- Version migration and synchronization
+- Multi-environment configuration
+- Backup and restore operations
 
-**Key Structure Notes:**
-- **builders/**: Contains step builder classes following the pattern `builder_[step_name]_step.py` (e.g., `builder_neural_network_training_step.py`)
-- **configs/**: Contains configuration classes following the pattern `config_[step_name]_step.py` (e.g., `config_neural_network_training_step.py`)
-- **contracts/**: Contains script contracts following the pattern `[step_name]_contract.py` (e.g., `neural_network_training_contract.py`)
-- **scripts/**: Contains actual execution scripts following the pattern `[step_name].py` (e.g., `neural_network_training.py`)
-- **specs/**: Contains step specifications with variant support (e.g., `neural_network_training_spec.py`, `data_validation_training_spec.py`)
-- **hyperparams/**: Contains hyperparameter classes following the pattern `hyperparameters_[model_type].py` (e.g., `hyperparameters_neural_network.py`)
-- **registry/**: Contains registration and metadata utilities including `builder_registry.py`, `step_names.py`, and `step_type_test_variants.py`
-- Each directory includes `__init__.py` for proper Python module structure
-- Utility files like `s3_utils.py`, `utils.py`, `contract_validator.py` provide shared functionality
-- Specs support multiple variants per step type (training, testing, validation, calibration)
-```
+### 6. [Integration Patterns Examples](./integration_patterns_examples.md)
+**Advanced integration patterns and workflows**
+- End-to-end workspace setup and validation
+- Cross-workspace integration
+- Multi-developer collaboration patterns
+- Hierarchical and dependency-aware validation
+- Testing integration patterns
+- Performance optimization with parallel processing
 
-### Basic Import and Setup
+### 7. [Advanced Usage Examples](./advanced_usage_examples.md)
+**Advanced patterns for production environments**
+- Dynamic workspace creation and migration
+- Multi-environment orchestration
+- Custom validation rules engines
+- Resilient validation with auto-recovery
+- Intelligent caching and memoization
+- Monitoring and analytics
 
+## Quick Start Guide
+
+For new users, we recommend following this learning path:
+
+1. **Start with [Basic Setup Examples](./basic_setup_examples.md)** to understand the fundamental concepts
+2. **Review [File Resolution Examples](./file_resolution_examples.md)** to learn about workspace file management
+3. **Explore [Module Loading Examples](./module_loading_examples.md)** for dynamic component loading
+4. **Study [Workspace Validation Examples](./workspace_validation_examples.md)** for core validation patterns
+5. **Examine [Configuration Management Examples](./configuration_management_examples.md)** for workspace configuration
+6. **Learn [Integration Patterns Examples](./integration_patterns_examples.md)** for complex workflows
+7. **Master [Advanced Usage Examples](./advanced_usage_examples.md)** for production deployment
+
+## Common Use Cases
+
+### Single Developer Workspace
 ```python
-from cursus.validation.workspace import (
-    WorkspaceManager,
-    DeveloperWorkspaceFileResolver,
-    WorkspaceModuleLoader,
-    WorkspaceConfig
-)
+# Quick example - see basic_setup_examples.md for details
+from cursus.validation.workspace.workspace_manager import WorkspaceManager
+from cursus.validation.workspace.workspace_orchestrator import WorkspaceValidationOrchestrator
 
-# Initialize workspace manager
-workspace_root = "/path/to/developer_workspaces"
-manager = WorkspaceManager(workspace_root)
+# Setup
+manager = WorkspaceManager("/path/to/workspaces")
+orchestrator = WorkspaceValidationOrchestrator("/path/to/workspaces")
 
-# Discover available workspaces
-workspace_info = manager.discover_workspaces()
-print(f"Found {workspace_info.total_developers} developer workspaces")
-print(f"Available developers: {[dev.developer_id for dev in workspace_info.developers]}")
+# Create and validate workspace
+workspace_path = manager.create_workspace_structure("developer_1")
+result = orchestrator.validate_workspace("developer_1")
+
+print(f"Validation: {'PASSED' if result.overall_passed else 'FAILED'}")
 ```
 
-## File Resolution Examples
-
-### Basic File Resolution
-
+### Multi-Developer Environment
 ```python
-# Create file resolver for a specific developer
-file_resolver = manager.get_file_resolver("developer_1")
-
-# Find contract file
-contract_file = file_resolver.find_contract_file("my_custom_step")
-print(f"Contract file: {contract_file}")
-
-# Find spec file
-spec_file = file_resolver.find_spec_file("my_custom_step")
-print(f"Spec file: {spec_file}")
-
-# Find builder file
-builder_file = file_resolver.find_builder_file("my_custom_step")
-print(f"Builder file: {builder_file}")
-
-# Find script file
-script_file = file_resolver.find_script_file("my_custom_step")
-print(f"Script file: {script_file}")
-
-# Find config file
-config_file = file_resolver.find_config_file("my_custom_step")
-print(f"Config file: {config_file}")
-```
-
-### Direct File Resolver Usage
-
-```python
-# Create file resolver directly
-file_resolver = DeveloperWorkspaceFileResolver(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1",
-    enable_shared_fallback=True
-)
-
-# Get workspace information
-workspace_info = file_resolver.get_workspace_info()
-print(f"Workspace mode: {workspace_info['workspace_mode']}")
-print(f"Developer workspace exists: {workspace_info['developer_workspace_exists']}")
-print(f"Shared workspace exists: {workspace_info['shared_workspace_exists']}")
-
-# List available developers
-developers = file_resolver.list_available_developers()
-print(f"Available developers: {developers}")
-
-# Switch to different developer
-file_resolver.switch_developer("developer_2")
-print(f"Switched to: {file_resolver.developer_id}")
-```
-
-### Fallback Behavior
-
-```python
-# File resolution with shared workspace fallback
-file_resolver = DeveloperWorkspaceFileResolver(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1",
-    enable_shared_fallback=True
-)
-
-# This will first look in developer_1's workspace, then fall back to shared
-contract_file = file_resolver.find_contract_file("shared_component")
-print(f"Found contract (possibly from shared): {contract_file}")
-
-# Disable fallback for strict workspace isolation
-file_resolver_strict = DeveloperWorkspaceFileResolver(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1",
-    enable_shared_fallback=False
-)
-
-# This will only look in developer_1's workspace
-contract_file_strict = file_resolver_strict.find_contract_file("shared_component")
-print(f"Found contract (developer only): {contract_file_strict}")  # May be None
-```
-
-## Module Loading Examples
-
-### Basic Module Loading
-
-```python
-# Create module loader for a specific developer
-module_loader = manager.get_module_loader("developer_1")
-
-# Load builder class
-builder_class = module_loader.load_builder_class("my_custom_step")
-if builder_class:
-    print(f"Loaded builder class: {builder_class.__name__}")
-    builder_instance = builder_class()
-else:
-    print("Builder class not found")
-
-# Load contract class
-contract_class = module_loader.load_contract_class("my_custom_step")
-if contract_class:
-    print(f"Loaded contract class: {contract_class.__name__}")
-    contract_instance = contract_class()
-else:
-    print("Contract class not found")
-```
-
-### Direct Module Loader Usage
-
-```python
-# Create module loader directly
-module_loader = WorkspaceModuleLoader(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1",
-    enable_shared_fallback=True,
-    cache_modules=True
-)
-
-# Load module from specific file
-module_file = "/path/to/developer_workspaces/developers/developer_1/src/cursus_dev/steps/builders/my_builder.py"
-module = module_loader.load_module_from_file(module_file, "my_builder")
-if module:
-    print(f"Loaded module: {module}")
-    # Access classes from the module
-    if hasattr(module, 'MyCustomBuilder'):
-        builder_class = module.MyCustomBuilder
-        print(f"Found builder class: {builder_class}")
-```
-
-### Workspace Path Context Management
-
-```python
-# Use context manager for safe Python path manipulation
-module_loader = WorkspaceModuleLoader(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1"
-)
-
-# Context manager ensures sys.path is properly restored
-with module_loader.workspace_path_context() as added_paths:
-    print(f"Added paths to sys.path: {added_paths}")
-    
-    # Import modules directly while context is active
-    try:
-        import cursus_dev.steps.builders.my_custom_builder as my_builder
-        builder_class = my_builder.MyCustomBuilder
-        print(f"Successfully imported: {builder_class}")
-    except ImportError as e:
-        print(f"Import failed: {e}")
-
-# sys.path is automatically restored here
-print("Context exited, sys.path restored")
-```
-
-### Module Discovery
-
-```python
-# Discover available modules in workspace
-module_loader = WorkspaceModuleLoader(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1"
-)
-
-# Discover builders
-builders = module_loader.discover_workspace_modules("builders")
-print(f"Available builders: {builders}")
-
-# Discover contracts
-contracts = module_loader.discover_workspace_modules("contracts")
-print(f"Available contracts: {contracts}")
-
-# Example output:
-# Available builders: {
-#     'developer:developer_1': ['my_custom_builder', 'advanced_processing_builder'],
-#     'shared': ['shared_builder', 'common_builder']
-# }
-```
-
-### Module Caching
-
-```python
-# Module loader with caching enabled
-module_loader = WorkspaceModuleLoader(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1",
-    cache_modules=True
-)
-
-# First load - will import and cache
-builder_class1 = module_loader.load_builder_class("my_custom_step")
-print("First load completed")
-
-# Second load - will use cache
-builder_class2 = module_loader.load_builder_class("my_custom_step")
-print("Second load completed (from cache)")
-
-# Clear cache for specific step
-module_loader.invalidate_cache_for_step("my_custom_step")
-print("Cache invalidated for my_custom_step")
-
-# Clear all cache
-module_loader.clear_cache()
-print("All cache cleared")
-```
-
-## Workspace Management Examples
-
-### Workspace Discovery and Validation
-
-```python
-# Create workspace manager
-manager = WorkspaceManager("/path/to/developer_workspaces")
-
-# Discover workspaces
-workspace_info = manager.discover_workspaces()
-print(f"Workspace root: {workspace_info.workspace_root}")
-print(f"Has shared workspace: {workspace_info.has_shared}")
-print(f"Total developers: {workspace_info.total_developers}")
-print(f"Total modules: {workspace_info.total_modules}")
-
-# Validate workspace structure
-is_valid, issues = manager.validate_workspace_structure()
-if is_valid:
-    print("Workspace structure is valid")
-else:
-    print("Workspace structure issues:")
-    for issue in issues:
-        print(f"  - {issue}")
-
-# Strict validation
-is_valid_strict, issues_strict = manager.validate_workspace_structure(strict=True)
-if not is_valid_strict:
-    print("Strict validation issues:")
-    for issue in issues_strict:
-        print(f"  - {issue}")
-```
-
-### Creating New Workspaces
-
-```python
-# Create new developer workspace
-manager = WorkspaceManager()
-
-# Create workspace with full directory structure
-new_workspace = manager.create_developer_workspace(
-    "new_developer",
-    workspace_root="/path/to/developer_workspaces",
-    create_structure=True
-)
-print(f"Created workspace at: {new_workspace}")
-
-# Create shared workspace
-shared_workspace = manager.create_shared_workspace(
-    workspace_root="/path/to/developer_workspaces",
-    create_structure=True
-)
-print(f"Created shared workspace at: {shared_workspace}")
-```
-
-### Workspace Summary
-
-```python
-# Get comprehensive workspace summary
-manager = WorkspaceManager("/path/to/developer_workspaces")
-summary = manager.get_workspace_summary()
-
-print(f"Workspace Summary:")
-print(f"  Root: {summary['workspace_root']}")
-print(f"  Has shared: {summary['has_shared']}")
-print(f"  Total developers: {summary['total_developers']}")
-print(f"  Total modules: {summary['total_modules']}")
-
-print("\nDeveloper Details:")
-for dev in summary['developers']:
-    print(f"  {dev['developer_id']}:")
-    print(f"    Modules: {dev['module_count']}")
-    print(f"    Has builders: {dev['has_builders']}")
-    print(f"    Has contracts: {dev['has_contracts']}")
-    print(f"    Has specs: {dev['has_specs']}")
-    print(f"    Has scripts: {dev['has_scripts']}")
-    print(f"    Has configs: {dev['has_configs']}")
-```
-
-## Configuration Management
-
-### Creating and Using Workspace Configuration
-
-```python
-# Create workspace configuration
-config = WorkspaceConfig(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1",
-    enable_shared_fallback=True,
-    cache_modules=True,
-    auto_create_structure=False,
-    validation_settings={
-        "strict_validation": False,
-        "require_all_module_types": False,
-        "validate_imports": True
-    }
-)
-
-# Initialize manager with configuration
-manager = WorkspaceManager()
-manager.config = config
-
-# Use configuration defaults
-file_resolver = manager.get_file_resolver()  # Uses config.developer_id
-module_loader = manager.get_module_loader()  # Uses config settings
-
-print(f"Using developer: {file_resolver.developer_id}")
-print(f"Shared fallback enabled: {file_resolver.enable_shared_fallback}")
-print(f"Module caching enabled: {module_loader.cache_modules}")
-```
-
-### Saving and Loading Configuration
-
-```python
-# Save configuration to JSON
-config = WorkspaceConfig(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1",
-    enable_shared_fallback=True,
-    cache_modules=True
-)
-
-manager = WorkspaceManager()
-manager.save_config("/path/to/workspace.json", config)
-print("Configuration saved to JSON")
-
-# Load configuration from JSON
-manager = WorkspaceManager(config_file="/path/to/workspace.json")
-print(f"Loaded config - Developer: {manager.config.developer_id}")
-
-# Save configuration to YAML
-manager.save_config("/path/to/workspace.yaml", config)
-print("Configuration saved to YAML")
-
-# Load configuration from YAML
-manager = WorkspaceManager(config_file="/path/to/workspace.yaml")
-print(f"Loaded config from YAML - Developer: {manager.config.developer_id}")
-```
-
-### Configuration Templates
-
-```python
-from cursus.validation.workspace import get_config_template
-
-# Get basic configuration template
-basic_config = get_config_template("basic")
-basic_config["workspace_root"] = "/my/workspace/path"
-basic_config["developer_id"] = "my_developer"
-
-print("Basic config template:")
-print(basic_config)
-
-# Get multi-developer configuration template
-multi_dev_config = get_config_template("multi_developer")
-multi_dev_config["workspace_root"] = "/my/workspace/path"
-
-print("Multi-developer config template:")
-print(multi_dev_config)
-```
-
-## Integration Patterns
-
-### Integration with Existing Validation Code
-
-```python
-# Example: Integrating workspace-aware file resolution with existing validation
-from cursus.validation.workspace import WorkspaceManager
-
-def validate_step_with_workspace(step_name, developer_id, workspace_root):
-    """Validate a step using workspace-aware components."""
-    
-    # Initialize workspace manager
-    manager = WorkspaceManager(workspace_root)
-    
-    # Get workspace-aware components
-    file_resolver = manager.get_file_resolver(developer_id)
-    module_loader = manager.get_module_loader(developer_id)
-    
-    # Find step components
-    contract_file = file_resolver.find_contract_file(step_name)
-    spec_file = file_resolver.find_spec_file(step_name)
-    builder_file = file_resolver.find_builder_file(step_name)
-    script_file = file_resolver.find_script_file(step_name)
-    
-    print(f"Validating step '{step_name}' for developer '{developer_id}':")
-    print(f"  Contract: {contract_file}")
-    print(f"  Spec: {spec_file}")
-    print(f"  Builder: {builder_file}")
-    print(f"  Script: {script_file}")
-    
-    # Load and validate builder class
-    builder_class = module_loader.load_builder_class(step_name)
-    if builder_class:
-        print(f"  Builder class loaded: {builder_class.__name__}")
-        # Perform validation logic here
-        return True
-    else:
-        print(f"  Error: Could not load builder class for {step_name}")
-        return False
-
-# Usage
-result = validate_step_with_workspace(
-    "my_custom_step", 
-    "developer_1", 
-    "/path/to/developer_workspaces"
-)
-```
-
-### Batch Processing Multiple Workspaces
-
-```python
-def validate_all_workspaces(workspace_root):
-    """Validate all developer workspaces."""
-    
-    manager = WorkspaceManager(workspace_root)
-    workspace_info = manager.discover_workspaces()
-    
-    results = {}
-    
-    for developer in workspace_info.developers:
-        developer_id = developer.developer_id
-        print(f"\nValidating workspace for {developer_id}...")
-        
-        try:
-            # Get workspace-specific components
-            file_resolver = manager.get_file_resolver(developer_id)
-            module_loader = manager.get_module_loader(developer_id)
-            
-            # Discover available modules
-            builders = module_loader.discover_workspace_modules("builders")
-            dev_builders = builders.get(f"developer:{developer_id}", [])
-            
-            validation_results = []
-            
-            for builder_name in dev_builders:
-                # Extract step name from builder name (remove _builder suffix)
-                step_name = builder_name.replace("_builder", "")
-                
-                # Validate step components exist
-                has_contract = file_resolver.find_contract_file(step_name) is not None
-                has_spec = file_resolver.find_spec_file(step_name) is not None
-                has_script = file_resolver.find_script_file(step_name) is not None
-                
-                # Try to load builder class
-                builder_class = module_loader.load_builder_class(step_name)
-                has_builder = builder_class is not None
-                
-                validation_results.append({
-                    'step_name': step_name,
-                    'has_contract': has_contract,
-                    'has_spec': has_spec,
-                    'has_script': has_script,
-                    'has_builder': has_builder,
-                    'is_complete': all([has_contract, has_spec, has_script, has_builder])
-                })
-            
-            results[developer_id] = validation_results
-            
-        except Exception as e:
-            print(f"Error validating {developer_id}: {e}")
-            results[developer_id] = {'error': str(e)}
-    
-    return results
-
-# Usage
-results = validate_all_workspaces("/path/to/developer_workspaces")
-for developer_id, validation_results in results.items():
-    if isinstance(validation_results, dict) and 'error' in validation_results:
-        print(f"{developer_id}: ERROR - {validation_results['error']}")
-    else:
-        complete_steps = [r for r in validation_results if r['is_complete']]
-        print(f"{developer_id}: {len(complete_steps)}/{len(validation_results)} steps complete")
-```
-
-### Workspace Switching
-
-```python
-# Example: Processing multiple developers with the same components
-def process_step_across_developers(step_name, workspace_root, developers):
-    """Process the same step across multiple developer workspaces."""
-    
-    manager = WorkspaceManager(workspace_root)
-    results = {}
-    
-    for developer_id in developers:
-        print(f"\nProcessing {step_name} for {developer_id}...")
-        
-        # Get components for this developer
-        file_resolver = manager.get_file_resolver(developer_id)
-        module_loader = manager.get_module_loader(developer_id)
-        
-        # Find and load components
-        builder_class = module_loader.load_builder_class(step_name)
-        contract_file = file_resolver.find_contract_file(step_name)
-        spec_file = file_resolver.find_spec_file(step_name)
-        
-        results[developer_id] = {
-            'builder_available': builder_class is not None,
-            'contract_file': contract_file,
-            'spec_file': spec_file,
-            'builder_class': builder_class.__name__ if builder_class else None
-        }
-    
-    return results
-
-# Usage
+# Quick example - see integration_patterns_examples.md for details
 developers = ["developer_1", "developer_2", "developer_3"]
-results = process_step_across_developers(
-    "custom_processing_step", 
-    "/path/to/developer_workspaces", 
-    developers
+results = orchestrator.validate_all_workspaces(
+    validation_types=["alignment", "builder"],
+    levels=[1, 2, 3, 4],
+    parallel=True
 )
 
-for dev_id, result in results.items():
-    print(f"{dev_id}: Builder={result['builder_available']}, "
-          f"Contract={result['contract_file'] is not None}")
+for result in results:
+    status = "PASS" if result.overall_passed else "FAIL"
+    print(f"{result.developer_id}: {status}")
 ```
 
-## Error Handling
-
-### Handling Missing Workspaces
-
+### Production Environment
 ```python
-from cursus.validation.workspace import WorkspaceManager
+# Quick example - see advanced_usage_examples.md for details
+from cursus.validation.workspace.advanced_patterns import create_production_validation_pipeline
 
-try:
-    # This will raise ValueError if workspace doesn't exist
-    manager = WorkspaceManager("/nonexistent/workspace/path")
-except ValueError as e:
-    print(f"Workspace error: {e}")
-    
-    # Create workspace structure if needed
-    manager = WorkspaceManager()
-    workspace_path = manager.create_developer_workspace(
-        "new_developer",
-        workspace_root="/path/to/new/workspaces",
-        create_structure=True
-    )
-    print(f"Created new workspace at: {workspace_path}")
+pipeline = create_production_validation_pipeline("/path/to/workspaces")
+result = pipeline['analytics_validator'].validate_with_analytics("developer_1")
+report = pipeline['analytics_validator'].get_overall_report()
 ```
 
-### Handling Module Loading Errors
+## Key Components Overview
 
-```python
-module_loader = WorkspaceModuleLoader(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1"
-)
+### Core Components
+- **WorkspaceManager**: Manages workspace structure and configuration
+- **WorkspaceValidationOrchestrator**: Coordinates validation across workspaces
+- **DeveloperWorkspaceFileResolver**: Resolves files within developer workspaces
+- **WorkspaceModuleLoader**: Dynamically loads modules from workspaces
 
-# Handle missing builder class
-try:
-    builder_class = module_loader.load_builder_class("nonexistent_step")
-    if builder_class is None:
-        print("Builder class not found - this is expected behavior")
-except Exception as e:
-    print(f"Unexpected error loading builder: {e}")
+### Validation Components
+- **WorkspaceUnifiedAlignmentTester**: Extends alignment validation for workspaces
+- **WorkspaceUniversalStepBuilderTest**: Extends builder testing for workspaces
+- **Custom Rule Engines**: Extensible validation rule systems
 
-# Handle module loading from invalid file
-try:
-    module = module_loader.load_module_from_file("/nonexistent/file.py")
-    if module is None:
-        print("Module file not found - this is expected behavior")
-except Exception as e:
-    print(f"Error loading module from file: {e}")
-```
+### Advanced Components
+- **Multi-Environment Orchestrator**: Manages validation across environments
+- **Intelligent Cache**: Performance optimization with dependency tracking
+- **Analytics System**: Comprehensive metrics and reporting
+- **Resilient Validator**: Error handling and recovery patterns
 
-### Validation Error Handling
+## Architecture Principles
 
-```python
-def safe_workspace_validation(workspace_root):
-    """Safely validate workspace with comprehensive error handling."""
-    
-    try:
-        manager = WorkspaceManager(workspace_root)
-        
-        # Validate workspace structure
-        is_valid, issues = manager.validate_workspace_structure()
-        
-        if not is_valid:
-            print("Workspace validation issues found:")
-            for issue in issues:
-                print(f"  - {issue}")
-            return False
-        
-        # Discover workspaces
-        workspace_info = manager.discover_workspaces()
-        
-        if workspace_info.total_developers == 0:
-            print("Warning: No developer workspaces found")
-            return False
-        
-        print(f"Successfully validated workspace with {workspace_info.total_developers} developers")
-        return True
-        
-    except ValueError as e:
-        print(f"Workspace configuration error: {e}")
-        return False
-    except Exception as e:
-        print(f"Unexpected error during validation: {e}")
-        return False
+The workspace-aware validation system is built on these key principles:
 
-# Usage
-if safe_workspace_validation("/path/to/developer_workspaces"):
-    print("Workspace is ready for use")
-else:
-    print("Workspace validation failed")
-```
+### 1. Workspace Isolation
+Each developer has their own isolated workspace with independent:
+- Component implementations (builders, contracts, scripts)
+- Configuration settings
+- Validation results and history
 
-## Advanced Usage
+### 2. Shared Core Architecture
+Common validation logic and infrastructure are shared while allowing:
+- Developer-specific customizations
+- Workspace-specific configurations
+- Independent development workflows
 
-### Custom File Resolution Patterns
+### 3. Extensibility
+The system supports:
+- Custom validation rules
+- Pluggable components
+- Environment-specific configurations
+- Advanced integration patterns
 
-```python
-# Extend DeveloperWorkspaceFileResolver for custom behavior
-class CustomWorkspaceFileResolver(DeveloperWorkspaceFileResolver):
-    """Custom file resolver with additional search patterns."""
-    
-    def find_custom_file_type(self, step_name, file_type):
-        """Find custom file types not covered by standard resolver."""
-        
-        if not self.workspace_mode:
-            return None
-        
-        # Custom search logic
-        custom_dir = getattr(self, f'{file_type}_dir', None)
-        if custom_dir:
-            return self._find_file_in_directory(
-                custom_dir, step_name, None, ['.py', '.json', '.yaml']
-            )
-        
-        return None
+### 4. Performance Optimization
+Built-in support for:
+- Intelligent caching with dependency tracking
+- Parallel validation processing
+- Resource optimization
+- Scalable architecture
 
-# Usage
-custom_resolver = CustomWorkspaceFileResolver(
-    workspace_root="/path/to/developer_workspaces",
-    developer_id="developer_1"
-)
+## Best Practices Summary
 
-# Use custom resolution
-custom_file = custom_resolver.find_custom_file_type("my_step", "custom_type")
-```
+### Development Workflow
+1. **Create isolated workspaces** for each developer
+2. **Use configuration templates** for consistency
+3. **Implement incremental validation** during development
+4. **Leverage caching** for performance
+5. **Monitor validation metrics** for continuous improvement
 
-### Workspace-Aware Context Managers
+### Production Deployment
+1. **Use multi-environment orchestration** for staged deployments
+2. **Implement resilient validation** with error recovery
+3. **Enable comprehensive monitoring** and alerting
+4. **Use analytics** for performance optimization
+5. **Maintain configuration backups** and version control
 
-```python
-from contextlib import contextmanager
+### Team Collaboration
+1. **Establish shared validation standards**
+2. **Use cross-workspace validation** for compatibility
+3. **Implement promotion workflows** between environments
+4. **Share configuration templates** and best practices
+5. **Monitor team-wide validation metrics**
 
-@contextmanager
-def workspace_context(workspace_root, developer_id):
-    """Context manager for workspace operations."""
-    
-    manager = WorkspaceManager(workspace_root)
-    file_resolver = manager.get_file_resolver(developer_id)
-    module_loader = manager.get_module_loader(developer_id)
-    
-    try:
-        yield {
-            'manager': manager,
-            'file_resolver': file_resolver,
-            'module_loader': module_loader
-        }
-    finally:
-        # Cleanup operations
-        module_loader.clear_cache()
-        print(f"Workspace context closed for {developer_id}")
+## Troubleshooting Guide
 
-# Usage
-with workspace_context("/path/to/workspaces", "developer_1") as ctx:
-    # Use workspace components
-    builder_class = ctx['module_loader'].load_builder_class("my_step")
-    contract_file = ctx['file_resolver'].find_contract_file("my_step")
-    
-    print(f"Builder: {builder_class}")
-    print(f"Contract: {contract_file}")
+### Common Issues
+- **Workspace not found**: Check workspace structure and paths
+- **Module loading failures**: Verify Python path and dependencies
+- **Validation timeouts**: Consider parallel processing or caching
+- **Configuration errors**: Validate against schema and check syntax
+- **Permission issues**: Ensure proper file system permissions
 
-# Cache is automatically cleared when context exits
-```
+### Debug Strategies
+- **Enable verbose logging** for detailed error information
+- **Use health checks** to validate system state
+- **Check dependency tracking** for cache invalidation
+- **Monitor validation metrics** for performance issues
+- **Use fallback validation** for critical workflows
 
-### Performance Optimization
+## Contributing
 
-```python
-# Pre-warm module cache for better performance
-def preload_workspace_modules(workspace_root, developer_id, step_names):
-    """Pre-load modules for better performance."""
-    
-    module_loader = WorkspaceModuleLoader(
-        workspace_root=workspace_root,
-        developer_id=developer_id,
-        cache_modules=True
-    )
-    
-    loaded_count = 0
-    
-    for step_name in step_names:
-        try:
-            builder_class = module_loader.load_builder_class(step_name)
-            contract_class = module_loader.load_contract_class(step_name)
-            
-            if builder_class:
-                loaded_count += 1
-            if contract_class:
-                loaded_count += 1
-                
-        except Exception as e:
-            print(f"Warning: Could not preload {step_name}: {e}")
-    
-    print(f"Preloaded {loaded_count} modules for {developer_id}")
-    return module_loader
+When adding new examples or patterns:
 
-# Usage
-step_names = ["step1", "step2", "step3", "step4"]
-module_loader = preload_workspace_modules(
-    "/path/to/workspaces", 
-    "developer_1", 
-    step_names
-)
+1. **Choose the appropriate file** based on functionality
+2. **Follow existing code style** and documentation patterns
+3. **Include comprehensive error handling**
+4. **Provide usage examples** and expected outputs
+5. **Update this main file** if adding new categories
 
-# Subsequent loads will be faster due to caching
-for step_name in step_names:
-    builder_class = module_loader.load_builder_class(step_name)  # Fast cache hit
-```
+## Support and Resources
 
-### Workspace Monitoring
+- **Implementation Details**: See source code in `src/cursus/validation/workspace/`
+- **Unit Tests**: Reference `test/validation/workspace/` for testing patterns
+- **Design Documentation**: Review `slipbox/1_design/multi_developer_workspace_management_system.md`
+- **Project Planning**: Check `slipbox/2_project_planning/` for implementation roadmap
 
-```python
-import time
-from pathlib import Path
+---
 
-def monitor_workspace_changes(workspace_root, developer_id, check_interval=5):
-    """Monitor workspace for file changes."""
-    
-    manager = WorkspaceManager(workspace_root)
-    file_resolver = manager.get_file_resolver(developer_id)
-    
-    # Get initial state
-    workspace_path = Path(workspace_root) / "developers" / developer_id
-    last_modified = workspace_path.stat().st_mtime if workspace_path.exists() else 0
-    
-    print(f"Monitoring workspace for {developer_id}...")
-    
-    while True:
-        try:
-            current_modified = workspace_path.stat().st_mtime
-            
-            if current_modified > last_modified:
-                print(f"Workspace change detected for {developer_id}")
-                
-                # Refresh workspace info
-                workspace_info = manager.discover_workspaces()
-                dev_info = next(
-                    (dev for dev in workspace_info.developers if dev.developer_id == developer_id),
-                    None
-                )
-                
-                if dev_info:
-                    print(f"  Module count: {dev_info.module_count}")
-                    print(f"  Has builders: {dev_info.has_builders}")
-                    print(f"  Has contracts: {dev_info.has_contracts}")
-                
-                last_modified = current_modified
-            
-            time.sleep(check_interval)
-            
-        except KeyboardInterrupt:
-            print("Monitoring stopped")
-            break
-        except Exception as e:
-            print(f"Monitoring error: {e}")
-            time.sleep(check_interval)
-
-# Usage (run in background or separate process)
-# monitor_workspace_changes("/path/to/workspaces", "developer_1")
-```
-
-### Integration with Testing Frameworks
-
-```python
-import unittest
-from cursus.validation.workspace import WorkspaceManager
-
-class WorkspaceTestCase(unittest.TestCase):
-    """Base test case for workspace-aware testing."""
-    
-    def setUp(self):
-        """Set up workspace test environment."""
-        self.workspace_root = "/path/to/test/workspaces"
-        self.manager = WorkspaceManager(self.workspace_root)
-        self.developer_id = "test_developer"
-        
-        # Ensure test workspace exists
-        try:
-            self.manager.create_developer_workspace(
-                self.developer_id,
-                create_structure=True
-            )
-        except ValueError:
-            # Workspace already exists
-            pass
-    
-    def get_workspace_components(self):
-        """Get workspace components for testing."""
-        return {
-            'file_resolver': self.manager.get_file_resolver(self.developer_id),
-            'module_loader': self.manager.get_module_loader(self.developer_id)
-        }
-    
-    def test_step_validation(self):
-        """Test step validation in workspace context."""
-        components = self.get_workspace_components()
-        
-        # Test file resolution
-        contract_file = components['file_resolver'].find_contract_file("test_step")
-        self.assertIsNotNone(contract_file, "Contract file should be found")
-        
-        # Test module loading
-        builder_class = components['module_loader'].load_builder_class("test_step")
-        self.assertIsNotNone(builder_class, "Builder class should be loaded")
-
-# Usage
-if __name__ == '__main__':
-    unittest.main()
-```
-
-## Best Practices
-
-### 1. Workspace Organization
-
-```python
-# Good: Organize workspaces by developer/team
-workspace_structure = {
-    "developers": {
-        "team_a_dev1": "Individual developer workspace",
-        "team_a_dev2": "Individual developer workspace", 
-        "team_b_dev1": "Individual developer workspace"
-    },
-    "shared": "Common components and utilities"
-}
-
-# Good: Use consistent naming conventions
-step_naming = {
-    "builder": "my_custom_step_builder.py",
-    "contract": "my_custom_step_contract.py",
-    "spec": "my_custom_step_spec.json",
-    "script": "my_custom_step_script.py"
-}
-```
-
-### 2. Error Handling
-
-```python
-# Good: Always handle workspace errors gracefully
-def safe_workspace_operation(workspace_root, developer_id, operation):
-    """Safely perform workspace operations with error handling."""
-    
-    try:
-        manager = WorkspaceManager(workspace_root)
-        components = {
-            'file_resolver': manager.get_file_resolver(developer_id),
-            'module_loader': manager.get_module_loader(developer_id)
-        }
-        
-        return operation(components)
-        
-    except ValueError as e:
-        print(f"Workspace configuration error: {e}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return None
-```
-
-### 3. Performance Considerations
-
-```python
-# Good: Use caching for repeated operations
-module_loader = WorkspaceModuleLoader(
-    workspace_root=workspace_root,
-    developer_id=developer_id,
-    cache_modules=True  # Enable caching
-)
-
-# Good: Use context managers for sys.path manipulation
-with module_loader.workspace_path_context():
-    # Perform imports here
-    pass
-# sys.path automatically restored
-
-# Good: Clear cache when workspace changes
-if workspace_changed:
-    module_loader.clear_cache()
-```
-
-### 4. Configuration Management
-
-```python
-# Good: Use configuration files for workspace settings
-config = WorkspaceConfig(
-    workspace_root="/path/to/workspaces",
-    developer_id="default_developer",
-    enable_shared_fallback=True,
-    cache_modules=True,
-    validation_settings={
-        "strict_validation": False,
-        "validate_imports": True
-    }
-)
-
-# Save configuration for reuse
-manager = WorkspaceManager()
-manager.save_config("workspace.json", config)
-```
-
-This comprehensive guide covers all major aspects of using the Cursus workspace validation system. The examples progress from basic usage to advanced patterns, providing a complete reference for developers working with multi-developer workspace environments.
+*This documentation is part of the Cursus workspace-aware validation system. For the most up-to-date information, please refer to the individual example files and source code.*
