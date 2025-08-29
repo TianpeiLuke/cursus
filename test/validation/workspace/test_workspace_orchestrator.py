@@ -404,61 +404,59 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
     #     self.assertIn("step_b", dependencies["shared_dependencies"])
     #     self.assertIn("workspace_specific", dependencies)
     
-    # COMMENTED OUT - TOO SLOW: Complex recommendation generation test
-    # def test_generate_recommendations(self):
-    #     """Test recommendation generation based on validation results."""
-    #     validation_results = {
-    #         "developer_1": {
-    #             "alignment": {
-    #                 "level2": {"passed": False, "errors": ["Contract mismatch"]},
-    #                 "level4": {"passed": False, "errors": ["Config validation failed"]}
-    #             },
-    #             "builders": {
-    #                 "TestBuilder": {"passed": False, "errors": ["Builder validation failed"]}
-    #             }
-    #         }
-    #     }
-    #     
-    #     recommendations = self.orchestrator._generate_recommendations(validation_results)
-    #     
-    #     self.assertIsInstance(recommendations, list)
-    #     self.assertTrue(len(recommendations) > 0)
-    #     
-    #     # Check that recommendations address the failures
-    #     recommendation_text = " ".join(recommendations)
-    #     self.assertIn("contract", recommendation_text.lower())
+    def test_generate_recommendations(self):
+        """Test recommendation generation based on validation results."""
+        validation_results = {
+            "developer_1": {
+                "alignment": {
+                    "level2": {"passed": False, "errors": ["Contract mismatch"]},
+                    "level4": {"passed": False, "errors": ["Config validation failed"]}
+                },
+                "builders": {
+                    "TestBuilder": {"passed": False, "errors": ["Builder validation failed"]}
+                }
+            }
+        }
+        
+        recommendations = self.orchestrator._generate_recommendations(validation_results)
+        
+        self.assertIsInstance(recommendations, list)
+        self.assertTrue(len(recommendations) > 0)
+        
+        # Check that recommendations address the failures
+        recommendation_text = " ".join(recommendations)
+        self.assertIn("contract", recommendation_text.lower())
     
-    # COMMENTED OUT - TOO SLOW: Complex summary generation test
-    # def test_get_validation_summary(self):
-    #     """Test validation summary generation."""
-    #     validation_results = {
-    #         "developer_1": {
-    #             "alignment": {
-    #                 "level1": {"passed": True, "errors": []},
-    #                 "level2": {"passed": False, "errors": ["Error"]}
-    #             },
-    #             "builders": {
-    #                 "TestBuilder": {"passed": True, "errors": []}
-    #             }
-    #         },
-    #         "developer_2": {
-    #             "alignment": {
-    #                 "level1": {"passed": True, "errors": []},
-    #                 "level2": {"passed": True, "errors": []}
-    #             },
-    #             "builders": {
-    #                 "TestBuilder": {"passed": True, "errors": []}
-    #             }
-    #         }
-    #     }
-    #     
-    #     summary = self.orchestrator._get_validation_summary(validation_results)
-    #     
-    #     self.assertEqual(summary["total_workspaces"], 2)
-    #     self.assertEqual(summary["passed_workspaces"], 1)
-    #     self.assertEqual(summary["failed_workspaces"], 1)
-    #     self.assertIn("alignment_results", summary)
-    #     self.assertIn("builder_results", summary)
+    def test_get_validation_summary(self):
+        """Test validation summary generation."""
+        validation_results = {
+            "developer_1": {
+                "alignment": {
+                    "level1": {"passed": True, "errors": []},
+                    "level2": {"passed": False, "errors": ["Error"]}
+                },
+                "builders": {
+                    "TestBuilder": {"passed": True, "errors": []}
+                }
+            },
+            "developer_2": {
+                "alignment": {
+                    "level1": {"passed": True, "errors": []},
+                    "level2": {"passed": True, "errors": []}
+                },
+                "builders": {
+                    "TestBuilder": {"passed": True, "errors": []}
+                }
+            }
+        }
+        
+        summary = self.orchestrator._get_validation_summary(validation_results)
+        
+        self.assertEqual(summary["total_workspaces"], 2)
+        self.assertEqual(summary["passed_workspaces"], 1)
+        self.assertEqual(summary["failed_workspaces"], 1)
+        self.assertIn("alignment_results", summary)
+        self.assertIn("builder_results", summary)
     
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUnifiedAlignmentTester')
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUniversalStepBuilderTest')
