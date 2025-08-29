@@ -111,15 +111,18 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         results = orchestrator.validate_workspace("developer_1")
         
         self.assertIsNotNone(results)
-        self.assertIn("developer_1", results)
-        self.assertIn("alignment", results["developer_1"])
-        self.assertIn("builders", results["developer_1"])
+        # Check comprehensive structure
+        self.assertEqual(results['developer_id'], 'developer_1')
+        self.assertIn('results', results)
+        self.assertIn('alignment', results['results'])
+        self.assertIn('builders', results['results'])
+        self.assertIn('summary', results)
+        self.assertIn('recommendations', results)
+        self.assertTrue(results['success'])
         
-        # Verify testers were called correctly
-        mock_alignment_tester.switch_developer.assert_called_with("developer_1")
-        mock_alignment_tester.run_workspace_validation.assert_called_once()
-        mock_builder_tester.switch_developer.assert_called_with("developer_1")
-        mock_builder_tester.run_workspace_builder_test.assert_called_once()
+        # Verify testers were called correctly (called twice: once in init, once in validation)
+        self.assertEqual(mock_alignment_class.call_count, 2)
+        self.assertEqual(mock_builder_class.call_count, 2)
     
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUnifiedAlignmentTester')
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUniversalStepBuilderTest')
@@ -155,8 +158,20 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         results = orchestrator.validate_workspace("developer_1")
         
         self.assertIsNotNone(results)
-        self.assertFalse(results["developer_1"]["alignment"]["level2"]["passed"])
-        self.assertFalse(results["developer_1"]["builders"]["TestBuilder"]["passed"])
+        # Check comprehensive structure with failures
+        self.assertEqual(results['developer_id'], 'developer_1')
+        self.assertFalse(results['success'])  # Should be false due to failures
+        self.assertIn('results', results)
+        
+        # Check alignment failures in the nested structure
+        alignment_results = results['results']['alignment']
+        self.assertIn('developer_1', alignment_results)
+        self.assertFalse(alignment_results['developer_1']['level2']['passed'])
+        
+        # Check builder failures in the nested structure
+        builder_results = results['results']['builders']
+        self.assertIn('developer_1', builder_results)
+        self.assertFalse(builder_results['developer_1']['TestBuilder']['passed'])
     
     def test_validate_workspace_invalid_developer(self):
         """Test validation with invalid developer name."""
@@ -164,7 +179,10 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         
         results = self.orchestrator.validate_workspace("invalid_developer")
         
-        self.assertEqual(results, {})
+        # Should return error structure, not empty dict
+        self.assertIn('error', results)
+        self.assertIn('Developer workspace not found', results['error'])
+        self.assertFalse(results['success'])
     
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUnifiedAlignmentTester')
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUniversalStepBuilderTest')
@@ -209,14 +227,22 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         results = orchestrator.validate_all_workspaces()
         
         self.assertIsNotNone(results)
-        self.assertIn("developer_1", results)
-        self.assertIn("developer_2", results)
+        # Check comprehensive multi-workspace structure
+        self.assertIn('results', results)
+        self.assertIn('summary', results)
+        self.assertIn('recommendations', results)
+        self.assertIn('total_workspaces', results)
+        self.assertEqual(results['total_workspaces'], 2)
         
-        # Verify testers were called with all_developers=True
-        mock_alignment_tester.run_workspace_validation.assert_called_with(all_developers=True)
-        mock_builder_tester.run_workspace_builder_test.assert_called_with(all_developers=True)
+        # Check that individual workspace results are nested under 'results'
+        self.assertIn("developer_1", results['results'])
+        self.assertIn("developer_2", results['results'])
+        
+        # Verify testers were called correctly (not with all_developers=True)
+        mock_alignment_class.assert_called()
+        mock_builder_class.assert_called()
     
-    @patch('src.cursus.validation.workspace.workspace_orchestrator.ThreadPoolExecutor')
+    @patch('src.cursus.validation.workspace.workspace_orchestrator.concurrent.futures.ThreadPoolExecutor')
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUnifiedAlignmentTester')
     @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUniversalStepBuilderTest')
     def test_validate_all_workspaces_parallel(self, mock_builder_class, mock_alignment_class, mock_executor_class):

@@ -147,11 +147,98 @@ class WorkspaceManager:
 - [x] Supports multiple workspace discovery patterns
 - [x] Integrates file resolver and module loader components
 
-### Phase 2: Workspace-Aware Validation Extensions (Weeks 4-7)
+### Phase 2: Unified Workspace Validation System (Weeks 4-7)
 **Duration**: 4 weeks  
 **Risk Level**: Medium  
 **Dependencies**: Phase 1 completion  
-**Status**: ✅ COMPLETED (2025-08-28)
+**Status**: 🔄 IN PROGRESS - Implementing Unified Approach (2025-08-28)
+
+#### 2.0 Unified Approach Implementation (NEW)
+**Deliverables**:
+- Implement unified validation approach that treats single workspace as multi-workspace with count=1
+- Create flattened file structure to avoid deep folder nesting
+- Eliminate dual-path complexity in current validation system
+
+**File Structure Changes**:
+```
+src/cursus/validation/workspace/
+├── __init__.py                         # Updated imports for unified components
+├── workspace_orchestrator.py           # REFACTOR: Unified core integration
+├── workspace_manager.py                # ENHANCE: Unified detection integration
+├── workspace_alignment_tester.py       # UNCHANGED: Used by unified core
+├── workspace_builder_test.py           # UNCHANGED: Used by unified core
+├── workspace_file_resolver.py          # UNCHANGED: Existing functionality
+├── workspace_module_loader.py          # UNCHANGED: Existing functionality
+├── workspace_type_detector.py          # NEW: Unified workspace detection
+├── unified_validation_core.py          # NEW: Core validation logic
+├── unified_result_structures.py        # NEW: Standardized data structures
+├── unified_report_generator.py         # NEW: Unified report generation
+└── legacy_adapters.py                  # NEW: Backward compatibility helpers
+```
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/workspace/workspace_type_detector.py
+class WorkspaceTypeDetector:
+    """Unified workspace detection that normalizes single/multi-workspace scenarios."""
+    
+    def detect_workspaces(self) -> Dict[str, WorkspaceInfo]:
+        """
+        Returns unified workspace dictionary regardless of workspace type.
+        - Single workspace: {"default": WorkspaceInfo(...)}
+        - Multi-workspace: {"dev1": WorkspaceInfo(...), "dev2": WorkspaceInfo(...)}
+        """
+    
+    def is_single_workspace(self) -> bool
+    def is_multi_workspace(self) -> bool
+    def get_workspace_type(self) -> str  # Returns 'single' or 'multi'
+
+# File: src/cursus/validation/workspace/unified_validation_core.py
+class UnifiedValidationCore:
+    """Core validation logic that works identically for single and multi-workspace."""
+    
+    def validate_workspaces(self, **kwargs) -> UnifiedValidationResult:
+        """Single validation method for all scenarios."""
+    
+    def validate_single_workspace_entry(self, workspace_id: str, workspace_info: WorkspaceInfo) -> WorkspaceValidationResult:
+        """Validate one workspace entry (used by both single and multi scenarios)."""
+
+# File: src/cursus/validation/workspace/unified_result_structures.py
+class ValidationSummary(BaseModel):
+    """Unified summary that works for count=1 or count=N"""
+    total_workspaces: int
+    successful_workspaces: int
+    failed_workspaces: int
+    success_rate: float
+
+class UnifiedValidationResult(BaseModel):
+    """Standardized result structure for all validation scenarios"""
+    workspace_root: str
+    workspace_type: str  # "single" or "multi"
+    workspaces: Dict[str, WorkspaceValidationResult]
+    summary: ValidationSummary
+    recommendations: List[str]
+
+# File: src/cursus/validation/workspace/unified_report_generator.py
+class UnifiedReportGenerator:
+    """Single report generator that adapts output based on workspace count."""
+    
+    def generate_report(self, result: UnifiedValidationResult) -> Dict[str, Any]:
+        """Generates appropriate report format based on workspace count"""
+        if result.summary.total_workspaces == 1:
+            return self._generate_single_workspace_report(result)
+        else:
+            return self._generate_multi_workspace_report(result)
+```
+
+**Acceptance Criteria**:
+- [ ] Single workspace is treated as multi-workspace with count=1
+- [ ] Eliminates dual-path complexity in validation logic
+- [ ] Flattened file structure with no deep folder nesting
+- [ ] 40% code reduction through unified approach
+- [ ] 85% reduction in maintenance points
+- [ ] 60% reduction in test complexity
+- [ ] Complete backward compatibility with existing APIs
 
 #### 2.1 Workspace Unified Alignment Tester
 **Deliverables**:

@@ -45,9 +45,32 @@ from .workspace_manager import (
     WorkspaceInfo
 )
 
-# Version information
-__version__ = "1.0.0"
-__author__ = "Cursus Development Team"
+# NEW: Unified validation components
+from .workspace_type_detector import WorkspaceTypeDetector
+from .unified_validation_core import UnifiedValidationCore, ValidationConfig
+from .unified_result_structures import (
+    UnifiedValidationResult,
+    WorkspaceValidationResult,
+    ValidationSummary,
+    ValidationResultBuilder,
+    create_single_workspace_result,
+    create_empty_result
+)
+from .unified_report_generator import (
+    UnifiedReportGenerator,
+    ReportConfig,
+    generate_unified_report,
+    export_unified_report
+)
+from .legacy_adapters import (
+    LegacyWorkspaceValidationAdapter,
+    create_legacy_adapter,
+    validate_workspace_legacy,
+    validate_all_workspaces_legacy
+)
+
+# Existing validation components
+from .workspace_orchestrator import WorkspaceValidationOrchestrator
 
 # Public API
 __all__ = [
@@ -61,10 +84,34 @@ __all__ = [
     "DeveloperInfo",
     "WorkspaceInfo",
     
+    # NEW: Unified validation system
+    "WorkspaceTypeDetector",
+    "UnifiedValidationCore",
+    "ValidationConfig",
+    "UnifiedValidationResult",
+    "WorkspaceValidationResult",
+    "ValidationSummary",
+    "ValidationResultBuilder",
+    "UnifiedReportGenerator",
+    "ReportConfig",
+    
+    # Legacy compatibility
+    "LegacyWorkspaceValidationAdapter",
+    "WorkspaceValidationOrchestrator",
+    
     # Utility functions
     "create_workspace_manager",
     "validate_workspace_structure",
-    "discover_workspaces"
+    "discover_workspaces",
+    
+    # NEW: Unified validation functions
+    "create_single_workspace_result",
+    "create_empty_result",
+    "generate_unified_report",
+    "export_unified_report",
+    "create_legacy_adapter",
+    "validate_workspace_legacy",
+    "validate_all_workspaces_legacy"
 ]
 
 
