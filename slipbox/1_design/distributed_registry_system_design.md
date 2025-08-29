@@ -886,6 +886,270 @@ def clear_workspace_context():
         _global_compatibility_layer.clear_workspace_context()
 ```
 
+## Critical Integration with Existing System
+
+### STEP_NAMES Integration Analysis
+
+Based on comprehensive analysis of the existing system, there are **232+ references** to step_names throughout the codebase, requiring careful integration:
+
+#### 1. Base Class Dependencies (CRITICAL)
+- **`StepBuilderBase.STEP_NAMES` property**: Uses `BUILDER_STEP_NAMES` from registry with lazy loading
+- **`BasePipelineConfig._STEP_NAMES`**: Uses `CONFIG_STEP_REGISTRY` for step mapping with lazy loading
+
+#### 2. System Components Using Registry
+- **Validation System (108+ references)**: Alignment validation, builder testing, config analysis, dependency validation
+- **Core System Components**: Pipeline assembler, compiler validation, workspace registry
+- **Step Specifications (40+ files)**: All step specs import registry functions for step_type assignment
+
+#### 3. Derived Registry Structures (MUST MAINTAIN)
+The current `step_names.py` creates several derived registries that are critical for backward compatibility:
+```python
+CONFIG_STEP_REGISTRY = {info["config_class"]: step_name for step_name, info in STEP_NAMES.items()}
+BUILDER_STEP_NAMES = {step_name: info["builder_step_name"] for step_name, info in STEP_NAMES.items()}
+SPEC_STEP_TYPES = {step_name: info["spec_type"] for step_name, info in STEP_NAMES.items()}
+```
+
+#### 4. Import Patterns That Must Continue Working
+```python
+# Direct registry imports
+from cursus.steps.registry.step_names import STEP_NAMES, CONFIG_STEP_REGISTRY, BUILDER_STEP_NAMES
+
+# Function imports  
+from cursus.steps.registry.step_names import (
+    get_sagemaker_step_type, get_canonical_name_from_file_name,
+    get_all_step_names, get_step_name_from_spec_type
+)
+```
+
+### Enhanced Backward Compatibility Implementation
+
+The distributed registry must provide **transparent replacement** of the current module:
+
+```python
+class EnhancedBackwardCompatibilityLayer(BackwardCompatibilityLayer):
+    """Enhanced compatibility layer that maintains all derived registry structures."""
+    
+    def get_builder_step_names(self, workspace_id: str = None) -> Dict[str, str]:
+        """Returns BUILDER_STEP_NAMES format with workspace context."""
+        step_names = self.get_step_names(workspace_id)
+        return {name: info["builder_step_name"] for name, info in step_names.items()}
+    
+    def get_config_step_registry(self, workspace_id: str = None) -> Dict[str, str]:
+        """Returns CONFIG_STEP_REGISTRY format with workspace context."""
+        step_names = self.get_step_names(workspace_id)
+        return {info["config_class"]: name for name, info in step_names.items()}
+    
+    def get_spec_step_types(self, workspace_id: str = None) -> Dict[str, str]:
+        """Returns SPEC_STEP_TYPES format with workspace context."""
+        step_names = self.get_step_names(workspace_id)
+        return {name: info["spec_type"] for name, info in step_names.items()}
+
+# Global registry replacement - these must work exactly like the original imports
+_global_enhanced_compatibility = None
+
+def get_enhanced_compatibility() -> EnhancedBackwardCompatibilityLayer:
+    """Get the enhanced compatibility layer instance."""
+    global _global_enhanced_compatibility
+    if _global_enhanced_compatibility is None:
+        _global_enhanced_compatibility = EnhancedBackwardCompatibilityLayer(get_global_registry_manager())
+    return _global_enhanced_compatibility
+
+# These replace the original module-level variables
+def get_step_names() -> Dict[str, Dict[str, Any]]:
+    return get_enhanced_compatibility().get_step_names()
+
+def get_builder_step_names() -> Dict[str, str]:
+    return get_enhanced_compatibility().get_builder_step_names()
+
+def get_config_step_registry() -> Dict[str, str]:
+    return get_enhanced_compatibility().get_config_step_registry()
+
+def get_spec_step_types() -> Dict[str, str]:
+    return get_enhanced_compatibility().get_spec_step_types()
+
+# Dynamic module-level variables that update with workspace context
+STEP_NAMES = get_step_names()
+BUILDER_STEP_NAMES = get_builder_step_names()
+CONFIG_STEP_REGISTRY = get_config_step_registry()
+SPEC_STEP_TYPES = get_spec_step_types()
+```
+
+### Base Class Integration Strategy
+
+#### StepBuilderBase Enhancement
+```python
+class StepBuilderBase(ABC):
+    @property
+    def STEP_NAMES(self):
+        """Lazy load step names with workspace context awareness."""
+        if not hasattr(self, '_step_names'):
+            # Detect workspace context from config or environment
+            workspace_id = self._get_workspace_context()
+            
+            # Use distributed registry with workspace context
+            compatibility_layer = get_enhanced_compatibility()
+            if workspace_id:
+                compatibility_layer.set_workspace_context(workspace_id)
+            
+            self._step_names = compatibility_layer.get_builder_step_names()
+        return self._step_names
+    
+    def _get_workspace_context(self) -> Optional[str]:
+        """Extract workspace context from config or environment."""
+        # Check config for workspace_id
+        if hasattr(self.config, 'workspace_id') and self.config.workspace_id:
+            return self.config.workspace_id
+        
+        # Check environment variable
+        import os
+        workspace_id = os.environ.get('CURSUS_WORKSPACE_ID')
+        if workspace_id:
+            return workspace_id
+        
+        # Check thread-local context
+        try:
+            from contextvars import ContextVar
+            _workspace_context = ContextVar('workspace_id', default=None)
+            return _workspace_context.get()
+        except ImportError:
+            pass
+        
+        return None
+```
+
+#### BasePipelineConfig Enhancement
+```python
+class BasePipelineConfig(ABC):
+    _STEP_NAMES: ClassVar[Dict[str, str]] = {}
+    
+    @classmethod
+    def get_step_registry(cls) -> Dict[str, str]:
+        """Lazy load step registry with workspace context."""
+        if not cls._STEP_NAMES:
+            # Get workspace context (similar to StepBuilderBase)
+            workspace_id = cls._get_workspace_context()
+            
+            compatibility_layer = get_enhanced_compatibility()
+            if workspace_id:
+                compatibility_layer.set_workspace_context(workspace_id)
+            
+            cls._STEP_NAMES = compatibility_layer.get_config_step_registry()
+        return cls._STEP_NAMES
+    
+    @classmethod
+    def _get_workspace_context(cls) -> Optional[str]:
+        """Extract workspace context for config classes."""
+        # Similar implementation to StepBuilderBase
+        import os
+        return os.environ.get('CURSUS_WORKSPACE_ID')
+```
+
+### Workspace Context Management
+
+#### Thread-Safe Context Management
+```python
+import contextvars
+from typing import Optional, ContextManager
+
+# Thread-local workspace context
+_workspace_context: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar('workspace_id', default=None)
+
+def set_workspace_context(workspace_id: str) -> None:
+    """Set the current workspace context."""
+    _workspace_context.set(workspace_id)
+    
+    # Also update the global compatibility layer
+    compatibility_layer = get_enhanced_compatibility()
+    compatibility_layer.set_workspace_context(workspace_id)
+
+def get_workspace_context() -> Optional[str]:
+    """Get the current workspace context."""
+    return _workspace_context.get()
+
+def clear_workspace_context() -> None:
+    """Clear the current workspace context."""
+    _workspace_context.set(None)
+    
+    # Also clear the global compatibility layer
+    compatibility_layer = get_enhanced_compatibility()
+    compatibility_layer.clear_workspace_context()
+
+@contextmanager
+def workspace_context(workspace_id: str) -> ContextManager[None]:
+    """Context manager for temporary workspace context."""
+    old_context = get_workspace_context()
+    try:
+        set_workspace_context(workspace_id)
+        yield
+    finally:
+        if old_context:
+            set_workspace_context(old_context)
+        else:
+            clear_workspace_context()
+```
+
+### Integration with WorkspaceComponentRegistry
+
+The WorkspaceComponentRegistry and Distributed Registry System work together at different levels:
+
+```python
+class WorkspaceComponentRegistry:
+    """Enhanced to work with distributed registry system."""
+    
+    def __init__(self, workspace_root: str):
+        self.workspace_root = workspace_root
+        # Integration point: Use distributed registry for step definitions
+        self.registry_manager = get_global_registry_manager()
+        self.compatibility_layer = get_enhanced_compatibility()
+    
+    def find_builder_class(self, step_name: str, developer_id: str = None) -> Optional[Type]:
+        """Find builder class with distributed registry integration."""
+        # 1. Check if step exists in distributed registry
+        step_definition = self.registry_manager.get_step_definition(step_name, developer_id)
+        if not step_definition:
+            return None
+        
+        # 2. Set workspace context for component discovery
+        if developer_id:
+            with workspace_context(developer_id):
+                return self._discover_builder_class(step_name, step_definition)
+        else:
+            return self._discover_builder_class(step_name, step_definition)
+    
+    def _discover_builder_class(self, step_name: str, step_definition: StepDefinition) -> Optional[Type]:
+        """Discover builder class based on step definition."""
+        if step_definition.registry_type == 'workspace':
+            # Load from workspace using existing logic
+            return self._load_workspace_builder(step_name, step_definition.workspace_id)
+        else:
+            # Load from core system
+            return self._load_core_builder(step_name)
+```
+
+### Migration Implementation Strategy
+
+#### Phase 1: Drop-in Replacement (Week 1)
+1. **Replace step_names.py module** with distributed registry backend
+2. **Maintain exact same API** for all existing imports
+3. **Test backward compatibility** with existing validation system
+
+#### Phase 2: Base Class Enhancement (Week 2)
+1. **Update StepBuilderBase** to use distributed registry
+2. **Update BasePipelineConfig** to use distributed registry
+3. **Add workspace context detection** mechanisms
+
+#### Phase 3: Context Management (Week 3)
+1. **Implement thread-safe context management**
+2. **Add environment variable support**
+3. **Create context manager utilities**
+
+#### Phase 4: Integration Testing (Week 4)
+1. **Test with all 108 STEP_NAMES references**
+2. **Validate workspace-aware functionality**
+3. **Performance testing and optimization**
+
+This integration approach ensures that the distributed registry system provides a **seamless upgrade path** while enabling powerful workspace-aware capabilities.
+
 ## Usage Examples
 
 ### Basic Registry Usage

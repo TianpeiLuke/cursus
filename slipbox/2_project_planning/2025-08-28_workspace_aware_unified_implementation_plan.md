@@ -518,12 +518,296 @@ class WorkspaceAwareDAG(PipelineDAG):
 - [x] Maintains compatibility with existing PipelineDAG
 - [x] Provides workspace-aware dependency analysis
 
-### Phase 4: Distributed Registry System (Weeks 12-15)
+### Phase 4: DAG Compilation Extensions (Weeks 12-14) [MOVED FROM PHASE 5]
+**Duration**: 3 weeks  
+**Risk Level**: Medium  
+**Dependencies**: Phases 1, 3 completion  
+**Status**: ✅ COMPLETED (2025-08-29)
+
+> **Phase Reordering Rationale**: Phase 4 (DAG Compilation) has been moved before Phase 5 (Distributed Registry) based on dependency analysis and risk assessment:
+> 
+> **Benefits of New Order:**
+> - **Lower Risk First**: Phase 4 is Medium risk vs Phase 5 High risk - tackle easier challenges first
+> - **Independent Implementation**: Phase 4 only depends on Phases 1 & 3, not Phase 5
+> - **Immediate Value**: Provides end-to-end workspace DAG compilation functionality sooner
+> - **Better Testing**: Allows validation of Phase 3 (Core System) before tackling complex registry changes
+> - **Shorter Duration**: 3 weeks vs 4 weeks - faster milestone achievement
+> 
+> **Technical Justification**: The WorkspaceDAGCompiler can use the existing WorkspaceComponentRegistry (from Phase 3) with current STEP_NAMES approach, then be enhanced later when Phase 5 distributed registry is complete.
+
+#### 4.1 Workspace DAG Compiler
+**Deliverables**:
+- Extend `PipelineDAGCompiler` for workspace support
+- Implement workspace DAG compilation logic
+- Add workspace component validation
+- Create compilation reporting and diagnostics
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/core/workspace/compiler.py
+class WorkspaceDAGCompiler(PipelineDAGCompiler):
+    """DAG compiler with workspace component support."""
+    
+    def __init__(self, workspace_root: str, **kwargs):
+        # Initialize workspace component registry
+        # Set up workspace pipeline assembler
+        # Configure workspace-specific compilation logic
+        # Initialize parent compiler with workspace context
+    
+    def compile_workspace_dag(self, workspace_dag: WorkspaceAwareDAG, config: Dict[str, Any]) -> Tuple[Pipeline, Dict]
+    def preview_workspace_resolution(self, workspace_dag: WorkspaceAwareDAG) -> Dict[str, Any]
+    def validate_workspace_components(self, workspace_dag: WorkspaceAwareDAG) -> Dict[str, Any]
+    def generate_compilation_report(self, workspace_dag: WorkspaceAwareDAG) -> Dict[str, Any]
+```
+
+**Acceptance Criteria**:
+- [x] Compiles workspace DAGs to executable pipelines
+- [x] Validates workspace component availability and compatibility
+- [x] Provides detailed compilation diagnostics and reporting
+- [x] Maintains compatibility with existing PipelineDAGCompiler
+- [x] Supports preview mode for workspace resolution validation
+
+#### 4.2 Pipeline Generation and Validation
+**Deliverables**:
+- Implement end-to-end pipeline generation from workspace DAGs
+- Add comprehensive validation at each compilation stage
+- Create detailed error reporting and diagnostics
+- Add performance monitoring and optimization
+
+**Implementation Tasks**:
+- Create comprehensive validation pipeline for workspace components
+- Implement detailed error reporting with workspace context
+- Add performance monitoring for compilation operations
+- Create optimization strategies for workspace component loading
+
+**Acceptance Criteria**:
+- [x] Generates executable pipelines from workspace DAGs
+- [x] Validates all workspace dependencies and components
+- [x] Provides clear error messages with workspace context
+- [x] Meets performance targets for compilation operations
+- [x] Supports complex cross-workspace dependency scenarios
+
+### Phase 5: Distributed Registry System (Weeks 15-18) [MOVED FROM PHASE 4]
 **Duration**: 4 weeks  
 **Risk Level**: High  
 **Dependencies**: Phase 1 completion
 
-#### 4.1 Core Registry Enhancement
+#### 5.1 Critical STEP_NAMES Integration Analysis
+**Deliverables**:
+- Complete analysis of 232+ STEP_NAMES references across the codebase
+- Identify all derived registry structures that must be maintained
+- Create compatibility matrix for existing base classes
+- Document all import patterns that must continue working
+
+**Implementation Tasks**:
+```python
+# Analysis Results Summary (Based on comprehensive codebase analysis):
+# 1. Base Classes (CRITICAL):
+#    - StepBuilderBase.STEP_NAMES property uses BUILDER_STEP_NAMES with lazy loading
+#    - BasePipelineConfig._STEP_NAMES uses CONFIG_STEP_REGISTRY with lazy loading
+# 
+# 2. Derived Registries (MUST MAINTAIN):
+#    - CONFIG_STEP_REGISTRY = {info["config_class"]: step_name for step_name, info in STEP_NAMES.items()}
+#    - BUILDER_STEP_NAMES = {step_name: info["builder_step_name"] for step_name, info in STEP_NAMES.items()}
+#    - SPEC_STEP_TYPES = {step_name: info["spec_type"] for step_name, info in STEP_NAMES.items()}
+#
+# 3. System Components Using Registry:
+#    - Validation System (108+ references): Alignment validation, builder testing, config analysis
+#    - Core System Components: Pipeline assembler, compiler validation, workspace registry
+#    - Step Specifications (40+ files): All step specs import registry functions
+#
+# 4. Import Patterns That Must Continue Working:
+#    - Direct registry imports: from cursus.steps.registry.step_names import STEP_NAMES
+#    - Function imports: from cursus.steps.registry.step_names import get_canonical_name_from_file_name
+```
+
+**Acceptance Criteria**:
+- [x] Complete inventory of all 232+ STEP_NAMES usage patterns
+- [x] Identification of critical base class dependencies with lazy loading patterns
+- [x] Documentation of all derived registry requirements
+- [x] Risk assessment for backward compatibility across all system components
+- [x] Integration strategy documented in step_names_integration_requirements_analysis.md
+
+#### 5.2 Enhanced Backward Compatibility Layer
+**Deliverables**:
+- Implement `EnhancedBackwardCompatibilityLayer` class
+- Create transparent replacement for step_names.py module
+- Maintain all derived registry structures with workspace context
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/registry/distributed/compatibility.py
+class EnhancedBackwardCompatibilityLayer(BackwardCompatibilityLayer):
+    """Enhanced compatibility layer that maintains all derived registry structures."""
+    
+    def get_builder_step_names(self, workspace_id: str = None) -> Dict[str, str]:
+        """Returns BUILDER_STEP_NAMES format with workspace context."""
+        step_names = self.get_step_names(workspace_id)
+        return {name: info["builder_step_name"] for name, info in step_names.items()}
+    
+    def get_config_step_registry(self, workspace_id: str = None) -> Dict[str, str]:
+        """Returns CONFIG_STEP_REGISTRY format with workspace context."""
+        step_names = self.get_step_names(workspace_id)
+        return {info["config_class"]: name for name, info in step_names.items()}
+    
+    def get_spec_step_types(self, workspace_id: str = None) -> Dict[str, str]:
+        """Returns SPEC_STEP_TYPES format with workspace context."""
+        step_names = self.get_step_names(workspace_id)
+        return {name: info["spec_type"] for name, info in step_names.items()}
+
+# Global registry replacement functions
+def get_step_names() -> Dict[str, Dict[str, Any]]:
+    return get_enhanced_compatibility().get_step_names()
+
+def get_builder_step_names() -> Dict[str, str]:
+    return get_enhanced_compatibility().get_builder_step_names()
+
+def get_config_step_registry() -> Dict[str, str]:
+    return get_enhanced_compatibility().get_config_step_registry()
+
+# Dynamic module-level variables that update with workspace context
+STEP_NAMES = get_step_names()
+BUILDER_STEP_NAMES = get_builder_step_names()
+CONFIG_STEP_REGISTRY = get_config_step_registry()
+SPEC_STEP_TYPES = get_spec_step_types()
+```
+
+**Acceptance Criteria**:
+- [ ] All 108+ STEP_NAMES references continue to work unchanged
+- [ ] All derived registries (CONFIG_STEP_REGISTRY, BUILDER_STEP_NAMES, SPEC_STEP_TYPES) maintained
+- [ ] Workspace context support for all registry structures
+- [ ] Drop-in replacement for existing step_names.py module
+- [ ] Performance equivalent to current static registry access
+
+#### 5.3 Base Class Integration Strategy
+**Deliverables**:
+- Update `StepBuilderBase` to use distributed registry with workspace context
+- Update `BasePipelineConfig` to use distributed registry with workspace context
+- Implement workspace context detection mechanisms
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/core/base/builder_base.py (UPDATED)
+class StepBuilderBase(ABC):
+    @property
+    def STEP_NAMES(self):
+        """Lazy load step names with workspace context awareness."""
+        if not hasattr(self, '_step_names'):
+            # Detect workspace context from config or environment
+            workspace_id = self._get_workspace_context()
+            
+            # Use distributed registry with workspace context
+            compatibility_layer = get_enhanced_compatibility()
+            if workspace_id:
+                compatibility_layer.set_workspace_context(workspace_id)
+            
+            self._step_names = compatibility_layer.get_builder_step_names()
+        return self._step_names
+    
+    def _get_workspace_context(self) -> Optional[str]:
+        """Extract workspace context from config or environment."""
+        # Check config for workspace_id
+        if hasattr(self.config, 'workspace_id') and self.config.workspace_id:
+            return self.config.workspace_id
+        
+        # Check environment variable
+        import os
+        workspace_id = os.environ.get('CURSUS_WORKSPACE_ID')
+        if workspace_id:
+            return workspace_id
+        
+        # Check thread-local context
+        try:
+            return get_workspace_context()
+        except:
+            pass
+        
+        return None
+
+# File: src/cursus/core/base/config_base.py (UPDATED)
+class BasePipelineConfig(ABC):
+    _STEP_NAMES: ClassVar[Dict[str, str]] = {}
+    
+    @classmethod
+    def get_step_registry(cls) -> Dict[str, str]:
+        """Lazy load step registry with workspace context."""
+        if not cls._STEP_NAMES:
+            # Get workspace context
+            workspace_id = cls._get_workspace_context()
+            
+            compatibility_layer = get_enhanced_compatibility()
+            if workspace_id:
+                compatibility_layer.set_workspace_context(workspace_id)
+            
+            cls._STEP_NAMES = compatibility_layer.get_config_step_registry()
+        return cls._STEP_NAMES
+```
+
+**Acceptance Criteria**:
+- [ ] StepBuilderBase.STEP_NAMES property works with workspace context
+- [ ] BasePipelineConfig registry access works with workspace context
+- [ ] Workspace context detection from config, environment, and thread-local
+- [ ] Backward compatibility maintained for existing base class usage
+- [ ] Performance impact minimized through lazy loading and caching
+
+#### 5.4 Thread-Safe Workspace Context Management
+**Deliverables**:
+- Implement thread-safe workspace context using contextvars
+- Create context manager utilities for temporary workspace switching
+- Add environment variable and configuration-based context detection
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/registry/distributed/context.py
+import contextvars
+from typing import Optional, ContextManager
+from contextlib import contextmanager
+
+# Thread-local workspace context
+_workspace_context: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar('workspace_id', default=None)
+
+def set_workspace_context(workspace_id: str) -> None:
+    """Set the current workspace context."""
+    _workspace_context.set(workspace_id)
+    
+    # Also update the global compatibility layer
+    compatibility_layer = get_enhanced_compatibility()
+    compatibility_layer.set_workspace_context(workspace_id)
+
+def get_workspace_context() -> Optional[str]:
+    """Get the current workspace context."""
+    return _workspace_context.get()
+
+def clear_workspace_context() -> None:
+    """Clear the current workspace context."""
+    _workspace_context.set(None)
+    
+    # Also clear the global compatibility layer
+    compatibility_layer = get_enhanced_compatibility()
+    compatibility_layer.clear_workspace_context()
+
+@contextmanager
+def workspace_context(workspace_id: str) -> ContextManager[None]:
+    """Context manager for temporary workspace context."""
+    old_context = get_workspace_context()
+    try:
+        set_workspace_context(workspace_id)
+        yield
+    finally:
+        if old_context:
+            set_workspace_context(old_context)
+        else:
+            clear_workspace_context()
+```
+
+**Acceptance Criteria**:
+- [ ] Thread-safe workspace context management using contextvars
+- [ ] Context manager for temporary workspace switching
+- [ ] Environment variable support (CURSUS_WORKSPACE_ID)
+- [ ] Integration with global compatibility layer
+- [ ] Proper cleanup and restoration of previous context
+
+#### 5.5 Core Registry Enhancement
 **Deliverables**:
 - Enhance existing registry with workspace metadata
 - Create `StepDefinition` class with registry context
@@ -550,6 +834,18 @@ class StepDefinition(BaseModel):
     builder_class_name: Optional[str] = None
     config_class_name: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    def to_legacy_format(self) -> Dict[str, Any]:
+        """Convert to legacy STEP_NAMES format for backward compatibility."""
+        legacy_dict = {}
+        
+        if self.sagemaker_step_type:
+            legacy_dict['sagemaker_step_type'] = self.sagemaker_step_type
+        if self.builder_class_name:
+            legacy_dict['builder_step_name'] = self.builder_class_name
+        # Add other legacy fields...
+        
+        return legacy_dict
 
 class CoreStepRegistry:
     """Core step registry with workspace awareness."""
@@ -568,7 +864,56 @@ class CoreStepRegistry:
 - [ ] Enables programmatic registry management
 - [ ] Integrates with workspace component discovery
 
-#### 4.2 Workspace Registry System
+#### 5.6 WorkspaceComponentRegistry Integration
+**Deliverables**:
+- Integrate WorkspaceComponentRegistry with distributed registry system
+- Create unified component discovery that works with both systems
+- Implement step definition validation before component discovery
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/core/workspace/registry.py (UPDATED)
+class WorkspaceComponentRegistry:
+    """Enhanced to work with distributed registry system."""
+    
+    def __init__(self, workspace_root: str):
+        self.workspace_root = workspace_root
+        # Integration point: Use distributed registry for step definitions
+        self.registry_manager = get_global_registry_manager()
+        self.compatibility_layer = get_enhanced_compatibility()
+    
+    def find_builder_class(self, step_name: str, developer_id: str = None) -> Optional[Type]:
+        """Find builder class with distributed registry integration."""
+        # 1. Check if step exists in distributed registry
+        step_definition = self.registry_manager.get_step_definition(step_name, developer_id)
+        if not step_definition:
+            return None
+        
+        # 2. Set workspace context for component discovery
+        if developer_id:
+            with workspace_context(developer_id):
+                return self._discover_builder_class(step_name, step_definition)
+        else:
+            return self._discover_builder_class(step_name, step_definition)
+    
+    def _discover_builder_class(self, step_name: str, step_definition: StepDefinition) -> Optional[Type]:
+        """Discover builder class based on step definition."""
+        if step_definition.registry_type == 'workspace':
+            # Load from workspace using existing logic
+            return self._load_workspace_builder(step_name, step_definition.workspace_id)
+        else:
+            # Load from core system
+            return self._load_core_builder(step_name)
+```
+
+**Acceptance Criteria**:
+- [ ] WorkspaceComponentRegistry integrates with distributed registry
+- [ ] Step definition validation before component discovery
+- [ ] Workspace context management during component loading
+- [ ] Unified interface for both core and workspace components
+- [ ] Performance optimization through registry-guided discovery
+
+#### 5.7 Workspace Registry System
 **Deliverables**:
 - Create workspace-specific registry implementation
 - Implement registry inheritance from core registry
@@ -599,7 +944,7 @@ class WorkspaceStepRegistry:
 - [ ] Provides workspace registry validation and diagnostics
 - [ ] Supports dynamic registry updates and management
 
-#### 4.3 Distributed Registry Manager
+#### 5.8 Distributed Registry Manager
 **Deliverables**:
 - Create central coordinator for distributed registry system
 - Implement registry discovery and federation
@@ -630,7 +975,7 @@ class DistributedRegistryManager:
 - [ ] Supports registry statistics and health monitoring
 - [ ] Enables registry federation and synchronization
 
-#### 4.4 Backward Compatibility Layer
+#### 5.9 Backward Compatibility Layer
 **Deliverables**:
 - Create compatibility layer for existing STEP_NAMES usage
 - Implement global functions for backward compatibility
@@ -666,62 +1011,6 @@ def get_steps_by_sagemaker_type(sagemaker_step_type: str) -> List[str]:
 - [ ] Maintains full API compatibility with existing functions
 - [ ] Enables gradual adoption of workspace-aware features
 
-### Phase 5: DAG Compilation Extensions (Weeks 16-18)
-**Duration**: 3 weeks  
-**Risk Level**: Medium  
-**Dependencies**: Phases 1, 3 completion
-
-#### 5.1 Workspace DAG Compiler
-**Deliverables**:
-- Extend `PipelineDAGCompiler` for workspace support
-- Implement workspace DAG compilation logic
-- Add workspace component validation
-- Create compilation reporting and diagnostics
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/core/workspace/compiler.py
-class WorkspaceDAGCompiler(PipelineDAGCompiler):
-    """DAG compiler with workspace component support."""
-    
-    def __init__(self, workspace_root: str, **kwargs):
-        # Initialize workspace component registry
-        # Set up workspace pipeline assembler
-        # Configure workspace-specific compilation logic
-        # Initialize parent compiler with workspace context
-    
-    def compile_workspace_dag(self, workspace_dag: WorkspaceAwareDAG, config: Dict[str, Any]) -> Tuple[Pipeline, Dict]
-    def preview_workspace_resolution(self, workspace_dag: WorkspaceAwareDAG) -> Dict[str, Any]
-    def validate_workspace_components(self, workspace_dag: WorkspaceAwareDAG) -> Dict[str, Any]
-    def generate_compilation_report(self, workspace_dag: WorkspaceAwareDAG) -> Dict[str, Any]
-```
-
-**Acceptance Criteria**:
-- [ ] Compiles workspace DAGs to executable pipelines
-- [ ] Validates workspace component availability and compatibility
-- [ ] Provides detailed compilation diagnostics and reporting
-- [ ] Maintains compatibility with existing PipelineDAGCompiler
-- [ ] Supports preview mode for workspace resolution validation
-
-#### 5.2 Pipeline Generation and Validation
-**Deliverables**:
-- Implement end-to-end pipeline generation from workspace DAGs
-- Add comprehensive validation at each compilation stage
-- Create detailed error reporting and diagnostics
-- Add performance monitoring and optimization
-
-**Implementation Tasks**:
-- Create comprehensive validation pipeline for workspace components
-- Implement detailed error reporting with workspace context
-- Add performance monitoring for compilation operations
-- Create optimization strategies for workspace component loading
-
-**Acceptance Criteria**:
-- [ ] Generates executable pipelines from workspace DAGs
-- [ ] Validates all workspace dependencies and components
-- [ ] Provides clear error messages with workspace context
-- [ ] Meets performance targets for compilation operations
-- [ ] Supports complex cross-workspace dependency scenarios
 
 ### Phase 6: Integration and Testing (Weeks 19-22)
 **Duration**: 4 weeks  
@@ -1102,6 +1391,7 @@ This unified implementation plan consolidates and is based on the comprehensive 
 
 ### Implementation Analysis
 - **[Multi-Developer Validation System Analysis](../4_analysis/multi_developer_validation_system_analysis.md)** - Feasibility analysis and current system assessment
+- **[Step Names Integration Requirements Analysis](../4_analysis/step_names_integration_requirements_analysis.md)** - Comprehensive analysis of 232+ STEP_NAMES references and integration strategy for distributed registry system
 
 ### Previous Implementation Plans (Consolidated)
 - **[Workspace-Aware System Implementation Plan](workspace_aware_system_implementation_plan.md)** - Original validation and registry implementation plan
