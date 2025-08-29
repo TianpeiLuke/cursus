@@ -77,7 +77,14 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         """
         # Initialize parent with default paths if not in workspace mode
         if workspace_root is None:
-            super().__init__(**kwargs)
+            # Provide default base directories for single workspace mode
+            default_base_directories = kwargs.get('base_directories', {
+                'contracts': 'src/cursus/steps/contracts',
+                'specs': 'src/cursus/steps/specs', 
+                'builders': 'src/cursus/steps/builders',
+                'configs': 'src/cursus/steps/configs'
+            })
+            super().__init__(base_directories=default_base_directories)
             self.workspace_mode = False
             self.workspace_root = None
             self.developer_id = None
@@ -94,9 +101,21 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         
         # Build workspace-specific paths
         workspace_paths = self._build_workspace_paths()
+
+        # Convert workspace paths to base_directories format expected by FlexibleFileResolver
+        base_directories = {
+            'contracts': workspace_paths['contracts_dir'],
+            'specs': workspace_paths['specs_dir'],
+            'builders': workspace_paths['builders_dir'],
+            'configs': workspace_paths['configs_dir']
+        }
+
+        # Initialize parent with base_directories
+        super().__init__(base_directories=base_directories, **kwargs)
         
-        # Initialize parent with workspace paths
-        super().__init__(**workspace_paths, **kwargs)
+        # Set workspace-specific attributes for direct access
+        for key, value in workspace_paths.items():
+            setattr(self, key, value)
         
         logger.info(f"Initialized workspace resolver for developer '{developer_id}' "
                    f"at '{workspace_root}'")
@@ -158,11 +177,7 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         
         return paths
     
-    def find_contract_file(
-        self,
-        step_name: str,
-        contract_name: Optional[str] = None
-    ) -> Optional[str]:
+    def find_contract_file(self, step_name: str) -> Optional[str]:
         """
         Find contract file with workspace-aware search.
         
@@ -172,28 +187,24 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         3. Parent class fallback behavior
         """
         if not self.workspace_mode:
-            return super().find_contract_file(step_name, contract_name)
+            return super().find_contract_file(step_name)
         
         # Try developer workspace first
-        result = super().find_contract_file(step_name, contract_name)
+        result = super().find_contract_file(step_name)
         if result:
             return result
         
         # Try shared workspace if enabled
         if self.enable_shared_fallback:
             result = self._find_in_shared_workspace(
-                'contracts', step_name, contract_name
+                'contracts', step_name, None
             )
             if result:
                 return result
         
         return None
     
-    def find_spec_file(
-        self,
-        step_name: str,
-        spec_name: Optional[str] = None
-    ) -> Optional[str]:
+    def find_spec_file(self, step_name: str) -> Optional[str]:
         """
         Find spec file with workspace-aware search.
         
@@ -203,28 +214,24 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         3. Parent class fallback behavior
         """
         if not self.workspace_mode:
-            return super().find_spec_file(step_name, spec_name)
+            return super().find_spec_file(step_name)
         
         # Try developer workspace first
-        result = super().find_spec_file(step_name, spec_name)
+        result = super().find_spec_file(step_name)
         if result:
             return result
         
         # Try shared workspace if enabled
         if self.enable_shared_fallback:
             result = self._find_in_shared_workspace(
-                'specs', step_name, spec_name
+                'specs', step_name, None
             )
             if result:
                 return result
         
         return None
     
-    def find_builder_file(
-        self,
-        step_name: str,
-        builder_name: Optional[str] = None
-    ) -> Optional[str]:
+    def find_builder_file(self, step_name: str) -> Optional[str]:
         """
         Find builder file with workspace-aware search.
         
@@ -234,17 +241,17 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         3. Parent class fallback behavior
         """
         if not self.workspace_mode:
-            return super().find_builder_file(step_name, builder_name)
+            return super().find_builder_file(step_name)
         
         # Try developer workspace first
-        result = super().find_builder_file(step_name, builder_name)
+        result = super().find_builder_file(step_name)
         if result:
             return result
         
         # Try shared workspace if enabled
         if self.enable_shared_fallback:
             result = self._find_in_shared_workspace(
-                'builders', step_name, builder_name
+                'builders', step_name, None
             )
             if result:
                 return result
@@ -312,16 +319,11 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
                 getattr(self, 'configs_dir', 'src/cursus/steps/configs'),
                 step_name,
                 config_name,
-                ['.json', '.yaml', '.yml']
+                ['.py']  # Config files are Python files in cursus/steps
             )
         
-        # Try developer workspace first
-        result = self._find_file_in_directory(
-            getattr(self, 'configs_dir', ''),
-            step_name,
-            config_name,
-            ['.json', '.yaml', '.yml']
-        )
+        # Try developer workspace first using parent class method
+        result = super().find_config_file(step_name)
         if result:
             return result
         
@@ -372,11 +374,36 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         if not directory or not os.path.exists(directory):
             return None
         
-        # Use parent class's _find_best_match if available
-        if hasattr(self, '_find_best_match'):
-            return self._find_best_match(
-                directory, step_name, file_name, extensions
-            )
+        # Create a temporary FlexibleFileResolver for the specific directory
+        temp_base_dirs = {}
+        for ext in extensions:
+            if ext == '.py':
+                if 'contracts' not in temp_base_dirs:
+                    temp_base_dirs['contracts'] = directory
+                if 'builders' not in temp_base_dirs:
+                    temp_base_dirs['builders'] = directory
+            else:
+                if 'specs' not in temp_base_dirs:
+                    temp_base_dirs['specs'] = directory
+                if 'configs' not in temp_base_dirs:
+                    temp_base_dirs['configs'] = directory
+        
+        if temp_base_dirs:
+            temp_resolver = FlexibleFileResolver(temp_base_dirs)
+            
+            # Try different component types based on extensions
+            if '.py' in extensions:
+                result = temp_resolver.find_contract_file(step_name)
+                if result:
+                    return result
+                result = temp_resolver.find_builder_file(step_name)
+                if result:
+                    return result
+            
+            if any(ext in ['.json', '.yaml', '.yml'] for ext in extensions):
+                result = temp_resolver.find_spec_file(step_name)
+                if result:
+                    return result
         
         # Fallback to basic file search
         search_names = []
@@ -440,6 +467,18 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
         
         # Rebuild paths for new developer
         workspace_paths = self._build_workspace_paths()
+        
+        # Update base directories for FlexibleFileResolver
+        new_base_directories = {
+            'contracts': workspace_paths['contracts_dir'],
+            'specs': workspace_paths['specs_dir'],
+            'builders': workspace_paths['builders_dir'],
+            'configs': workspace_paths['configs_dir']
+        }
+        
+        # Update parent class base directories and refresh cache
+        self.base_dirs = {k: Path(v) for k, v in new_base_directories.items()}
+        self._discover_all_files()
         
         # Update instance attributes
         for key, value in workspace_paths.items():

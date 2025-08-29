@@ -297,7 +297,7 @@ class SharedBuilder:
     def test_load_module_from_file_success(self, mock_module_from_spec, mock_spec_from_file):
         """Test successful module loading from file."""
         # Create test file
-        test_file = self.temp_dir / "test_module.py"
+        test_file = Path(self.temp_dir) / "test_module.py"
         Path(test_file).write_text("# Test module")
         
         # Mock importlib functions
