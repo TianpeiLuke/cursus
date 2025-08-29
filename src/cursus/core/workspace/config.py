@@ -14,7 +14,7 @@ from pathlib import Path
 from ..base import BasePipelineConfig
 
 
-class WorkspaceStepConfig(BaseModel):
+class WorkspaceStepDefinition(BaseModel):
     """Pydantic V2 model for workspace step definitions."""
     
     model_config = ConfigDict(
@@ -75,8 +75,8 @@ class WorkspaceStepConfig(BaseModel):
         return self.workspace_root
 
 
-class WorkspacePipelineConfig(BaseModel):
-    """Pydantic V2 model for workspace pipeline configuration."""
+class WorkspacePipelineDefinition(BaseModel):
+    """Pydantic V2 model for workspace pipeline definition."""
     
     model_config = ConfigDict(
         validate_assignment=True,
@@ -86,7 +86,7 @@ class WorkspacePipelineConfig(BaseModel):
     
     pipeline_name: str = Field(..., description="Name of the pipeline")
     workspace_root: str = Field(..., description="Root path of the workspace")
-    steps: List[WorkspaceStepConfig] = Field(..., description="List of pipeline steps")
+    steps: List[WorkspaceStepDefinition] = Field(..., description="List of pipeline steps")
     global_config: Dict[str, Any] = Field(default_factory=dict, description="Global pipeline configuration")
     
     @field_validator('pipeline_name')
@@ -206,11 +206,11 @@ class WorkspacePipelineConfig(BaseModel):
         """Get list of unique developers in the pipeline."""
         return list(set(step.developer_id for step in self.steps))
     
-    def get_steps_by_developer(self, developer_id: str) -> List[WorkspaceStepConfig]:
+    def get_steps_by_developer(self, developer_id: str) -> List[WorkspaceStepDefinition]:
         """Get all steps for a specific developer."""
         return [step for step in self.steps if step.developer_id == developer_id]
     
-    def get_step_by_name(self, step_name: str) -> Optional[WorkspaceStepConfig]:
+    def get_step_by_name(self, step_name: str) -> Optional[WorkspaceStepDefinition]:
         """Get a step by its name."""
         for step in self.steps:
             if step.step_name == step_name:
@@ -218,14 +218,14 @@ class WorkspacePipelineConfig(BaseModel):
         return None
     
     @classmethod
-    def from_json_file(cls, file_path: str) -> 'WorkspacePipelineConfig':
+    def from_json_file(cls, file_path: str) -> 'WorkspacePipelineDefinition':
         """Load configuration from JSON file."""
         with open(file_path, 'r') as f:
             data = json.load(f)
         return cls(**data)
     
     @classmethod
-    def from_yaml_file(cls, file_path: str) -> 'WorkspacePipelineConfig':
+    def from_yaml_file(cls, file_path: str) -> 'WorkspacePipelineDefinition':
         """Load configuration from YAML file."""
         with open(file_path, 'r') as f:
             data = yaml.safe_load(f)

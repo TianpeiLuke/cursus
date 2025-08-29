@@ -17,7 +17,7 @@ from ..assembler.pipeline_assembler import PipelineAssembler
 from ..base import BasePipelineConfig, StepBuilderBase
 from ...api.dag.base_dag import PipelineDAG
 from ...api.dag.workspace_dag import WorkspaceAwareDAG
-from .config import WorkspacePipelineConfig, WorkspaceStepConfig
+from .config import WorkspacePipelineDefinition, WorkspaceStepDefinition
 from .registry import WorkspaceComponentRegistry
 
 logger = logging.getLogger(__name__)
@@ -70,12 +70,12 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         logger.info(f"Initialized workspace pipeline assembler for: {workspace_root}")
     
-    def _resolve_workspace_configs(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, BasePipelineConfig]:
+    def _resolve_workspace_configs(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, BasePipelineConfig]:
         """
         Resolve workspace step configurations to BasePipelineConfig instances.
         
         Args:
-            workspace_config: WorkspacePipelineConfig instance
+            workspace_config: WorkspacePipelineDefinition instance
             
         Returns:
             Dictionary mapping step names to config instances
@@ -109,7 +109,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         logger.info(f"Resolved {len(config_map)} workspace configs")
         return config_map
     
-    def _resolve_workspace_builders(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Type[StepBuilderBase]]:
+    def _resolve_workspace_builders(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Type[StepBuilderBase]]:
         """
         Resolve workspace step builders.
         
@@ -142,7 +142,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         logger.info(f"Resolved {len(builder_map)} workspace builders")
         return builder_map
     
-    def validate_workspace_components(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Any]:
+    def validate_workspace_components(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Any]:
         """
         Validate workspace component availability and compatibility.
         
@@ -180,7 +180,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         return validation_result
     
-    def _validate_developer_consistency(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Any]:
+    def _validate_developer_consistency(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Any]:
         """Validate developer consistency across workspace."""
         result = {
             'valid': True,
@@ -209,7 +209,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         return result
     
-    def _validate_step_type_consistency(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Any]:
+    def _validate_step_type_consistency(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Any]:
         """Validate step type consistency."""
         result = {
             'valid': True,
@@ -244,7 +244,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         return result
     
-    def assemble_workspace_pipeline(self, workspace_config: WorkspacePipelineConfig) -> Pipeline:
+    def assemble_workspace_pipeline(self, workspace_config: WorkspacePipelineDefinition) -> Pipeline:
         """
         Assemble pipeline from workspace configuration.
         
@@ -292,7 +292,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
             logger.error(f"Error assembling workspace pipeline: {e}")
             raise ValueError(f"Failed to assemble workspace pipeline: {e}") from e
     
-    def _create_dag_from_workspace_config(self, workspace_config: WorkspacePipelineConfig) -> PipelineDAG:
+    def _create_dag_from_workspace_config(self, workspace_config: WorkspacePipelineDefinition) -> PipelineDAG:
         """Create DAG from workspace configuration."""
         dag = PipelineDAG()
         
@@ -311,7 +311,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
     @classmethod
     def from_workspace_config(
         cls,
-        workspace_config: WorkspacePipelineConfig,
+        workspace_config: WorkspacePipelineDefinition,
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         **kwargs
@@ -359,9 +359,9 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         """
         # Load workspace configuration
         if config_file_path.endswith('.json'):
-            workspace_config = WorkspacePipelineConfig.from_json_file(config_file_path)
+            workspace_config = WorkspacePipelineDefinition.from_json_file(config_file_path)
         elif config_file_path.endswith(('.yaml', '.yml')):
-            workspace_config = WorkspacePipelineConfig.from_yaml_file(config_file_path)
+            workspace_config = WorkspacePipelineDefinition.from_yaml_file(config_file_path)
         else:
             raise ValueError(f"Unsupported config file format: {config_file_path}")
         
@@ -386,7 +386,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
             }
         }
     
-    def preview_workspace_assembly(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Any]:
+    def preview_workspace_assembly(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Any]:
         """
         Preview workspace assembly without actually building the pipeline.
         

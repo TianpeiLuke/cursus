@@ -370,8 +370,8 @@ class WorkspaceValidationOrchestrator:
 
 #### 3.1 Workspace Configuration Models
 **Deliverables**:
-- Implement `WorkspaceStepConfig` Pydantic V2 model
-- Implement `WorkspacePipelineConfig` Pydantic V2 model
+- Implement `WorkspaceStepDefinition` Pydantic V2 model
+- Implement `WorkspacePipelineDefinition` Pydantic V2 model
 - Add validation logic and error handling
 - Create serialization/deserialization methods
 
@@ -381,7 +381,7 @@ class WorkspaceValidationOrchestrator:
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Dict, List, Any, Optional
 
-class WorkspaceStepConfig(BaseModel):
+class WorkspaceStepDefinition(BaseModel):
     """Pydantic V2 model for workspace step definitions."""
     model_config = ConfigDict(
         validate_assignment=True,
@@ -396,8 +396,8 @@ class WorkspaceStepConfig(BaseModel):
     workspace_root: str
     dependencies: List[str] = Field(default_factory=list)
 
-class WorkspacePipelineConfig(BaseModel):
-    """Pydantic V2 model for workspace pipeline configuration."""
+class WorkspacePipelineDefinition(BaseModel):
+    """Pydantic V2 model for workspace pipeline definition."""
     model_config = ConfigDict(
         validate_assignment=True,
         extra='forbid',
@@ -406,7 +406,7 @@ class WorkspacePipelineConfig(BaseModel):
     
     pipeline_name: str
     workspace_root: str
-    steps: List[WorkspaceStepConfig]
+    steps: List[WorkspaceStepDefinition]
     global_config: Dict[str, Any] = Field(default_factory=dict)
     
     def validate_workspace_dependencies(self) -> Dict[str, Any]
@@ -414,11 +414,11 @@ class WorkspacePipelineConfig(BaseModel):
 ```
 
 **Acceptance Criteria**:
-- [ ] Provides comprehensive workspace step configuration
-- [ ] Validates workspace dependencies and references
-- [ ] Supports serialization to/from JSON and YAML
-- [ ] Integrates with existing configuration validation
-- [ ] Handles workspace-specific configuration patterns
+- [x] Provides comprehensive workspace step definition
+- [x] Validates workspace dependencies and references
+- [x] Supports serialization to/from JSON and YAML
+- [x] Integrates with existing configuration validation
+- [x] Handles workspace-specific configuration patterns
 
 #### 3.2 Workspace Component Registry
 **Deliverables**:
@@ -443,15 +443,15 @@ class WorkspaceComponentRegistry:
     def find_builder_class(self, step_name: str, developer_id: str = None) -> Optional[Type]
     def find_config_class(self, step_name: str, developer_id: str = None) -> Optional[Type]
     def get_workspace_summary(self) -> Dict[str, Any]
-    def validate_component_availability(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Any]
+    def validate_component_availability(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Any]
 ```
 
 **Acceptance Criteria**:
-- [ ] Discovers components across multiple workspaces
-- [ ] Provides efficient component caching and lookup
-- [ ] Validates component availability for pipeline assembly
-- [ ] Generates comprehensive workspace component reports
-- [ ] Integrates with workspace file resolution and module loading
+- [x] Discovers components across multiple workspaces
+- [x] Provides efficient component caching and lookup
+- [x] Validates component availability for pipeline assembly
+- [x] Generates comprehensive workspace component reports
+- [x] Integrates with workspace file resolution and module loading
 
 #### 3.3 Workspace Pipeline Assembler
 **Deliverables**:
@@ -472,18 +472,18 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         # Configure workspace-specific assembly logic
         # Initialize parent assembler with workspace context
     
-    def _resolve_workspace_configs(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, BasePipelineConfig]
-    def _resolve_workspace_builders(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Type[StepBuilderBase]]
-    def validate_workspace_components(self, workspace_config: WorkspacePipelineConfig) -> Dict[str, Any]
-    def assemble_workspace_pipeline(self, workspace_config: WorkspacePipelineConfig) -> Pipeline
+    def _resolve_workspace_configs(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, BasePipelineConfig]
+    def _resolve_workspace_builders(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Type[StepBuilderBase]]
+    def validate_workspace_components(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, Any]
+    def assemble_workspace_pipeline(self, workspace_config: WorkspacePipelineDefinition) -> Pipeline
 ```
 
 **Acceptance Criteria**:
-- [ ] Assembles pipelines using components from multiple workspaces
-- [ ] Resolves workspace dependencies correctly
-- [ ] Validates workspace component compatibility
-- [ ] Maintains compatibility with existing PipelineAssembler
-- [ ] Provides detailed assembly diagnostics and error reporting
+- [x] Assembles pipelines using components from multiple workspaces
+- [x] Resolves workspace dependencies correctly
+- [x] Validates workspace component compatibility
+- [x] Maintains compatibility with existing PipelineAssembler
+- [x] Provides detailed assembly diagnostics and error reporting
 
 #### 3.4 Workspace-Aware DAG
 **Deliverables**:
@@ -506,17 +506,17 @@ class WorkspaceAwareDAG(PipelineDAG):
     
     def add_workspace_step(self, step_name: str, developer_id: str, step_type: str, config_data: Dict[str, Any])
     def validate_workspace_dependencies(self) -> Dict[str, Any]
-    def to_workspace_pipeline_config(self, pipeline_name: str) -> WorkspacePipelineConfig
+    def to_workspace_pipeline_config(self, pipeline_name: str) -> WorkspacePipelineDefinition
     def get_developers(self) -> List[str]
     def get_workspace_summary(self) -> Dict[str, Any]
 ```
 
 **Acceptance Criteria**:
-- [ ] Supports workspace steps with developer context
-- [ ] Validates cross-workspace dependencies
-- [ ] Converts to workspace pipeline configuration
-- [ ] Maintains compatibility with existing PipelineDAG
-- [ ] Provides workspace-aware dependency analysis
+- [x] Supports workspace steps with developer context
+- [x] Validates cross-workspace dependencies
+- [x] Converts to workspace pipeline definition
+- [x] Maintains compatibility with existing PipelineDAG
+- [x] Provides workspace-aware dependency analysis
 
 ### Phase 4: Distributed Registry System (Weeks 12-15)
 **Duration**: 4 weeks  

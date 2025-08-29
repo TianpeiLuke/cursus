@@ -91,8 +91,8 @@ Workspace-Aware Core System
 │   ├── WorkspaceConfigResolver
 │   └── CrossWorkspaceComponentMatcher
 ├── Configuration Management/
-│   ├── WorkspaceStepConfig
-│   ├── WorkspacePipelineConfig
+│   ├── WorkspaceStepDefinition
+│   ├── WorkspacePipelineDefinition
 │   └── WorkspaceParameterManager
 └── Integration Layer/
     ├── WorkspaceAwareDAG
@@ -122,7 +122,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
     def __init__(
         self,
         dag: PipelineDAG,
-        workspace_config_map: Dict[str, WorkspaceStepConfig],
+        workspace_config_map: Dict[str, WorkspaceStepDefinition],
         workspace_root: str = "developer_workspaces/developers",
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
@@ -174,7 +174,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
     
     def _resolve_workspace_configs(self) -> Dict[str, BasePipelineConfig]:
         """
-        Resolve workspace step configurations to standard config instances.
+        Resolve workspace step definitions to standard config instances.
         
         Returns:
             Dictionary mapping step names to resolved config instances
@@ -241,13 +241,13 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         return self.workspace_loaders[developer_id]
     
     def _create_config_instance(self, 
-                               workspace_config: WorkspaceStepConfig, 
+                               workspace_config: WorkspaceStepDefinition, 
                                loader: WorkspaceModuleLoader) -> BasePipelineConfig:
         """
-        Create a config instance from workspace step configuration.
+        Create a config instance from workspace step definition.
         
         Args:
-            workspace_config: Workspace step configuration
+            workspace_config: Workspace step definition
             loader: Workspace module loader for the developer
             
         Returns:
@@ -344,14 +344,14 @@ class WorkspacePipelineAssembler(PipelineAssembler):
     @classmethod
     def create_from_workspace_config(cls,
                                    dag: PipelineDAG,
-                                   workspace_pipeline_config: WorkspacePipelineConfig,
+                                   workspace_pipeline_config: WorkspacePipelineDefinition,
                                    **kwargs) -> "WorkspacePipelineAssembler":
         """
-        Create workspace pipeline assembler from workspace pipeline configuration.
+        Create workspace pipeline assembler from workspace pipeline definition.
         
         Args:
             dag: Pipeline DAG
-            workspace_pipeline_config: Workspace pipeline configuration
+            workspace_pipeline_config: Workspace pipeline definition
             **kwargs: Additional arguments for assembler
             
         Returns:
@@ -375,9 +375,9 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 
 @dataclass
-class WorkspaceStepConfig:
+class WorkspaceStepDefinition:
     """
-    Configuration for a pipeline step that comes from a developer workspace.
+    Definition for a pipeline step that comes from a developer workspace.
     
     This class defines how to locate and configure a step implementation
     from a specific developer's workspace.
@@ -399,16 +399,16 @@ class WorkspaceStepConfig:
         if not isinstance(self.config_data, dict):
             raise ValueError("config_data must be a dictionary")
 
-class WorkspacePipelineConfig(BaseModel):
+class WorkspacePipelineDefinition(BaseModel):
     """
-    Configuration for an entire pipeline using workspace steps.
+    Definition for an entire pipeline using workspace steps.
     
     This Pydantic model provides validation and serialization for
-    workspace-based pipeline configurations.
+    workspace-based pipeline definitions.
     """
     pipeline_name: str = Field(description="Name of the pipeline")
-    workspace_steps: Dict[str, WorkspaceStepConfig] = Field(
-        description="Mapping of step names to workspace step configurations"
+    workspace_steps: Dict[str, WorkspaceStepDefinition] = Field(
+        description="Mapping of step names to workspace step definitions"
     )
     shared_parameters: Dict[str, Any] = Field(
         default_factory=dict,
@@ -428,15 +428,15 @@ class WorkspacePipelineConfig(BaseModel):
     )
     
     @model_validator(mode='after')
-    def validate_workspace_steps(self) -> 'WorkspacePipelineConfig':
-        """Validate workspace step configurations."""
+    def validate_workspace_steps(self) -> 'WorkspacePipelineDefinition':
+        """Validate workspace step definitions."""
         if not self.workspace_steps:
             raise ValueError("At least one workspace step must be defined")
         
-        # Validate each workspace step config
+        # Validate each workspace step definition
         for step_name, step_config in self.workspace_steps.items():
-            if not isinstance(step_config, WorkspaceStepConfig):
-                raise ValueError(f"Invalid workspace step config for {step_name}")
+            if not isinstance(step_config, WorkspaceStepDefinition):
+                raise ValueError(f"Invalid workspace step definition for {step_name}")
         
         return self
     
@@ -469,11 +469,11 @@ class WorkspacePipelineConfig(BaseModel):
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'WorkspacePipelineConfig':
+    def from_dict(cls, data: Dict[str, Any]) -> 'WorkspacePipelineDefinition':
         """Create instance from dictionary."""
         workspace_steps = {}
         for name, config_data in data.get('workspace_steps', {}).items():
-            workspace_steps[name] = WorkspaceStepConfig(**config_data)
+            workspace_steps[name] = WorkspaceStepDefinition(**config_data)
         
         return cls(
             pipeline_name=data['pipeline_name'],
@@ -709,7 +709,7 @@ class WorkspaceAwareDAG(PipelineDAG):
         self.add_node(step_name)
         
         # Store workspace information
-        self.workspace_step_info[step_name] = WorkspaceStepConfig(
+        self.workspace_step_info[step_name] = WorkspaceStepDefinition(
             developer_id=developer_id,
             step_name=step_name,
             step_type=step_type,
@@ -721,12 +721,12 @@ class WorkspaceAwareDAG(PipelineDAG):
         """Set the root directory for developer workspaces."""
         self.workspace_root = workspace_root
     
-    def get_workspace_config(self, step_name: str) -> Optional[WorkspaceStepConfig]:
-        """Get workspace configuration for a step."""
+    def get_workspace_config(self, step_name: str) -> Optional[WorkspaceStepDefinition]:
+        """Get workspace definition for a step."""
         return self.workspace_step_info.get(step_name)
     
-    def get_workspace_steps(self) -> Dict[str, WorkspaceStepConfig]:
-        """Get all workspace step configurations."""
+    def get_workspace_steps(self) -> Dict[str, WorkspaceStepDefinition]:
+        """Get all workspace step definitions."""
         return self.workspace_step_info.copy()
     
     def get_developers(self) -> List[str]:
@@ -814,18 +814,18 @@ class WorkspaceAwareDAG(PipelineDAG):
     
     def to_workspace_pipeline_config(self, 
                                    pipeline_name: str,
-                                   workspace_root: str = "developer_workspaces/developers") -> WorkspacePipelineConfig:
+                                   workspace_root: str = "developer_workspaces/developers") -> WorkspacePipelineDefinition:
         """
-        Convert this DAG to a WorkspacePipelineConfig.
+        Convert this DAG to a WorkspacePipelineDefinition.
         
         Args:
-            pipeline_name: Name for the pipeline configuration
+            pipeline_name: Name for the pipeline definition
             workspace_root: Root directory for workspaces
             
         Returns:
-            WorkspacePipelineConfig instance
+            WorkspacePipelineDefinition instance
         """
-        return WorkspacePipelineConfig(
+        return WorkspacePipelineDefinition(
             pipeline_name=pipeline_name,
             workspace_steps=self.workspace_step_info,
             workspace_root=workspace_root
@@ -872,13 +872,13 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
     
     def compile_workspace_dag(self, 
                             workspace_dag: WorkspaceAwareDAG,
-                            workspace_pipeline_config: WorkspacePipelineConfig) -> Tuple[Pipeline, Dict[str, Any]]:
+                            workspace_pipeline_config: WorkspacePipelineDefinition) -> Tuple[Pipeline, Dict[str, Any]]:
         """
         Compile a workspace-aware DAG into a SageMaker Pipeline.
         
         Args:
             workspace_dag: WorkspaceAwareDAG instance
-            workspace_pipeline_config: Workspace pipeline configuration
+            workspace_pipeline_config: Workspace pipeline definition
             
         Returns:
             Tuple of (Pipeline, compilation_report)

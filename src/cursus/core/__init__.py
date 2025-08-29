@@ -92,6 +92,13 @@ from .deps import (
     SemanticMatcher,
     create_pipeline_components
 )
+from .workspace import (
+    WorkspaceStepDefinition,
+    WorkspacePipelineDefinition,
+    WorkspaceComponentRegistry,
+    WorkspacePipelineAssembler,
+    WorkspaceDAGCompiler
+)
 
 __all__ = [
     # Base classes
@@ -168,4 +175,11 @@ __all__ = [
     "create_dependency_resolver",
     "SemanticMatcher",
     "create_pipeline_components",
+    
+    # Workspace components
+    "WorkspaceStepDefinition",
+    "WorkspacePipelineDefinition",
+    "WorkspaceComponentRegistry",
+    "WorkspacePipelineAssembler",
+    "WorkspaceDAGCompiler",
 ]

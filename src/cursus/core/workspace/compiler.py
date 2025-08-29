@@ -15,7 +15,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 
 from ..compiler.dag_compiler import PipelineDAGCompiler
 from ...api.dag.workspace_dag import WorkspaceAwareDAG
-from .config import WorkspacePipelineConfig
+from .config import WorkspacePipelineDefinition
 from .assembler import WorkspacePipelineAssembler
 from .registry import WorkspaceComponentRegistry
 
@@ -75,7 +75,7 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
         try:
             # Convert workspace DAG to workspace pipeline config
             pipeline_config_dict = workspace_dag.to_workspace_pipeline_config("workspace_pipeline")
-            workspace_config = WorkspacePipelineConfig(**pipeline_config_dict)
+            workspace_config = WorkspacePipelineDefinition(**pipeline_config_dict)
             
             # Create workspace pipeline assembler
             assembler = WorkspacePipelineAssembler(
@@ -129,7 +129,7 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
         try:
             # Convert to workspace config for validation
             pipeline_config_dict = workspace_dag.to_workspace_pipeline_config("preview_pipeline")
-            workspace_config = WorkspacePipelineConfig(**pipeline_config_dict)
+            workspace_config = WorkspacePipelineDefinition(**pipeline_config_dict)
             
             # Create assembler for preview
             assembler = WorkspacePipelineAssembler(
@@ -207,7 +207,7 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
         try:
             # Convert to workspace config for validation
             pipeline_config_dict = workspace_dag.to_workspace_pipeline_config("validation_pipeline")
-            workspace_config = WorkspacePipelineConfig(**pipeline_config_dict)
+            workspace_config = WorkspacePipelineDefinition(**pipeline_config_dict)
             
             # Use registry to validate components
             validation_result = self.workspace_registry.validate_component_availability(workspace_config)
@@ -296,7 +296,7 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
     @classmethod
     def from_workspace_config(
         cls,
-        workspace_config: WorkspacePipelineConfig,
+        workspace_config: WorkspacePipelineDefinition,
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         **kwargs
@@ -305,7 +305,7 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
         Create compiler from workspace configuration.
         
         Args:
-            workspace_config: WorkspacePipelineConfig instance
+            workspace_config: WorkspacePipelineDefinition instance
             sagemaker_session: Optional SageMaker session
             role: Optional IAM role
             **kwargs: Additional arguments
