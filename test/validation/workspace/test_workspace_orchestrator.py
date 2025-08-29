@@ -257,45 +257,69 @@ class TestWorkspaceValidationOrchestrator(unittest.TestCase):
         mock_alignment_class.assert_called()
         mock_builder_class.assert_called()
     
-    # COMMENTED OUT - TOO SLOW: Complex parallel validation test
-    # @patch('src.cursus.validation.workspace.workspace_orchestrator.concurrent.futures.ThreadPoolExecutor')
-    # @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUnifiedAlignmentTester')
-    # @patch('src.cursus.validation.workspace.workspace_orchestrator.WorkspaceUniversalStepBuilderTest')
-    # def test_validate_all_workspaces_parallel(self, mock_builder_class, mock_alignment_class, mock_executor_class):
-    #     """Test parallel validation of all workspaces."""
-    #     # Create a proper mock executor that supports context manager protocol
-    #     mock_executor = MagicMock()
-    #     mock_future1 = Mock()
-    #     mock_future2 = Mock()
-    #     mock_future1.result.return_value = {
-    #         "developer_1": {"alignment": {"level1": {"passed": True, "errors": []}}}
-    #     }
-    #     mock_future2.result.return_value = {
-    #         "developer_1": {"builders": {"TestBuilder": {"passed": True, "errors": []}}}
-    #     }
-    #     mock_executor.submit.side_effect = [mock_future1, mock_future2]
-    #     mock_executor.__enter__.return_value = mock_executor
-    #     mock_executor.__exit__.return_value = None
-    #     mock_executor_class.return_value = mock_executor
-    #     
-    #     # Mock testers
-    #     mock_alignment_tester = Mock()
-    #     mock_builder_tester = Mock()
-    #     mock_alignment_class.return_value = mock_alignment_tester
-    #     mock_builder_class.return_value = mock_builder_tester
-    #     
-    #     # Create new orchestrator to use mocked classes
-    #     orchestrator = WorkspaceValidationOrchestrator(
-    #         workspace_root=self.workspace_root
-    #     )
-    #     orchestrator.workspace_manager = self.mock_workspace_manager
-    #     
-    #     results = orchestrator.validate_all_workspaces(parallel=True)
-    #     
-    #     self.assertIsNotNone(results)
-    #     # Verify executor was used
-    #     mock_executor_class.assert_called_once()
-    #     self.assertEqual(mock_executor.submit.call_count, 2)
+    @patch('src.cursus.validation.workspace.workspace_orchestrator.concurrent.futures.ThreadPoolExecutor')
+    def test_validate_all_workspaces_parallel(self, mock_executor_class):
+        """Test parallel validation of all workspaces."""
+        # Create a proper mock executor that supports context manager protocol
+        mock_executor = MagicMock()
+        mock_future1 = Mock()
+        mock_future2 = Mock()
+        
+        # Mock the results that would be returned by validate_workspace calls
+        mock_result_1 = {
+            'developer_id': 'developer_1',
+            'success': True,
+            'results': {
+                'alignment': {'level1': {'passed': True, 'errors': []}},
+                'builders': {'TestBuilder': {'passed': True, 'errors': []}}
+            },
+            'summary': {},
+            'recommendations': []
+        }
+        mock_result_2 = {
+            'developer_id': 'developer_2', 
+            'success': True,
+            'results': {
+                'alignment': {'level1': {'passed': True, 'errors': []}},
+                'builders': {'TestBuilder': {'passed': True, 'errors': []}}
+            },
+            'summary': {},
+            'recommendations': []
+        }
+        
+        mock_future1.result.return_value = mock_result_1
+        mock_future2.result.return_value = mock_result_2
+        
+        mock_executor.submit.side_effect = [mock_future1, mock_future2]
+        mock_executor.__enter__.return_value = mock_executor
+        mock_executor.__exit__.return_value = None
+        mock_executor_class.return_value = mock_executor
+        
+        # Create new orchestrator
+        orchestrator = WorkspaceValidationOrchestrator(
+            workspace_root=self.workspace_root
+        )
+        orchestrator.workspace_manager = self.mock_workspace_manager
+        
+        # Mock the _run_parallel_validations method directly to avoid any real validation logic
+        def mock_run_parallel_validations(developers, validation_levels, validation_config):
+            return {
+                'developer_1': mock_result_1,
+                'developer_2': mock_result_2
+            }
+        
+        orchestrator._run_parallel_validations = Mock(side_effect=mock_run_parallel_validations)
+        
+        results = orchestrator.validate_all_workspaces(parallel=True)
+        
+        self.assertIsNotNone(results)
+        # Verify the parallel method was called
+        orchestrator._run_parallel_validations.assert_called_once()
+        
+        # Check that results contain expected structure
+        self.assertIn('results', results)
+        self.assertIn('total_workspaces', results)
+        self.assertEqual(results['total_workspaces'], 2)
     
     def test_generate_validation_report(self):
         """Test generation of validation report."""
