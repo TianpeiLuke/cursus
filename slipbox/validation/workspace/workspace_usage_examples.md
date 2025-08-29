@@ -226,7 +226,7 @@ When adding new examples or patterns:
 
 - **Implementation Details**: See source code in `src/cursus/validation/workspace/`
 - **Unit Tests**: Reference `test/validation/workspace/` for testing patterns
-- **Design Documentation**: Review `slipbox/1_design/multi_developer_workspace_management_system.md`
+- **Design Documentation**: Review `slipbox/1_design/workspace_aware_multi_developer_management_design.md`
 - **Project Planning**: Check `slipbox/2_project_planning/` for implementation roadmap
 
 ---

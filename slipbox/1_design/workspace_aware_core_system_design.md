@@ -1248,7 +1248,7 @@ This design enables the Multi-Developer Workspace Management System by providing
 This design document is part of a comprehensive multi-developer system architecture. For complete understanding, refer to these related documents:
 
 ### Core System Architecture
-- **[Multi-Developer Workspace Management System](multi_developer_workspace_management_system.md)** - Master design document that defines the overall architecture and core principles for supporting multiple developer workspaces
+- **[Workspace-Aware Multi-Developer Management Design](workspace_aware_multi_developer_management_design.md)** - Master design document that defines the overall architecture and core principles for supporting multiple developer workspaces
 - **[Workspace-Aware Validation System Design](workspace_aware_validation_system_design.md)** - Validation framework extensions that provide comprehensive testing and quality assurance for workspace components
 
 ### Implementation Foundation

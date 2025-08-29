@@ -1367,10 +1367,10 @@ By merging the two separate implementation plans, we have:
 This unified implementation plan consolidates and is based on the comprehensive design documents in `slipbox/1_design/`. For detailed architectural specifications and design rationale, refer to:
 
 ### Master Architecture Documents
-- **[Multi-Developer Workspace Management System](../1_design/multi_developer_workspace_management_system.md)** - Master design document defining overall architecture and core principles
+- **[Workspace-Aware Multi-Developer Management Design](../1_design/workspace_aware_multi_developer_management_design.md)** - Master design document defining overall architecture and core principles
 - **[Workspace-Aware Validation System Design](../1_design/workspace_aware_validation_system_design.md)** - Detailed design for validation framework extensions
 - **[Workspace-Aware Core System Design](../1_design/workspace_aware_core_system_design.md)** - Core system extensions for workspace-aware pipeline assembly
-- **[Distributed Registry System Design](../1_design/distributed_registry_system_design.md)** - Registry architecture for workspace isolation and component discovery
+- **[Workspace-Aware Distributed Registry Design](../1_design/workspace_aware_distributed_registry_design.md)** - Registry architecture for workspace isolation and component discovery
 
 ### Foundation Framework Documents
 - **[Universal Step Builder Test](../1_design/universal_step_builder_test.md)** - Core step builder testing framework

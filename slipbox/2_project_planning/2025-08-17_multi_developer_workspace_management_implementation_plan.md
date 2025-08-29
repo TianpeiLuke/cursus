@@ -27,7 +27,7 @@ date of note: 2025-08-17
 
 ## Executive Summary
 
-This document presents a comprehensive implementation plan for the **Multi-Developer Workspace Management System** designed in [Multi-Developer Workspace Management System Design](../1_design/multi_developer_workspace_management_system.md). The system extends the current Cursus architecture to support multiple developers working collaboratively on step builders and pipeline components while maintaining the high standards of code quality and architectural compliance.
+This document presents a comprehensive implementation plan for the **Multi-Developer Workspace Management System** designed in [Workspace-Aware Multi-Developer Management Design](../1_design/workspace_aware_multi_developer_management_design.md). The system extends the current Cursus architecture to support multiple developers working collaboratively on step builders and pipeline components while maintaining the high standards of code quality and architectural compliance.
 
 **Key Transformation**: Convert the current **single-developer codebase** into a **collaborative platform** capable of supporting multiple contributors with **isolated workspaces**, **comprehensive validation**, and **automated integration workflows**.
 
@@ -1321,7 +1321,7 @@ The system validates your code at 5 levels:
 ## Related Documents
 
 ### **Design Foundation**
-- **[Multi-Developer Workspace Management System Design](../1_design/multi_developer_workspace_management_system.md)** - Complete system design and architecture
+- **[Workspace-Aware Multi-Developer Management Design](../1_design/workspace_aware_multi_developer_management_design.md)** - Complete system design and architecture
 
 ### **Validation Framework References**
 - **[Unified Alignment Tester Master Design](../1_design/unified_alignment_tester_master_design.md)** - Foundation validation framework with 100% success rate

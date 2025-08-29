@@ -1170,8 +1170,8 @@ This unified design enables the Multi-Developer Workspace Management System by p
 This design document is part of a comprehensive multi-developer system architecture. For complete understanding, refer to these related documents:
 
 ### Core System Architecture
-- **[Multi-Developer Workspace Management System](multi_developer_workspace_management_system.md)** - Master design document that defines the overall architecture and core principles for supporting multiple developer workspaces
-- **[Distributed Registry System Design](distributed_registry_system_design.md)** - Registry architecture that enables workspace isolation and component discovery, working closely with the validation system
+- **[Workspace-Aware Multi-Developer Management Design](workspace_aware_multi_developer_management_design.md)** - Master design document that defines the overall architecture and core principles for supporting multiple developer workspaces
+- **[Workspace-Aware Distributed Registry Design](workspace_aware_distributed_registry_design.md)** - Registry architecture that enables workspace isolation and component discovery, working closely with the validation system
 
 ### Implementation Analysis
 - **[Multi-Developer Validation System Analysis](../4_analysis/multi_developer_validation_system_analysis.md)** - Detailed analysis of current validation system capabilities and implementation feasibility for multi-developer support
