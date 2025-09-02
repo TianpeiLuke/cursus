@@ -22,7 +22,7 @@ def s3():
 @click.option('--bucket', required=True, help='S3 bucket name')
 @click.option('--pipeline', required=True, help='Pipeline name')
 @click.option('--execution-id', help='Specific execution ID (optional)')
-@click.option('--workspace-dir', default='./pipeline_testing', help='Workspace directory')
+@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1', help='Workspace directory')
 @click.option('--output-format', type=click.Choice(['text', 'json']), default='text',
              help='Output format')
 def discover(bucket, pipeline, execution_id, workspace_dir, output_format):
@@ -75,7 +75,7 @@ def discover(bucket, pipeline, execution_id, workspace_dir, output_format):
 @click.option('--pipeline', required=True, help='Pipeline name')
 @click.option('--execution-id', help='Specific execution ID (optional)')
 @click.option('--steps', help='Comma-separated list of steps to test')
-@click.option('--workspace-dir', default='./pipeline_testing', help='Workspace directory')
+@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1', help='Workspace directory')
 @click.option('--output-format', type=click.Choice(['text', 'json']), default='text',
              help='Output format')
 def test_real_data(bucket, pipeline, execution_id, steps, workspace_dir, output_format):
@@ -154,7 +154,7 @@ def test_real_data(bucket, pipeline, execution_id, steps, workspace_dir, output_
         sys.exit(1)
 
 @s3.command()
-@click.option('--workspace-dir', default='./pipeline_testing', help='Workspace directory')
+@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1', help='Workspace directory')
 @click.option('--workspace-name', help='Specific workspace name to get info for (optional)')
 @click.option('--output-format', type=click.Choice(['text', 'json']), default='text',
              help='Output format')
@@ -202,7 +202,7 @@ def workspace_info(workspace_dir, workspace_name, output_format):
         sys.exit(1)
 
 @s3.command()
-@click.option('--workspace-dir', default='./pipeline_testing', help='Workspace directory')
+@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1', help='Workspace directory')
 @click.option('--workspace-name', required=True, help='Workspace name to clean')
 @click.confirmation_option(prompt='Are you sure you want to clean the workspace?')
 def clean_workspace(workspace_dir, workspace_name):
@@ -218,7 +218,7 @@ def clean_workspace(workspace_dir, workspace_name):
         sys.exit(1)
 
 @s3.command()
-@click.option('--workspace-dir', default='./pipeline_testing', help='Workspace directory')
+@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1', help='Workspace directory')
 @click.confirmation_option(prompt='Are you sure you want to clean the cache?')
 def clean_cache(workspace_dir):
     """Clean up cached S3 data."""

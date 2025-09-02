@@ -48,7 +48,7 @@ class NotebookSession(BaseModel):
 class NotebookInterface:
     """Interactive Jupyter interface for pipeline testing with workspace awareness."""
     
-    def __init__(self, workspace_dir: str = "./test_workspace", workspace_root: str = None):
+    def __init__(self, workspace_dir: str = "./developer_workspaces/developers/developer_1", workspace_root: str = None):
         """Initialize notebook interface with workspace directory and optional workspace root."""
         self.workspace_dir = Path(workspace_dir)
         self.workspace_dir.mkdir(parents=True, exist_ok=True)

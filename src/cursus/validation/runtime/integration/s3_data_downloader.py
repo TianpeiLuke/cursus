@@ -29,7 +29,7 @@ class DownloadResult(BaseModel):
 class S3DataDownloader:
     """Downloads pipeline data from S3 for testing."""
     
-    def __init__(self, workspace_dir: str = "./pipeline_testing", 
+    def __init__(self, workspace_dir: str = "./developer_workspaces/developers/developer_1",
                 profile_name: Optional[str] = None, 
                 region_name: Optional[str] = None):
         """Initialize with workspace directory and AWS credentials.
