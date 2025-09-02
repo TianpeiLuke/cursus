@@ -66,6 +66,7 @@ def main():
         ('test_runtime_cli', 'Runtime CLI Tests'),
         ('test_alignment_cli', 'Alignment CLI Tests'),
         ('test_builder_test_cli', 'Builder Test CLI Tests'),
+        ('test_workspace_cli', 'Workspace CLI Tests'),
     ]
     
     total_success = True
