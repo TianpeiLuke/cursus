@@ -1370,160 +1370,6 @@ class StepBuilderBase(ABC):
 - [x] Simplified workspace context detection
 - [x] All existing functionality preserved
 - [x] Reduced complexity compared to distributed approach
-**Duration**: 4 weeks  
-**Risk Level**: Medium  
-**Dependencies**: Phases 1, 3 completion
-
-#### 6.1 Workspace-Aware Testing Infrastructure
-**Deliverables**:
-- Extend existing Pipeline Runtime Testing System for workspace support
-- Implement `WorkspaceScriptExecutor` with workspace-aware script discovery
-- Create `WorkspaceDataManager` for isolated test data management
-- Add workspace-specific test environment setup
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/validation/runtime/workspace/workspace_script_executor.py
-class WorkspaceScriptExecutor(PipelineScriptExecutor):
-    """Workspace-aware script executor extending base functionality."""
-    
-    def __init__(self, workspace_context: WorkspaceContext):
-        self.workspace_context = workspace_context
-        self.workspace_script_manager = WorkspaceScriptImportManager(workspace_context)
-        self.workspace_data_manager = WorkspaceDataManager(workspace_context)
-    
-    def test_workspace_script_isolation(self, script_name: str, workspace_id: str,
-                                      data_source: str = "synthetic") -> WorkspaceTestResult:
-        """Test script in isolation within specific workspace."""
-        
-    def test_cross_workspace_script_compatibility(self, script_name: str, 
-                                                source_workspace: str,
-                                                target_workspaces: List[str]) -> CrossWorkspaceCompatibilityResult:
-        """Test script compatibility across multiple workspaces."""
-
-# File: src/cursus/validation/runtime/workspace/workspace_data_manager.py
-class WorkspaceDataManager:
-    """Manages test data across multiple workspaces with isolation."""
-    
-    def __init__(self, workspace_context: WorkspaceContext):
-        self.workspace_context = workspace_context
-        self.local_data_managers = {}
-        self.shared_data_registry = SharedTestDataRegistry()
-    
-    def get_workspace_test_data(self, workspace_id: str, data_type: str) -> WorkspaceTestData
-    def prepare_cross_workspace_test_data(self, workspace_mapping: Dict[str, str], data_scenario: str) -> CrossWorkspaceTestData
-```
-
-**Acceptance Criteria**:
-- [ ] Workspace-aware script discovery and execution
-- [ ] Isolated test data management per workspace
-- [ ] Cross-workspace script compatibility testing
-- [ ] Integration with existing runtime testing infrastructure
-- [ ] Backward compatibility with single-workspace testing
-
-#### 6.2 Cross-Workspace Pipeline Testing
-**Deliverables**:
-- Implement `WorkspacePipelineExecutor` for multi-workspace pipeline execution
-- Create `CrossWorkspaceValidator` for compatibility validation
-- Add workspace-aware pipeline execution orchestration
-- Implement cross-workspace data flow validation
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/validation/runtime/workspace/workspace_pipeline_executor.py
-class WorkspacePipelineExecutor(PipelineExecutor):
-    """Executes pipelines across multiple developer workspaces."""
-    
-    def __init__(self, workspace_context: WorkspaceContext):
-        self.workspace_context = workspace_context
-        self.workspace_script_executor = WorkspaceScriptExecutor(workspace_context)
-        self.cross_workspace_validator = CrossWorkspaceValidator()
-    
-    def execute_workspace_pipeline(self, dag, workspace_id: str, 
-                                 data_source: str = "synthetic") -> WorkspacePipelineExecutionResult:
-        """Execute pipeline within a specific workspace context."""
-        
-    def execute_cross_workspace_pipeline(self, dag, workspace_mapping: Dict[str, str],
-                                       data_source: str = "synthetic") -> CrossWorkspacePipelineExecutionResult:
-        """Execute pipeline using components from multiple workspaces."""
-
-# File: src/cursus/validation/runtime/workspace/cross_workspace_validator.py
-class CrossWorkspaceValidator:
-    """Validates compatibility between workspace components."""
-    
-    def validate_cross_workspace_pipeline(self, pipeline_definition: Dict,
-                                        workspace_mapping: Dict[str, str]) -> CrossWorkspaceValidationResult:
-        """Validate pipeline that uses components from multiple workspaces."""
-        
-    def validate_workspace_component_compatibility(self, component_a: WorkspaceComponent,
-                                                 component_b: WorkspaceComponent) -> ComponentCompatibilityResult:
-        """Validate compatibility between two workspace components."""
-```
-
-**Acceptance Criteria**:
-- [ ] Multi-workspace pipeline execution capability
-- [ ] Cross-workspace compatibility validation
-- [ ] Workspace-aware data flow management
-- [ ] Integration with workspace component registry
-- [ ] Comprehensive cross-workspace testing reports
-
-#### 6.3 Workspace Test Management and Orchestration
-**Deliverables**:
-- Implement `WorkspaceTestManager` for comprehensive test orchestration
-- Create workspace-specific test environment management
-- Add test result aggregation across workspaces
-- Implement workspace test reporting and visualization
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/validation/runtime/workspace/workspace_test_manager.py
-class WorkspaceTestManager:
-    """Manages testing across multiple developer workspaces."""
-    
-    def __init__(self, workspace_registry: WorkspaceComponentRegistry):
-        self.workspace_registry = workspace_registry
-        self.workspace_executors = {}
-        self.cross_workspace_validator = CrossWorkspaceValidator()
-    
-    def setup_workspace_testing_environment(self, workspace_id: str) -> WorkspaceTestingEnvironment:
-        """Set up isolated testing environment for a workspace."""
-        
-    def run_workspace_test_suite(self, workspace_id: str, 
-                               test_scenarios: List[TestScenario]) -> WorkspaceTestSuiteResult:
-        """Run complete test suite for a specific workspace."""
-        
-    def run_cross_workspace_compatibility_tests(self, 
-                                              workspace_combinations: List[Tuple[str, str]]) -> CrossWorkspaceCompatibilityReport:
-        """Run compatibility tests between workspace pairs."""
-```
-
-**Acceptance Criteria**:
-- [ ] Comprehensive workspace test orchestration
-- [ ] Isolated test environment management
-- [ ] Cross-workspace compatibility testing
-- [ ] Test result aggregation and reporting
-- [ ] Integration with existing Jupyter notebook interface
-
-#### 6.4 Integration with Existing Runtime Testing
-**Deliverables**:
-- Integrate workspace extensions with existing runtime testing components
-- Extend existing data models for workspace context
-- Update Jupyter integration for workspace-aware testing
-- Add workspace-aware CLI commands
-
-**Implementation Tasks**:
-- Extend existing `TestResult` and `ExecutionResult` models with workspace context
-- Update Jupyter notebook interface to support workspace selection
-- Add workspace-aware CLI commands to existing runtime testing CLI
-- Integrate with existing S3 data management and caching systems
-- Update existing visualization and reporting for workspace context
-
-**Acceptance Criteria**:
-- [ ] Seamless integration with existing runtime testing infrastructure
-- [ ] Workspace context in all test results and reports
-- [ ] Updated Jupyter interface with workspace support
-- [ ] Backward compatibility with existing runtime testing workflows
-- [ ] Enhanced CLI with workspace-aware commands
 
 ### Phase 8: Integration and Testing (Weeks 27-29)
 **Duration**: 3 weeks  
@@ -1611,73 +1457,25 @@ class WorkspaceTestManager:
 - [ ] Troubleshooting guides address common issues
 - [ ] API documentation covers all workspace functionality
 
-### Phase 7: Testing and Validation (Weeks 23-25)
-**Duration**: 3 weeks  
-**Risk Level**: Low  
-**Dependencies**: Phase 6 completion
-
-#### 7.1 Comprehensive Testing
-**Deliverables**:
-- Achieve >95% code coverage for all workspace components
-- Create comprehensive unit test suite
-- Add edge case and error condition testing
-- Implement property-based testing where appropriate
-
-**Implementation Tasks**:
-- Complete unit test coverage for all workspace components
-- Add integration tests for cross-system functionality
-- Create edge case and error condition tests
-- Implement performance regression tests
-- Add property-based testing for complex scenarios
-
-**Acceptance Criteria**:
-- [ ] >95% code coverage for all workspace components
-- [ ] Comprehensive unit and integration test coverage
-- [ ] Edge cases and error conditions properly tested
-- [ ] Performance regression tests prevent degradation
-- [ ] Property-based tests validate complex scenarios
-
-#### 7.2 User Acceptance and Performance Testing
-**Deliverables**:
-- Benchmark workspace operations against standard operations
-- Validate performance targets
-- Test scalability with multiple workspaces
-- Conduct user acceptance testing
-
-**Implementation Tasks**:
-- Create performance benchmarks for all workspace operations
-- Validate performance targets are met
-- Test scalability with realistic workspace scenarios
-- Conduct user acceptance testing with sample workflows
-- Gather feedback and implement improvements
-
-**Acceptance Criteria**:
-- [ ] Performance targets met for all workspace operations
-- [ ] System scales appropriately with multiple workspaces
-- [ ] User acceptance testing validates usability
-- [ ] Feedback incorporated and improvements implemented
-- [ ] System ready for production deployment
-
 ## Implementation Strategy
 
 ### Unified Extension Mechanisms Focus
 Based on the consolidation of both plans, focus on core mechanisms and functionality to share with all users:
 
 **Include in Package**:
-- Foundation infrastructure (DeveloperWorkspaceFileResolver, WorkspaceModuleLoader, WorkspaceManager)
-- Workspace-aware validation extensions (WorkspaceUnifiedAlignmentTester, WorkspaceUniversalStepBuilderTest)
-- Workspace-aware core extensions (WorkspacePipelineAssembler, WorkspaceAwareDAG, WorkspaceDAGCompiler)
-- Enhanced file resolution and module loading
-- Registry extension points and inheritance mechanisms
-- Backward compatibility layer for existing code
-- Validation and compilation orchestration frameworks
+- **Consolidated Foundation Infrastructure**: Unified `WorkspaceManager` within `src/cursus/core/workspace/` with specialized managers (lifecycle, isolation, discovery, integration)
+- **Workspace-Aware Validation Extensions**: Integrated validation through `UnifiedValidationCore` within `src/cursus/validation/workspace/`
+- **Workspace-Aware Core Extensions**: `WorkspaceComponentRegistry`, `WorkspaceAwareDAG`, and configuration models within `src/cursus/core/workspace/`
+- **Enhanced File Resolution and Module Loading**: Consolidated within `src/cursus/core/workspace/`
+- **Registry Extension Points**: Consolidated registry with backward compatibility layer within `src/cursus/core/workspace/`
+- **Validation and Compilation Orchestration**: Unified frameworks within the core package structure
+- **CLI Tools and Interfaces**: Complete workspace CLI within `src/cursus/cli/workspace_cli.py`
 
 **Exclude from Package** (User Implementation):
-- Full workspace management infrastructure beyond core mechanisms
-- Complete distributed registry federation beyond extension points
-- Integration staging and workflow management
-- CLI tools and user interfaces
-- Workspace-specific business logic
+- **External Workspace Directories**: Developer workspace content remains in `developer_workspaces/` (data-only)
+- **User-Specific Components**: Custom step builders, configs, contracts, and scripts in user workspaces
+- **Integration Staging Areas**: User-managed staging and integration workflows
+- **Workspace-Specific Business Logic**: Domain-specific workspace customizations
 
 ### Development Approach
 
@@ -1810,21 +1608,21 @@ Based on the consolidation of both plans, focus on core mechanisms and functiona
 
 ## Timeline and Milestones
 
-### Phase 1: Foundation Infrastructure (Weeks 1-3)
-- **Milestone 1**: Enhanced file resolution and module loading complete
+### Phase 1: Consolidated Foundation Infrastructure (Weeks 1-3)
+- **Milestone 1**: Consolidated workspace manager and foundation infrastructure complete
 - **Deliverable**: Core workspace infrastructure ready for all extensions
 
-### Phase 2: Workspace-Aware Validation (Weeks 4-7)
-- **Milestone 2**: Workspace validation extensions complete
+### Phase 2: Unified Workspace Validation System (Weeks 4-7)
+- **Milestone 2**: Unified workspace validation system complete
 - **Deliverable**: Full workspace validation capability with existing API compatibility
 
-### Phase 3: Workspace-Aware Core System (Weeks 8-11)
+### Phase 3: Workspace-Aware Core System Extensions (Weeks 8-11)
 - **Milestone 3**: Workspace core system extensions complete
-- **Deliverable**: Workspace-aware pipeline assembly and DAG compilation
+- **Deliverable**: Workspace-aware pipeline assembly and configuration management
 
-### Phase 4: DAG Compilation Extensions (Weeks 12-14)
-- **Milestone 4**: Workspace DAG compilation complete
-- **Deliverable**: End-to-end workspace pipeline compilation
+### Phase 4: Workspace-Aware DAG System (Weeks 12-14)
+- **Milestone 4**: Workspace-aware DAG system complete
+- **Deliverable**: End-to-end workspace DAG functionality with integrated compilation
 
 ### Phase 5: Workspace-Aware Pipeline Runtime Testing (Weeks 15-18)
 - **Milestone 5**: Workspace-aware testing system complete
@@ -1834,12 +1632,12 @@ Based on the consolidation of both plans, focus on core mechanisms and functiona
 - **Milestone 6**: Workspace-aware CLI system complete
 - **Deliverable**: Comprehensive CLI supporting workspace lifecycle, cross-workspace operations, and developer experience optimization
 
-### Phase 7: Distributed Registry System (Weeks 23-26)
-- **Milestone 7**: Distributed registry system complete
+### Phase 7: Consolidated Registry System (Weeks 23-26)
+- **Milestone 7**: Consolidated registry system complete
 - **Deliverable**: Workspace-aware registry with backward compatibility
 
-### Phase 8: Testing and Validation (Weeks 27-29)
-- **Milestone 8**: Comprehensive testing and validation complete
+### Phase 8: Integration and Testing (Weeks 27-29)
+- **Milestone 8**: Comprehensive integration testing and validation complete
 - **Deliverable**: Production-ready workspace-aware system with full CLI support
 
 ## Post-Implementation
