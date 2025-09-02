@@ -22,11 +22,13 @@ language: python
 date of note: 2025-08-28
 ---
 
-# Distributed Registry System Design
+# Workspace-Aware Registry System Design
 
 ## Overview
 
-This document outlines the design for transforming the current centralized registry system in `src/cursus/steps/registry` into a distributed registry architecture that supports multiple developer workspaces. The new system enables each workspace to maintain its own registry while inheriting from a common core registry, providing isolation and extensibility without breaking existing functionality.
+**Note**: This design has been updated to reflect the consolidated workspace architecture outlined in the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is now centralized within `src/cursus/` for proper packaging compliance.
+
+This document outlines the design for transforming the current centralized registry system in `src/cursus/steps/registry` into a workspace-aware registry architecture that supports multiple developer workspaces. The new system enables each workspace to maintain its own registry while inheriting from a common core registry, providing isolation and extensibility without breaking existing functionality.
 
 ## Problem Statement
 

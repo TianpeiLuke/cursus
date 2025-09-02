@@ -24,6 +24,8 @@ date of note: 2025-08-29
 
 ## Overview
 
+**Note**: This design aligns with the consolidated workspace architecture outlined in the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is centralized within `src/cursus/` for proper packaging compliance.
+
 This design document extends the existing Pipeline Runtime Testing System to support workspace-aware functionality, enabling isolated pipeline testing across multiple developer workspaces while maintaining cross-workspace compatibility validation and shared testing infrastructure.
 
 ## Problem Statement

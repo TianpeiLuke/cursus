@@ -80,24 +80,28 @@ Building on the core architectural principles, the system follows these design g
 
 ## Architecture Overview
 
+**Note**: This design has been updated to reflect the consolidated workspace architecture outlined in the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is now centralized within `src/cursus/` for proper packaging compliance.
+
 ```
-Workspace-Aware Core System
-├── Core Extensions/
-│   ├── WorkspacePipelineAssembler
-│   ├── WorkspaceDAGCompiler
-│   └── WorkspaceComponentRegistry
-├── Component Discovery/
-│   ├── WorkspaceStepBuilderResolver
-│   ├── WorkspaceConfigResolver
-│   └── CrossWorkspaceComponentMatcher
-├── Configuration Management/
-│   ├── WorkspaceStepDefinition
-│   ├── WorkspacePipelineDefinition
-│   └── WorkspaceParameterManager
-└── Integration Layer/
-    ├── WorkspaceAwareDAG
-    ├── WorkspacePipelineTemplate
-    └── WorkspaceCatalogIntegration
+Consolidated Workspace-Aware Core System (src/cursus/)
+├── core/
+│   ├── workspace/
+│   │   ├── manager.py                    # Consolidated WorkspaceManager
+│   │   ├── assembler.py                  # WorkspacePipelineAssembler
+│   │   ├── compiler.py                   # WorkspaceDAGCompiler
+│   │   ├── registry.py                   # WorkspaceComponentRegistry
+│   │   ├── discovery.py                  # Component discovery services
+│   │   ├── models.py                     # Configuration models
+│   │   └── dag.py                        # WorkspaceAwareDAG
+│   └── pipeline/
+│       ├── assembler.py                  # Base PipelineAssembler (extended)
+│       └── compiler.py                   # Base DAGCompiler (extended)
+└── External Structure (data-only)/
+    └── developer_workspaces/
+        └── developers/                   # Developer workspace directories
+            ├── developer_1/              # Individual workspace (data only)
+            ├── developer_2/              # Individual workspace (data only)
+            └── developer_3/              # Individual workspace (data only)
 ```
 
 ## Core Components Design

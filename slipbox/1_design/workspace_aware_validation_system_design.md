@@ -29,6 +29,8 @@ date of note: 2025-08-28
 
 ## Overview
 
+**Note**: This design aligns with the consolidated workspace architecture outlined in the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is centralized within `src/cursus/` for proper packaging compliance.
+
 This document outlines the design for extending the current Cursus validation system to support workspace-aware validation with a **unified approach** that treats single workspace as a special case of multi-workspace (count=1). This eliminates dual-path complexity while enabling multiple developers to work in isolated workspaces with their own implementations of step builders, configs, step specs, script contracts, and scripts. The design maintains full backward compatibility while adding powerful multi-developer collaboration capabilities.
 
 ## Problem Statement

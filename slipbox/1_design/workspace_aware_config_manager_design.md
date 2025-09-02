@@ -27,6 +27,8 @@ date of note: 2025-08-29
 
 ## Overview
 
+**Note**: This design aligns with the consolidated workspace architecture outlined in the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is centralized within `src/cursus/` for proper packaging compliance.
+
 The Workspace-Aware Config Manager extends the existing configuration management system in `src/cursus/core/config_fields/` to support multi-developer workspace environments. This design addresses a critical gap in the current workspace implementation by enabling workspace-scoped configuration management, field categorization, and merging capabilities.
 
 ## Problem Statement

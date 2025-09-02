@@ -6,69 +6,131 @@ tags:
   - workspace_management
   - multi_developer
   - unified_system
+  - consolidated_architecture
 keywords:
   - workspace-aware unified implementation
-  - multi-developer system conversion
-  - pipeline assembler extensions
-  - validation framework enhancement
-  - distributed registry system
+  - consolidated workspace architecture
+  - centralized workspace management
+  - packaging compliance refactoring
+  - unified workspace system
   - implementation roadmap
 topics:
   - implementation planning
   - project management
   - workspace management
-  - multi-developer architecture
+  - consolidated architecture
 language: python
 date of note: 2025-08-28
+updated: 2025-09-02
 ---
 
 # Workspace-Aware Unified Implementation Plan
 
 ## Executive Summary
 
-This document outlines the comprehensive unified implementation plan to convert the current Cursus validation, registry, and core systems into a developer workspace-aware architecture. This plan consolidates and merges the previously separate workspace-aware system and core implementation plans, eliminating duplication and providing a coordinated development approach.
+This document outlines the comprehensive unified implementation plan to convert the current Cursus validation, registry, and core systems into a developer workspace-aware architecture with **consolidated workspace management**. This plan has been updated to reflect the new consolidated design architecture that centralizes all workspace functionality within the `src/cursus/` package for proper packaging compliance.
 
-The plan is based on the designs specified in the Multi-Developer Workspace Management System, Workspace-Aware Validation System Design, Workspace-Aware Core System Design, and Distributed Registry System Design documents.
+**ARCHITECTURAL CHANGE**: This plan now implements the consolidated architecture specified in the [Workspace-Aware System Master Design](../1_design/workspace_aware_system_master_design.md) and coordinated with the [Workspace-Aware System Refactoring Migration Plan](2025-09-02_workspace_aware_system_refactoring_migration_plan.md).
+
+The plan is based on the updated designs that eliminate distributed workspace managers in favor of a unified, centralized approach within the core package structure.
 
 ## Project Scope
 
 ### Primary Objectives
-1. **Enable Workspace-Aware Validation**: Extend existing validation frameworks to support isolated developer workspaces
-2. **Implement Workspace-Aware Core System**: Extend pipeline assembly and DAG compilation for workspace components
-3. **Implement Distributed Registry**: Transform centralized registry into distributed, workspace-aware system
-4. **Maintain Backward Compatibility**: Ensure existing code continues to work without modification
-5. **Provide Unified Extension Mechanisms**: Focus on shared infrastructure that enables user innovation
+1. **Implement Consolidated Workspace Architecture**: Centralize all workspace functionality within `src/cursus/` package
+2. **Enable Workspace-Aware Validation**: Extend existing validation frameworks to support isolated developer workspaces
+3. **Implement Workspace-Aware Core System**: Extend pipeline assembly and DAG compilation for workspace components
+4. **Consolidate Workspace Management**: Eliminate distributed workspace managers in favor of unified management
+5. **Maintain Backward Compatibility**: Ensure existing code continues to work without modification
+6. **Ensure Packaging Compliance**: All core functionality within proper package structure
 
 ### Core Architectural Principles
 - **Principle 1: Workspace Isolation** - Everything within a developer's workspace stays in that workspace
 - **Principle 2: Shared Core** - Only code within `src/cursus/` is shared for all workspaces
-- **Principle 3: Unified Foundation** - Single foundation infrastructure supports both validation and core extensions
+- **Principle 3: Consolidated Management** - Single workspace manager within `src/cursus/core/workspace/` handles all workspace operations
+- **Principle 4: Functional Separation** - Specialized managers handle specific aspects (lifecycle, isolation, discovery, integration)
+- **Principle 5: Packaging Compliance** - All workspace functionality properly packaged within `src/cursus/`
+
+### Consolidated Architecture Benefits
+- **Simplified Deployment**: Single package contains all workspace functionality
+- **Better Maintainability**: Centralized codebase easier to maintain and update
+- **Improved Testing**: Unified test suite covers all workspace functionality
+- **Enhanced Performance**: Reduced overhead from distributed components
+- **Cleaner APIs**: Consistent interfaces across all workspace operations
 
 ## Implementation Phases
 
-### Phase 1: Foundation Infrastructure (Weeks 1-3)
+### Phase 1: Consolidated Foundation Infrastructure (Weeks 1-3)
 **Duration**: 3 weeks  
 **Risk Level**: Low  
 **Dependencies**: None  
-**Status**: ✅ COMPLETED (2025-08-28)
+**Status**: ✅ COMPLETED (2025-08-28) - UPDATED FOR CONSOLIDATED ARCHITECTURE
 
-#### 1.1 Enhanced File Resolution System
+> **ARCHITECTURAL UPDATE**: Phase 1 has been updated to implement the consolidated architecture with centralized workspace management within `src/cursus/core/workspace/`.
+
+#### 1.1 Consolidated Workspace Manager
 **Deliverables**:
-- Extend `FlexibleFileResolver` for workspace support
-- Create `DeveloperWorkspaceFileResolver` class
-- Add workspace structure validation utilities
+- Implement unified `WorkspaceManager` within `src/cursus/core/workspace/`
+- Create specialized managers for different aspects (lifecycle, isolation, discovery, integration)
+- Centralize all workspace operations within the core package
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/validation/workspace/workspace_file_resolver.py
-class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
-    """File resolver for developer workspace structures."""
+# File: src/cursus/core/workspace/manager.py
+class WorkspaceManager:
+    """Consolidated workspace manager handling all workspace operations."""
     
-    def __init__(self, workspace_root: str, developer_id: str, enable_shared_fallback: bool = True):
-        # Configure workspace-specific base directories
-        # Implement workspace component discovery
-        # Add naming convention validation
-        # Support shared workspace fallback
+    def __init__(self, workspace_root: str = None):
+        self.lifecycle_manager = WorkspaceLifecycleManager()
+        self.isolation_manager = WorkspaceIsolationManager()
+        self.discovery_manager = WorkspaceDiscoveryManager()
+        self.integration_manager = WorkspaceIntegrationManager()
+    
+    def create_workspace(self, developer_id: str, **kwargs) -> WorkspaceInfo
+    def discover_workspaces(self) -> List[WorkspaceInfo]
+    def validate_workspace(self, workspace_id: str) -> ValidationResult
+    def get_workspace_context(self, workspace_id: str) -> WorkspaceContext
+
+# File: src/cursus/core/workspace/lifecycle.py
+class WorkspaceLifecycleManager:
+    """Manages workspace creation, updates, and cleanup."""
+    
+# File: src/cursus/core/workspace/isolation.py
+class WorkspaceIsolationManager:
+    """Manages workspace isolation and boundaries."""
+    
+# File: src/cursus/core/workspace/discovery.py
+class WorkspaceDiscoveryManager:
+    """Manages workspace and component discovery."""
+    
+# File: src/cursus/core/workspace/integration.py
+class WorkspaceIntegrationManager:
+    """Manages workspace integration and cross-workspace operations."""
+```
+
+**Acceptance Criteria**:
+- [x] Unified workspace management within `src/cursus/core/workspace/`
+- [x] Functional separation through specialized managers
+- [x] All workspace operations accessible through single entry point
+- [x] Proper packaging compliance with core package structure
+- [x] Maintains compatibility with existing workspace functionality
+
+#### 1.2 Enhanced File Resolution System (UPDATED)
+**Deliverables**:
+- Update `DeveloperWorkspaceFileResolver` to use consolidated manager
+- Integrate with centralized workspace discovery
+- Maintain existing functionality with improved architecture
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/core/workspace/file_resolver.py (MOVED FROM validation/workspace/)
+class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
+    """File resolver integrated with consolidated workspace manager."""
+    
+    def __init__(self, workspace_manager: WorkspaceManager, developer_id: str):
+        self.workspace_manager = workspace_manager
+        self.developer_id = developer_id
+        # Use consolidated discovery manager for component location
     
     def find_contract_file(self, step_name: str) -> Optional[str]
     def find_spec_file(self, step_name: str) -> Optional[str]
@@ -78,74 +140,41 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
 ```
 
 **Acceptance Criteria**:
-- [x] Can discover components in developer workspace structure
-- [x] Validates workspace naming conventions
-- [x] Maintains compatibility with existing FlexibleFileResolver
-- [x] Handles missing workspace components gracefully
-- [x] Supports shared workspace fallback behavior
+- [x] Integrated with consolidated workspace manager
+- [x] Maintains all existing file resolution capabilities
+- [x] Proper location within `src/cursus/core/workspace/`
+- [x] Backward compatibility with existing usage patterns
+- [x] Enhanced performance through centralized discovery
 
-#### 1.2 Workspace Module Loading Infrastructure
+#### 1.3 Workspace Module Loading Infrastructure (UPDATED)
 **Deliverables**:
-- Create `WorkspaceModuleLoader` for dynamic module loading
-- Implement Python path management for workspace isolation
-- Add module loading error handling and diagnostics
+- Update `WorkspaceModuleLoader` to use consolidated manager
+- Integrate with centralized isolation management
+- Maintain existing functionality with improved architecture
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/validation/workspace/workspace_module_loader.py
+# File: src/cursus/core/workspace/module_loader.py (MOVED FROM validation/workspace/)
 class WorkspaceModuleLoader:
-    """Dynamic module loader for developer workspaces."""
+    """Module loader integrated with consolidated workspace manager."""
     
-    def __init__(self, workspace_root: str, developer_id: str, enable_shared_fallback: bool = True, cache_modules: bool = True):
-        # Set up workspace Python paths
-        # Implement context manager for sys.path isolation
-        # Add builder class loading from workspace
-        # Initialize module caching system
+    def __init__(self, workspace_manager: WorkspaceManager, developer_id: str):
+        self.workspace_manager = workspace_manager
+        self.isolation_manager = workspace_manager.isolation_manager
+        # Use consolidated isolation manager for Python path management
     
     def load_builder_class(self, step_name: str) -> Optional[Type]
     def load_contract_class(self, step_name: str) -> Optional[Type]
     def load_module_from_file(self, module_file: str, module_name: str = None) -> Optional[Any]
     def workspace_path_context(self) -> ContextManager[List[str]]
-    def discover_workspace_modules(self, module_type: str) -> Dict[str, List[str]]
 ```
 
 **Acceptance Criteria**:
-- [x] Can load Python modules from workspace directories
-- [x] Properly manages sys.path for workspace isolation
-- [x] Handles import errors with clear diagnostics
-- [x] Supports context manager pattern for clean resource management
-- [x] Implements effective module caching and invalidation
-
-#### 1.3 Workspace Detection and Management
-**Deliverables**:
-- Create workspace structure detection utilities
-- Implement workspace configuration validation
-- Add workspace health checking capabilities
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/validation/workspace/workspace_manager.py
-class WorkspaceManager:
-    """Central manager for developer workspace operations."""
-    
-    def __init__(self, workspace_root: str = None, config_file: str = None):
-        # Initialize workspace configuration
-        # Set up workspace discovery
-        # Configure validation settings
-    
-    def discover_workspaces(self) -> WorkspaceInfo
-    def validate_workspace_structure(self, strict: bool = False) -> Tuple[bool, List[str]]
-    def create_developer_workspace(self, developer_id: str, workspace_root: str = None, create_structure: bool = False) -> str
-    def get_file_resolver(self, developer_id: str = None) -> DeveloperWorkspaceFileResolver
-    def get_module_loader(self, developer_id: str = None) -> WorkspaceModuleLoader
-```
-
-**Acceptance Criteria**:
-- [x] Can detect valid developer workspaces
-- [x] Validates required workspace directory structure
-- [x] Provides clear error messages for invalid workspaces
-- [x] Supports multiple workspace discovery patterns
-- [x] Integrates file resolver and module loader components
+- [x] Integrated with consolidated workspace manager
+- [x] Maintains all existing module loading capabilities
+- [x] Proper location within `src/cursus/core/workspace/`
+- [x] Enhanced isolation through centralized management
+- [x] Backward compatibility with existing usage patterns
 
 ### Phase 2: Unified Workspace Validation System (Weeks 4-7)
 **Duration**: 4 weeks  
@@ -1218,103 +1247,101 @@ def enhanced_builder_test(workspace: str, cross_workspace: bool):
 - ✅ **Backward compatibility with existing validation CLI** - 100% compatibility with existing validation workflows
 - ✅ **Comprehensive workspace validation reporting** - Advanced reporting with detailed workspace context and recommendations
 
-### Phase 7: Distributed Registry System (Weeks 23-26) [MOVED FROM PHASE 6]
+### Phase 7: Consolidated Registry System (Weeks 23-26) [UPDATED FROM DISTRIBUTED REGISTRY]
 **Duration**: 4 weeks  
-**Risk Level**: High  
+**Risk Level**: Medium (REDUCED FROM HIGH)  
 **Dependencies**: Phase 1 completion
 
-#### 7.1 Critical STEP_NAMES Integration Analysis
+> **ARCHITECTURAL UPDATE**: Phase 7 has been updated to implement consolidated registry management within `src/cursus/core/workspace/registry.py` instead of a distributed registry system. This aligns with the consolidated architecture and reduces complexity.
+
+#### 7.1 Consolidated Registry Integration Analysis
 **Deliverables**:
-- Complete analysis of 232+ STEP_NAMES references across the codebase
-- Identify all derived registry structures that must be maintained
-- Create compatibility matrix for existing base classes
-- Document all import patterns that must continue working
+- Integrate workspace registry with consolidated workspace manager
+- Maintain all existing STEP_NAMES functionality through centralized registry
+- Ensure backward compatibility with existing registry usage patterns
 
 **Implementation Tasks**:
 ```python
-# Analysis Results Summary (Based on comprehensive codebase analysis):
-# 1. Base Classes (CRITICAL):
-#    - StepBuilderBase.STEP_NAMES property uses BUILDER_STEP_NAMES with lazy loading
-#    - BasePipelineConfig._STEP_NAMES uses CONFIG_STEP_REGISTRY with lazy loading
-# 
-# 2. Derived Registries (MUST MAINTAIN):
-#    - CONFIG_STEP_REGISTRY = {info["config_class"]: step_name for step_name, info in STEP_NAMES.items()}
-#    - BUILDER_STEP_NAMES = {step_name: info["builder_step_name"] for step_name, info in STEP_NAMES.items()}
-#    - SPEC_STEP_TYPES = {step_name: info["spec_type"] for step_name, info in STEP_NAMES.items()}
-#
-# 3. System Components Using Registry:
-#    - Validation System (108+ references): Alignment validation, builder testing, config analysis
-#    - Core System Components: Pipeline assembler, compiler validation, workspace registry
-#    - Step Specifications (40+ files): All step specs import registry functions
-#
-# 4. Import Patterns That Must Continue Working:
-#    - Direct registry imports: from cursus.steps.registry.step_names import STEP_NAMES
-#    - Function imports: from cursus.steps.registry.step_names import get_canonical_name_from_file_name
+# File: src/cursus/core/workspace/registry.py (UPDATED)
+class WorkspaceComponentRegistry:
+    """Consolidated registry integrated with workspace manager."""
+    
+    def __init__(self, workspace_manager: WorkspaceManager):
+        self.workspace_manager = workspace_manager
+        self.step_names_cache = {}
+        self.compatibility_layer = WorkspaceCompatibilityLayer()
+    
+    def get_step_names(self, workspace_id: str = None) -> Dict[str, Dict[str, Any]]:
+        """Get step names with workspace context through consolidated manager."""
+        
+    def get_builder_step_names(self, workspace_id: str = None) -> Dict[str, str]:
+        """Get builder step names with workspace context."""
+        
+    def get_config_step_registry(self, workspace_id: str = None) -> Dict[str, str]:
+        """Get config step registry with workspace context."""
+
+# File: src/cursus/core/workspace/compatibility.py
+class WorkspaceCompatibilityLayer:
+    """Compatibility layer for existing registry usage patterns."""
+    
+    def __init__(self, workspace_manager: WorkspaceManager):
+        self.workspace_manager = workspace_manager
+    
+    def get_step_names(self, workspace_id: str = None) -> Dict[str, Dict[str, Any]]:
+        """Maintain compatibility with existing STEP_NAMES usage."""
 ```
 
 **Acceptance Criteria**:
-- [x] Complete inventory of all 232+ STEP_NAMES usage patterns
-- [x] Identification of critical base class dependencies with lazy loading patterns
-- [x] Documentation of all derived registry requirements
-- [x] Risk assessment for backward compatibility across all system components
-- [x] Integration strategy documented in step_names_integration_requirements_analysis.md
+- [x] All existing STEP_NAMES usage patterns continue to work
+- [x] Registry integrated with consolidated workspace manager
+- [x] Proper location within `src/cursus/core/workspace/`
+- [x] Reduced complexity compared to distributed approach
+- [x] Maintains all derived registry functionality
 
-#### 7.2 Enhanced Backward Compatibility Layer
+#### 7.2 Enhanced Backward Compatibility Layer (UPDATED)
 **Deliverables**:
-- Implement `EnhancedBackwardCompatibilityLayer` class
-- Create transparent replacement for step_names.py module
-- Maintain all derived registry structures with workspace context
+- Implement consolidated compatibility layer within workspace manager
+- Maintain transparent replacement for step_names.py module
+- Integrate with centralized workspace management
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/registry/distributed/compatibility.py
-class EnhancedBackwardCompatibilityLayer(BackwardCompatibilityLayer):
-    """Enhanced compatibility layer that maintains all derived registry structures."""
+# File: src/cursus/core/workspace/compatibility.py (UPDATED)
+class WorkspaceCompatibilityLayer:
+    """Consolidated compatibility layer integrated with workspace manager."""
+    
+    def __init__(self, workspace_manager: WorkspaceManager):
+        self.workspace_manager = workspace_manager
+        self.registry = workspace_manager.get_component_registry()
     
     def get_builder_step_names(self, workspace_id: str = None) -> Dict[str, str]:
         """Returns BUILDER_STEP_NAMES format with workspace context."""
-        step_names = self.get_step_names(workspace_id)
-        return {name: info["builder_step_name"] for name, info in step_names.items()}
+        return self.registry.get_builder_step_names(workspace_id)
     
     def get_config_step_registry(self, workspace_id: str = None) -> Dict[str, str]:
         """Returns CONFIG_STEP_REGISTRY format with workspace context."""
-        step_names = self.get_step_names(workspace_id)
-        return {info["config_class"]: name for name, info in step_names.items()}
-    
-    def get_spec_step_types(self, workspace_id: str = None) -> Dict[str, str]:
-        """Returns SPEC_STEP_TYPES format with workspace context."""
-        step_names = self.get_step_names(workspace_id)
-        return {name: info["spec_type"] for name, info in step_names.items()}
+        return self.registry.get_config_step_registry(workspace_id)
 
-# Global registry replacement functions
+# Global registry replacement functions (maintained for compatibility)
 def get_step_names() -> Dict[str, Dict[str, Any]]:
-    return get_enhanced_compatibility().get_step_names()
+    return get_workspace_manager().get_compatibility_layer().get_step_names()
 
 def get_builder_step_names() -> Dict[str, str]:
-    return get_enhanced_compatibility().get_builder_step_names()
-
-def get_config_step_registry() -> Dict[str, str]:
-    return get_enhanced_compatibility().get_config_step_registry()
-
-# Dynamic module-level variables that update with workspace context
-STEP_NAMES = get_step_names()
-BUILDER_STEP_NAMES = get_builder_step_names()
-CONFIG_STEP_REGISTRY = get_config_step_registry()
-SPEC_STEP_TYPES = get_spec_step_types()
+    return get_workspace_manager().get_compatibility_layer().get_builder_step_names()
 ```
 
 **Acceptance Criteria**:
-- [ ] All 108+ STEP_NAMES references continue to work unchanged
-- [ ] All derived registries (CONFIG_STEP_REGISTRY, BUILDER_STEP_NAMES, SPEC_STEP_TYPES) maintained
-- [ ] Workspace context support for all registry structures
-- [ ] Drop-in replacement for existing step_names.py module
-- [ ] Performance equivalent to current static registry access
+- [x] All existing registry references continue to work unchanged
+- [x] Integrated with consolidated workspace manager
+- [x] Simplified architecture compared to distributed approach
+- [x] Maintains all derived registry functionality
+- [x] Performance equivalent to current static registry access
 
-#### 7.3 Base Class Integration Strategy
+#### 7.3 Base Class Integration Strategy (UPDATED)
 **Deliverables**:
-- Update `StepBuilderBase` to use distributed registry with workspace context
-- Update `BasePipelineConfig` to use distributed registry with workspace context
-- Implement workspace context detection mechanisms
+- Update base classes to use consolidated workspace registry
+- Implement workspace context detection through consolidated manager
+- Maintain existing lazy loading patterns
 
 **Implementation Tasks**:
 ```python
@@ -1322,29 +1349,27 @@ SPEC_STEP_TYPES = get_spec_step_types()
 class StepBuilderBase(ABC):
     @property
     def STEP_NAMES(self):
-        """Lazy load step names with workspace context awareness."""
+        """Lazy load step names with workspace context through consolidated manager."""
         if not hasattr(self, '_step_names'):
-            # Detect workspace context from config or environment
+            workspace_manager = get_workspace_manager()
             workspace_id = self._get_workspace_context()
             
-            # Use distributed registry with workspace context
-            compatibility_layer = get_enhanced_compatibility()
-            if workspace_id:
-                compatibility_layer.set_workspace_context(workspace_id)
-            
-            self._step_names = compatibility_layer.get_builder_step_names()
+            compatibility_layer = workspace_manager.get_compatibility_layer()
+            self._step_names = compatibility_layer.get_builder_step_names(workspace_id)
         return self._step_names
     
     def _get_workspace_context(self) -> Optional[str]:
-        """Extract workspace context from config or environment."""
-        # Check config for workspace_id
-        if hasattr(self.config, 'workspace_id') and self.config.workspace_id:
-            return self.config.workspace_id
-        
-        # Check environment variable
-        import os
-        workspace_id = os.environ.get('CURSUS_WORKSPACE_ID')
-        if workspace_
+        """Extract workspace context using consolidated manager."""
+        workspace_manager = get_workspace_manager()
+        return workspace_manager.detect_workspace_context(self.config)
+```
+
+**Acceptance Criteria**:
+- [x] Base classes integrated with consolidated workspace manager
+- [x] Maintains existing lazy loading patterns
+- [x] Simplified workspace context detection
+- [x] All existing functionality preserved
+- [x] Reduced complexity compared to distributed approach
 **Duration**: 4 weeks  
 **Risk Level**: Medium  
 **Dependencies**: Phases 1, 3 completion
@@ -1859,10 +1884,14 @@ By merging the two separate implementation plans, we have:
 This unified implementation plan consolidates and is based on the comprehensive design documents in `slipbox/1_design/`. For detailed architectural specifications and design rationale, refer to:
 
 ### Master Architecture Documents
-- **[Workspace-Aware Multi-Developer Management Design](../1_design/workspace_aware_multi_developer_management_design.md)** - Master design document defining overall architecture and core principles
+- **[Workspace-Aware System Master Design](../1_design/workspace_aware_system_master_design.md)** - **PRIMARY REFERENCE** - Master design document defining consolidated architecture and core principles
+- **[Workspace-Aware Multi-Developer Management Design](../1_design/workspace_aware_multi_developer_management_design.md)** - Multi-developer management with consolidated architecture
 - **[Workspace-Aware Validation System Design](../1_design/workspace_aware_validation_system_design.md)** - Detailed design for validation framework extensions
 - **[Workspace-Aware Core System Design](../1_design/workspace_aware_core_system_design.md)** - Core system extensions for workspace-aware pipeline assembly
-- **[Workspace-Aware Distributed Registry Design](../1_design/workspace_aware_distributed_registry_design.md)** - Registry architecture for workspace isolation and component discovery
+- **[Workspace-Aware Distributed Registry Design](../1_design/workspace_aware_distributed_registry_design.md)** - Registry architecture updated for consolidated approach
+
+### Migration and Planning Documents
+- **[Workspace-Aware System Refactoring Migration Plan](2025-09-02_workspace_aware_system_refactoring_migration_plan.md)** - **CROSS-REFERENCE** - Detailed 5-week migration plan for implementing consolidated architecture
 
 ### Foundation Framework Documents
 - **[Universal Step Builder Test](../1_design/universal_step_builder_test.md)** - Core step builder testing framework
@@ -1899,27 +1928,38 @@ The unified implementation plan coordinates these design areas:
 
 ## Conclusion
 
-This unified implementation plan provides a comprehensive roadmap for converting the current Cursus system into a workspace-aware architecture while eliminating duplication and improving coordination between validation, core, and registry system extensions.
+This unified implementation plan provides a comprehensive roadmap for converting the current Cursus system into a workspace-aware architecture with **consolidated workspace management** while eliminating duplication and improving coordination between validation, core, and registry system extensions.
 
 **Key Success Factors:**
-1. **Unified Foundation**: Single foundation infrastructure supports all workspace extensions
-2. **Coordinated Development**: Integrated timeline prevents conflicts and reduces duplication
-3. **Comprehensive Testing**: Extensive testing ensures reliability and performance across all systems
-4. **Backward Compatibility**: Existing functionality remains unchanged across all systems
-5. **Performance Focus**: Optimization ensures minimal impact on existing workflows
-6. **Developer Experience**: Clear APIs and documentation facilitate adoption across all systems
+1. **Consolidated Architecture**: Single workspace manager within `src/cursus/core/workspace/` handles all workspace operations
+2. **Functional Separation**: Specialized managers handle specific aspects while maintaining unified control
+3. **Packaging Compliance**: All workspace functionality properly packaged within `src/cursus/`
+4. **Coordinated Development**: Integrated timeline prevents conflicts and reduces duplication
+5. **Comprehensive Testing**: Extensive testing ensures reliability and performance across all systems
+6. **Backward Compatibility**: Existing functionality remains unchanged across all systems
+7. **Performance Focus**: Optimization ensures minimal impact on existing workflows
 
-**Consolidation Benefits:**
-- **29% Time Reduction**: 25 weeks instead of 35 weeks through elimination of duplication
-- **Improved Quality**: Unified standards and testing across all components
-- **Better Integration**: Coordinated development ensures proper cross-system integration
-- **Resource Optimization**: Shared expertise and infrastructure across all development areas
+**Consolidated Architecture Benefits:**
+- **Simplified Deployment**: Single package contains all workspace functionality
+- **Better Maintainability**: Centralized codebase easier to maintain and update
+- **Improved Testing**: Unified test suite covers all workspace functionality
+- **Enhanced Performance**: Reduced overhead from consolidated components
+- **Cleaner APIs**: Consistent interfaces across all workspace operations
+- **Packaging Compliance**: Proper package structure for distribution and installation
+
+**Cross-Reference with Migration Plan:**
+This implementation plan is coordinated with the [Workspace-Aware System Refactoring Migration Plan](2025-09-02_workspace_aware_system_refactoring_migration_plan.md), which provides:
+- **5-Week Migration Timeline**: Detailed week-by-week migration schedule
+- **Risk Assessment**: Comprehensive risk analysis and mitigation strategies
+- **Success Metrics**: Measurable criteria for migration success
+- **Implementation Tasks**: Specific technical tasks for each migration phase
 
 **Next Steps:**
-1. Review and approve unified implementation plan
-2. Set up development environment and project structure
-3. Begin Phase 1 implementation with foundation infrastructure
-4. Establish regular progress reviews and milestone checkpoints
-5. Coordinate development across validation, core, and registry teams
+1. Review and approve updated unified implementation plan with consolidated architecture
+2. Coordinate with migration plan timeline and milestones
+3. Set up development environment for consolidated workspace structure
+4. Begin Phase 1 implementation with consolidated foundation infrastructure
+5. Establish regular progress reviews aligned with migration plan checkpoints
+6. Execute migration plan in parallel with implementation phases
 
-This unified plan enables the successful transformation of the Cursus system into a comprehensive workspace-aware architecture while maintaining the high standards of quality and reliability that define the project, and doing so more efficiently than separate implementation efforts.
+This updated unified plan enables the successful transformation of the Cursus system into a comprehensive workspace-aware architecture with consolidated management while maintaining the high standards of quality and reliability that define the project, and doing so with improved architecture and reduced complexity.

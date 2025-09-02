@@ -28,6 +28,8 @@ date of note: 2025-09-01
 
 ## Overview
 
+**Note**: This design aligns with the consolidated workspace architecture outlined in the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is centralized within `src/cursus/` for proper packaging compliance.
+
 This document defines the comprehensive Command-Line Interface (CLI) design for the workspace-aware system in Cursus. The CLI provides developers with intuitive, powerful tools to manage isolated development environments, collaborate across workspaces, and seamlessly integrate components from workspace development to production deployment.
 
 ## Executive Summary
