@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from ....api.dag.pipeline_dag_resolver import PipelineDAGResolver, PipelineExecutionPlan
+from ....api.dag.workspace_dag import WorkspaceAwareDAG
 from .data_compatibility_validator import DataCompatibilityValidator, DataCompatibilityReport
 from ..core.pipeline_script_executor import PipelineScriptExecutor
 from ..data.enhanced_data_flow_manager import EnhancedDataFlowManager
@@ -39,22 +40,37 @@ class PipelineExecutionResult(BaseModel):
 class PipelineExecutor:
     """Executes entire pipeline with data flow validation."""
     
-    def __init__(self, workspace_dir: str = "./pipeline_testing", testing_mode: str = "pre_execution"):
+    def __init__(self, workspace_dir: str = "./pipeline_testing", testing_mode: str = "pre_execution", workspace_root: str = None):
         """Initialize with workspace directory and testing mode.
         
         Args:
             workspace_dir: Directory for test workspace
             testing_mode: "pre_execution" or "post_execution" testing mode
+            workspace_root: Optional workspace root for workspace-aware execution
         """
         self.workspace_dir = Path(workspace_dir)
         self.testing_mode = testing_mode
-        self.script_executor = PipelineScriptExecutor(workspace_dir=workspace_dir)
-        self.data_validator = DataCompatibilityValidator()
+        self.workspace_root = workspace_root
+        
+        # Initialize script executor with workspace awareness
+        self.script_executor = PipelineScriptExecutor(
+            workspace_dir=workspace_dir, 
+            workspace_root=workspace_root
+        )
+        
+        self.data_validator = DataCompatibilityValidator(workspace_root)
         self.enhanced_data_flow_manager = EnhancedDataFlowManager(workspace_dir, testing_mode)
         self.s3_output_registry = S3OutputPathRegistry()
         self.execution_results = {}
         self.logger = logging.getLogger(__name__)
         self.resolver = None  # Will be set during pipeline execution
+        
+        # Workspace-aware execution tracking
+        self.workspace_execution_context = {
+            'workspace_root': workspace_root,
+            'cross_workspace_dependencies': [],
+            'developer_execution_stats': {}
+        }
     
     def execute_pipeline(self, dag, data_source: str = "synthetic", 
                         config_path: Optional[str] = None,
@@ -63,7 +79,7 @@ class PipelineExecutor:
         """Execute complete pipeline with data flow validation.
         
         Args:
-            dag: PipelineDAG object representing the pipeline
+            dag: PipelineDAG or WorkspaceAwareDAG object representing the pipeline
             data_source: Source of data for testing ("synthetic" or "s3")
             config_path: Path to configuration file (optional)
             available_configs: Pre-loaded configuration instances (optional)
@@ -76,6 +92,13 @@ class PipelineExecutor:
         memory_peak = 0
         
         try:
+            # Phase 5: Handle WorkspaceAwareDAG with enhanced workspace context
+            is_workspace_dag = isinstance(dag, WorkspaceAwareDAG)
+            
+            if is_workspace_dag:
+                self.logger.info("Executing workspace-aware pipeline")
+                self._prepare_workspace_execution_context(dag)
+            
             # Create resolver with enhanced configuration support
             resolver = PipelineDAGResolver(
                 dag=dag,
@@ -128,19 +151,33 @@ class PipelineExecutor:
             
             for step_name in execution_plan.execution_order:
                 try:
-                    self.logger.info(f"Executing step: {step_name}")
+                    # Phase 5: Get workspace context for step if available
+                    workspace_step_info = None
+                    developer_id = None
+                    
+                    if is_workspace_dag:
+                        workspace_step_info = dag.get_workspace_step(step_name)
+                        if workspace_step_info:
+                            developer_id = workspace_step_info['developer_id']
+                            self.logger.info(f"Executing workspace step: {step_name} (developer: {developer_id})")
+                        else:
+                            self.logger.info(f"Executing step: {step_name} (non-workspace)")
+                    else:
+                        self.logger.info(f"Executing step: {step_name}")
                     
                     # Prepare step inputs from previous outputs
                     step_inputs = self._prepare_step_inputs(
                         step_name, execution_plan, step_outputs
                     )
                     
-                    # Execute step
+                    # Execute step with workspace context
                     step_result = self._execute_step(
                         step_name, 
                         execution_plan.step_configs.get(step_name, {}),
                         step_inputs,
-                        data_source
+                        data_source,
+                        developer_id=developer_id,
+                        workspace_step_info=workspace_step_info
                     )
                     
                     # Update peak memory usage
@@ -247,14 +284,18 @@ class PipelineExecutor:
     
     def _execute_step(self, step_name: str, step_config: Dict[str, Any], 
                     step_inputs: Dict[str, Any], 
-                    data_source: str) -> StepExecutionResult:
-        """Execute a single step with inputs.
+                    data_source: str,
+                    developer_id: str = None,
+                    workspace_step_info: Dict[str, Any] = None) -> StepExecutionResult:
+        """Execute a single step with inputs and workspace context.
         
         Args:
             step_name: Name of the step
             step_config: Configuration for the step
             step_inputs: Inputs for the step
             data_source: Source of data for testing
+            developer_id: Optional developer ID for workspace-aware execution
+            workspace_step_info: Optional workspace step information
             
         Returns:
             StepExecutionResult object with execution results
@@ -323,12 +364,16 @@ class PipelineExecutor:
             if "output_paths" in step_config:
                 output_paths.update(step_config["output_paths"])
             
-            # Execute the script
-            result = self.script_executor.test_script_isolation(script_path)
+            # Execute the script with workspace context
+            result = self.script_executor.test_script_isolation(
+                script_path, 
+                data_source=data_source,
+                developer_id=developer_id
+            )
             
             end_time = time.time()
             
-            # Build step execution result
+            # Build step execution result with workspace context
             step_result = StepExecutionResult(
                 step_name=step_name,
                 status="SUCCESS" if result.status == "PASS" else "FAILURE",
@@ -343,6 +388,25 @@ class PipelineExecutor:
                     }
                 }
             )
+            
+            # Phase 5: Track workspace execution statistics
+            if developer_id and workspace_step_info:
+                if developer_id not in self.workspace_execution_context['developer_execution_stats']:
+                    self.workspace_execution_context['developer_execution_stats'][developer_id] = {
+                        'steps_executed': 0,
+                        'total_execution_time': 0.0,
+                        'successful_steps': 0,
+                        'failed_steps': 0
+                    }
+                
+                stats = self.workspace_execution_context['developer_execution_stats'][developer_id]
+                stats['steps_executed'] += 1
+                stats['total_execution_time'] += step_result.execution_time
+                
+                if step_result.status == "SUCCESS":
+                    stats['successful_steps'] += 1
+                else:
+                    stats['failed_steps'] += 1
             
             return step_result
             
@@ -393,10 +457,29 @@ class PipelineExecutor:
             "schemas": {}
         }
         
-        # Validate outputs against input spec
+        # Validate outputs against input spec with workspace context
+        producer_workspace_info = None
+        consumer_workspace_info = None
+        
+        # Get workspace info if available
+        if hasattr(self, 'workspace_execution_context') and self.workspace_execution_context.get('workspace_root'):
+            # Try to get workspace info for the steps (simplified for this implementation)
+            producer_workspace_info = {
+                'step_name': step_name,
+                'developer_id': 'unknown',  # Would be determined from DAG in real implementation
+                'step_type': 'unknown'
+            }
+            consumer_workspace_info = {
+                'step_name': next_step,
+                'developer_id': 'unknown',  # Would be determined from DAG in real implementation
+                'step_type': 'unknown'
+            }
+        
         return self.data_validator.validate_step_transition(
             {"files": step_outputs},
-            input_spec
+            input_spec,
+            producer_workspace_info,
+            consumer_workspace_info
         )
     
     def _get_script_path(self, step_name: str, step_config: Dict[str, Any]) -> str:
@@ -422,3 +505,75 @@ class PipelineExecutor:
         
         # If no script path specified, use a default
         return "model_calibration.py"  # Placeholder
+    
+    def _prepare_workspace_execution_context(self, workspace_dag: WorkspaceAwareDAG) -> None:
+        """Prepare workspace execution context for cross-workspace dependency tracking.
+        
+        Args:
+            workspace_dag: WorkspaceAwareDAG instance
+        """
+        try:
+            # Analyze cross-workspace dependencies
+            validation_result = workspace_dag.validate_workspace_dependencies()
+            self.workspace_execution_context['cross_workspace_dependencies'] = validation_result.get('cross_workspace_dependencies', [])
+            
+            # Log cross-workspace dependency information
+            if self.workspace_execution_context['cross_workspace_dependencies']:
+                self.logger.info(f"Found {len(self.workspace_execution_context['cross_workspace_dependencies'])} cross-workspace dependencies")
+                for dep in self.workspace_execution_context['cross_workspace_dependencies']:
+                    self.logger.debug(f"  {dep['dependent_step']} ({dep['dependent_developer']}) -> {dep['dependency_step']} ({dep['dependency_developer']})")
+            else:
+                self.logger.info("No cross-workspace dependencies detected")
+            
+            # Initialize developer execution stats
+            developers = workspace_dag.get_developers()
+            for developer_id in developers:
+                self.workspace_execution_context['developer_execution_stats'][developer_id] = {
+                    'steps_executed': 0,
+                    'total_execution_time': 0.0,
+                    'successful_steps': 0,
+                    'failed_steps': 0
+                }
+            
+            self.logger.info(f"Prepared workspace execution context for {len(developers)} developers")
+            
+        except Exception as e:
+            self.logger.error(f"Error preparing workspace execution context: {e}")
+            # Continue execution even if workspace context preparation fails
+    
+    def get_workspace_execution_summary(self) -> Dict[str, Any]:
+        """Get summary of workspace execution statistics.
+        
+        Returns:
+            Dictionary containing workspace execution summary
+        """
+        if not self.workspace_root:
+            return {"error": "No workspace context available"}
+        
+        summary = {
+            'workspace_root': self.workspace_root,
+            'cross_workspace_dependencies': len(self.workspace_execution_context.get('cross_workspace_dependencies', [])),
+            'developer_stats': self.workspace_execution_context.get('developer_execution_stats', {}),
+            'overall_stats': {
+                'total_developers': len(self.workspace_execution_context.get('developer_execution_stats', {})),
+                'total_steps_executed': 0,
+                'total_execution_time': 0.0,
+                'overall_success_rate': 0.0
+            }
+        }
+        
+        # Calculate overall statistics
+        total_successful = 0
+        total_failed = 0
+        
+        for developer_id, stats in summary['developer_stats'].items():
+            summary['overall_stats']['total_steps_executed'] += stats['steps_executed']
+            summary['overall_stats']['total_execution_time'] += stats['total_execution_time']
+            total_successful += stats['successful_steps']
+            total_failed += stats['failed_steps']
+        
+        total_steps = total_successful + total_failed
+        if total_steps > 0:
+            summary['overall_stats']['overall_success_rate'] = total_successful / total_steps
+        
+        return summary

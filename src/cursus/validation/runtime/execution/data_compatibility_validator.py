@@ -15,6 +15,7 @@ class DataCompatibilityReport(BaseModel):
     issues: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     data_summary: Dict[str, Any] = Field(default_factory=dict)
+    workspace_context: Optional[Dict[str, Any]] = None
 
 class DataSchemaInfo(BaseModel):
     """Information about data schema."""
@@ -26,16 +27,20 @@ class DataSchemaInfo(BaseModel):
     sample_data: Optional[Dict[str, List[Any]]] = None
 
 class DataCompatibilityValidator:
-    """Validates data compatibility between pipeline steps."""
+    """Validates data compatibility between pipeline steps with workspace awareness."""
     
-    def __init__(self):
-        """Initialize validator."""
+    def __init__(self, workspace_root: str = None):
+        """Initialize validator with optional workspace context."""
         self.compatibility_rules = self._load_compatibility_rules()
+        self.workspace_root = workspace_root
+        self.cross_workspace_validations = []
     
     def validate_step_transition(self, 
                                producer_output: Dict[str, Any],
-                               consumer_input_spec: Dict[str, Any]) -> DataCompatibilityReport:
-        """Validate data compatibility between producer and consumer."""
+                               consumer_input_spec: Dict[str, Any],
+                               producer_workspace_info: Dict[str, Any] = None,
+                               consumer_workspace_info: Dict[str, Any] = None) -> DataCompatibilityReport:
+        """Validate data compatibility between producer and consumer with workspace context."""
         if not producer_output:
             raise ValidationError("Producer output cannot be empty")
         
@@ -63,12 +68,100 @@ class DataCompatibilityValidator:
         schema_issues = self._validate_schemas(producer_output, consumer_input_spec)
         issues.extend(schema_issues)
         
+        # Phase 5: Cross-workspace validation
+        workspace_context = None
+        if producer_workspace_info and consumer_workspace_info:
+            workspace_context = self._validate_cross_workspace_compatibility(
+                producer_workspace_info, consumer_workspace_info, issues, warnings
+            )
+        
         return DataCompatibilityReport(
             compatible=len(issues) == 0,
             issues=issues,
             warnings=warnings,
-            data_summary=self._create_data_summary(producer_output)
+            data_summary=self._create_data_summary(producer_output),
+            workspace_context=workspace_context
         )
+    
+    def _validate_cross_workspace_compatibility(self, 
+                                              producer_info: Dict[str, Any], 
+                                              consumer_info: Dict[str, Any],
+                                              issues: List[str],
+                                              warnings: List[str]) -> Dict[str, Any]:
+        """Validate cross-workspace data compatibility and add workspace-specific checks."""
+        
+        producer_dev = producer_info.get('developer_id')
+        consumer_dev = consumer_info.get('developer_id')
+        
+        workspace_context = {
+            'producer_developer': producer_dev,
+            'consumer_developer': consumer_dev,
+            'is_cross_workspace': producer_dev != consumer_dev,
+            'validation_timestamp': pd.Timestamp.now().isoformat()
+        }
+        
+        if producer_dev != consumer_dev:
+            # Cross-workspace dependency detected
+            warnings.append(f"Cross-workspace dependency: {producer_dev} -> {consumer_dev}")
+            
+            # Track cross-workspace validation
+            cross_workspace_validation = {
+                'producer_step': producer_info.get('step_name', 'unknown'),
+                'producer_developer': producer_dev,
+                'consumer_step': consumer_info.get('step_name', 'unknown'),
+                'consumer_developer': consumer_dev,
+                'validation_result': 'pending'
+            }
+            
+            # Additional cross-workspace checks
+            cross_workspace_issues = self._perform_cross_workspace_checks(producer_info, consumer_info)
+            if cross_workspace_issues:
+                issues.extend(cross_workspace_issues)
+                cross_workspace_validation['validation_result'] = 'failed'
+                cross_workspace_validation['issues'] = cross_workspace_issues
+            else:
+                cross_workspace_validation['validation_result'] = 'passed'
+            
+            self.cross_workspace_validations.append(cross_workspace_validation)
+            
+            # Add workspace-specific recommendations
+            workspace_context['recommendations'] = [
+                f"Verify data contract between {producer_dev} and {consumer_dev}",
+                "Consider data versioning for cross-workspace dependencies",
+                "Ensure consistent data formats across workspaces"
+            ]
+        
+        return workspace_context
+    
+    def _perform_cross_workspace_checks(self, producer_info: Dict[str, Any], consumer_info: Dict[str, Any]) -> List[str]:
+        """Perform additional validation checks for cross-workspace dependencies."""
+        issues = []
+        
+        # Check for workspace-specific data format conventions
+        producer_step_type = producer_info.get('step_type', 'unknown')
+        consumer_step_type = consumer_info.get('step_type', 'unknown')
+        
+        # Example: Different step types might have different data format expectations
+        if producer_step_type == 'processing' and consumer_step_type == 'training':
+            # Processing steps typically output CSV, training steps expect specific formats
+            issues.append(
+                f"Cross-workspace step type compatibility warning: "
+                f"{producer_step_type} -> {consumer_step_type} may require format validation"
+            )
+        
+        # Check for workspace-specific naming conventions
+        producer_dev = producer_info.get('developer_id')
+        consumer_dev = consumer_info.get('developer_id')
+        
+        if producer_dev and consumer_dev:
+            # Example: Check if developers follow different naming conventions
+            if '_' in producer_dev and '-' in consumer_dev:
+                issues.append(
+                    f"Naming convention mismatch between workspaces: "
+                    f"{producer_dev} uses underscores, {consumer_dev} uses hyphens"
+                )
+        
+        return issues
     
     def _validate_schemas(self, output: Dict[str, Any], 
                          input_spec: Dict[str, Any]) -> List[str]:
@@ -357,3 +450,153 @@ class DataCompatibilityValidator:
             return True
         
         return False
+    
+    def validate_workspace_data_flow(self, workspace_dag, step_outputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate data flow across workspace boundaries.
+        
+        Args:
+            workspace_dag: WorkspaceAwareDAG instance
+            step_outputs: Dictionary of step outputs
+            
+        Returns:
+            Validation summary for workspace data flow
+        """
+        if not self.workspace_root:
+            return {"error": "No workspace context available"}
+        
+        validation_summary = {
+            'workspace_root': self.workspace_root,
+            'total_cross_workspace_dependencies': 0,
+            'validation_results': [],
+            'developer_compatibility_matrix': {},
+            'recommendations': []
+        }
+        
+        try:
+            # Get cross-workspace dependencies from DAG
+            dependency_validation = workspace_dag.validate_workspace_dependencies()
+            cross_workspace_deps = dependency_validation.get('cross_workspace_dependencies', [])
+            
+            validation_summary['total_cross_workspace_dependencies'] = len(cross_workspace_deps)
+            
+            # Validate each cross-workspace dependency
+            for dep in cross_workspace_deps:
+                producer_step = dep['dependency_step']
+                consumer_step = dep['dependent_step']
+                producer_dev = dep['dependency_developer']
+                consumer_dev = dep['dependent_developer']
+                
+                # Get step outputs if available
+                producer_output = step_outputs.get(producer_step, {})
+                
+                # Create mock consumer input spec (in real implementation, this would come from step contracts)
+                consumer_input_spec = {
+                    'required_files': ['output'],
+                    'file_formats': {'output': 'unknown'},
+                    'schemas': {}
+                }
+                
+                # Validate the transition
+                compatibility_report = self.validate_step_transition(
+                    producer_output,
+                    consumer_input_spec,
+                    producer_workspace_info={
+                        'developer_id': producer_dev,
+                        'step_name': producer_step,
+                        'step_type': 'unknown'
+                    },
+                    consumer_workspace_info={
+                        'developer_id': consumer_dev,
+                        'step_name': consumer_step,
+                        'step_type': 'unknown'
+                    }
+                )
+                
+                validation_summary['validation_results'].append({
+                    'producer_step': producer_step,
+                    'consumer_step': consumer_step,
+                    'producer_developer': producer_dev,
+                    'consumer_developer': consumer_dev,
+                    'compatible': compatibility_report.compatible,
+                    'issues': compatibility_report.issues,
+                    'warnings': compatibility_report.warnings
+                })
+                
+                # Update developer compatibility matrix
+                dev_pair = f"{producer_dev}->{consumer_dev}"
+                if dev_pair not in validation_summary['developer_compatibility_matrix']:
+                    validation_summary['developer_compatibility_matrix'][dev_pair] = {
+                        'total_dependencies': 0,
+                        'compatible_dependencies': 0,
+                        'issues': []
+                    }
+                
+                matrix_entry = validation_summary['developer_compatibility_matrix'][dev_pair]
+                matrix_entry['total_dependencies'] += 1
+                if compatibility_report.compatible:
+                    matrix_entry['compatible_dependencies'] += 1
+                else:
+                    matrix_entry['issues'].extend(compatibility_report.issues)
+            
+            # Generate recommendations
+            if validation_summary['total_cross_workspace_dependencies'] > 0:
+                validation_summary['recommendations'].extend([
+                    "Consider establishing data contracts for cross-workspace dependencies",
+                    "Implement data versioning strategy for workspace boundaries",
+                    "Set up automated validation for cross-workspace data flows"
+                ])
+                
+                # Check compatibility rates
+                for dev_pair, matrix_entry in validation_summary['developer_compatibility_matrix'].items():
+                    compatibility_rate = matrix_entry['compatible_dependencies'] / matrix_entry['total_dependencies']
+                    if compatibility_rate < 0.8:
+                        validation_summary['recommendations'].append(
+                            f"Low compatibility rate ({compatibility_rate:.1%}) between {dev_pair} - review data contracts"
+                        )
+        
+        except Exception as e:
+            validation_summary['error'] = str(e)
+        
+        return validation_summary
+    
+    def get_cross_workspace_validation_summary(self) -> Dict[str, Any]:
+        """Get summary of all cross-workspace validations performed."""
+        if not self.workspace_root:
+            return {"error": "No workspace context available"}
+        
+        summary = {
+            'workspace_root': self.workspace_root,
+            'total_validations': len(self.cross_workspace_validations),
+            'successful_validations': len([v for v in self.cross_workspace_validations if v['validation_result'] == 'passed']),
+            'failed_validations': len([v for v in self.cross_workspace_validations if v['validation_result'] == 'failed']),
+            'developer_pairs': {},
+            'common_issues': {},
+            'validations': self.cross_workspace_validations
+        }
+        
+        # Analyze developer pairs
+        for validation in self.cross_workspace_validations:
+            dev_pair = f"{validation['producer_developer']}->{validation['consumer_developer']}"
+            if dev_pair not in summary['developer_pairs']:
+                summary['developer_pairs'][dev_pair] = {
+                    'total': 0,
+                    'passed': 0,
+                    'failed': 0
+                }
+            
+            pair_stats = summary['developer_pairs'][dev_pair]
+            pair_stats['total'] += 1
+            if validation['validation_result'] == 'passed':
+                pair_stats['passed'] += 1
+            else:
+                pair_stats['failed'] += 1
+        
+        # Analyze common issues
+        for validation in self.cross_workspace_validations:
+            if 'issues' in validation:
+                for issue in validation['issues']:
+                    if issue not in summary['common_issues']:
+                        summary['common_issues'][issue] = 0
+                    summary['common_issues'][issue] += 1
+        
+        return summary

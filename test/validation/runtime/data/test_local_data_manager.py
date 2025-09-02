@@ -17,11 +17,14 @@ class TestLocalDataManager(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
+        self.workspace_root = tempfile.mkdtemp()
         self.manager = LocalDataManager(self.temp_dir)
+        self.workspace_manager = LocalDataManager(self.temp_dir, self.workspace_root)
         
     def tearDown(self):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+        shutil.rmtree(self.workspace_root, ignore_errors=True)
     
     def test_init_creates_directories(self):
         """Test that initialization creates required directories."""
@@ -32,6 +35,11 @@ class TestLocalDataManager(unittest.TestCase):
         self.assertTrue(local_data_path.exists())
         self.assertEqual(self.manager.workspace_dir, workspace_path)
         self.assertEqual(self.manager.local_data_dir, local_data_path)
+    
+    def test_init_with_workspace_root(self):
+        """Test initialization with workspace root."""
+        self.assertEqual(self.workspace_manager.workspace_root, self.workspace_root)
+        self.assertEqual(self.workspace_manager.workspace_data_contexts, {})
     
     def test_init_creates_default_manifest(self):
         """Test that initialization creates default manifest file."""
@@ -97,6 +105,62 @@ class TestLocalDataManager(unittest.TestCase):
         self.assertIn("input_data", result)
         self.assertEqual(result["input_data"], str(test_file))
     
+    def test_get_data_for_script_workspace_specific(self):
+        """Test get_data_for_script with workspace-specific data."""
+        # Create test data file
+        script_dir = self.workspace_manager.local_data_dir / "test_script"
+        script_dir.mkdir(exist_ok=True)
+        test_file = script_dir / "workspace_input.csv"
+        test_file.write_text("workspace,data\n1,2\n")
+        
+        # Update manifest with workspace-specific data
+        manifest = {
+            "workspace_scripts": {
+                "dev1:test_script": {
+                    "workspace_data": {
+                        "path": "test_script/workspace_input.csv",
+                        "format": "csv",
+                        "description": "Workspace-specific test data"
+                    }
+                }
+            }
+        }
+        self.workspace_manager._save_manifest(manifest)
+        
+        result = self.workspace_manager.get_data_for_script("test_script", "dev1")
+        
+        self.assertIsNotNone(result)
+        self.assertIn("workspace_data", result)
+        self.assertEqual(result["workspace_data"], str(test_file))
+    
+    def test_get_data_for_script_workspace_fallback(self):
+        """Test get_data_for_script with workspace fallback to general data."""
+        # Create general test data file
+        script_dir = self.workspace_manager.local_data_dir / "test_script"
+        script_dir.mkdir(exist_ok=True)
+        test_file = script_dir / "general_input.csv"
+        test_file.write_text("general,data\n1,2\n")
+        
+        # Update manifest with general data only
+        manifest = {
+            "scripts": {
+                "test_script": {
+                    "general_data": {
+                        "path": "test_script/general_input.csv",
+                        "format": "csv",
+                        "description": "General test data"
+                    }
+                }
+            }
+        }
+        self.workspace_manager._save_manifest(manifest)
+        
+        result = self.workspace_manager.get_data_for_script("test_script", "dev1")
+        
+        self.assertIsNotNone(result)
+        self.assertIn("general_data", result)
+        self.assertEqual(result["general_data"], str(test_file))
+    
     def test_get_data_for_script_missing_files(self):
         """Test get_data_for_script with missing data files."""
         # Update manifest with non-existent file
@@ -124,7 +188,7 @@ class TestLocalDataManager(unittest.TestCase):
             result = self.manager.get_data_for_script("nonexistent_script")
             
             self.assertIsNone(result)
-            mock_logger.info.assert_called_with("No local data configured for script: nonexistent_script")
+            mock_logger.info.assert_called_with("No local data configured for script: nonexistent_script (developer: any)")
     
     def test_prepare_data_for_execution_with_data(self):
         """Test prepare_data_for_execution with existing data."""
@@ -163,7 +227,7 @@ class TestLocalDataManager(unittest.TestCase):
             target_dir = Path(self.temp_dir) / "execution"
             self.manager.prepare_data_for_execution("nonexistent_script", str(target_dir))
             
-            mock_logger.info.assert_called_with("No local data to prepare for script: nonexistent_script")
+            mock_logger.info.assert_called_with("No local data to prepare for script: nonexistent_script (developer: any)")
     
     def test_add_data_for_script_success(self):
         """Test successful addition of data file for script."""
@@ -211,6 +275,38 @@ class TestLocalDataManager(unittest.TestCase):
         file_info = manifest["scripts"]["ml_script"]["model"]
         self.assertEqual(file_info["format"], "pickle")
     
+    def test_add_data_for_script_workspace_specific(self):
+        """Test adding workspace-specific data for script."""
+        # Create source file
+        source_file = Path(self.temp_dir) / "workspace_data.csv"
+        source_content = "workspace,specific\n1,data\n"
+        source_file.write_text(source_content)
+        
+        result = self.workspace_manager.add_data_for_script(
+            "workspace_script", 
+            "workspace_input", 
+            str(source_file), 
+            "Workspace-specific data",
+            developer_id="dev1"
+        )
+        
+        self.assertTrue(result)
+        
+        # Verify file was copied
+        target_file = self.workspace_manager.local_data_dir / "workspace_script" / "workspace_data.csv"
+        self.assertTrue(target_file.exists())
+        self.assertEqual(target_file.read_text(), source_content)
+        
+        # Verify manifest was updated with workspace-specific entry
+        manifest = self.workspace_manager._load_manifest()
+        self.assertIn("workspace_scripts", manifest)
+        self.assertIn("dev1:workspace_script", manifest["workspace_scripts"])
+        
+        file_info = manifest["workspace_scripts"]["dev1:workspace_script"]["workspace_input"]
+        self.assertEqual(file_info["path"], "workspace_script/workspace_data.csv")
+        self.assertEqual(file_info["format"], "csv")
+        self.assertEqual(file_info["description"], "Workspace-specific data")
+    
     def test_add_data_for_script_nonexistent_source(self):
         """Test adding data with non-existent source file."""
         with patch('src.cursus.validation.runtime.data.local_data_manager.logger') as mock_logger:
@@ -255,6 +351,37 @@ class TestLocalDataManager(unittest.TestCase):
         self.assertEqual(result["input1"]["format"], "csv")
         self.assertEqual(result["input2"]["format"], "json")
     
+    def test_list_data_for_script_workspace_specific(self):
+        """Test list_data_for_script with workspace-specific data."""
+        manifest = {
+            "workspace_scripts": {
+                "dev1:test_script": {
+                    "workspace_input": {"path": "test_script/workspace.csv", "format": "csv"},
+                    "workspace_config": {"path": "test_script/config.json", "format": "json"}
+                }
+            },
+            "scripts": {
+                "test_script": {
+                    "general_input": {"path": "test_script/general.csv", "format": "csv"}
+                }
+            }
+        }
+        self.workspace_manager._save_manifest(manifest)
+        
+        # Test workspace-specific data takes precedence
+        result = self.workspace_manager.list_data_for_script("test_script", "dev1")
+        
+        self.assertEqual(len(result), 2)
+        self.assertIn("workspace_input", result)
+        self.assertIn("workspace_config", result)
+        self.assertNotIn("general_input", result)  # Should not include general data
+        
+        # Test fallback to general data when no workspace-specific data
+        result_general = self.workspace_manager.list_data_for_script("test_script", "dev2")
+        
+        self.assertEqual(len(result_general), 1)
+        self.assertIn("general_input", result_general)
+    
     def test_list_data_for_script_nonexistent(self):
         """Test list_data_for_script with non-existent script."""
         result = self.manager.list_data_for_script("nonexistent_script")
@@ -277,6 +404,36 @@ class TestLocalDataManager(unittest.TestCase):
         self.assertIn("script1", result)
         self.assertIn("script2", result)
         self.assertIn("script3", result)
+    
+    def test_list_all_scripts_workspace_aware(self):
+        """Test list_all_scripts with workspace awareness."""
+        manifest = {
+            "scripts": {
+                "general_script1": {"data": {"path": "general_script1/data.csv"}},
+                "general_script2": {"data": {"path": "general_script2/data.json"}}
+            },
+            "workspace_scripts": {
+                "dev1:workspace_script1": {"data": {"path": "workspace_script1/data.csv"}},
+                "dev1:workspace_script2": {"data": {"path": "workspace_script2/data.json"}},
+                "dev2:workspace_script3": {"data": {"path": "workspace_script3/data.pkl"}}
+            }
+        }
+        self.workspace_manager._save_manifest(manifest)
+        
+        # Test listing all scripts (general + workspace)
+        result_all = self.workspace_manager.list_all_scripts()
+        self.assertEqual(len(result_all), 5)  # 2 general + 3 workspace
+        self.assertIn("general_script1", result_all)
+        self.assertIn("workspace_script1", result_all)
+        self.assertIn("workspace_script3", result_all)
+        
+        # Test listing scripts for specific developer
+        result_dev1 = self.workspace_manager.list_all_scripts("dev1")
+        self.assertEqual(len(result_dev1), 4)  # 2 general + 2 dev1 workspace
+        self.assertIn("general_script1", result_dev1)
+        self.assertIn("workspace_script1", result_dev1)
+        self.assertIn("workspace_script2", result_dev1)
+        self.assertNotIn("workspace_script3", result_dev1)  # dev2's script
     
     def test_list_all_scripts_empty(self):
         """Test list_all_scripts with no scripts."""
@@ -498,6 +655,124 @@ class TestLocalDataManager(unittest.TestCase):
         retrieved_file = Path(data_paths["test_data"])
         self.assertTrue(retrieved_file.exists())
         self.assertEqual(retrieved_file.read_text(), "col1,col2\nval1,val2\n")
+    
+    def test_get_workspace_data_summary(self):
+        """Test get_workspace_data_summary functionality."""
+        # Test without workspace context
+        result_no_workspace = self.manager.get_workspace_data_summary()
+        self.assertIn("error", result_no_workspace)
+        
+        # Test with workspace context
+        manifest = {
+            "scripts": {
+                "general_script": {"data": {"path": "general_script/data.csv"}}
+            },
+            "workspace_scripts": {
+                "dev1:workspace_script1": {"data": {"path": "workspace_script1/data.csv"}},
+                "dev1:workspace_script2": {"data": {"path": "workspace_script2/data.json"}},
+                "dev2:workspace_script3": {"data": {"path": "workspace_script3/data.pkl"}}
+            }
+        }
+        self.workspace_manager._save_manifest(manifest)
+        
+        # Simulate some workspace data usage
+        self.workspace_manager.workspace_data_contexts["dev1"] = {
+            'scripts_with_data': ['workspace_script1'],
+            'total_files_prepared': 2,
+            'data_sources': {'/path/to/data1', '/path/to/data2'}
+        }
+        
+        result = self.workspace_manager.get_workspace_data_summary()
+        
+        self.assertEqual(result['workspace_root'], self.workspace_root)
+        self.assertEqual(result['general_scripts'], 1)
+        self.assertEqual(result['workspace_scripts'], 3)
+        self.assertEqual(result['developer_contexts']['dev1'], 2)  # 2 scripts for dev1
+        self.assertEqual(result['developer_contexts']['dev2'], 1)  # 1 script for dev2
+        self.assertIn('dev1', result['data_usage_stats'])
+    
+    def test_validate_workspace_data_availability(self):
+        """Test validate_workspace_data_availability functionality."""
+        # Create test data file
+        script_dir = self.workspace_manager.local_data_dir / "test_script"
+        script_dir.mkdir(exist_ok=True)
+        test_file = script_dir / "data.csv"
+        test_file.write_text("test,data\n1,2\n")
+        
+        # Update manifest
+        manifest = {
+            "workspace_scripts": {
+                "dev1:test_script": {
+                    "existing_data": {
+                        "path": "test_script/data.csv",
+                        "format": "csv"
+                    },
+                    "missing_data": {
+                        "path": "test_script/missing.csv",
+                        "format": "csv"
+                    }
+                }
+            }
+        }
+        self.workspace_manager._save_manifest(manifest)
+        
+        result = self.workspace_manager.validate_workspace_data_availability("test_script", "dev1")
+
+        self.assertEqual(result['script_name'], "test_script")
+        self.assertEqual(result['developer_id'], "dev1")
+        self.assertTrue(result['data_available'])
+        self.assertEqual(len(result['data_sources']), 1)  # Only existing_data should be counted
+        self.assertEqual(len(result['missing_files']), 0)  # Missing files are filtered out during validation
+        self.assertIn("All configured data sources are available", result['recommendations'][0])
+    
+    def test_validate_workspace_data_availability_no_data(self):
+        """Test validate_workspace_data_availability with no data available."""
+        result = self.workspace_manager.validate_workspace_data_availability("nonexistent_script", "dev1")
+        
+        self.assertEqual(result['script_name'], "nonexistent_script")
+        self.assertEqual(result['developer_id'], "dev1")
+        self.assertFalse(result['data_available'])
+        self.assertEqual(len(result['data_sources']), 0)
+        self.assertIn("No local data configured", result['recommendations'][0])
+        self.assertIn("Try checking data availability without developer filter", result['recommendations'][-1])
+    
+    def test_prepare_data_for_execution_workspace_tracking(self):
+        """Test prepare_data_for_execution with workspace usage tracking."""
+        # Create test data file
+        script_dir = self.workspace_manager.local_data_dir / "test_script"
+        script_dir.mkdir(exist_ok=True)
+        test_file = script_dir / "data.csv"
+        test_content = "workspace,data\ntest,value\n"
+        test_file.write_text(test_content)
+        
+        # Update manifest
+        manifest = {
+            "workspace_scripts": {
+                "dev1:test_script": {
+                    "input": {
+                        "path": "test_script/data.csv",
+                        "format": "csv"
+                    }
+                }
+            }
+        }
+        self.workspace_manager._save_manifest(manifest)
+        
+        # Prepare data for execution
+        target_dir = Path(self.temp_dir) / "execution"
+        self.workspace_manager.prepare_data_for_execution("test_script", str(target_dir), "dev1")
+        
+        # Verify file was copied
+        target_file = target_dir / "data.csv"
+        self.assertTrue(target_file.exists())
+        self.assertEqual(target_file.read_text(), test_content)
+        
+        # Verify workspace usage tracking
+        self.assertIn("dev1", self.workspace_manager.workspace_data_contexts)
+        context = self.workspace_manager.workspace_data_contexts["dev1"]
+        self.assertIn("test_script", context['scripts_with_data'])
+        self.assertEqual(context['total_files_prepared'], 1)
+        self.assertEqual(len(context['data_sources']), 1)
     
     def test_integration_prepare_and_execute(self):
         """Test integration between data preparation and execution."""

@@ -12,55 +12,67 @@ from ..utils.error_handling import ScriptExecutionError, ScriptImportError, Conf
 from .script_import_manager import ScriptImportManager
 from .data_flow_manager import DataFlowManager
 from ..data.local_data_manager import LocalDataManager
+from ....core.workspace.registry import WorkspaceComponentRegistry
 
 logger = logging.getLogger(__name__)
 
 class PipelineScriptExecutor:
     """Main orchestrator for pipeline script execution testing"""
     
-    def __init__(self, workspace_dir: str = "./pipeline_testing"):
-        """Initialize executor with workspace directory"""
+    def __init__(self, workspace_dir: str = "./pipeline_testing", workspace_root: str = None):
+        """Initialize executor with workspace directory and optional workspace root for component discovery"""
         self.workspace_dir = Path(workspace_dir)
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
         
         self.script_manager = ScriptImportManager()
         self.data_manager = DataFlowManager(str(self.workspace_dir))
-        self.local_data_manager = LocalDataManager(str(self.workspace_dir))
+        self.local_data_manager = LocalDataManager(str(self.workspace_dir), workspace_root)
         self.execution_history = []
+        
+        # Workspace-aware component registry for script discovery
+        self.workspace_root = workspace_root or str(Path.cwd())
+        self.workspace_registry = WorkspaceComponentRegistry(self.workspace_root)
         
         # Setup logging
         self._setup_logging()
         
         logger.info(f"PipelineScriptExecutor initialized with workspace: {self.workspace_dir}")
+        logger.info(f"Workspace component registry initialized for: {self.workspace_root}")
     
     def test_script_isolation(self, script_name: str, 
-                             data_source: str = "synthetic") -> TestResult:
-        """Test single script in isolation with specified data source"""
+                             data_source: str = "synthetic", 
+                             developer_id: str = None) -> TestResult:
+        """Test single script in isolation with specified data source and optional developer context"""
         
-        logger.info(f"Starting isolation test for script: {script_name}")
+        logger.info(f"Starting isolation test for script: {script_name} (developer: {developer_id or 'any'})")
         
         try:
-            # Phase 1: Basic implementation with synthetic and local data
+            # Phase 5: Enhanced implementation with workspace-aware discovery
             if data_source not in ["synthetic", "local"]:
                 raise ConfigurationError(f"Data source '{data_source}' not yet implemented")
             
-            # Discover script path (basic implementation)
-            script_path = self._discover_script_path(script_name)
+            # Discover script path with workspace awareness
+            script_path = self._discover_script_path(script_name, developer_id)
             
             # Import script main function
             main_func = self.script_manager.import_script_main(script_path)
             
-            # Prepare execution context with data source support
-            context = self._prepare_basic_execution_context(script_name, data_source)
+            # Prepare execution context with data source support and workspace context
+            context = self._prepare_basic_execution_context(script_name, data_source, developer_id)
             
             # Execute script
             execution_result = self.script_manager.execute_script_main(main_func, context)
             
-            # Record execution
+            # Record execution with workspace context
             self.execution_history.append({
                 "script_name": script_name,
                 "script_path": script_path,
-                "execution_result": execution_result
+                "developer_id": developer_id,
+                "execution_result": execution_result,
+                "workspace_context": {
+                    "workspace_root": self.workspace_root,
+                    "discovery_method": "workspace" if developer_id else "fallback"
+                }
             })
             
             # Create test result
@@ -124,9 +136,31 @@ class PipelineScriptExecutor:
         logger.error("Pipeline end-to-end testing not implemented in Phase 1")
         raise NotImplementedError("Pipeline end-to-end testing will be implemented in Phase 2")
     
-    def _discover_script_path(self, script_name: str) -> str:
-        """Basic script path discovery - Phase 1 implementation"""
-        # Simple path resolution - will be enhanced in later phases
+    def _discover_script_path(self, script_name: str, developer_id: str = None) -> str:
+        """Workspace-aware script path discovery with fallback to basic discovery"""
+        
+        # Phase 5: Try workspace-aware discovery first
+        try:
+            components = self.workspace_registry.discover_components(developer_id)
+            
+            # Look for script in workspace components
+            script_key = f"{developer_id}:{script_name}" if developer_id else None
+            
+            # Search in discovered scripts
+            for key, script_info in components['scripts'].items():
+                if script_key and key == script_key:
+                    logger.info(f"Found script via workspace registry: {script_info['file_path']}")
+                    return script_info['file_path']
+                elif not developer_id and script_info['step_name'] == script_name:
+                    logger.info(f"Found script via workspace registry (any developer): {script_info['file_path']}")
+                    return script_info['file_path']
+            
+            logger.debug(f"Script {script_name} not found in workspace components, trying fallback")
+            
+        except Exception as e:
+            logger.warning(f"Workspace script discovery failed for {script_name}: {e}")
+        
+        # Fallback to original basic discovery
         possible_paths = [
             f"src/cursus/steps/scripts/{script_name}.py",
             f"cursus/steps/scripts/{script_name}.py",
@@ -141,12 +175,13 @@ class PipelineScriptExecutor:
         
         for path in possible_paths:
             if Path(path).exists():
+                logger.info(f"Found script via fallback discovery: {path}")
                 return path
                 
         raise FileNotFoundError(f"Script not found: {script_name}")
     
-    def _prepare_basic_execution_context(self, script_name: str, data_source: str = "synthetic") -> ExecutionContext:
-        """Prepare basic execution context with data source support - Phase 1 implementation"""
+    def _prepare_basic_execution_context(self, script_name: str, data_source: str = "synthetic", developer_id: str = None) -> ExecutionContext:
+        """Prepare basic execution context with data source support and workspace awareness"""
         
         input_dir = self.workspace_dir / "inputs" / script_name
         output_dir = self.workspace_dir / "outputs" / script_name
@@ -154,16 +189,16 @@ class PipelineScriptExecutor:
         input_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Handle local data source
+        # Handle local data source with workspace context
         if data_source == "local":
-            # Use LocalDataManager to prepare local data
-            local_data_paths = self.local_data_manager.get_data_for_script(script_name)
+            # Use LocalDataManager to prepare local data with workspace awareness
+            local_data_paths = self.local_data_manager.get_data_for_script(script_name, developer_id)
             if local_data_paths:
                 # Copy local data to input directory
-                self.local_data_manager.prepare_data_for_execution(script_name, str(input_dir))
+                self.local_data_manager.prepare_data_for_execution(script_name, str(input_dir), developer_id)
                 logger.info(f"Prepared local data for script {script_name}: {len(local_data_paths)} files")
             else:
-                logger.warning(f"No local data found for script: {script_name}")
+                logger.warning(f"No local data found for script: {script_name} (developer: {developer_id or 'any'})")
         
         # Basic job args for Phase 1
         job_args = argparse.Namespace()

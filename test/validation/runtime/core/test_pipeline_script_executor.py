@@ -22,11 +22,17 @@ class TestPipelineScriptExecutor(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
+        self.workspace_root = tempfile.mkdtemp()
         self.executor = PipelineScriptExecutor(workspace_dir=self.temp_dir)
+        self.workspace_executor = PipelineScriptExecutor(
+            workspace_dir=self.temp_dir, 
+            workspace_root=self.workspace_root
+        )
         
     def tearDown(self):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+        shutil.rmtree(self.workspace_root, ignore_errors=True)
     
     def test_init_creates_workspace_directory(self):
         """Test that initialization creates workspace directory."""
@@ -40,16 +46,62 @@ class TestPipelineScriptExecutor(unittest.TestCase):
         self.assertIsNotNone(self.executor.local_data_manager)
         self.assertEqual(self.executor.execution_history, [])
     
+    def test_init_with_workspace_root(self):
+        """Test initialization with workspace root creates workspace registry."""
+        self.assertIsNotNone(self.workspace_executor.workspace_registry)
+        self.assertEqual(self.workspace_executor.workspace_root, self.workspace_root)
+        self.assertIsNotNone(self.workspace_executor.local_data_manager)
+    
     @patch('pathlib.Path.exists')
     def test_discover_script_path_success(self, mock_exists):
         """Test successful script path discovery."""
-        def mock_exists_side_effect():
-            return True
-        
         # Mock the first path to return True
-        mock_exists.side_effect = [True]
+        mock_exists.return_value = True
         
         result = self.executor._discover_script_path("test_script")
+        self.assertEqual(result, "src/cursus/steps/scripts/test_script.py")
+    
+    @patch('src.cursus.validation.runtime.core.pipeline_script_executor.WorkspaceComponentRegistry')
+    def test_discover_script_path_workspace_aware_success(self, mock_registry_class):
+        """Test workspace-aware script path discovery."""
+        # Mock workspace registry
+        mock_registry = Mock()
+        mock_registry_class.return_value = mock_registry
+        
+        # Mock components discovery
+        mock_components = {
+            'scripts': {
+                'dev1:test_script': {
+                    'developer_id': 'dev1',
+                    'step_name': 'test_script',
+                    'file_path': '/workspace/dev1/scripts/test_script.py'
+                }
+            }
+        }
+        mock_registry.discover_components.return_value = mock_components
+        
+        # Create workspace executor
+        executor = PipelineScriptExecutor(workspace_dir=self.temp_dir, workspace_root=self.workspace_root)
+        
+        result = executor._discover_script_path("test_script", "dev1")
+        self.assertEqual(result, '/workspace/dev1/scripts/test_script.py')
+    
+    @patch('src.cursus.validation.runtime.core.pipeline_script_executor.WorkspaceComponentRegistry')
+    @patch('pathlib.Path.exists')
+    def test_discover_script_path_workspace_fallback(self, mock_exists, mock_registry_class):
+        """Test workspace-aware script discovery with fallback to basic discovery."""
+        # Mock workspace registry to return empty components
+        mock_registry = Mock()
+        mock_registry_class.return_value = mock_registry
+        mock_registry.discover_components.return_value = {'scripts': {}}
+        
+        # Mock fallback path exists
+        mock_exists.return_value = True
+        
+        # Create workspace executor
+        executor = PipelineScriptExecutor(workspace_dir=self.temp_dir, workspace_root=self.workspace_root)
+        
+        result = executor._discover_script_path("test_script", "dev1")
         self.assertEqual(result, "src/cursus/steps/scripts/test_script.py")
     
     @patch('src.cursus.validation.runtime.core.pipeline_script_executor.Path.exists')
@@ -83,8 +135,26 @@ class TestPipelineScriptExecutor(unittest.TestCase):
         context = self.executor._prepare_basic_execution_context("test_script", "local")
         
         # Verify local data manager was called
-        self.executor.local_data_manager.get_data_for_script.assert_called_once_with("test_script")
+        self.executor.local_data_manager.get_data_for_script.assert_called_once_with("test_script", None)
         self.executor.local_data_manager.prepare_data_for_execution.assert_called_once()
+        
+        # Verify context was created properly
+        self.assertIsInstance(context, ExecutionContext)
+        self.assertIn("input", context.input_paths)
+        self.assertIn("output", context.output_paths)
+    
+    def test_prepare_basic_execution_context_local_with_developer(self):
+        """Test preparation of execution context with local data and developer context."""
+        # Mock local data manager methods
+        self.workspace_executor.local_data_manager.get_data_for_script = Mock(return_value={"data.csv": "/path/to/data.csv"})
+        self.workspace_executor.local_data_manager.prepare_data_for_execution = Mock()
+        
+        # Call the actual method with developer context
+        context = self.workspace_executor._prepare_basic_execution_context("test_script", "local", "dev1")
+        
+        # Verify local data manager was called with developer context
+        self.workspace_executor.local_data_manager.get_data_for_script.assert_called_once_with("test_script", "dev1")
+        self.workspace_executor.local_data_manager.prepare_data_for_execution.assert_called_once()
         
         # Verify context was created properly
         self.assertIsInstance(context, ExecutionContext)
@@ -120,6 +190,37 @@ class TestPipelineScriptExecutor(unittest.TestCase):
         # Verify execution history was recorded
         self.assertEqual(len(self.executor.execution_history), 1)
         self.assertEqual(self.executor.execution_history[0]["script_name"], "test_script")
+    
+    @patch('src.cursus.validation.runtime.core.pipeline_script_executor.PipelineScriptExecutor._discover_script_path')
+    def test_test_script_isolation_success_with_developer(self, mock_discover):
+        """Test successful script isolation testing with developer context."""
+        mock_discover.return_value = "test/path/script.py"
+        
+        # Mock script manager
+        mock_main_func = Mock(return_value={"status": "success"})
+        self.workspace_executor.script_manager.import_script_main = Mock(return_value=mock_main_func)
+        
+        mock_execution_result = ExecutionResult(
+            success=True,
+            execution_time=1.5,
+            memory_usage=100,
+            result_data={"status": "success"}
+        )
+        self.workspace_executor.script_manager.execute_script_main = Mock(return_value=mock_execution_result)
+        
+        result = self.workspace_executor.test_script_isolation("test_script", developer_id="dev1")
+        
+        self.assertIsInstance(result, TestResult)
+        self.assertEqual(result.script_name, "test_script")
+        self.assertEqual(result.status, "PASS")
+        
+        # Verify execution history includes workspace context
+        self.assertEqual(len(self.workspace_executor.execution_history), 1)
+        history_entry = self.workspace_executor.execution_history[0]
+        self.assertEqual(history_entry["script_name"], "test_script")
+        self.assertEqual(history_entry["developer_id"], "dev1")
+        self.assertIn("workspace_context", history_entry)
+        self.assertEqual(history_entry["workspace_context"]["workspace_root"], self.workspace_root)
     
     @patch('src.cursus.validation.runtime.core.pipeline_script_executor.PipelineScriptExecutor._discover_script_path')
     def test_test_script_isolation_script_import_error(self, mock_discover):

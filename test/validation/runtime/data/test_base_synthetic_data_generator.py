@@ -143,6 +143,20 @@ class TestBaseSyntheticDataGenerator(unittest.TestCase):
     
     def test_save_dataframe_parquet_format(self):
         """Test save_dataframe with Parquet format."""
+        # Check if parquet dependencies are available
+        try:
+            import pyarrow
+            parquet_available = True
+        except ImportError:
+            try:
+                import fastparquet
+                parquet_available = True
+            except ImportError:
+                parquet_available = False
+        
+        if not parquet_available:
+            self.skipTest("Parquet dependencies (pyarrow or fastparquet) not available")
+        
         df = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
         filename = "test_data.parquet"
         

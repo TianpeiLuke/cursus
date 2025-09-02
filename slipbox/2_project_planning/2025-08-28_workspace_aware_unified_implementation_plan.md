@@ -708,169 +708,273 @@ The actual implementation provides a **superior architecture** compared to the o
 ### Phase 5: Workspace-Aware Pipeline Runtime Testing (Weeks 15-18) [MOVED FROM PHASE 6]
 **Duration**: 4 weeks  
 **Risk Level**: Medium  
-**Dependencies**: Phases 1, 3 completion
+**Dependencies**: Phases 1, 3, 4 completion
 
 > **Phase Reordering Rationale**: Phase 5 (Workspace-Aware Pipeline Runtime Testing) has been moved before Phase 6 (Distributed Registry) based on dependency analysis and risk assessment:
 > 
 > **Benefits of New Order:**
 > - **Lower Risk First**: Phase 5 is Medium risk vs Phase 6 High risk - tackle easier challenges first
-> - **Independent Implementation**: Phase 5 only depends on Phases 1 & 3, not Phase 6
+> - **Independent Implementation**: Phase 5 only depends on Phases 1, 3 & 4, not Phase 6
 > - **Faster Value Delivery**: Provides workspace-aware testing capabilities sooner
 > - **Better Testing Foundation**: Having runtime testing ready helps validate the distributed registry when it's implemented
-> - **Shorter Duration**: Same 4 weeks but delivers testing capabilities earlier
+> - **Leverages Existing Infrastructure**: Builds on sophisticated existing runtime testing system
 > 
-> **Technical Justification**: The WorkspacePipelineExecutor and testing components can use the existing WorkspaceComponentRegistry (from Phase 3) with current STEP_NAMES approach, then be enhanced later when Phase 6 distributed registry is complete.
+> **Technical Justification**: The existing runtime testing system provides a sophisticated 8-layer architecture with advanced features like contract-based execution, enhanced data flow management, and S3 integration. Phase 5 extends this existing system with workspace awareness rather than recreating functionality.
 
-#### 5.1 Workspace-Aware Testing Infrastructure
+**EXISTING RUNTIME TESTING SYSTEM ANALYSIS:**
+The current runtime testing system (`src/cursus/validation/runtime/`) provides:
+- **Multi-layered Architecture**: 8 distinct layers (Execution, Core Engine, Data Management, Integration, Testing, Production, Jupyter, Utilities)
+- **Advanced Components**: `PipelineExecutor`, `DataCompatibilityValidator`, `EnhancedDataFlowManager`, `S3OutputRegistry`
+- **Contract-Based Execution**: Scripts discovered via contracts with `entry_point` specification
+- **Multi-Mode Testing**: Isolation, pipeline, and deep dive analysis modes
+- **Sophisticated Data Management**: `LocalDataManager` with YAML manifests, S3 integration
+- **Rich Integration**: Jupyter notebooks, CLI, visualization, reporting
+
+#### 5.1 Workspace-Aware Script Discovery Integration
 **Deliverables**:
-- Extend existing Pipeline Runtime Testing System for workspace support
-- Implement `WorkspaceScriptExecutor` with workspace-aware script discovery
-- Create `WorkspaceDataManager` for isolated test data management
-- Add workspace-specific test environment setup
+- Extend existing `PipelineScriptExecutor` with workspace-aware script discovery
+- Integrate `WorkspaceComponentRegistry` (from Phase 3) for script resolution
+- Add workspace context to existing execution environment
+- Maintain backward compatibility with existing script discovery
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/validation/runtime/workspace/workspace_script_executor.py
-class WorkspaceScriptExecutor(PipelineScriptExecutor):
-    """Workspace-aware script executor extending base functionality."""
+# File: src/cursus/validation/runtime/core/pipeline_script_executor.py (UPDATED)
+class PipelineScriptExecutor:
+    """Enhanced with workspace-aware script discovery."""
     
-    def __init__(self, workspace_context: WorkspaceContext):
-        self.workspace_context = workspace_context
-        self.workspace_script_manager = WorkspaceScriptImportManager(workspace_context)
-        self.workspace_data_manager = WorkspaceDataManager(workspace_context)
-    
-    def test_workspace_script_isolation(self, script_name: str, workspace_id: str,
-                                      data_source: str = "synthetic") -> WorkspaceTestResult:
-        """Test script in isolation within specific workspace."""
+    def __init__(self, workspace_dir: str = "./pipeline_testing", 
+                 workspace_registry: WorkspaceComponentRegistry = None):
+        # Existing initialization
+        self.workspace_dir = Path(workspace_dir)
+        self.script_manager = ScriptImportManager()
+        self.data_manager = DataFlowManager(str(self.workspace_dir))
+        self.local_data_manager = LocalDataManager(str(self.workspace_dir))
         
-    def test_cross_workspace_script_compatibility(self, script_name: str, 
-                                                source_workspace: str,
-                                                target_workspaces: List[str]) -> CrossWorkspaceCompatibilityResult:
-        """Test script compatibility across multiple workspaces."""
-
-# File: src/cursus/validation/runtime/workspace/workspace_data_manager.py
-class WorkspaceDataManager:
-    """Manages test data across multiple workspaces with isolation."""
-    
-    def __init__(self, workspace_context: WorkspaceContext):
-        self.workspace_context = workspace_context
-        self.local_data_managers = {}
-        self.shared_data_registry = SharedTestDataRegistry()
-    
-    def get_workspace_test_data(self, workspace_id: str, data_type: str) -> WorkspaceTestData
-    def prepare_cross_workspace_test_data(self, workspace_mapping: Dict[str, str], data_scenario: str) -> CrossWorkspaceTestData
-```
-
-**Acceptance Criteria**:
-- [ ] Workspace-aware script discovery and execution
-- [ ] Isolated test data management per workspace
-- [ ] Cross-workspace script compatibility testing
-- [ ] Integration with existing runtime testing infrastructure
-- [ ] Backward compatibility with single-workspace testing
-
-#### 5.2 Cross-Workspace Pipeline Testing
-**Deliverables**:
-- Implement `WorkspacePipelineExecutor` for multi-workspace pipeline execution
-- Create `CrossWorkspaceValidator` for compatibility validation
-- Add workspace-aware pipeline execution orchestration
-- Implement cross-workspace data flow validation
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/validation/runtime/workspace/workspace_pipeline_executor.py
-class WorkspacePipelineExecutor(PipelineExecutor):
-    """Executes pipelines across multiple developer workspaces."""
-    
-    def __init__(self, workspace_context: WorkspaceContext):
-        self.workspace_context = workspace_context
-        self.workspace_script_executor = WorkspaceScriptExecutor(workspace_context)
-        self.cross_workspace_validator = CrossWorkspaceValidator()
-    
-    def execute_workspace_pipeline(self, dag, workspace_id: str, 
-                                 data_source: str = "synthetic") -> WorkspacePipelineExecutionResult:
-        """Execute pipeline within a specific workspace context."""
-        
-    def execute_cross_workspace_pipeline(self, dag, workspace_mapping: Dict[str, str],
-                                       data_source: str = "synthetic") -> CrossWorkspacePipelineExecutionResult:
-        """Execute pipeline using components from multiple workspaces."""
-
-# File: src/cursus/validation/runtime/workspace/cross_workspace_validator.py
-class CrossWorkspaceValidator:
-    """Validates compatibility between workspace components."""
-    
-    def validate_cross_workspace_pipeline(self, pipeline_definition: Dict,
-                                        workspace_mapping: Dict[str, str]) -> CrossWorkspaceValidationResult:
-        """Validate pipeline that uses components from multiple workspaces."""
-        
-    def validate_workspace_component_compatibility(self, component_a: WorkspaceComponent,
-                                                 component_b: WorkspaceComponent) -> ComponentCompatibilityResult:
-        """Validate compatibility between two workspace components."""
-```
-
-**Acceptance Criteria**:
-- [ ] Multi-workspace pipeline execution capability
-- [ ] Cross-workspace compatibility validation
-- [ ] Workspace-aware data flow management
-- [ ] Integration with workspace component registry
-- [ ] Comprehensive cross-workspace testing reports
-
-#### 5.3 Workspace Test Management and Orchestration
-**Deliverables**:
-- Implement `WorkspaceTestManager` for comprehensive test orchestration
-- Create workspace-specific test environment management
-- Add test result aggregation across workspaces
-- Implement workspace test reporting and visualization
-
-**Implementation Tasks**:
-```python
-# File: src/cursus/validation/runtime/workspace/workspace_test_manager.py
-class WorkspaceTestManager:
-    """Manages testing across multiple developer workspaces."""
-    
-    def __init__(self, workspace_registry: WorkspaceComponentRegistry):
+        # NEW: Workspace registry integration
         self.workspace_registry = workspace_registry
-        self.workspace_executors = {}
-        self.cross_workspace_validator = CrossWorkspaceValidator()
+        self.execution_history = []
+        self._setup_logging()
     
-    def setup_workspace_testing_environment(self, workspace_id: str) -> WorkspaceTestingEnvironment:
-        """Set up isolated testing environment for a workspace."""
+    def test_workspace_script_isolation(self, script_name: str, workspace_id: str = None,
+                                      data_source: str = "synthetic") -> TestResult:
+        """Test script in isolation with workspace context."""
+        # Use workspace-aware script discovery
+        script_path = self._discover_workspace_script_path(script_name, workspace_id)
         
-    def run_workspace_test_suite(self, workspace_id: str, 
-                               test_scenarios: List[TestScenario]) -> WorkspaceTestSuiteResult:
-        """Run complete test suite for a specific workspace."""
+        # Use existing sophisticated execution logic
+        return self.test_script_isolation(script_path, data_source)
+    
+    def _discover_workspace_script_path(self, script_name: str, workspace_id: str = None) -> str:
+        """Workspace-aware script discovery using WorkspaceComponentRegistry."""
+        if self.workspace_registry and workspace_id:
+            script_path = self.workspace_registry.find_script_file(script_name, workspace_id)
+            if script_path:
+                logger.info(f"Found script in workspace {workspace_id}: {script_path}")
+                return script_path
         
-    def run_cross_workspace_compatibility_tests(self, 
-                                              workspace_combinations: List[Tuple[str, str]]) -> CrossWorkspaceCompatibilityReport:
-        """Run compatibility tests between workspace pairs."""
+        # Fallback to existing discovery logic
+        return self._discover_script_path(script_name)
 ```
 
 **Acceptance Criteria**:
-- [ ] Comprehensive workspace test orchestration
-- [ ] Isolated test environment management
-- [ ] Cross-workspace compatibility testing
-- [ ] Test result aggregation and reporting
-- [ ] Integration with existing Jupyter notebook interface
+- [x] Integrates with existing `PipelineScriptExecutor` without breaking changes
+- [x] Uses `WorkspaceComponentRegistry` for workspace-aware script discovery
+- [x] Maintains backward compatibility with existing script discovery
+- [x] Preserves existing sophisticated execution capabilities
+- [x] Supports workspace context in test execution
 
-#### 5.4 Integration with Existing Runtime Testing
+#### 5.2 Workspace-Aware Pipeline Execution Enhancement
 **Deliverables**:
-- Integrate workspace extensions with existing runtime testing components
-- Extend existing data models for workspace context
-- Update Jupyter integration for workspace-aware testing
-- Add workspace-aware CLI commands
+- Extend existing `PipelineExecutor` with `WorkspaceAwareDAG` support (from Phase 4)
+- Add cross-workspace pipeline execution capabilities
+- Integrate with existing contract-based execution system
+- Leverage existing data flow validation and S3 integration
 
 **Implementation Tasks**:
-- Extend existing `TestResult` and `ExecutionResult` models with workspace context
-- Update Jupyter notebook interface to support workspace selection
-- Add workspace-aware CLI commands to existing runtime testing CLI
-- Integrate with existing S3 data management and caching systems
-- Update existing visualization and reporting for workspace context
+```python
+# File: src/cursus/validation/runtime/execution/pipeline_executor.py (UPDATED)
+class PipelineExecutor:
+    """Enhanced with workspace-aware pipeline execution."""
+    
+    def __init__(self, workspace_dir: str = "./pipeline_testing", 
+                 testing_mode: str = "pre_execution",
+                 workspace_registry: WorkspaceComponentRegistry = None):
+        # Existing initialization
+        self.workspace_dir = Path(workspace_dir)
+        self.testing_mode = testing_mode
+        self.script_executor = PipelineScriptExecutor(workspace_dir=workspace_dir, 
+                                                    workspace_registry=workspace_registry)
+        self.data_validator = DataCompatibilityValidator()
+        self.enhanced_data_flow_manager = EnhancedDataFlowManager(workspace_dir, testing_mode)
+        self.s3_output_registry = S3OutputPathRegistry()
+        
+        # NEW: Workspace registry integration
+        self.workspace_registry = workspace_registry
+        self.execution_results = {}
+        self.logger = logging.getLogger(__name__)
+        self.resolver = None
+    
+    def execute_workspace_pipeline(self, workspace_dag: WorkspaceAwareDAG, 
+                                 workspace_mapping: Dict[str, str] = None,
+                                 data_source: str = "synthetic") -> PipelineExecutionResult:
+        """Execute pipeline with workspace context using WorkspaceAwareDAG."""
+        # Convert WorkspaceAwareDAG to pipeline configuration
+        pipeline_config = workspace_dag.to_workspace_pipeline_config("workspace_pipeline")
+        
+        # Use existing sophisticated execution logic with workspace context
+        return self.execute_pipeline(
+            dag=workspace_dag,
+            data_source=data_source,
+            available_configs=pipeline_config.get('step_configs', {}),
+            metadata={'workspace_mapping': workspace_mapping}
+        )
+    
+    def execute_cross_workspace_pipeline(self, workspace_dag: WorkspaceAwareDAG,
+                                       workspace_mapping: Dict[str, str],
+                                       data_source: str = "synthetic") -> PipelineExecutionResult:
+        """Execute pipeline using components from multiple workspaces."""
+        # Validate cross-workspace dependencies
+        dependency_validation = workspace_dag.validate_workspace_dependencies()
+        if not dependency_validation.get('valid', False):
+            raise ValueError(f"Cross-workspace dependency validation failed: {dependency_validation}")
+        
+        # Execute with workspace mapping context
+        return self.execute_workspace_pipeline(workspace_dag, workspace_mapping, data_source)
+```
 
 **Acceptance Criteria**:
-- [ ] Seamless integration with existing runtime testing infrastructure
-- [ ] Workspace context in all test results and reports
-- [ ] Updated Jupyter interface with workspace support
-- [ ] Backward compatibility with existing runtime testing workflows
-- [ ] Enhanced CLI with workspace-aware commands
+- [x] Extends existing `PipelineExecutor` without breaking changes
+- [x] Integrates with `WorkspaceAwareDAG` from Phase 4
+- [x] Supports cross-workspace pipeline execution
+- [x] Leverages existing contract-based execution system
+- [x] Maintains existing data flow validation and S3 integration
+
+#### 5.3 Cross-Workspace Data Management and Validation
+**Deliverables**:
+- Extend existing `LocalDataManager` with workspace context
+- Enhance `DataCompatibilityValidator` for cross-workspace validation
+- Add workspace-aware data isolation and sharing
+- Integrate with existing S3 data management
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/data/local_data_manager.py (UPDATED)
+class LocalDataManager:
+    """Enhanced with workspace-aware data management."""
+    
+    def __init__(self, workspace_dir: str, workspace_registry: WorkspaceComponentRegistry = None):
+        # Existing initialization
+        self.workspace_dir = Path(workspace_dir)
+        self.local_data_dir = self.workspace_dir / "local_data"
+        self.local_data_dir.mkdir(parents=True, exist_ok=True)
+        self.manifest_path = self.local_data_dir / "data_manifest.yaml"
+        
+        # NEW: Workspace registry integration
+        self.workspace_registry = workspace_registry
+        
+        if not self.manifest_path.exists():
+            self._create_default_manifest()
+        
+        logger.info(f"LocalDataManager initialized with workspace support: {self.local_data_dir}")
+    
+    def get_workspace_data_for_script(self, script_name: str, workspace_id: str) -> Optional[Dict[str, str]]:
+        """Get workspace-specific data for script."""
+        # Check workspace-specific data first
+        workspace_data_dir = self.local_data_dir / "workspaces" / workspace_id
+        if workspace_data_dir.exists():
+            workspace_manifest_path = workspace_data_dir / "data_manifest.yaml"
+            if workspace_manifest_path.exists():
+                workspace_manifest = self._load_manifest(workspace_manifest_path)
+                if script_name in workspace_manifest.get("scripts", {}):
+                    return self._resolve_data_paths(workspace_manifest["scripts"][script_name], workspace_data_dir)
+        
+        # Fallback to shared data
+        return self.get_data_for_script(script_name)
+
+# File: src/cursus/validation/runtime/execution/data_compatibility_validator.py (UPDATED)
+class DataCompatibilityValidator:
+    """Enhanced with cross-workspace compatibility validation."""
+    
+    def validate_cross_workspace_compatibility(self, 
+                                             source_workspace: str,
+                                             target_workspace: str,
+                                             step_transition: Dict) -> DataCompatibilityReport:
+        """Validate data compatibility between workspaces."""
+        # Use existing validation logic with workspace context
+        report = self.validate_step_transition(
+            step_transition['source_outputs'],
+            step_transition['target_inputs']
+        )
+        
+        # Add workspace context to report
+        report.source_workspace = source_workspace
+        report.target_workspace = target_workspace
+        report.cross_workspace_validation = True
+        
+        return report
+```
+
+**Acceptance Criteria**:
+- [x] Extends existing data management without breaking changes
+- [x] Supports workspace-specific data isolation
+- [x] Enables cross-workspace data compatibility validation
+- [x] Integrates with existing S3 data management
+- [x] Maintains existing YAML manifest functionality
+
+#### 5.4 Integration with Existing Jupyter and CLI Interface
+**Deliverables**:
+- Extend existing Jupyter integration with workspace selection
+- Add workspace context to existing CLI commands
+- Update existing visualization with workspace information
+- Maintain backward compatibility with existing interfaces
+
+**Implementation Tasks**:
+```python
+# File: src/cursus/validation/runtime/jupyter/notebook_interface.py (UPDATED)
+class NotebookInterface:
+    """Enhanced with workspace-aware testing capabilities."""
+    
+    def __init__(self, workspace_dir: str = "./pipeline_testing",
+                 workspace_registry: WorkspaceComponentRegistry = None):
+        # Existing initialization
+        self.workspace_dir = workspace_dir
+        self.script_executor = PipelineScriptExecutor(workspace_dir, workspace_registry)
+        self.pipeline_executor = PipelineExecutor(workspace_dir, workspace_registry=workspace_registry)
+        
+        # NEW: Workspace registry integration
+        self.workspace_registry = workspace_registry
+    
+    def quick_test_workspace_script(self, script_name: str, workspace_id: str = None) -> TestResult:
+        """Quick test for workspace script with rich display."""
+        result = self.script_executor.test_workspace_script_isolation(script_name, workspace_id)
+        
+        # Use existing rich display functionality
+        self._display_test_result(result, workspace_context={'workspace_id': workspace_id})
+        return result
+    
+    def quick_test_workspace_pipeline(self, workspace_dag: WorkspaceAwareDAG) -> PipelineExecutionResult:
+        """Quick test for workspace pipeline with visualization."""
+        result = self.pipeline_executor.execute_workspace_pipeline(workspace_dag)
+        
+        # Use existing visualization with workspace context
+        self._visualize_pipeline_result(result, workspace_dag.get_workspace_summary())
+        return result
+```
+
+**Acceptance Criteria**:
+- [x] Extends existing Jupyter interface without breaking changes
+- [x] Adds workspace selection and context to notebooks
+- [x] Maintains existing rich visualization capabilities
+- [x] Supports workspace-aware CLI commands
+- [x] Preserves backward compatibility with existing workflows
+
+**IMPLEMENTATION BENEFITS:**
+- **Leverages Existing Sophistication**: Reuses advanced features like contract-based execution, enhanced data flow, S3 integration
+- **Maintains Existing Capabilities**: Multi-mode testing, Jupyter integration, visualization continue to work
+- **Simpler Implementation**: Extension approach vs. recreation reduces complexity and development time
+- **Better Integration**: Direct integration with Phase 3 `WorkspaceComponentRegistry` and Phase 4 `WorkspaceAwareDAG`
+- **Preserves Performance**: Existing caching, error handling, and optimization strategies maintained
 
 ### Phase 6: Distributed Registry System (Weeks 19-22) [MOVED FROM PHASE 5]
 **Duration**: 4 weeks  

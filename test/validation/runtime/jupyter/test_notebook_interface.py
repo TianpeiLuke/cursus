@@ -19,6 +19,7 @@ from src.cursus.validation.runtime.jupyter.notebook_interface import (
     NotebookSession,
     JUPYTER_AVAILABLE
 )
+from src.cursus.core.workspace.registry import WorkspaceComponentRegistry
 
 
 class TestNotebookSession(unittest.TestCase):
@@ -410,6 +411,409 @@ class TestNotebookInterfaceWithJupyter(unittest.TestCase):
         mock_widgets.Dropdown.assert_called()
         # Button is not called in this specific method, only dropdowns
         mock_widgets.Output.assert_called()
+
+
+class TestNotebookInterfaceWorkspaceFeatures(unittest.TestCase):
+    """Test cases for workspace-aware features"""
+    
+    def setUp(self):
+        """Set up test fixtures with workspace context"""
+        self.temp_dir = tempfile.mkdtemp()
+        self.workspace_dir = Path(self.temp_dir) / "test_workspace"
+        self.workspace_root = str(Path(self.temp_dir) / "workspace_root")
+        
+        # Create workspace root directory
+        Path(self.workspace_root).mkdir(parents=True, exist_ok=True)
+        
+        self.interface = NotebookInterface(
+            str(self.workspace_dir), 
+            workspace_root=self.workspace_root
+        )
+    
+    def tearDown(self):
+        """Clean up test fixtures"""
+        if Path(self.temp_dir).exists():
+            shutil.rmtree(self.temp_dir)
+    
+    def test_initialization_with_workspace_root(self):
+        """Test NotebookInterface initialization with workspace root"""
+        self.assertEqual(self.interface.session.workspace_root, self.workspace_root)
+        self.assertIsNotNone(self.interface.workspace_registry)
+        self.assertIsInstance(self.interface.workspace_registry, WorkspaceComponentRegistry)
+    
+    def test_initialization_without_workspace_root(self):
+        """Test NotebookInterface initialization without workspace root"""
+        interface = NotebookInterface(str(self.workspace_dir))
+        self.assertIsNone(interface.session.workspace_root)
+        self.assertIsNone(interface.workspace_registry)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_display_welcome_with_workspace_info(self, mock_html, mock_display):
+        """Test display_welcome method with workspace information"""
+        self.interface.session.selected_developer = "test_developer"
+        self.interface.display_welcome()
+        
+        mock_html.assert_called_once()
+        mock_display.assert_called_once()
+        
+        html_content = mock_html.call_args[0][0]
+        self.assertIn("Workspace Root:", html_content)
+        self.assertIn(self.workspace_root, html_content)
+        self.assertIn("Selected Developer:", html_content)
+        self.assertIn("test_developer", html_content)
+    
+    def test_get_session_info_with_workspace_context(self):
+        """Test getting session information with workspace context"""
+        self.interface.session.selected_developer = "test_developer"
+        info = self.interface.get_session_info()
+        
+        expected_keys = [
+            'session_id', 'workspace_dir', 'workspace_root', 'selected_developer',
+            'pipeline_name', 'current_step', 'test_results_count', 'jupyter_available'
+        ]
+        
+        for key in expected_keys:
+            self.assertIn(key, info)
+        
+        self.assertEqual(info['workspace_root'], self.workspace_root)
+        self.assertEqual(info['selected_developer'], "test_developer")
+    
+    def test_execute_step_test_with_developer_id(self):
+        """Test step execution with developer ID"""
+        with patch.object(self.interface, 'script_executor') as mock_executor:
+            mock_result = Mock()
+            mock_result.model_dump.return_value = {
+                'script_name': 'test_step',
+                'success': True,
+                'execution_time': 1.5
+            }
+            mock_executor.test_script_isolation.return_value = mock_result
+            
+            result = self.interface._execute_step_test(
+                "test_step", "synthetic", developer_id="test_developer"
+            )
+            
+            # Verify developer_id was passed to script executor
+            mock_executor.test_script_isolation.assert_called_once_with(
+                "test_step", "synthetic", developer_id="test_developer"
+            )
+            
+            # Verify workspace context in result
+            self.assertEqual(result['developer_id'], "test_developer")
+            self.assertIn('workspace_context', result)
+            self.assertEqual(result['workspace_context']['workspace_root'], self.workspace_root)
+            self.assertEqual(result['workspace_context']['selected_developer'], "test_developer")
+    
+    def test_execute_step_test_with_workspace_context_on_error(self):
+        """Test step execution error includes workspace context"""
+        with patch.object(self.interface, 'script_executor') as mock_executor:
+            mock_executor.test_script_isolation.side_effect = Exception("Test error")
+            
+            result = self.interface._execute_step_test(
+                "test_step", "synthetic", developer_id="test_developer"
+            )
+            
+            self.assertFalse(result['success'])
+            self.assertEqual(result['error'], "Test error")
+            self.assertEqual(result['developer_id'], "test_developer")
+            self.assertIn('workspace_context', result)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_select_workspace_developer_without_registry(self, mock_html, mock_display):
+        """Test developer selection without workspace registry"""
+        interface = NotebookInterface(str(self.workspace_dir))  # No workspace root
+        result = interface.select_workspace_developer()
+        
+        self.assertIsNone(result)
+        mock_html.assert_called_once()
+        html_content = mock_html.call_args[0][0]
+        self.assertIn("No workspace context available", html_content)
+    
+    def test_set_developer(self):
+        """Test setting developer for session"""
+        with patch('src.cursus.validation.runtime.jupyter.notebook_interface.display'):
+            with patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML'):
+                result = self.interface._set_developer("test_developer")
+        
+        self.assertEqual(result, "test_developer")
+        self.assertEqual(self.interface.session.selected_developer, "test_developer")
+    
+    def test_set_developer_none(self):
+        """Test setting developer to None"""
+        with patch('src.cursus.validation.runtime.jupyter.notebook_interface.display'):
+            with patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML'):
+                result = self.interface._set_developer(None)
+        
+        self.assertIsNone(result)
+        self.assertIsNone(self.interface.session.selected_developer)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_display_developer_info(self, mock_html, mock_display):
+        """Test displaying developer information"""
+        mock_components = {
+            'scripts': {'script1': {'developer_id': 'test_dev'}},
+            'builders': {'builder1': {'developer_id': 'test_dev'}},
+            'configs': {},
+            'contracts': {},
+            'specs': {}
+        }
+        
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         return_value=mock_components):
+            self.interface._display_developer_info("test_developer")
+        
+        mock_html.assert_called_once()
+        mock_display.assert_called_once()
+        
+        html_content = mock_html.call_args[0][0]
+        self.assertIn("Developer: test_developer", html_content)
+        self.assertIn("Scripts:", html_content)
+        self.assertIn("Builders:", html_content)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_display_developer_info_error(self, mock_html, mock_display):
+        """Test displaying developer information with error"""
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         side_effect=Exception("Discovery error")):
+            self.interface._display_developer_info("test_developer")
+        
+        mock_html.assert_called_once()
+        html_content = mock_html.call_args[0][0]
+        self.assertIn("Error getting developer info", html_content)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_list_workspace_components_without_registry(self, mock_html, mock_display):
+        """Test listing workspace components without registry"""
+        interface = NotebookInterface(str(self.workspace_dir))  # No workspace root
+        result = interface.list_workspace_components()
+        
+        self.assertIsNone(result)
+        mock_html.assert_called_once()
+        html_content = mock_html.call_args[0][0]
+        self.assertIn("No workspace context available", html_content)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_list_workspace_components_success(self, mock_html, mock_display):
+        """Test successful workspace components listing"""
+        mock_components = {
+            'summary': {
+                'total_components': 5,
+                'developers': ['dev1', 'dev2'],
+                'step_types': ['processing', 'training']
+            },
+            'scripts': {
+                'script1': {
+                    'developer_id': 'dev1',
+                    'step_name': 'process_data',
+                    'step_type': 'processing'
+                }
+            },
+            'builders': {
+                'builder1': {
+                    'developer_id': 'dev2',
+                    'class_name': 'TrainingBuilder'
+                }
+            },
+            'configs': {},
+            'contracts': {},
+            'specs': {}
+        }
+        
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         return_value=mock_components):
+            with patch('pandas.DataFrame') as mock_df:
+                mock_df.return_value = Mock()
+                result = self.interface.list_workspace_components()
+        
+        self.assertEqual(result, mock_components)
+        mock_html.assert_called()
+        mock_display.assert_called()
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_list_workspace_components_with_developer_id(self, mock_html, mock_display):
+        """Test listing workspace components for specific developer"""
+        mock_components = {
+            'summary': {
+                'total_components': 2,
+                'developers': ['test_dev'],
+                'step_types': ['processing']
+            },
+            'scripts': {
+                'script1': {
+                    'developer_id': 'test_dev',
+                    'step_name': 'process_data'
+                }
+            },
+            'builders': {},
+            'configs': {},
+            'contracts': {},
+            'specs': {}
+        }
+        
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         return_value=mock_components) as mock_discover:
+            result = self.interface.list_workspace_components("test_dev")
+        
+        mock_discover.assert_called_once_with("test_dev")
+        self.assertEqual(result, mock_components)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_list_workspace_components_error(self, mock_html, mock_display):
+        """Test listing workspace components with error"""
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         side_effect=Exception("Discovery error")):
+            result = self.interface.list_workspace_components()
+        
+        self.assertIsNone(result)
+        mock_html.assert_called_once()
+        html_content = mock_html.call_args[0][0]
+        self.assertIn("Error listing components", html_content)
+
+
+@unittest.skipIf(not JUPYTER_AVAILABLE, "Jupyter dependencies not available")
+class TestNotebookInterfaceWorkspaceWidgets(unittest.TestCase):
+    """Test cases for workspace-aware interactive widgets"""
+    
+    def setUp(self):
+        """Set up test fixtures with workspace context"""
+        self.temp_dir = tempfile.mkdtemp()
+        self.workspace_dir = Path(self.temp_dir) / "test_workspace"
+        self.workspace_root = str(Path(self.temp_dir) / "workspace_root")
+        
+        Path(self.workspace_root).mkdir(parents=True, exist_ok=True)
+        
+        self.interface = NotebookInterface(
+            str(self.workspace_dir), 
+            workspace_root=self.workspace_root
+        )
+    
+    def tearDown(self):
+        """Clean up test fixtures"""
+        if Path(self.temp_dir).exists():
+            shutil.rmtree(self.temp_dir)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.widgets')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    def test_create_interactive_step_tester_with_developer_options(self, mock_display, mock_widgets):
+        """Test creating interactive step tester with developer options"""
+        # Mock workspace registry discovery
+        mock_components = {
+            'summary': {
+                'developers': ['dev1', 'dev2']
+            }
+        }
+        
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         return_value=mock_components):
+            
+            # Mock widgets
+            mock_dropdown = Mock()
+            mock_textarea = Mock()
+            mock_button = Mock()
+            mock_output = Mock()
+            mock_vbox = Mock()
+            
+            mock_widgets.Dropdown.return_value = mock_dropdown
+            mock_widgets.Textarea.return_value = mock_textarea
+            mock_widgets.Button.return_value = mock_button
+            mock_widgets.Output.return_value = mock_output
+            mock_widgets.VBox.return_value = mock_vbox
+            
+            result = self.interface._create_interactive_step_tester("test_step", "synthetic")
+            
+            # Verify developer dropdown was created with discovered developers
+            dropdown_calls = mock_widgets.Dropdown.call_args_list
+            developer_dropdown_call = None
+            for call in dropdown_calls:
+                if 'Developer:' in str(call):
+                    developer_dropdown_call = call
+                    break
+            
+            self.assertIsNotNone(developer_dropdown_call)
+            self.assertIsNotNone(result)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.widgets')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    def test_create_developer_selector_success(self, mock_display, mock_widgets):
+        """Test creating developer selector widget successfully"""
+        # Mock workspace registry discovery
+        mock_components = {
+            'summary': {
+                'developers': ['dev1', 'dev2', 'dev3']
+            }
+        }
+        
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         return_value=mock_components):
+            
+            # Mock widgets
+            mock_dropdown = Mock()
+            mock_button = Mock()
+            mock_output = Mock()
+            mock_vbox = Mock()
+            
+            mock_widgets.Dropdown.return_value = mock_dropdown
+            mock_widgets.Button.return_value = mock_button
+            mock_widgets.Output.return_value = mock_output
+            mock_widgets.VBox.return_value = mock_vbox
+            
+            result = self.interface._create_developer_selector()
+            
+            self.assertIsNotNone(result)
+            mock_widgets.Dropdown.assert_called_once()
+            mock_widgets.Button.assert_called_once()
+            mock_widgets.VBox.assert_called_once()
+            mock_display.assert_called_once()
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.widgets')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_create_developer_selector_no_developers(self, mock_html, mock_display, mock_widgets):
+        """Test creating developer selector when no developers found"""
+        # Mock workspace registry discovery with no developers
+        mock_components = {
+            'summary': {
+                'developers': []
+            }
+        }
+        
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         return_value=mock_components):
+            result = self.interface._create_developer_selector()
+            
+            self.assertIsNone(result)
+            mock_html.assert_called_once()
+            html_content = mock_html.call_args[0][0]
+            self.assertIn("No developers found", html_content)
+    
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.widgets')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.display')
+    @patch('src.cursus.validation.runtime.jupyter.notebook_interface.HTML')
+    def test_create_developer_selector_error(self, mock_html, mock_display, mock_widgets):
+        """Test creating developer selector with discovery error"""
+        with patch.object(self.interface.workspace_registry, 'discover_components', 
+                         side_effect=Exception("Discovery error")):
+            result = self.interface._create_developer_selector()
+            
+            self.assertIsNone(result)
+            mock_html.assert_called_once()
+            html_content = mock_html.call_args[0][0]
+            self.assertIn("Error creating developer selector", html_content)
+    
+    def test_select_workspace_developer_non_interactive(self):
+        """Test non-interactive developer selection"""
+        result = self.interface.select_workspace_developer("test_dev", interactive=False)
+        
+        self.assertEqual(result, "test_dev")
+        self.assertEqual(self.interface.session.selected_developer, "test_dev")
 
 
 class TestNotebookInterfaceEdgeCases(unittest.TestCase):

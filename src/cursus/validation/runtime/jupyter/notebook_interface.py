@@ -25,6 +25,7 @@ except ImportError:
 from ..core.pipeline_script_executor import PipelineScriptExecutor
 from ..integration.s3_data_downloader import S3DataDownloader
 from ..integration.real_data_tester import RealDataTester
+from ....core.workspace.registry import WorkspaceComponentRegistry
 
 
 class NotebookSession(BaseModel):
@@ -34,38 +35,66 @@ class NotebookSession(BaseModel):
     pipeline_name: Optional[str] = None
     current_step: Optional[str] = None
     test_results: Optional[Dict[str, Any]] = None
+    workspace_root: Optional[str] = None
+    selected_developer: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    
+    @property
+    def workspace_path(self):
+        """Alias for workspace_dir for backward compatibility."""
+        return self.workspace_dir
 
 
 class NotebookInterface:
-    """Interactive Jupyter interface for pipeline testing."""
+    """Interactive Jupyter interface for pipeline testing with workspace awareness."""
     
-    def __init__(self, workspace_dir: str = "./test_workspace"):
-        """Initialize notebook interface with workspace directory."""
+    def __init__(self, workspace_dir: str = "./test_workspace", workspace_root: str = None):
+        """Initialize notebook interface with workspace directory and optional workspace root."""
         self.workspace_dir = Path(workspace_dir)
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
         
         self.session = NotebookSession(
             session_id=f"session_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}",
-            workspace_dir=self.workspace_dir
+            workspace_dir=self.workspace_dir,
+            workspace_root=workspace_root
         )
         
-        # Initialize core components
-        self.script_executor = PipelineScriptExecutor(workspace_dir)
+        # Initialize core components with workspace awareness
+        self.script_executor = PipelineScriptExecutor(workspace_dir, workspace_root)
         self.s3_downloader = S3DataDownloader(workspace_dir)
         self.real_data_tester = RealDataTester(workspace_dir)
+        
+        # Phase 5: Workspace component registry for developer discovery
+        self.workspace_registry = None
+        if workspace_root:
+            self.workspace_registry = WorkspaceComponentRegistry(workspace_root)
         
         if not JUPYTER_AVAILABLE:
             print("Warning: Jupyter dependencies not available. Some features may be limited.")
     
+    @property
+    def executor(self):
+        """Alias for script_executor for backward compatibility."""
+        return self.script_executor
+    
     def display_welcome(self):
         """Display welcome message and setup instructions."""
+        workspace_info = ""
+        if self.session.workspace_root:
+            workspace_info = f"""
+            <p><strong>Workspace Root:</strong> {self.session.workspace_root}</p>
+            <p><strong>Selected Developer:</strong> {self.session.selected_developer or 'None'}</p>
+            """
+        
         welcome_html = f"""
         <div style="border: 2px solid #4CAF50; padding: 20px; border-radius: 10px; background-color: #f9f9f9;">
             <h2 style="color: #4CAF50;">🧪 Pipeline Script Functionality Testing</h2>
             <p><strong>Session ID:</strong> {self.session.session_id}</p>
             <p><strong>Workspace:</strong> {self.workspace_dir}</p>
+            {workspace_info}
             <h3>Quick Start:</h3>
             <ul>
+                <li>Use <code>select_workspace_developer()</code> to choose a developer workspace</li>
                 <li>Use <code>load_pipeline()</code> to load a pipeline configuration</li>
                 <li>Use <code>test_single_step()</code> to test individual steps</li>
                 <li>Use <code>test_pipeline()</code> to test complete pipelines</li>
@@ -75,7 +104,7 @@ class NotebookInterface:
             <ul>
                 <li><strong>synthetic</strong>: Generated test data for development</li>
                 <li><strong>s3</strong>: Real pipeline data from S3 buckets</li>
-                <li><strong>local</strong>: Local files for testing</li>
+                <li><strong>local</strong>: Local files for testing (workspace-aware)</li>
             </ul>
         </div>
         """
@@ -111,24 +140,40 @@ class NotebookInterface:
             return None
     
     def test_single_step(self, step_name: str, data_source: str = "synthetic", 
-                        interactive: bool = True):
-        """Test a single pipeline step with interactive controls."""
+                        developer_id: str = None, interactive: bool = True):
+        """Test a single pipeline step with interactive controls and workspace context."""
         if not JUPYTER_AVAILABLE or not interactive:
-            return self._execute_step_test(step_name, data_source)
+            return self._execute_step_test(step_name, data_source, developer_id=developer_id)
         
-        return self._create_interactive_step_tester(step_name, data_source)
+        return self._create_interactive_step_tester(step_name, data_source, developer_id)
     
-    def _create_interactive_step_tester(self, step_name: str, data_source: str):
-        """Create interactive widget for step testing."""
+    def _create_interactive_step_tester(self, step_name: str, data_source: str, developer_id: str = None):
+        """Create interactive widget for step testing with workspace context."""
         if not widgets:
             print("Interactive widgets not available. Running in non-interactive mode.")
-            return self._execute_step_test(step_name, data_source)
+            return self._execute_step_test(step_name, data_source, developer_id=developer_id)
         
         # Data source selection
         data_source_widget = widgets.Dropdown(
             options=['synthetic', 's3', 'local'],
             value=data_source,
             description='Data Source:'
+        )
+        
+        # Phase 5: Developer selection widget
+        developer_options = ['None']
+        if self.workspace_registry:
+            try:
+                components = self.workspace_registry.discover_components()
+                developers = components['summary'].get('developers', [])
+                developer_options.extend(developers)
+            except Exception as e:
+                print(f"Warning: Could not discover developers: {e}")
+        
+        developer_widget = widgets.Dropdown(
+            options=developer_options,
+            value=developer_id or self.session.selected_developer or 'None',
+            description='Developer:'
         )
         
         # Test parameters
@@ -154,10 +199,12 @@ class NotebookInterface:
                 output_area.clear_output()
                 try:
                     params = json.loads(test_params_widget.value) if test_params_widget.value.strip() else {}
+                    selected_developer = developer_widget.value if developer_widget.value != 'None' else None
                     result = self._execute_step_test(
                         step_name, 
                         data_source_widget.value, 
-                        params
+                        developer_id=selected_developer,
+                        params=params
                     )
                     self._display_step_result(result)
                 except Exception as e:
@@ -169,6 +216,7 @@ class NotebookInterface:
         controls = widgets.VBox([
             widgets.HTML(f'<h3>Testing Step: {step_name}</h3>'),
             data_source_widget,
+            developer_widget,
             test_params_widget,
             execute_button
         ])
@@ -178,21 +226,33 @@ class NotebookInterface:
         return controls, output_area
     
     def _execute_step_test(self, step_name: str, data_source: str, 
-                          params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Execute step test and return results."""
+                          developer_id: str = None, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Execute step test and return results with workspace context."""
         if params is None:
             params = {}
         
         try:
-            # Execute step using the script executor
-            result = self.script_executor.test_script_isolation(step_name, data_source)
+            # Execute step using the script executor with workspace context
+            result = self.script_executor.test_script_isolation(
+                step_name, 
+                data_source, 
+                developer_id=developer_id
+            )
             
-            # Store result in session
+            # Store result in session with workspace context
             if self.session.test_results is None:
                 self.session.test_results = {}
-            self.session.test_results[step_name] = result.model_dump()
             
-            return result.model_dump()
+            result_dict = result.model_dump()
+            result_dict['developer_id'] = developer_id
+            result_dict['workspace_context'] = {
+                'workspace_root': self.session.workspace_root,
+                'selected_developer': developer_id
+            }
+            
+            self.session.test_results[step_name] = result_dict
+            
+            return result_dict
             
         except Exception as e:
             error_result = {
@@ -200,7 +260,12 @@ class NotebookInterface:
                 'success': False,
                 'error': str(e),
                 'data_source': data_source,
-                'params': params
+                'developer_id': developer_id,
+                'params': params,
+                'workspace_context': {
+                    'workspace_root': self.session.workspace_root,
+                    'selected_developer': developer_id
+                }
             }
             
             if self.session.test_results is None:
@@ -411,8 +476,156 @@ class NotebookInterface:
         return {
             'session_id': self.session.session_id,
             'workspace_dir': str(self.session.workspace_dir),
+            'workspace_root': self.session.workspace_root,
+            'selected_developer': self.session.selected_developer,
             'pipeline_name': self.session.pipeline_name,
             'current_step': self.session.current_step,
             'test_results_count': len(self.session.test_results or {}),
             'jupyter_available': JUPYTER_AVAILABLE
         }
+    
+    def select_workspace_developer(self, developer_id: str = None, interactive: bool = True):
+        """Select a developer workspace for testing."""
+        if not self.workspace_registry:
+            display(HTML('<div style="color: orange;">⚠️ No workspace context available</div>'))
+            return None
+        
+        if not JUPYTER_AVAILABLE or not interactive:
+            return self._set_developer(developer_id)
+        
+        return self._create_developer_selector()
+    
+    def _create_developer_selector(self):
+        """Create interactive developer selection widget."""
+        if not widgets:
+            print("Interactive widgets not available.")
+            return None
+        
+        try:
+            # Discover available developers
+            components = self.workspace_registry.discover_components()
+            developers = components['summary'].get('developers', [])
+            
+            if not developers:
+                display(HTML('<div style="color: orange;">⚠️ No developers found in workspace</div>'))
+                return None
+            
+            # Developer selection widget
+            developer_widget = widgets.Dropdown(
+                options=['None'] + developers,
+                value=self.session.selected_developer or 'None',
+                description='Developer:'
+            )
+            
+            # Info display area
+            info_area = widgets.Output()
+            
+            # Select button
+            select_button = widgets.Button(
+                description='Select Developer',
+                button_style='primary',
+                icon='user'
+            )
+            
+            def on_developer_change(change):
+                with info_area:
+                    info_area.clear_output()
+                    if change['new'] != 'None':
+                        self._display_developer_info(change['new'])
+            
+            def on_select_clicked(b):
+                selected_dev = developer_widget.value if developer_widget.value != 'None' else None
+                self._set_developer(selected_dev)
+                display(HTML(f'<div style="color: green;">✅ Selected developer: {selected_dev or "None"}</div>'))
+            
+            developer_widget.observe(on_developer_change, names='value')
+            select_button.on_click(on_select_clicked)
+            
+            # Layout
+            controls = widgets.VBox([
+                widgets.HTML('<h3>Select Developer Workspace</h3>'),
+                developer_widget,
+                select_button,
+                info_area
+            ])
+            
+            display(controls)
+            return controls
+            
+        except Exception as e:
+            display(HTML(f'<div style="color: red;">❌ Error creating developer selector: {str(e)}</div>'))
+            return None
+    
+    def _set_developer(self, developer_id: str):
+        """Set the selected developer for the session."""
+        self.session.selected_developer = developer_id
+        if developer_id:
+            display(HTML(f'<div style="color: green;">✅ Selected developer: {developer_id}</div>'))
+        else:
+            display(HTML('<div style="color: blue;">ℹ️ No developer selected (using general workspace)</div>'))
+        return developer_id
+    
+    def _display_developer_info(self, developer_id: str):
+        """Display information about a developer's workspace."""
+        try:
+            components = self.workspace_registry.discover_components(developer_id)
+            
+            info_html = f"""
+            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                <h4>Developer: {developer_id}</h4>
+                <p><strong>Scripts:</strong> {len(components.get('scripts', {}))}</p>
+                <p><strong>Builders:</strong> {len(components.get('builders', {}))}</p>
+                <p><strong>Configs:</strong> {len(components.get('configs', {}))}</p>
+                <p><strong>Contracts:</strong> {len(components.get('contracts', {}))}</p>
+                <p><strong>Specs:</strong> {len(components.get('specs', {}))}</p>
+            </div>
+            """
+            display(HTML(info_html))
+            
+        except Exception as e:
+            display(HTML(f'<div style="color: red;">❌ Error getting developer info: {str(e)}</div>'))
+    
+    def list_workspace_components(self, developer_id: str = None):
+        """List available workspace components."""
+        if not self.workspace_registry:
+            display(HTML('<div style="color: orange;">⚠️ No workspace context available</div>'))
+            return None
+        
+        try:
+            components = self.workspace_registry.discover_components(developer_id)
+            
+            summary_html = f"""
+            <div style="border: 2px solid #2196F3; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>Workspace Components{f" - {developer_id}" if developer_id else ""}</h3>
+                <p><strong>Total Components:</strong> {components['summary']['total_components']}</p>
+                <p><strong>Developers:</strong> {len(components['summary']['developers'])}</p>
+                <p><strong>Step Types:</strong> {len(components['summary']['step_types'])}</p>
+            </div>
+            """
+            display(HTML(summary_html))
+            
+            # Display component details
+            for component_type in ['scripts', 'builders', 'configs', 'contracts', 'specs']:
+                component_data = components.get(component_type, {})
+                if component_data:
+                    display(HTML(f'<h4>{component_type.title()} ({len(component_data)})</h4>'))
+                    
+                    # Create DataFrame for better display
+                    rows = []
+                    for key, info in component_data.items():
+                        rows.append({
+                            'Key': key,
+                            'Developer': info.get('developer_id', 'N/A'),
+                            'Step Name': info.get('step_name', 'N/A'),
+                            'Type': info.get('step_type', info.get('class_name', 'N/A'))
+                        })
+                    
+                    if rows:
+                        df = pd.DataFrame(rows)
+                        display(df)
+            
+            return components
+            
+        except Exception as e:
+            display(HTML(f'<div style="color: red;">❌ Error listing components: {str(e)}</div>'))
+            return None
