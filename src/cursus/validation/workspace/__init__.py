@@ -72,6 +72,35 @@ from .legacy_adapters import (
 # Existing validation components
 from .workspace_orchestrator import WorkspaceValidationOrchestrator
 
+# PHASE 3: Consolidated validation system components
+from .test_manager import (
+    WorkspaceTestManager,
+    TestEnvironment,
+    IsolationReport,
+    TestWorkspaceConfig,
+    create_test_workspace_manager,
+    validate_test_workspace_structure
+)
+# Import consolidated IsolationViolation from core module
+from ...core.workspace.isolation import IsolationViolation
+
+from .test_isolation import (
+    TestWorkspaceIsolationManager,
+    TestIsolationConfig,
+    IsolationEnvironment,
+    create_test_isolation_manager,
+    validate_test_environment_isolation
+)
+from .cross_workspace_validator import (
+    CrossWorkspaceValidator,
+    ComponentConflict,
+    DependencyResolution,
+    ValidationResult,
+    CrossWorkspaceConfig,
+    create_cross_workspace_validator,
+    validate_cross_workspace_compatibility
+)
+
 # Public API
 __all__ = [
     # Core classes
@@ -99,6 +128,21 @@ __all__ = [
     "LegacyWorkspaceValidationAdapter",
     "WorkspaceValidationOrchestrator",
     
+    # PHASE 3: Consolidated validation system
+    "WorkspaceTestManager",
+    "TestEnvironment",
+    "IsolationReport",
+    "TestWorkspaceConfig",
+    "TestWorkspaceIsolationManager",
+    "TestIsolationConfig",
+    "IsolationViolation",
+    "IsolationEnvironment",
+    "CrossWorkspaceValidator",
+    "ComponentConflict",
+    "DependencyResolution",
+    "ValidationResult",
+    "CrossWorkspaceConfig",
+    
     # Utility functions
     "create_workspace_manager",
     "validate_workspace_structure",
@@ -111,7 +155,15 @@ __all__ = [
     "export_unified_report",
     "create_legacy_adapter",
     "validate_workspace_legacy",
-    "validate_all_workspaces_legacy"
+    "validate_all_workspaces_legacy",
+    
+    # PHASE 3: Consolidated validation functions
+    "create_test_workspace_manager",
+    "validate_test_workspace_structure",
+    "create_test_isolation_manager",
+    "validate_test_environment_isolation",
+    "create_cross_workspace_validator",
+    "validate_cross_workspace_compatibility"
 ]
 
 

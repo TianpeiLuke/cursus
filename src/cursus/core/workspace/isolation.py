@@ -19,47 +19,31 @@ from typing import Optional, Dict, Any, List, Union, Tuple
 import logging
 from datetime import datetime
 
+from pydantic import BaseModel, Field, ConfigDict
+
 logger = logging.getLogger(__name__)
 
 
-class IsolationViolation:
+class IsolationViolation(BaseModel):
     """Represents a workspace isolation violation."""
+    model_config = ConfigDict(
+        extra='forbid',
+        validate_assignment=True,
+        str_strip_whitespace=True
+    )
     
-    def __init__(
-        self,
-        violation_type: str,
-        workspace_id: str,
-        description: str,
-        severity: str = "medium",
-        details: Dict[str, Any] = None
-    ):
-        """
-        Initialize isolation violation.
-        
-        Args:
-            violation_type: Type of violation (e.g., "path_access", "namespace_conflict")
-            workspace_id: Workspace where violation occurred
-            description: Human-readable description of the violation
-            severity: Severity level ("low", "medium", "high", "critical")
-            details: Additional details about the violation
-        """
-        self.violation_type = violation_type
-        self.workspace_id = workspace_id
-        self.description = description
-        self.severity = severity
-        self.details = details or {}
-        self.detected_at = datetime.now()
+    violation_type: str  # "path_access", "namespace_conflict", "environment", "dependency", "resource"
+    workspace_id: str
+    description: str
+    severity: str = "medium"  # "low", "medium", "high", "critical"
+    details: Dict[str, Any] = Field(default_factory=dict)
+    detected_at: datetime = Field(default_factory=datetime.now)
+    detected_path: Optional[str] = None
+    recommendation: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert violation to dictionary representation."""
-        return {
-            "violation_type": self.violation_type,
-            "workspace_id": self.workspace_id,
-            "description": self.description,
-            "severity": self.severity,
-            "details": self.details,
-            "detected_at": self.detected_at.isoformat()
-        }
+        return self.model_dump()
 
 
 class WorkspaceIsolationManager:
