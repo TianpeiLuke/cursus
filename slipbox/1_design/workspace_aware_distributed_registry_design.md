@@ -177,19 +177,45 @@ class CoreStepRegistry:
         validator = RegistryValidator()
         return validator.validate_registry(self._step_definitions)
 
-@dataclass
-class StepDefinition:
-    """Enhanced step definition with registry metadata."""
-    name: str
-    registry_type: str  # 'core', 'workspace', 'override'
-    sagemaker_step_type: Optional[str] = None
-    builder_step_name: Optional[str] = None
-    description: Optional[str] = None
-    framework: Optional[str] = None
-    job_types: List[str] = field(default_factory=list)
-    workspace_id: Optional[str] = None  # For workspace registrations
-    override_source: Optional[str] = None  # For override tracking
-    metadata: Dict[str, Any] = field(default_factory=dict)
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import Dict, List, Any, Optional
+
+class StepDefinition(BaseModel):
+    """Enhanced step definition with registry metadata using Pydantic V2."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False,
+        str_strip_whitespace=True
+    )
+    
+    name: str = Field(..., min_length=1, description="Step name identifier")
+    registry_type: str = Field(..., description="Registry type: 'core', 'workspace', 'override'")
+    sagemaker_step_type: Optional[str] = Field(None, description="SageMaker step type")
+    builder_step_name: Optional[str] = Field(None, description="Builder class name")
+    description: Optional[str] = Field(None, description="Step description")
+    framework: Optional[str] = Field(None, description="Framework used by step")
+    job_types: List[str] = Field(default_factory=list, description="Supported job types")
+    workspace_id: Optional[str] = Field(None, description="Workspace identifier for workspace registrations")
+    override_source: Optional[str] = Field(None, description="Source of override for tracking")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
+    @field_validator('registry_type')
+    @classmethod
+    def validate_registry_type(cls, v: str) -> str:
+        """Validate registry type is one of allowed values."""
+        allowed_types = {'core', 'workspace', 'override'}
+        if v not in allowed_types:
+            raise ValueError(f"registry_type must be one of {allowed_types}")
+        return v
+    
+    @field_validator('name', 'builder_step_name')
+    @classmethod
+    def validate_identifiers(cls, v: Optional[str]) -> Optional[str]:
+        """Validate identifier fields."""
+        if v is not None and not v.strip():
+            raise ValueError("Identifier cannot be empty or whitespace")
+        return v
     
     def to_legacy_format(self) -> Dict[str, Any]:
         """Convert to legacy STEP_NAMES format for backward compatibility."""
@@ -537,13 +563,24 @@ class DistributedRegistryManager:
         
         return legacy_dict
 
-@dataclass
-class DistributedRegistryValidationResult:
-    """Results of distributed registry validation."""
-    is_valid: bool = False
-    core_validation: Optional[RegistryValidationResult] = None
-    workspace_validations: Dict[str, RegistryValidationResult] = field(default_factory=dict)
-    conflicts: Dict[str, List[StepDefinition]] = field(default_factory=dict)
+class DistributedRegistryValidationResult(BaseModel):
+    """Results of distributed registry validation using Pydantic V2."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False
+    )
+    
+    is_valid: bool = Field(default=False, description="Overall validation status")
+    core_validation: Optional['RegistryValidationResult'] = Field(None, description="Core registry validation result")
+    workspace_validations: Dict[str, 'RegistryValidationResult'] = Field(
+        default_factory=dict, 
+        description="Workspace validation results by workspace ID"
+    )
+    conflicts: Dict[str, List[StepDefinition]] = Field(
+        default_factory=dict, 
+        description="Step conflicts between workspaces"
+    )
     
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a summary of validation results."""
@@ -704,18 +741,24 @@ class RegistryDiscoveryService:
         """Clear the discovery cache to force re-discovery."""
         self._discovery_cache.clear()
 
-@dataclass
-class StepComponentResolution:
-    """Result of step component resolution."""
-    step_name: str
-    found: bool
-    definition: Optional[StepDefinition] = None
-    workspace_id: Optional[str] = None
-    builder_path: Optional[str] = None
-    config_path: Optional[str] = None
-    spec_path: Optional[str] = None
-    contract_path: Optional[str] = None
-    script_path: Optional[str] = None
+class StepComponentResolution(BaseModel):
+    """Result of step component resolution using Pydantic V2."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False,
+        str_strip_whitespace=True
+    )
+    
+    step_name: str = Field(..., min_length=1, description="Step name being resolved")
+    found: bool = Field(..., description="Whether the step was found")
+    definition: Optional[StepDefinition] = Field(None, description="Step definition if found")
+    workspace_id: Optional[str] = Field(None, description="Workspace context for resolution")
+    builder_path: Optional[str] = Field(None, description="Path to builder file")
+    config_path: Optional[str] = Field(None, description="Path to config file")
+    spec_path: Optional[str] = Field(None, description="Path to spec file")
+    contract_path: Optional[str] = Field(None, description="Path to contract file")
+    script_path: Optional[str] = Field(None, description="Path to script file")
     
     def get_available_components(self) -> List[str]:
         """Get list of available component types."""
