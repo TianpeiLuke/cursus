@@ -28,21 +28,41 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
     def __init__(
         self,
         workspace_root: str,
+        workspace_manager: Optional['WorkspaceManager'] = None,
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         **kwargs
     ):
         """
-        Initialize workspace DAG compiler.
+        Initialize workspace DAG compiler with Phase 1 consolidated manager integration.
         
         Args:
             workspace_root: Root path of the workspace
+            workspace_manager: Optional consolidated WorkspaceManager instance (Phase 1 integration)
             sagemaker_session: Optional SageMaker session
             role: Optional IAM role
             **kwargs: Additional arguments for parent constructor
         """
         self.workspace_root = workspace_root
-        self.workspace_registry = WorkspaceComponentRegistry(workspace_root)
+        
+        # PHASE 2 OPTIMIZATION: Integrate with Phase 1 consolidated managers
+        if workspace_manager:
+            self.workspace_manager = workspace_manager
+        else:
+            # Runtime import to avoid circular imports
+            from .manager import WorkspaceManager
+            self.workspace_manager = WorkspaceManager(workspace_root)
+        
+        # Enhanced component registry using consolidated discovery manager
+        self.workspace_registry = WorkspaceComponentRegistry(
+            workspace_root, 
+            discovery_manager=self.workspace_manager.discovery_manager
+        )
+        
+        # Access to specialized managers for enhanced functionality
+        self.lifecycle_manager = self.workspace_manager.lifecycle_manager
+        self.isolation_manager = self.workspace_manager.isolation_manager
+        self.integration_manager = self.workspace_manager.integration_manager
         
         # Initialize parent with dummy config path (we'll override the compilation logic)
         super().__init__(
@@ -52,7 +72,7 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
             **kwargs
         )
         
-        logger.info(f"Initialized workspace DAG compiler for: {workspace_root}")
+        logger.info(f"Initialized enhanced workspace DAG compiler with Phase 1 integration for: {workspace_root}")
     
     def compile_workspace_dag(
         self,

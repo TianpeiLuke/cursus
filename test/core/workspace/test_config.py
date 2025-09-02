@@ -4,17 +4,18 @@ Unit tests for workspace configuration models.
 Tests the Pydantic V2 models for workspace step definitions and pipeline configurations.
 """
 
-import pytest
+import unittest
 import json
 import yaml
 import tempfile
 from pathlib import Path
 from typing import Dict, Any
+from unittest.mock import Mock, patch
 
 from src.cursus.core.workspace.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
 
 
-class TestWorkspaceStepDefinition:
+class TestWorkspaceStepDefinition(unittest.TestCase):
     """Test cases for WorkspaceStepDefinition model."""
     
     def test_valid_step_definition(self):
@@ -30,12 +31,12 @@ class TestWorkspaceStepDefinition:
         
         step = WorkspaceStepDefinition(**step_data)
         
-        assert step.step_name == 'test_step'
-        assert step.developer_id == 'dev1'
-        assert step.step_type == 'XGBoostTraining'
-        assert step.config_data == {'param1': 'value1'}
-        assert step.workspace_root == '/path/to/workspace'
-        assert step.dependencies == ['dep1', 'dep2']
+        self.assertEqual(step.step_name, 'test_step')
+        self.assertEqual(step.developer_id, 'dev1')
+        self.assertEqual(step.step_type, 'XGBoostTraining')
+        self.assertEqual(step.config_data, {'param1': 'value1'})
+        self.assertEqual(step.workspace_root, '/path/to/workspace')
+        self.assertEqual(step.dependencies, ['dep1', 'dep2'])
     
     def test_step_definition_with_defaults(self):
         """Test creating step definition with default values."""
@@ -49,7 +50,7 @@ class TestWorkspaceStepDefinition:
         
         step = WorkspaceStepDefinition(**step_data)
         
-        assert step.dependencies == []  # Default empty list
+        self.assertEqual(step.dependencies, [])  # Default empty list
     
     def test_invalid_step_name(self):
         """Test validation of step_name field."""
@@ -61,8 +62,10 @@ class TestWorkspaceStepDefinition:
             'workspace_root': '/path/to/workspace'
         }
         
-        with pytest.raises(ValueError, match="step_name must be a non-empty string"):
+        with self.assertRaises(ValueError) as context:
             WorkspaceStepDefinition(**step_data)
+        
+        self.assertIn("step_name must be a non-empty string", str(context.exception))
     
     def test_invalid_developer_id(self):
         """Test validation of developer_id field."""
@@ -74,8 +77,10 @@ class TestWorkspaceStepDefinition:
             'workspace_root': '/path/to/workspace'
         }
         
-        with pytest.raises(ValueError, match="developer_id must be a non-empty string"):
+        with self.assertRaises(ValueError) as context:
             WorkspaceStepDefinition(**step_data)
+        
+        self.assertIn("developer_id must be a non-empty string", str(context.exception))
     
     def test_invalid_step_type(self):
         """Test validation of step_type field."""
@@ -87,8 +92,10 @@ class TestWorkspaceStepDefinition:
             'workspace_root': '/path/to/workspace'
         }
         
-        with pytest.raises(ValueError, match="step_type must be a non-empty string"):
+        with self.assertRaises(ValueError) as context:
             WorkspaceStepDefinition(**step_data)
+        
+        self.assertIn("step_type must be a non-empty string", str(context.exception))
     
     def test_invalid_workspace_root(self):
         """Test validation of workspace_root field."""
@@ -100,8 +107,10 @@ class TestWorkspaceStepDefinition:
             'workspace_root': ''  # Invalid empty string
         }
         
-        with pytest.raises(ValueError, match="workspace_root must be a non-empty string"):
+        with self.assertRaises(ValueError) as context:
             WorkspaceStepDefinition(**step_data)
+        
+        self.assertIn("workspace_root must be a non-empty string", str(context.exception))
     
     def test_get_workspace_path(self):
         """Test get_workspace_path method."""
@@ -115,11 +124,11 @@ class TestWorkspaceStepDefinition:
         
         # Test with relative path
         path = step.get_workspace_path('subdir/file.txt')
-        assert path == '/path/to/workspace/subdir/file.txt'
+        self.assertEqual(path, '/path/to/workspace/subdir/file.txt')
         
         # Test without relative path
         path = step.get_workspace_path()
-        assert path == '/path/to/workspace'
+        self.assertEqual(path, '/path/to/workspace')
     
     def test_model_serialization(self):
         """Test model serialization and deserialization."""
@@ -136,16 +145,25 @@ class TestWorkspaceStepDefinition:
         
         # Test model_dump
         dumped = step.model_dump()
-        assert dumped == step_data
+        self.assertEqual(dumped, step_data)
         
         # Test recreation from dumped data
         step2 = WorkspaceStepDefinition(**dumped)
-        assert step2.step_name == step.step_name
-        assert step2.developer_id == step.developer_id
+        self.assertEqual(step2.step_name, step.step_name)
+        self.assertEqual(step2.developer_id, step.developer_id)
 
 
-class TestWorkspacePipelineDefinition:
+class TestWorkspacePipelineDefinition(unittest.TestCase):
     """Test cases for WorkspacePipelineDefinition model."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+    
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def create_sample_steps(self) -> list:
         """Create sample steps for testing."""
@@ -178,10 +196,10 @@ class TestWorkspacePipelineDefinition:
             global_config={'global_param': 'global_value'}
         )
         
-        assert pipeline.pipeline_name == 'test_pipeline'
-        assert pipeline.workspace_root == '/workspace'
-        assert len(pipeline.steps) == 2
-        assert pipeline.global_config == {'global_param': 'global_value'}
+        self.assertEqual(pipeline.pipeline_name, 'test_pipeline')
+        self.assertEqual(pipeline.workspace_root, '/workspace')
+        self.assertEqual(len(pipeline.steps), 2)
+        self.assertEqual(pipeline.global_config, {'global_param': 'global_value'})
     
     def test_pipeline_with_defaults(self):
         """Test creating pipeline with default values."""
@@ -193,38 +211,44 @@ class TestWorkspacePipelineDefinition:
             steps=steps
         )
         
-        assert pipeline.global_config == {}  # Default empty dict
+        self.assertEqual(pipeline.global_config, {})  # Default empty dict
     
     def test_invalid_pipeline_name(self):
         """Test validation of pipeline_name field."""
         steps = self.create_sample_steps()
         
-        with pytest.raises(ValueError, match="pipeline_name must be a non-empty string"):
+        with self.assertRaises(ValueError) as context:
             WorkspacePipelineDefinition(
                 pipeline_name='',  # Invalid empty string
                 workspace_root='/workspace',
                 steps=steps
             )
+        
+        self.assertIn("pipeline_name must be a non-empty string", str(context.exception))
     
     def test_invalid_workspace_root(self):
         """Test validation of workspace_root field."""
         steps = self.create_sample_steps()
         
-        with pytest.raises(ValueError, match="workspace_root must be a non-empty string"):
+        with self.assertRaises(ValueError) as context:
             WorkspacePipelineDefinition(
                 pipeline_name='test_pipeline',
                 workspace_root='',  # Invalid empty string
                 steps=steps
             )
+        
+        self.assertIn("workspace_root must be a non-empty string", str(context.exception))
     
     def test_empty_steps_list(self):
         """Test validation of empty steps list."""
-        with pytest.raises(ValueError, match="steps list cannot be empty"):
+        with self.assertRaises(ValueError) as context:
             WorkspacePipelineDefinition(
                 pipeline_name='test_pipeline',
                 workspace_root='/workspace',
                 steps=[]  # Invalid empty list
             )
+        
+        self.assertIn("steps list cannot be empty", str(context.exception))
     
     def test_duplicate_step_names(self):
         """Test validation of duplicate step names."""
@@ -245,12 +269,14 @@ class TestWorkspacePipelineDefinition:
             )
         ]
         
-        with pytest.raises(ValueError, match="Duplicate step names found in pipeline"):
+        with self.assertRaises(ValueError) as context:
             WorkspacePipelineDefinition(
                 pipeline_name='test_pipeline',
                 workspace_root='/workspace',
                 steps=steps
             )
+        
+        self.assertIn("Duplicate step names found in pipeline", str(context.exception))
     
     def test_validate_workspace_dependencies_valid(self):
         """Test dependency validation with valid dependencies."""
@@ -263,11 +289,11 @@ class TestWorkspacePipelineDefinition:
         
         result = pipeline.validate_workspace_dependencies()
         
-        assert result['valid'] is True
-        assert result['errors'] == []
-        assert 'step1' in result['dependency_graph']
-        assert 'step2' in result['dependency_graph']
-        assert result['dependency_graph']['step2'] == ['step1']
+        self.assertTrue(result['valid'])
+        self.assertEqual(result['errors'], [])
+        self.assertIn('step1', result['dependency_graph'])
+        self.assertIn('step2', result['dependency_graph'])
+        self.assertEqual(result['dependency_graph']['step2'], ['step1'])
     
     def test_validate_workspace_dependencies_missing(self):
         """Test dependency validation with missing dependencies."""
@@ -290,9 +316,9 @@ class TestWorkspacePipelineDefinition:
         
         result = pipeline.validate_workspace_dependencies()
         
-        assert result['valid'] is False
-        assert len(result['errors']) == 1
-        assert 'missing_step' in result['errors'][0]
+        self.assertFalse(result['valid'])
+        self.assertEqual(len(result['errors']), 1)
+        self.assertIn('missing_step', result['errors'][0])
     
     def test_validate_circular_dependencies(self):
         """Test detection of circular dependencies."""
@@ -323,8 +349,8 @@ class TestWorkspacePipelineDefinition:
         
         result = pipeline.validate_workspace_dependencies()
         
-        assert result['valid'] is False
-        assert any('Circular dependencies' in error for error in result['errors'])
+        self.assertFalse(result['valid'])
+        self.assertTrue(any('Circular dependencies' in error for error in result['errors']))
     
     def test_to_pipeline_config(self):
         """Test conversion to pipeline configuration format."""
@@ -338,14 +364,14 @@ class TestWorkspacePipelineDefinition:
         
         config = pipeline.to_pipeline_config()
         
-        assert config['pipeline_name'] == 'test_pipeline'
-        assert config['workspace_root'] == '/workspace'
-        assert config['global_config'] == {'global_param': 'global_value'}
-        assert 'steps' in config
-        assert 'step1' in config['steps']
-        assert 'step2' in config['steps']
-        assert config['steps']['step1']['developer_id'] == 'dev1'
-        assert config['steps']['step2']['dependencies'] == ['step1']
+        self.assertEqual(config['pipeline_name'], 'test_pipeline')
+        self.assertEqual(config['workspace_root'], '/workspace')
+        self.assertEqual(config['global_config'], {'global_param': 'global_value'})
+        self.assertIn('steps', config)
+        self.assertIn('step1', config['steps'])
+        self.assertIn('step2', config['steps'])
+        self.assertEqual(config['steps']['step1']['developer_id'], 'dev1')
+        self.assertEqual(config['steps']['step2']['dependencies'], ['step1'])
     
     def test_get_developers(self):
         """Test getting list of developers."""
@@ -358,7 +384,7 @@ class TestWorkspacePipelineDefinition:
         
         developers = pipeline.get_developers()
         
-        assert set(developers) == {'dev1', 'dev2'}
+        self.assertEqual(set(developers), {'dev1', 'dev2'})
     
     def test_get_steps_by_developer(self):
         """Test getting steps by developer."""
@@ -372,10 +398,10 @@ class TestWorkspacePipelineDefinition:
         dev1_steps = pipeline.get_steps_by_developer('dev1')
         dev2_steps = pipeline.get_steps_by_developer('dev2')
         
-        assert len(dev1_steps) == 1
-        assert dev1_steps[0].step_name == 'step1'
-        assert len(dev2_steps) == 1
-        assert dev2_steps[0].step_name == 'step2'
+        self.assertEqual(len(dev1_steps), 1)
+        self.assertEqual(dev1_steps[0].step_name, 'step1')
+        self.assertEqual(len(dev2_steps), 1)
+        self.assertEqual(dev2_steps[0].step_name, 'step2')
     
     def test_get_step_by_name(self):
         """Test getting step by name."""
@@ -389,10 +415,61 @@ class TestWorkspacePipelineDefinition:
         step1 = pipeline.get_step_by_name('step1')
         step_missing = pipeline.get_step_by_name('missing_step')
         
-        assert step1 is not None
-        assert step1.step_name == 'step1'
-        assert step1.developer_id == 'dev1'
-        assert step_missing is None
+        self.assertIsNotNone(step1)
+        self.assertEqual(step1.step_name, 'step1')
+        self.assertEqual(step1.developer_id, 'dev1')
+        self.assertIsNone(step_missing)
+    
+    @patch('src.cursus.core.workspace.config.WorkspaceManager')
+    def test_validate_with_consolidated_managers(self, mock_manager_class):
+        """Test validation with consolidated managers (Phase 2 optimization)."""
+        mock_manager = Mock()
+        mock_lifecycle_manager = Mock()
+        mock_isolation_manager = Mock()
+        mock_discovery_manager = Mock()
+        mock_integration_manager = Mock()
+        
+        # Setup manager delegation
+        mock_manager.lifecycle_manager = mock_lifecycle_manager
+        mock_manager.isolation_manager = mock_isolation_manager
+        mock_manager.discovery_manager = mock_discovery_manager
+        mock_manager.integration_manager = mock_integration_manager
+        
+        # Mock validation responses
+        mock_lifecycle_manager.validate_workspace_structure.return_value = {
+            'valid': True, 'errors': [], 'warnings': []
+        }
+        mock_isolation_manager.validate_workspace_boundaries.return_value = {
+            'valid': True, 'violations': [], 'warnings': []
+        }
+        mock_discovery_manager.validate_component_dependencies.return_value = {
+            'valid': True, 'missing_dependencies': [], 'warnings': []
+        }
+        mock_integration_manager.validate_integration_readiness.return_value = {
+            'ready': True, 'blocking_issues': [], 'warnings': []
+        }
+        
+        steps = self.create_sample_steps()
+        pipeline = WorkspacePipelineDefinition(
+            pipeline_name='test_pipeline',
+            workspace_root='/workspace',
+            steps=steps
+        )
+        
+        result = pipeline.validate_with_consolidated_managers(mock_manager)
+        
+        self.assertIn('lifecycle_validation', result)
+        self.assertIn('isolation_validation', result)
+        self.assertIn('discovery_validation', result)
+        self.assertIn('integration_validation', result)
+        self.assertIn('overall_valid', result)
+        self.assertTrue(result['overall_valid'])
+        
+        # Verify manager methods were called
+        mock_lifecycle_manager.validate_workspace_structure.assert_called_once()
+        mock_isolation_manager.validate_workspace_boundaries.assert_called_once()
+        mock_discovery_manager.validate_component_dependencies.assert_called_once()
+        mock_integration_manager.validate_integration_readiness.assert_called_once()
     
     def test_json_file_operations(self):
         """Test JSON file save and load operations."""
@@ -404,23 +481,18 @@ class TestWorkspacePipelineDefinition:
             global_config={'global_param': 'global_value'}
         )
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            temp_file = f.name
+        temp_file = Path(self.temp_dir) / 'test_config.json'
         
-        try:
-            # Test save to JSON
-            pipeline.to_json_file(temp_file)
-            
-            # Test load from JSON
-            loaded_pipeline = WorkspacePipelineDefinition.from_json_file(temp_file)
-            
-            assert loaded_pipeline.pipeline_name == pipeline.pipeline_name
-            assert loaded_pipeline.workspace_root == pipeline.workspace_root
-            assert len(loaded_pipeline.steps) == len(pipeline.steps)
-            assert loaded_pipeline.global_config == pipeline.global_config
-            
-        finally:
-            Path(temp_file).unlink(missing_ok=True)
+        # Test save to JSON
+        pipeline.to_json_file(str(temp_file))
+        
+        # Test load from JSON
+        loaded_pipeline = WorkspacePipelineDefinition.from_json_file(str(temp_file))
+        
+        self.assertEqual(loaded_pipeline.pipeline_name, pipeline.pipeline_name)
+        self.assertEqual(loaded_pipeline.workspace_root, pipeline.workspace_root)
+        self.assertEqual(len(loaded_pipeline.steps), len(pipeline.steps))
+        self.assertEqual(loaded_pipeline.global_config, pipeline.global_config)
     
     def test_yaml_file_operations(self):
         """Test YAML file save and load operations."""
@@ -432,24 +504,19 @@ class TestWorkspacePipelineDefinition:
             global_config={'global_param': 'global_value'}
         )
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            temp_file = f.name
+        temp_file = Path(self.temp_dir) / 'test_config.yaml'
         
-        try:
-            # Test save to YAML
-            pipeline.to_yaml_file(temp_file)
-            
-            # Test load from YAML
-            loaded_pipeline = WorkspacePipelineDefinition.from_yaml_file(temp_file)
-            
-            assert loaded_pipeline.pipeline_name == pipeline.pipeline_name
-            assert loaded_pipeline.workspace_root == pipeline.workspace_root
-            assert len(loaded_pipeline.steps) == len(pipeline.steps)
-            assert loaded_pipeline.global_config == pipeline.global_config
-            
-        finally:
-            Path(temp_file).unlink(missing_ok=True)
+        # Test save to YAML
+        pipeline.to_yaml_file(str(temp_file))
+        
+        # Test load from YAML
+        loaded_pipeline = WorkspacePipelineDefinition.from_yaml_file(str(temp_file))
+        
+        self.assertEqual(loaded_pipeline.pipeline_name, pipeline.pipeline_name)
+        self.assertEqual(loaded_pipeline.workspace_root, pipeline.workspace_root)
+        self.assertEqual(len(loaded_pipeline.steps), len(pipeline.steps))
+        self.assertEqual(loaded_pipeline.global_config, pipeline.global_config)
 
 
 if __name__ == '__main__':
-    pytest.main([__file__])
+    unittest.main()

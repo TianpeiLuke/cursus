@@ -29,6 +29,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
     def __init__(
         self,
         workspace_root: str,
+        workspace_manager: Optional['WorkspaceManager'] = None,
         dag: Optional[PipelineDAG] = None,
         config_map: Optional[Dict[str, BasePipelineConfig]] = None,
         step_builder_map: Optional[Dict[str, Type[StepBuilderBase]]] = None,
@@ -39,10 +40,11 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         **kwargs
     ):
         """
-        Initialize workspace pipeline assembler.
+        Initialize workspace pipeline assembler with Phase 1 consolidated manager integration.
         
         Args:
             workspace_root: Root path of the workspace
+            workspace_manager: Optional consolidated WorkspaceManager instance (Phase 1 integration)
             dag: Optional PipelineDAG instance
             config_map: Optional mapping from step name to config instance
             step_builder_map: Optional mapping from step type to builder class
@@ -53,7 +55,25 @@ class WorkspacePipelineAssembler(PipelineAssembler):
             **kwargs: Additional arguments passed to parent constructor
         """
         self.workspace_root = workspace_root
-        self.workspace_registry = WorkspaceComponentRegistry(workspace_root)
+        
+        # PHASE 2 OPTIMIZATION: Integrate with Phase 1 consolidated managers
+        if workspace_manager:
+            self.workspace_manager = workspace_manager
+        else:
+            # Runtime import to avoid circular imports
+            from .manager import WorkspaceManager
+            self.workspace_manager = WorkspaceManager(workspace_root)
+        
+        # Enhanced component registry using consolidated discovery manager
+        self.workspace_registry = WorkspaceComponentRegistry(
+            workspace_root, 
+            discovery_manager=self.workspace_manager.discovery_manager
+        )
+        
+        # Access to specialized managers for enhanced functionality
+        self.lifecycle_manager = self.workspace_manager.lifecycle_manager
+        self.isolation_manager = self.workspace_manager.isolation_manager
+        self.integration_manager = self.workspace_manager.integration_manager
         
         # Initialize parent with empty maps if not provided
         # We'll populate them from workspace components
@@ -68,7 +88,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
             **kwargs
         )
         
-        logger.info(f"Initialized workspace pipeline assembler for: {workspace_root}")
+        logger.info(f"Initialized enhanced workspace pipeline assembler with Phase 1 integration for: {workspace_root}")
     
     def _resolve_workspace_configs(self, workspace_config: WorkspacePipelineDefinition) -> Dict[str, BasePipelineConfig]:
         """

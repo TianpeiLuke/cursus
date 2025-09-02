@@ -73,6 +73,67 @@ class WorkspaceStepDefinition(BaseModel):
         if relative_path:
             return str(Path(self.workspace_root) / relative_path)
         return self.workspace_root
+    
+    def validate_with_workspace_manager(self, workspace_manager: 'WorkspaceManager') -> Dict[str, Any]:
+        """
+        Enhanced validation using consolidated workspace manager (Phase 2 optimization).
+        
+        Args:
+            workspace_manager: Consolidated WorkspaceManager instance
+            
+        Returns:
+            Validation result dictionary
+        """
+        validation_result = {
+            'valid': True,
+            'errors': [],
+            'warnings': [],
+            'validations': {}
+        }
+        
+        try:
+            # Validate using isolation manager
+            isolation_result = workspace_manager.isolation_manager.validate_step_definition(self)
+            validation_result['validations']['isolation'] = isolation_result
+            if not isolation_result.get('valid', True):
+                validation_result['valid'] = False
+                validation_result['errors'].extend(isolation_result.get('errors', []))
+            
+            # Validate using lifecycle manager
+            lifecycle_result = workspace_manager.lifecycle_manager.validate_step_lifecycle(self)
+            validation_result['validations']['lifecycle'] = lifecycle_result
+            if not lifecycle_result.get('valid', True):
+                validation_result['valid'] = False
+                validation_result['errors'].extend(lifecycle_result.get('errors', []))
+            
+            # Add warnings from all validations
+            for validation_type, result in validation_result['validations'].items():
+                validation_result['warnings'].extend(result.get('warnings', []))
+                
+        except Exception as e:
+            validation_result['valid'] = False
+            validation_result['errors'].append(f"Validation failed: {e}")
+        
+        return validation_result
+    
+    def resolve_dependencies(self, workspace_manager: 'WorkspaceManager') -> Dict[str, Any]:
+        """
+        Enhanced dependency resolution using discovery manager (Phase 2 optimization).
+        
+        Args:
+            workspace_manager: Consolidated WorkspaceManager instance
+            
+        Returns:
+            Dependency resolution result
+        """
+        try:
+            return workspace_manager.discovery_manager.resolve_step_dependencies(self)
+        except Exception as e:
+            return {
+                'valid': False,
+                'error': f"Dependency resolution failed: {e}",
+                'dependencies': self.dependencies
+            }
 
 
 class WorkspacePipelineDefinition(BaseModel):
@@ -240,3 +301,107 @@ class WorkspacePipelineDefinition(BaseModel):
         """Save configuration to YAML file."""
         with open(file_path, 'w') as f:
             yaml.dump(self.model_dump(), f, default_flow_style=False)
+    
+    def validate_with_consolidated_managers(self, workspace_manager: 'WorkspaceManager') -> Dict[str, Any]:
+        """
+        Comprehensive validation using all consolidated managers (Phase 2 optimization).
+        
+        Args:
+            workspace_manager: Consolidated WorkspaceManager instance
+            
+        Returns:
+            Comprehensive validation result
+        """
+        validation_results = {
+            'overall_valid': True,
+            'validations': {},
+            'errors': [],
+            'warnings': [],
+            'summary': {}
+        }
+        
+        try:
+            # Lifecycle validation
+            lifecycle_validation = workspace_manager.lifecycle_manager.validate_pipeline_lifecycle(self)
+            validation_results['validations']['lifecycle'] = lifecycle_validation
+            
+            # Isolation validation
+            isolation_validation = workspace_manager.isolation_manager.validate_pipeline_isolation(self)
+            validation_results['validations']['isolation'] = isolation_validation
+            
+            # Discovery validation (dependency resolution)
+            discovery_validation = workspace_manager.discovery_manager.validate_pipeline_dependencies(self)
+            validation_results['validations']['discovery'] = discovery_validation
+            
+            # Integration validation
+            integration_validation = workspace_manager.integration_manager.validate_pipeline_integration(self)
+            validation_results['validations']['integration'] = integration_validation
+            
+            # Combine results
+            all_valid = True
+            total_errors = []
+            total_warnings = []
+            
+            for validation_type, result in validation_results['validations'].items():
+                if not result.get('valid', True):
+                    all_valid = False
+                total_errors.extend(result.get('errors', []))
+                total_warnings.extend(result.get('warnings', []))
+            
+            validation_results['overall_valid'] = all_valid
+            validation_results['errors'] = total_errors
+            validation_results['warnings'] = total_warnings
+            
+            # Create summary
+            validation_results['summary'] = {
+                'total_validations': len(validation_results['validations']),
+                'passed_validations': sum(1 for v in validation_results['validations'].values() if v.get('valid', True)),
+                'total_errors': len(total_errors),
+                'total_warnings': len(total_warnings),
+                'pipeline_ready': all_valid and len(total_errors) == 0
+            }
+            
+        except Exception as e:
+            validation_results['overall_valid'] = False
+            validation_results['errors'].append(f"Validation framework error: {e}")
+            validation_results['summary'] = {'error': str(e)}
+        
+        return validation_results
+    
+    def resolve_cross_workspace_dependencies(self, workspace_manager: 'WorkspaceManager') -> Dict[str, Any]:
+        """
+        Enhanced cross-workspace dependency resolution (Phase 2 optimization).
+        
+        Args:
+            workspace_manager: Consolidated WorkspaceManager instance
+            
+        Returns:
+            Cross-workspace dependency resolution result
+        """
+        try:
+            return workspace_manager.discovery_manager.resolve_cross_workspace_dependencies(self)
+        except Exception as e:
+            return {
+                'valid': False,
+                'error': f"Cross-workspace dependency resolution failed: {e}",
+                'dependencies': {step.step_name: step.dependencies for step in self.steps}
+            }
+    
+    def prepare_for_integration(self, workspace_manager: 'WorkspaceManager') -> Dict[str, Any]:
+        """
+        Prepare pipeline for integration staging (Phase 2 optimization).
+        
+        Args:
+            workspace_manager: Consolidated WorkspaceManager instance
+            
+        Returns:
+            Integration preparation result
+        """
+        try:
+            return workspace_manager.integration_manager.prepare_pipeline_for_integration(self)
+        except Exception as e:
+            return {
+                'ready': False,
+                'error': f"Integration preparation failed: {e}",
+                'pipeline_name': self.pipeline_name
+            }

@@ -22,18 +22,28 @@ logger = logging.getLogger(__name__)
 class WorkspaceComponentRegistry:
     """Registry for workspace component discovery and management."""
     
-    def __init__(self, workspace_root: str):
+    def __init__(self, workspace_root: str, discovery_manager: Optional['WorkspaceDiscoveryManager'] = None):
         """
-        Initialize workspace component registry.
+        Initialize workspace component registry with Phase 1 consolidated manager integration.
         
         Args:
             workspace_root: Root path of the workspace
+            discovery_manager: Optional consolidated WorkspaceDiscoveryManager instance (Phase 1 integration)
         """
         self.workspace_root = workspace_root
-        self.workspace_manager = WorkspaceManager(workspace_root)
         
-        # Component caches
-        self._component_cache: Dict[str, Dict[str, Any]] = {}
+        # PHASE 2 OPTIMIZATION: Use provided discovery manager or create with consolidated manager
+        if discovery_manager:
+            self.discovery_manager = discovery_manager
+            self.workspace_manager = discovery_manager.workspace_manager
+        else:
+            # Runtime import to avoid circular imports
+            from .manager import WorkspaceManager
+            self.workspace_manager = WorkspaceManager(workspace_root)
+            self.discovery_manager = self.workspace_manager.discovery_manager
+        
+        # Enhanced caching using discovery manager
+        self._component_cache = self.discovery_manager.get_component_cache()
         self._builder_cache: Dict[str, Type[StepBuilderBase]] = {}
         self._config_cache: Dict[str, Type[BasePipelineConfig]] = {}
         self._cache_timestamp: Dict[str, float] = {}
@@ -44,7 +54,7 @@ class WorkspaceComponentRegistry:
         # Core registry for fallback
         self.core_registry = StepBuilderRegistry()
         
-        logger.info(f"Initialized workspace component registry for: {workspace_root}")
+        logger.info(f"Initialized enhanced workspace component registry with Phase 1 integration for: {workspace_root}")
     
     def discover_components(self, developer_id: str = None) -> Dict[str, Any]:
         """
