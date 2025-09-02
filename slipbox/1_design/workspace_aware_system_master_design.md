@@ -107,6 +107,35 @@ cursus/
 │   ├── validation/                     # Shared validation frameworks
 │   │   ├── alignment/                  # Shared alignment testing
 │   │   ├── builders/                   # Shared step builder testing
+│   │   ├── runtime/                    # Runtime validation and testing infrastructure
+│   │   │   ├── core/                   # Core runtime execution components
+│   │   │   │   ├── pipeline_script_executor.py  # Workspace-aware script execution
+│   │   │   │   ├── data_flow_manager.py         # Test data flow management
+│   │   │   │   └── script_import_manager.py     # Dynamic script loading
+│   │   │   ├── integration/            # Integration testing components
+│   │   │   │   ├── workspace_manager.py         # Test workspace management
+│   │   │   │   ├── real_data_tester.py         # Real data testing
+│   │   │   │   └── s3_data_downloader.py       # Test data provisioning
+│   │   │   ├── data/                   # Test data management
+│   │   │   │   ├── local_data_manager.py       # Local test data handling
+│   │   │   │   ├── synthetic_data_generator.py # Synthetic data generation
+│   │   │   │   └── s3_output_registry.py       # S3 test data registry
+│   │   │   ├── execution/              # Pipeline execution testing
+│   │   │   │   ├── pipeline_executor.py        # Pipeline execution orchestration
+│   │   │   │   └── data_compatibility_validator.py # Data compatibility validation
+│   │   │   ├── jupyter/                # Jupyter integration for testing
+│   │   │   │   ├── notebook_interface.py       # Notebook testing interface
+│   │   │   │   ├── visualization.py            # Test result visualization
+│   │   │   │   └── templates/                  # Notebook templates
+│   │   │   ├── production/             # Production readiness validation
+│   │   │   │   ├── deployment_validator.py     # Deployment validation
+│   │   │   │   ├── e2e_validator.py            # End-to-end validation
+│   │   │   │   ├── health_checker.py           # System health validation
+│   │   │   │   └── performance_optimizer.py    # Performance validation
+│   │   │   └── utils/                  # Runtime testing utilities
+│   │   │       ├── execution_context.py        # Execution context management
+│   │   │       ├── result_models.py            # Test result data models
+│   │   │       └── error_handling.py           # Runtime error handling
 │   │   └── workspace/                  # Workspace validation extensions (NEW)
 │   └── api/                           # APIs with workspace-aware extensions
 │       └── dag/                       # DAG APIs
@@ -137,6 +166,70 @@ cursus/
 │   └── integration_reports/            # Integration status and reports
 └── slipbox/                           # SHARED CORE: Documentation
 ```
+
+### Runtime Validation Infrastructure Role in Workspace-Aware Design
+
+The `src/cursus/validation/runtime/` infrastructure plays a critical role in the workspace-aware system by providing comprehensive testing and validation capabilities that support both isolated workspace development and cross-workspace integration. This runtime validation system implements the **Separation of Concerns** principle by clearly separating different aspects of validation and testing:
+
+#### Core Runtime Execution (`validation/runtime/core/`)
+- **PipelineScriptExecutor**: Provides workspace-aware script discovery and execution testing
+  - Integrates with `WorkspaceComponentRegistry` for dynamic script discovery across developer workspaces
+  - Supports developer-specific script execution with isolated test environments
+  - Enables cross-workspace script compatibility testing
+- **DataFlowManager**: Manages test data flow across workspace boundaries
+- **ScriptImportManager**: Handles dynamic loading and validation of workspace scripts
+
+#### Integration Testing Support (`validation/runtime/integration/`)
+- **WorkspaceManager**: Manages isolated test workspaces for each developer
+  - Creates and maintains separate test environments for workspace isolation
+  - Provides data caching and workspace cleanup capabilities
+  - Supports the **Workspace Isolation Principle** by ensuring test environments don't interfere
+- **RealDataTester**: Enables testing with production-like data across workspaces
+- **S3DataDownloader**: Provides shared test data access while maintaining workspace isolation
+
+#### Test Data Management (`validation/runtime/data/`)
+- **LocalDataManager**: Handles workspace-aware test data provisioning
+  - Supports developer-specific test data while enabling shared dataset access
+  - Implements data isolation between developer workspaces
+  - Enables cross-workspace data compatibility testing
+- **SyntheticDataGenerator**: Generates test data for isolated workspace testing
+- **S3OutputRegistry**: Manages test output data with workspace-aware organization
+
+#### Pipeline Execution Testing (`validation/runtime/execution/`)
+- **PipelineExecutor**: Orchestrates multi-workspace pipeline execution testing
+  - Validates pipelines that use components from multiple developer workspaces
+  - Ensures cross-workspace component compatibility during execution
+  - Supports integration staging validation
+- **DataCompatibilityValidator**: Validates data compatibility across workspace components
+
+#### Production Readiness Validation (`validation/runtime/production/`)
+- **DeploymentValidator**: Validates workspace components for production deployment
+- **E2EValidator**: Performs end-to-end validation across workspace boundaries
+- **HealthChecker**: Monitors system health during multi-workspace operations
+- **PerformanceOptimizer**: Optimizes performance for cross-workspace operations
+
+#### Developer Experience Support (`validation/runtime/jupyter/`)
+- **NotebookInterface**: Provides Jupyter integration for workspace-aware testing
+- **Visualization**: Enables visualization of cross-workspace test results
+- **Templates**: Provides notebook templates for workspace development and testing
+
+#### Workspace-Aware Integration Points
+
+The runtime validation infrastructure integrates with the workspace-aware system through several key mechanisms:
+
+1. **Component Discovery Integration**: The `PipelineScriptExecutor` uses the `WorkspaceComponentRegistry` to discover and load scripts from developer workspaces, enabling dynamic testing of workspace components.
+
+2. **Isolated Test Environments**: The `WorkspaceManager` creates isolated test environments that align with the **Workspace Isolation Principle**, ensuring that testing in one workspace doesn't affect others.
+
+3. **Cross-Workspace Validation**: The execution and production validation components support testing of pipelines that span multiple developer workspaces, validating the integration points between workspace components.
+
+4. **Developer-Specific Testing**: The data management components support developer-specific test data and configurations while enabling shared access to common test datasets.
+
+5. **Integration Staging Support**: The runtime validation system provides the testing infrastructure needed for the integration staging process, validating components before they move from workspace to production.
+
+This runtime validation infrastructure is essential for maintaining code quality and system reliability in the multi-developer workspace environment, providing the testing foundation that enables confident collaboration and integration across developer workspaces.
+
+For comprehensive details on how the runtime validation system supports workspace-aware pipeline testing, see the **[Workspace-Aware Pipeline Runtime Testing Design](workspace_aware_pipeline_runtime_testing_design.md)**, which provides detailed specifications for multi-workspace pipeline execution testing, isolated test environments, and cross-workspace compatibility validation.
 
 ## Major System Block Transformations
 
