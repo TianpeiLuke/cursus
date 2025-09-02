@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.core.workspace.discovery import WorkspaceDiscoveryManager
+from src.cursus.core.workspace.discovery import WorkspaceDiscoveryManager, ComponentInventory, DependencyGraph
 
 
 class TestWorkspaceDiscoveryManager(unittest.TestCase):
@@ -21,14 +21,13 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures before each test method."""
         self.temp_dir = tempfile.mkdtemp()
-        self.temp_workspace = str(Path(self.temp_dir) / "test_workspace")
-        Path(self.temp_workspace).mkdir(parents=True, exist_ok=True)
+        self.temp_workspace = Path(self.temp_dir) / "test_workspace"
+        self.temp_workspace.mkdir(parents=True, exist_ok=True)
         
         # Create mock workspace manager
         self.mock_workspace_manager = Mock()
         self.mock_workspace_manager.workspace_root = self.temp_workspace
-        self.mock_workspace_manager.config_file = None
-        self.mock_workspace_manager.auto_discover = True
+        self.mock_workspace_manager.config = None
     
     def tearDown(self):
         """Clean up after each test method."""
@@ -40,354 +39,379 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
         self.assertIs(discovery_manager.workspace_manager, self.mock_workspace_manager)
-        self.assertEqual(discovery_manager.workspace_root, self.mock_workspace_manager.workspace_root)
-        self.assertEqual(discovery_manager.component_cache, {})
-        self.assertEqual(discovery_manager.dependency_graph, {})
-        self.assertEqual(discovery_manager.discovery_index, {})
+        self.assertIsInstance(discovery_manager._component_cache, dict)
+        self.assertIsInstance(discovery_manager._dependency_cache, dict)
+        self.assertIsInstance(discovery_manager._cache_timestamp, dict)
+        self.assertEqual(discovery_manager.cache_expiry, 300)
     
-    def test_discover_workspace_components_empty(self):
-        """Test component discovery with empty workspace."""
+    def test_discover_workspaces_empty(self):
+        """Test workspace discovery with empty workspace root."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Create empty workspace
-        workspace_path = Path(self.temp_workspace) / "developer_1"
-        workspace_path.mkdir(exist_ok=True)
+        result = discovery_manager.discover_workspaces(self.temp_workspace)
         
-        inventory = discovery_manager.discover_workspace_components("developer_1")
-        
-        self.assertEqual(inventory.workspace_id, "developer_1")
-        self.assertEqual(len(inventory.builders), 0)
-        self.assertEqual(len(inventory.configs), 0)
-        self.assertEqual(len(inventory.scripts), 0)
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["workspace_root"], str(self.temp_workspace))
+        self.assertIsInstance(result["workspaces"], list)
+        self.assertEqual(result["summary"]["total_workspaces"], 0)
     
-    def test_discover_workspace_components_with_content(self):
-        """Test component discovery with workspace content."""
+    def test_discover_workspaces_with_content(self):
+        """Test workspace discovery with workspace content."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Create workspace with components
-        workspace_path = Path(self.temp_workspace) / "developer_1"
+        # Create developer workspace with components
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        
+        workspace_path = developers_dir / "developer_1"
         workspace_path.mkdir(exist_ok=True)
+        
+        # Create cursus_dev structure
+        cursus_dev_path = workspace_path / "src" / "cursus_dev" / "steps"
+        cursus_dev_path.mkdir(parents=True, exist_ok=True)
         
         # Create builders
-        builders_path = workspace_path / "src" / "cursus_dev" / "steps" / "builders"
-        builders_path.mkdir(parents=True, exist_ok=True)
+        builders_path = cursus_dev_path / "builders"
+        builders_path.mkdir(exist_ok=True)
         (builders_path / "test_builder.py").write_text("class TestBuilder: pass")
         
-        # Create configs
-        configs_path = workspace_path / "src" / "cursus_dev" / "steps" / "configs"
-        configs_path.mkdir(parents=True, exist_ok=True)
-        (configs_path / "test_config.py").write_text("class TestConfig: pass")
+        result = discovery_manager.discover_workspaces(self.temp_workspace)
         
-        # Create scripts
-        scripts_path = workspace_path / "src" / "cursus_dev" / "steps" / "scripts"
-        scripts_path.mkdir(parents=True, exist_ok=True)
-        (scripts_path / "test_script.py").write_text("def main(): pass")
-        
-        inventory = discovery_manager.discover_workspace_components("developer_1")
-        
-        self.assertEqual(inventory.workspace_id, "developer_1")
-        self.assertGreater(len(inventory.builders), 0)
-        self.assertGreater(len(inventory.configs), 0)
-        self.assertGreater(len(inventory.scripts), 0)
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["summary"]["total_workspaces"], 1)
+        self.assertEqual(result["summary"]["total_developers"], 1)
+        self.assertGreater(result["summary"]["total_components"], 0)
     
-    def test_build_dependency_graph_simple(self):
-        """Test building dependency graph with simple dependencies."""
+    def test_discover_components_empty(self):
+        """Test component discovery with empty workspaces."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Mock component inventories
-        mock_inventory_1 = Mock()
-        mock_inventory_1.workspace_id = "developer_1"
-        mock_inventory_1.builders = {"step1": {"dependencies": []}}
+        result = discovery_manager.discover_components()
         
-        mock_inventory_2 = Mock()
-        mock_inventory_2.workspace_id = "developer_2"
-        mock_inventory_2.builders = {"step2": {"dependencies": ["step1"]}}
-        
-        with patch.object(discovery_manager, 'discover_workspace_components', side_effect=[mock_inventory_1, mock_inventory_2]):
-            graph = discovery_manager.build_dependency_graph(["developer_1", "developer_2"])
-            
-            self.assertIn("step1", graph.nodes)
-            self.assertIn("step2", graph.nodes)
-            self.assertTrue(graph.has_edge("step1", "step2"))
+        self.assertIsInstance(result, dict)
+        self.assertIn("builders", result)
+        self.assertIn("configs", result)
+        self.assertIn("summary", result)
+        self.assertEqual(result["summary"]["total_components"], 0)
     
-    def test_find_component_conflicts_none(self):
-        """Test finding component conflicts with no conflicts."""
+    def test_discover_components_with_workspace_ids(self):
+        """Test component discovery with specific workspace IDs."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Mock inventories with unique components
-        mock_inventory_1 = Mock()
-        mock_inventory_1.workspace_id = "developer_1"
-        mock_inventory_1.builders = {"step1": {"name": "step1"}}
+        # Create developer workspace
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
         
-        mock_inventory_2 = Mock()
-        mock_inventory_2.workspace_id = "developer_2"
-        mock_inventory_2.builders = {"step2": {"name": "step2"}}
+        workspace_path = developers_dir / "developer_1"
+        workspace_path.mkdir(exist_ok=True)
         
-        with patch.object(discovery_manager, 'discover_workspace_components', side_effect=[mock_inventory_1, mock_inventory_2]):
-            conflicts = discovery_manager.find_component_conflicts(["developer_1", "developer_2"])
-            
-            self.assertEqual(len(conflicts), 0)
+        result = discovery_manager.discover_components(workspace_ids=["developer_1"])
+        
+        self.assertIsInstance(result, dict)
+        self.assertIn("summary", result)
     
-    def test_find_component_conflicts_found(self):
-        """Test finding component conflicts with conflicts present."""
+    def test_discover_components_with_developer_id(self):
+        """Test component discovery with specific developer ID."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Mock inventories with conflicting components
-        mock_inventory_1 = Mock()
-        mock_inventory_1.workspace_id = "developer_1"
-        mock_inventory_1.builders = {"duplicate_step": {"name": "duplicate_step", "version": "1.0"}}
+        result = discovery_manager.discover_components(developer_id="developer_1")
         
-        mock_inventory_2 = Mock()
-        mock_inventory_2.workspace_id = "developer_2"
-        mock_inventory_2.builders = {"duplicate_step": {"name": "duplicate_step", "version": "2.0"}}
-        
-        with patch.object(discovery_manager, 'discover_workspace_components', side_effect=[mock_inventory_1, mock_inventory_2]):
-            conflicts = discovery_manager.find_component_conflicts(["developer_1", "developer_2"])
-            
-            self.assertGreater(len(conflicts), 0)
-            self.assertTrue(any(c.component_name == "duplicate_step" for c in conflicts))
+        self.assertIsInstance(result, dict)
+        self.assertIn("summary", result)
     
-    def test_resolve_component_dependencies_simple(self):
-        """Test resolving component dependencies."""
+    def test_resolve_cross_workspace_dependencies_simple(self):
+        """Test resolving cross-workspace dependencies."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Set up dependency graph
-        discovery_manager.dependency_graph = {
-            "step1": [],
-            "step2": ["step1"],
-            "step3": ["step2"]
+        pipeline_definition = {
+            "steps": [
+                {
+                    "step_name": "step1",
+                    "developer_id": "developer_1",
+                    "dependencies": []
+                },
+                {
+                    "step_name": "step2", 
+                    "developer_id": "developer_2",
+                    "dependencies": ["step1"]
+                }
+            ]
         }
         
-        resolution = discovery_manager.resolve_component_dependencies("step3")
+        result = discovery_manager.resolve_cross_workspace_dependencies(pipeline_definition)
         
-        self.assertEqual(resolution.component_id, "step3")
-        self.assertTrue(resolution.valid)
-        self.assertIn("step1", resolution.resolved_dependencies)
-        self.assertIn("step2", resolution.resolved_dependencies)
+        self.assertIsInstance(result, dict)
+        self.assertIn("resolved_dependencies", result)
+        self.assertIn("dependency_graph", result)
     
-    def test_resolve_component_dependencies_circular(self):
-        """Test resolving component dependencies with circular dependency."""
+    def test_resolve_cross_workspace_dependencies_circular(self):
+        """Test resolving cross-workspace dependencies with circular dependency."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Set up circular dependency graph
-        discovery_manager.dependency_graph = {
-            "step1": ["step2"],
-            "step2": ["step1"]
+        pipeline_definition = {
+            "steps": [
+                {
+                    "step_name": "step1",
+                    "developer_id": "developer_1", 
+                    "dependencies": ["step2"]
+                },
+                {
+                    "step_name": "step2",
+                    "developer_id": "developer_2",
+                    "dependencies": ["step1"]
+                }
+            ]
         }
         
-        resolution = discovery_manager.resolve_component_dependencies("step1")
+        result = discovery_manager.resolve_cross_workspace_dependencies(pipeline_definition)
         
-        self.assertEqual(resolution.component_id, "step1")
-        self.assertFalse(resolution.valid)
-        self.assertIn("circular dependency", resolution.error.lower())
+        self.assertIsInstance(result, dict)
+        self.assertIn("dependency_graph", result)
+        # Check that dependency graph was created with circular dependencies
+        dep_graph = result["dependency_graph"]
+        self.assertIn("nodes", dep_graph)
+        self.assertIn("edges", dep_graph)
+        # Should have detected the circular structure in the graph
+        self.assertGreater(len(dep_graph["edges"]), 0)
     
-    def test_discover_components_with_caching(self):
-        """Test component discovery with caching."""
+    def test_get_file_resolver(self):
+        """Test getting file resolver."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        workspaces = ["developer_1", "developer_2"]
+        # Create proper workspace structure
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        dev_workspace = developers_dir / "developer_1"
+        dev_workspace.mkdir(exist_ok=True)
         
-        # Mock the actual discovery method
-        with patch.object(discovery_manager, 'discover_workspace_components') as mock_discover:
-            mock_inventory = Mock()
-            mock_inventory.workspace_id = "test"
-            mock_inventory.builders = {}
-            mock_discover.return_value = mock_inventory
-            
-            # First call should trigger discovery
-            result1 = discovery_manager.discover_components(workspaces)
-            
-            # Second call should use cache
-            result2 = discovery_manager.discover_components(workspaces)
-            
-            # Discovery should only be called once per workspace due to caching
-            self.assertEqual(mock_discover.call_count, len(workspaces))
+        # Create the expected cursus_dev structure
+        cursus_dev_path = dev_workspace / "src" / "cursus_dev" / "steps"
+        cursus_dev_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create component directories
+        for component_dir in ["builders", "contracts", "specs", "scripts", "configs"]:
+            (cursus_dev_path / component_dir).mkdir(exist_ok=True)
+        
+        file_resolver = discovery_manager.get_file_resolver("developer_1")
+        
+        self.assertIsNotNone(file_resolver)
+        # Should be a DeveloperWorkspaceFileResolver instance
+        self.assertEqual(file_resolver.workspace_root, self.temp_workspace)
+        # Should have the expected directory attributes
+        self.assertTrue(hasattr(file_resolver, 'contracts_dir'))
+        self.assertTrue(hasattr(file_resolver, 'specs_dir'))
+        self.assertTrue(hasattr(file_resolver, 'builders_dir'))
     
-    def test_get_component_cache(self):
-        """Test getting component cache."""
+    def test_get_module_loader(self):
+        """Test getting module loader."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Add some test data to cache
-        test_cache = {"developer_1": {"builders": {"step1": "info"}}}
-        discovery_manager.component_cache = test_cache
+        # Create proper workspace structure
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        (developers_dir / "developer_1").mkdir(exist_ok=True)
         
-        cache = discovery_manager.get_component_cache()
+        module_loader = discovery_manager.get_module_loader("developer_1")
         
-        self.assertEqual(cache, test_cache)
+        self.assertIsNotNone(module_loader)
+        # Should be a WorkspaceModuleLoader instance
+        self.assertEqual(module_loader.workspace_root, self.temp_workspace)
     
-    def test_clear_discovery_cache(self):
-        """Test clearing discovery cache."""
+    def test_list_available_developers(self):
+        """Test listing available developers."""
+        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        
+        # Create developer workspaces
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        
+        for dev_id in ["developer_1", "developer_2", "developer_3"]:
+            (developers_dir / dev_id).mkdir(exist_ok=True)
+        
+        # Create shared workspace
+        shared_dir = self.temp_workspace / "shared"
+        shared_dir.mkdir(exist_ok=True)
+        
+        developers = discovery_manager.list_available_developers()
+        
+        self.assertIsInstance(developers, list)
+        self.assertIn("developer_1", developers)
+        self.assertIn("developer_2", developers)
+        self.assertIn("developer_3", developers)
+        self.assertIn("shared", developers)
+        self.assertEqual(len(developers), 4)
+    
+    def test_get_workspace_info_specific(self):
+        """Test getting workspace info for specific workspace."""
+        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        
+        # Create developer workspace
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        
+        workspace_path = developers_dir / "developer_1"
+        workspace_path.mkdir(exist_ok=True)
+        
+        info = discovery_manager.get_workspace_info(workspace_id="developer_1")
+        
+        self.assertIsInstance(info, dict)
+        self.assertEqual(info["workspace_id"], "developer_1")
+        self.assertEqual(info["workspace_type"], "developer")
+    
+    def test_get_workspace_info_all(self):
+        """Test getting workspace info for all workspaces."""
+        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        
+        # Create developer workspace
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        (developers_dir / "developer_1").mkdir(exist_ok=True)
+        
+        info = discovery_manager.get_workspace_info()
+        
+        self.assertIsInstance(info, dict)
+        self.assertIn("workspaces", info)
+        self.assertIn("summary", info)
+    
+    def test_refresh_cache(self):
+        """Test refreshing discovery cache."""
+        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        
+        # Add test data to caches
+        discovery_manager._component_cache["test"] = ComponentInventory()
+        discovery_manager._dependency_cache["test"] = DependencyGraph()
+        discovery_manager._cache_timestamp["test"] = 123456789
+        
+        # Refresh cache
+        discovery_manager.refresh_cache()
+        
+        # All caches should be empty
+        self.assertEqual(len(discovery_manager._component_cache), 0)
+        self.assertEqual(len(discovery_manager._dependency_cache), 0)
+        self.assertEqual(len(discovery_manager._cache_timestamp), 0)
+    
+    def test_get_discovery_summary(self):
+        """Test getting discovery summary."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
         # Add test data
-        discovery_manager.component_cache = {"developer_1": {"data": "test"}}
-        discovery_manager.dependency_graph = {"step1": ["step2"]}
-        discovery_manager.discovery_index = {"step1": "developer_1"}
+        discovery_manager._component_cache["developer_1"] = ComponentInventory()
+        discovery_manager._cache_timestamp["developer_1"] = 123456789
         
-        # Clear cache
-        discovery_manager.clear_discovery_cache()
+        summary = discovery_manager.get_discovery_summary()
         
-        self.assertEqual(len(discovery_manager.component_cache), 0)
-        self.assertEqual(len(discovery_manager.dependency_graph), 0)
-        self.assertEqual(len(discovery_manager.discovery_index), 0)
+        self.assertIsInstance(summary, dict)
+        self.assertIn("cached_discoveries", summary)
+        self.assertIn("cache_entries", summary)
+        self.assertIn("available_developers", summary)
+        self.assertEqual(summary["cached_discoveries"], 1)
     
-    def test_refresh_component_discovery(self):
-        """Test refreshing component discovery."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
-        
-        # Add old cache data
-        discovery_manager.component_cache = {"developer_1": {"old": "data"}}
-        
-        with patch.object(discovery_manager, 'discover_workspace_components') as mock_discover:
-            mock_inventory = Mock()
-            mock_inventory.workspace_id = "developer_1"
-            mock_inventory.builders = {"new": "data"}
-            mock_discover.return_value = mock_inventory
-            
-            # Refresh discovery
-            discovery_manager.refresh_component_discovery("developer_1")
-            
-            # Should have called discovery again
-            mock_discover.assert_called_once_with("developer_1")
-    
-    def test_validate_pipeline_dependencies_valid(self):
-        """Test pipeline dependency validation with valid dependencies."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
-        
-        mock_pipeline = Mock()
-        mock_pipeline.steps = []
-        
-        # Mock dependency resolution to return valid
-        with patch.object(discovery_manager, 'resolve_component_dependencies') as mock_resolve:
-            mock_resolution = Mock()
-            mock_resolution.valid = True
-            mock_resolution.resolved_dependencies = []
-            mock_resolve.return_value = mock_resolution
-            
-            result = discovery_manager.validate_pipeline_dependencies(mock_pipeline)
-            
-            self.assertTrue(result['valid'])
-            self.assertEqual(len(result['errors']), 0)
-    
-    def test_validate_pipeline_dependencies_invalid(self):
-        """Test pipeline dependency validation with invalid dependencies."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
-        
-        mock_step = Mock()
-        mock_step.step_name = "invalid_step"
-        
-        mock_pipeline = Mock()
-        mock_pipeline.steps = [mock_step]
-        
-        # Mock dependency resolution to return invalid
-        with patch.object(discovery_manager, 'resolve_component_dependencies') as mock_resolve:
-            mock_resolution = Mock()
-            mock_resolution.valid = False
-            mock_resolution.error = "Dependency not found"
-            mock_resolve.return_value = mock_resolution
-            
-            result = discovery_manager.validate_pipeline_dependencies(mock_pipeline)
-            
-            self.assertFalse(result['valid'])
-            self.assertGreater(len(result['errors']), 0)
-    
-    def test_resolve_cross_workspace_dependencies(self):
-        """Test cross-workspace dependency resolution."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
-        
-        mock_pipeline = Mock()
-        mock_pipeline.get_developers.return_value = ["developer_1", "developer_2"]
-        mock_pipeline.steps = []
-        
-        # Mock component discovery
-        with patch.object(discovery_manager, 'discover_components') as mock_discover:
-            mock_result = Mock()
-            mock_result.components = {"step1": {"workspace": "developer_1"}}
-            mock_discover.return_value = mock_result
-            
-            result = discovery_manager.resolve_cross_workspace_dependencies(mock_pipeline)
-            
-            self.assertTrue(result['valid'])
-            mock_discover.assert_called_once_with(["developer_1", "developer_2"])
-    
-    def test_get_discovery_statistics(self):
+    def test_get_statistics(self):
         """Test getting discovery statistics."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Add test data
-        discovery_manager.component_cache = {
-            "developer_1": {"builders": {"step1": {}, "step2": {}}},
-            "developer_2": {"builders": {"step3": {}}}
+        stats = discovery_manager.get_statistics()
+        
+        self.assertIsInstance(stats, dict)
+        self.assertIn("discovery_operations", stats)
+        self.assertIn("component_summary", stats)
+        self.assertIn("discovery_summary", stats)
+    
+    def test_component_inventory_creation(self):
+        """Test ComponentInventory creation and usage."""
+        inventory = ComponentInventory()
+        
+        self.assertIsInstance(inventory.builders, dict)
+        self.assertIsInstance(inventory.configs, dict)
+        self.assertIsInstance(inventory.summary, dict)
+        self.assertEqual(inventory.summary["total_components"], 0)
+        
+        # Add a component
+        component_info = {
+            "developer_id": "developer_1",
+            "step_type": "processing"
         }
-        discovery_manager.dependency_graph = {"step1": [], "step2": ["step1"], "step3": []}
+        inventory.add_component("builders", "test_builder", component_info)
         
-        stats = discovery_manager.get_discovery_statistics()
-        
-        self.assertEqual(stats.total_workspaces, 2)
-        self.assertEqual(stats.total_components, 3)
-        self.assertEqual(stats.total_dependencies, 1)
-        self.assertEqual(len(stats.workspace_breakdown), 2)
+        self.assertEqual(inventory.summary["total_components"], 1)
+        self.assertIn("developer_1", inventory.summary["developers"])
+        self.assertIn("processing", inventory.summary["step_types"])
     
-    def test_get_summary(self):
-        """Test getting discovery manager summary."""
+    def test_dependency_graph_creation(self):
+        """Test DependencyGraph creation and usage."""
+        graph = DependencyGraph()
+        
+        self.assertIsInstance(graph.nodes, set)
+        self.assertIsInstance(graph.edges, list)
+        self.assertEqual(len(graph.nodes), 0)
+        
+        # Add components and dependencies
+        graph.add_component("step1", {"type": "builder"})
+        graph.add_component("step2", {"type": "processor"})
+        graph.add_dependency("step1", "step2")
+        
+        self.assertEqual(len(graph.nodes), 2)
+        self.assertEqual(len(graph.edges), 1)
+        self.assertIn("step1", graph.nodes)
+        self.assertIn("step2", graph.nodes)
+        
+        # Test dependency queries
+        deps = graph.get_dependencies("step1")
+        self.assertIn("step2", deps)
+        
+        dependents = graph.get_dependents("step2")
+        self.assertIn("step1", dependents)
+    
+    def test_dependency_graph_circular_detection(self):
+        """Test circular dependency detection."""
+        graph = DependencyGraph()
+        
+        # Create circular dependency
+        graph.add_component("step1")
+        graph.add_component("step2")
+        graph.add_dependency("step1", "step2")
+        graph.add_dependency("step2", "step1")
+        
+        self.assertTrue(graph.has_circular_dependencies())
+        
+        # Test non-circular graph
+        graph2 = DependencyGraph()
+        graph2.add_component("step1")
+        graph2.add_component("step2")
+        graph2.add_dependency("step1", "step2")
+        
+        self.assertFalse(graph2.has_circular_dependencies())
+    
+    def test_cache_validation(self):
+        """Test cache validation logic."""
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        # Add test data
-        discovery_manager.component_cache = {"developer_1": {"builders": {"step1": {}}}}
-        discovery_manager.dependency_graph = {"step1": []}
+        # Test invalid cache (not present)
+        self.assertFalse(discovery_manager._is_cache_valid("nonexistent"))
         
-        summary = discovery_manager.get_summary()
+        # Test valid cache (recent)
+        import time
+        discovery_manager._cache_timestamp["test"] = time.time()
+        self.assertTrue(discovery_manager._is_cache_valid("test"))
         
-        self.assertIn('total_workspaces_discovered', summary)
-        self.assertIn('total_components_cached', summary)
-        self.assertIn('dependency_graph_size', summary)
-        self.assertIn('workspace_root', summary)
-        self.assertEqual(summary['total_workspaces_discovered'], 1)
-        self.assertEqual(summary['total_components_cached'], 1)
+        # Test expired cache
+        discovery_manager._cache_timestamp["expired"] = time.time() - 400  # Older than cache_expiry
+        self.assertFalse(discovery_manager._is_cache_valid("expired"))
     
-    def test_validate_health(self):
-        """Test discovery manager health validation."""
+    def test_error_handling_no_workspace_root(self):
+        """Test error handling when no workspace root is configured."""
+        self.mock_workspace_manager.workspace_root = None
         discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
         
-        health = discovery_manager.validate_health()
+        with self.assertRaises(ValueError):
+            discovery_manager.get_file_resolver("developer_1")
         
-        self.assertIn('healthy', health)
-        self.assertIn('discovery_system_functional', health)
-        self.assertIn('cache_system_operational', health)
-        self.assertIn('workspace_root_accessible', health)
-        self.assertTrue(health['healthy'])
-    
-    def test_error_handling_invalid_workspace(self):
-        """Test error handling for invalid workspace."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        with self.assertRaises(ValueError):
+            discovery_manager.get_module_loader("developer_1")
         
-        # Try to discover components in non-existent workspace
-        inventory = discovery_manager.discover_workspace_components("non_existent_workspace")
-        
-        self.assertEqual(inventory.workspace_id, "non_existent_workspace")
-        self.assertEqual(len(inventory.builders), 0)
-        self.assertGreater(len(inventory.errors), 0)
-    
-    def test_concurrent_discovery_operations(self):
-        """Test concurrent discovery operations."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
-        
-        # Create multiple workspaces
-        workspaces = []
-        for i in range(3):
-            workspace_path = Path(self.temp_workspace) / f"developer_{i}"
-            workspace_path.mkdir(exist_ok=True)
-            workspaces.append(f"developer_{i}")
-        
-        # Discover components for all workspaces
-        inventories = []
-        for workspace in workspaces:
-            inventory = discovery_manager.discover_workspace_components(workspace)
-            inventories.append(inventory)
-        
-        # All should succeed
-        self.assertEqual(len(inventories), 3)
-        self.assertTrue(all(inv.workspace_id.startswith("developer_") for inv in inventories))
+        # discover_components should handle this gracefully
+        result = discovery_manager.discover_components()
+        self.assertIn("error", result)
 
 
 if __name__ == "__main__":

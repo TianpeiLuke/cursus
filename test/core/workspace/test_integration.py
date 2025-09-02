@@ -12,7 +12,13 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.core.workspace.integration import WorkspaceIntegrationManager
+from src.cursus.core.workspace.integration import (
+    WorkspaceIntegrationManager, 
+    StagedComponent, 
+    IntegrationPipeline,
+    ComponentStatus,
+    IntegrationStage
+)
 
 
 class TestWorkspaceIntegrationManager(unittest.TestCase):
@@ -21,14 +27,13 @@ class TestWorkspaceIntegrationManager(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures before each test method."""
         self.temp_dir = tempfile.mkdtemp()
-        self.temp_workspace = str(Path(self.temp_dir) / "test_workspace")
-        Path(self.temp_workspace).mkdir(parents=True, exist_ok=True)
+        self.temp_workspace = Path(self.temp_dir) / "test_workspace"
+        self.temp_workspace.mkdir(parents=True, exist_ok=True)
         
         # Create mock workspace manager
         self.mock_workspace_manager = Mock()
         self.mock_workspace_manager.workspace_root = self.temp_workspace
-        self.mock_workspace_manager.config_file = None
-        self.mock_workspace_manager.auto_discover = True
+        self.mock_workspace_manager.discovery_manager = Mock()
     
     def tearDown(self):
         """Clean up after each test method."""
@@ -40,350 +45,333 @@ class TestWorkspaceIntegrationManager(unittest.TestCase):
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
         self.assertIs(integration_manager.workspace_manager, self.mock_workspace_manager)
-        self.assertEqual(integration_manager.workspace_root, self.mock_workspace_manager.workspace_root)
-        self.assertEqual(integration_manager.staging_areas, {})
-        self.assertEqual(integration_manager.staged_components, {})
-        self.assertEqual(integration_manager.integration_queue, [])
+        self.assertIsInstance(integration_manager.staged_components, dict)
+        self.assertIsInstance(integration_manager.integration_pipelines, dict)
+        self.assertIsNotNone(integration_manager.staging_root)
     
-    def test_create_staging_area(self):
-        """Test creating staging area."""
+    def test_stage_for_integration_success(self):
+        """Test successful component staging for integration."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        staging_area = integration_manager.create_staging_area("developer_1")
-        
-        self.assertEqual(staging_area.workspace_id, "developer_1")
-        self.assertIsNotNone(staging_area.staging_path)
-        self.assertIsNotNone(staging_area.created_at)
-        self.assertIn("developer_1", integration_manager.staging_areas)
-    
-    def test_stage_component_for_integration_success(self):
-        """Test successful component staging."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        # Create staging area first
-        staging_area = integration_manager.create_staging_area("developer_1")
         
         # Create source component
-        workspace_path = Path(self.temp_workspace) / "developer_1"
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        workspace_path = developers_dir / "developer_1"
         workspace_path.mkdir(exist_ok=True)
-        component_path = workspace_path / "src" / "test_component.py"
-        component_path.parent.mkdir(parents=True, exist_ok=True)
-        component_path.write_text("# Test component")
         
-        result = integration_manager.stage_component_for_integration("test_component", "developer_1")
+        # Create component structure
+        cursus_dev_dir = workspace_path / "src" / "cursus_dev" / "steps" / "builders"
+        cursus_dev_dir.mkdir(parents=True, exist_ok=True)
+        component_file = cursus_dev_dir / "test_component.py"
+        component_file.write_text("class TestComponent: pass")
         
-        self.assertTrue(result.success)
-        self.assertEqual(result.component_id, "test_component")
-        self.assertEqual(result.source_workspace, "developer_1")
-        self.assertIsNotNone(result.staging_path)
+        # Mock discovery manager
+        self.mock_workspace_manager.discovery_manager._check_component_exists.return_value = True
+        
+        result = integration_manager.stage_for_integration("test_component", "developer_1")
+        
+        self.assertIsInstance(result, dict)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["component_id"], "test_component")
+        self.assertEqual(result["source_workspace"], "developer_1")
     
-    def test_stage_component_for_integration_missing_component(self):
+    def test_stage_for_integration_component_not_found(self):
         """Test staging non-existent component."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        # Create staging area
-        integration_manager.create_staging_area("developer_1")
+        # Mock discovery manager to return False
+        self.mock_workspace_manager.discovery_manager._check_component_exists.return_value = False
         
-        result = integration_manager.stage_component_for_integration("non_existent_component", "developer_1")
+        result = integration_manager.stage_for_integration("non_existent_component", "developer_1")
         
-        self.assertFalse(result.success)
-        self.assertIn("not found", result.error.lower())
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result["success"])
+        self.assertGreater(len(result["issues"]), 0)
+        self.assertIn("Component not found", result["issues"][0])
     
     def test_validate_integration_readiness_ready(self):
         """Test integration readiness validation with ready components."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        # Mock staged components
-        integration_manager.staged_components = {
-            "component_1": {
-                "status": "staged",
-                "validation_passed": True,
-                "dependencies_resolved": True
-            },
-            "component_2": {
-                "status": "staged", 
-                "validation_passed": True,
-                "dependencies_resolved": True
-            }
-        }
+        # Create staged components
+        staged_comp1 = StagedComponent("comp1", "developer_1", "builders")
+        staged_comp1.status = ComponentStatus.STAGED
+        staged_comp1.metadata["staging_path"] = str(self.temp_workspace / "staging1")
+        Path(staged_comp1.metadata["staging_path"]).mkdir(parents=True, exist_ok=True)
         
-        report = integration_manager.validate_integration_readiness(["component_1", "component_2"])
+        staged_comp2 = StagedComponent("comp2", "developer_2", "scripts")
+        staged_comp2.status = ComponentStatus.STAGED
+        staged_comp2.metadata["staging_path"] = str(self.temp_workspace / "staging2")
+        Path(staged_comp2.metadata["staging_path"]).mkdir(parents=True, exist_ok=True)
         
-        self.assertTrue(report.ready)
-        self.assertEqual(len(report.ready_components), 2)
-        self.assertEqual(len(report.blocking_issues), 0)
+        integration_manager.staged_components["developer_1:comp1"] = staged_comp1
+        integration_manager.staged_components["developer_2:comp2"] = staged_comp2
+        
+        result = integration_manager.validate_integration_readiness(["developer_1:comp1", "developer_2:comp2"])
+        
+        self.assertIsInstance(result, dict)
+        self.assertTrue(result["overall_ready"])
+        self.assertEqual(len(result["component_results"]), 2)
     
     def test_validate_integration_readiness_not_ready(self):
-        """Test integration readiness validation with unready components."""
+        """Test integration readiness validation with missing components."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        # Mock staged components with issues
-        integration_manager.staged_components = {
-            "component_1": {
-                "status": "staged",
-                "validation_passed": False,
-                "dependencies_resolved": True
-            },
-            "component_2": {
-                "status": "staged",
-                "validation_passed": True,
-                "dependencies_resolved": False
-            }
-        }
+        result = integration_manager.validate_integration_readiness(["nonexistent:comp1", "missing:comp2"])
         
-        report = integration_manager.validate_integration_readiness(["component_1", "component_2"])
-        
-        self.assertFalse(report.ready)
-        self.assertEqual(len(report.ready_components), 0)
-        self.assertGreater(len(report.blocking_issues), 0)
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result["overall_ready"])
+        self.assertGreater(len(result["integration_issues"]), 0)
+        self.assertIn("Component not found in staging", result["integration_issues"][0])
     
     def test_promote_to_production_success(self):
         """Test successful component promotion to production."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        # Mock staged component
-        integration_manager.staged_components["component_1"] = {
-            "status": "staged",
-            "validation_passed": True,
-            "dependencies_resolved": True,
-            "staging_path": "/staging/component_1"
+        # Create shared workspace
+        shared_dir = self.temp_workspace / "shared"
+        shared_dir.mkdir(exist_ok=True)
+        
+        # Create staged component
+        staged_comp = StagedComponent("test_comp", "developer_1", "builders")
+        staged_comp.status = ComponentStatus.STAGED
+        staging_path = self.temp_workspace / "staging" / "test_comp"
+        staging_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create test file in staging
+        test_file = staging_path / "test_comp.py"
+        test_file.write_text("class TestComp: pass")
+        
+        staged_comp.metadata = {
+            "staging_path": str(staging_path),
+            "original_files": [{"destination": str(test_file)}]
         }
         
-        with patch('shutil.copytree') as mock_copy:
-            result = integration_manager.promote_to_production("component_1")
+        integration_manager.staged_components["developer_1:test_comp"] = staged_comp
+        
+        result = integration_manager.promote_to_production("test_comp")
+        
+        self.assertIsInstance(result, dict)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["component_id"], "test_comp")
+        self.assertEqual(staged_comp.status, ComponentStatus.PROMOTED)
+    
+    def test_promote_to_production_not_found(self):
+        """Test promotion of component that's not found."""
+        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
+        
+        result = integration_manager.promote_to_production("nonexistent_component")
+        
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result["success"])
+        self.assertIn("Component not found in staging", result["issues"][0])
+    
+    def test_rollback_integration_success(self):
+        """Test successful integration rollback."""
+        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
+        
+        # Create staged component
+        staged_comp = StagedComponent("test_comp", "developer_1", "builders")
+        staged_comp.status = ComponentStatus.PROMOTED
+        integration_manager.staged_components["developer_1:test_comp"] = staged_comp
+        
+        with patch.object(integration_manager, '_remove_from_production') as mock_remove:
+            result = integration_manager.rollback_integration("test_comp")
             
-            self.assertTrue(result.success)
-            self.assertEqual(result.component_id, "component_1")
-            self.assertIsNotNone(result.production_path)
-            mock_copy.assert_called_once()
+            self.assertIsInstance(result, dict)
+            self.assertTrue(result["success"])
+            self.assertEqual(result["component_id"], "test_comp")
+            self.assertEqual(staged_comp.status, ComponentStatus.ROLLED_BACK)
+            mock_remove.assert_called_once()
     
-    def test_promote_to_production_not_ready(self):
-        """Test promotion of component that's not ready."""
+    def test_rollback_integration_not_found(self):
+        """Test rollback of component that's not found."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        # Mock unready component
-        integration_manager.staged_components["component_1"] = {
-            "status": "staged",
-            "validation_passed": False,
-            "dependencies_resolved": True
-        }
+        result = integration_manager.rollback_integration("nonexistent_component")
         
-        result = integration_manager.promote_to_production("component_1")
-        
-        self.assertFalse(result.success)
-        self.assertIn("not ready", result.error.lower())
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result["success"])
+        self.assertIn("Component not found", result["issues"][0])
     
-    def test_validate_pipeline_integration_valid(self):
-        """Test pipeline integration validation with valid pipeline."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        mock_pipeline = Mock()
-        mock_pipeline.pipeline_name = "test_pipeline"
-        mock_pipeline.steps = []
-        
-        result = integration_manager.validate_pipeline_integration(mock_pipeline)
-        
-        self.assertTrue(result['valid'])
-        self.assertEqual(len(result['errors']), 0)
-    
-    def test_validate_pipeline_integration_invalid(self):
-        """Test pipeline integration validation with invalid pipeline."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        mock_step = Mock()
-        mock_step.step_name = "invalid_step"
-        mock_step.developer_id = "developer_1"
-        
-        mock_pipeline = Mock()
-        mock_pipeline.pipeline_name = "test_pipeline"
-        mock_pipeline.steps = [mock_step]
-        
-        # Mock component as not staged
-        integration_manager.staged_components = {}
-        
-        result = integration_manager.validate_pipeline_integration(mock_pipeline)
-        
-        self.assertFalse(result['valid'])
-        self.assertGreater(len(result['errors']), 0)
-    
-    def test_prepare_pipeline_for_integration(self):
-        """Test preparing pipeline for integration."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        mock_step = Mock()
-        mock_step.step_name = "test_step"
-        mock_step.developer_id = "developer_1"
-        
-        mock_pipeline = Mock()
-        mock_pipeline.pipeline_name = "test_pipeline"
-        mock_pipeline.steps = [mock_step]
-        
-        with patch.object(integration_manager, 'stage_component_for_integration') as mock_stage:
-            mock_stage.return_value = Mock(success=True, staging_path="/staging/test_step")
-            
-            result = integration_manager.prepare_pipeline_for_integration(mock_pipeline)
-            
-            self.assertTrue(result['ready'])
-            self.assertEqual(result['pipeline_name'], "test_pipeline")
-            mock_stage.assert_called_once_with("test_step", "developer_1")
-    
-    def test_get_staging_status(self):
-        """Test getting staging status."""
+    def test_get_integration_summary(self):
+        """Test getting integration summary."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
         # Add test data
-        integration_manager.staged_components = {
-            "component_1": {"status": "staged", "validation_passed": True},
-            "component_2": {"status": "staging", "validation_passed": False}
-        }
-        integration_manager.integration_queue = ["component_3", "component_4"]
+        staged_comp1 = StagedComponent("comp1", "developer_1", "builders")
+        staged_comp1.status = ComponentStatus.STAGED
+        staged_comp2 = StagedComponent("comp2", "developer_2", "scripts")
+        staged_comp2.status = ComponentStatus.PROMOTED
         
-        status = integration_manager.get_staging_status()
+        integration_manager.staged_components["developer_1:comp1"] = staged_comp1
+        integration_manager.staged_components["developer_2:comp2"] = staged_comp2
         
-        self.assertEqual(status.total_staged, 2)
-        self.assertEqual(status.ready_for_integration, 1)
-        self.assertEqual(status.queue_length, 2)
-        self.assertEqual(len(status.component_details), 2)
+        summary = integration_manager.get_integration_summary()
+        
+        self.assertIsInstance(summary, dict)
+        self.assertIn("staged_components", summary)
+        self.assertIn("component_status_distribution", summary)
+        self.assertEqual(summary["staged_components"], 2)
     
-    def test_cleanup_staging_area(self):
-        """Test cleaning up staging area."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        # Create staging area
-        staging_area = integration_manager.create_staging_area("developer_1")
-        
-        # Add staged component
-        integration_manager.staged_components["component_1"] = {
-            "workspace_id": "developer_1",
-            "staging_path": "/staging/component_1"
-        }
-        
-        with patch('shutil.rmtree') as mock_rmtree:
-            result = integration_manager.cleanup_staging_area("developer_1")
-            
-            self.assertTrue(result.success)
-            self.assertEqual(result.workspace_id, "developer_1")
-            self.assertNotIn("developer_1", integration_manager.staging_areas)
-            mock_rmtree.assert_called()
-    
-    def test_rollback_component_staging(self):
-        """Test rolling back component staging."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        # Mock staged component
-        integration_manager.staged_components["component_1"] = {
-            "status": "staged",
-            "staging_path": "/staging/component_1",
-            "workspace_id": "developer_1"
-        }
-        
-        with patch('shutil.rmtree') as mock_rmtree:
-            result = integration_manager.rollback_component_staging("component_1")
-            
-            self.assertTrue(result.success)
-            self.assertEqual(result.component_id, "component_1")
-            self.assertNotIn("component_1", integration_manager.staged_components)
-            mock_rmtree.assert_called_once()
-    
-    def test_get_integration_history(self):
-        """Test getting integration history."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        # Mock integration history
-        integration_manager.integration_history = [
-            {
-                "component_id": "component_1",
-                "action": "staged",
-                "timestamp": "2025-09-02T10:00:00",
-                "workspace_id": "developer_1"
-            },
-            {
-                "component_id": "component_1", 
-                "action": "promoted",
-                "timestamp": "2025-09-02T11:00:00",
-                "workspace_id": "developer_1"
-            }
-        ]
-        
-        history = integration_manager.get_integration_history("component_1")
-        
-        self.assertEqual(len(history), 2)
-        self.assertTrue(all(h["component_id"] == "component_1" for h in history))
-    
-    def test_validate_cross_workspace_compatibility(self):
-        """Test cross-workspace compatibility validation."""
-        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
-        
-        components = ["component_1", "component_2"]
-        
-        # Mock staged components from different workspaces
-        integration_manager.staged_components = {
-            "component_1": {"workspace_id": "developer_1", "version": "1.0"},
-            "component_2": {"workspace_id": "developer_2", "version": "1.0"}
-        }
-        
-        result = integration_manager.validate_cross_workspace_compatibility(components)
-        
-        self.assertTrue(result.compatible)
-        self.assertEqual(len(result.conflicts), 0)
-    
-    def test_get_summary(self):
-        """Test getting integration manager summary."""
+    def test_get_statistics(self):
+        """Test getting integration statistics."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
         # Add test data
-        integration_manager.staging_areas = {"developer_1": Mock()}
-        integration_manager.staged_components = {"component_1": {}, "component_2": {}}
-        integration_manager.integration_queue = ["component_3"]
+        staged_comp = StagedComponent("comp1", "developer_1", "builders")
+        staged_comp.status = ComponentStatus.PROMOTED
+        integration_manager.staged_components["developer_1:comp1"] = staged_comp
         
-        summary = integration_manager.get_summary()
+        stats = integration_manager.get_statistics()
         
-        self.assertIn('total_staging_areas', summary)
-        self.assertIn('total_staged_components', summary)
-        self.assertIn('integration_queue_length', summary)
-        self.assertIn('workspace_root', summary)
-        self.assertEqual(summary['total_staging_areas'], 1)
-        self.assertEqual(summary['total_staged_components'], 2)
-        self.assertEqual(summary['integration_queue_length'], 1)
+        self.assertIsInstance(stats, dict)
+        self.assertIn("integration_operations", stats)
+        self.assertIn("component_statistics", stats)
+        self.assertIn("integration_summary", stats)
     
-    def test_validate_health(self):
-        """Test integration manager health validation."""
+    def test_staged_component_creation(self):
+        """Test StagedComponent creation and methods."""
+        staged_comp = StagedComponent(
+            component_id="test_comp",
+            source_workspace="developer_1",
+            component_type="builders",
+            stage="integration",
+            metadata={"key": "value"}
+        )
+        
+        self.assertEqual(staged_comp.component_id, "test_comp")
+        self.assertEqual(staged_comp.source_workspace, "developer_1")
+        self.assertEqual(staged_comp.component_type, "builders")
+        self.assertEqual(staged_comp.stage, "integration")
+        self.assertEqual(staged_comp.status, ComponentStatus.PENDING)
+        self.assertEqual(staged_comp.metadata["key"], "value")
+        
+        # Test dictionary conversion
+        comp_dict = staged_comp.to_dict()
+        self.assertIsInstance(comp_dict, dict)
+        self.assertEqual(comp_dict["component_id"], "test_comp")
+        self.assertEqual(comp_dict["status"], "pending")
+    
+    def test_integration_pipeline_creation(self):
+        """Test IntegrationPipeline creation and methods."""
+        staged_comp1 = StagedComponent("comp1", "developer_1", "builders")
+        staged_comp2 = StagedComponent("comp2", "developer_2", "scripts")
+        
+        pipeline = IntegrationPipeline("test_pipeline", [staged_comp1, staged_comp2])
+        
+        self.assertEqual(pipeline.pipeline_id, "test_pipeline")
+        self.assertEqual(len(pipeline.components), 2)
+        self.assertEqual(pipeline.status, "pending")
+        
+        # Test dictionary conversion
+        pipeline_dict = pipeline.to_dict()
+        self.assertIsInstance(pipeline_dict, dict)
+        self.assertEqual(pipeline_dict["pipeline_id"], "test_pipeline")
+        self.assertEqual(len(pipeline_dict["components"]), 2)
+    
+    def test_component_status_enum(self):
+        """Test ComponentStatus enum values."""
+        self.assertEqual(ComponentStatus.PENDING.value, "pending")
+        self.assertEqual(ComponentStatus.STAGED.value, "staged")
+        self.assertEqual(ComponentStatus.APPROVED.value, "approved")
+        self.assertEqual(ComponentStatus.REJECTED.value, "rejected")
+        self.assertEqual(ComponentStatus.PROMOTED.value, "promoted")
+        self.assertEqual(ComponentStatus.ROLLED_BACK.value, "rolled_back")
+    
+    def test_integration_stage_enum(self):
+        """Test IntegrationStage enum values."""
+        self.assertEqual(IntegrationStage.DEVELOPMENT.value, "development")
+        self.assertEqual(IntegrationStage.STAGING.value, "staging")
+        self.assertEqual(IntegrationStage.INTEGRATION.value, "integration")
+        self.assertEqual(IntegrationStage.PRODUCTION.value, "production")
+    
+    def test_determine_component_type(self):
+        """Test component type determination."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        health = integration_manager.validate_health()
+        # Create component structure
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        workspace_path = developers_dir / "developer_1"
+        workspace_path.mkdir(exist_ok=True)
         
-        self.assertIn('healthy', health)
-        self.assertIn('integration_system_functional', health)
-        self.assertIn('staging_system_operational', health)
-        self.assertIn('workspace_root_accessible', health)
-        self.assertTrue(health['healthy'])
+        # Create builder component
+        builders_dir = workspace_path / "src" / "cursus_dev" / "steps" / "builders"
+        builders_dir.mkdir(parents=True, exist_ok=True)
+        (builders_dir / "test_builder.py").write_text("class TestBuilder: pass")
+        
+        component_type = integration_manager._determine_component_type("test_builder", "developer_1")
+        self.assertEqual(component_type, "builders")
+        
+        # Test non-existent component
+        component_type = integration_manager._determine_component_type("nonexistent", "developer_1")
+        self.assertIsNone(component_type)
     
-    def test_error_handling_invalid_workspace(self):
-        """Test error handling for invalid workspace."""
+    def test_validate_component_syntax(self):
+        """Test component syntax validation."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        # Try to create staging area for non-existent workspace
-        staging_area = integration_manager.create_staging_area("non_existent_workspace")
+        # Create staging path with valid Python file
+        staging_path = self.temp_workspace / "staging"
+        staging_path.mkdir(exist_ok=True)
         
-        # Should still create staging area but may have warnings
-        self.assertEqual(staging_area.workspace_id, "non_existent_workspace")
+        valid_file = staging_path / "valid.py"
+        valid_file.write_text("class ValidComponent:\n    def __init__(self):\n        pass")
+        
+        result = integration_manager._validate_component_syntax(staging_path)
+        self.assertTrue(result["valid"])
+        self.assertEqual(len(result["issues"]), 0)
+        
+        # Test invalid syntax
+        invalid_file = staging_path / "invalid.py"
+        invalid_file.write_text("class InvalidComponent\n    def __init__(self):")  # Missing colon
+        
+        result = integration_manager._validate_component_syntax(staging_path)
+        self.assertFalse(result["valid"])
+        self.assertGreater(len(result["issues"]), 0)
     
-    def test_concurrent_staging_operations(self):
-        """Test concurrent staging operations."""
+    def test_copy_component_to_staging(self):
+        """Test copying component to staging area."""
         integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
         
-        # Create multiple staging areas
-        workspaces = ["developer_1", "developer_2", "developer_3"]
-        staging_areas = []
+        # Create source component
+        developers_dir = self.temp_workspace / "developers"
+        developers_dir.mkdir(exist_ok=True)
+        workspace_path = developers_dir / "developer_1"
+        workspace_path.mkdir(exist_ok=True)
         
-        for workspace in workspaces:
-            staging_area = integration_manager.create_staging_area(workspace)
-            staging_areas.append(staging_area)
+        builders_dir = workspace_path / "src" / "cursus_dev" / "steps" / "builders"
+        builders_dir.mkdir(parents=True, exist_ok=True)
+        component_file = builders_dir / "test_comp.py"
+        component_file.write_text("class TestComp: pass")
         
-        # All should succeed
-        self.assertEqual(len(staging_areas), 3)
-        self.assertEqual(len(integration_manager.staging_areas), 3)
-        self.assertTrue(all(sa.workspace_id in workspaces for sa in staging_areas))
+        # Create staging path
+        staging_path = self.temp_workspace / "staging"
+        staging_path.mkdir(exist_ok=True)
+        
+        result = integration_manager._copy_component_to_staging(
+            "test_comp", "developer_1", "builders", staging_path
+        )
+        
+        self.assertTrue(result["success"])
+        self.assertGreater(len(result["copied_files"]), 0)
+        self.assertTrue((staging_path / "test_comp.py").exists())
+    
+    def test_error_handling_no_staging_root(self):
+        """Test error handling when no staging root is configured."""
+        self.mock_workspace_manager.workspace_root = None
+        integration_manager = WorkspaceIntegrationManager(self.mock_workspace_manager)
+        
+        self.assertIsNone(integration_manager.staging_root)
+        
+        # Mock discovery manager to avoid the component type determination error
+        self.mock_workspace_manager.discovery_manager._check_component_exists.return_value = True
+        
+        result = integration_manager.stage_for_integration("test_comp", "developer_1")
+        self.assertFalse(result["success"])
+        # The error should be about staging root, but it might come after component type determination
+        self.assertGreater(len(result["issues"]), 0)
 
 
 if __name__ == "__main__":

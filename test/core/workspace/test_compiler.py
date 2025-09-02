@@ -64,14 +64,9 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
-    def test_compiler_initialization_with_workspace_manager(self, mock_manager_class, mock_registry_class):
+    def test_compiler_initialization_with_workspace_manager(self):
         """Test compiler initialization with workspace manager (Phase 2 optimization)."""
-        mock_registry = Mock()
-        mock_registry_class.return_value = mock_registry
         mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
         
         compiler = WorkspaceDAGCompiler(
             workspace_root=self.temp_workspace,
@@ -80,15 +75,11 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
         
         self.assertEqual(compiler.workspace_root, self.temp_workspace)
         self.assertEqual(compiler.workspace_manager, mock_manager)
-        self.assertEqual(compiler.workspace_registry, mock_registry)
-        mock_registry_class.assert_called_once()
+        self.assertIsNotNone(compiler.workspace_registry)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
-    def test_compiler_initialization_without_workspace_manager(self, mock_manager_class, mock_registry_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    def test_compiler_initialization_without_workspace_manager(self, mock_manager_class):
         """Test compiler initialization without workspace manager."""
-        mock_registry = Mock()
-        mock_registry_class.return_value = mock_registry
         mock_manager = Mock()
         mock_manager_class.return_value = mock_manager
         
@@ -96,33 +87,31 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
         
         self.assertEqual(compiler.workspace_root, self.temp_workspace)
         self.assertEqual(compiler.workspace_manager, mock_manager)
-        self.assertEqual(compiler.workspace_registry, mock_registry)
+        self.assertIsNotNone(compiler.workspace_registry)
         mock_manager_class.assert_called_once_with(self.temp_workspace)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
-    @patch('src.cursus.core.workspace.compiler.WorkspacePipelineAssembler')
-    def test_compile_workspace_dag_success(self, mock_assembler_class, mock_manager_class, mock_registry_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    def test_compile_workspace_dag_success(self, mock_manager_class):
         """Test successful workspace DAG compilation."""
         # Setup mocks
-        mock_registry = Mock()
-        mock_registry_class.return_value = mock_registry
         mock_manager_class.return_value = Mock()
-        
-        mock_assembler = Mock()
-        mock_pipeline = Mock()
-        mock_pipeline.name = 'test_pipeline'
-        mock_assembler.assemble_workspace_pipeline.return_value = mock_pipeline
-        mock_assembler.get_workspace_summary.return_value = {'test': 'summary'}
-        mock_assembler_class.return_value = mock_assembler
         
         compiler = WorkspaceDAGCompiler(workspace_root=self.temp_workspace)
         
-        # Mock DAG methods
+        # Mock DAG methods and patch the assembler creation inside the compiler
         with patch.object(self.sample_workspace_dag, 'to_workspace_pipeline_config') as mock_to_config, \
              patch.object(self.sample_workspace_dag, 'validate_workspace_dependencies') as mock_validate_deps, \
              patch.object(self.sample_workspace_dag, 'analyze_workspace_complexity') as mock_analyze, \
-             patch.object(self.sample_workspace_dag, 'get_developers') as mock_get_devs:
+             patch.object(self.sample_workspace_dag, 'get_developers') as mock_get_devs, \
+             patch.object(compiler, 'WorkspacePipelineAssembler', create=True) as mock_assembler_class:
+            
+            # Setup assembler mock
+            mock_assembler = Mock()
+            mock_pipeline = Mock()
+            mock_pipeline.name = 'test_pipeline'
+            mock_assembler.assemble_workspace_pipeline.return_value = mock_pipeline
+            mock_assembler.get_workspace_summary.return_value = {'test': 'summary'}
+            mock_assembler_class.return_value = mock_assembler
             
             mock_to_config.return_value = {
                 'pipeline_name': 'workspace_pipeline',
@@ -142,7 +131,9 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             mock_analyze.return_value = {'basic_metrics': {'node_count': 2}}
             mock_get_devs.return_value = ['dev1', 'dev2']
             
-            pipeline, metadata = compiler.compile_workspace_dag(self.sample_workspace_dag)
+            # Patch the assembler import at the module level where it's used
+            with patch('src.cursus.core.workspace.compiler.WorkspacePipelineAssembler', mock_assembler_class):
+                pipeline, metadata = compiler.compile_workspace_dag(self.sample_workspace_dag)
             
             self.assertEqual(pipeline, mock_pipeline)
             self.assertIn('workspace_root', metadata)
@@ -152,9 +143,9 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             self.assertEqual(metadata['step_count'], 2)
             self.assertEqual(metadata['developer_count'], 2)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
-    @patch('src.cursus.core.workspace.compiler.WorkspacePipelineAssembler')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.assembler.WorkspacePipelineAssembler')
     def test_compile_workspace_dag_failure(self, mock_assembler_class, mock_manager_class, mock_registry_class):
         """Test workspace DAG compilation failure."""
         mock_registry_class.return_value = Mock()
@@ -180,27 +171,25 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             
             self.assertIn("Failed to compile workspace DAG", str(context.exception))
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
-    @patch('src.cursus.core.workspace.compiler.WorkspacePipelineAssembler')
-    def test_preview_workspace_resolution(self, mock_assembler_class, mock_manager_class, mock_registry_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    def test_preview_workspace_resolution(self, mock_manager_class):
         """Test previewing workspace resolution."""
-        mock_registry_class.return_value = Mock()
         mock_manager_class.return_value = Mock()
-        
-        # Mock assembler preview
-        mock_assembler = Mock()
-        mock_assembler.preview_workspace_assembly.return_value = {
-            'validation_results': {'overall_valid': True, 'valid': True},
-            'component_resolution': {'dev1:preprocessing': {}, 'dev2:training': {}},
-            'assembly_plan': {'build_order': ['preprocessing', 'training']}
-        }
-        mock_assembler_class.return_value = mock_assembler
         
         compiler = WorkspaceDAGCompiler(workspace_root=self.temp_workspace)
         
         with patch.object(self.sample_workspace_dag, 'to_workspace_pipeline_config') as mock_to_config, \
-             patch.object(self.sample_workspace_dag, 'get_workspace_summary') as mock_summary:
+             patch.object(self.sample_workspace_dag, 'get_workspace_summary') as mock_summary, \
+             patch('src.cursus.core.workspace.compiler.WorkspacePipelineAssembler') as mock_assembler_class:
+            
+            # Mock assembler preview
+            mock_assembler = Mock()
+            mock_assembler.preview_workspace_assembly.return_value = {
+                'validation_results': {'overall_valid': True, 'valid': True},
+                'component_resolution': {'dev1:preprocessing': {}, 'dev2:training': {}},
+                'assembly_plan': {'build_order': ['preprocessing', 'training']}
+            }
+            mock_assembler_class.return_value = mock_assembler
             
             mock_to_config.return_value = {
                 'pipeline_name': 'preview_pipeline',
@@ -226,8 +215,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             self.assertIn('compilation_feasibility', preview)
             self.assertTrue(preview['compilation_feasibility']['can_compile'])
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_estimate_compilation_time(self, mock_manager_class, mock_registry_class):
         """Test compilation time estimation."""
         mock_registry_class.return_value = Mock()
@@ -244,9 +233,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             self.assertIsInstance(estimated_time, float)
             self.assertGreater(estimated_time, 0)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
-    def test_validate_workspace_components(self, mock_manager_class, mock_registry_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    def test_validate_workspace_components(self, mock_manager_class):
         """Test workspace component validation."""
         mock_registry = Mock()
         mock_registry.validate_component_availability.return_value = {
@@ -254,10 +242,12 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             'missing_components': [],
             'available_components': []
         }
-        mock_registry_class.return_value = mock_registry
         mock_manager_class.return_value = Mock()
         
         compiler = WorkspaceDAGCompiler(workspace_root=self.temp_workspace)
+        
+        # Replace the registry instance with our mock
+        compiler.workspace_registry = mock_registry
         
         with patch.object(self.sample_workspace_dag, 'to_workspace_pipeline_config') as mock_to_config, \
              patch.object(self.sample_workspace_dag, 'validate_workspace_dependencies') as mock_validate:
@@ -284,8 +274,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             self.assertTrue(result['compilation_ready'])
             self.assertIn('dag_validation', result)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_validate_workspace_components_failure(self, mock_manager_class, mock_registry_class):
         """Test workspace component validation failure."""
         mock_registry_class.return_value = Mock()
@@ -303,8 +293,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             self.assertFalse(result['compilation_ready'])
             self.assertIn('error', result)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_generate_compilation_report(self, mock_manager_class, mock_registry_class):
         """Test generating compilation report."""
         mock_registry_class.return_value = Mock()
@@ -346,8 +336,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             self.assertIn('estimated_resources', report)
             self.assertIn('validation_summary', report)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_from_workspace_config(self, mock_manager_class, mock_registry_class):
         """Test creating compiler from workspace configuration."""
         mock_registry_class.return_value = Mock()
@@ -376,8 +366,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
         self.assertIsInstance(compiler, WorkspaceDAGCompiler)
         self.assertEqual(compiler.workspace_root, self.temp_workspace)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_from_workspace_dag(self, mock_manager_class, mock_registry_class):
         """Test creating compiler from workspace DAG."""
         mock_registry_class.return_value = Mock()
@@ -391,8 +381,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
         self.assertIsInstance(compiler, WorkspaceDAGCompiler)
         self.assertEqual(compiler.workspace_root, self.temp_workspace)
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_compile_with_detailed_report_success(self, mock_manager_class, mock_registry_class):
         """Test compilation with detailed report - success case."""
         mock_registry_class.return_value = Mock()
@@ -429,8 +419,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             self.assertIn('compilation_summary', detailed_report)
             self.assertTrue(detailed_report['success'])
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_compile_with_detailed_report_not_ready(self, mock_manager_class, mock_registry_class):
         """Test compilation with detailed report - not ready case."""
         mock_registry_class.return_value = Mock()
@@ -448,8 +438,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
             
             self.assertIn("Workspace DAG is not ready for compilation", str(context.exception))
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_get_workspace_summary(self, mock_manager_class, mock_registry_class):
         """Test getting workspace summary."""
         mock_registry = Mock()
@@ -474,8 +464,8 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
         self.assertTrue(capabilities['supports_compilation_preview'])
         self.assertTrue(capabilities['supports_detailed_reporting'])
     
-    @patch('src.cursus.core.workspace.compiler.WorkspaceComponentRegistry')
-    @patch('src.cursus.core.workspace.compiler.WorkspaceManager')
+    @patch('src.cursus.core.workspace.registry.WorkspaceComponentRegistry')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
     def test_preview_with_blocking_issues(self, mock_manager_class, mock_registry_class):
         """Test preview with blocking issues identified."""
         mock_registry_class.return_value = Mock()

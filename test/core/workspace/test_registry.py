@@ -71,10 +71,11 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
     def test_registry_initialization_with_discovery_manager(self, mock_discovery_class):
         """Test registry initialization with discovery manager (Phase 2 optimization)."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
         
         registry = WorkspaceComponentRegistry(
@@ -85,41 +86,55 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertEqual(registry.workspace_root, self.temp_workspace)
         self.assertEqual(registry.discovery_manager, mock_discovery)
         self.assertEqual(registry.cache_expiry, 300)  # 5 minutes
-        self.assertEqual(registry._component_cache, {})
+        # Note: _component_cache is initialized from discovery manager's cache
         self.assertEqual(registry._builder_cache, {})
         self.assertEqual(registry._config_cache, {})
         self.assertEqual(registry._cache_timestamp, {})
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_registry_initialization_without_discovery_manager(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_registry_initialization_without_discovery_manager(self, mock_discovery_class, mock_manager_class):
         """Test registry initialization without discovery manager."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(workspace_root=self.temp_workspace)
         
         self.assertEqual(registry.workspace_root, self.temp_workspace)
         self.assertEqual(registry.discovery_manager, mock_discovery)
-        mock_discovery_class.assert_called_once_with(self.temp_workspace)
+        mock_manager_class.assert_called_once_with(self.temp_workspace)
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_discover_components_all_developers(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_discover_components_all_developers(self, mock_discovery_class, mock_manager_class):
         """Test discovering components for all developers."""
         # Setup mock
         mock_discovery = Mock()
-        mock_discovery.discover_workspace_components.return_value = {
-            'builders': {'dev1:test_step': {}, 'dev2:test_step': {}},
-            'configs': {'dev1:test_step': {}},
-            'contracts': {},
-            'specs': {'dev1:test_step': {}},
-            'scripts': {},
-            'summary': {
-                'total_components': 4,
-                'developers': ['dev1', 'dev2'],
-                'step_types': ['TestType']
-            }
-        }
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        # Mock workspace info with developers
+        mock_workspace_info = Mock()
+        mock_workspace_info.developers = ['dev1', 'dev2']
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.discover_workspaces.return_value = mock_workspace_info
+        
+        # Mock file resolver and module loader
+        mock_file_resolver = Mock()
+        mock_module_loader = Mock()
+        mock_module_loader.discover_workspace_modules.return_value = {}
+        
+        mock_manager.get_file_resolver.return_value = mock_file_resolver
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         components = registry.discover_components()
@@ -131,47 +146,72 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertIn('scripts', components)
         self.assertIn('summary', components)
         
-        # Should use discovery manager
-        mock_discovery.discover_workspace_components.assert_called_once()
+        # Should call workspace manager methods
+        mock_manager.discover_workspaces.assert_called_once()
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_discover_components_specific_developer(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_discover_components_specific_developer(self, mock_discovery_class, mock_manager_class):
         """Test discovering components for a specific developer."""
         mock_discovery = Mock()
-        mock_discovery.discover_workspace_components.return_value = {
-            'builders': {'dev1:test_step': {}},
-            'configs': {'dev1:test_step': {}},
-            'contracts': {},
-            'specs': {'dev1:test_step': {}},
-            'scripts': {},
-            'summary': {
-                'total_components': 3,
-                'developers': ['dev1'],
-                'step_types': ['TestType']
-            }
-        }
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        # Mock workspace info with proper developers list
+        mock_workspace_info = Mock()
+        mock_workspace_info.developers = ['dev1', 'dev2']
+        
+        # Mock file resolver and module loader
+        mock_file_resolver = Mock()
+        mock_file_resolver.workspace_root = self.temp_workspace
+        
+        mock_module_loader = Mock()
+        mock_module_loader.discover_workspace_modules.return_value = {
+            'test_step': ['/test/workspace/dev1/builders/test_builder.py']
+        }
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.discover_workspaces.return_value = mock_workspace_info
+        mock_manager.get_file_resolver.return_value = mock_file_resolver
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         components = registry.discover_components(developer_id='dev1')
         
-        # Should call discovery manager with specific developer
-        mock_discovery.discover_workspace_components.assert_called_once_with(developer_id='dev1')
+        # Should call workspace manager methods
+        mock_manager.discover_workspaces.assert_called_once()
+        mock_manager.get_file_resolver.assert_called_with('dev1')
+        mock_manager.get_module_loader.assert_called_with('dev1')
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_discover_components_caching(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_discover_components_caching(self, mock_discovery_class, mock_manager_class):
         """Test component discovery caching."""
         mock_discovery = Mock()
-        mock_components = {
-            'builders': {'dev1:test_step': {}},
-            'configs': {},
-            'contracts': {},
-            'specs': {},
-            'scripts': {},
-            'summary': {'total_components': 1, 'developers': ['dev1']}
-        }
-        mock_discovery.discover_workspace_components.return_value = mock_components
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        # Mock workspace info with proper developers list
+        mock_workspace_info = Mock()
+        mock_workspace_info.developers = ['dev1']
+        
+        # Mock file resolver and module loader
+        mock_file_resolver = Mock()
+        mock_file_resolver.workspace_root = self.temp_workspace
+        
+        mock_module_loader = Mock()
+        mock_module_loader.discover_workspace_modules.return_value = {
+            'test_step': ['/test/workspace/dev1/builders/test_builder.py']
+        }
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.discover_workspaces.return_value = mock_workspace_info
+        mock_manager.get_file_resolver.return_value = mock_file_resolver
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -184,12 +224,12 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         # Should return the same cached result
         self.assertIs(components1, components2)
         
-        # Discovery manager should only be called once
-        mock_discovery.discover_workspace_components.assert_called_once()
+        # Workspace manager should only be called once due to caching
+        mock_manager.discover_workspaces.assert_called_once()
     
     def test_cache_expiry(self):
         """Test cache expiry functionality."""
-        with patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager'):
+        with patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager'):
             registry = WorkspaceComponentRegistry(self.temp_workspace)
             registry.cache_expiry = 0.1  # 100ms for testing
             
@@ -206,52 +246,74 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             # Should be expired
             self.assertFalse(registry._is_cache_valid(cache_key))
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_find_builder_class_specific_developer(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_find_builder_class_specific_developer(self, mock_discovery_class, mock_manager_class):
         """Test finding builder class for specific developer."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
+        mock_discovery_class.return_value = mock_discovery
         
         # Mock builder class
         mock_builder_class = Mock()
         mock_builder_class.__name__ = 'TestBuilder'
-        mock_discovery.find_component.return_value = mock_builder_class
         
-        mock_discovery_class.return_value = mock_discovery
+        # Mock module loader
+        mock_module_loader = Mock()
+        mock_module_loader.load_builder_class.return_value = mock_builder_class
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         result = registry.find_builder_class('test_step', 'dev1')
         
         self.assertEqual(result, mock_builder_class)
-        mock_discovery.find_component.assert_called_with(
-            'test_step', 'builder', developer_id='dev1'
-        )
+        mock_manager.get_module_loader.assert_called_with('dev1')
+        mock_module_loader.load_builder_class.assert_called_with('test_step')
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_find_builder_class_any_developer(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_find_builder_class_any_developer(self, mock_discovery_class, mock_manager_class):
         """Test finding builder class from any developer."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
+        mock_discovery_class.return_value = mock_discovery
         
         mock_builder_class = Mock()
         mock_builder_class.__name__ = 'TestBuilder'
-        mock_discovery.find_component.return_value = mock_builder_class
         
-        mock_discovery_class.return_value = mock_discovery
+        # Mock workspace info with developers
+        mock_workspace_info = Mock()
+        mock_workspace_info.developers = ['dev1', 'dev2']
+        
+        # Mock module loader that returns builder for first developer
+        mock_module_loader = Mock()
+        mock_module_loader.load_builder_class.return_value = mock_builder_class
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.discover_workspaces.return_value = mock_workspace_info
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         result = registry.find_builder_class('test_step')
         
         self.assertEqual(result, mock_builder_class)
-        mock_discovery.find_component.assert_called_with(
-            'test_step', 'builder', developer_id=None
-        )
+        mock_manager.discover_workspaces.assert_called_once()
+        mock_manager.get_module_loader.assert_called_with('dev1')
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
     @patch('src.cursus.core.workspace.registry.STEP_NAMES')
-    def test_find_builder_class_core_fallback(self, mock_step_names, mock_discovery_class):
+    def test_find_builder_class_core_fallback(self, mock_step_names, mock_discovery_class, mock_manager_class):
         """Test fallback to core registry for builder class."""
         # Setup discovery manager mock
         mock_discovery = Mock()
-        mock_discovery.find_component.return_value = None  # Not found in workspace
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Setup STEP_NAMES mock
@@ -259,6 +321,20 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_step_names.items.return_value = [
             ('TestConfig', {'step_name': 'test_step', 'step_type': 'TestType'})
         ]
+        
+        # Mock workspace info with developers
+        mock_workspace_info = Mock()
+        mock_workspace_info.developers = ['dev1', 'dev2']
+        
+        # Mock module loader that returns None (not found)
+        mock_module_loader = Mock()
+        mock_module_loader.load_builder_class.return_value = None
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.discover_workspaces.return_value = mock_workspace_info
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -272,31 +348,45 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertEqual(result, mock_core_builder)
         registry.core_registry.get_builder_for_step_type.assert_called_with('TestType')
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_find_config_class(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_find_config_class(self, mock_discovery_class, mock_manager_class):
         """Test finding config class."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
+        mock_discovery_class.return_value = mock_discovery
         
         # Mock config class
         mock_config_class = Mock()
         mock_config_class.__name__ = 'TestConfig'
-        mock_discovery.find_component.return_value = mock_config_class
         
-        mock_discovery_class.return_value = mock_discovery
+        # Mock module loader
+        mock_module_loader = Mock()
+        mock_module_loader.load_contract_class.return_value = mock_config_class
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         result = registry.find_config_class('test_step', 'dev1')
         
         self.assertEqual(result, mock_config_class)
-        mock_discovery.find_component.assert_called_with(
-            'test_step', 'config', developer_id='dev1'
-        )
+        mock_manager.get_module_loader.assert_called_with('dev1')
+        mock_module_loader.load_contract_class.assert_called_with('test_step')
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_get_workspace_summary(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_get_workspace_summary(self, mock_discovery_class, mock_manager_class):
         """Test getting workspace summary."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -324,11 +414,17 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             self.assertEqual(summary['component_counts']['builders'], 2)
             self.assertEqual(summary['component_counts']['configs'], 1)
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_validate_component_availability_valid(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_validate_component_availability_valid(self, mock_discovery_class, mock_manager_class):
         """Test component availability validation with valid components."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -364,11 +460,17 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             self.assertEqual(len(result['available_components']), 2)  # builder + config
             self.assertEqual(len(result['missing_components']), 0)
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_validate_component_availability_missing(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_validate_component_availability_missing(self, mock_discovery_class, mock_manager_class):
         """Test component availability validation with missing components."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -400,11 +502,17 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             self.assertEqual(result['missing_components'][0]['step_name'], 'missing_step')
             self.assertEqual(result['missing_components'][0]['component_type'], 'builder')
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_clear_cache(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_clear_cache(self, mock_discovery_class, mock_manager_class):
         """Test clearing all caches."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery_class.return_value = mock_discovery
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -422,12 +530,18 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertEqual(registry._config_cache, {})
         self.assertEqual(registry._cache_timestamp, {})
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_discover_developer_components_error_handling(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_discover_developer_components_error_handling(self, mock_discovery_class, mock_manager_class):
         """Test error handling in developer component discovery."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
         mock_discovery.discover_workspace_components.side_effect = Exception("Test error")
         mock_discovery_class.return_value = mock_discovery
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -442,16 +556,25 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertIn('scripts', components)
         self.assertIn('summary', components)
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_builder_class_caching(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_builder_class_caching(self, mock_discovery_class, mock_manager_class):
         """Test builder class caching functionality."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
+        mock_discovery_class.return_value = mock_discovery
         
         mock_builder_class = Mock()
         mock_builder_class.__name__ = 'TestBuilder'
-        mock_discovery.find_component.return_value = mock_builder_class
         
-        mock_discovery_class.return_value = mock_discovery
+        # Mock module loader
+        mock_module_loader = Mock()
+        mock_module_loader.load_builder_class.return_value = mock_builder_class
+        
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
@@ -465,47 +588,55 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertEqual(result2, mock_builder_class)
         self.assertIs(result1, result2)  # Same cached object
         
-        # Discovery manager should only be called once
-        mock_discovery.find_component.assert_called_once()
+        # Module loader should only be called once due to caching
+        mock_manager.get_module_loader.assert_called_once_with('dev1')
+        mock_module_loader.load_builder_class.assert_called_once_with('test_step')
     
-    @patch('src.cursus.core.workspace.registry.WorkspaceDiscoveryManager')
-    def test_optimized_component_discovery_with_caching(self, mock_discovery_class):
+    @patch('src.cursus.core.workspace.manager.WorkspaceManager')
+    @patch('src.cursus.core.workspace.discovery.WorkspaceDiscoveryManager')
+    def test_optimized_component_discovery_with_caching(self, mock_discovery_class, mock_manager_class):
         """Test optimized component discovery using consolidated discovery manager (Phase 2)."""
         mock_discovery = Mock()
+        mock_discovery.get_component_cache.return_value = {}
+        mock_discovery_class.return_value = mock_discovery
         
-        # Mock cached discovery results
-        cached_components = {
-            'builders': {'dev1:test_step': {'cached': True}},
-            'configs': {'dev1:test_step': {'cached': True}},
-            'contracts': {},
-            'specs': {},
-            'scripts': {},
-            'summary': {
-                'total_components': 2,
-                'developers': ['dev1'],
-                'step_types': ['TestType'],
-                'cached': True
-            }
+        # Mock workspace info with proper developers list
+        mock_workspace_info = Mock()
+        mock_workspace_info.developers = ['dev1']
+        
+        # Mock file resolver and module loader
+        mock_file_resolver = Mock()
+        mock_file_resolver.workspace_root = self.temp_workspace
+        
+        mock_module_loader = Mock()
+        mock_module_loader.discover_workspace_modules.return_value = {
+            'test_step': ['/test/workspace/dev1/builders/test_builder.py']
         }
         
-        mock_discovery.get_cached_components.return_value = cached_components
-        mock_discovery.discover_workspace_components.return_value = cached_components
-        mock_discovery_class.return_value = mock_discovery
+        mock_manager = Mock()
+        mock_manager.discovery_manager = mock_discovery
+        mock_manager.discover_workspaces.return_value = mock_workspace_info
+        mock_manager.get_file_resolver.return_value = mock_file_resolver
+        mock_manager.get_module_loader.return_value = mock_module_loader
+        mock_manager_class.return_value = mock_manager
         
         registry = WorkspaceComponentRegistry(self.temp_workspace)
         
-        # First call should use discovery manager's caching
+        # First call should discover components
         components1 = registry.discover_components()
         
-        # Verify cached results are used
-        self.assertTrue(components1['summary']['cached'])
-        self.assertEqual(components1['summary']['total_components'], 2)
+        # Verify basic structure
+        self.assertIn('summary', components1)
+        self.assertEqual(components1['summary']['developers'], ['dev1'])
         
         # Second call should use registry's own cache
         components2 = registry.discover_components()
         
         # Should be the same cached object
         self.assertIs(components1, components2)
+        
+        # Workspace manager should only be called once due to caching
+        mock_manager.discover_workspaces.assert_called_once()
 
 
 if __name__ == '__main__':

@@ -420,8 +420,7 @@ class TestWorkspacePipelineDefinition(unittest.TestCase):
         self.assertEqual(step1.developer_id, 'dev1')
         self.assertIsNone(step_missing)
     
-    @patch('src.cursus.core.workspace.config.WorkspaceManager')
-    def test_validate_with_consolidated_managers(self, mock_manager_class):
+    def test_validate_with_consolidated_managers(self):
         """Test validation with consolidated managers (Phase 2 optimization)."""
         mock_manager = Mock()
         mock_lifecycle_manager = Mock()
@@ -436,17 +435,17 @@ class TestWorkspacePipelineDefinition(unittest.TestCase):
         mock_manager.integration_manager = mock_integration_manager
         
         # Mock validation responses
-        mock_lifecycle_manager.validate_workspace_structure.return_value = {
+        mock_lifecycle_manager.validate_pipeline_lifecycle.return_value = {
             'valid': True, 'errors': [], 'warnings': []
         }
-        mock_isolation_manager.validate_workspace_boundaries.return_value = {
-            'valid': True, 'violations': [], 'warnings': []
+        mock_isolation_manager.validate_pipeline_isolation.return_value = {
+            'valid': True, 'errors': [], 'warnings': []
         }
-        mock_discovery_manager.validate_component_dependencies.return_value = {
-            'valid': True, 'missing_dependencies': [], 'warnings': []
+        mock_discovery_manager.validate_pipeline_dependencies.return_value = {
+            'valid': True, 'errors': [], 'warnings': []
         }
-        mock_integration_manager.validate_integration_readiness.return_value = {
-            'ready': True, 'blocking_issues': [], 'warnings': []
+        mock_integration_manager.validate_pipeline_integration.return_value = {
+            'valid': True, 'errors': [], 'warnings': []
         }
         
         steps = self.create_sample_steps()
@@ -458,18 +457,19 @@ class TestWorkspacePipelineDefinition(unittest.TestCase):
         
         result = pipeline.validate_with_consolidated_managers(mock_manager)
         
-        self.assertIn('lifecycle_validation', result)
-        self.assertIn('isolation_validation', result)
-        self.assertIn('discovery_validation', result)
-        self.assertIn('integration_validation', result)
+        self.assertIn('validations', result)
+        self.assertIn('lifecycle', result['validations'])
+        self.assertIn('isolation', result['validations'])
+        self.assertIn('discovery', result['validations'])
+        self.assertIn('integration', result['validations'])
         self.assertIn('overall_valid', result)
         self.assertTrue(result['overall_valid'])
         
         # Verify manager methods were called
-        mock_lifecycle_manager.validate_workspace_structure.assert_called_once()
-        mock_isolation_manager.validate_workspace_boundaries.assert_called_once()
-        mock_discovery_manager.validate_component_dependencies.assert_called_once()
-        mock_integration_manager.validate_integration_readiness.assert_called_once()
+        mock_lifecycle_manager.validate_pipeline_lifecycle.assert_called_once()
+        mock_isolation_manager.validate_pipeline_isolation.assert_called_once()
+        mock_discovery_manager.validate_pipeline_dependencies.assert_called_once()
+        mock_integration_manager.validate_pipeline_integration.assert_called_once()
     
     def test_json_file_operations(self):
         """Test JSON file save and load operations."""
