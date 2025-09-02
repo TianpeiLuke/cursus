@@ -137,6 +137,18 @@ cursus/
 │   │   │       ├── result_models.py            # Test result data models
 │   │   │       └── error_handling.py           # Runtime error handling
 │   │   └── workspace/                  # Workspace validation extensions (NEW)
+│   ├── cli/                           # Command-line interfaces (ENHANCED)
+│   │   ├── workspace_cli.py           # Workspace management CLI (NEW)
+│   │   ├── registry_cli.py            # Distributed registry CLI (NEW)
+│   │   ├── staging_cli.py             # Integration staging CLI (NEW)
+│   │   ├── validate_cli.py            # Workspace-aware validation CLI (NEW)
+│   │   ├── runtime_cli.py             # Runtime testing CLI (ENHANCED)
+│   │   ├── runtime_s3_cli.py          # S3 runtime testing CLI (ENHANCED)
+│   │   ├── alignment_cli.py           # Alignment validation CLI (EXISTING)
+│   │   ├── builder_test_cli.py        # Builder testing CLI (EXISTING)
+│   │   ├── catalog_cli.py             # Pipeline catalog CLI (EXISTING)
+│   │   ├── production_cli.py          # Production validation CLI (EXISTING)
+│   │   └── validation_cli.py          # Naming validation CLI (EXISTING)
 │   └── api/                           # APIs with workspace-aware extensions
 │       └── dag/                       # DAG APIs
 │           ├── base_dag.py            # Shared base DAG functionality
@@ -347,6 +359,28 @@ For comprehensive details on how the runtime validation system supports workspac
 - Isolated test data management with shared test dataset access
 
 **Design Document**: [Workspace-Aware Pipeline Runtime Testing Design](workspace_aware_pipeline_runtime_testing_design.md)
+
+### 7. Command-Line Interface Transformation
+
+**Current State**: Basic CLI commands for runtime testing and validation without workspace awareness
+**Workspace-Aware State**: Comprehensive CLI system supporting full workspace lifecycle, cross-workspace operations, and developer experience optimization
+
+#### Key Components:
+- **WorkspaceManagementCLI**: Complete workspace lifecycle management commands
+- **CrossWorkspaceOperationsCLI**: Component discovery, sharing, and collaboration commands
+- **DistributedRegistryCLI**: Registry federation and component management commands
+- **IntegrationStagingCLI**: Component promotion and approval workflow commands
+- **WorkspaceAwareValidationCLI**: Cross-workspace validation and compatibility testing commands
+
+#### Capabilities:
+- Intuitive workspace creation, configuration, and management
+- Cross-workspace component discovery and integration
+- Distributed registry operations and federation
+- Integration staging workflows with approval processes
+- Comprehensive workspace-aware validation and testing
+- Developer experience optimization with guided workflows
+
+**Design Document**: [Workspace-Aware CLI Design](workspace_aware_cli_design.md)
 
 ## Integration Architecture
 
@@ -692,6 +726,10 @@ This master design document coordinates the following comprehensive workspace-aw
 #### 5. Validation Framework
 - **[Workspace-Aware Validation System Design](workspace_aware_validation_system_design.md)** - Validation framework extensions for workspace component testing and compatibility
 - **Primary Focus**: Component validation, cross-workspace compatibility, quality assurance
+
+#### 6. Command-Line Interface
+- **[Workspace-Aware CLI Design](workspace_aware_cli_design.md)** - Comprehensive CLI system for workspace lifecycle management, cross-workspace operations, and developer experience optimization
+- **Primary Focus**: Developer experience, workspace management, cross-workspace collaboration, integration staging
 
 ### Integration Architecture
 
