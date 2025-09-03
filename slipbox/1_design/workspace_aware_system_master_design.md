@@ -85,17 +85,6 @@ The workspace-aware system creates a clear separation between shared core compon
 cursus/
 ├── src/cursus/                          # SHARED CORE (Principle 2) - ALL CODE CENTRALIZED
 │   ├── core/
-│   │   └── workspace/                  # CENTRALIZED WORKSPACE CORE (CONSOLIDATED)
-│   │       ├── __init__.py
-│   │       ├── assembler.py           # WorkspacePipelineAssembler (existing)
-│   │       ├── compiler.py            # WorkspaceDAGCompiler (existing)
-│   │       ├── config.py              # Workspace configuration models (existing)
-│   │       ├── registry.py            # WorkspaceComponentRegistry (existing)
-│   │       ├── manager.py             # CONSOLIDATED WorkspaceManager (NEW)
-│   │       ├── lifecycle.py           # Workspace lifecycle management (NEW)
-│   │       ├── isolation.py           # Workspace isolation utilities (NEW)
-│   │       ├── discovery.py           # Cross-workspace component discovery (NEW)
-│   │       └── integration.py         # Integration staging coordination (NEW)
 │   │   ├── config_fields/              # Shared configuration management
 │   │   │   ├── config_field_categorizer.py  # Base categorization
 │   │   │   ├── config_merger.py        # Base configuration merging
@@ -113,52 +102,68 @@ cursus/
 │   │   ├── scripts/                    # Shared processing scripts
 │   │   └── registry/                   # Shared registry system
 │   ├── validation/
-│   │   └── workspace/                  # WORKSPACE VALIDATION EXTENSIONS (CONSOLIDATED)
-│   │       ├── __init__.py
-│   │       ├── workspace_alignment_tester.py   (existing)
-│   │       ├── workspace_builder_test.py       (existing)
-│   │       ├── workspace_orchestrator.py       (existing)
-│   │       ├── unified_validation_core.py      (existing)
-│   │       ├── test_manager.py        # CONSOLIDATED test workspace management (NEW)
-│   │       ├── test_isolation.py      # Test workspace isolation (NEW)
-│   │       └── cross_workspace_validator.py   # Cross-workspace compatibility (NEW)
 │   │   ├── alignment/                  # Shared alignment testing
 │   │   ├── builders/                   # Shared step builder testing
-│   │   ├── runtime/                    # Runtime validation and testing infrastructure
-│   │   │   ├── core/                   # Core runtime execution components
-│   │   │   │   ├── pipeline_script_executor.py  # Workspace-aware script execution
-│   │   │   │   ├── data_flow_manager.py         # Test data flow management
-│   │   │   │   └── script_import_manager.py     # Dynamic script loading
-│   │   │   ├── integration/            # SIMPLIFIED INTEGRATION TESTING
-│   │   │   │   ├── real_data_tester.py         # Real data testing (existing)
-│   │   │   │   ├── s3_data_downloader.py       # Test data provisioning (existing)
-│   │   │   │   └── test_orchestrator.py        # RENAMED from workspace_manager.py
-│   │   │   ├── data/                   # Test data management
-│   │   │   │   ├── local_data_manager.py       # Local test data handling
-│   │   │   │   ├── synthetic_data_generator.py # Synthetic data generation
-│   │   │   │   └── s3_output_registry.py       # S3 test data registry
-│   │   │   ├── execution/              # Pipeline execution testing
-│   │   │   │   ├── pipeline_executor.py        # Pipeline execution orchestration
-│   │   │   │   └── data_compatibility_validator.py # Data compatibility validation
-│   │   │   ├── jupyter/                # Jupyter integration for testing
-│   │   │   │   ├── notebook_interface.py       # Notebook testing interface
-│   │   │   │   ├── visualization.py            # Test result visualization
-│   │   │   │   └── templates/                  # Notebook templates
-│   │   │   ├── production/             # Production readiness validation
-│   │   │   │   ├── deployment_validator.py     # Deployment validation
-│   │   │   │   ├── e2e_validator.py            # End-to-end validation
-│   │   │   │   ├── health_checker.py           # System health validation
-│   │   │   │   └── performance_optimizer.py    # Performance validation
-│   │   │   └── utils/                  # Runtime testing utilities
-│   │   │       ├── execution_context.py        # Execution context management
-│   │   │       ├── result_models.py            # Test result data models
-│   │   │       └── error_handling.py           # Runtime error handling
-│   ├── workspace/                      # NEW TOP-LEVEL WORKSPACE MODULE (CONSOLIDATED)
+│   │   └── runtime/                    # Runtime validation and testing infrastructure
+│   │       ├── core/                   # Core runtime execution components
+│   │       │   ├── pipeline_script_executor.py  # Workspace-aware script execution
+│   │       │   ├── data_flow_manager.py         # Test data flow management
+│   │       │   └── script_import_manager.py     # Dynamic script loading
+│   │       ├── integration/            # SIMPLIFIED INTEGRATION TESTING
+│   │       │   ├── real_data_tester.py         # Real data testing (existing)
+│   │       │   ├── s3_data_downloader.py       # Test data provisioning (existing)
+│   │       │   └── test_orchestrator.py        # RENAMED from workspace_manager.py
+│   │       ├── data/                   # Test data management
+│   │       │   ├── local_data_manager.py       # Local test data handling
+│   │       │   ├── synthetic_data_generator.py # Synthetic data generation
+│   │       │   └── s3_output_registry.py       # S3 test data registry
+│   │       ├── execution/              # Pipeline execution testing
+│   │       │   ├── pipeline_executor.py        # Pipeline execution orchestration
+│   │       │   └── data_compatibility_validator.py # Data compatibility validation
+│   │       ├── jupyter/                # Jupyter integration for testing
+│   │       │   ├── notebook_interface.py       # Notebook testing interface
+│   │       │   ├── visualization.py            # Test result visualization
+│   │       │   └── templates/                  # Notebook templates
+│   │       ├── production/             # Production readiness validation
+│   │       │   ├── deployment_validator.py     # Deployment validation
+│   │       │   ├── e2e_validator.py            # End-to-end validation
+│   │       │   ├── health_checker.py           # System health validation
+│   │       │   └── performance_optimizer.py    # Performance validation
+│   │       └── utils/                  # Runtime testing utilities
+│   │           ├── execution_context.py        # Execution context management
+│   │           ├── result_models.py            # Test result data models
+│   │           └── error_handling.py           # Runtime error handling
+│   ├── workspace/                      # CONSOLIDATED WORKSPACE MODULE
 │   │   ├── __init__.py
-│   │   ├── api.py                     # High-level workspace API (NEW)
-│   │   ├── cli.py                     # Workspace CLI commands (NEW)
-│   │   ├── templates.py               # Workspace templates and scaffolding (NEW)
-│   │   └── utils.py                   # Workspace utilities (NEW)
+│   │   ├── api.py                     # High-level workspace API
+│   │   ├── templates.py               # Workspace templates and scaffolding
+│   │   ├── utils.py                   # Workspace utilities
+│   │   ├── core/                      # WORKSPACE CORE COMPONENTS (CONSOLIDATED)
+│   │   │   ├── __init__.py
+│   │   │   ├── manager.py             # CONSOLIDATED WorkspaceManager
+│   │   │   ├── lifecycle.py           # Workspace lifecycle management
+│   │   │   ├── isolation.py           # Workspace isolation utilities
+│   │   │   ├── discovery.py           # Cross-workspace component discovery
+│   │   │   ├── integration.py         # Integration staging coordination
+│   │   │   ├── assembler.py           # WorkspacePipelineAssembler
+│   │   │   ├── compiler.py            # WorkspaceDAGCompiler
+│   │   │   ├── config.py              # Workspace configuration models
+│   │   │   └── registry.py            # WorkspaceComponentRegistry
+│   │   └── validation/                # WORKSPACE VALIDATION EXTENSIONS (CONSOLIDATED)
+│   │       ├── __init__.py
+│   │       ├── workspace_alignment_tester.py   # Workspace-specific alignment testing
+│   │       ├── workspace_builder_test.py       # Workspace-specific builder testing
+│   │       ├── workspace_orchestrator.py       # Main orchestration
+│   │       ├── unified_validation_core.py      # Core validation logic
+│   │       ├── test_manager.py        # CONSOLIDATED test workspace management
+│   │       ├── test_isolation.py      # Test workspace isolation
+│   │       ├── cross_workspace_validator.py   # Cross-workspace compatibility
+│   │       ├── workspace_file_resolver.py     # File resolution for workspaces
+│   │       ├── workspace_module_loader.py     # Module loading for workspaces
+│   │       ├── workspace_type_detector.py     # Unified workspace detection
+│   │       ├── unified_result_structures.py  # Standardized data structures
+│   │       ├── unified_report_generator.py    # Unified report generation
+│   │       └── legacy_adapters.py             # Backward compatibility helpers
 │   ├── cli/                           # Command-line interfaces (ENHANCED)
 │   │   ├── workspace_cli.py           # Workspace management CLI (INTEGRATED)
 │   │   ├── registry_cli.py            # Distributed registry CLI (NEW)

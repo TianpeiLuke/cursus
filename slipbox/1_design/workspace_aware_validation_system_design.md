@@ -141,32 +141,39 @@ These principles create a clear separation between:
 - **Private Validation Space**: Individual workspace validation environments for isolated testing
 - **Shared Validation Space**: Common core validation frameworks that provide consistency and reliability
 
-## Optimized Architecture for cursus/validation/workspace
+## Optimized Architecture for src/cursus/workspace/validation
 
 ### Current File Structure Analysis
 ```
-src/cursus/validation/workspace/
+src/cursus/workspace/validation/
 ├── __init__.py
 ├── workspace_orchestrator.py          # Main orchestration (has dual-path problem)
 ├── workspace_manager.py               # Workspace discovery and management
 ├── workspace_alignment_tester.py      # Workspace-specific alignment testing
 ├── workspace_builder_test.py          # Workspace-specific builder testing
 ├── workspace_file_resolver.py         # File resolution for workspaces
-└── workspace_module_loader.py         # Module loading for workspaces
+├── workspace_module_loader.py         # Module loading for workspaces
+├── cross_workspace_validator.py       # Cross-workspace validation
+├── test_manager.py                    # Test management
+├── test_isolation.py                  # Test isolation
+└── unified_validation_core.py         # Core validation logic
 ```
 
-### Optimized File Structure (Flattened)
+### Optimized File Structure (Consolidated)
 ```
-src/cursus/validation/workspace/
+src/cursus/workspace/validation/
 ├── __init__.py
 ├── workspace_orchestrator.py          # Refactored with unified core
 ├── workspace_manager.py               # Enhanced with unified detection
 ├── workspace_alignment_tester.py      # Unchanged (used by unified core)
 ├── workspace_builder_test.py          # Unchanged (used by unified core)
-├── workspace_file_resolver.py         # Unchanged
-├── workspace_module_loader.py         # Unchanged
+├── workspace_file_resolver.py         # File resolution for workspaces
+├── workspace_module_loader.py         # Module loading for workspaces
+├── cross_workspace_validator.py       # Cross-workspace validation
+├── test_manager.py                    # Test management
+├── test_isolation.py                  # Test isolation
 ├── workspace_type_detector.py         # NEW: Unified workspace detection
-├── unified_validation_core.py         # NEW: Core validation logic
+├── unified_validation_core.py         # Core validation logic
 ├── unified_result_structures.py       # NEW: Standardized data structures
 ├── unified_report_generator.py        # NEW: Unified report generation
 └── legacy_adapters.py                 # NEW: Backward compatibility helpers
@@ -460,7 +467,7 @@ class UnifiedValidationCore:
         try:
             if workspace_info.workspace_type == "single":
                 # Use standard UnifiedAlignmentTester for single workspace
-                from ..alignment import UnifiedAlignmentTester
+                from ...validation.alignment import UnifiedAlignmentTester
                 alignment_tester = UnifiedAlignmentTester()
             else:
                 # Use WorkspaceUnifiedAlignmentTester for multi-workspace
@@ -495,7 +502,7 @@ class UnifiedValidationCore:
         try:
             if workspace_info.workspace_type == "single":
                 # Use standard builder testing for single workspace
-                from ..builders import UniversalStepBuilderTest
+                from ...validation.builders import UniversalStepBuilderTest
                 # Discover builders in single workspace
                 builders = workspace_info.components.get("builders", [])
                 results = {}
@@ -1030,7 +1037,7 @@ class UnifiedValidationCore:
 
 ```python
 # Single validation method for all scenarios
-from cursus.validation.workspace import WorkspaceValidationOrchestrator
+from cursus.workspace.validation import WorkspaceValidationOrchestrator
 
 orchestrator = WorkspaceValidationOrchestrator(workspace_root="/path/to/workspace")
 
@@ -1070,6 +1077,8 @@ print(f"Passed: {multi_result['successful_validations']}")
 
 ```python
 # Access unified core directly for advanced scenarios
+from cursus.workspace.validation import UnifiedValidationCore
+
 core = UnifiedValidationCore(workspace_root="/path/to/workspace")
 detector = core.detector
 

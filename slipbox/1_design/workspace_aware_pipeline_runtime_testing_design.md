@@ -57,16 +57,16 @@ The workspace-aware pipeline runtime testing system must support:
 ```
 cursus/
 ├── src/cursus/validation/runtime/           # SHARED CORE: Base testing framework
-│   ├── workspace/                           # NEW: Workspace-aware extensions
-│   │   ├── workspace_pipeline_executor.py  # Multi-workspace pipeline execution
-│   │   ├── workspace_script_executor.py    # Workspace-aware script execution
-│   │   ├── workspace_test_manager.py       # Workspace test orchestration
-│   │   ├── cross_workspace_validator.py    # Cross-workspace compatibility
-│   │   └── workspace_data_manager.py       # Workspace-aware data management
 │   ├── core/                               # Base execution engine (extended)
 │   ├── execution/                          # Base pipeline execution (extended)
 │   ├── data/                               # Base data management (extended)
 │   └── integration/                        # Base integration layer (extended)
+├── src/cursus/workspace/validation/         # WORKSPACE-AWARE EXTENSIONS
+│   ├── workspace_pipeline_executor.py      # Multi-workspace pipeline execution
+│   ├── workspace_script_executor.py        # Workspace-aware script execution
+│   ├── test_manager.py                     # Workspace test orchestration
+│   ├── cross_workspace_validator.py        # Cross-workspace compatibility
+│   └── workspace_data_manager.py           # Workspace-aware data management
 ├── developer_workspaces/                   # WORKSPACE ISOLATION
 │   └── developers/
 │       ├── developer_1/

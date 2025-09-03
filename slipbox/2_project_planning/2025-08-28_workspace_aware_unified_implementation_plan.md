@@ -32,7 +32,7 @@ This document outlines the comprehensive unified implementation plan to convert 
 
 **ARCHITECTURAL CHANGE**: This plan now implements the consolidated architecture specified in the [Workspace-Aware System Master Design](../1_design/workspace_aware_system_master_design.md) and coordinated with the [Workspace-Aware System Refactoring Migration Plan](2025-09-02_workspace_aware_system_refactoring_migration_plan.md).
 
-The plan is based on the updated designs that eliminate distributed workspace managers in favor of a unified, centralized approach within the core package structure.
+The plan has been updated to reflect the **completed refactored workspace structure** where all workspace functionality is consolidated into `src/cursus/workspace/` with logical `core/` and `validation/` layers, eliminating the previous distributed structure.
 
 ## Project Scope
 
@@ -47,7 +47,7 @@ The plan is based on the updated designs that eliminate distributed workspace ma
 ### Core Architectural Principles
 - **Principle 1: Workspace Isolation** - Everything within a developer's workspace stays in that workspace
 - **Principle 2: Shared Core** - Only code within `src/cursus/` is shared for all workspaces
-- **Principle 3: Consolidated Management** - Single workspace manager within `src/cursus/core/workspace/` handles all workspace operations
+- **Principle 3: Consolidated Management** - Single workspace manager within `src/cursus/workspace/core/` handles all workspace operations
 - **Principle 4: Functional Separation** - Specialized managers handle specific aspects (lifecycle, isolation, discovery, integration)
 - **Principle 5: Packaging Compliance** - All workspace functionality properly packaged within `src/cursus/`
 
@@ -66,53 +66,53 @@ The plan is based on the updated designs that eliminate distributed workspace ma
 **Dependencies**: None  
 **Status**: ✅ COMPLETED (2025-08-28) - UPDATED FOR CONSOLIDATED ARCHITECTURE
 
-> **ARCHITECTURAL UPDATE**: Phase 1 has been updated to implement the consolidated architecture with centralized workspace management within `src/cursus/core/workspace/`.
+> **ARCHITECTURAL UPDATE**: Phase 1 has been updated to implement the consolidated architecture with centralized workspace management within `src/cursus/workspace/core/`.
 
 #### 1.1 Consolidated Workspace Manager
 **Deliverables**:
-- Implement unified `WorkspaceManager` within `src/cursus/core/workspace/`
+- Implement unified `WorkspaceManager` within `src/cursus/workspace/core/`
 - Create specialized managers for different aspects (lifecycle, isolation, discovery, integration)
-- Centralize all workspace operations within the core package
+- Centralize all workspace operations within the consolidated workspace package
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/core/workspace/manager.py
+# File: src/cursus/workspace/core/manager.py (REFACTORED LOCATION)
 class WorkspaceManager:
     """Consolidated workspace manager handling all workspace operations."""
     
     def __init__(self, workspace_root: str = None):
         self.lifecycle_manager = WorkspaceLifecycleManager()
         self.isolation_manager = WorkspaceIsolationManager()
-        self.discovery_manager = WorkspaceDiscoveryManager()
-        self.integration_manager = WorkspaceIntegrationManager()
+        self.discovery_manager = WorkspaceDiscoveryEngine()
+        self.integration_manager = WorkspaceIntegrationEngine()
     
     def create_workspace(self, developer_id: str, **kwargs) -> WorkspaceInfo
     def discover_workspaces(self) -> List[WorkspaceInfo]
     def validate_workspace(self, workspace_id: str) -> ValidationResult
     def get_workspace_context(self, workspace_id: str) -> WorkspaceContext
 
-# File: src/cursus/core/workspace/lifecycle.py
+# File: src/cursus/workspace/core/lifecycle.py (REFACTORED LOCATION)
 class WorkspaceLifecycleManager:
     """Manages workspace creation, updates, and cleanup."""
     
-# File: src/cursus/core/workspace/isolation.py
+# File: src/cursus/workspace/core/isolation.py (REFACTORED LOCATION)
 class WorkspaceIsolationManager:
     """Manages workspace isolation and boundaries."""
     
-# File: src/cursus/core/workspace/discovery.py
-class WorkspaceDiscoveryManager:
+# File: src/cursus/workspace/core/discovery.py (REFACTORED LOCATION)
+class WorkspaceDiscoveryEngine:
     """Manages workspace and component discovery."""
     
-# File: src/cursus/core/workspace/integration.py
-class WorkspaceIntegrationManager:
+# File: src/cursus/workspace/core/integration.py (REFACTORED LOCATION)
+class WorkspaceIntegrationEngine:
     """Manages workspace integration and cross-workspace operations."""
 ```
 
 **Acceptance Criteria**:
-- [x] Unified workspace management within `src/cursus/core/workspace/`
+- [x] Unified workspace management within `src/cursus/workspace/core/` (refactored location)
 - [x] Functional separation through specialized managers
 - [x] All workspace operations accessible through single entry point
-- [x] Proper packaging compliance with core package structure
+- [x] Proper packaging compliance with consolidated workspace package structure
 - [x] Maintains compatibility with existing workspace functionality
 
 #### 1.2 Enhanced File Resolution System (UPDATED)
@@ -123,7 +123,7 @@ class WorkspaceIntegrationManager:
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/core/workspace/file_resolver.py (MOVED FROM validation/workspace/)
+# File: src/cursus/workspace/validation/workspace_file_resolver.py (REFACTORED LOCATION)
 class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
     """File resolver integrated with consolidated workspace manager."""
     
@@ -142,7 +142,7 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
 **Acceptance Criteria**:
 - [x] Integrated with consolidated workspace manager
 - [x] Maintains all existing file resolution capabilities
-- [x] Proper location within `src/cursus/core/workspace/`
+- [x] Proper location within `src/cursus/workspace/validation/` (refactored location)
 - [x] Backward compatibility with existing usage patterns
 - [x] Enhanced performance through centralized discovery
 
@@ -154,7 +154,7 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/core/workspace/module_loader.py (MOVED FROM validation/workspace/)
+# File: src/cursus/workspace/validation/workspace_module_loader.py (REFACTORED LOCATION)
 class WorkspaceModuleLoader:
     """Module loader integrated with consolidated workspace manager."""
     
@@ -172,7 +172,7 @@ class WorkspaceModuleLoader:
 **Acceptance Criteria**:
 - [x] Integrated with consolidated workspace manager
 - [x] Maintains all existing module loading capabilities
-- [x] Proper location within `src/cursus/core/workspace/`
+- [x] Proper location within `src/cursus/workspace/validation/` (refactored location)
 - [x] Enhanced isolation through centralized management
 - [x] Backward compatibility with existing usage patterns
 
@@ -197,7 +197,7 @@ class WorkspaceModuleLoader:
 
 **ACTUAL IMPLEMENTATION:**
 ```
-src/cursus/validation/workspace/
+src/cursus/workspace/validation/
 ├── __init__.py                         # ✅ Clean imports for unified components
 ├── unified_validation_core.py          # ✅ IMPLEMENTED: Core validation logic
 ├── unified_result_structures.py        # ✅ IMPLEMENTED: Pydantic V2 data structures
@@ -206,7 +206,7 @@ src/cursus/validation/workspace/
 
 **IMPLEMENTED CLASSES:**
 ```python
-# File: src/cursus/validation/workspace/unified_validation_core.py
+# File: src/cursus/workspace/validation/unified_validation_core.py
 class UnifiedValidationCore:
     """✅ IMPLEMENTED: Core validation logic for all scenarios."""
     
@@ -219,7 +219,7 @@ class UnifiedValidationCore:
 class ValidationConfig(BaseModel):
     """✅ IMPLEMENTED: Comprehensive validation configuration with Pydantic V2"""
 
-# File: src/cursus/validation/workspace/unified_result_structures.py
+# File: src/cursus/workspace/validation/unified_result_structures.py
 class ValidationSummary(BaseModel):
     """✅ IMPLEMENTED: Unified summary for count=1 or count=N"""
     total_workspaces: int
@@ -296,7 +296,7 @@ The orchestration functionality has been implemented directly within the `Unifie
 
 **IMPLEMENTED ORCHESTRATION FEATURES:**
 ```python
-# File: src/cursus/validation/workspace/unified_validation_core.py
+# File: src/cursus/workspace/validation/unified_validation_core.py
 class UnifiedValidationCore:
     """✅ IMPLEMENTED: Comprehensive validation orchestrator"""
     
@@ -341,7 +341,7 @@ class UnifiedValidationCore:
 
 **ACTUAL IMPLEMENTATION:**
 ```python
-# File: src/cursus/core/workspace/config.py
+# File: src/cursus/workspace/core/config.py
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from typing import Dict, List, Any, Optional, Set
 
@@ -409,7 +409,7 @@ class WorkspacePipelineDefinition(BaseModel):
 
 **ACTUAL IMPLEMENTATION:**
 ```python
-# File: src/cursus/core/workspace/registry.py
+# File: src/cursus/workspace/core/registry.py
 from typing import Dict, List, Any, Optional, Type, Set
 from datetime import datetime, timedelta
 import threading
@@ -477,7 +477,7 @@ The WorkspacePipelineAssembler design has been completed and is ready for implem
 
 **IMPLEMENTATION STRATEGY:**
 ```python
-# File: src/cursus/core/workspace/assembler.py
+# File: src/cursus/workspace/core/assembler.py
 class WorkspacePipelineAssembler(PipelineAssembler):
     """✅ DESIGN READY: Pipeline assembler with workspace component support."""
     
@@ -518,7 +518,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/core/workspace/dag.py
+# File: src/cursus/workspace/core/dag.py
 class WorkspaceAwareDAG(PipelineDAG):
     """DAG with workspace step support and cross-workspace dependencies."""
     
@@ -1252,7 +1252,7 @@ def enhanced_builder_test(workspace: str, cross_workspace: bool):
 **Risk Level**: Medium (REDUCED FROM HIGH)  
 **Dependencies**: Phase 1 completion
 
-> **ARCHITECTURAL UPDATE**: Phase 7 has been updated to implement consolidated registry management within `src/cursus/core/workspace/registry.py` instead of a distributed registry system. This aligns with the consolidated architecture and reduces complexity.
+> **ARCHITECTURAL UPDATE**: Phase 7 has been updated to implement consolidated registry management within `src/cursus/workspace/core/registry.py` instead of a distributed registry system. This aligns with the consolidated architecture and reduces complexity.
 
 #### 7.1 Consolidated Registry Integration Analysis
 **Deliverables**:
@@ -1262,7 +1262,7 @@ def enhanced_builder_test(workspace: str, cross_workspace: bool):
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/core/workspace/registry.py (UPDATED)
+# File: src/cursus/workspace/core/registry.py (UPDATED)
 class WorkspaceComponentRegistry:
     """Consolidated registry integrated with workspace manager."""
     
@@ -1280,7 +1280,7 @@ class WorkspaceComponentRegistry:
     def get_config_step_registry(self, workspace_id: str = None) -> Dict[str, str]:
         """Get config step registry with workspace context."""
 
-# File: src/cursus/core/workspace/compatibility.py
+# File: src/cursus/workspace/core/compatibility.py
 class WorkspaceCompatibilityLayer:
     """Compatibility layer for existing registry usage patterns."""
     
@@ -1294,7 +1294,7 @@ class WorkspaceCompatibilityLayer:
 **Acceptance Criteria**:
 - [x] All existing STEP_NAMES usage patterns continue to work
 - [x] Registry integrated with consolidated workspace manager
-- [x] Proper location within `src/cursus/core/workspace/`
+- [x] Proper location within `src/cursus/workspace/core/`
 - [x] Reduced complexity compared to distributed approach
 - [x] Maintains all derived registry functionality
 
@@ -1306,7 +1306,7 @@ class WorkspaceCompatibilityLayer:
 
 **Implementation Tasks**:
 ```python
-# File: src/cursus/core/workspace/compatibility.py (UPDATED)
+# File: src/cursus/workspace/core/compatibility.py (UPDATED)
 class WorkspaceCompatibilityLayer:
     """Consolidated compatibility layer integrated with workspace manager."""
     
@@ -1463,12 +1463,12 @@ class StepBuilderBase(ABC):
 Based on the consolidation of both plans, focus on core mechanisms and functionality to share with all users:
 
 **Include in Package**:
-- **Consolidated Foundation Infrastructure**: Unified `WorkspaceManager` within `src/cursus/core/workspace/` with specialized managers (lifecycle, isolation, discovery, integration)
-- **Workspace-Aware Validation Extensions**: Integrated validation through `UnifiedValidationCore` within `src/cursus/validation/workspace/`
-- **Workspace-Aware Core Extensions**: `WorkspaceComponentRegistry`, `WorkspaceAwareDAG`, and configuration models within `src/cursus/core/workspace/`
-- **Enhanced File Resolution and Module Loading**: Consolidated within `src/cursus/core/workspace/`
-- **Registry Extension Points**: Consolidated registry with backward compatibility layer within `src/cursus/core/workspace/`
-- **Validation and Compilation Orchestration**: Unified frameworks within the core package structure
+- **Consolidated Foundation Infrastructure**: Unified `WorkspaceManager` within `src/cursus/workspace/core/` with specialized managers (lifecycle, isolation, discovery, integration)
+- **Workspace-Aware Validation Extensions**: Integrated validation through `UnifiedValidationCore` within `src/cursus/workspace/validation/`
+- **Workspace-Aware Core Extensions**: `WorkspaceComponentRegistry`, `WorkspaceAwareDAG`, and configuration models within `src/cursus/workspace/core/`
+- **Enhanced File Resolution and Module Loading**: Consolidated within `src/cursus/workspace/validation/`
+- **Registry Extension Points**: Consolidated registry with backward compatibility layer within `src/cursus/workspace/core/`
+- **Validation and Compilation Orchestration**: Unified frameworks within the consolidated workspace package structure
 - **CLI Tools and Interfaces**: Complete workspace CLI within `src/cursus/cli/workspace_cli.py`
 
 **Exclude from Package** (User Implementation):
@@ -1729,9 +1729,9 @@ The unified implementation plan coordinates these design areas:
 This unified implementation plan provides a comprehensive roadmap for converting the current Cursus system into a workspace-aware architecture with **consolidated workspace management** while eliminating duplication and improving coordination between validation, core, and registry system extensions.
 
 **Key Success Factors:**
-1. **Consolidated Architecture**: Single workspace manager within `src/cursus/core/workspace/` handles all workspace operations
+1. **Consolidated Architecture**: Single workspace manager within `src/cursus/workspace/core/` handles all workspace operations
 2. **Functional Separation**: Specialized managers handle specific aspects while maintaining unified control
-3. **Packaging Compliance**: All workspace functionality properly packaged within `src/cursus/`
+3. **Packaging Compliance**: All workspace functionality properly packaged within `src/cursus/workspace/`
 4. **Coordinated Development**: Integrated timeline prevents conflicts and reduces duplication
 5. **Comprehensive Testing**: Extensive testing ensures reliability and performance across all systems
 6. **Backward Compatibility**: Existing functionality remains unchanged across all systems

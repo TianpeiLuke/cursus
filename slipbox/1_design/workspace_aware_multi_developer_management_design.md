@@ -110,13 +110,11 @@ The following consolidated workspace management system has been **successfully i
 cursus/
 ├── src/cursus/                          # SHARED CORE: Production codebase (Principle 2) - ALL CODE CENTRALIZED
 │   ├── core/
-│   │   └── workspace/                  # CENTRALIZED WORKSPACE CORE (CONSOLIDATED)
-│   │       ├── __init__.py
-│   │       ├── manager.py             # CONSOLIDATED WorkspaceManager (NEW)
-│   │       ├── lifecycle.py           # Workspace lifecycle management (NEW)
-│   │       ├── isolation.py           # Workspace isolation utilities (NEW)
-│   │       ├── discovery.py           # Cross-workspace component discovery (NEW)
-│   │       └── integration.py         # Integration staging coordination (NEW)
+│   │   ├── config_fields/              # Shared configuration management
+│   │   ├── assembler/                  # Shared pipeline assembly
+│   │   ├── compiler/                   # Shared DAG compilation
+│   │   ├── base/                       # Shared base classes
+│   │   └── deps/                       # Shared dependency management
 │   ├── steps/                           # Core step implementations
 │   │   ├── builders/                    # Shared step builders
 │   │   ├── configs/                     # Shared configurations
@@ -125,7 +123,22 @@ cursus/
 │   │   ├── scripts/                     # Shared processing scripts
 │   │   └── registry/                    # Core registry system
 │   ├── validation/
-│   │   └── workspace/                  # WORKSPACE VALIDATION EXTENSIONS (CONSOLIDATED)
+│   │   ├── alignment/                   # UnifiedAlignmentTester
+│   │   ├── builders/                    # UniversalStepBuilderTest
+│   │   └── runtime/                     # Runtime validation and testing infrastructure
+│   ├── workspace/                      # CONSOLIDATED WORKSPACE MODULE
+│   │   ├── __init__.py
+│   │   ├── api.py                     # High-level workspace API
+│   │   ├── templates.py               # Workspace templates and scaffolding
+│   │   ├── utils.py                   # Workspace utilities
+│   │   ├── core/                      # WORKSPACE CORE COMPONENTS (CONSOLIDATED)
+│   │   │   ├── __init__.py
+│   │   │   ├── manager.py             # CONSOLIDATED WorkspaceManager
+│   │   │   ├── lifecycle.py           # Workspace lifecycle management
+│   │   │   ├── isolation.py           # Workspace isolation utilities
+│   │   │   ├── discovery.py           # Cross-workspace component discovery
+│   │   │   └── integration.py         # Integration staging coordination
+│   │   └── validation/                # WORKSPACE VALIDATION EXTENSIONS (CONSOLIDATED)
 │   │       ├── __init__.py
 │   │       ├── workspace_alignment_tester.py   (existing)
 │   │       ├── workspace_builder_test.py       (existing)
@@ -134,15 +147,7 @@ cursus/
 │   │       ├── test_manager.py        # CONSOLIDATED test workspace management (NEW)
 │   │       ├── test_isolation.py      # Test workspace isolation (NEW)
 │   │       └── cross_workspace_validator.py   # Cross-workspace compatibility (NEW)
-│   │   ├── alignment/                   # UnifiedAlignmentTester
-│   │   └── builders/                    # UniversalStepBuilderTest
-│   ├── workspace/                      # NEW TOP-LEVEL WORKSPACE MODULE (CONSOLIDATED)
-│   │   ├── __init__.py
-│   │   ├── api.py                     # High-level workspace API (NEW)
-│   │   ├── cli.py                     # Workspace CLI commands (NEW)
-│   │   ├── templates.py               # Workspace templates and scaffolding (NEW)
-│   │   └── utils.py                   # Workspace utilities (NEW)
-│   └── core/                           # Core utilities and base classes
+│   └── cli/                           # Command-line interfaces
 ├── developer_workspaces/                # WORKSPACE DATA & INSTANCES (DATA ONLY)
 │   ├── README.md                      # Documentation only
 │   ├── templates/                     # Workspace templates (data)
@@ -220,7 +225,7 @@ The **consolidated workspace management architecture** provides several key adva
 
 ### 1. Consolidated Workspace Manager
 
-**Location**: `src/cursus/core/workspace/manager.py` (CONSOLIDATED)
+**Location**: `src/cursus/workspace/core/manager.py` (CONSOLIDATED)
 
 The consolidated workspace manager provides centralized control over developer environments with functional separation through specialized managers.
 
@@ -233,7 +238,7 @@ The consolidated workspace manager provides centralized control over developer e
 
 #### Consolidated Workspace Creation Process:
 ```python
-# File: src/cursus/core/workspace/manager.py
+# File: src/cursus/workspace/core/manager.py
 class WorkspaceManager:
     """Centralized workspace management with functional separation"""
     
@@ -253,7 +258,7 @@ class WorkspaceManager:
         """
         return self.lifecycle_manager.create_workspace(developer_id, workspace_type)
 
-# File: src/cursus/core/workspace/lifecycle.py
+# File: src/cursus/workspace/core/lifecycle.py
 class WorkspaceLifecycleManager:
     """Workspace lifecycle management"""
     

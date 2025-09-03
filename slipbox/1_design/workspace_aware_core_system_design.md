@@ -90,8 +90,8 @@ The following consolidated workspace management system has been **successfully i
 
 ```
 Consolidated Workspace-Aware Core System (src/cursus/) - IMPLEMENTED
-├── core/
-│   ├── workspace/
+├── workspace/
+│   ├── core/
 │   │   ├── __init__.py                   # ✅ Updated with Phase 1 exports
 │   │   ├── manager.py                    # ✅ IMPLEMENTED - Consolidated WorkspaceManager
 │   │   ├── lifecycle.py                  # ✅ IMPLEMENTED - WorkspaceLifecycleManager
@@ -101,11 +101,27 @@ Consolidated Workspace-Aware Core System (src/cursus/) - IMPLEMENTED
 │   │   ├── assembler.py                  # 🔄 PLANNED - WorkspacePipelineAssembler
 │   │   ├── compiler.py                   # 🔄 PLANNED - WorkspaceDAGCompiler
 │   │   ├── registry.py                   # 🔄 PLANNED - WorkspaceComponentRegistry
-│   │   ├── models.py                     # 🔄 PLANNED - Configuration models
+│   │   ├── config.py                     # 🔄 PLANNED - Configuration models
 │   │   └── dag.py                        # 🔄 PLANNED - WorkspaceAwareDAG
-│   └── pipeline/
-│       ├── assembler.py                  # Base PipelineAssembler (extended)
-│       └── compiler.py                   # Base DAGCompiler (extended)
+│   └── validation/
+│       ├── __init__.py
+│       ├── workspace_alignment_tester.py
+│       ├── workspace_builder_test.py
+│       ├── workspace_orchestrator.py
+│       ├── unified_validation_core.py
+│       ├── test_manager.py
+│       ├── test_isolation.py
+│       ├── cross_workspace_validator.py
+│       ├── workspace_file_resolver.py
+│       └── workspace_module_loader.py
+├── core/
+│   ├── pipeline/
+│   │   ├── assembler.py                  # Base PipelineAssembler (extended)
+│   │   └── compiler.py                   # Base DAGCompiler (extended)
+│   ├── assembler/                        # Shared pipeline assembly
+│   ├── compiler/                         # Shared DAG compilation
+│   ├── base/                             # Shared base classes
+│   └── deps/                             # Shared dependency management
 └── External Structure (data-only)/
     └── developer_workspaces/
         └── developers/                   # Developer workspace directories
@@ -119,18 +135,18 @@ Consolidated Workspace-Aware Core System (src/cursus/) - IMPLEMENTED
 The **Phase 1 implementation** establishes the foundational consolidated workspace management system with:
 
 #### ✅ Implemented Components:
-- **`WorkspaceManager`** (`manager.py`): Central coordinator with functional delegation to specialized managers
-- **`WorkspaceLifecycleManager`** (`lifecycle.py`): Workspace creation, setup, teardown, and lifecycle operations
-- **`WorkspaceIsolationManager`** (`isolation.py`): Workspace boundary validation and isolation enforcement
-- **`WorkspaceDiscoveryManager`** (`discovery.py`): Cross-workspace component discovery and dependency resolution
-- **`WorkspaceIntegrationManager`** (`integration.py`): Integration staging coordination and component promotion
+- **`WorkspaceManager`** (`src/cursus/workspace/core/manager.py`): Central coordinator with functional delegation to specialized managers
+- **`WorkspaceLifecycleManager`** (`src/cursus/workspace/core/lifecycle.py`): Workspace creation, setup, teardown, and lifecycle operations
+- **`WorkspaceIsolationManager`** (`src/cursus/workspace/core/isolation.py`): Workspace boundary validation and isolation enforcement
+- **`WorkspaceDiscoveryManager`** (`src/cursus/workspace/core/discovery.py`): Cross-workspace component discovery and dependency resolution
+- **`WorkspaceIntegrationManager`** (`src/cursus/workspace/core/integration.py`): Integration staging coordination and component promotion
 
 #### 🔄 Planned Components (Future Phases):
-- **`WorkspacePipelineAssembler`** (`assembler.py`): Pipeline assembly using workspace components
-- **`WorkspaceDAGCompiler`** (`compiler.py`): DAG compilation with workspace component resolution
-- **`WorkspaceComponentRegistry`** (`registry.py`): Component discovery and management across workspaces
-- **Configuration Models** (`models.py`): Pydantic models for workspace configuration
-- **`WorkspaceAwareDAG`** (`dag.py`): Enhanced DAG with cross-workspace step support
+- **`WorkspacePipelineAssembler`** (`src/cursus/workspace/core/assembler.py`): Pipeline assembly using workspace components
+- **`WorkspaceDAGCompiler`** (`src/cursus/workspace/core/compiler.py`): DAG compilation with workspace component resolution
+- **`WorkspaceComponentRegistry`** (`src/cursus/workspace/core/registry.py`): Component discovery and management across workspaces
+- **Configuration Models** (`src/cursus/workspace/core/config.py`): Pydantic models for workspace configuration
+- **`WorkspaceAwareDAG`** (`src/cursus/workspace/core/dag.py`): Enhanced DAG with cross-workspace step support
 
 ## Core Components Design
 
@@ -1290,12 +1306,12 @@ This design document is part of a comprehensive multi-developer system architect
 
 ### Phase 1 Implementation Status
 **✅ COMPLETED COMPONENTS:**
-- **`src/cursus/core/workspace/manager.py`** - Consolidated WorkspaceManager with functional delegation
-- **`src/cursus/core/workspace/lifecycle.py`** - WorkspaceLifecycleManager for workspace creation and management
-- **`src/cursus/core/workspace/isolation.py`** - WorkspaceIsolationManager for boundary enforcement
-- **`src/cursus/core/workspace/discovery.py`** - WorkspaceDiscoveryManager for cross-workspace component discovery
-- **`src/cursus/core/workspace/integration.py`** - WorkspaceIntegrationManager for integration staging coordination
-- **`src/cursus/core/workspace/__init__.py`** - Updated exports for Phase 1 consolidated architecture
+- **`src/cursus/workspace/core/manager.py`** - Consolidated WorkspaceManager with functional delegation
+- **`src/cursus/workspace/core/lifecycle.py`** - WorkspaceLifecycleManager for workspace creation and management
+- **`src/cursus/workspace/core/isolation.py`** - WorkspaceIsolationManager for boundary enforcement
+- **`src/cursus/workspace/core/discovery.py`** - WorkspaceDiscoveryManager for cross-workspace component discovery
+- **`src/cursus/workspace/core/integration.py`** - WorkspaceIntegrationManager for integration staging coordination
+- **`src/cursus/workspace/core/__init__.py`** - Updated exports for Phase 1 consolidated architecture
 
 ### Integration Points
 The Workspace-Aware Core System integrates with:
