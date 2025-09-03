@@ -327,7 +327,7 @@ class BasePipelineConfig(BaseModel):
         """Lazy load step registry to avoid circular imports."""
         if not cls._STEP_NAMES:
             try:
-                from ...steps.registry.step_names import CONFIG_STEP_REGISTRY
+                from ...registry.step_names import CONFIG_STEP_REGISTRY
                 cls._STEP_NAMES = CONFIG_STEP_REGISTRY
             except ImportError:
                 logger.warning("Could not import step registry, using empty registry")

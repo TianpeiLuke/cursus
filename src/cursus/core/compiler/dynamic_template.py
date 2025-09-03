@@ -18,10 +18,10 @@ from ..base import StepBuilderBase, BasePipelineConfig
 from ..assembler.pipeline_template_base import PipelineTemplateBase
 
 from .config_resolver import StepConfigResolver
-from ...steps.registry.builder_registry import StepBuilderRegistry
+from ...registry.builder_registry import StepBuilderRegistry
 from .validation import ValidationEngine
 from .exceptions import ConfigurationError, ValidationError
-from ...steps.registry.exceptions import RegistryError
+from ...registry.exceptions import RegistryError
 
 # Import constants from core library (with fallback)
 try:

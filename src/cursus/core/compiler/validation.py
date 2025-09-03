@@ -11,8 +11,8 @@ import logging
 import re
 
 # Import registry components needed for step type resolution
-from ...steps.registry.step_names import CONFIG_STEP_REGISTRY
-from ...steps.registry.builder_registry import StepBuilderRegistry
+from ...registry.step_names import CONFIG_STEP_REGISTRY
+from ...registry.builder_registry import StepBuilderRegistry
 
 logger = logging.getLogger(__name__)
 

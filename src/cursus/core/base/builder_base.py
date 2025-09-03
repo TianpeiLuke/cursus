@@ -159,7 +159,7 @@ class StepBuilderBase(ABC):
         """Lazy load step names to avoid circular imports while maintaining Single Source of Truth."""
         if not hasattr(self, '_step_names'):
             try:
-                from ...steps.registry.step_names import BUILDER_STEP_NAMES
+                from ...registry.step_names import BUILDER_STEP_NAMES
                 self._step_names = BUILDER_STEP_NAMES
             except ImportError:
                 # Fallback if import fails

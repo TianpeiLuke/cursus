@@ -17,7 +17,7 @@ from .config_resolver import StepConfigResolver
 from ...registry.builder_registry import StepBuilderRegistry
 from .validation import ValidationResult, ResolutionPreview, ConversionReport, ValidationEngine
 from .exceptions import PipelineAPIError, ConfigurationError, ValidationError
-from ...steps.registry.exceptions import RegistryError
+from ...registry.exceptions import RegistryError
 
 logger = logging.getLogger(__name__)
 
