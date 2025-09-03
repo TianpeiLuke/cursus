@@ -1532,7 +1532,7 @@ WORKSPACE_METADATA = {{
 # File: src/cursus/cli/registry_cli.py
 import click
 from pathlib import Path
-from ..steps.registry.hybrid import (
+from ..registry.hybrid import (
     HybridRegistryManager, 
     create_workspace_registry,
     get_global_registry_manager
@@ -2132,7 +2132,7 @@ class TestHybridRegistryPerformance:
     
     def test_workspace_context_switching_performance(self):
         """Test workspace context switching overhead."""
-        from src.cursus.steps.registry import set_workspace_context, clear_workspace_context
+        from src.cursus.registry import set_workspace_context, clear_workspace_context
         
         start_time = time.time()
         for i in range(100):
@@ -2146,7 +2146,7 @@ class TestHybridRegistryPerformance:
     
     def test_conflict_resolution_performance(self):
         """Test conflict resolution performance."""
-        from src.cursus.steps.registry.hybrid import get_global_registry_manager
+        from src.cursus.registry.hybrid import get_global_registry_manager
         
         registry_manager = get_global_registry_manager()
         
@@ -2366,7 +2366,7 @@ Create the corresponding implementation files:
 
 ### 4. Test Your Implementation
 ```python
-from cursus.steps.registry import set_workspace_context, get_config_class_name
+from cursus.registry import set_workspace_context, get_config_class_name
 
 set_workspace_context("{developer_id}")
 config_class = get_config_class_name("MyCustomStep")  # Uses your local registry
@@ -2611,7 +2611,7 @@ STEP_OVERRIDES = {
 ### Basic Usage (No Workspace Context)
 ```python
 # Works exactly like before - uses core registry
-from cursus.steps.registry import STEP_NAMES, get_config_class_name
+from cursus.registry import STEP_NAMES, get_config_class_name
 
 step_names = STEP_NAMES  # Core registry only
 config_class = get_config_class_name("XGBoostTraining")  # Core implementation
@@ -2620,7 +2620,7 @@ config_class = get_config_class_name("XGBoostTraining")  # Core implementation
 ### Workspace-Aware Usage
 ```python
 # Set workspace context for local registry access
-from cursus.steps.registry import set_workspace_context, get_config_class_name
+from cursus.registry import set_workspace_context, get_config_class_name
 
 set_workspace_context("developer_1")
 config_class = get_config_class_name("XGBoostTraining")  # May use local override
@@ -2629,7 +2629,7 @@ config_class = get_config_class_name("XGBoostTraining")  # May use local overrid
 ### Context Manager Usage
 ```python
 # Temporary workspace context
-from cursus.steps.registry import workspace_context, get_config_class_name
+from cursus.registry import workspace_context, get_config_class_name
 
 with workspace_context("developer_1"):
     config_class = get_config_class_name("MyCustomStep")  # Local step
@@ -2647,7 +2647,7 @@ with workspace_context("developer_1"):
 
 ### Advanced Resolution
 ```python
-from cursus.steps.registry.hybrid import get_global_registry_manager
+from cursus.registry.hybrid import get_global_registry_manager
 
 registry_manager = get_global_registry_manager()
 
@@ -2924,7 +2924,7 @@ class FinancialDataPreprocessingConfig(BasePipelineConfig):
     pass
 
 # 4. Test with workspace context
-from cursus.steps.registry import set_workspace_context, get_config_class_name
+from cursus.registry import set_workspace_context, get_config_class_name
 
 set_workspace_context("john_doe")
 config_class = get_config_class_name("FinancialDataPreprocessing")  # Uses local registry
@@ -2959,7 +2959,7 @@ class EnhancedXGBoostTrainingConfig(XGBoostTrainingConfig):
     advanced_early_stopping: bool = True
 
 # 3. Test override behavior
-from cursus.steps.registry import workspace_context, get_config_class_name
+from cursus.registry import workspace_context, get_config_class_name
 
 # Without workspace context - uses core implementation
 config_class = get_config_class_name("XGBoostTraining")  # "XGBoostTrainingConfig"
@@ -3003,7 +3003,7 @@ LOCAL_STEPS = {
 }
 
 # Resolution examples
-from cursus.steps.registry.hybrid import get_global_registry_manager
+from cursus.registry.hybrid import get_global_registry_manager
 
 registry_manager = get_global_registry_manager()
 
@@ -3033,7 +3033,7 @@ definition_tf = registry_manager.get_step_definition_with_resolution(
 ```python
 # Scenario: Building pipeline using steps from multiple developers
 
-from cursus.steps.registry import workspace_context
+from cursus.registry import workspace_context
 from cursus.pipeline.assembler import PipelineAssembler
 
 # Create pipeline using steps from different workspaces
