@@ -2291,10 +2291,8 @@ For questions or issues:
 1. Check the [Hybrid Registry Developer Guide](../../slipbox/0_developer_guide/hybrid_registry_guide.md)
 2. Validate your setup: `python -m cursus.cli.registry validate-registry --workspace {developer_id}`
 3. Contact the development team for assistance
-"""
-    readme_file.write_text(readme_content)
-    return readme_file
 
+```python
 def _create_example_implementations(workspace_dir: Path, developer_id: str) -> None:
     """Create example step implementations for reference."""
     examples_dir = workspace_dir / "examples"
@@ -2322,6 +2320,27 @@ class ExampleCustomStepConfig(BasePipelineConfig):
         """Pydantic configuration."""
         extra = "forbid"
         validate_assignment = True
+''')
+    
+    # Create example builder
+    example_builder = examples_dir / "example_custom_step_builder.py"
+    example_builder.write_text(f'''"""
+Example custom step builder for {developer_id} workspace.
+"""
+from cursus.core.base.builder_base import StepBuilderBase
+from .example_custom_step_config import ExampleCustomStepConfig
+
+class ExampleCustomStepBuilder(StepBuilderBase):
+    """Example builder for custom processing step."""
+    
+    def __init__(self, config: ExampleCustomStepConfig):
+        super().__init__(config)
+        self.config = config
+    
+    def build_step(self):
+        """Build the custom processing step."""
+        # Implementation here
+        pass
 ''')
     
     # Create example builder
@@ -2414,9 +2433,10 @@ def _copy_registry_from_developer(workspace_path: str, developer_id: str, source
 **Implementation Tasks**:
 
 1. **Developer Guide for Hybrid Registry**
-```markdown
+```
 # File: slipbox/0_developer_guide/hybrid_registry_guide.md
 # Hybrid Registry Developer Guide
+```
 
 ## Overview
 
