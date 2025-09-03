@@ -436,6 +436,398 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
             ) if self.workspace_mode else False
         }
     
+    def discover_workspace_components(self) -> Dict[str, Any]:
+        """
+        Enhanced method with consolidated discovery logic from WorkspaceDiscoveryManager.
+        
+        PHASE 4 CONSOLIDATION: Moved workspace discovery logic here instead of separate class.
+        """
+        if not self.workspace_mode or not self.workspace_root:
+            return {"error": "Not in workspace mode or no workspace root"}
+        
+        discovery_result = {
+            "workspace_root": str(self.workspace_root),
+            "workspaces": [],
+            "summary": {
+                "total_workspaces": 0,
+                "workspace_types": {},
+                "total_developers": 0,
+                "total_components": 0
+            }
+        }
+        
+        try:
+            # Discover developer workspaces
+            developers_dir = self.workspace_root / "developers"
+            if developers_dir.exists():
+                dev_workspaces = self._discover_developer_workspaces(developers_dir)
+                discovery_result["workspaces"].extend(dev_workspaces)
+                discovery_result["summary"]["total_developers"] = len(dev_workspaces)
+            
+            # Discover shared workspace
+            shared_dir = self.workspace_root / "shared"
+            if shared_dir.exists():
+                shared_workspace = self._discover_shared_workspace(shared_dir)
+                discovery_result["workspaces"].append(shared_workspace)
+            
+            # Update summary
+            discovery_result["summary"]["total_workspaces"] = len(discovery_result["workspaces"])
+            discovery_result["summary"]["workspace_types"] = {
+                workspace_type: len([
+                    ws for ws in discovery_result["workspaces"]
+                    if ws.get("workspace_type") == workspace_type
+                ])
+                for workspace_type in ["developer", "shared", "test"]
+            }
+            
+            # Calculate total components
+            total_components = sum(
+                ws.get("component_count", 0) for ws in discovery_result["workspaces"]
+            )
+            discovery_result["summary"]["total_components"] = total_components
+            
+            logger.info(f"Discovered {discovery_result['summary']['total_workspaces']} workspaces with {total_components} components")
+            return discovery_result
+            
+        except Exception as e:
+            logger.error(f"Failed to discover workspaces: {e}")
+            discovery_result["error"] = str(e)
+            return discovery_result
+    
+    def _discover_developer_workspaces(self, developers_dir: Path) -> List[Dict[str, Any]]:
+        """Discover developer workspaces."""
+        workspaces = []
+        
+        try:
+            for item in developers_dir.iterdir():
+                if not item.is_dir():
+                    continue
+                
+                developer_id = item.name
+                workspace_info = self._analyze_workspace(item, developer_id, "developer")
+                workspaces.append(workspace_info)
+        
+        except Exception as e:
+            logger.error(f"Error discovering developer workspaces: {e}")
+        
+        return workspaces
+    
+    def _discover_shared_workspace(self, shared_dir: Path) -> Dict[str, Any]:
+        """Discover shared workspace."""
+        return self._analyze_workspace(shared_dir, "shared", "shared")
+    
+    def _analyze_workspace(
+        self,
+        workspace_path: Path,
+        workspace_id: str,
+        workspace_type: str
+    ) -> Dict[str, Any]:
+        """Analyze individual workspace."""
+        workspace_info = {
+            "workspace_id": workspace_id,
+            "workspace_path": str(workspace_path),
+            "developer_id": workspace_id if workspace_type == "developer" else None,
+            "workspace_type": workspace_type,
+            "component_count": 0,
+            "module_types": {},
+            "last_modified": None,
+            "metadata": {}
+        }
+        
+        try:
+            cursus_dev_dir = workspace_path / "src" / "cursus_dev" / "steps"
+            
+            if cursus_dev_dir.exists():
+                # Count components by type
+                module_dirs = ["builders", "contracts", "specs", "scripts", "configs"]
+                total_components = 0
+                
+                for module_dir in module_dirs:
+                    module_path = cursus_dev_dir / module_dir
+                    if module_path.exists():
+                        py_files = [
+                            f for f in module_path.glob("*.py")
+                            if f.name != "__init__.py"
+                        ]
+                        count = len(py_files)
+                        workspace_info["module_types"][module_dir] = count
+                        total_components += count
+                
+                workspace_info["component_count"] = total_components
+            
+            # Get last modified time
+            try:
+                workspace_info["last_modified"] = str(int(workspace_path.stat().st_mtime))
+            except OSError:
+                pass
+        
+        except Exception as e:
+            logger.warning(f"Error analyzing workspace {workspace_id}: {e}")
+            workspace_info["error"] = str(e)
+        
+        return workspace_info
+    
+    def discover_components_by_type(self, component_type: str) -> Dict[str, List[str]]:
+        """
+        Enhanced method to discover components by type across workspaces.
+        
+        PHASE 4 CONSOLIDATION: Consolidated component discovery logic.
+        
+        Args:
+            component_type: Type of component ('builders', 'contracts', 'specs', 'scripts', 'configs')
+        
+        Returns:
+            Dictionary mapping workspace_id to list of component names
+        """
+        if not self.workspace_mode or not self.workspace_root:
+            return {}
+        
+        components = {}
+        
+        try:
+            # Discover in developer workspaces
+            developers_dir = self.workspace_root / "developers"
+            if developers_dir.exists():
+                for item in developers_dir.iterdir():
+                    if item.is_dir():
+                        developer_id = item.name
+                        dev_components = self._discover_components_in_workspace(
+                            item, developer_id, component_type
+                        )
+                        if dev_components:
+                            components[developer_id] = dev_components
+            
+            # Discover in shared workspace
+            shared_dir = self.workspace_root / "shared"
+            if shared_dir.exists():
+                shared_components = self._discover_components_in_workspace(
+                    shared_dir, "shared", component_type
+                )
+                if shared_components:
+                    components["shared"] = shared_components
+            
+            return components
+            
+        except Exception as e:
+            logger.error(f"Failed to discover {component_type} components: {e}")
+            return {}
+    
+    def _discover_components_in_workspace(
+        self,
+        workspace_path: Path,
+        workspace_id: str,
+        component_type: str
+    ) -> List[str]:
+        """Discover components of specific type in a workspace."""
+        components = []
+        
+        try:
+            component_dir = workspace_path / "src" / "cursus_dev" / "steps" / component_type
+            
+            if component_dir.exists():
+                for component_file in component_dir.glob("*.py"):
+                    if component_file.name != "__init__.py":
+                        # Extract component name based on type
+                        component_name = component_file.stem
+                        
+                        # Remove common prefixes/suffixes
+                        if component_type == "contracts":
+                            component_name = component_name.replace("_contract", "").replace("contract_", "")
+                        elif component_type == "specs":
+                            component_name = component_name.replace("_spec", "").replace("spec_", "")
+                        elif component_type == "builders":
+                            component_name = component_name.replace("_builder", "").replace("builder_", "")
+                        
+                        components.append(component_name)
+            
+            return sorted(components)
+            
+        except Exception as e:
+            logger.warning(f"Error discovering {component_type} in workspace {workspace_id}: {e}")
+            return []
+    
+    def resolve_component_path(
+        self,
+        component_type: str,
+        component_name: str,
+        workspace_id: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Enhanced method to resolve component path with workspace-aware search.
+        
+        PHASE 4 CONSOLIDATION: Consolidated path resolution logic.
+        
+        Args:
+            component_type: Type of component ('builders', 'contracts', 'specs', 'scripts', 'configs')
+            component_name: Name of the component
+            workspace_id: Optional workspace ID to search in (uses current if None)
+        
+        Returns:
+            Full path to component file if found, None otherwise
+        """
+        if not self.workspace_mode:
+            # Use parent class methods for non-workspace mode
+            if component_type == "contracts":
+                return self.find_contract_file(component_name)
+            elif component_type == "specs":
+                return self.find_spec_file(component_name)
+            elif component_type == "builders":
+                return self.find_builder_file(component_name)
+            elif component_type == "scripts":
+                return self.find_script_file(component_name)
+            elif component_type == "configs":
+                return self.find_config_file(component_name)
+            return None
+        
+        # Use workspace-aware resolution
+        target_workspace = workspace_id or self.developer_id
+        
+        if target_workspace:
+            # Search in specific workspace
+            result = self._resolve_in_workspace(component_type, component_name, target_workspace)
+            if result:
+                return result
+        
+        # Search in shared workspace if enabled
+        if self.enable_shared_fallback:
+            result = self._resolve_in_workspace(component_type, component_name, "shared")
+            if result:
+                return result
+        
+        return None
+    
+    def _resolve_in_workspace(
+        self,
+        component_type: str,
+        component_name: str,
+        workspace_id: str
+    ) -> Optional[str]:
+        """Resolve component in specific workspace."""
+        try:
+            if workspace_id == "shared":
+                workspace_path = self.workspace_root / "shared"
+            else:
+                workspace_path = self.workspace_root / "developers" / workspace_id
+            
+            component_dir = workspace_path / "src" / "cursus_dev" / "steps" / component_type
+            
+            if not component_dir.exists():
+                return None
+            
+            # Try different naming patterns
+            possible_names = [
+                component_name,
+                f"{component_name}_{component_type.rstrip('s')}",  # e.g., "step_contract"
+                f"{component_type.rstrip('s')}_{component_name}",  # e.g., "contract_step"
+            ]
+            
+            extensions = ['.py']
+            if component_type in ['specs', 'configs']:
+                extensions.extend(['.json', '.yaml', '.yml'])
+            
+            for name in possible_names:
+                for ext in extensions:
+                    file_path = component_dir / f"{name}{ext}"
+                    if file_path.exists():
+                        return str(file_path)
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Error resolving {component_type}/{component_name} in {workspace_id}: {e}")
+            return None
+    
+    def get_component_statistics(self) -> Dict[str, Any]:
+        """
+        Enhanced method to get component statistics across workspaces.
+        
+        PHASE 4 CONSOLIDATION: Consolidated statistics gathering.
+        """
+        if not self.workspace_mode or not self.workspace_root:
+            return {"error": "Not in workspace mode or no workspace root"}
+        
+        stats = {
+            "workspace_root": str(self.workspace_root),
+            "total_workspaces": 0,
+            "total_components": 0,
+            "component_types": {
+                "builders": 0,
+                "contracts": 0,
+                "specs": 0,
+                "scripts": 0,
+                "configs": 0
+            },
+            "workspaces": {}
+        }
+        
+        try:
+            # Analyze developer workspaces
+            developers_dir = self.workspace_root / "developers"
+            if developers_dir.exists():
+                for item in developers_dir.iterdir():
+                    if item.is_dir():
+                        workspace_stats = self._get_workspace_statistics(item, item.name)
+                        stats["workspaces"][item.name] = workspace_stats
+                        stats["total_workspaces"] += 1
+                        stats["total_components"] += workspace_stats["total_components"]
+                        
+                        for comp_type, count in workspace_stats["component_types"].items():
+                            stats["component_types"][comp_type] += count
+            
+            # Analyze shared workspace
+            shared_dir = self.workspace_root / "shared"
+            if shared_dir.exists():
+                workspace_stats = self._get_workspace_statistics(shared_dir, "shared")
+                stats["workspaces"]["shared"] = workspace_stats
+                stats["total_workspaces"] += 1
+                stats["total_components"] += workspace_stats["total_components"]
+                
+                for comp_type, count in workspace_stats["component_types"].items():
+                    stats["component_types"][comp_type] += count
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Failed to get component statistics: {e}")
+            stats["error"] = str(e)
+            return stats
+    
+    def _get_workspace_statistics(self, workspace_path: Path, workspace_id: str) -> Dict[str, Any]:
+        """Get statistics for a specific workspace."""
+        stats = {
+            "workspace_id": workspace_id,
+            "workspace_path": str(workspace_path),
+            "total_components": 0,
+            "component_types": {
+                "builders": 0,
+                "contracts": 0,
+                "specs": 0,
+                "scripts": 0,
+                "configs": 0
+            }
+        }
+        
+        try:
+            cursus_dev_dir = workspace_path / "src" / "cursus_dev" / "steps"
+            
+            if cursus_dev_dir.exists():
+                for comp_type in stats["component_types"].keys():
+                    comp_dir = cursus_dev_dir / comp_type
+                    if comp_dir.exists():
+                        count = len([
+                            f for f in comp_dir.glob("*.py")
+                            if f.name != "__init__.py"
+                        ])
+                        stats["component_types"][comp_type] = count
+                        stats["total_components"] += count
+            
+            return stats
+            
+        except Exception as e:
+            logger.warning(f"Error getting statistics for workspace {workspace_id}: {e}")
+            stats["error"] = str(e)
+            return stats
+    
     def list_available_developers(self) -> List[str]:
         """List all available developer workspaces."""
         if not self.workspace_mode or not self.workspace_root:

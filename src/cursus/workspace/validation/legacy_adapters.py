@@ -5,6 +5,10 @@ Backward compatibility helpers for existing workspace validation APIs.
 This component ensures that existing code continues to work unchanged
 while providing access to the new unified validation system.
 
+PHASE 4 DEPRECATION NOTICE:
+These legacy adapters are planned for deprecation in a future release.
+Please migrate to the unified validation system for new code.
+
 Architecture:
 - Adapter pattern for existing API compatibility
 - Transparent integration with unified validation system
@@ -20,12 +24,14 @@ Features:
 
 from typing import Dict, List, Any, Optional, Union
 import logging
+import warnings
 from pathlib import Path
 
 from .unified_validation_core import UnifiedValidationCore, ValidationConfig
 from .unified_result_structures import UnifiedValidationResult
 from .unified_report_generator import UnifiedReportGenerator, ReportConfig
-from .workspace_orchestrator import WorkspaceValidationOrchestrator
+# PHASE 1 CONSOLIDATION: WorkspaceValidationOrchestrator removed, using WorkspaceTestManager
+from .workspace_test_manager import WorkspaceTestManager
 
 logger = logging.getLogger(__name__)
 
@@ -53,22 +59,36 @@ class LegacyWorkspaceValidationAdapter:
         """
         Initialize legacy workspace validation adapter.
         
+        PHASE 4 DEPRECATION WARNING: This adapter is planned for deprecation.
+        Please migrate to the unified validation system for new code.
+        
         Args:
             workspace_root: Root directory containing workspace(s)
             enable_unified_features: Whether to enable new unified features
         """
+        # PHASE 4: Issue deprecation warning
+        warnings.warn(
+            "LegacyWorkspaceValidationAdapter is deprecated and will be removed in a future release. "
+            "Please migrate to the unified validation system (UnifiedValidationCore).",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        
         self.workspace_root = Path(workspace_root)
         self.enable_unified_features = enable_unified_features
         
         # Initialize unified validation core
         self.unified_core = UnifiedValidationCore(workspace_root)
         
-        # Initialize legacy orchestrator for compatibility
+        # PHASE 1 CONSOLIDATION: Initialize WorkspaceTestManager for compatibility
         self.legacy_orchestrator = None
         try:
-            self.legacy_orchestrator = WorkspaceValidationOrchestrator(workspace_root)
+            self.legacy_orchestrator = WorkspaceTestManager(
+                workspace_manager=None,  # Will create default
+                enable_parallel_validation=True
+            )
         except Exception as e:
-            logger.warning(f"Failed to initialize legacy orchestrator: {e}")
+            logger.warning(f"Failed to initialize legacy test manager: {e}")
     
     def validate_workspace(
         self,
@@ -187,16 +207,25 @@ class LegacyWorkspaceValidationAdapter:
         except Exception as e:
             logger.error(f"Legacy multi-workspace validation failed: {e}")
             
-            # Fallback to legacy orchestrator if available
+            # Fallback to legacy test manager if available
             if self.legacy_orchestrator:
                 try:
-                    return self.legacy_orchestrator.validate_all_workspaces(
-                        validation_levels=validation_levels,
-                        parallel=parallel,
-                        validation_config=validation_config
-                    )
+                    # WorkspaceTestManager doesn't have validate_all_workspaces, 
+                    # so we'll need to implement multi-workspace logic here
+                    logger.warning("Multi-workspace validation fallback not fully implemented for WorkspaceTestManager")
+                    return {
+                        'workspace_root': str(self.workspace_root),
+                        'total_workspaces': 0,
+                        'successful_validations': 0,
+                        'failed_validations': 0,
+                        'success': False,
+                        'error': 'Multi-workspace validation not supported in fallback mode',
+                        'results': {},
+                        'summary': {'error': 'Multi-workspace validation fallback not implemented'},
+                        'recommendations': ['Use unified validation system for multi-workspace scenarios']
+                    }
                 except Exception as fallback_error:
-                    logger.error(f"Legacy orchestrator fallback failed: {fallback_error}")
+                    logger.error(f"Legacy test manager fallback failed: {fallback_error}")
             
             # Return error result in legacy format
             return {
@@ -540,6 +569,9 @@ def validate_workspace_legacy(
     """
     Legacy function for single workspace validation.
     
+    PHASE 4 DEPRECATION WARNING: This function is planned for deprecation.
+    Please migrate to the unified validation system for new code.
+    
     This function provides backward compatibility for existing code
     that uses the legacy workspace validation API.
     
@@ -552,6 +584,14 @@ def validate_workspace_legacy(
     Returns:
         Legacy-format validation results
     """
+    # PHASE 4: Issue deprecation warning
+    warnings.warn(
+        "validate_workspace_legacy() is deprecated and will be removed in a future release. "
+        "Please use UnifiedValidationCore.validate_workspaces() instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    
     adapter = create_legacy_adapter(workspace_root)
     return adapter.validate_workspace(
         developer_id=developer_id,
@@ -568,6 +608,9 @@ def validate_all_workspaces_legacy(
     """
     Legacy function for multi-workspace validation.
     
+    PHASE 4 DEPRECATION WARNING: This function is planned for deprecation.
+    Please migrate to the unified validation system for new code.
+    
     This function provides backward compatibility for existing code
     that uses the legacy multi-workspace validation API.
     
@@ -579,6 +622,14 @@ def validate_all_workspaces_legacy(
     Returns:
         Legacy-format multi-workspace validation results
     """
+    # PHASE 4: Issue deprecation warning
+    warnings.warn(
+        "validate_all_workspaces_legacy() is deprecated and will be removed in a future release. "
+        "Please use UnifiedValidationCore.validate_workspaces() instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    
     adapter = create_legacy_adapter(workspace_root)
     return adapter.validate_all_workspaces(
         validation_levels=validation_levels,

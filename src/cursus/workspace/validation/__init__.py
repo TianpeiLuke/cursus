@@ -15,7 +15,7 @@ from .workspace_builder_test import WorkspaceUniversalStepBuilderTest
 from .workspace_file_resolver import DeveloperWorkspaceFileResolver
 from .workspace_manager import WorkspaceManager
 from .workspace_module_loader import WorkspaceModuleLoader
-from .workspace_orchestrator import WorkspaceValidationOrchestrator
+# PHASE 1 CONSOLIDATION: WorkspaceValidationOrchestrator removed, functionality moved to WorkspaceTestManager
 from .workspace_type_detector import WorkspaceTypeDetector
 from .unified_report_generator import UnifiedReportGenerator
 from .unified_result_structures import (
@@ -44,7 +44,6 @@ __all__ = [
     'WorkspaceManager',
     'WorkspaceModuleLoader',
     # NOTE: WorkspaceValidationOrchestrator functionality consolidated into WorkspaceTestManager
-    'WorkspaceValidationOrchestrator',  # Kept for backward compatibility
     'WorkspaceTypeDetector',
     'UnifiedReportGenerator',
     # PHASE 1 CONSOLIDATED: Enhanced result structures with inheritance
