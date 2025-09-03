@@ -12,7 +12,7 @@ from ...core.base.builder_base import StepBuilderBase
 from ..specs.pytorch_model_spec import PYTORCH_MODEL_SPEC
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-from ..registry.builder_registry import register_builder
+from ...registry.builder_registry import register_builder
 
 logger = logging.getLogger(__name__)
 

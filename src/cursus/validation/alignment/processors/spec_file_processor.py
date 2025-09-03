@@ -208,7 +208,7 @@ class SpecificationFileProcessor:
             'from src.cursus.core.base.specification_base import'
         ).replace(
             'from ..registry.step_names import',
-            'from src.cursus.steps.registry.step_names import'
+            'from src.cursus.registry.step_names import'
         ).replace(
             'from ..contracts.',
             'from src.cursus.steps.contracts.'

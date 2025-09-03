@@ -55,7 +55,7 @@ def register_builder(step_type: str = None):
     """
     def decorator(cls):
         # Import at runtime to avoid circular import
-        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+        from ..core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
         if not issubclass(cls, RuntimeStepBuilderBase):
             raise TypeError(f"@register_builder can only be used on StepBuilderBase subclasses: {cls.__name__}")
         
@@ -120,7 +120,7 @@ class StepBuilderRegistry:
             builder_class: Step builder class
         """
         # Import at runtime to avoid circular import
-        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+        from ..core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
         if not issubclass(builder_class, RuntimeStepBuilderBase):
             raise ValueError(f"Builder class must extend StepBuilderBase: {builder_class}")
         
@@ -151,7 +151,7 @@ class StepBuilderRegistry:
                         
                         # Find builder classes in the module
                         # Import at runtime to avoid circular import
-                        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+                        from ..core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
                         for name, obj in inspect.getmembers(module):
                             if (inspect.isclass(obj) and 
                                 issubclass(obj, RuntimeStepBuilderBase) and 
@@ -360,7 +360,7 @@ class StepBuilderRegistry:
             builder_class: Step builder class
         """
         # Import at runtime to avoid circular import
-        from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+        from ..core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
         if not issubclass(builder_class, RuntimeStepBuilderBase):
             raise ValueError(f"Builder class must extend StepBuilderBase: {builder_class}")
         
@@ -538,7 +538,7 @@ class StepBuilderRegistry:
             try:
                 # Check if builder class is valid
                 # Import at runtime to avoid circular import
-                from ...core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
+                from ..core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
                 if not issubclass(builder_class, RuntimeStepBuilderBase):
                     results['invalid'].append(f"{step_type}: Not a StepBuilderBase subclass")
                     continue

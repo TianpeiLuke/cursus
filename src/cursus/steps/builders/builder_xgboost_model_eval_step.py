@@ -10,7 +10,7 @@ from ..configs.config_xgboost_model_eval_step import XGBoostModelEvalConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-from ..registry.builder_registry import register_builder
+from ...registry.builder_registry import register_builder
 
 # Import the model evaluation specification
 try:

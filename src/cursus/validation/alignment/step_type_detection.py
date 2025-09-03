@@ -21,7 +21,7 @@ def detect_step_type_from_registry(script_name: str) -> str:
         Defaults to "Processing" if detection fails
     """
     try:
-        from cursus.steps.registry.step_names import get_sagemaker_step_type, get_canonical_name_from_file_name
+        from cursus.registry.step_names import get_sagemaker_step_type, get_canonical_name_from_file_name
         canonical_name = get_canonical_name_from_file_name(script_name)
         return get_sagemaker_step_type(canonical_name)
     except (ValueError, ImportError, AttributeError):

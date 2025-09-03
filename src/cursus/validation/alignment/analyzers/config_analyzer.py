@@ -88,7 +88,7 @@ class ConfigurationAnalyzer:
                 if project_root not in sys.path:
                     sys.path.insert(0, project_root)
                 
-                from src.cursus.steps.registry.step_names import get_canonical_name_from_file_name, get_config_class_name
+                from src.cursus.registry.step_names import get_canonical_name_from_file_name, get_config_class_name
                 
                 # Get canonical step name from builder name (script name)
                 canonical_name = get_canonical_name_from_file_name(builder_name)

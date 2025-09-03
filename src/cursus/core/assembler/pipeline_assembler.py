@@ -22,7 +22,7 @@ from ..deps.dependency_resolver import UnifiedDependencyResolver, create_depende
 from ..deps.factory import create_pipeline_components
 from ..deps.property_reference import PropertyReference
 from ..base import OutputSpec
-from ...steps.registry.step_names import CONFIG_STEP_REGISTRY
+from ...registry.step_names import CONFIG_STEP_REGISTRY
 
 from ...api.dag.base_dag import PipelineDAG
 

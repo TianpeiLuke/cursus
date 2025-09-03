@@ -6,7 +6,7 @@ specifically for testing data, including their dependencies and outputs.
 """
 
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
-from ..registry.step_names import get_spec_step_type_with_job_type
+from ...registry.step_names import get_spec_step_type_with_job_type
 
 # Cradle Data Loading Testing Step Specification
 DATA_LOADING_TESTING_SPEC = StepSpecification(

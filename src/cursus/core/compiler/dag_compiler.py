@@ -14,7 +14,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 
 from ...api.dag.base_dag import PipelineDAG
 from .config_resolver import StepConfigResolver
-from ...steps.registry.builder_registry import StepBuilderRegistry
+from ...registry.builder_registry import StepBuilderRegistry
 from .validation import ValidationResult, ResolutionPreview, ConversionReport, ValidationEngine
 from .exceptions import PipelineAPIError, ConfigurationError, ValidationError
 from ...steps.registry.exceptions import RegistryError

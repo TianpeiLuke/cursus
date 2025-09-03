@@ -7,7 +7,7 @@ to the model.tar.gz file, and make it available for downstream packaging and pay
 """
 
 from ...core.base.specification_base import StepSpecification, NodeType, DependencySpec, OutputSpec, DependencyType
-from ..registry.step_names import get_spec_step_type
+from ...registry.step_names import get_spec_step_type
 
 def _get_dummy_training_contract():
     from ..contracts.dummy_training_contract import DUMMY_TRAINING_CONTRACT

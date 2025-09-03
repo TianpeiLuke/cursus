@@ -8,7 +8,7 @@ to provide clear, actionable error messages for users.
 from typing import List, Dict, Any, Optional
 
 # Import RegistryError from pipeline_registry
-from ...steps.registry.exceptions import RegistryError
+from ...registry.exceptions import RegistryError
 
 
 class PipelineAPIError(Exception):

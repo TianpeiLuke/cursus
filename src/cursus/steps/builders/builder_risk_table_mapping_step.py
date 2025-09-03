@@ -17,7 +17,7 @@ from sagemaker.s3 import S3Uploader
 from ..configs.config_risk_table_mapping_step import RiskTableMappingConfig
 from ...core.base.builder_base import StepBuilderBase
 from .s3_utils import S3PathHandler
-from ..registry.builder_registry import register_builder
+from ...registry.builder_registry import register_builder
 
 # Import step specifications
 try:

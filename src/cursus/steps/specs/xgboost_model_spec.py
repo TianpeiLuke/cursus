@@ -6,7 +6,7 @@ including their dependencies and outputs based on the actual implementation.
 """
 
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
-from ..registry.step_names import get_spec_step_type
+from ...registry.step_names import get_spec_step_type
 
 # XGBoost Model Creation Step Specification
 XGBOOST_MODEL_SPEC = StepSpecification(

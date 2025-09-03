@@ -6,7 +6,7 @@ including dependencies, outputs, and other metadata needed for pipeline integrat
 """
 
 from ...core.base.specification_base import StepSpecification, NodeType, DependencySpec, OutputSpec, DependencyType
-from ..registry.step_names import get_spec_step_type
+from ...registry.step_names import get_spec_step_type
 
 def _get_model_calibration_contract():
     """Get the script contract for the ModelCalibration step.
