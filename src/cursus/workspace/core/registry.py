@@ -41,7 +41,7 @@ class WorkspaceComponentRegistry:
             self.discovery_manager = None
         
         # Enhanced caching using discovery manager
-        self._component_cache = self.discovery_manager.get_component_cache() if self.discovery_manager else {}
+        self._component_cache = self.discovery_manager._component_cache if self.discovery_manager else {}
         self._builder_cache: Dict[str, Type[StepBuilderBase]] = {}
         self._config_cache: Dict[str, Type[BasePipelineConfig]] = {}
         self._cache_timestamp: Dict[str, float] = {}

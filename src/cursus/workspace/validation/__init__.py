@@ -6,9 +6,9 @@ that were consolidated from src.cursus.validation.workspace during Phase 5
 structural consolidation.
 """
 
-from .test_manager import WorkspaceTestManager
+from .workspace_test_manager import WorkspaceTestManager
 from .cross_workspace_validator import CrossWorkspaceValidator
-from .test_isolation import TestWorkspaceIsolationManager
+from .workspace_isolation import WorkspaceTestIsolationManager
 from .unified_validation_core import UnifiedValidationCore
 from .workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
 from .workspace_builder_test import WorkspaceUniversalStepBuilderTest
@@ -24,7 +24,7 @@ from .legacy_adapters import LegacyWorkspaceValidationAdapter
 __all__ = [
     'WorkspaceTestManager',
     'CrossWorkspaceValidator',
-    'TestWorkspaceIsolationManager',
+    'WorkspaceTestIsolationManager',
     'UnifiedValidationCore',
     'WorkspaceUnifiedAlignmentTester',
     'WorkspaceUniversalStepBuilderTest',

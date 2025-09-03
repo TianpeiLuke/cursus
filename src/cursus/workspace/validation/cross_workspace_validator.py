@@ -37,7 +37,7 @@ from ..core.assembler import WorkspacePipelineAssembler
 from ..core.config import WorkspacePipelineDefinition
 
 # Import Phase 3 test management components
-from .test_manager import WorkspaceTestManager
+from .workspace_test_manager import WorkspaceTestManager
 
 logger = logging.getLogger(__name__)
 

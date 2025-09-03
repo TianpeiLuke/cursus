@@ -38,8 +38,8 @@ from ..core.manager import WorkspaceManager
 logger = logging.getLogger(__name__)
 
 
-class TestIsolationConfig(BaseModel):
-    """Configuration for test isolation."""
+class WorkspaceIsolationConfig(BaseModel):
+    """Configuration for workspace isolation."""
     model_config = ConfigDict(
         extra='forbid',
         validate_assignment=True,
@@ -67,7 +67,7 @@ class IsolationEnvironment(BaseModel):
     
     environment_id: str
     test_workspace_path: str
-    isolation_config: TestIsolationConfig
+    isolation_config: WorkspaceIsolationConfig
     python_path: List[str] = Field(default_factory=list)
     environment_variables: Dict[str, str] = Field(default_factory=dict)
     resource_limits: Dict[str, Any] = Field(default_factory=dict)
@@ -75,7 +75,7 @@ class IsolationEnvironment(BaseModel):
     status: str = "active"  # "active", "suspended", "terminated"
 
 
-class TestWorkspaceIsolationManager:
+class WorkspaceTestIsolationManager:
     """
     Advanced test workspace isolation manager integrating with Phase 1.
     
@@ -97,7 +97,7 @@ class TestWorkspaceIsolationManager:
     def __init__(
         self,
         workspace_manager: Optional[WorkspaceManager] = None,
-        isolation_config: Optional[TestIsolationConfig] = None
+        isolation_config: Optional[WorkspaceIsolationConfig] = None
     ):
         """
         Initialize test workspace isolation manager.
@@ -116,7 +116,7 @@ class TestWorkspaceIsolationManager:
             self.core_isolation_manager = self.workspace_manager.isolation_manager
         
         # Test-specific isolation configuration
-        self.isolation_config = isolation_config or TestIsolationConfig()
+        self.isolation_config = isolation_config or WorkspaceIsolationConfig()
         
         # Active isolated environments
         self.isolated_environments: Dict[str, IsolationEnvironment] = {}
@@ -159,7 +159,7 @@ class TestWorkspaceIsolationManager:
             )
             
             # Create test-specific isolation configuration
-            test_isolation_config = TestIsolationConfig(**kwargs) if kwargs else self.isolation_config
+            test_isolation_config = WorkspaceIsolationConfig(**kwargs) if kwargs else self.isolation_config
             
             # Set up test-specific isolation
             isolated_env = IsolationEnvironment(
@@ -282,7 +282,7 @@ class TestWorkspaceIsolationManager:
             logger.warning(f"Failed to create isolated environment variables: {e}")
             return os.environ.copy()
     
-    def _create_resource_limits(self, config: TestIsolationConfig) -> Dict[str, Any]:
+    def _create_resource_limits(self, config: WorkspaceIsolationConfig) -> Dict[str, Any]:
         """Create resource limits for test environment."""
         limits = {}
         
@@ -775,9 +775,9 @@ def create_test_isolation_manager(
     workspace_root: Optional[str] = None,
     isolation_config: Optional[Dict[str, Any]] = None,
     **kwargs
-) -> TestWorkspaceIsolationManager:
+) -> WorkspaceTestIsolationManager:
     """
-    Convenience function to create a configured TestWorkspaceIsolationManager.
+    Convenience function to create a configured WorkspaceTestIsolationManager.
     
     Args:
         workspace_root: Root directory for workspaces
@@ -785,7 +785,7 @@ def create_test_isolation_manager(
         **kwargs: Additional arguments for WorkspaceManager
     
     Returns:
-        Configured TestWorkspaceIsolationManager instance
+        Configured WorkspaceTestIsolationManager instance
     """
     # Create Phase 1 consolidated workspace manager
     workspace_manager = WorkspaceManager(workspace_root=workspace_root, **kwargs)
@@ -793,9 +793,9 @@ def create_test_isolation_manager(
     # Create isolation configuration if provided
     test_isolation_config = None
     if isolation_config:
-        test_isolation_config = TestIsolationConfig(**isolation_config)
+        test_isolation_config = WorkspaceIsolationConfig(**isolation_config)
     
-    return TestWorkspaceIsolationManager(
+    return WorkspaceTestIsolationManager(
         workspace_manager=workspace_manager,
         isolation_config=test_isolation_config
     )

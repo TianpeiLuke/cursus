@@ -41,8 +41,8 @@ from .workspace_module_loader import WorkspaceModuleLoader
 logger = logging.getLogger(__name__)
 
 
-class TestEnvironment(BaseModel):
-    """Test environment configuration and state."""
+class WorkspaceTestEnvironment(BaseModel):
+    """Workspace test environment configuration and state."""
     model_config = ConfigDict(
         extra='forbid',
         validate_assignment=True,
@@ -74,7 +74,7 @@ class IsolationReport(BaseModel):
     validated_at: datetime = Field(default_factory=datetime.now)
 
 
-class TestWorkspaceConfig(BaseModel):
+class WorkspaceTestConfig(BaseModel):
     """Configuration for test workspace management."""
     model_config = ConfigDict(
         extra='forbid',
@@ -112,7 +112,7 @@ class WorkspaceTestManager:
     def __init__(
         self,
         workspace_manager: Optional[WorkspaceManager] = None,
-        test_config: Optional[TestWorkspaceConfig] = None,
+        test_config: Optional[WorkspaceTestConfig] = None,
         auto_discover: bool = True
     ):
         """
@@ -141,8 +141,8 @@ class WorkspaceTestManager:
         self.test_config = test_config
         
         # Test environment tracking
-        self.active_test_environments: Dict[str, TestEnvironment] = {}
-        self.test_isolation_validator = TestIsolationValidator(self)
+        self.active_test_environments: Dict[str, WorkspaceTestEnvironment] = {}
+        self.test_isolation_validator = WorkspaceIsolationValidator(self)
         
         # Integration with existing validation workspace functionality
         self._integrate_existing_validation_components()
@@ -182,7 +182,7 @@ class WorkspaceTestManager:
         workspace_id: Optional[str] = None,
         test_type: str = "validation",
         **kwargs
-    ) -> TestEnvironment:
+    ) -> WorkspaceTestEnvironment:
         """
         Create isolated test environment using Phase 1 lifecycle manager.
         
@@ -193,7 +193,7 @@ class WorkspaceTestManager:
             **kwargs: Additional test environment configuration
         
         Returns:
-            TestEnvironment configuration
+            WorkspaceTestEnvironment configuration
         """
         logger.info(f"Creating test environment: {test_id}")
         
@@ -211,7 +211,7 @@ class WorkspaceTestManager:
             )
             
             # Create test environment configuration
-            test_environment = TestEnvironment(
+            test_environment = WorkspaceTestEnvironment(
                 test_id=test_id,
                 workspace_id=workspace_context.workspace_id,
                 environment_path=workspace_context.workspace_path,
@@ -232,7 +232,7 @@ class WorkspaceTestManager:
             logger.error(f"Failed to create test environment {test_id}: {e}")
             raise
     
-    def _setup_test_isolation(self, test_environment: TestEnvironment) -> None:
+    def _setup_test_isolation(self, test_environment: WorkspaceTestEnvironment) -> None:
         """Set up test environment isolation using Phase 1 isolation manager."""
         try:
             # Use Phase 1 isolation manager for test environment setup
@@ -253,7 +253,7 @@ class WorkspaceTestManager:
         except Exception as e:
             logger.warning(f"Failed to set up test isolation for {test_environment.test_id}: {e}")
     
-    def validate_test_isolation(self, test_environment: TestEnvironment) -> IsolationReport:
+    def validate_test_isolation(self, test_environment: WorkspaceTestEnvironment) -> IsolationReport:
         """
         Validate test isolation using Phase 1 isolation manager.
         
@@ -310,7 +310,7 @@ class WorkspaceTestManager:
                 recommendations=["Fix validation errors and retry"]
             )
     
-    def _check_resource_isolation(self, test_environment: TestEnvironment) -> bool:
+    def _check_resource_isolation(self, test_environment: WorkspaceTestEnvironment) -> bool:
         """Check resource isolation for test environment."""
         try:
             # Use Phase 1 isolation manager for resource checks
@@ -322,7 +322,7 @@ class WorkspaceTestManager:
             logger.warning(f"Resource isolation check failed: {e}")
             return False
     
-    def _check_access_control(self, test_environment: TestEnvironment) -> bool:
+    def _check_access_control(self, test_environment: WorkspaceTestEnvironment) -> bool:
         """Check access control for test environment."""
         try:
             # Check if test environment has proper access controls
@@ -389,7 +389,7 @@ class WorkspaceTestManager:
             for workspace_id, workspace_info in test_workspaces.items():
                 if workspace_id not in self.active_test_environments:
                     # Create test environment entry for discovered test workspace
-                    test_env = TestEnvironment(
+                    test_env = WorkspaceTestEnvironment(
                         test_id=workspace_id.replace('test_', ''),
                         workspace_id=workspace_id,
                         environment_path=workspace_info.get('workspace_path', ''),
@@ -632,7 +632,7 @@ class WorkspaceTestManager:
             return {"error": str(e)}
 
 
-class TestIsolationValidator:
+class WorkspaceIsolationValidator:
     """Validates test environment isolation."""
     
     def __init__(self, test_manager: WorkspaceTestManager):
@@ -640,7 +640,7 @@ class TestIsolationValidator:
         self.test_manager = test_manager
         self.logger = logging.getLogger(__name__)
     
-    def validate_test_boundaries(self, test_environment: TestEnvironment) -> List[str]:
+    def validate_test_boundaries(self, test_environment: WorkspaceTestEnvironment) -> List[str]:
         """
         Validate test-specific isolation boundaries.
         
@@ -744,7 +744,7 @@ def create_test_workspace_manager(
     # Create test configuration if provided
     test_workspace_config = None
     if test_config:
-        test_workspace_config = TestWorkspaceConfig(**test_config)
+        test_workspace_config = WorkspaceTestConfig(**test_config)
     
     return WorkspaceTestManager(
         workspace_manager=core_manager,
