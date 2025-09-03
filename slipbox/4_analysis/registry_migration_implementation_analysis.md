@@ -61,7 +61,7 @@ Migrate the centralized registry system from its embedded location within the st
 
 ### System-Wide Import Standardization
 
-The migration required updating import statements across **47 files** throughout the codebase:
+The migration required updating import statements across **48 files** throughout the codebase:
 
 #### Core System Files (4 files)
 - `src/cursus/core/__init__.py`
@@ -103,6 +103,9 @@ All specification files updated to use new registry imports:
 - `src/cursus/validation/builders/` (6 files)
 - `src/cursus/validation/naming/` (1 file)
 - `src/cursus/validation/runtime/integration/` (1 file)
+
+#### Core Dependencies Files (1 file)
+- `src/cursus/core/deps/dependency_resolver.py` - Updated import from `...steps.registry.step_names` to `...registry.step_names`
 
 #### Workspace and Test Files (3 files)
 - `src/cursus/workspace/core/registry.py`
@@ -259,7 +262,7 @@ The completed migration prepares for Phase 1 implementation:
 
 The registry migration represents a successful Phase 0 implementation that:
 1. **Relocated** core registry files to dedicated module location
-2. **Updated** 47 files with standardized import paths
+2. **Updated** 48 files with standardized import paths
 3. **Implemented** Single Source of Truth principle for builder registration
 4. **Maintained** 100% backward compatibility with deprecation guidance
 5. **Improved** test infrastructure and error handling

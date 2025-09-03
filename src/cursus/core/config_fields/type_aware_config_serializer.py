@@ -576,7 +576,7 @@ class TypeAwareConfigSerializer:
         # Try to look up the step name from the registry (primary source of truth)
         base_step = None
         try:
-            from ...steps.registry.step_names import CONFIG_STEP_REGISTRY            
+            from ...registry.step_names import CONFIG_STEP_REGISTRY
             if class_name in CONFIG_STEP_REGISTRY:
                 base_step = CONFIG_STEP_REGISTRY[class_name]
         except (ImportError, AttributeError, ModuleNotFoundError):

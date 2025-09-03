@@ -469,7 +469,7 @@ class UnifiedDependencyResolver:
         """
         try:
             # Import here to avoid circular imports
-            from ...steps.registry.step_names import get_step_name_from_spec_type, get_spec_step_type
+            from ...registry.step_names import get_step_name_from_spec_type, get_spec_step_type
             
             # Use the registry function to get canonical name, then get the base spec type
             canonical_name = get_step_name_from_spec_type(step_type)

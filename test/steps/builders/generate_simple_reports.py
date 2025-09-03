@@ -16,7 +16,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
-from cursus.steps.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
+from cursus.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
 
 
 def get_canonical_step_name(step_name: str) -> str:
