@@ -12,8 +12,8 @@ import time
 from collections import defaultdict
 
 from ...core.base import StepBuilderBase, BasePipelineConfig
-from ...steps.registry.builder_registry import StepBuilderRegistry
-from ...steps.registry.step_names import STEP_NAMES
+from ...registry.builder_registry import StepBuilderRegistry
+from ...registry.step_names import STEP_NAMES
 
 logger = logging.getLogger(__name__)
 

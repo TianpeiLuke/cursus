@@ -10,7 +10,7 @@ import importlib
 from typing import Dict, List, Tuple, Optional, Type, Any
 from pathlib import Path
 
-from ...steps.registry.step_names import STEP_NAMES, get_steps_by_sagemaker_type
+from ...registry.step_names import STEP_NAMES, get_steps_by_sagemaker_type
 from ...core.base.builder_base import StepBuilderBase
 
 

@@ -15,7 +15,7 @@ from .loaders import SpecificationLoader
 from .validators import DependencyValidator
 from ...core.deps.factory import create_pipeline_components
 from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec
-from ...steps.registry.step_names import get_step_name_from_spec_type, get_canonical_name_from_file_name
+from ...registry.step_names import get_step_name_from_spec_type, get_canonical_name_from_file_name
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ class SpecificationDependencyAlignmentTester:
         Returns:
             List of canonical step names from the production registry
         """
-        from ...steps.registry.step_names import get_all_step_names
+        from ...registry.step_names import get_all_step_names
         
         # Get canonical step names from the production registry (single source of truth)
         canonical_names = get_all_step_names()

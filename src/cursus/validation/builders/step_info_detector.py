@@ -4,7 +4,7 @@ Step information detection utilities for universal step builder tests.
 
 from typing import Dict, Any, Optional, Type
 from ...core.base.builder_base import StepBuilderBase
-from ...steps.registry.step_names import STEP_NAMES, get_sagemaker_step_type
+from ...registry.step_names import STEP_NAMES, get_sagemaker_step_type
 
 
 class StepInfoDetector:

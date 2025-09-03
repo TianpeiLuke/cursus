@@ -15,7 +15,7 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.base.config_base import BasePipelineConfig
 from ...core.base.specification_base import StepSpecification
 from ...core.base.contract_base import ScriptContract
-from ...steps.registry.step_names import STEP_NAMES
+from ...registry.step_names import STEP_NAMES
 
 
 class NamingViolation:

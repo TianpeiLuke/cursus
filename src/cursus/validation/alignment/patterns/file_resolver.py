@@ -118,7 +118,7 @@ class HybridFileResolver:
         """
         # Import here to avoid circular imports
         try:
-            from ....steps.registry.step_names import get_step_name_from_spec_type
+            from ....registry.step_names import get_step_name_from_spec_type
         except ImportError:
             # Fallback if registry is not available
             return self._fallback_canonical_name(script_name)
@@ -188,7 +188,7 @@ class HybridFileResolver:
         """
         # Import here to avoid circular imports
         try:
-            from ....steps.registry.step_names import STEP_NAMES
+            from ....registry.step_names import STEP_NAMES
         except ImportError:
             # Fallback if registry is not available
             return self._fallback_config_name(canonical_name)

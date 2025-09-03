@@ -14,7 +14,7 @@ from pathlib import Path
 from .analyzers import ConfigurationAnalyzer, BuilderCodeAnalyzer
 from .patterns import PatternRecognizer, HybridFileResolver
 from .alignment_utils import FlexibleFileResolver
-from ...steps.registry.step_names import STEP_NAMES, get_step_name_from_spec_type
+from ...registry.step_names import STEP_NAMES, get_step_name_from_spec_type
 
 
 class BuilderConfigurationAlignmentTester:

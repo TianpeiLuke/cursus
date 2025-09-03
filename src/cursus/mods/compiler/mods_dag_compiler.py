@@ -16,7 +16,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ...core.compiler.config_resolver import StepConfigResolver
-from ...steps.registry.builder_registry import StepBuilderRegistry
+from ...registry.builder_registry import StepBuilderRegistry
 from ...core.compiler.exceptions import PipelineAPIError, ConfigurationError
 from ...core.base.config_base import BasePipelineConfig
 

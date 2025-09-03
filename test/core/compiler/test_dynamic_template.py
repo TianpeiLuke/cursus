@@ -21,7 +21,7 @@ from src.cursus.core.compiler.dynamic_template import (
     VPC_SUBNET
 )
 from src.cursus.core.compiler.config_resolver import StepConfigResolver
-from src.cursus.steps.registry.builder_registry import StepBuilderRegistry
+from src.cursus.registry.builder_registry import StepBuilderRegistry
 from src.cursus.core.base.config_base import BasePipelineConfig
 from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
 

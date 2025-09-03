@@ -135,7 +135,7 @@ class InterfaceTests(UniversalStepBuilderTestBase):
         else:
             # Try to check if class is in a registry
             try:
-                from ...steps.registry.builder_registry import StepBuilderRegistry
+                from ...registry.builder_registry import StepBuilderRegistry
                 registry = StepBuilderRegistry()
                 
                 # Check if builder is registered using available methods

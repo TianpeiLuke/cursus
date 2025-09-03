@@ -28,7 +28,7 @@ from .base_test import StepName
 
 # Import scoring and reporting
 from .scoring import StepBuilderScorer, LEVEL_WEIGHTS, RATING_LEVELS
-from ...steps.registry.step_names import STEP_NAMES
+from ...registry.step_names import STEP_NAMES
 
 # Import registry discovery utilities
 from .registry_discovery import RegistryStepDiscovery

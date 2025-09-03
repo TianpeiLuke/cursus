@@ -9,7 +9,7 @@ import inspect
 from abc import ABC, abstractmethod
 
 from ...core.base.builder_base import StepBuilderBase
-from ...steps.registry.step_names import get_sagemaker_step_type, validate_sagemaker_step_type
+from ...registry.step_names import get_sagemaker_step_type, validate_sagemaker_step_type
 from .base_test import ValidationViolation, ValidationLevel
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class SageMakerStepTypeValidator:
                 break
         
         # Try to find matching step name in registry
-        from ...steps.registry.step_names import STEP_NAMES
+        from ...registry.step_names import STEP_NAMES
         for step_name, info in STEP_NAMES.items():
             if info["builder_step_name"].replace("StepBuilder", "").replace("Builder", "") == class_name:
                 return step_name

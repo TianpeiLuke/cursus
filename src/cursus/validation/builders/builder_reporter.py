@@ -12,7 +12,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from ...core.base.builder_base import StepBuilderBase
-from ...steps.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
+from ...registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
 
 
 class BuilderTestIssue(BaseModel):

@@ -12,8 +12,8 @@ from typing import Dict, List, Any, Optional, Tuple
 
 # Import step registry functions for proper step type resolution
 try:
-    from ...steps.registry.step_names import (
-        get_step_name_from_spec_type, 
+    from ...registry.step_names import (
+        get_step_name_from_spec_type,
         get_sagemaker_step_type,
         validate_step_name
     )

@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
 from ..level3_validation_config import Level3ValidationConfig
-from ....steps.registry.step_names import (
+from ....registry.step_names import (
     get_step_name_from_spec_type, get_canonical_name_from_file_name, get_all_step_names
 )
 from ....core.deps.factory import create_pipeline_components

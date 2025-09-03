@@ -11,7 +11,7 @@ from .s3_data_downloader import S3DataDownloader, S3DataSource
 from .workspace_manager import WorkspaceManager, WorkspaceConfig
 from ..core.pipeline_script_executor import PipelineScriptExecutor
 from ..execution.data_compatibility_validator import DataCompatibilityValidator, DataSchemaInfo
-from ....steps.registry.step_names import STEP_NAMES, get_canonical_name_from_file_name
+from ....registry.step_names import STEP_NAMES, get_canonical_name_from_file_name
 from ....core.deps.specification_registry import SpecificationRegistry
 
 class RealDataTestScenario(BaseModel):

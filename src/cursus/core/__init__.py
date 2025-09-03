@@ -92,7 +92,7 @@ from .deps import (
     SemanticMatcher,
     create_pipeline_components
 )
-from .workspace import (
+from ..workspace.core import (
     WorkspaceStepDefinition,
     WorkspacePipelineDefinition,
     WorkspaceComponentRegistry,
