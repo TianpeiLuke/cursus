@@ -9,9 +9,13 @@ from typing import Dict, List, Any, Optional
 import os
 from datetime import datetime
 
-from ..core.workspace.registry import WorkspaceComponentRegistry
-from ..validation.workspace.workspace_manager import WorkspaceManager
-from ..validation.workspace.unified_validation_core import UnifiedValidationCore
+# Phase 4: Use unified WorkspaceAPI
+from ..workspace.api import WorkspaceAPI, WorkspaceStatus
+
+# Updated imports for consolidated structure
+from ..workspace.core import WorkspaceComponentRegistry
+from ..workspace.validation import WorkspaceTestManager as WorkspaceManager
+from ..workspace.validation import UnifiedValidationCore
 from ..api.dag.workspace_dag import WorkspaceAwareDAG
 
 @click.group(name='workspace')
@@ -30,10 +34,10 @@ def workspace_cli():
 @click.option('--interactive', is_flag=True, help='Interactive setup')
 @click.option('--workspace-root', default='./developer_workspaces',
               help='Root directory for workspaces')
-@click.option('--create-structure', is_flag=True, default=True,
-              help='Create standard workspace directory structure')
+@click.option('--config', type=click.File('r'), help='JSON configuration file')
+@click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
 def create_workspace(developer_name: str, template: str, from_existing: str, 
-                    interactive: bool, workspace_root: str, create_structure: bool):
+                    interactive: bool, workspace_root: str, config, output: str):
     """Create a new developer workspace.
     
     DEVELOPER_NAME: Name/ID of the developer workspace to create
@@ -44,8 +48,17 @@ def create_workspace(developer_name: str, template: str, from_existing: str,
         click.echo(f"Workspace root: {workspace_root}")
         click.echo("-" * 50)
         
-        # Initialize workspace manager
-        manager = WorkspaceManager(workspace_root=workspace_root)
+        # Initialize Phase 4 WorkspaceAPI
+        api = WorkspaceAPI(base_path=workspace_root)
+        
+        # Parse configuration overrides
+        config_overrides = {}
+        if config:
+            try:
+                config_overrides = json.load(config)
+            except json.JSONDecodeError as e:
+                click.echo(f"Error parsing config file: {e}", err=True)
+                sys.exit(1)
         
         # Interactive setup
         if interactive:
@@ -62,38 +75,48 @@ def create_workspace(developer_name: str, template: str, from_existing: str,
             
             # Confirm workspace root
             workspace_root = click.prompt('Workspace root directory', default=workspace_root)
-            
-            # Confirm structure creation
-            create_structure = click.confirm('Create standard directory structure?', default=True)
+            api = WorkspaceAPI(base_path=workspace_root)  # Reinitialize with new path
         
-        # Create workspace
-        workspace_path = manager.create_developer_workspace(
+        # Create workspace using Phase 4 API
+        result = api.setup_developer_workspace(
             developer_id=developer_name,
-            workspace_root=workspace_root,
-            create_structure=create_structure
+            template=template,
+            config_overrides=config_overrides
         )
         
-        click.echo(f"✓ Workspace created: {workspace_path}")
-        
-        # Apply template if specified
-        if template:
-            _apply_workspace_template(workspace_path, template)
-            click.echo(f"✓ Applied template: {template}")
-        
-        # Clone from existing workspace if specified
-        if from_existing:
-            _clone_workspace(workspace_path, from_existing, workspace_root)
-            click.echo(f"✓ Cloned from: {from_existing}")
-        
-        # Show workspace structure
-        click.echo("\nWorkspace structure:")
-        _show_workspace_structure(workspace_path)
-        
-        # Show next steps
-        click.echo("\nNext steps:")
-        click.echo(f"  1. cd {workspace_path}")
-        click.echo(f"  2. cursus workspace validate-isolation --workspace {developer_name}")
-        click.echo(f"  3. Start developing your components!")
+        # Display results
+        if output == 'json':
+            click.echo(result.model_dump_json(indent=2))
+        else:
+            if result.success:
+                click.echo(f"✅ {result.message}")
+                if result.warnings:
+                    click.echo("⚠️  Warnings:")
+                    for warning in result.warnings:
+                        click.echo(f"   - {warning}")
+                
+                # Apply template if specified (legacy support)
+                if template:
+                    _apply_workspace_template(str(result.workspace_path), template)
+                    click.echo(f"✓ Applied template: {template}")
+                
+                # Clone from existing workspace if specified (legacy support)
+                if from_existing:
+                    _clone_workspace(str(result.workspace_path), from_existing, workspace_root)
+                    click.echo(f"✓ Cloned from: {from_existing}")
+                
+                # Show workspace structure
+                click.echo("\nWorkspace structure:")
+                _show_workspace_structure(str(result.workspace_path))
+                
+                # Show next steps
+                click.echo("\nNext steps:")
+                click.echo(f"  1. cd {result.workspace_path}")
+                click.echo(f"  2. cursus workspace validate --workspace-path {result.workspace_path}")
+                click.echo(f"  3. Start developing your components!")
+            else:
+                click.echo(f"❌ {result.message}", err=True)
+                sys.exit(1)
         
     except Exception as e:
         click.echo(f"Error creating workspace: {str(e)}", err=True)
@@ -110,159 +133,148 @@ def list_workspaces(active: bool, format: str, workspace_root: str, show_compone
     """List available developer workspaces."""
     
     try:
-        # Initialize workspace manager
-        manager = WorkspaceManager(workspace_root=workspace_root)
+        # Initialize Phase 4 WorkspaceAPI
+        api = WorkspaceAPI(base_path=workspace_root)
         
-        # Discover workspaces
-        workspace_info = manager.discover_workspaces()
+        # Get workspace list using unified API
+        workspaces = api.list_workspaces()
         
-        if not workspace_info.workspaces:
+        if not workspaces:
             click.echo("No workspaces found")
             return
         
         # Filter active workspaces if requested
-        workspaces = workspace_info.workspaces
         if active:
             # Consider workspace active if it has recent activity
-            workspaces = {k: v for k, v in workspaces.items() 
-                         if _is_workspace_active(v)}
+            workspaces = [ws for ws in workspaces if _is_workspace_active_v4(ws)]
         
         if format == 'json':
+            workspace_data = [ws.model_dump() for ws in workspaces]
             output = {
                 "workspace_root": workspace_root,
                 "total_workspaces": len(workspaces),
-                "workspaces": {}
+                "workspaces": workspace_data
             }
-            
-            for dev_id, workspace in workspaces.items():
-                workspace_data = {
-                    "developer_id": dev_id,
-                    "path": workspace.workspace_path,
-                    "valid": workspace.is_valid,
-                    "last_modified": workspace.last_modified.isoformat() if workspace.last_modified else None
-                }
-                
-                if show_components:
-                    # Get component counts
-                    registry = WorkspaceComponentRegistry(workspace_root)
-                    components = registry.discover_components(dev_id)
-                    workspace_data["components"] = {
-                        "builders": len(components.get('builders', {})),
-                        "configs": len(components.get('configs', {})),
-                        "contracts": len(components.get('contracts', {})),
-                        "specs": len(components.get('specs', {})),
-                        "scripts": len(components.get('scripts', {}))
-                    }
-                
-                output["workspaces"][dev_id] = workspace_data
-            
-            click.echo(json.dumps(output, indent=2))
+            click.echo(json.dumps(output, indent=2, default=str))
         else:
             # Table format
             click.echo(f"Developer Workspaces in: {workspace_root}")
             click.echo("-" * 80)
             
             if show_components:
-                header = f"{'Developer':<15} {'Status':<8} {'Path':<30} {'Components':<15} {'Modified':<20}"
+                header = f"{'Developer':<15} {'Status':<10} {'Path':<30} {'Components':<15} {'Modified':<20}"
             else:
-                header = f"{'Developer':<15} {'Status':<8} {'Path':<35} {'Modified':<20}"
+                header = f"{'Developer':<15} {'Status':<10} {'Path':<35} {'Modified':<20}"
             
             click.echo(header)
             click.echo("-" * len(header))
             
-            for dev_id, workspace in workspaces.items():
-                status = "✓ Valid" if workspace.is_valid else "✗ Invalid"
-                status_color = 'green' if workspace.is_valid else 'red'
+            for ws in workspaces:
+                # Status with icon
+                status_icons = {
+                    WorkspaceStatus.HEALTHY: "✅ Healthy",
+                    WorkspaceStatus.WARNING: "⚠️  Warning",
+                    WorkspaceStatus.ERROR: "❌ Error",
+                    WorkspaceStatus.UNKNOWN: "❓ Unknown"
+                }
+                status_display = status_icons.get(ws.status, "❓ Unknown")
+                status_color = {
+                    WorkspaceStatus.HEALTHY: 'green',
+                    WorkspaceStatus.WARNING: 'yellow',
+                    WorkspaceStatus.ERROR: 'red',
+                    WorkspaceStatus.UNKNOWN: 'white'
+                }.get(ws.status, 'white')
                 
-                path_display = workspace.workspace_path
+                path_display = str(ws.path)
                 if len(path_display) > 30:
                     path_display = "..." + path_display[-27:]
                 
-                modified = workspace.last_modified.strftime("%Y-%m-%d %H:%M") if workspace.last_modified else "Unknown"
+                modified = ws.last_modified or "Unknown"
                 
                 if show_components:
-                    # Get component counts
+                    # Get component counts (legacy support)
                     try:
                         registry = WorkspaceComponentRegistry(workspace_root)
-                        components = registry.discover_components(dev_id)
+                        components = registry.discover_components(ws.developer_id)
                         component_count = sum(len(components.get(t, {})) for t in ['builders', 'configs', 'contracts', 'specs', 'scripts'])
                         component_display = f"{component_count} total"
                     except:
                         component_display = "Unknown"
                     
-                    click.echo(f"{dev_id:<15} ", nl=False)
-                    click.secho(f"{status:<8}", fg=status_color, nl=False)
+                    click.echo(f"{ws.developer_id:<15} ", nl=False)
+                    click.secho(f"{status_display:<10}", fg=status_color, nl=False)
                     click.echo(f" {path_display:<30} {component_display:<15} {modified:<20}")
                 else:
-                    click.echo(f"{dev_id:<15} ", nl=False)
-                    click.secho(f"{status:<8}", fg=status_color, nl=False)
+                    click.echo(f"{ws.developer_id:<15} ", nl=False)
+                    click.secho(f"{status_display:<10}", fg=status_color, nl=False)
                     click.echo(f" {path_display:<35} {modified:<20}")
         
     except Exception as e:
         click.echo(f"Error listing workspaces: {str(e)}", err=True)
         sys.exit(1)
 
-@workspace_cli.command('validate-isolation')
-@click.option('--workspace', help='Specific workspace to validate')
+@workspace_cli.command('validate')
+@click.option('--workspace-path', type=click.Path(exists=True), help='Specific workspace path to validate')
 @click.option('--workspace-root', default='./developer_workspaces',
               help='Root directory for workspaces')
 @click.option('--report', help='Output report path')
 @click.option('--format', type=click.Choice(['text', 'json']), default='text',
               help='Output format')
 @click.option('--strict', is_flag=True, help='Enable strict validation mode')
-def validate_isolation(workspace: str, workspace_root: str, report: str, 
+def validate_workspace(workspace_path: str, workspace_root: str, report: str, 
                       format: str, strict: bool):
-    """Validate workspace isolation boundaries."""
+    """Validate workspace isolation and compliance."""
     
     try:
-        click.echo("Validating workspace isolation...")
+        click.echo("Validating workspace...")
         click.echo(f"Workspace root: {workspace_root}")
-        if workspace:
-            click.echo(f"Target workspace: {workspace}")
+        if workspace_path:
+            click.echo(f"Target workspace: {workspace_path}")
         click.echo("-" * 50)
         
-        # Initialize validation core
-        validator = UnifiedValidationCore()
+        # Initialize Phase 4 WorkspaceAPI
+        api = WorkspaceAPI(base_path=workspace_root)
         
-        # Prepare validation configuration
-        validation_config = {
-            'workspace_root': workspace_root,
-            'target_workspace': workspace,
-            'strict_mode': strict,
-            'validation_levels': ['script_contract', 'contract_spec', 'spec_dependency', 'builder_config']
-        }
-        
-        # Run validation
-        result = validator.validate_workspaces(**validation_config)
-        
-        # Display results
-        if format == 'json':
-            result_dict = result.model_dump()
-            click.echo(json.dumps(result_dict, indent=2))
+        if workspace_path:
+            # Validate specific workspace
+            result = api.validate_workspace(workspace_path)
+            
+            if format == 'json':
+                click.echo(result.model_dump_json(indent=2))
+            else:
+                _display_validation_result_v4(result)
         else:
-            _display_validation_result(result)
+            # Get system health (validates all workspaces)
+            health_result = api.get_system_health()
+            
+            if format == 'json':
+                click.echo(health_result.model_dump_json(indent=2))
+            else:
+                _display_health_result_v4(health_result)
         
         # Save report if requested
         if report:
             report_path = Path(report)
             report_path.parent.mkdir(parents=True, exist_ok=True)
             
+            result_to_save = result if workspace_path else health_result
+            
             with open(report_path, 'w') as f:
                 if report_path.suffix.lower() == '.json':
-                    json.dump(result.model_dump(), f, indent=2)
+                    json.dump(result_to_save.model_dump(), f, indent=2, default=str)
                 else:
-                    yaml.dump(result.model_dump(), f, default_flow_style=False)
+                    yaml.dump(result_to_save.model_dump(), f, default_flow_style=False)
             
             click.echo(f"\n✓ Report saved: {report_path}")
         
         # Exit with appropriate code
-        if result.summary.success_rate >= 0.8:
-            sys.exit(0)
+        if workspace_path:
+            sys.exit(0 if result.status in [WorkspaceStatus.HEALTHY, WorkspaceStatus.WARNING] else 1)
         else:
-            sys.exit(1)
+            sys.exit(0 if health_result.overall_status in [WorkspaceStatus.HEALTHY, WorkspaceStatus.WARNING] else 1)
         
     except Exception as e:
-        click.echo(f"Error validating isolation: {str(e)}", err=True)
+        click.echo(f"Error validating workspace: {str(e)}", err=True)
         sys.exit(1)
 
 @workspace_cli.command('info')
@@ -500,6 +512,120 @@ def remove_workspace(developer_name: str, workspace_root: str, backup: bool):
         click.echo(f"Error removing workspace: {str(e)}", err=True)
         sys.exit(1)
 
+@workspace_cli.command('promote')
+@click.argument('workspace_path', type=click.Path(exists=True))
+@click.option('--target', default='staging', help='Target environment')
+@click.option('--workspace-root', default='./developer_workspaces',
+              help='Root directory for workspaces')
+@click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
+def promote_artifacts(workspace_path: str, target: str, workspace_root: str, output: str):
+    """Promote artifacts from workspace to target environment.
+    
+    WORKSPACE_PATH: Path to the workspace to promote from
+    """
+    
+    try:
+        click.echo(f"Promoting artifacts from workspace: {workspace_path}")
+        click.echo(f"Target environment: {target}")
+        click.echo("-" * 50)
+        
+        # Initialize Phase 4 WorkspaceAPI
+        api = WorkspaceAPI(base_path=workspace_root)
+        
+        # Promote artifacts
+        result = api.promote_workspace_artifacts(workspace_path, target)
+        
+        if output == 'json':
+            click.echo(result.model_dump_json(indent=2))
+        else:
+            if result.success:
+                click.echo(f"✅ {result.message}")
+                if result.artifacts_promoted:
+                    click.echo("Promoted artifacts:")
+                    for artifact in result.artifacts_promoted:
+                        click.echo(f"  - {artifact}")
+            else:
+                click.echo(f"❌ {result.message}", err=True)
+                sys.exit(1)
+        
+    except Exception as e:
+        click.echo(f"Error promoting artifacts: {str(e)}", err=True)
+        sys.exit(1)
+
+@workspace_cli.command('health')
+@click.option('--workspace-root', default='./developer_workspaces',
+              help='Root directory for workspaces')
+@click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
+def system_health(workspace_root: str, output: str):
+    """Get overall system health report."""
+    
+    try:
+        click.echo("Getting system health report...")
+        click.echo(f"Workspace root: {workspace_root}")
+        click.echo("-" * 50)
+        
+        # Initialize Phase 4 WorkspaceAPI
+        api = WorkspaceAPI(base_path=workspace_root)
+        
+        # Get system health
+        result = api.get_system_health()
+        
+        if output == 'json':
+            click.echo(result.model_dump_json(indent=2))
+        else:
+            _display_health_result_v4(result)
+        
+    except Exception as e:
+        click.echo(f"Error getting system health: {str(e)}", err=True)
+        sys.exit(1)
+
+@workspace_cli.command('cleanup')
+@click.option('--inactive-days', type=int, default=30, help='Days of inactivity before cleanup')
+@click.option('--dry-run/--no-dry-run', default=True, help='Show what would be cleaned without doing it')
+@click.option('--workspace-root', default='./developer_workspaces',
+              help='Root directory for workspaces')
+@click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
+def cleanup_workspaces(inactive_days: int, dry_run: bool, workspace_root: str, output: str):
+    """Clean up inactive workspaces."""
+    
+    try:
+        click.echo(f"Cleaning up inactive workspaces...")
+        click.echo(f"Inactive threshold: {inactive_days} days")
+        click.echo(f"Dry run: {dry_run}")
+        click.echo(f"Workspace root: {workspace_root}")
+        click.echo("-" * 50)
+        
+        # Initialize Phase 4 WorkspaceAPI
+        api = WorkspaceAPI(base_path=workspace_root)
+        
+        # Cleanup workspaces
+        result = api.cleanup_workspaces(inactive_days=inactive_days, dry_run=dry_run)
+        
+        if output == 'json':
+            click.echo(result.model_dump_json(indent=2))
+        else:
+            if result.success:
+                action = "Would clean" if dry_run else "Cleaned"
+                click.echo(f"✅ {action} {len(result.cleaned_workspaces)} workspace(s)")
+                
+                if result.cleaned_workspaces:
+                    click.echo(f"{action} workspaces:")
+                    for ws_path in result.cleaned_workspaces:
+                        click.echo(f"  - {ws_path}")
+                
+                if dry_run and result.cleaned_workspaces:
+                    click.echo("\nRun with --no-dry-run to actually perform cleanup.")
+            else:
+                click.echo("❌ Cleanup failed", err=True)
+                if result.errors:
+                    for error in result.errors:
+                        click.echo(f"  - {error}", err=True)
+                sys.exit(1)
+        
+    except Exception as e:
+        click.echo(f"Error cleaning up workspaces: {str(e)}", err=True)
+        sys.exit(1)
+
 def _apply_workspace_template(workspace_path: str, template: str):
     """Apply a workspace template to the created workspace."""
     
@@ -686,6 +812,84 @@ def _is_workspace_active(workspace_info) -> bool:
     from datetime import datetime, timedelta
     threshold = datetime.now() - timedelta(days=30)
     return workspace_info.last_modified > threshold
+
+def _is_workspace_active_v4(workspace_info) -> bool:
+    """Check if a Phase 4 WorkspaceInfo is considered active based on recent activity."""
+    
+    if not workspace_info.last_modified:
+        return False
+    
+    # Consider active if modified within last 30 days
+    from datetime import datetime, timedelta
+    try:
+        # Parse ISO format timestamp
+        from datetime import datetime
+        last_mod = datetime.fromisoformat(workspace_info.last_modified.replace('Z', '+00:00'))
+        threshold = datetime.now() - timedelta(days=30)
+        return last_mod > threshold
+    except:
+        # If parsing fails, consider it inactive
+        return False
+
+def _display_validation_result_v4(result):
+    """Display Phase 4 ValidationReport in text format."""
+    
+    status_icons = {
+        WorkspaceStatus.HEALTHY: "✅",
+        WorkspaceStatus.WARNING: "⚠️",
+        WorkspaceStatus.ERROR: "❌",
+        WorkspaceStatus.UNKNOWN: "❓"
+    }
+    
+    icon = status_icons.get(result.status, "❓")
+    click.echo(f"{icon} Workspace: {result.workspace_path}")
+    click.echo(f"Status: {result.status.value}")
+    
+    if result.issues:
+        click.echo("\nIssues:")
+        for issue in result.issues:
+            click.echo(f"  - {issue}")
+    
+    if result.recommendations:
+        click.echo("\nRecommendations:")
+        for rec in result.recommendations:
+            click.echo(f"  - {rec}")
+    
+    if result.isolation_violations:
+        click.echo(f"\nIsolation violations: {len(result.isolation_violations)}")
+
+def _display_health_result_v4(result):
+    """Display Phase 4 HealthReport in text format."""
+    
+    status_icons = {
+        WorkspaceStatus.HEALTHY: "✅",
+        WorkspaceStatus.WARNING: "⚠️",
+        WorkspaceStatus.ERROR: "❌",
+        WorkspaceStatus.UNKNOWN: "❓"
+    }
+    
+    icon = status_icons.get(result.overall_status, "❓")
+    click.echo(f"{icon} Overall System Status: {result.overall_status.value}")
+    
+    if result.workspace_reports:
+        click.echo(f"\nWorkspace Summary:")
+        healthy = sum(1 for r in result.workspace_reports if r.status == WorkspaceStatus.HEALTHY)
+        warning = sum(1 for r in result.workspace_reports if r.status == WorkspaceStatus.WARNING)
+        error = sum(1 for r in result.workspace_reports if r.status == WorkspaceStatus.ERROR)
+        
+        click.echo(f"  ✅ Healthy: {healthy}")
+        click.echo(f"  ⚠️  Warning: {warning}")
+        click.echo(f"  ❌ Error: {error}")
+    
+    if result.system_issues:
+        click.echo("\nSystem Issues:")
+        for issue in result.system_issues:
+            click.echo(f"  - {issue}")
+    
+    if result.recommendations:
+        click.echo("\nRecommendations:")
+        for rec in result.recommendations:
+            click.echo(f"  - {rec}")
 
 def _display_validation_result(result):
     """Display validation result in text format."""

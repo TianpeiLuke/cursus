@@ -20,7 +20,7 @@ from typing import Optional, Dict, Any, List, Union, Set
 import logging
 from collections import defaultdict
 
-from ...validation.workspace import DeveloperWorkspaceFileResolver, WorkspaceModuleLoader
+from ..validation import DeveloperWorkspaceFileResolver, WorkspaceModuleLoader
 
 logger = logging.getLogger(__name__)
 

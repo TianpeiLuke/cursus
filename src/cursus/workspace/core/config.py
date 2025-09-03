@@ -11,7 +11,7 @@ import json
 import yaml
 from pathlib import Path
 
-from ..base import BasePipelineConfig
+from ...core.base import BasePipelineConfig
 
 
 class WorkspaceStepDefinition(BaseModel):

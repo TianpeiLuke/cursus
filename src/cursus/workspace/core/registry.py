@@ -11,8 +11,7 @@ import logging
 import time
 from collections import defaultdict
 
-from ...validation.workspace import WorkspaceManager, DeveloperWorkspaceFileResolver, WorkspaceModuleLoader
-from ..base import StepBuilderBase, BasePipelineConfig
+from ...core.base import StepBuilderBase, BasePipelineConfig
 from ...steps.registry.builder_registry import StepBuilderRegistry
 from ...steps.registry.step_names import STEP_NAMES
 
@@ -37,13 +36,12 @@ class WorkspaceComponentRegistry:
             self.discovery_manager = discovery_manager
             self.workspace_manager = discovery_manager.workspace_manager
         else:
-            # Runtime import to avoid circular imports
-            from .manager import WorkspaceManager
-            self.workspace_manager = WorkspaceManager(workspace_root)
-            self.discovery_manager = self.workspace_manager.discovery_manager
+            # Create minimal workspace manager to avoid circular imports
+            self.workspace_manager = None
+            self.discovery_manager = None
         
         # Enhanced caching using discovery manager
-        self._component_cache = self.discovery_manager.get_component_cache()
+        self._component_cache = self.discovery_manager.get_component_cache() if self.discovery_manager else {}
         self._builder_cache: Dict[str, Type[StepBuilderBase]] = {}
         self._config_cache: Dict[str, Type[BasePipelineConfig]] = {}
         self._cache_timestamp: Dict[str, float] = {}
@@ -146,8 +144,8 @@ class WorkspaceComponentRegistry:
         except Exception as e:
             logger.error(f"Error discovering components for developer {developer_id}: {e}")
     
-    def _discover_builders(self, developer_id: str, file_resolver: DeveloperWorkspaceFileResolver, 
-                          module_loader: WorkspaceModuleLoader, components: Dict[str, Any]) -> None:
+    def _discover_builders(self, developer_id: str, file_resolver: Any, 
+                          module_loader: Any, components: Dict[str, Any]) -> None:
         """Discover builder components."""
         try:
             builder_modules = module_loader.discover_workspace_modules('builders')
@@ -171,8 +169,8 @@ class WorkspaceComponentRegistry:
         except Exception as e:
             logger.warning(f"Error discovering builders for {developer_id}: {e}")
     
-    def _discover_configs(self, developer_id: str, file_resolver: DeveloperWorkspaceFileResolver,
-                         module_loader: WorkspaceModuleLoader, components: Dict[str, Any]) -> None:
+    def _discover_configs(self, developer_id: str, file_resolver: Any,
+                         module_loader: Any, components: Dict[str, Any]) -> None:
         """Discover config components."""
         try:
             config_modules = module_loader.discover_workspace_modules('configs')
@@ -194,7 +192,7 @@ class WorkspaceComponentRegistry:
         except Exception as e:
             logger.warning(f"Error discovering configs for {developer_id}: {e}")
     
-    def _discover_contracts(self, developer_id: str, file_resolver: DeveloperWorkspaceFileResolver,
+    def _discover_contracts(self, developer_id: str, file_resolver: Any,
                            components: Dict[str, Any]) -> None:
         """Discover contract components."""
         try:
@@ -214,7 +212,7 @@ class WorkspaceComponentRegistry:
         except Exception as e:
             logger.warning(f"Error discovering contracts for {developer_id}: {e}")
     
-    def _discover_specs(self, developer_id: str, file_resolver: DeveloperWorkspaceFileResolver,
+    def _discover_specs(self, developer_id: str, file_resolver: Any,
                        components: Dict[str, Any]) -> None:
         """Discover spec components."""
         try:
@@ -234,7 +232,7 @@ class WorkspaceComponentRegistry:
         except Exception as e:
             logger.warning(f"Error discovering specs for {developer_id}: {e}")
     
-    def _discover_scripts(self, developer_id: str, file_resolver: DeveloperWorkspaceFileResolver,
+    def _discover_scripts(self, developer_id: str, file_resolver: Any,
                          components: Dict[str, Any]) -> None:
         """Discover script components."""
         try:

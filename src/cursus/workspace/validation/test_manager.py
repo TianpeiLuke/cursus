@@ -29,11 +29,10 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field, ConfigDict
 
 # PHASE 3 INTEGRATION: Import Phase 1 consolidated workspace system
-from ...core.workspace.manager import WorkspaceManager, WorkspaceContext, WorkspaceConfig
-from ...core.workspace.lifecycle import WorkspaceLifecycleManager
-from ...core.workspace.isolation import WorkspaceIsolationManager
-from ...core.workspace.discovery import WorkspaceDiscoveryManager
-from ...core.workspace.integration import WorkspaceIntegrationManager
+from ..core.manager import WorkspaceManager, WorkspaceContext, WorkspaceConfig
+from ..core.lifecycle import WorkspaceLifecycleManager
+from ..core.isolation import WorkspaceIsolationManager
+from ..core.integration import WorkspaceIntegrationManager
 
 # Import existing validation workspace components for integration
 from .workspace_file_resolver import DeveloperWorkspaceFileResolver
@@ -129,7 +128,7 @@ class WorkspaceTestManager:
             self.core_workspace_manager = workspace_manager
         else:
             # Create consolidated workspace manager if not provided
-            from ...core.workspace.manager import WorkspaceManager
+            from ..core.manager import WorkspaceManager
             self.core_workspace_manager = WorkspaceManager()
         
         # Access Phase 1 specialized managers

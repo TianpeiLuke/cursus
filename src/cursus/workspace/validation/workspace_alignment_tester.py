@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Optional, Dict, List, Any, Union
 import logging
 
-from ..alignment.unified_alignment_tester import UnifiedAlignmentTester
+from ...validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 from .workspace_file_resolver import DeveloperWorkspaceFileResolver
 from .workspace_module_loader import WorkspaceModuleLoader
 from .workspace_manager import WorkspaceManager

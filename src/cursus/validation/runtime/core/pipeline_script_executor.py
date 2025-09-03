@@ -12,7 +12,7 @@ from ..utils.error_handling import ScriptExecutionError, ScriptImportError, Conf
 from .script_import_manager import ScriptImportManager
 from .data_flow_manager import DataFlowManager
 from ..data.local_data_manager import LocalDataManager
-from ....core.workspace.registry import WorkspaceComponentRegistry
+from ....workspace.core import WorkspaceComponentRegistry
 
 logger = logging.getLogger(__name__)
 

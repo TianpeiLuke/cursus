@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Union
 import logging
 
-from ..alignment.file_resolver import FlexibleFileResolver
+from ...validation.alignment.file_resolver import FlexibleFileResolver
 
 
 logger = logging.getLogger(__name__)

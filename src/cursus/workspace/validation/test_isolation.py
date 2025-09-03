@@ -32,8 +32,8 @@ import shutil
 from pydantic import BaseModel, Field, ConfigDict
 
 # PHASE 3 INTEGRATION: Import Phase 1 consolidated isolation system
-from ...core.workspace.isolation import WorkspaceIsolationManager, IsolationViolation
-from ...core.workspace.manager import WorkspaceManager
+from ..core.isolation import WorkspaceIsolationManager, IsolationViolation
+from ..core.manager import WorkspaceManager
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class TestWorkspaceIsolationManager:
             self.workspace_manager = workspace_manager
             self.core_isolation_manager = workspace_manager.isolation_manager
         else:
-            from ...core.workspace.manager import WorkspaceManager
+            from ..core.manager import WorkspaceManager
             self.workspace_manager = WorkspaceManager()
             self.core_isolation_manager = self.workspace_manager.isolation_manager
         

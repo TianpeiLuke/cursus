@@ -30,11 +30,11 @@ from collections import defaultdict
 from pydantic import BaseModel, Field, ConfigDict
 
 # PHASE 3 INTEGRATION: Import Phase 1 consolidated workspace system
-from ...core.workspace.manager import WorkspaceManager, WorkspaceContext
-from ...core.workspace.discovery import WorkspaceDiscoveryManager
-from ...core.workspace.integration import WorkspaceIntegrationManager
-from ...core.workspace.assembler import WorkspacePipelineAssembler
-from ...core.workspace.config import WorkspacePipelineDefinition
+from ..core.manager import WorkspaceManager, WorkspaceContext
+# Removed circular import - will access discovery manager through workspace manager
+from ..core.integration import WorkspaceIntegrationManager
+from ..core.assembler import WorkspacePipelineAssembler
+from ..core.config import WorkspacePipelineDefinition
 
 # Import Phase 3 test management components
 from .test_manager import WorkspaceTestManager
@@ -150,7 +150,7 @@ class CrossWorkspaceValidator:
         if workspace_manager:
             self.workspace_manager = workspace_manager
         else:
-            from ...core.workspace.manager import WorkspaceManager
+            from ..core.manager import WorkspaceManager
             self.workspace_manager = WorkspaceManager()
         
         # Access Phase 1 specialized managers

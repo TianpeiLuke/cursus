@@ -13,8 +13,8 @@ import time
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 
-from ..assembler.pipeline_assembler import PipelineAssembler
-from ..base import BasePipelineConfig, StepBuilderBase
+from ...core.assembler.pipeline_assembler import PipelineAssembler
+from ...core.base import BasePipelineConfig, StepBuilderBase
 from ...api.dag.base_dag import PipelineDAG
 from ...api.dag.workspace_dag import WorkspaceAwareDAG
 from .config import WorkspacePipelineDefinition, WorkspaceStepDefinition

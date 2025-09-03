@@ -25,7 +25,7 @@ except ImportError:
 from ..core.pipeline_script_executor import PipelineScriptExecutor
 from ..integration.s3_data_downloader import S3DataDownloader
 from ..integration.real_data_tester import RealDataTester
-from ....core.workspace.registry import WorkspaceComponentRegistry
+from ....workspace.core import WorkspaceComponentRegistry
 
 
 class NotebookSession(BaseModel):
