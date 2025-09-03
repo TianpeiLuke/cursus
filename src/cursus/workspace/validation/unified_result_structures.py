@@ -21,8 +21,227 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Union
 from pydantic import BaseModel, Field, ConfigDict
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+class BaseValidationResult(BaseModel):
+    """
+    Base class for all validation results with common fields.
+    PHASE 1 CONSOLIDATION: Reduces duplication across result structures.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+        validate_assignment=True,
+        str_strip_whitespace=True
+    )
+    
+    success: bool = Field(
+        description="Whether the validation was successful"
+    )
+    timestamp: datetime = Field(
+        default_factory=datetime.now,
+        description="When the validation was performed"
+    )
+    workspace_path: Path = Field(
+        description="Path to the workspace that was validated"
+    )
+    messages: List[str] = Field(
+        default_factory=list,
+        description="Informational messages from validation"
+    )
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Warning messages from validation"
+    )
+    errors: List[str] = Field(
+        default_factory=list,
+        description="Error messages from validation"
+    )
+    
+    @property
+    def has_warnings(self) -> bool:
+        """Check if there are any warnings."""
+        return len(self.warnings) > 0
+    
+    @property
+    def has_errors(self) -> bool:
+        """Check if there are any errors."""
+        return len(self.errors) > 0
+    
+    @property
+    def message_count(self) -> int:
+        """Get total number of messages."""
+        return len(self.messages) + len(self.warnings) + len(self.errors)
+    
+    def add_message(self, message: str) -> None:
+        """Add an informational message."""
+        if message not in self.messages:
+            self.messages.append(message)
+    
+    def add_warning(self, warning: str) -> None:
+        """Add a warning message."""
+        if warning not in self.warnings:
+            self.warnings.append(warning)
+    
+    def add_error(self, error: str) -> None:
+        """Add an error message."""
+        if error not in self.errors:
+            self.errors.append(error)
+
+
+class WorkspaceValidationResult(BaseValidationResult):
+    """
+    Validation result for workspace validation.
+    PHASE 1 CONSOLIDATION: Inherits common fields from BaseValidationResult.
+    """
+    violations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of validation violations found"
+    )
+    isolation_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Workspace isolation score (0.0 to 1.0)"
+    )
+    
+    @property
+    def has_violations(self) -> bool:
+        """Check if there are any violations."""
+        return len(self.violations) > 0
+    
+    @property
+    def violation_count(self) -> int:
+        """Get number of violations."""
+        return len(self.violations)
+    
+    def add_violation(self, violation: Dict[str, Any]) -> None:
+        """Add a validation violation."""
+        self.violations.append(violation)
+
+
+class AlignmentTestResult(BaseValidationResult):
+    """
+    Result for alignment testing validation.
+    PHASE 1 CONSOLIDATION: Inherits common fields from BaseValidationResult.
+    """
+    alignment_score: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Alignment score (0.0 to 1.0)"
+    )
+    failed_checks: List[str] = Field(
+        default_factory=list,
+        description="List of failed alignment checks"
+    )
+    level_results: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Results for each validation level"
+    )
+    
+    @property
+    def has_failed_checks(self) -> bool:
+        """Check if there are any failed checks."""
+        return len(self.failed_checks) > 0
+    
+    @property
+    def failed_check_count(self) -> int:
+        """Get number of failed checks."""
+        return len(self.failed_checks)
+    
+    def add_failed_check(self, check: str) -> None:
+        """Add a failed check."""
+        if check not in self.failed_checks:
+            self.failed_checks.append(check)
+
+
+class BuilderTestResult(BaseValidationResult):
+    """
+    Result for builder testing validation.
+    PHASE 1 CONSOLIDATION: Inherits common fields from BaseValidationResult.
+    """
+    test_results: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Detailed test results for each builder"
+    )
+    total_builders: int = Field(
+        default=0,
+        ge=0,
+        description="Total number of builders tested"
+    )
+    successful_tests: int = Field(
+        default=0,
+        ge=0,
+        description="Number of successful builder tests"
+    )
+    failed_tests: int = Field(
+        default=0,
+        ge=0,
+        description="Number of failed builder tests"
+    )
+    
+    @property
+    def success_rate(self) -> float:
+        """Calculate success rate for builder tests."""
+        if self.total_builders == 0:
+            return 0.0
+        return self.successful_tests / self.total_builders
+    
+    @property
+    def has_test_failures(self) -> bool:
+        """Check if there are any test failures."""
+        return self.failed_tests > 0
+    
+    def update_counts(self) -> None:
+        """Update test counts based on test results."""
+        if self.test_results:
+            self.total_builders = len(self.test_results)
+            self.successful_tests = sum(
+                1 for result in self.test_results.values()
+                if result.get('success', False)
+            )
+            self.failed_tests = self.total_builders - self.successful_tests
+
+
+class IsolationTestResult(BaseValidationResult):
+    """
+    Result for isolation testing validation.
+    PHASE 1 CONSOLIDATION: Inherits common fields from BaseValidationResult.
+    """
+    isolation_violations: List[str] = Field(
+        default_factory=list,
+        description="List of isolation violations"
+    )
+    boundary_checks: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Results of boundary checks"
+    )
+    recommendations: List[str] = Field(
+        default_factory=list,
+        description="Recommendations for fixing issues"
+    )
+    
+    @property
+    def is_isolated(self) -> bool:
+        """Check if workspace is properly isolated."""
+        return len(self.isolation_violations) == 0
+    
+    @property
+    def violation_count(self) -> int:
+        """Get number of isolation violations."""
+        return len(self.isolation_violations)
+    
+    def add_violation(self, violation: str) -> None:
+        """Add an isolation violation."""
+        if violation not in self.isolation_violations:
+            self.isolation_violations.append(violation)
+    
+    def add_recommendation(self, recommendation: str) -> None:
+        """Add a recommendation."""
+        if recommendation not in self.recommendations:
+            self.recommendations.append(recommendation)
 
 
 class ValidationSummary(BaseModel):
@@ -73,7 +292,7 @@ class ValidationSummary(BaseModel):
         return self.failed_workspaces > 0
 
 
-class WorkspaceValidationResult(BaseModel):
+class WorkspaceValidationEntry(BaseModel):
     """
     Validation result for a single workspace entry.
     
@@ -207,7 +426,7 @@ class UnifiedValidationResult(BaseModel):
     )
     
     # Workspace results
-    workspaces: Dict[str, WorkspaceValidationResult] = Field(
+    workspaces: Dict[str, WorkspaceValidationEntry] = Field(
         description="Validation results for each workspace"
     )
     
@@ -362,7 +581,7 @@ class ValidationResultBuilder:
         self.workspace_root = workspace_root
         self.workspace_type = workspace_type
         self.start_time = start_time or datetime.now()
-        self.workspaces: Dict[str, WorkspaceValidationResult] = {}
+        self.workspaces: Dict[str, WorkspaceValidationEntry] = {}
         self.recommendations: List[str] = []
         self.global_error: Optional[str] = None
     
@@ -387,7 +606,7 @@ class ValidationResultBuilder:
         if validation_start_time and validation_end_time:
             validation_duration = (validation_end_time - validation_start_time).total_seconds()
         
-        workspace_result = WorkspaceValidationResult(
+        workspace_result = WorkspaceValidationEntry(
             workspace_id=workspace_id,
             workspace_type=workspace_type,
             workspace_path=workspace_path,

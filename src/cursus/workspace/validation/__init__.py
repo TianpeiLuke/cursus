@@ -18,10 +18,22 @@ from .workspace_module_loader import WorkspaceModuleLoader
 from .workspace_orchestrator import WorkspaceValidationOrchestrator
 from .workspace_type_detector import WorkspaceTypeDetector
 from .unified_report_generator import UnifiedReportGenerator
-from .unified_result_structures import ValidationSummary, WorkspaceValidationResult, UnifiedValidationResult, ValidationResultBuilder
+from .unified_result_structures import (
+    BaseValidationResult,
+    WorkspaceValidationResult, 
+    AlignmentTestResult,
+    BuilderTestResult,
+    IsolationTestResult,
+    ValidationSummary,
+    UnifiedValidationResult,
+    ValidationResultBuilder,
+    create_single_workspace_result,
+    create_empty_result
+)
 from .legacy_adapters import LegacyWorkspaceValidationAdapter
 
 __all__ = [
+    # PHASE 1 CONSOLIDATED: Enhanced WorkspaceTestManager with orchestration
     'WorkspaceTestManager',
     'CrossWorkspaceValidator',
     'WorkspaceTestIsolationManager',
@@ -31,12 +43,20 @@ __all__ = [
     'DeveloperWorkspaceFileResolver',
     'WorkspaceManager',
     'WorkspaceModuleLoader',
-    'WorkspaceValidationOrchestrator',
+    # NOTE: WorkspaceValidationOrchestrator functionality consolidated into WorkspaceTestManager
+    'WorkspaceValidationOrchestrator',  # Kept for backward compatibility
     'WorkspaceTypeDetector',
     'UnifiedReportGenerator',
-    'ValidationSummary',
+    # PHASE 1 CONSOLIDATED: Enhanced result structures with inheritance
+    'BaseValidationResult',
     'WorkspaceValidationResult',
+    'AlignmentTestResult',
+    'BuilderTestResult',
+    'IsolationTestResult',
+    'ValidationSummary',
     'UnifiedValidationResult',
     'ValidationResultBuilder',
+    'create_single_workspace_result',
+    'create_empty_result',
     'LegacyWorkspaceValidationAdapter'
 ]

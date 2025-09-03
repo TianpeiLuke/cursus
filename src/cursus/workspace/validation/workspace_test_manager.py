@@ -92,7 +92,7 @@ class WorkspaceTestConfig(BaseModel):
 
 class WorkspaceTestManager:
     """
-    Consolidated test workspace manager integrating with Phase 1 foundation.
+    Enhanced test workspace manager with consolidated orchestration.
     
     This manager consolidates test-related workspace functionality and integrates
     with the Phase 1 consolidated workspace management system. It provides:
@@ -100,6 +100,7 @@ class WorkspaceTestManager:
     - Test workspace isolation validation
     - Integration with existing validation frameworks
     - Coordination with Phase 1 specialized managers
+    - ENHANCED: Consolidated validation orchestration (from WorkspaceValidationOrchestrator)
     
     Phase 3 Integration Features:
     - Uses Phase 1 WorkspaceManager as foundation
@@ -107,21 +108,26 @@ class WorkspaceTestManager:
     - Uses WorkspaceIsolationManager for test environment validation
     - Integrates with WorkspaceDiscoveryManager for test component discovery
     - Coordinates with WorkspaceIntegrationManager for test staging
+    - CONSOLIDATED: Validation orchestration logic from separate orchestrator
     """
     
     def __init__(
         self,
         workspace_manager: Optional[WorkspaceManager] = None,
         test_config: Optional[WorkspaceTestConfig] = None,
-        auto_discover: bool = True
+        auto_discover: bool = True,
+        enable_parallel_validation: bool = True,
+        max_workers: Optional[int] = None
     ):
         """
-        Initialize consolidated test workspace manager.
+        Initialize consolidated test workspace manager with orchestration.
         
         Args:
             workspace_manager: Phase 1 consolidated workspace manager (creates if None)
             test_config: Test-specific configuration
             auto_discover: Whether to automatically discover test workspaces
+            enable_parallel_validation: Whether to enable parallel validation (consolidated from orchestrator)
+            max_workers: Maximum number of parallel workers (consolidated from orchestrator)
         """
         # PHASE 3 INTEGRATION: Use consolidated workspace manager from Phase 1
         if workspace_manager:
@@ -140,9 +146,18 @@ class WorkspaceTestManager:
         # Test-specific configuration
         self.test_config = test_config
         
+        # CONSOLIDATED: Validation orchestration configuration (from WorkspaceValidationOrchestrator)
+        self.enable_parallel_validation = enable_parallel_validation
+        self.max_workers = max_workers or min(4, (os.cpu_count() or 1) + 1)
+        
         # Test environment tracking
         self.active_test_environments: Dict[str, WorkspaceTestEnvironment] = {}
         self.test_isolation_validator = WorkspaceIsolationValidator(self)
+        
+        # CONSOLIDATED: Validation orchestration components (from WorkspaceValidationOrchestrator)
+        self.validators = [
+            # Will be initialized lazily when needed
+        ]
         
         # Integration with existing validation workspace functionality
         self._integrate_existing_validation_components()
@@ -150,7 +165,7 @@ class WorkspaceTestManager:
         if auto_discover and self.core_workspace_manager.workspace_root:
             self.discover_test_workspaces()
         
-        logger.info("Initialized consolidated test workspace manager with Phase 1 integration")
+        logger.info("Initialized consolidated test workspace manager with Phase 1 integration and validation orchestration")
     
     def _integrate_existing_validation_components(self) -> None:
         """Integrate with existing validation workspace components."""
@@ -630,6 +645,292 @@ class WorkspaceTestManager:
         except Exception as e:
             logger.error(f"Failed to get test statistics: {e}")
             return {"error": str(e)}
+    
+    # CONSOLIDATED: Validation Orchestration Methods (from WorkspaceValidationOrchestrator)
+    
+    def validate_workspace(
+        self,
+        developer_id: str,
+        validation_levels: Optional[List[str]] = None,
+        target_scripts: Optional[List[str]] = None,
+        target_builders: Optional[List[str]] = None,
+        validation_config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Run comprehensive validation for a single workspace.
+        CONSOLIDATED from WorkspaceValidationOrchestrator.
+        
+        Args:
+            developer_id: Developer workspace to validate
+            validation_levels: Validation types to run ('alignment', 'builders', 'all')
+            target_scripts: Specific scripts to validate (None for all)
+            target_builders: Specific builders to validate (None for all)
+            validation_config: Additional validation configuration
+            
+        Returns:
+            Comprehensive validation results for the workspace
+        """
+        logger.info(f"Starting comprehensive validation for developer '{developer_id}'")
+        
+        # Default validation levels
+        if validation_levels is None:
+            validation_levels = ['alignment', 'builders']
+        
+        # Default validation config
+        if validation_config is None:
+            validation_config = {}
+        
+        validation_start_time = datetime.now()
+        
+        try:
+            # Validate developer exists using Phase 1 discovery manager
+            available_developers = self.discovery_manager.list_available_developers()
+            if developer_id not in available_developers:
+                raise ValueError(f"Developer workspace not found: {developer_id}")
+            
+            # Initialize validation results
+            validation_results = {
+                'developer_id': developer_id,
+                'workspace_root': str(self.core_workspace_manager.workspace_root),
+                'validation_start_time': validation_start_time.isoformat(),
+                'validation_levels': validation_levels,
+                'success': True,
+                'results': {},
+                'summary': {},
+                'recommendations': []
+            }
+            
+            # Run alignment validation if requested
+            if 'alignment' in validation_levels or 'all' in validation_levels:
+                logger.info(f"Running alignment validation for developer '{developer_id}'")
+                alignment_results = self._run_alignment_validation(
+                    developer_id, target_scripts, validation_config
+                )
+                validation_results['results']['alignment'] = alignment_results
+                
+                # Check if alignment validation has any failures
+                if self._has_validation_failures(alignment_results):
+                    validation_results['success'] = False
+            
+            # Run builder validation if requested
+            if 'builders' in validation_levels or 'all' in validation_levels:
+                logger.info(f"Running builder validation for developer '{developer_id}'")
+                builder_results = self._run_builder_validation(
+                    developer_id, target_builders, validation_config
+                )
+                validation_results['results']['builders'] = builder_results
+                
+                # Check if builder validation has any failures
+                if self._has_validation_failures(builder_results):
+                    validation_results['success'] = False
+            
+            # Generate validation summary
+            validation_results['summary'] = self._generate_validation_summary(
+                validation_results['results']
+            )
+            
+            # Generate recommendations
+            validation_results['recommendations'] = self._generate_validation_recommendations(
+                validation_results['results']
+            )
+            
+            # Calculate validation duration
+            validation_end_time = datetime.now()
+            validation_results['validation_end_time'] = validation_end_time.isoformat()
+            validation_results['validation_duration_seconds'] = (
+                validation_end_time - validation_start_time
+            ).total_seconds()
+            
+            logger.info(f"Completed comprehensive validation for developer '{developer_id}': "
+                       f"{'SUCCESS' if validation_results['success'] else 'FAILED'}")
+            
+            return validation_results
+            
+        except Exception as e:
+            logger.error(f"Comprehensive validation failed for developer '{developer_id}': {e}")
+            validation_end_time = datetime.now()
+            
+            return {
+                'developer_id': developer_id,
+                'workspace_root': str(self.core_workspace_manager.workspace_root),
+                'validation_start_time': validation_start_time.isoformat(),
+                'validation_end_time': validation_end_time.isoformat(),
+                'validation_duration_seconds': (validation_end_time - validation_start_time).total_seconds(),
+                'validation_levels': validation_levels,
+                'success': False,
+                'error': str(e),
+                'results': {},
+                'summary': {'error': 'Validation failed to complete'},
+                'recommendations': ['Fix validation setup issues before retrying']
+            }
+    
+    def _run_alignment_validation(
+        self,
+        developer_id: str,
+        target_scripts: Optional[List[str]],
+        validation_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Run alignment validation for a specific workspace."""
+        try:
+            # Import alignment tester lazily to avoid circular imports
+            from .workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
+            
+            # Create alignment tester instance
+            alignment_tester = WorkspaceUnifiedAlignmentTester(
+                workspace_root=self.core_workspace_manager.workspace_root,
+                developer_id=developer_id,
+                **validation_config.get('alignment', {})
+            )
+            
+            # Run workspace validation
+            alignment_results = alignment_tester.run_workspace_validation(
+                target_scripts=target_scripts,
+                skip_levels=validation_config.get('skip_levels'),
+                workspace_context=validation_config.get('workspace_context')
+            )
+            
+            return alignment_results
+            
+        except Exception as e:
+            logger.error(f"Alignment validation failed for developer '{developer_id}': {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'developer_id': developer_id,
+                'validation_type': 'alignment'
+            }
+    
+    def _run_builder_validation(
+        self,
+        developer_id: str,
+        target_builders: Optional[List[str]],
+        validation_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Run builder validation for a specific workspace."""
+        try:
+            # Import builder tester lazily to avoid circular imports
+            from .workspace_builder_test import WorkspaceUniversalStepBuilderTest
+            
+            # Create builder tester instance
+            builder_tester = WorkspaceUniversalStepBuilderTest(
+                workspace_root=self.core_workspace_manager.workspace_root,
+                developer_id=developer_id,
+                builder_file_path=""  # Will be set as needed
+            )
+            
+            # Run workspace builder test
+            builder_results = builder_tester.run_workspace_builder_test()
+            
+            # Filter results if specific builders were requested
+            if target_builders and 'results' in builder_results:
+                filtered_results = {
+                    builder_name: result
+                    for builder_name, result in builder_results['results'].items()
+                    if builder_name in target_builders
+                }
+                builder_results['results'] = filtered_results
+                builder_results['tested_builders'] = len(filtered_results)
+                
+                # Recalculate success counts
+                successful_tests = sum(
+                    1 for result in filtered_results.values()
+                    if result.get('success', False)
+                )
+                builder_results['successful_tests'] = successful_tests
+                builder_results['failed_tests'] = len(filtered_results) - successful_tests
+            
+            return builder_results
+            
+        except Exception as e:
+            logger.error(f"Builder validation failed for developer '{developer_id}': {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'developer_id': developer_id,
+                'validation_type': 'builders'
+            }
+    
+    def _has_validation_failures(self, validation_results: Dict[str, Any]) -> bool:
+        """Check if validation results contain any failures."""
+        if not validation_results:
+            return True  # No results means failure
+        
+        # Check for explicit success flag
+        if 'success' in validation_results:
+            return not validation_results['success']
+        
+        # Check for errors
+        if 'error' in validation_results:
+            return True
+        
+        # Check nested results for failures
+        for developer_id, developer_results in validation_results.items():
+            if isinstance(developer_results, dict):
+                for level_name, level_result in developer_results.items():
+                    if isinstance(level_result, dict):
+                        if not level_result.get('passed', True):
+                            return True
+        
+        return False
+    
+    def _generate_validation_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate summary for single workspace validation."""
+        summary = {
+            'validation_types_run': list(results.keys()),
+            'overall_success': all(result.get('success', False) for result in results.values()),
+            'details': {}
+        }
+        
+        # Summarize alignment results
+        if 'alignment' in results:
+            alignment_result = results['alignment']
+            summary['details']['alignment'] = {
+                'success': alignment_result.get('success', False),
+                'scripts_validated': len(alignment_result.get('results', {})),
+                'cross_workspace_validation': 'cross_workspace_validation' in alignment_result
+            }
+        
+        # Summarize builder results
+        if 'builders' in results:
+            builder_result = results['builders']
+            summary['details']['builders'] = {
+                'success': builder_result.get('success', False),
+                'total_builders': builder_result.get('total_builders', 0),
+                'successful_tests': builder_result.get('successful_tests', 0),
+                'failed_tests': builder_result.get('failed_tests', 0)
+            }
+        
+        return summary
+    
+    def _generate_validation_recommendations(self, results: Dict[str, Any]) -> List[str]:
+        """Generate recommendations for single workspace validation."""
+        recommendations = []
+        
+        try:
+            # Alignment recommendations
+            if 'alignment' in results:
+                alignment_result = results['alignment']
+                if 'cross_workspace_validation' in alignment_result:
+                    cross_workspace = alignment_result['cross_workspace_validation']
+                    if 'recommendations' in cross_workspace:
+                        recommendations.extend(cross_workspace['recommendations'])
+            
+            # Builder recommendations
+            if 'builders' in results:
+                builder_result = results['builders']
+                if 'summary' in builder_result and 'recommendations' in builder_result['summary']:
+                    recommendations.extend(builder_result['summary']['recommendations'])
+            
+            # General recommendations
+            if not recommendations:
+                recommendations.append("Workspace validation completed successfully. "
+                                     "Consider adding more workspace-specific components for better isolation.")
+        
+        except Exception as e:
+            logger.warning(f"Failed to generate validation recommendations: {e}")
+            recommendations.append("Unable to generate specific recommendations due to analysis error.")
+        
+        return recommendations
 
 
 class WorkspaceIsolationValidator:

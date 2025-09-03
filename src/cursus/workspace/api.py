@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from pydantic.types import DirectoryPath
 
 from .core import WorkspaceManager, WorkspaceDiscoveryManager, WorkspaceIsolationManager, WorkspaceLifecycleManager, WorkspaceIntegrationManager
-from .validation import CrossWorkspaceValidator
+from .validation import CrossWorkspaceValidator, WorkspaceTestManager
 
 
 class WorkspaceStatus(Enum):

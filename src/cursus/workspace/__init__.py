@@ -49,14 +49,8 @@ from .templates import (
     TemplateManager
 )
 
-# Note: utils.py functions not yet implemented
-# from .utils import (
-#     discover_workspace_components,
-#     validate_workspace_structure,
-#     get_workspace_statistics,
-#     export_workspace_configuration,
-#     import_workspace_configuration
-# )
+# PHASE 1 CLEANUP: Removed commented-out utility imports
+# These functions will be implemented when needed or removed if not required
 
 # Layer imports for consolidated architecture (Phase 5)
 from . import core
@@ -79,12 +73,8 @@ __all__ = [
     "WorkspaceTemplate",
     "TemplateManager",
     
-    # Note: Utility functions not yet implemented
-    # "discover_workspace_components",
-    # "validate_workspace_structure", 
-    # "get_workspace_statistics",
-    # "export_workspace_configuration",
-    # "import_workspace_configuration",
+    # PHASE 1 CLEANUP: Removed commented-out utility function exports
+    # These will be added when implemented or removed if not needed
     
     # Consolidated layers (Phase 5)
     "core",
