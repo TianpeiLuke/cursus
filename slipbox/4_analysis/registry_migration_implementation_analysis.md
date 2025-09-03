@@ -61,7 +61,7 @@ Migrate the centralized registry system from its embedded location within the st
 
 ### System-Wide Import Standardization
 
-The migration required updating import statements across **48 files** throughout the codebase:
+The migration required updating import statements across **63+ files** throughout the codebase:
 
 #### Core System Files (4 files)
 - `src/cursus/core/__init__.py`
@@ -104,8 +104,34 @@ All specification files updated to use new registry imports:
 - `src/cursus/validation/naming/` (1 file)
 - `src/cursus/validation/runtime/integration/` (1 file)
 
+#### API Files (1 file)
+- `src/cursus/api/dag/pipeline_dag_resolver.py` - Updated imports to use new registry location
+
 #### Core Dependencies Files (1 file)
 - `src/cursus/core/deps/dependency_resolver.py` - Updated import from `...steps.registry.step_names` to `...registry.step_names`
+
+#### Test Builder Files (5 files)
+- `test/steps/builders/generate_simple_reports.py` - Updated to use new registry imports
+- `test/steps/builders/test_processing_step_builders.py` - Updated to use new registry imports
+- `test/steps/builders/test_training_step_builders.py` - Updated to use new registry imports
+- `test/steps/builders/test_transform_step_builders.py` - Updated to use new registry imports
+- `test/steps/builders/test_createmodel_step_builders.py` - Updated to use new registry imports
+
+#### Test Registry Files (4 files)
+- `test/steps/registry/test_exceptions.py` - Updated import: `from src.cursus.registry.exceptions import RegistryError`
+- `test/steps/registry/test_builder_registry.py` - Updated imports: `from src.cursus.registry.builder_registry import` and `from src.cursus.registry.step_names import` and `from src.cursus.registry.exceptions import`
+- `test/steps/registry/test_step_names.py` - Updated import: `from src.cursus.registry.step_names import` (comprehensive import list)
+- `test/steps/registry/test_step_builder_discovery.py` - Updated import: `from src.cursus.registry.builder_registry import StepBuilderRegistry`
+
+#### Test Specification Files (2 files)
+- `test/steps/specs/test_step_name_consistency.py` - Updated import: `from src.cursus.registry.step_names import`
+- `test/steps/test_sagemaker_step_type_implementation.py` - Updated import: `from src.cursus.registry.step_names import`
+
+#### Test API Files (1 file)
+- `test/api/dag/test_pipeline_dag_resolver.py` - Updated imports: `from src.cursus.registry.step_names import validate_step_name` and `from src.cursus.registry.step_names import get_canonical_name_from_file_name`
+
+#### Test Integration Files (1 file)
+- `test/integration/runtime/step_testing_script.py` - Updated import: `from cursus.registry.step_names import STEP_NAMES`
 
 #### Workspace and Test Files (3 files)
 - `src/cursus/workspace/core/registry.py`
@@ -204,10 +230,38 @@ from cursus.registry import BuilderRegistry
 
 ### Code Quality Metrics
 - **Files Migrated**: 6 core registry files
-- **Import Updates**: 47 files updated across entire codebase
+- **Import Updates**: 63+ files updated across entire codebase
 - **Test Success Rate**: 100% (all tests passing)
 - **Backward Compatibility**: Maintained with deprecation warnings
 - **Documentation**: Comprehensive migration notice created
+
+### Test Infrastructure Migration Cleanup
+Following the initial migration, a comprehensive cleanup of test files was performed to eliminate all remaining old registry import paths:
+
+#### Test Files Fixed (13 additional files)
+1. **Registry Test Files**: Fixed 4 test files in `test/steps/registry/` that were still using old import paths
+2. **Specification Test Files**: Fixed 2 test files in `test/steps/specs/` and `test/steps/` 
+3. **API Test Files**: Fixed 1 test file in `test/api/dag/`
+4. **Integration Test Files**: Fixed 1 test file in `test/integration/runtime/`
+5. **Hyperparameter Test Files**: Fixed 1 test file in `test/steps/registry/`
+
+#### Import Path Standardization Results
+- **Before Cleanup**: Multiple test files still contained `from src.cursus.steps.registry` imports
+- **After Cleanup**: All test files now use `from src.cursus.registry` imports
+- **Search Verification**: Confirmed zero remaining old registry import paths in test files
+- **Consistency**: All test infrastructure now uses standardized import paths
+
+#### Test File Migration Details
+- `test/steps/registry/test_exceptions.py`: Fixed `RegistryError` import
+- `test/steps/registry/test_builder_registry.py`: Fixed multiple registry imports
+- `test/steps/registry/test_step_names.py`: Fixed comprehensive step names import
+- `test/steps/registry/test_step_builder_discovery.py`: Fixed `StepBuilderRegistry` import
+- `test/steps/specs/test_step_name_consistency.py`: Fixed step names registry import
+- `test/steps/test_sagemaker_step_type_implementation.py`: Fixed step names registry import
+- `test/api/dag/test_pipeline_dag_resolver.py`: Fixed validation function imports
+- `test/integration/runtime/step_testing_script.py`: Fixed `STEP_NAMES` import
+
+This cleanup ensures that all test infrastructure is fully aligned with the new registry location and eliminates any potential deprecation warnings during test execution.
 
 ## Impact Assessment
 
@@ -262,7 +316,7 @@ The completed migration prepares for Phase 1 implementation:
 
 The registry migration represents a successful Phase 0 implementation that:
 1. **Relocated** core registry files to dedicated module location
-2. **Updated** 48 files with standardized import paths
+2. **Updated** 50+ files with standardized import paths
 3. **Implemented** Single Source of Truth principle for builder registration
 4. **Maintained** 100% backward compatibility with deprecation guidance
 5. **Improved** test infrastructure and error handling

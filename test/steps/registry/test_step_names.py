@@ -1,7 +1,7 @@
 """Unit tests for the step names registry module."""
 
 import unittest
-from src.cursus.steps.registry.step_names import (
+from src.cursus.registry.step_names import (
     STEP_NAMES,
     CONFIG_STEP_REGISTRY,
     BUILDER_STEP_NAMES,

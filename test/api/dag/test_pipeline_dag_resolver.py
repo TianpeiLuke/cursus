@@ -339,7 +339,7 @@ class TestPipelineDAGResolverEnhanced:
 
     def test_registry_step_name_validation(self):
         """Test that the registry step names used in tests are valid."""
-        from src.cursus.steps.registry.step_names import validate_step_name
+        from src.cursus.registry.step_names import validate_step_name
         
         # Verify all step names used in our DAGs are valid registry names
         for step_name in self.dag.nodes:
@@ -350,7 +350,7 @@ class TestPipelineDAGResolverEnhanced:
 
     def test_canonical_name_conversion_for_registry_steps(self):
         """Test canonical name conversion for registry steps."""
-        from src.cursus.steps.registry.step_names import get_canonical_name_from_file_name
+        from src.cursus.registry.step_names import get_canonical_name_from_file_name
         
         # Test conversion of various step name formats to canonical names
         test_cases = [
@@ -371,7 +371,7 @@ class TestPipelineDAGResolverEnhanced:
 
     def test_spec_type_retrieval_for_registry_steps(self):
         """Test spec type retrieval for registry steps."""
-        from src.cursus.steps.registry.step_names import get_spec_step_type
+        from src.cursus.registry.step_names import get_spec_step_type
         
         # Test spec type retrieval for our DAG steps
         for step_name in self.dag.nodes:

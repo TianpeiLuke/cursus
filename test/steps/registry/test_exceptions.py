@@ -1,7 +1,7 @@
 """Unit tests for the registry exceptions module."""
 
 import unittest
-from src.cursus.steps.registry.exceptions import RegistryError
+from src.cursus.registry.exceptions import RegistryError
 
 
 class TestRegistryExceptions(unittest.TestCase):

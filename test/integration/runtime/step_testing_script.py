@@ -28,7 +28,7 @@ def setup_environment():
     try:
         from cursus.validation.runtime.jupyter.notebook_interface import NotebookInterface
         from cursus.validation.runtime.core.data_flow_manager import DataFlowManager
-        from cursus.steps.registry.step_names import STEP_NAMES
+        from cursus.registry.step_names import STEP_NAMES
         print("✓ Successfully imported Cursus components")
         cursus_available = True
     except ImportError as e:

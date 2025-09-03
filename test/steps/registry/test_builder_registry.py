@@ -3,9 +3,9 @@
 import unittest
 import logging
 
-from src.cursus.steps.registry.builder_registry import StepBuilderRegistry, get_global_registry
-from src.cursus.steps.registry.step_names import STEP_NAMES, get_all_step_names
-from src.cursus.steps.registry.exceptions import RegistryError
+from src.cursus.registry.builder_registry import StepBuilderRegistry, get_global_registry
+from src.cursus.registry.step_names import STEP_NAMES, get_all_step_names
+from src.cursus.registry.exceptions import RegistryError
 
 
 class TestBuilderRegistry(unittest.TestCase):

@@ -184,7 +184,7 @@ class TestStepBuilderDiscovery(unittest.TestCase):
         """Test importing the real registry with a more robust approach."""
         try:
             # Try to import the real builder registry
-            from src.cursus.steps.registry.builder_registry import StepBuilderRegistry
+            from src.cursus.registry.builder_registry import StepBuilderRegistry
             real_registry = StepBuilderRegistry()
             
             # If we succeed, run some basic tests

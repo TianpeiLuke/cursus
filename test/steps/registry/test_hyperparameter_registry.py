@@ -1,7 +1,7 @@
 """Unit tests for the hyperparameter registry module."""
 
 import unittest
-from src.cursus.steps.registry.hyperparameter_registry import (
+from src.cursus.registry.hyperparameter_registry import (
     HYPERPARAMETER_REGISTRY,
     get_all_hyperparameter_classes,
     get_hyperparameter_class_by_model_type,

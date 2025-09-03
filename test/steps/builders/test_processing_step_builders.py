@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 from cursus.core.base.builder_base import StepBuilderBase
-from cursus.steps.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
+from cursus.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
 
 
 class ProcessingStepBuilderTestSuite:

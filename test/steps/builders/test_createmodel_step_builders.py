@@ -24,7 +24,7 @@ from cursus.validation.builders.registry_discovery import (
     load_builder_class
 )
 from cursus.core.base.builder_base import StepBuilderBase
-from cursus.steps.registry.step_names import STEP_NAMES
+from cursus.registry.step_names import STEP_NAMES
 
 
 class CreateModelStepBuilderTestSuite:
