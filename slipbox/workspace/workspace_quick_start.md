@@ -62,7 +62,7 @@ Now let's create a developer workspace with a standard template:
 # Create a new developer workspace
 result = api.setup_developer_workspace(
     developer_id="your_name",  # Replace with your actual name/ID
-    template="standard_ml_pipeline"
+    template="ml_pipeline"
 )
 
 # Check if the workspace was created successfully

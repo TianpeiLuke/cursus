@@ -55,14 +55,14 @@ def setup_developer_workspace(
     self,
     developer_id: str,
     template: Optional[str] = None,
-    force_recreate: bool = False
+    config_overrides: Optional[Dict[str, Any]] = None
 ) -> WorkspaceSetupResult
 ```
 
 **Parameters:**
 - `developer_id`: Unique identifier for the developer
-- `template`: Optional template name (e.g., "standard_ml_pipeline")
-- `force_recreate`: Whether to recreate existing workspace
+- `template`: Optional template name (e.g., "ml_pipeline", "basic", "data_processing")
+- `config_overrides`: Optional configuration overrides
 
 **Returns:** `WorkspaceSetupResult` with success status and details
 
@@ -71,7 +71,7 @@ def setup_developer_workspace(
 api = WorkspaceAPI()
 result = api.setup_developer_workspace(
     developer_id="john_doe",
-    template="standard_ml_pipeline"
+    template="ml_pipeline"
 )
 
 if result.success:
