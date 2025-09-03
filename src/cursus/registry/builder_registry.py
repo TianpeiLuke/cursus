@@ -16,8 +16,8 @@ import sys
 
 # Use TYPE_CHECKING to break circular import
 if TYPE_CHECKING:
-    from ...core.base.builder_base import StepBuilderBase
-    from ...core.base.config_base import BasePipelineConfig
+    from ..core.base.builder_base import StepBuilderBase
+    from ..core.base.config_base import BasePipelineConfig
 else:
     # Placeholder for runtime
     StepBuilderBase = Any
@@ -140,14 +140,14 @@ class StepBuilderRegistry:
         
         # Get the package containing step builders
         try:
-            from ..builders import __path__ as builders_path
+            from ..steps.builders import __path__ as builders_path
             
             # Walk through all modules in the package
             for _, module_name, _ in pkgutil.iter_modules(builders_path):
                 if module_name.startswith('builder_'):
                     try:
                         # Import the module
-                        module = importlib.import_module(f"..builders.{module_name}", __name__)
+                        module = importlib.import_module(f"..steps.builders.{module_name}", __name__)
                         
                         # Find builder classes in the module
                         # Import at runtime to avoid circular import
@@ -189,41 +189,42 @@ class StepBuilderRegistry:
     @classmethod
     def _register_known_builders(cls, builder_map: Dict[str, Type[StepBuilderBase]]) -> None:
         """Register known step builders to ensure backward compatibility."""
-        # Import all step builders
-        from ..builders.builder_cradle_data_loading_step import CradleDataLoadingStepBuilder
-        from ..builders.builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-        from ..builders.builder_xgboost_training_step import XGBoostTrainingStepBuilder
-        from ..builders.builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
-        from ..builders.builder_package_step import PackageStepBuilder
-        from ..builders.builder_payload_step import PayloadStepBuilder
-        from ..builders.builder_registration_step import RegistrationStepBuilder
-        from ..builders.builder_pytorch_training_step import PyTorchTrainingStepBuilder
-        from ..builders.builder_pytorch_model_step import PyTorchModelStepBuilder
-        from ..builders.builder_xgboost_model_step import XGBoostModelStepBuilder
-        from ..builders.builder_batch_transform_step import BatchTransformStepBuilder
-        from ..builders.builder_model_calibration_step import ModelCalibrationStepBuilder
-        from ..builders.builder_currency_conversion_step import CurrencyConversionStepBuilder
-        from ..builders.builder_risk_table_mapping_step import RiskTableMappingStepBuilder
-        from ..builders.builder_dummy_training_step import DummyTrainingStepBuilder
+        # Import step builders with error handling for missing dependencies
+        # Use STEP_NAMES registry as Single Source of Truth
+        known_builders = {}
         
-        # Core registry with canonical step names from the central step registry
-        known_builders = {
-            "CradleDataLoading": CradleDataLoadingStepBuilder,
-            "TabularPreprocessing": TabularPreprocessingStepBuilder,
-            "XGBoostTraining": XGBoostTrainingStepBuilder,
-            "XGBoostModelEval": XGBoostModelEvalStepBuilder, 
-            "Package": PackageStepBuilder,  # Using standardized name
-            "Payload": PayloadStepBuilder,   # Using standardized name 
-            "Registration": RegistrationStepBuilder,  # Using standardized name
-            "PyTorchTraining": PyTorchTrainingStepBuilder,  # Canonical: PyTorchTraining (not PytorchTraining)
-            "PyTorchModel": PyTorchModelStepBuilder,  # Canonical: PyTorchModel (not PytorchModel)
-            "XGBoostModel": XGBoostModelStepBuilder,
-            "BatchTransform": BatchTransformStepBuilder,
-            "ModelCalibration": ModelCalibrationStepBuilder,
-            "CurrencyConversion": CurrencyConversionStepBuilder,
-            "RiskTableMapping": RiskTableMappingStepBuilder,
-            "DummyTraining": DummyTrainingStepBuilder,
-        }
+        # Generate builder imports from STEP_NAMES registry (Single Source of Truth)
+        for step_name, step_info in STEP_NAMES.items():
+            # Skip Base and Processing steps as they're not concrete builders
+            if step_name in ("Base", "Processing"):
+                continue
+                
+            builder_class_name = step_info["builder_step_name"]
+            
+            # Convert step name to module name using consistent naming convention
+            # e.g., "CradleDataLoading" -> "builder_cradle_data_loading_step"
+            # e.g., "XGBoostTraining" -> "builder_xgboost_training_step"
+            module_name_parts = []
+            
+            # Split camelCase into words
+            import re
+            words = re.findall(r'[A-Z][a-z]*', step_name)
+            
+            # Convert to snake_case
+            snake_case_parts = [word.lower() for word in words]
+            module_name = f"builder_{'_'.join(snake_case_parts)}_step"
+            module_path = f"..steps.builders.{module_name}"
+            
+            # Import each builder with error handling
+            try:
+                module = importlib.import_module(module_path, __name__)
+                builder_class = getattr(module, builder_class_name)
+                known_builders[step_name] = builder_class
+                registry_logger.debug(f"Successfully imported builder: {step_name} -> {builder_class_name}")
+            except (ImportError, AttributeError) as e:
+                registry_logger.warning(f"Could not import builder {step_name} from {module_path}: {e}")
+                # Continue with other builders even if one fails
+                continue
         
         # Add any known builders that weren't discovered automatically
         for step_type, builder_class in known_builders.items():

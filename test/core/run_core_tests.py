@@ -676,8 +676,8 @@ class CoreTestRunner:
             analysis_dict['untested_functions'] = list(analysis_dict['untested_functions'])
             report_data['coverage_analysis'][component] = analysis_dict
         
-        # Save to file in test directory
-        report_file = self.project_root / 'test' / 'core_test_report.json'
+        # Save to file in test/core directory
+        report_file = self.project_root / 'test' / 'core' / 'core_test_report.json'
         try:
             with open(report_file, 'w', encoding='utf-8') as f:
                 json.dump(report_data, f, indent=2, default=str)
