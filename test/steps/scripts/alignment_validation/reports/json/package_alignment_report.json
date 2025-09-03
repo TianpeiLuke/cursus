@@ -31,10 +31,10 @@
         "details": {
           "script": "package",
           "testability_parameters": [
-            "output_paths",
-            "environ_vars",
             "input_paths",
-            "job_args"
+            "job_args",
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -58,9 +58,9 @@
             "job_args"
           ],
           "used_parameters": [
-            "output_paths",
+            "input_paths",
             "environ_vars",
-            "input_paths"
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -265,8 +265,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ScriptStep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ScriptStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -315,8 +315,8 @@
             "dependency_type": "custom_property",
             "required": false,
             "compatible_sources": [
-              "ScriptStep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "ScriptStep"
             ],
             "data_type": "String",
             "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -364,8 +364,8 @@
               "dependency_type": "custom_property",
               "required": false,
               "compatible_sources": [
-                "ScriptStep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "ScriptStep"
               ],
               "data_type": "String",
               "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -410,8 +410,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ScriptStep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "ScriptStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -479,8 +479,8 @@
           "dependency_type": "custom_property",
           "required": false,
           "compatible_sources": [
-            "ScriptStep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "ScriptStep"
           ],
           "data_type": "String",
           "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
@@ -516,10 +516,10 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "region",
             "role",
             "service_name",
             "bucket",
+            "region",
             "pipeline_version",
             "author"
           ],
@@ -985,7 +985,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
     "contract_mapping": "package_contract",
-    "validation_timestamp": "2025-09-02T00:13:54.201626",
+    "validation_timestamp": "2025-09-03T12:55:33.488287",
     "validator_version": "1.0.0"
   }
 }

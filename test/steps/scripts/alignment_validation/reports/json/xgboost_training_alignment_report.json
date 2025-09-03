@@ -33,10 +33,10 @@
         "details": {
           "script": "xgboost_training",
           "testability_parameters": [
-            "output_paths",
-            "environ_vars",
             "input_paths",
-            "job_args"
+            "job_args",
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -53,16 +53,16 @@
       {
         "severity": "WARNING",
         "category": "testability_parameter_usage",
-        "message": "Testability parameters defined but not used: environ_vars, job_args",
+        "message": "Testability parameters defined but not used: job_args, environ_vars",
         "details": {
           "script": "xgboost_training",
           "unused_parameters": [
-            "environ_vars",
-            "job_args"
+            "job_args",
+            "environ_vars"
           ],
           "used_parameters": [
-            "output_paths",
-            "input_paths"
+            "input_paths",
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -336,8 +336,8 @@
             "compatible_sources": [
               "RiskTableMapping",
               "TabularPreprocessing",
-              "DataLoad",
-              "ProcessingStep"
+              "ProcessingStep",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -347,8 +347,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -384,8 +384,8 @@
             "compatible_sources": [
               "RiskTableMapping",
               "TabularPreprocessing",
-              "DataLoad",
-              "ProcessingStep"
+              "ProcessingStep",
+              "DataLoad"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -395,8 +395,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -431,8 +431,8 @@
               "compatible_sources": [
                 "RiskTableMapping",
                 "TabularPreprocessing",
-                "DataLoad",
-                "ProcessingStep"
+                "ProcessingStep",
+                "DataLoad"
               ],
               "data_type": "S3Uri",
               "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -442,8 +442,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "HyperparameterPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -475,8 +475,8 @@
           "compatible_sources": [
             "RiskTableMapping",
             "TabularPreprocessing",
-            "DataLoad",
-            "ProcessingStep"
+            "ProcessingStep",
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -486,8 +486,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -595,8 +595,8 @@
           "compatible_sources": [
             "RiskTableMapping",
             "TabularPreprocessing",
-            "DataLoad",
-            "ProcessingStep"
+            "ProcessingStep",
+            "DataLoad"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -606,8 +606,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Hyperparameters configuration file (optional, can be generated internally)"
@@ -640,14 +640,14 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "hyperparameters",
-            "region",
-            "training_entry_point",
             "role",
             "service_name",
             "bucket",
+            "region",
             "pipeline_version",
-            "author"
+            "training_entry_point",
+            "author",
+            "hyperparameters"
           ],
           "builder": "xgboost_training"
         },
@@ -1218,7 +1218,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py",
     "contract_mapping": "xgboost_training_contract",
-    "validation_timestamp": "2025-09-02T00:13:54.386612",
+    "validation_timestamp": "2025-09-03T12:55:33.604648",
     "validator_version": "1.0.0"
   }
 }

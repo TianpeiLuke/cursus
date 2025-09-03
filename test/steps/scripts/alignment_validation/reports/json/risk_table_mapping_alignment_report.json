@@ -22,10 +22,10 @@
         "details": {
           "script": "risk_table_mapping",
           "testability_parameters": [
-            "output_paths",
-            "environ_vars",
             "input_paths",
-            "job_args"
+            "job_args",
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -49,9 +49,9 @@
             "environ_vars"
           ],
           "used_parameters": [
-            "output_paths",
             "input_paths",
-            "job_args"
+            "job_args",
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -345,13 +345,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
+              "HyperparameterPrep",
               "ProcessingStep",
               "ConfigurationStep",
+              "ModelTraining",
               "DataQuality",
-              "HyperparameterPrep"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -404,13 +404,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
+              "HyperparameterPrep",
               "ProcessingStep",
               "ConfigurationStep",
+              "ModelTraining",
               "DataQuality",
-              "HyperparameterPrep"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -463,13 +463,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
+              "HyperparameterPrep",
               "ProcessingStep",
               "ConfigurationStep",
+              "ModelTraining",
               "DataQuality",
-              "HyperparameterPrep"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -522,13 +522,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
+              "HyperparameterPrep",
               "ProcessingStep",
               "ConfigurationStep",
+              "ModelTraining",
               "DataQuality",
-              "HyperparameterPrep"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -584,13 +584,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ModelTraining",
               "FeatureEngineering",
-              "DataPrep",
+              "HyperparameterPrep",
               "ProcessingStep",
               "ConfigurationStep",
+              "ModelTraining",
               "DataQuality",
-              "HyperparameterPrep"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -645,13 +645,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ModelTraining",
                 "FeatureEngineering",
-                "DataPrep",
+                "HyperparameterPrep",
                 "ProcessingStep",
                 "ConfigurationStep",
+                "ModelTraining",
                 "DataQuality",
-                "HyperparameterPrep"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -705,13 +705,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ModelTraining",
                 "FeatureEngineering",
-                "DataPrep",
+                "HyperparameterPrep",
                 "ProcessingStep",
                 "ConfigurationStep",
+                "ModelTraining",
                 "DataQuality",
-                "HyperparameterPrep"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -764,13 +764,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ModelTraining",
                 "FeatureEngineering",
-                "DataPrep",
+                "HyperparameterPrep",
                 "ProcessingStep",
                 "ConfigurationStep",
+                "ModelTraining",
                 "DataQuality",
-                "HyperparameterPrep"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -823,13 +823,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ModelTraining",
                 "FeatureEngineering",
-                "DataPrep",
+                "HyperparameterPrep",
                 "ProcessingStep",
                 "ConfigurationStep",
+                "ModelTraining",
                 "DataQuality",
-                "HyperparameterPrep"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -880,13 +880,13 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ModelTraining",
             "FeatureEngineering",
-            "DataPrep",
+            "HyperparameterPrep",
             "ProcessingStep",
             "ConfigurationStep",
+            "ModelTraining",
             "DataQuality",
-            "HyperparameterPrep"
+            "DataPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -1031,13 +1031,13 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ModelTraining",
             "FeatureEngineering",
-            "DataPrep",
+            "HyperparameterPrep",
             "ProcessingStep",
             "ConfigurationStep",
+            "ModelTraining",
             "DataQuality",
-            "HyperparameterPrep"
+            "DataPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -1080,10 +1080,10 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "region",
             "role",
             "service_name",
             "bucket",
+            "region",
             "pipeline_version",
             "author"
           ],
@@ -1704,7 +1704,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-09-02T00:13:54.251245",
+    "validation_timestamp": "2025-09-03T12:55:33.533383",
     "validator_version": "1.0.0"
   }
 }

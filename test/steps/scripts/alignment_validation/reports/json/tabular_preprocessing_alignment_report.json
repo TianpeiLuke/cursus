@@ -22,10 +22,10 @@
         "details": {
           "script": "tabular_preprocessing",
           "testability_parameters": [
-            "output_paths",
-            "environ_vars",
             "input_paths",
-            "job_args"
+            "job_args",
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -773,11 +773,11 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "region",
-            "label_name",
             "role",
             "service_name",
+            "label_name",
             "bucket",
+            "region",
             "pipeline_version",
             "author"
           ],
@@ -1320,7 +1320,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
     "contract_mapping": "tabular_preprocessing_contract",
-    "validation_timestamp": "2025-09-02T00:13:54.333676",
+    "validation_timestamp": "2025-09-03T12:55:33.553391",
     "validator_version": "1.0.0"
   }
 }

@@ -10,10 +10,10 @@
         "details": {
           "script": "dummy_training",
           "testability_parameters": [
-            "output_paths",
-            "environ_vars",
             "input_paths",
-            "job_args"
+            "job_args",
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -30,16 +30,16 @@
       {
         "severity": "WARNING",
         "category": "testability_parameter_usage",
-        "message": "Testability parameters defined but not used: environ_vars, job_args",
+        "message": "Testability parameters defined but not used: job_args, environ_vars",
         "details": {
           "script": "dummy_training",
           "unused_parameters": [
-            "environ_vars",
-            "job_args"
+            "job_args",
+            "environ_vars"
           ],
           "used_parameters": [
-            "output_paths",
-            "input_paths"
+            "input_paths",
+            "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -221,9 +221,9 @@
             "required": false,
             "compatible_sources": [
               "TabularPreprocessing",
-              "XGBoostTraining",
               "ProcessingStep",
-              "PytorchTraining"
+              "PytorchTraining",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -233,8 +233,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -262,9 +262,9 @@
             "required": false,
             "compatible_sources": [
               "TabularPreprocessing",
-              "XGBoostTraining",
               "ProcessingStep",
-              "PytorchTraining"
+              "PytorchTraining",
+              "XGBoostTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -274,8 +274,8 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
+              "ProcessingStep",
+              "HyperparameterPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -302,9 +302,9 @@
               "required": false,
               "compatible_sources": [
                 "TabularPreprocessing",
-                "XGBoostTraining",
                 "ProcessingStep",
-                "PytorchTraining"
+                "PytorchTraining",
+                "XGBoostTraining"
               ],
               "data_type": "S3Uri",
               "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -314,8 +314,8 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "HyperparameterPrep",
-                "ProcessingStep"
+                "ProcessingStep",
+                "HyperparameterPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -339,9 +339,9 @@
           "required": false,
           "compatible_sources": [
             "TabularPreprocessing",
-            "XGBoostTraining",
             "ProcessingStep",
-            "PytorchTraining"
+            "PytorchTraining",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -351,8 +351,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -449,9 +449,9 @@
           "required": false,
           "compatible_sources": [
             "TabularPreprocessing",
-            "XGBoostTraining",
             "ProcessingStep",
-            "PytorchTraining"
+            "PytorchTraining",
+            "XGBoostTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -461,8 +461,8 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
+            "ProcessingStep",
+            "HyperparameterPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
@@ -488,10 +488,10 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "region",
             "role",
             "service_name",
             "bucket",
+            "region",
             "pipeline_version",
             "author"
           ],
@@ -1101,7 +1101,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-09-02T00:13:54.129399",
+    "validation_timestamp": "2025-09-03T12:55:33.433246",
     "validator_version": "1.0.0"
   }
 }

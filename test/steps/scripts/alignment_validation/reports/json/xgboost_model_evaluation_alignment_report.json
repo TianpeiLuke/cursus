@@ -22,10 +22,10 @@
         "details": {
           "script": "xgboost_model_evaluation",
           "testability_parameters": [
-            "output_paths",
-            "environ_vars",
             "input_paths",
-            "job_args"
+            "job_args",
+            "environ_vars",
+            "output_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -496,11 +496,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "DummyTraining",
+              "XGBoostTraining",
               "PyTorchModel",
               "PyTorchTraining",
-              "XGBoostTraining",
-              "XGBoostModel"
+              "XGBoostModel",
+              "DummyTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -547,11 +547,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "DummyTraining",
+              "XGBoostTraining",
               "PyTorchModel",
               "PyTorchTraining",
-              "XGBoostTraining",
-              "XGBoostModel"
+              "XGBoostModel",
+              "DummyTraining"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -597,11 +597,11 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "DummyTraining",
+                "XGBoostTraining",
                 "PyTorchModel",
                 "PyTorchTraining",
-                "XGBoostTraining",
-                "XGBoostModel"
+                "XGBoostModel",
+                "DummyTraining"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -644,11 +644,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "DummyTraining",
+            "XGBoostTraining",
             "PyTorchModel",
             "PyTorchTraining",
-            "XGBoostTraining",
-            "XGBoostModel"
+            "XGBoostModel",
+            "DummyTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -714,11 +714,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "DummyTraining",
+            "XGBoostTraining",
             "PyTorchModel",
             "PyTorchTraining",
-            "XGBoostTraining",
-            "XGBoostModel"
+            "XGBoostModel",
+            "DummyTraining"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -764,13 +764,13 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "hyperparameters",
-            "region",
             "role",
             "service_name",
             "bucket",
+            "region",
             "pipeline_version",
-            "author"
+            "author",
+            "hyperparameters"
           ],
           "builder": "xgboost_model_evaluation"
         },
@@ -1278,7 +1278,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_evaluation.py",
     "contract_mapping": "xgboost_model_eval_contract",
-    "validation_timestamp": "2025-09-02T00:13:54.357625",
+    "validation_timestamp": "2025-09-03T12:55:33.577073",
     "validator_version": "1.0.0"
   }
 }
