@@ -88,14 +88,14 @@ def generate_training_reports():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Create reports directory structure
-    reports_dir = Path("test/steps/builders/reports")
+    reports_dir = Path(__file__).parent / "reports"
     reports_dir.mkdir(exist_ok=True)
     
     # Create training-specific subdirectories
-    for step_name in all_results.keys():
-        if "error" not in all_results[step_name]:
-            step_dir = Path(f"test/steps/builders/{step_name.lower()}_training")
-            step_dir.mkdir(exist_ok=True)
+    for step_name, builder_class in available_builders:
+        if step_name in all_results and "error" not in all_results[step_name]:
+            step_dir = Path(__file__).parent / "training" / builder_class.__name__
+            step_dir.mkdir(parents=True, exist_ok=True)
             scoring_dir = step_dir / "scoring_reports"
             scoring_dir.mkdir(exist_ok=True)
     
@@ -115,9 +115,9 @@ def generate_training_reports():
     print(f"\n📊 JSON report saved to: {json_file}")
     
     # Generate score charts for each builder
-    for step_name, results in all_results.items():
-        if "error" not in results:
-            generate_score_chart(step_name, results, detailed_scores.get(step_name, {}))
+    for step_name, builder_class in available_builders:
+        if step_name in all_results and "error" not in all_results[step_name]:
+            generate_score_chart(step_name, all_results[step_name], detailed_scores.get(step_name, {}), builder_class.__name__)
     
     # Generate overall summary chart
     generate_overall_chart(all_results, "training")
@@ -157,7 +157,7 @@ def generate_summary(all_results):
     }
 
 
-def generate_score_chart(step_name, results, scoring_data):
+def generate_score_chart(step_name, results, scoring_data, builder_class_name):
     """Generate score chart for a specific step builder."""
     # Calculate test scores
     passed_tests = sum(1 for result in results.values() 
@@ -208,8 +208,8 @@ def generate_score_chart(step_name, results, scoring_data):
     plt.tight_layout()
     
     # Save chart
-    chart_dir = Path(f"test/steps/builders/{step_name.lower()}_training/scoring_reports")
-    chart_file = chart_dir / f"{step_name}TrainingStepBuilder_score_chart.png"
+    chart_dir = Path(__file__).parent / "training" / builder_class_name / "scoring_reports"
+    chart_file = chart_dir / f"{builder_class_name}_score_chart.png"
     plt.savefig(chart_file, dpi=300, bbox_inches='tight')
     plt.close()
     
@@ -228,7 +228,7 @@ def generate_score_chart(step_name, results, scoring_data):
         "scoring_data": scoring_data
     }
     
-    score_file = chart_dir / f"{step_name}TrainingStepBuilder_score_report.json"
+    score_file = chart_dir / f"{builder_class_name}_score_report.json"
     with open(score_file, 'w') as f:
         json.dump(score_report, f, indent=2, default=str)
     
@@ -286,7 +286,7 @@ def generate_overall_chart(all_results, test_type):
     plt.tight_layout()
     
     # Save chart
-    chart_file = Path(f"test/steps/builders/reports/{test_type}_overall_summary.png")
+    chart_file = Path(__file__).parent / "reports" / f"{test_type}_overall_summary.png"
     plt.savefig(chart_file, dpi=300, bbox_inches='tight')
     plt.close()
     

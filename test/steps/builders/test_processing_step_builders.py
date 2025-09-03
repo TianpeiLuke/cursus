@@ -14,7 +14,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 from cursus.core.base.builder_base import StepBuilderBase
