@@ -28,11 +28,11 @@ date of note: 2025-08-28
 
 **Note**: This design has been updated to reflect the **Phase 7 Consolidated Registry System** from the [2025-08-28 Workspace-Aware Unified Implementation Plan](../2_project_planning/2025-08-28_workspace_aware_unified_implementation_plan.md) and the consolidated workspace architecture outlined in the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is now centralized within `src/cursus/` for proper packaging compliance.
 
-This document outlines the design for transforming the current centralized registry system in `src/cursus/steps/registry` into a **consolidated workspace-aware registry architecture** that supports multiple developer workspaces while solving the critical **step name collision problem**. The new system enables each workspace to register components locally while providing seamless integration with the shared core registry through intelligent namespacing and conflict resolution.
+This document outlines the design for transforming the current centralized registry system in `src/cursus/registry` into a **consolidated workspace-aware registry architecture** that supports multiple developer workspaces while solving the critical **step name collision problem**. The new system enables each workspace to register components locally while providing seamless integration with the shared core registry through intelligent namespacing and conflict resolution.
 
 ## Problem Statement
 
-The current registry system (`src/cursus/steps/registry/step_names.py`) is centralized and requires all step implementations to be registered in a single location. This creates several challenges for multi-developer environments:
+The current registry system (`src/cursus/registry/step_names.py`) is centralized and requires all step implementations to be registered in a single location. This creates several challenges for multi-developer environments:
 
 1. **Central Registry Bottleneck**: All developers must modify the same central registry file
 2. **Merge Conflicts**: Multiple developers editing the same registry leads to frequent conflicts
@@ -87,7 +87,7 @@ This principle ensures complete registry isolation between developer environment
 **Only code within `src/cursus/` is shared for all workspaces.**
 
 This principle defines the common registry foundation that all workspaces inherit:
-- Core registry in `src/cursus/steps/registry/` provides the shared foundation
+- Core registry in `src/cursus/registry/` provides the shared foundation
 - Common step definitions and registry infrastructure are maintained in the shared core
 - All workspaces inherit from the same core registry baseline
 - Integration pathway allows validated workspace components to join the shared core
@@ -112,7 +112,12 @@ Building on the core architectural principles, the system achieves these design 
 ## Architecture Overview
 
 ```
-Distributed Registry System
+Hybrid Registry System with Shared Utilities
+├── Shared Utility Layer/
+│   ├── RegistryLoader (common loading logic)
+│   ├── StepDefinitionConverter (format conversions)
+│   ├── RegistryValidationUtils (shared validation)
+│   └── RegistryErrorFormatter (consistent error handling)
 ├── Core Registry/
 │   ├── CoreStepRegistry (base registry)
 │   ├── StepRegistrationManager
@@ -125,10 +130,14 @@ Distributed Registry System
 │   ├── DistributedRegistryManager
 │   ├── RegistryInheritanceResolver
 │   └── RegistryConflictResolver
-└── Discovery and Resolution/
-    ├── RegistryDiscoveryService
-    ├── ComponentResolver
-    └── RegistryCache
+├── Discovery and Resolution/
+│   ├── RegistryDiscoveryService
+│   ├── ComponentResolver
+│   └── RegistryCache
+└── Compatibility Layer/
+    ├── BackwardCompatibilityAdapter
+    ├── GenericStepFieldAccessor
+    └── LegacyFormatConverter
 ```
 
 ## Enhanced Conflict Resolution Architecture
@@ -691,11 +700,689 @@ class ConflictAnalysis(BaseModel):
         }
 ```
 
+## Shared Utility Layer Design
+
+Based on the [2025-09-02 Hybrid Registry Migration Plan Analysis](../4_analysis/2025-09-02_hybrid_registry_migration_plan_analysis.md), the architecture incorporates shared utility components to eliminate code redundancy and improve maintainability. These utilities provide common functionality used across all registry components.
+
+### 1. RegistryLoader - Common Loading Logic
+
+```python
+class RegistryLoader:
+    """
+    Shared utility for loading registry modules from files.
+    
+    Eliminates redundant loading logic between CoreStepRegistry and LocalStepRegistry.
+    """
+    
+    @staticmethod
+    def load_registry_module(file_path: str, module_name: str) -> Any:
+        """
+        Common registry loading logic.
+        
+        Args:
+            file_path: Path to the registry file
+            module_name: Name for the loaded module
+            
+        Returns:
+            Loaded module object
+            
+        Raises:
+            RegistryLoadError: If module loading fails
+        """
+        try:
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            if spec is None or spec.loader is None:
+                raise RegistryLoadError(f"Could not create module spec from {file_path}")
+            
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+            
+        except Exception as e:
+            raise RegistryLoadError(f"Failed to load registry module from {file_path}: {e}")
+    
+    @staticmethod
+    def validate_registry_file(file_path: str) -> bool:
+        """
+        Validate that a registry file exists and is readable.
+        
+        Args:
+            file_path: Path to validate
+            
+        Returns:
+            True if file is valid, False otherwise
+        """
+        try:
+            path = Path(file_path)
+            return path.exists() and path.is_file() and path.suffix == '.py'
+        except Exception:
+            return False
+    
+    @staticmethod
+    def get_registry_attributes(module: Any, expected_attributes: List[str]) -> Dict[str, Any]:
+        """
+        Extract expected attributes from a registry module.
+        
+        Args:
+            module: Loaded registry module
+            expected_attributes: List of attribute names to extract
+            
+        Returns:
+            Dictionary of attribute name to value mappings
+        """
+        attributes = {}
+        for attr_name in expected_attributes:
+            attr_value = getattr(module, attr_name, {})
+            attributes[attr_name] = attr_value
+        return attributes
+```
+
+### 2. StepDefinitionConverter - Format Conversions
+
+```python
+class StepDefinitionConverter:
+    """
+    Shared utility for converting between step definition formats.
+    
+    Eliminates redundant conversion logic across registry components.
+    """
+    
+    @staticmethod
+    def from_legacy_format(step_name: str, 
+                          step_info: Dict[str, Any], 
+                          registry_type: str = 'core', 
+                          workspace_id: str = None) -> StepDefinition:
+        """
+        Convert legacy STEP_NAMES format to StepDefinition.
+        
+        Args:
+            step_name: Name of the step
+            step_info: Legacy step information dictionary
+            registry_type: Type of registry ('core', 'workspace', 'override')
+            workspace_id: Workspace identifier for workspace steps
+            
+        Returns:
+            StepDefinition object
+        """
+        # Extract standard fields
+        definition_data = {
+            'name': step_name,
+            'registry_type': registry_type,
+            'sagemaker_step_type': step_info.get('sagemaker_step_type'),
+            'builder_step_name': step_info.get('builder_step_name'),
+            'description': step_info.get('description'),
+            'framework': step_info.get('framework'),
+            'job_types': step_info.get('job_types', [])
+        }
+        
+        # Add workspace-specific fields
+        if workspace_id:
+            definition_data['workspace_id'] = workspace_id
+        
+        # Extract conflict resolution metadata if present
+        if 'priority' in step_info:
+            definition_data['priority'] = step_info['priority']
+        if 'compatibility_tags' in step_info:
+            definition_data['compatibility_tags'] = step_info['compatibility_tags']
+        if 'framework_version' in step_info:
+            definition_data['framework_version'] = step_info['framework_version']
+        if 'environment_tags' in step_info:
+            definition_data['environment_tags'] = step_info['environment_tags']
+        if 'conflict_resolution_strategy' in step_info:
+            definition_data['conflict_resolution_strategy'] = step_info['conflict_resolution_strategy']
+        
+        # Store any additional metadata
+        metadata = {}
+        for key, value in step_info.items():
+            if key not in definition_data:
+                metadata[key] = value
+        if metadata:
+            definition_data['metadata'] = metadata
+        
+        return StepDefinition(**definition_data)
+    
+    @staticmethod
+    def to_legacy_format(definition: StepDefinition) -> Dict[str, Any]:
+        """
+        Convert StepDefinition to legacy STEP_NAMES format.
+        
+        Args:
+            definition: StepDefinition object
+            
+        Returns:
+            Legacy format dictionary
+        """
+        legacy_dict = {}
+        
+        # Standard fields
+        if definition.sagemaker_step_type:
+            legacy_dict['sagemaker_step_type'] = definition.sagemaker_step_type
+        if definition.builder_step_name:
+            legacy_dict['builder_step_name'] = definition.builder_step_name
+        if definition.description:
+            legacy_dict['description'] = definition.description
+        if definition.framework:
+            legacy_dict['framework'] = definition.framework
+        if definition.job_types:
+            legacy_dict['job_types'] = definition.job_types
+        
+        # Conflict resolution metadata
+        if hasattr(definition, 'priority') and definition.priority != 100:
+            legacy_dict['priority'] = definition.priority
+        if hasattr(definition, 'compatibility_tags') and definition.compatibility_tags:
+            legacy_dict['compatibility_tags'] = definition.compatibility_tags
+        if hasattr(definition, 'framework_version') and definition.framework_version:
+            legacy_dict['framework_version'] = definition.framework_version
+        if hasattr(definition, 'environment_tags') and definition.environment_tags:
+            legacy_dict['environment_tags'] = definition.environment_tags
+        if hasattr(definition, 'conflict_resolution_strategy') and definition.conflict_resolution_strategy != 'workspace_priority':
+            legacy_dict['conflict_resolution_strategy'] = definition.conflict_resolution_strategy
+        
+        # Additional metadata
+        if definition.metadata:
+            legacy_dict.update(definition.metadata)
+        
+        return legacy_dict
+    
+    @staticmethod
+    def convert_registry_dict(registry_dict: Dict[str, Dict[str, Any]], 
+                            registry_type: str = 'core',
+                            workspace_id: str = None) -> Dict[str, StepDefinition]:
+        """
+        Convert a complete registry dictionary to StepDefinition objects.
+        
+        Args:
+            registry_dict: Dictionary of step_name -> step_info
+            registry_type: Type of registry
+            workspace_id: Workspace identifier
+            
+        Returns:
+            Dictionary of step_name -> StepDefinition
+        """
+        definitions = {}
+        for step_name, step_info in registry_dict.items():
+            definitions[step_name] = StepDefinitionConverter.from_legacy_format(
+                step_name, step_info, registry_type, workspace_id
+            )
+        return definitions
+```
+
+### 3. RegistryValidationUtils - Shared Validation
+
+```python
+class RegistryValidationUtils:
+    """
+    Shared utility for registry validation logic.
+    
+    Eliminates redundant validation patterns across registry components.
+    """
+    
+    @staticmethod
+    def validate_registry_type(registry_type: str) -> str:
+        """
+        Shared registry type validation.
+        
+        Args:
+            registry_type: Registry type to validate
+            
+        Returns:
+            Validated registry type
+            
+        Raises:
+            ValueError: If registry type is invalid
+        """
+        allowed_types = {'core', 'workspace', 'override'}
+        if registry_type not in allowed_types:
+            raise ValueError(f"registry_type must be one of {allowed_types}, got: {registry_type}")
+        return registry_type
+    
+    @staticmethod
+    def validate_step_name(step_name: str) -> str:
+        """
+        Shared step name validation.
+        
+        Args:
+            step_name: Step name to validate
+            
+        Returns:
+            Validated step name
+            
+        Raises:
+            ValueError: If step name is invalid
+        """
+        if not step_name or not step_name.strip():
+            raise ValueError("Step name cannot be empty or whitespace")
+        
+        # Check for valid identifier characters
+        if not step_name.replace('_', '').replace('-', '').isalnum():
+            raise ValueError(f"Step name '{step_name}' contains invalid characters")
+        
+        return step_name.strip()
+    
+    @staticmethod
+    def validate_workspace_id(workspace_id: str) -> str:
+        """
+        Shared workspace ID validation.
+        
+        Args:
+            workspace_id: Workspace ID to validate
+            
+        Returns:
+            Validated workspace ID
+            
+        Raises:
+            ValueError: If workspace ID is invalid
+        """
+        if not workspace_id or not workspace_id.strip():
+            raise ValueError("Workspace ID cannot be empty or whitespace")
+        
+        # Check for valid directory name characters
+        if not workspace_id.replace('_', '').replace('-', '').isalnum():
+            raise ValueError(f"Workspace ID '{workspace_id}' contains invalid characters")
+        
+        return workspace_id.strip()
+    
+    @staticmethod
+    def validate_step_definition_fields(definition_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Shared step definition field validation.
+        
+        Args:
+            definition_data: Step definition data to validate
+            
+        Returns:
+            Validated definition data
+            
+        Raises:
+            ValueError: If any field is invalid
+        """
+        required_fields = {'name', 'registry_type'}
+        missing_fields = required_fields - set(definition_data.keys())
+        if missing_fields:
+            raise ValueError(f"Missing required fields: {missing_fields}")
+        
+        # Validate individual fields
+        RegistryValidationUtils.validate_step_name(definition_data['name'])
+        RegistryValidationUtils.validate_registry_type(definition_data['registry_type'])
+        
+        if 'workspace_id' in definition_data and definition_data['workspace_id']:
+            RegistryValidationUtils.validate_workspace_id(definition_data['workspace_id'])
+        
+        return definition_data
+    
+    @staticmethod
+    def validate_registry_consistency(definitions: Dict[str, StepDefinition]) -> List[str]:
+        """
+        Shared registry consistency validation.
+        
+        Args:
+            definitions: Dictionary of step definitions to validate
+            
+        Returns:
+            List of validation issues (empty if valid)
+        """
+        issues = []
+        
+        # Check for duplicate builder names
+        builder_names = {}
+        for step_name, definition in definitions.items():
+            if definition.builder_step_name:
+                if definition.builder_step_name in builder_names:
+                    issues.append(
+                        f"Duplicate builder name '{definition.builder_step_name}' "
+                        f"used by steps '{step_name}' and '{builder_names[definition.builder_step_name]}'"
+                    )
+                else:
+                    builder_names[definition.builder_step_name] = step_name
+        
+        # Check for missing required fields
+        for step_name, definition in definitions.items():
+            if not definition.sagemaker_step_type:
+                issues.append(f"Step '{step_name}' missing sagemaker_step_type")
+            if not definition.builder_step_name:
+                issues.append(f"Step '{step_name}' missing builder_step_name")
+        
+        return issues
+```
+
+### 4. RegistryErrorFormatter - Consistent Error Handling
+
+```python
+class RegistryErrorFormatter:
+    """
+    Shared utility for consistent error message formatting.
+    
+    Eliminates redundant error handling patterns across registry components.
+    """
+    
+    @staticmethod
+    def format_step_not_found_error(step_name: str, 
+                                   workspace_context: str = None,
+                                   available_steps: List[str] = None,
+                                   suggestions: List[str] = None) -> str:
+        """
+        Format consistent step not found error messages.
+        
+        Args:
+            step_name: Name of the step that wasn't found
+            workspace_context: Current workspace context
+            available_steps: List of available step names
+            suggestions: List of suggested alternatives
+            
+        Returns:
+            Formatted error message
+        """
+        context_info = f" (workspace: {workspace_context})" if workspace_context else " (core registry)"
+        
+        error_msg = f"Step '{step_name}' not found{context_info}"
+        
+        if suggestions:
+            error_msg += f". Did you mean: {', '.join(suggestions[:3])}"
+        
+        if available_steps:
+            error_msg += f". Available steps: {', '.join(sorted(available_steps))}"
+        
+        return error_msg
+    
+    @staticmethod
+    def format_registry_load_error(registry_path: str, 
+                                  error_details: str,
+                                  suggestions: List[str] = None) -> str:
+        """
+        Format consistent registry loading error messages.
+        
+        Args:
+            registry_path: Path to the registry that failed to load
+            error_details: Detailed error information
+            suggestions: List of suggested fixes
+            
+        Returns:
+            Formatted error message
+        """
+        error_msg = f"Failed to load registry from '{registry_path}': {error_details}"
+        
+        if suggestions:
+            error_msg += f". Suggestions: {'; '.join(suggestions)}"
+        
+        return error_msg
+    
+    @staticmethod
+    def format_conflict_resolution_error(step_name: str,
+                                       conflicting_namespaces: List[str],
+                                       resolution_context: str = None) -> str:
+        """
+        Format consistent conflict resolution error messages.
+        
+        Args:
+            step_name: Name of the conflicting step
+            conflicting_namespaces: List of namespaces with conflicts
+            resolution_context: Context information for resolution
+            
+        Returns:
+            Formatted error message
+        """
+        context_info = f" in context '{resolution_context}'" if resolution_context else ""
+        
+        error_msg = (
+            f"Cannot resolve step '{step_name}'{context_info}. "
+            f"Multiple definitions found in namespaces: {', '.join(conflicting_namespaces)}. "
+            f"Use qualified names (e.g., '{conflicting_namespaces[0]}.{step_name}') or "
+            f"set resolution context to disambiguate."
+        )
+        
+        return error_msg
+    
+    @staticmethod
+    def format_validation_error(component_type: str,
+                              component_name: str,
+                              validation_issues: List[str]) -> str:
+        """
+        Format consistent validation error messages.
+        
+        Args:
+            component_type: Type of component being validated
+            component_name: Name of the component
+            validation_issues: List of validation issues
+            
+        Returns:
+            Formatted error message
+        """
+        error_msg = f"{component_type} '{component_name}' validation failed:"
+        
+        for i, issue in enumerate(validation_issues, 1):
+            error_msg += f"\n  {i}. {issue}"
+        
+        return error_msg
+```
+
+### 5. GenericStepFieldAccessor - Optimized Compatibility Functions
+
+```python
+class GenericStepFieldAccessor:
+    """
+    Generic step field accessor that eliminates redundant compatibility functions.
+    
+    Replaces 15+ individual get_*() functions with a single optimized implementation.
+    """
+    
+    def __init__(self, compatibility_layer: 'EnhancedBackwardCompatibilityLayer'):
+        self.compatibility_layer = compatibility_layer
+        self._field_cache: Dict[str, Dict[str, Any]] = {}
+    
+    def get_step_field(self, step_name: str, field_name: str) -> str:
+        """
+        Generic step field accessor that replaces individual get_*() functions.
+        
+        Args:
+            step_name: Name of the step
+            field_name: Name of the field to retrieve
+            
+        Returns:
+            Field value
+            
+        Raises:
+            ValueError: If step or field not found
+        """
+        # Get step names with caching
+        cache_key = self.compatibility_layer._current_workspace_context or 'core'
+        if cache_key not in self._field_cache:
+            self._field_cache[cache_key] = self.compatibility_layer.get_step_names()
+        
+        step_names = self._field_cache[cache_key]
+        
+        # Validate step exists
+        if step_name not in step_names:
+            available_steps = list(step_names.keys())
+            suggestions = self._get_field_suggestions(step_name, available_steps)
+            error_msg = RegistryErrorFormatter.format_step_not_found_error(
+                step_name, 
+                self.compatibility_layer._current_workspace_context,
+                available_steps,
+                suggestions
+            )
+            raise ValueError(error_msg)
+        
+        # Validate field exists
+        step_info = step_names[step_name]
+        if field_name not in step_info:
+            available_fields = list(step_info.keys())
+            raise ValueError(
+                f"Field '{field_name}' not found for step '{step_name}'. "
+                f"Available fields: {', '.join(available_fields)}"
+            )
+        
+        return step_info[field_name]
+    
+    def _get_field_suggestions(self, step_name: str, available_steps: List[str]) -> List[str]:
+        """Get suggestions for similar step names."""
+        suggestions = []
+        step_name_lower = step_name.lower()
+        
+        for available_step in available_steps:
+            # Simple similarity check
+            if step_name_lower in available_step.lower() or available_step.lower() in step_name_lower:
+                suggestions.append(available_step)
+        
+        return suggestions[:3]  # Return top 3 suggestions
+    
+    def clear_cache(self):
+        """Clear the field cache."""
+        self._field_cache.clear()
+
+# Optimized compatibility functions using GenericStepFieldAccessor
+def get_config_class_name(step_name: str) -> str:
+    """Get config class name for a step with workspace context."""
+    accessor = _get_field_accessor()
+    return accessor.get_step_field(step_name, "config_class")
+
+def get_builder_step_name(step_name: str) -> str:
+    """Get builder step class name for a step with workspace context."""
+    accessor = _get_field_accessor()
+    return accessor.get_step_field(step_name, "builder_step_name")
+
+def get_spec_step_type(step_name: str) -> str:
+    """Get step_type value for StepSpecification with workspace context."""
+    accessor = _get_field_accessor()
+    return accessor.get_step_field(step_name, "spec_type")
+
+def get_sagemaker_step_type(step_name: str) -> str:
+    """Get SageMaker step type for a step with workspace context."""
+    accessor = _get_field_accessor()
+    return accessor.get_step_field(step_name, "sagemaker_step_type")
+
+def get_step_description(step_name: str) -> str:
+    """Get description for a step with workspace context."""
+    accessor = _get_field_accessor()
+    return accessor.get_step_field(step_name, "description")
+
+# Global field accessor instance
+_global_field_accessor = None
+
+def _get_field_accessor() -> GenericStepFieldAccessor:
+    """Get the global field accessor instance."""
+    global _global_field_accessor
+    if _global_field_accessor is None:
+        _global_field_accessor = GenericStepFieldAccessor(get_enhanced_compatibility())
+    return _global_field_accessor
+```
+
+## Code Redundancy Mitigation Strategy
+
+Based on the [2025-09-02 Hybrid Registry Migration Plan Analysis](../4_analysis/2025-09-02_hybrid_registry_migration_plan_analysis.md), the design incorporates comprehensive redundancy mitigation strategies to achieve a **75/100 → 95/100** improvement in code redundancy scores.
+
+### Redundancy Elimination Patterns
+
+#### Before: Redundant Registry Loading Logic
+```python
+# CoreStepRegistry._load_core_registry() - REDUNDANT
+spec = importlib.util.spec_from_file_location("step_names", self.registry_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+# LocalStepRegistry._load_local_registry() - REDUNDANT  
+spec = importlib.util.spec_from_file_location("workspace_registry", registry_file)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+```
+
+#### After: Shared RegistryLoader Utility
+```python
+# Both registries use shared utility - NO REDUNDANCY
+class CoreStepRegistry:
+    def _load_core_registry(self):
+        module = RegistryLoader.load_registry_module(str(self.registry_path), "step_names")
+        # ... rest of loading logic
+
+class LocalStepRegistry:
+    def _load_local_registry(self):
+        module = RegistryLoader.load_registry_module(str(registry_file), "workspace_registry")
+        # ... rest of loading logic
+```
+
+#### Before: Redundant Format Conversion Logic
+```python
+# Multiple places converting between formats - REDUNDANT
+# CoreStepRegistry: STEP_NAMES → StepDefinition
+# LocalStepRegistry: LOCAL_STEPS → StepDefinition  
+# HybridStepDefinition: StepDefinition → legacy format
+```
+
+#### After: Shared StepDefinitionConverter
+```python
+# Single conversion utility - NO REDUNDANCY
+class CoreStepRegistry:
+    def _load_core_registry(self):
+        step_names = RegistryLoader.get_registry_attributes(module, ['STEP_NAMES'])['STEP_NAMES']
+        self._step_definitions = StepDefinitionConverter.convert_registry_dict(
+            step_names, 'core'
+        )
+
+class LocalStepRegistry:
+    def _load_local_registry(self):
+        local_steps = RegistryLoader.get_registry_attributes(module, ['LOCAL_STEPS'])['LOCAL_STEPS']
+        self._local_definitions = StepDefinitionConverter.convert_registry_dict(
+            local_steps, 'workspace', self.workspace_id
+        )
+```
+
+#### Before: Redundant Compatibility Functions
+```python
+# 15+ similar functions - HIGHLY REDUNDANT
+def get_config_class_name(step_name: str) -> str:
+    step_names = get_step_names()
+    if step_name not in step_names:
+        raise ValueError(f"Unknown step name: {step_name}")
+    return step_names[step_name]["config_class"]
+
+def get_builder_step_name(step_name: str) -> str:
+    step_names = get_step_names()
+    if step_name not in step_names:
+        raise ValueError(f"Unknown step name: {step_name}")
+    return step_names[step_name]["builder_step_name"]
+# ... 13 more similar functions
+```
+
+#### After: Single Generic Function
+```python
+# Single optimized function - NO REDUNDANCY
+def get_step_field(step_name: str, field_name: str) -> str:
+    """Generic step field accessor."""
+    accessor = _get_field_accessor()
+    return accessor.get_step_field(step_name, field_name)
+
+# Specific functions become simple wrappers
+def get_config_class_name(step_name: str) -> str:
+    return get_step_field(step_name, "config_class")
+
+def get_builder_step_name(step_name: str) -> str:
+    return get_step_field(step_name, "builder_step_name")
+# ... all other functions follow same pattern
+```
+
+### Redundancy Reduction Metrics
+
+| Component | Before (Lines) | After (Lines) | Reduction |
+|-----------|----------------|---------------|-----------|
+| Registry Loading Logic | 45 | 15 | 67% |
+| Format Conversion Logic | 60 | 20 | 67% |
+| Compatibility Functions | 180 | 45 | 75% |
+| Validation Logic | 90 | 30 | 67% |
+| Error Handling | 120 | 40 | 67% |
+| **Total** | **495** | **150** | **70%** |
+
+### Quality Score Improvements
+
+| Quality Metric | Before | After | Improvement |
+|----------------|--------|-------|-------------|
+| Code Redundancy | 75/100 | 95/100 | +20 points |
+| Maintainability | 85/100 | 95/100 | +10 points |
+| Testability | 80/100 | 90/100 | +10 points |
+| Performance | 85/100 | 90/100 | +5 points |
+| **Overall Quality** | **81/100** | **93/100** | **+12 points** |
+
 ## Core Components Design
 
 ### 1. Core Registry System
-
-The core registry maintains the base set of step definitions that all workspaces inherit from.
 
 ```python
 class CoreStepRegistry:
@@ -706,7 +1393,362 @@ class CoreStepRegistry:
     are available to all workspaces by default.
     """
     
-    def __init__(self, registry_path: str = "src/cursus/steps/registry/step_names.py"):
+    def __init__(self, registry_path: str = "src/cursus/registry/step_names.py"):
+        self.registry_path = Path(registry_path)
+        self._step_definitions: Dict[str, StepDefinition] = {}
+        self._load_core_registry()
+    
+    def _load_core_registry(self):
+        """Load the core step registry using shared utilities."""
+        try:
+            # Use shared RegistryLoader utility
+            module = RegistryLoader.load_registry_module(str(self.registry_path), "step_names")
+            
+            # Extract STEP_NAMES using shared utility
+            registry_attributes = RegistryLoader.get_registry_attributes(module, ['STEP_NAMES'])
+            step_names = registry_attributes['STEP_NAMES']
+            
+            # Convert using shared StepDefinitionConverter
+            self._step_definitions = StepDefinitionConverter.convert_registry_dict(
+                step_names, 'core'
+            )
+                
+        except Exception as e:
+            error_msg = RegistryErrorFormatter.format_registry_load_error(
+                str(self.registry_path), 
+                str(e),
+                ["Check file exists and is valid Python", "Verify STEP_NAMES dictionary format"]
+            )
+            raise RegistryLoadError(error_msg)
+    
+    def get_step_definition(self, step_name: str) -> Optional[StepDefinition]:
+        """Get a step definition from the core registry."""
+        return self._step_definitions.get(step_name)
+    
+    def get_all_step_definitions(self) -> Dict[str, StepDefinition]:
+        """Get all step definitions from the core registry."""
+        return self._step_definitions.copy()
+    
+    def get_steps_by_type(self, sagemaker_step_type: str) -> List[StepDefinition]:
+        """Get all steps of a specific SageMaker step type."""
+        return [
+            definition for definition in self._step_definitions.values()
+            if definition.sagemaker_step_type == sagemaker_step_type
+        ]
+    
+    def register_step(self, step_definition: StepDefinition) -> bool:
+        """
+        Register a new step in the core registry.
+        
+        Note: This is primarily for programmatic registration.
+        Manual registration should still use the step_names.py file.
+        """
+        if step_definition.name in self._step_definitions:
+            return False  # Step already exists
+        
+        step_definition.registry_type = 'core'
+        self._step_definitions[step_definition.name] = step_definition
+        return True
+    
+    def validate_registry(self) -> RegistryValidationResult:
+        """Validate the core registry using shared validation utilities."""
+        issues = RegistryValidationUtils.validate_registry_consistency(self._step_definitions)
+        
+        return RegistryValidationResult(
+            is_valid=len(issues) == 0,
+            issues=issues,
+            registry_type='core',
+            step_count=len(self._step_definitions)
+        )
+
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import Dict, List, Any, Optional
+
+class StepDefinition(BaseModel):
+    """Enhanced step definition with registry metadata using Pydantic V2."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False,
+        str_strip_whitespace=True
+    )
+    
+    name: str = Field(..., min_length=1, description="Step name identifier")
+    registry_type: str = Field(..., description="Registry type: 'core', 'workspace', 'override'")
+    sagemaker_step_type: Optional[str] = Field(None, description="SageMaker step type")
+    builder_step_name: Optional[str] = Field(None, description="Builder class name")
+    description: Optional[str] = Field(None, description="Step description")
+    framework: Optional[str] = Field(None, description="Framework used by step")
+    job_types: List[str] = Field(default_factory=list, description="Supported job types")
+    workspace_id: Optional[str] = Field(None, description="Workspace identifier for workspace registrations")
+    override_source: Optional[str] = Field(None, description="Source of override for tracking")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
+    @field_validator('registry_type')
+    @classmethod
+    def validate_registry_type(cls, v: str) -> str:
+        """Validate registry type using shared validation utilities."""
+        return RegistryValidationUtils.validate_registry_type(v)
+    
+    @field_validator('name', 'builder_step_name')
+    @classmethod
+    def validate_identifiers(cls, v: Optional[str]) -> Optional[str]:
+        """Validate identifier fields using shared validation utilities."""
+        if v is not None:
+            return RegistryValidationUtils.validate_step_name(v)
+        return v
+    
+    def to_legacy_format(self) -> Dict[str, Any]:
+        """Convert to legacy STEP_NAMES format using shared converter."""
+        return StepDefinitionConverter.to_legacy_format(self)
+
+class RegistryValidationResult(BaseModel):
+    """Results of registry validation using Pydantic V2."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra='forbid',
+        frozen=False
+    )
+    
+    is_valid: bool = Field(..., description="Whether validation passed")
+    issues: List[str] = Field(default_factory=list, description="List of validation issues")
+    registry_type: str = Field(..., description="Type of registry validated")
+    step_count: int = Field(..., description="Number of steps validated")
+    
+    def get_validation_summary(self) -> Dict[str, Any]:
+        """Get a summary of validation results."""
+        return {
+            'valid': self.is_valid,
+            'issue_count': len(self.issues),
+            'registry_type': self.registry_type,
+            'step_count': self.step_count
+        }
+```
+
+### 2. Workspace Registry System
+
+Each workspace can have its own registry that extends or overrides the core registry.
+
+```python
+class WorkspaceStepRegistry:
+    """
+    Workspace-specific step registry that extends the core registry.
+    
+    Provides workspace isolation while maintaining inheritance from
+    the core registry using shared utilities.
+    """
+    
+    def __init__(self, workspace_path: str, core_registry: CoreStepRegistry):
+        self.workspace_path = Path(workspace_path)
+        self.workspace_id = RegistryValidationUtils.validate_workspace_id(self.workspace_path.name)
+        self.core_registry = core_registry
+        self._workspace_definitions: Dict[str, StepDefinition] = {}
+        self._overrides: Dict[str, StepDefinition] = {}
+        self._load_workspace_registry()
+    
+    def _load_workspace_registry(self):
+        """Load workspace-specific registry definitions using shared utilities."""
+        registry_file = self.workspace_path / "src" / "cursus_dev" / "registry" / "workspace_registry.py"
+        
+        if not RegistryLoader.validate_registry_file(str(registry_file)):
+            # No workspace registry file - that's okay
+            return
+        
+        try:
+            # Use shared RegistryLoader
+            module = RegistryLoader.load_registry_module(str(registry_file), "workspace_registry")
+            
+            # Extract registry attributes using shared utility
+            registry_attributes = RegistryLoader.get_registry_attributes(
+                module, ['WORKSPACE_STEPS', 'STEP_OVERRIDES']
+            )
+            
+            # Load workspace step definitions using shared converter
+            workspace_steps = registry_attributes['WORKSPACE_STEPS']
+            self._workspace_definitions = StepDefinitionConverter.convert_registry_dict(
+                workspace_steps, 'workspace', self.workspace_id
+            )
+            
+            # Load step overrides using shared converter
+            step_overrides = registry_attributes['STEP_OVERRIDES']
+            override_definitions = StepDefinitionConverter.convert_registry_dict(
+                step_overrides, 'override', self.workspace_id
+            )
+            
+            # Set override source for tracking
+            for definition in override_definitions.values():
+                definition.override_source = 'workspace'
+            
+            self._overrides = override_definitions
+                
+        except Exception as e:
+            error_msg = RegistryErrorFormatter.format_registry_load_error(
+                str(registry_file),
+                str(e),
+                ["Check workspace registry file format", "Verify WORKSPACE_STEPS and STEP_OVERRIDES dictionaries"]
+            )
+            raise RegistryLoadError(error_msg)
+    
+    def get_step_definition(self, step_name: str) -> Optional[StepDefinition]:
+        """
+        Get a step definition with workspace precedence.
+        
+        Resolution order:
+        1. Workspace overrides
+        2. Workspace definitions
+        3. Core registry
+        """
+        # Check workspace overrides first
+        if step_name in self._overrides:
+            return self._overrides[step_name]
+        
+        # Check workspace definitions
+        if step_name in self._workspace_definitions:
+            return self._workspace_definitions[step_name]
+        
+        # Fall back to core registry
+        return self.core_registry.get_step_definition(step_name)
+    
+    def get_all_step_definitions(self) -> Dict[str, StepDefinition]:
+        """Get all step definitions with workspace precedence applied."""
+        # Start with core registry
+        all_definitions = self.core_registry.get_all_step_definitions()
+        
+        # Add workspace definitions (may override core)
+        all_definitions.update(self._workspace_definitions)
+        
+        # Apply workspace overrides
+        all_definitions.update(self._overrides)
+        
+        return all_definitions
+    
+    def get_workspace_only_definitions(self) -> Dict[str, StepDefinition]:
+        """Get only workspace-specific definitions (not inherited from core)."""
+        workspace_only = {}
+        workspace_only.update(self._workspace_definitions)
+        workspace_only.update(self._overrides)
+        return workspace_only
+    
+    def register_workspace_step(self, step_definition: StepDefinition) -> bool:
+        """Register a new step in the workspace registry."""
+        # Validate using shared utilities
+        RegistryValidationUtils.validate_step_definition_fields(step_definition.model_dump())
+        
+        step_definition.registry_type = 'workspace'
+        step_definition.workspace_id = self.workspace_id
+        
+        self._workspace_definitions[step_definition.name] = step_definition
+        return True
+    
+    def override_core_step(self, step_name: str, step_definition: StepDefinition) -> bool:
+        """Override a core step definition in this workspace."""
+        if not self.core_registry.get_step_definition(step_name):
+            return False  # Can't override non-existent core step
+        
+        # Validate using shared utilities
+        RegistryValidationUtils.validate_step_definition_fields(step_definition.model_dump())
+        
+        step_definition.name = step_name
+        step_definition.registry_type = 'override'
+        step_definition.workspace_id = self.workspace_id
+        step_definition.override_source = 'workspace'
+        
+        self._overrides[step_name] = step_definition
+        return True
+    
+    def validate_registry(self) -> RegistryValidationResult:
+        """Validate workspace registry using shared validation utilities."""
+        all_definitions = {}
+        all_definitions.update(self._workspace_definitions)
+        all_definitions.update(self._overrides)
+        
+        issues = RegistryValidationUtils.validate_registry_consistency(all_definitions)
+        
+        return RegistryValidationResult(
+            is_valid=len(issues) == 0,
+            issues=issues,
+            registry_type='workspace',
+            step_count=len(all_definitions)
+        )
+    
+    def get_registry_summary(self) -> Dict[str, Any]:
+        """Get summary information about this workspace registry."""
+        core_count = len(self.core_registry.get_all_step_definitions())
+        workspace_count = len(self._workspace_definitions)
+        override_count = len(self._overrides)
+        
+        return {
+            'workspace_id': self.workspace_id,
+            'workspace_path': str(self.workspace_path),
+            'core_steps': core_count,
+            'workspace_steps': workspace_count,
+            'overridden_steps': override_count,
+            'total_available_steps': core_count + workspace_count,
+            'workspace_step_names': list(self._workspace_definitions.keys()),
+            'overridden_step_names': list(self._overrides.keys())
+        }
+```
+
+### Implementation Optimization Guidelines
+
+#### Week 1: Shared Utilities Foundation
+1. **Implement RegistryLoader** - Eliminate registry loading redundancy
+2. **Implement StepDefinitionConverter** - Eliminate format conversion redundancy  
+3. **Implement RegistryValidationUtils** - Eliminate validation redundancy
+4. **Implement RegistryErrorFormatter** - Eliminate error handling redundancy
+
+#### Week 2: Generic Function Optimization
+1. **Implement GenericStepFieldAccessor** - Replace 15+ individual functions
+2. **Refactor compatibility functions** - Use generic accessor pattern
+3. **Add comprehensive caching** - Optimize repeated access patterns
+4. **Performance testing** - Ensure optimization doesn't degrade performance
+
+#### Week 3: Registry Component Integration
+1. **Update CoreStepRegistry** - Use shared utilities throughout
+2. **Update WorkspaceStepRegistry** - Use shared utilities throughout
+3. **Update DistributedRegistryManager** - Use shared utilities throughout
+4. **Integration testing** - Verify all components work with shared utilities
+
+#### Week 4: Validation and Optimization
+1. **Comprehensive testing** - Test all redundancy elimination
+2. **Performance benchmarking** - Measure improvement metrics
+3. **Code quality assessment** - Verify quality score improvements
+4. **Documentation updates** - Document optimization patterns
+
+### Redundancy Prevention Patterns
+
+#### 1. Shared Utility First Principle
+- **Before implementing any registry logic**, check if shared utility exists
+- **If similar logic exists elsewhere**, extract to shared utility
+- **Always prefer composition** over code duplication
+
+#### 2. Generic Function Pattern
+- **For similar functions with different field names**, use generic implementation
+- **Provide specific wrappers** for backward compatibility
+- **Cache results** to avoid repeated computation
+
+#### 3. Consistent Error Handling
+- **Use RegistryErrorFormatter** for all error messages
+- **Provide context and suggestions** in all error messages
+- **Maintain consistent error format** across all components
+
+#### 4. Validation Consolidation
+- **Use RegistryValidationUtils** for all validation logic
+- **Avoid duplicating validation rules** across components
+- **Centralize validation error formatting**
+
+## Core Components Design
+
+### 1. Core Registry System
+```python
+    """
+    Core step registry that provides the base set of step definitions.
+    
+    This registry contains the fundamental step implementations that
+    are available to all workspaces by default.
+    """
+    
+    def __init__(self, registry_path: str = "src/cursus/registry/step_names.py"):
         self.registry_path = Path(registry_path)
         self._step_definitions: Dict[str, StepDefinition] = {}
         self._load_core_registry()
@@ -985,7 +2027,7 @@ class DistributedRegistryManager:
     """
     
     def __init__(self, 
-                 core_registry_path: str = "src/cursus/steps/registry/step_names.py",
+                 core_registry_path: str = "src/cursus/registry/step_names.py",
                  workspaces_root: str = "developer_workspaces/developers"):
         self.core_registry = CoreStepRegistry(core_registry_path)
         self.workspaces_root = Path(workspaces_root)
@@ -1524,7 +2566,7 @@ def clear_workspace_context():
 
 ### Complete Existing Registry Ecosystem Analysis
 
-The current registry system in `src/cursus/steps/registry/` consists of multiple interconnected components that the new distributed registry must fully support:
+The current registry system in `src/cursus/registry/` consists of multiple interconnected components that the new distributed registry must fully support:
 
 #### 1. Core Registry Files and Their Functions
 
