@@ -959,3 +959,21 @@ Throughout this process, it's crucial to ensure alignment between components:
 4. **Property Path Consistency**: Ensure property paths follow the standard format
 
 Use the [validation checklist](validation_checklist.md) to verify your implementation before integration.
+
+## Related Documentation
+
+- [Adding New Pipeline Step](adding_new_pipeline_step.md) - Main developer guide with overview and quick start
+- [Prerequisites](prerequisites.md) - Required information before starting step creation
+- [Design Principles](design_principles.md) - Core architectural principles to follow
+- [Best Practices](best_practices.md) - Recommended practices for step development
+- [Standardization Rules](standardization_rules.md) - Coding and naming conventions
+- [Alignment Rules](alignment_rules.md) - Component alignment requirements
+- [Validation Framework Guide](validation_framework_guide.md) - Comprehensive validation usage instructions
+- [Validation Checklist](validation_checklist.md) - Pre-integration validation checklist
+- [Step Builder Guide](step_builder.md) - Detailed step builder implementation patterns
+- [Script Contract Development](script_contract.md) - Script contract creation guide
+- [Step Specification Development](step_specification.md) - Step specification creation guide
+- [Three-Tier Config Design](three_tier_config_design.md) - Configuration design patterns
+- [Step Builder Registry Guide](step_builder_registry_guide.md) - Registry usage and auto-discovery
+- [Common Pitfalls](common_pitfalls.md) - Common mistakes to avoid
+- [Example](example.md) - Complete step implementation example

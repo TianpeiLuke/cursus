@@ -678,7 +678,30 @@ For detailed technical design information about the validation frameworks:
 
 ## Related Documentation
 
-- [Adding New Pipeline Step](adding_new_pipeline_step.md) - Quick start guide
-- [Step Creation Process](creation_process.md) - Detailed step creation process
-- [Step Builder Guide](step_builder.md) - Builder implementation patterns
-- [Validation Checklist](validation_checklist.md) - Pre-integration checklist
+### Core Development Guides
+- [Adding New Pipeline Step](adding_new_pipeline_step.md) - Main developer guide with overview and quick start
+- [Step Creation Process](creation_process.md) - Detailed step-by-step creation process
+- [Prerequisites](prerequisites.md) - Required information before starting development
+
+### Component-Specific Guides
+- [Step Builder Guide](step_builder.md) - Detailed step builder implementation patterns
+- [Script Contract Development](script_contract.md) - Script contract creation guide
+- [Step Specification Development](step_specification.md) - Step specification creation guide
+- [Three-Tier Config Design](three_tier_config_design.md) - Configuration design patterns
+- [Step Builder Registry Guide](step_builder_registry_guide.md) - Registry usage and auto-discovery
+- [Hyperparameter Class Guide](hyperparameter_class.md) - Adding hyperparameter classes for training steps
+
+### Rules and Standards
+- [Design Principles](design_principles.md) - Core architectural principles
+- [Best Practices](best_practices.md) - Recommended development practices
+- [Standardization Rules](standardization_rules.md) - Coding and naming conventions
+- [Alignment Rules](alignment_rules.md) - Component alignment requirements
+- [Common Pitfalls](common_pitfalls.md) - Common mistakes to avoid
+
+### Validation and Testing
+- [Validation Checklist](validation_checklist.md) - Pre-integration validation checklist
+- [Example](example.md) - Complete step implementation example
+
+### Reference Materials
+- [SageMaker Property Path Reference Database](sagemaker_property_path_reference_database.md) - Property path reference guide
+- [Config Field Manager Guide](config_field_manager_guide.md) - Configuration field management
