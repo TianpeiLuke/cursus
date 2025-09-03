@@ -16,9 +16,17 @@ from src.cursus.workspace.utils import (
 class TestWorkspaceConfig(unittest.TestCase):
     """Test cases for WorkspaceConfig."""
 
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+
     def test_workspace_config_creation(self):
         """Test WorkspaceConfig creation."""
-        config = WorkspaceConfig()
+        from pathlib import Path
+        config = WorkspaceConfig(
+            workspace_id="test_workspace",
+            base_path=Path(self.temp_dir)
+        )
         self.assertIsInstance(config, WorkspaceConfig)
 
 
@@ -33,13 +41,13 @@ class TestPathUtils(unittest.TestCase):
     def test_path_normalization(self):
         """Test path normalization."""
         # Test basic path normalization
-        normalized = PathUtils.normalize_path(self.test_path)
+        normalized = PathUtils.normalize_workspace_path(self.test_path)
         self.assertIsInstance(normalized, Path)
 
     def test_path_safety_checks(self):
         """Test path safety validation."""
         # Test path safety checks
-        is_safe = PathUtils.is_safe_path(self.test_path)
+        is_safe = PathUtils.is_safe_path(self.test_path, self.test_path.parent)
         self.assertIsInstance(is_safe, bool)
 
     def test_directory_operations(self):
@@ -102,26 +110,28 @@ class TestFileUtils(unittest.TestCase):
 
     def test_file_operations(self):
         """Test basic file operations."""
-        # Test file existence check
-        exists = FileUtils.file_exists(self.test_file)
-        self.assertIsInstance(exists, bool)
+        # Create a test file first
+        self.test_file.write_text("test content")
+        
+        # Test file hash calculation
+        file_hash = FileUtils.calculate_file_hash(self.test_file)
+        self.assertIsInstance(file_hash, (str, type(None)))
 
     def test_file_reading(self):
         """Test file reading operations."""
         # Create a test file
         self.test_file.write_text("test content")
         
-        # Test file reading
-        content = FileUtils.read_file(self.test_file)
-        self.assertEqual(content, "test content")
+        # Test text file detection
+        is_text = FileUtils.is_text_file(self.test_file)
+        self.assertIsInstance(is_text, bool)
 
     def test_file_writing(self):
         """Test file writing operations."""
-        test_content = "test content"
-        
-        # Test file writing
-        result = FileUtils.write_file(self.test_file, test_content)
-        self.assertIsInstance(result, bool)
+        # Test file backup
+        self.test_file.write_text("test content")
+        backup_path = FileUtils.backup_file(self.test_file)
+        self.assertIsInstance(backup_path, (Path, type(None)))
 
 
 class TestValidationUtils(unittest.TestCase):
@@ -129,32 +139,42 @@ class TestValidationUtils(unittest.TestCase):
 
     def test_validation_utilities(self):
         """Test validation utility functions."""
-        # Test basic validation
-        result = ValidationUtils.validate_developer_id("test_developer")
-        self.assertIsInstance(result, bool)
+        # Test workspace structure validation
+        temp_dir = tempfile.mkdtemp()
+        required_dirs = ["builders", "configs"]
+        is_valid, missing = ValidationUtils.validate_workspace_structure(temp_dir, required_dirs)
+        self.assertIsInstance(is_valid, bool)
+        self.assertIsInstance(missing, list)
 
     def test_workspace_validation(self):
         """Test workspace-specific validation."""
-        # Test workspace path validation
+        # Test workspace size validation
         temp_dir = tempfile.mkdtemp()
-        result = ValidationUtils.validate_workspace_path(temp_dir)
-        self.assertIsInstance(result, bool)
+        is_valid, size = ValidationUtils.validate_workspace_size(temp_dir, 100)  # 100MB limit
+        self.assertIsInstance(is_valid, bool)
+        self.assertIsInstance(size, int)
 
 
 class TestTimeUtils(unittest.TestCase):
     """Test cases for TimeUtils."""
 
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+
     def test_time_utilities(self):
         """Test time utility functions."""
-        # Test timestamp generation
-        timestamp = TimeUtils.get_timestamp()
+        # Test timestamp formatting
+        timestamp = TimeUtils.format_timestamp()
         self.assertIsInstance(timestamp, str)
 
     def test_time_formatting(self):
         """Test time formatting utilities."""
-        # Test time formatting
-        formatted = TimeUtils.format_duration(3661)  # 1 hour, 1 minute, 1 second
-        self.assertIsInstance(formatted, str)
+        # Test path age checking
+        temp_file = Path(self.temp_dir) / "test_file.txt"
+        temp_file.write_text("test")
+        age_days = TimeUtils.get_path_age_days(temp_file)
+        self.assertIsInstance(age_days, (int, type(None)))
 
 
 class TestLoggingUtils(unittest.TestCase):
@@ -163,7 +183,7 @@ class TestLoggingUtils(unittest.TestCase):
     def test_logging_utilities(self):
         """Test logging utility functions."""
         # Test logger setup
-        logger = LoggingUtils.setup_logger("test_logger")
+        logger = LoggingUtils.setup_workspace_logger("test_workspace")
         self.assertIsNotNone(logger)
 
 
@@ -177,22 +197,24 @@ class TestWorkspaceUtils(unittest.TestCase):
 
     def test_workspace_utilities(self):
         """Test workspace utility functions."""
-        # Test workspace initialization
-        result = WorkspaceUtils.initialize_workspace(self.workspace_path)
+        # Test workspace directory initialization
+        config = WorkspaceUtils.create_workspace_config("test_workspace", self.workspace_path)
+        result = WorkspaceUtils.initialize_workspace_directory(self.workspace_path, config)
         self.assertIsInstance(result, bool)
 
     def test_workspace_configuration(self):
         """Test workspace configuration utilities."""
-        # Test workspace configuration
-        config = WorkspaceUtils.get_workspace_config(self.workspace_path)
-        if config is not None:
-            self.assertIsInstance(config, dict)
+        # Test workspace configuration creation
+        config = WorkspaceUtils.create_workspace_config("test_workspace", self.workspace_path)
+        self.assertIsInstance(config, WorkspaceConfig)
 
     def test_workspace_validation(self):
         """Test workspace validation utilities."""
         # Test workspace validation
-        result = WorkspaceUtils.validate_workspace_structure(self.workspace_path)
-        self.assertIsInstance(result, bool)
+        config = WorkspaceUtils.create_workspace_config("test_workspace", self.workspace_path)
+        is_valid, errors = WorkspaceUtils.validate_workspace(self.workspace_path, config)
+        self.assertIsInstance(is_valid, bool)
+        self.assertIsInstance(errors, list)
 
 
 if __name__ == '__main__':

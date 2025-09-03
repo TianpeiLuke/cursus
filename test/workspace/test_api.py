@@ -60,8 +60,11 @@ class TestWorkspaceAPI(unittest.TestCase):
     def test_get_system_health(self):
         """Test system health reporting."""
         # Test system health
+        from src.cursus.workspace.api import HealthReport
         health = self.api.get_system_health()
-        self.assertIsInstance(health, dict)
+        self.assertIsInstance(health, HealthReport)
+        self.assertTrue(hasattr(health, 'overall_status'))
+        self.assertTrue(hasattr(health, 'workspace_reports'))
 
     def test_cleanup_workspaces(self):
         """Test workspace cleanup."""

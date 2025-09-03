@@ -17,48 +17,72 @@ class TestUserExperienceValidator(unittest.TestCase):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.workspace_path = Path(self.temp_dir)
-        self.ux_validator = UserExperienceValidator()
+        self.ux_validator = UserExperienceValidator(workspace_root=self.workspace_path)
 
     def test_ux_validator_initialization(self):
         """Test that UserExperienceValidator initializes correctly."""
         self.assertIsInstance(self.ux_validator, UserExperienceValidator)
-        self.assertTrue(hasattr(self.ux_validator, 'validate_user_experience'))
+        self.assertTrue(hasattr(self.ux_validator, 'run_user_experience_assessment'))
 
-    def test_validate_user_experience(self):
-        """Test user experience validation."""
-        # Test basic UX validation
-        ux_report = self.ux_validator.validate_user_experience()
-        self.assertIsInstance(ux_report, dict)
-        self.assertIn('overall_ux_score', ux_report)
+    def test_run_user_experience_assessment(self):
+        """Test comprehensive user experience assessment."""
+        # Test the main assessment method
+        ux_report = self.ux_validator.run_user_experience_assessment()
+        
+        # Check that we get a UserExperienceReport object
+        self.assertIsNotNone(ux_report)
+        self.assertTrue(hasattr(ux_report, 'overall_score'))
+        self.assertTrue(hasattr(ux_report, 'overall_status'))
+        self.assertTrue(hasattr(ux_report, 'onboarding_score'))
+        self.assertTrue(hasattr(ux_report, 'api_usability_score'))
 
-    def test_onboarding_simulation(self):
-        """Test developer onboarding simulation."""
-        # Test onboarding simulation
-        onboarding_result = self.ux_validator.simulate_developer_onboarding()
-        self.assertIsInstance(onboarding_result, dict)
-        self.assertIn('onboarding_success_rate', onboarding_result)
-        self.assertIn('time_to_first_success', onboarding_result)
+    def test_onboarding_assessment(self):
+        """Test developer onboarding assessment."""
+        # Test that onboarding assessment is included in main assessment
+        ux_report = self.ux_validator.run_user_experience_assessment()
+        
+        self.assertTrue(hasattr(ux_report, 'onboarding_result'))
+        self.assertTrue(hasattr(ux_report, 'onboarding_score'))
+        self.assertGreaterEqual(ux_report.onboarding_score, 0.0)
+        self.assertLessEqual(ux_report.onboarding_score, 100.0)
 
     def test_api_usability_assessment(self):
         """Test API usability assessment."""
-        # Test API usability
-        usability_result = self.ux_validator.assess_api_usability()
-        self.assertIsInstance(usability_result, dict)
-        self.assertIn('api_intuitiveness_score', usability_result)
+        # Test that API usability is included in main assessment
+        ux_report = self.ux_validator.run_user_experience_assessment()
+        
+        self.assertTrue(hasattr(ux_report, 'api_tests'))
+        self.assertTrue(hasattr(ux_report, 'api_usability_score'))
+        self.assertGreaterEqual(ux_report.api_usability_score, 0.0)
+        self.assertLessEqual(ux_report.api_usability_score, 100.0)
 
     def test_error_handling_validation(self):
         """Test error handling validation."""
-        # Test error handling assessment
-        error_handling_result = self.ux_validator.validate_error_handling()
-        self.assertIsInstance(error_handling_result, dict)
-        self.assertIn('error_clarity_score', error_handling_result)
+        # Test that error handling assessment is included
+        ux_report = self.ux_validator.run_user_experience_assessment()
+        
+        self.assertTrue(hasattr(ux_report, 'error_handling_score'))
+        self.assertGreaterEqual(ux_report.error_handling_score, 0.0)
+        self.assertLessEqual(ux_report.error_handling_score, 100.0)
 
     def test_documentation_effectiveness(self):
         """Test documentation effectiveness assessment."""
-        # Test documentation effectiveness
-        doc_result = self.ux_validator.assess_documentation_effectiveness()
-        self.assertIsInstance(doc_result, dict)
-        self.assertIn('documentation_score', doc_result)
+        # Test that documentation assessment is included
+        ux_report = self.ux_validator.run_user_experience_assessment()
+        
+        self.assertTrue(hasattr(ux_report, 'documentation_score'))
+        self.assertGreaterEqual(ux_report.documentation_score, 0.0)
+        self.assertLessEqual(ux_report.documentation_score, 100.0)
+
+    def test_phase3_requirements_check(self):
+        """Test Phase 3 requirements validation."""
+        # Test that the report can check Phase 3 requirements
+        ux_report = self.ux_validator.run_user_experience_assessment()
+        
+        self.assertTrue(hasattr(ux_report, 'meets_phase3_requirements'))
+        # Should return a boolean
+        phase3_compliance = ux_report.meets_phase3_requirements
+        self.assertIsInstance(phase3_compliance, bool)
 
 
 if __name__ == '__main__':

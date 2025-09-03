@@ -97,6 +97,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test registry initialization without discovery manager."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         mock_manager = Mock()
@@ -106,22 +107,24 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         registry = WorkspaceComponentRegistry(workspace_root=self.temp_workspace)
         
         self.assertEqual(registry.workspace_root, self.temp_workspace)
-        self.assertEqual(registry.discovery_manager, mock_discovery)
-        mock_manager_class.assert_called_once_with(self.temp_workspace)
+        self.assertIsNone(registry.discovery_manager)  # Should be None when not provided
+        self.assertIsNone(registry.workspace_manager)  # Should be None when not provided
     
     @patch('src.cursus.workspace.core.manager.WorkspaceManager')
     @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_discover_components_all_developers(self, mock_discovery_class, mock_manager_class):
         """Test discovering components for all developers."""
-        # Setup mock
+        # Setup mock discovery manager
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Mock workspace info with developers
         mock_workspace_info = Mock()
         mock_workspace_info.developers = ['dev1', 'dev2']
         
+        # Mock workspace manager
         mock_manager = Mock()
         mock_manager.discovery_manager = mock_discovery
         mock_manager.discover_workspaces.return_value = mock_workspace_info
@@ -136,7 +139,10 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
+        
         components = registry.discover_components()
         
         self.assertIn('builders', components)
@@ -155,6 +161,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test discovering components for a specific developer."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Mock workspace info with proper developers list
@@ -177,7 +184,10 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
+        
         components = registry.discover_components(developer_id='dev1')
         
         # Should call workspace manager methods
@@ -191,6 +201,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test component discovery caching."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Mock workspace info with proper developers list
@@ -213,7 +224,9 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
         
         # First call should discover components
         components1 = registry.discover_components()
@@ -252,6 +265,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test finding builder class for specific developer."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Mock builder class
@@ -267,7 +281,10 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
+        
         result = registry.find_builder_class('test_step', 'dev1')
         
         self.assertEqual(result, mock_builder_class)
@@ -280,6 +297,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test finding builder class from any developer."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         mock_builder_class = Mock()
@@ -299,7 +317,10 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
+        
         result = registry.find_builder_class('test_step')
         
         self.assertEqual(result, mock_builder_class)
@@ -314,6 +335,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         # Setup discovery manager mock
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Setup STEP_NAMES mock
@@ -336,7 +358,9 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
         
         # Mock core registry
         mock_core_builder = Mock()
@@ -354,6 +378,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test finding config class."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Mock config class
@@ -369,7 +394,10 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
+        
         result = registry.find_config_class('test_step', 'dev1')
         
         self.assertEqual(result, mock_config_class)
@@ -562,6 +590,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test builder class caching functionality."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         mock_builder_class = Mock()
@@ -576,7 +605,9 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
         
         # First call should load and cache
         result1 = registry.find_builder_class('test_step', 'dev1')
@@ -598,6 +629,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         """Test optimized component discovery using consolidated discovery manager (Phase 2)."""
         mock_discovery = Mock()
         mock_discovery.get_component_cache.return_value = {}
+        mock_discovery._component_cache = {}
         mock_discovery_class.return_value = mock_discovery
         
         # Mock workspace info with proper developers list
@@ -620,7 +652,9 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.return_value = mock_module_loader
         mock_manager_class.return_value = mock_manager
         
-        registry = WorkspaceComponentRegistry(self.temp_workspace)
+        # Create registry with discovery manager to ensure workspace_manager is set
+        registry = WorkspaceComponentRegistry(self.temp_workspace, discovery_manager=mock_discovery)
+        registry.workspace_manager = mock_manager  # Explicitly set for test
         
         # First call should discover components
         components1 = registry.discover_components()

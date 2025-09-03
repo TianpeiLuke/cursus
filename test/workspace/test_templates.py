@@ -68,10 +68,11 @@ class TestWorkspaceTemplate(unittest.TestCase):
     def test_workspace_template_creation(self):
         """Test WorkspaceTemplate creation."""
         # Test creating a basic template
+        from src.cursus.workspace.templates import TemplateType
         template = WorkspaceTemplate(
             name="test_template",
             description="Test template",
-            template_type="basic"
+            type=TemplateType.BASIC
         )
         self.assertEqual(template.name, "test_template")
         self.assertEqual(template.description, "Test template")

@@ -61,7 +61,7 @@ class DocumentationMetrics:
         )
 
 
-class DocumentationValidationResult(BaseValidationResult):
+class DocumentationValidationResult:
     """Documentation validation result with Phase 3 compliance checking."""
     
     def __init__(self, 
@@ -69,23 +69,25 @@ class DocumentationValidationResult(BaseValidationResult):
                  metrics: Optional[DocumentationMetrics] = None,
                  issues: Optional[List[str]] = None,
                  recommendations: Optional[List[str]] = None,
+                 workspace_path: Optional[Path] = None,
                  **kwargs):
-        # Initialize BaseValidationResult with required fields
-        super().__init__(
-            success=True,  # Will be updated based on metrics
-            workspace_path=kwargs.get('workspace_path', Path('.')),
-            **{k: v for k, v in kwargs.items() if k != 'workspace_path'}
-        )
-        
+        # Set up the fields
         self.validation_type = validation_type
         self.metrics = metrics or DocumentationMetrics(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         self.issues = issues or []
         self.recommendations = recommendations or []
+        self.workspace_path = workspace_path or Path('.')
         
         # Set validation status based on Phase 3 quality thresholds
         self.is_valid = self.metrics.overall_score >= 0.85  # 85% threshold for docs
         self.quality_score = self.metrics.overall_score
         self.success = self.is_valid  # Update success based on validation
+        
+        # Additional BaseValidationResult-like fields for compatibility
+        self.timestamp = kwargs.get('timestamp', None)
+        self.messages = kwargs.get('messages', [])
+        self.warnings = kwargs.get('warnings', [])
+        self.errors = kwargs.get('errors', [])
         
     def meets_phase3_requirements(self) -> bool:
         """Check if documentation meets Phase 3 quality requirements."""
