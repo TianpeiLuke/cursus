@@ -322,15 +322,79 @@ The completed migration prepares for Phase 1 implementation:
 - [Step Builder Registry Guide](../0_developer_guide/step_builder_registry_guide.md) - Developer guidance
 - [Registry Manager Design](../1_design/registry_manager.md) - Architecture documentation
 
+## Test Directory Reorganization
+
+### Test Structure Migration
+Following the registry migration, the test directory structure was reorganized to mirror the new code organization:
+
+#### Test Directory Changes
+- **Source**: `test/steps/registry/` (7 files)
+- **Target**: `test/registry/` (7 files)
+- **Rationale**: Mirror the code structure change from `src/cursus/steps/registry/` to `src/cursus/registry/`
+
+#### Files Moved
+- `test/steps/registry/__init__.py` → `test/registry/__init__.py`
+- `test/steps/registry/mock_modules.py` → `test/registry/mock_modules.py`
+- `test/steps/registry/test_builder_registry.py` → `test/registry/test_builder_registry.py`
+- `test/steps/registry/test_exceptions.py` → `test/registry/test_exceptions.py`
+- `test/steps/registry/test_hyperparameter_registry.py` → `test/registry/test_hyperparameter_registry.py`
+- `test/steps/registry/test_step_builder_discovery.py` → `test/registry/test_step_builder_discovery.py`
+- `test/steps/registry/test_step_names.py` → `test/registry/test_step_names.py`
+
+#### Import Path Validation
+- **Analysis**: All test files already used correct `from src.cursus.registry` import paths
+- **Result**: No import path changes required after directory move
+- **Verification**: All tests pass successfully in new location
+
+### Builder Registry Import Fixes
+
+#### Issue Identified
+The builder registry was using incorrect relative import paths after the migration:
+- **Problem**: `from ..steps.builders` (incorrect after registry move)
+- **Error**: `No module named 'src.cursus.registry.steps'`
+
+#### Import Path Corrections
+Fixed two critical import statements in `src/cursus/registry/builder_registry.py`:
+
+1. **Package Import Fix**:
+   ```python
+   # Before: from ..steps.builders import __path__ as builders_path
+   # After:  from ...steps.builders import __path__ as builders_path
+   ```
+
+2. **Dynamic Module Import Fix**:
+   ```python
+   # Before: importlib.import_module(f"..steps.builders.{module_name}", __name__)
+   # After:  importlib.import_module(f"...steps.builders.{module_name}", __name__)
+   ```
+
+3. **Known Builders Import Fix**:
+   ```python
+   # Before: module_path = f"..steps.builders.{module_name}"
+   # After:  module_path = f"...steps.builders.{module_name}"
+   ```
+
+#### Relative Path Analysis
+- **Registry Location**: `src/cursus/registry/builder_registry.py`
+- **Target Location**: `src/cursus/steps/builders/`
+- **Correct Path**: `...steps.builders` (up one level from `registry/` to `cursus/`, then down to `steps/builders/`)
+
+#### Validation Results
+- **Before Fix**: 4 test failures, 0 builders discovered
+- **After Fix**: All 50 tests passing, proper builder discovery working
+- **Import Errors**: Eliminated all "No module named 'src.cursus.registry.steps'" errors
+
 ## Conclusion
 
 The registry migration represents a successful Phase 0 implementation that:
 1. **Relocated** core registry files to dedicated module location
-2. **Updated** 50+ files with standardized import paths
+2. **Updated** 63+ files with standardized import paths
 3. **Implemented** Single Source of Truth principle for builder registration
 4. **Maintained** 100% backward compatibility with deprecation guidance
 5. **Improved** test infrastructure and error handling
 6. **Established** foundation for hybrid registry architecture
+7. **Reorganized** test directory structure to mirror code organization
+8. **Fixed** builder registry import paths for proper auto-discovery
 
 The migration demonstrates effective technical debt reduction while preparing the system for multi-developer workspace support. All objectives for Phase 0 have been achieved with comprehensive validation and documentation.
 

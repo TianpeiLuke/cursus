@@ -147,7 +147,7 @@ class StepBuilderRegistry:
                 if module_name.startswith('builder_'):
                     try:
                         # Import the module
-                        module = importlib.import_module(f"..steps.builders.{module_name}", __name__)
+                        module = importlib.import_module(f"...steps.builders.{module_name}", __name__)
                         
                         # Find builder classes in the module
                         # Import at runtime to avoid circular import
@@ -213,7 +213,7 @@ class StepBuilderRegistry:
             # Convert to snake_case
             snake_case_parts = [word.lower() for word in words]
             module_name = f"builder_{'_'.join(snake_case_parts)}_step"
-            module_path = f"..steps.builders.{module_name}"
+            module_path = f"...steps.builders.{module_name}"
             
             # Import each builder with error handling
             try:
