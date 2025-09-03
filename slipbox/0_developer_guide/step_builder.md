@@ -964,7 +964,7 @@ register_global_builder("YourStepType", YourStepBuilder)
 For successful registration, ensure:
 
 1. **Class Name Convention**: Your builder class should end with `StepBuilder` (e.g., `TabularPreprocessingStepBuilder`)
-2. **Step Names Registry**: Add your step to the `STEP_NAMES` registry in `src/cursus/steps/registry/step_names.py`
+2. **Step Names Registry**: Add your step to the `STEP_NAMES` registry in `src/cursus/registry/step_names.py`
 3. **Module Import**: Your builder module should be importable from the builders package
 4. **Base Class**: Your builder must extend `StepBuilderBase`
 
@@ -973,7 +973,7 @@ For successful registration, ensure:
 Add your step to the centralized registry:
 
 ```python
-# In src/cursus/steps/registry/step_names.py
+# In src/cursus/registry/step_names.py
 STEP_NAMES = {
     # ... existing entries ...
     "YourStepType": {

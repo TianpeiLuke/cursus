@@ -165,8 +165,8 @@ src/cursus/
 │   ├── configs/                       # Shared configurations
 │   ├── contracts/                     # Shared script contracts
 │   ├── specs/                         # Shared specifications
-│   ├── scripts/                       # Shared processing scripts
-│   └── registry/                      # Shared registry system
+│   └── scripts/                       # Shared processing scripts
+├── registry/                          # Shared registry system
 └── validation/                        # Shared validation frameworks
     ├── alignment/                     # Shared alignment testing
     ├── builders/                      # Shared step builder testing
@@ -399,7 +399,7 @@ For comprehensive details on how the runtime validation system supports workspac
 
 ### 3. Registry System Transformation
 
-**Current State**: Centralized registry in `src/cursus/steps/registry`
+**Current State**: Centralized registry in `src/cursus/registry`
 **Workspace-Aware State**: Distributed registry system with workspace-aware component discovery
 
 #### Key Components:

@@ -490,8 +490,8 @@ def _prepare_step_inputs(self, step_name: str, execution_plan: PipelineExecution
 - **[Contract Base](../core/base/contract_base.py)**: Base ScriptContract class with channel definitions
 
 #### **Registry System Integration**
-- **[Step Builder Registry](../steps/registry/builder_registry.py)**: StepBuilderRegistry for dynamic step type resolution
-- **[Step Names Registry](../steps/registry/step_names.py)**: Central registry for step naming and type mapping
+- **[Step Builder Registry](../registry/builder_registry.py)**: StepBuilderRegistry for dynamic step type resolution
+- **[Step Names Registry](../registry/step_names.py)**: Central registry for step naming and type mapping
 
 #### **Script Implementation References**
 - **[XGBoost Training Script](../steps/scripts/xgboost_training.py)**: Example of main function signature and channel usage

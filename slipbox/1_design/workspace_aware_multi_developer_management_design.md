@@ -214,8 +214,7 @@ steps/                                 # ✅ CORE STEP IMPLEMENTATIONS
 ├── configs/                           # ✅ Shared configurations
 ├── contracts/                         # ✅ Shared script contracts
 ├── specs/                             # ✅ Shared specifications
-├── scripts/                           # ✅ Shared processing scripts
-└── registry/                          # ✅ Core registry system
+└── scripts/                           # ✅ Shared processing scripts
 ```
 
 #### Shared Validation System (`src/cursus/validation/`)

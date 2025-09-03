@@ -12,8 +12,9 @@ Adding a new step to the pipeline involves creating several components that work
 4. Create the step specification
 5. Implement the step builder
 6. Update required registry files
-7. Create unit tests
-8. Integrate with pipeline templates
+7. **Run validation framework tests**
+8. Create unit tests
+9. Integrate with pipeline templates
 
 ## Detailed Steps
 
@@ -21,7 +22,7 @@ Adding a new step to the pipeline involves creating several components that work
 
 First, register your step in the central step registry:
 
-**File to Update**: `src/cursus/steps/registry/step_names.py`
+**File to Update**: `src/cursus/registry/step_names.py`
 
 ```python
 STEP_NAMES = {
@@ -380,7 +381,7 @@ The step builder:
 
 Add your new step to the central step names registry:
 
-**File to Update**: `src/cursus/steps/registry/step_names.py`
+**File to Update**: `src/cursus/registry/step_names.py`
 
 ```python
 # Add to existing STEP_NAMES dictionary
@@ -401,7 +402,397 @@ STEP_NAMES = {
 
 Note: With the auto-discovery system, you don't need to manually update `__init__.py` files anymore. The `@register_builder` decorator automatically handles registration, and step builder files are discovered based on their naming pattern.
 
-### 7. Create Unit Tests
+### 7. Run Validation Framework Tests
+
+Before proceeding with unit tests, run the comprehensive validation framework to ensure your step implementation is correct.
+
+**For complete usage instructions, see the [Validation Framework Guide](validation_framework_guide.md).**
+
+#### 7.1 Unified Alignment Tester
+
+Execute the **Unified Alignment Tester** located in `cursus/validation/alignment` to perform 4-tier validation:
+
+**Option A: Using CLI Commands (Recommended)**
+```bash
+# Validate a specific script with detailed output
+python -m cursus.cli.alignment_cli validate your_new_step --verbose --show-scoring
+
+# Validate a specific alignment level
+python -m cursus.cli.alignment_cli validate-level your_new_step 1 --verbose
+
+# Generate visualization and scoring reports
+python -m cursus.cli.alignment_cli visualize your_new_step --output-dir ./validation_reports --verbose
+
+# Run validation for all scripts
+python -m cursus.cli.alignment_cli validate-all --output-dir ./reports --format both --verbose
+```
+
+**Option B: Using Test Scripts**
+```bash
+# Run individual validation script (create based on existing patterns)
+python test/steps/scripts/alignment_validation/validate_your_new_step.py
+
+# Run comprehensive alignment validation for all scripts
+python test/steps/scripts/alignment_validation/run_alignment_validation.py
+```
+
+**Option C: Direct Python Usage**
+```python
+#!/usr/bin/env python3
+"""
+Alignment validation for your new step.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+
+def main():
+    """Run alignment validation for your new step."""
+    print("🔍 Your New Step Alignment Validation")
+    print("=" * 60)
+    
+    # Initialize the tester with directory paths
+    tester = UnifiedAlignmentTester(
+        scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
+        contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
+        specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
+        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
+        configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
+    )
+    
+    # Run validation for your specific script
+    script_name = "your_new_step"  # Replace with your actual script name
+    
+    try:
+        results = tester.validate_specific_script(script_name)
+        
+        # Print results
+        status = results.get('overall_status', 'UNKNOWN')
+        status_emoji = '✅' if status == 'PASSING' else '❌'
+        print(f"{status_emoji} Overall Status: {status}")
+        
+        # Print level-by-level results
+        for level_num, level_name in enumerate([
+            "Script ↔ Contract",
+            "Contract ↔ Specification", 
+            "Specification ↔ Dependencies",
+            "Builder ↔ Configuration"
+        ], 1):
+            level_key = f"level{level_num}"
+            level_result = results.get(level_key, {})
+            level_passed = level_result.get('passed', False)
+            level_issues = level_result.get('issues', [])
+            
+            status_emoji = '✅' if level_passed else '❌'
+            print(f"\n{status_emoji} Level {level_num}: {level_name}")
+            print(f"   Status: {'PASS' if level_passed else 'FAIL'}")
+            print(f"   Issues: {len(level_issues)}")
+            
+            # Print issues with details
+            for issue in level_issues:
+                severity = issue.get('severity', 'ERROR')
+                message = issue.get('message', 'No message')
+                recommendation = issue.get('recommendation', '')
+                
+                print(f"   • {severity}: {message}")
+                if recommendation:
+                    print(f"     💡 Recommendation: {recommendation}")
+        
+        return 0 if status == 'PASSING' else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during validation: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+The 4-tier validation includes:
+- **Level 1**: Script-Contract Alignment (script paths match contract definitions)
+- **Level 2**: Contract-Specification Alignment (logical names consistency)
+- **Level 3**: Specification-Dependencies Alignment (dependency compatibility)
+- **Level 4**: Builder-Configuration Alignment (builder config integration)
+
+#### 7.2 Universal Step Builder Test
+
+Execute the **Universal Step Builder Test** located in `cursus/validation/builders` for comprehensive builder testing:
+
+**Option A: Using CLI Commands (Recommended)**
+```bash
+# Run all tests for your builder with scoring
+python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_your_new_step.YourNewStepBuilder --scoring --verbose
+
+# Run specific level tests
+python -m cursus.cli.builder_test_cli level 1 src.cursus.steps.builders.builder_your_new_step.YourNewStepBuilder --verbose
+
+# Test all builders of your step type (e.g., Processing)
+python -m cursus.cli.builder_test_cli test-by-type Processing --verbose --scoring
+
+# Export results to JSON and generate charts
+python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_your_new_step.YourNewStepBuilder --export-json ./reports/builder_test_results.json --export-chart --output-dir ./reports
+```
+
+**Option B: Using Test Scripts (Pattern from existing tests)**
+```bash
+# Run Processing-specific tests (if your step is a Processing step)
+python test/steps/builders/run_processing_tests.py
+
+# Run Training-specific tests (if your step is a Training step)
+python test/steps/builders/run_training_tests.py
+
+# Run Transform-specific tests (if your step is a Transform step)
+python test/steps/builders/run_transform_tests.py
+
+# Run CreateModel-specific tests (if your step is a CreateModel step)
+python test/steps/builders/run_createmodel_tests.py
+```
+
+**Option C: Direct Python Usage (Following existing patterns)**
+```python
+#!/usr/bin/env python3
+"""
+Builder validation for your new step.
+Based on pattern from test_processing_step_builders.py
+"""
+import sys
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
+
+from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+
+def main():
+    """Run builder validation for your new step."""
+    print("🔧 Your New Step Builder Validation")
+    print("=" * 60)
+    
+    # Import your builder class
+    from cursus.steps.builders.builder_your_new_step import YourNewStepBuilder
+    
+    try:
+        # Initialize the tester with enhanced features
+        tester = UniversalStepBuilderTest(
+            YourNewStepBuilder, 
+            verbose=True,
+            enable_scoring=True,
+            enable_structured_reporting=True
+        )
+        
+        # Run all tests
+        results = tester.run_all_tests()
+        
+        # Extract test results from enhanced format
+        test_results = results.get('test_results', results) if isinstance(results, dict) and 'test_results' in results else results
+        
+        # Print results
+        passed_tests = sum(1 for result in test_results.values() 
+                          if isinstance(result, dict) and result.get("passed", False))
+        total_tests = len([r for r in test_results.values() if isinstance(r, dict)])
+        pass_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
+        
+        print(f"\n📊 Builder Test Results: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
+        
+        # Show failed tests
+        failed_tests = {k: v for k, v in test_results.items() 
+                       if isinstance(v, dict) and not v.get("passed", True)}
+        
+        if failed_tests:
+            print("\n❌ Failed Tests:")
+            for test_name, result in failed_tests.items():
+                print(f"  • {test_name}: {result.get('error', 'Unknown error')}")
+        else:
+            print("\n✅ All builder tests passed!")
+        
+        # Print scoring information if available
+        scoring = results.get('scoring', {})
+        if scoring:
+            print(f"\n📈 Scoring Information:")
+            for metric, value in scoring.items():
+                print(f"  • {metric}: {value}")
+        
+        return 0 if pass_rate == 100 else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during builder validation: {e}")
+        import traceback
+        traceback.print_exc()
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+The 4-level testing includes:
+- **Level 1**: Interface Testing (builder interface compliance)
+- **Level 2**: Specification Testing (spec-driven functionality)
+- **Level 3**: Path Mapping Testing (input/output path correctness)
+- **Level 4**: Integration Testing (end-to-end step creation)
+
+#### 7.3 Step Type-Specific Validation
+
+The validation framework automatically applies step type-specific validation variants based on your `sagemaker_step_type`:
+
+- **Processing Steps**: Standard processing validation patterns
+- **Training Steps**: Training-specific validation with hyperparameter checks
+- **Transform Steps**: Transform-specific validation patterns
+- **CreateModel Steps**: Model creation validation patterns
+- **RegisterModel Steps**: Model registration validation patterns
+
+#### 7.4 Running the Validation Tests
+
+You can run these validation tests in several ways:
+
+**CLI Commands (Recommended)**
+```bash
+# Alignment validation using CLI
+python -m cursus.cli.alignment_cli validate your_new_step --verbose --show-scoring
+python -m cursus.cli.alignment_cli visualize your_new_step --output-dir ./validation_reports
+
+# Builder validation using CLI
+python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_your_new_step.YourNewStepBuilder --scoring --verbose
+python -m cursus.cli.builder_test_cli test-by-type Processing --verbose --scoring
+```
+
+**Test Scripts (Following existing patterns)**
+```bash
+# Run alignment validation scripts
+python test/steps/scripts/alignment_validation/run_alignment_validation.py
+python test/steps/scripts/alignment_validation/validate_your_new_step.py
+
+# Run builder test scripts by step type
+python test/steps/builders/run_processing_tests.py  # For Processing steps
+python test/steps/builders/run_training_tests.py    # For Training steps
+python test/steps/builders/run_transform_tests.py   # For Transform steps
+python test/steps/builders/run_createmodel_tests.py # For CreateModel steps
+```
+
+**Important**: Both validation frameworks must pass before proceeding to unit tests and integration.
+
+### 8. Create Unit Tests
+### 7. Run Validation Framework Tests
+
+Before proceeding with unit tests, run the comprehensive validation framework to ensure your step implementation is correct:
+
+#### 7.1 Unified Alignment Tester
+
+Execute the **Unified Alignment Tester** located in `cursus/validation/alignment` to perform 4-tier validation:
+
+**Option A: Using CLI Commands (Recommended)**
+```bash
+# Validate a specific script with detailed output and scoring
+python -m cursus.cli.alignment_cli validate your_new_step --verbose --show-scoring
+
+# Validate a specific alignment level only
+python -m cursus.cli.alignment_cli validate-level your_new_step 1 --verbose
+
+# Generate comprehensive visualization and scoring reports
+python -m cursus.cli.alignment_cli visualize your_new_step --output-dir ./validation_reports --verbose
+
+# Run validation for all scripts with reports
+python -m cursus.cli.alignment_cli validate-all --output-dir ./reports --format both --verbose
+```
+
+**Option B: Using Test Scripts (Pattern from existing tests)**
+```bash
+# Create individual validation script following the pattern from validate_tabular_preprocessing.py
+python test/steps/scripts/alignment_validation/validate_your_new_step.py
+
+# Run comprehensive alignment validation for all scripts
+python test/steps/scripts/alignment_validation/run_alignment_validation.py
+```
+
+**Option C: Direct Python Usage (Following existing patterns)**
+```python
+#!/usr/bin/env python3
+"""
+Alignment validation for your new step.
+Based on pattern from validate_tabular_preprocessing.py
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+
+def main():
+    """Run alignment validation for your new step."""
+    print("🔍 Your New Step Alignment Validation")
+    print("=" * 60)
+    
+    # Initialize the tester with directory paths
+    tester = UnifiedAlignmentTester(
+        scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
+        contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
+        specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
+        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
+        configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
+    )
+    
+    # Run validation for your specific script
+    script_name = "your_new_step"  # Replace with your actual script name
+    
+    try:
+        results = tester.validate_specific_script(script_name)
+        
+        # Print results
+        status = results.get('overall_status', 'UNKNOWN')
+        status_emoji = '✅' if status == 'PASSING' else '❌'
+        print(f"{status_emoji} Overall Status: {status}")
+        
+        # Print level-by-level results
+        for level_num, level_name in enumerate([
+            "Script ↔ Contract",
+            "Contract ↔ Specification", 
+            "Specification ↔ Dependencies",
+            "Builder ↔ Configuration"
+        ], 1):
+            level_key = f"level{level_num}"
+            level_result = results.get(level_key, {})
+            level_passed = level_result.get('passed', False)
+            level_issues = level_result.get('issues', [])
+            
+            status_emoji = '✅' if level_passed else '❌'
+            print(f"\n{status_emoji} Level {level_num}: {level_name}")
+            print(f"   Status: {'PASS' if level_passed else 'FAIL'}")
+            print(f"   Issues: {len(level_issues)}")
+            
+            # Print issues with details
+            for issue in level_issues:
+                severity = issue.get('severity', 'ERROR')
+                message = issue.get('message', 'No message')
+                recommendation = issue.get('recommendation', '')
+                
+                print(f"   • {severity}: {message}")
+                if recommendation:
+                    print(f"     💡 Recommendation: {recommendation}")
+        
+        return 0 if status == 'PASSING' else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during validation: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+The 4-tier validation includes:
+- **Level 1**: Script-Contract Alignment (script paths match contract definitions)
+- **Level 2**: Contract-Specification Alignment (logical names consistency)
+- **Level 3**: Specification-Dependencies Alignment (dependency compatibility)
+- **Level 4**: Builder-Configuration Alignment (builder config integration)
+
+### 8. Create Unit Tests
 
 Implement tests to verify your components work correctly:
 

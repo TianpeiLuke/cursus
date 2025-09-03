@@ -1,8 +1,8 @@
 # Developer Guide: Adding a New Step to the Pipeline
 
-**Version**: 2.0  
-**Date**: July 12, 2025  
-**Author**: MODS Development Team
+**Version**: 1.2.1  
+**Date**: September 3, 2025  
+**Author**: Tianpei Xie
 
 ## Overview
 
@@ -24,20 +24,21 @@ Key architectural improvements include:
 
 1. [Prerequisites](prerequisites.md)
 2. [Step Creation Process](creation_process.md)
-3. [Detailed Component Guide](component_guide.md)
+3. [Validation Framework Guide](validation_framework_guide.md)
+4. [Detailed Component Guide](component_guide.md)
    - [Script Contract Development](script_contract.md)
    - [Step Specification Development](step_specification.md)
    - [Step Builder Implementation](step_builder.md)
    - [Adding a New Hyperparameter Class](hyperparameter_class.md)
    - [Three-Tier Config Design](three_tier_config_design.md)
    - [Step Builder Registry Guide](step_builder_registry_guide.md)
-4. [Design Principles](design_principles.md)
-5. [Best Practices](best_practices.md)
-6. [Standardization Rules](standardization_rules.md)
-7. [Common Pitfalls to Avoid](common_pitfalls.md)
-8. [Alignment Rules](alignment_rules.md)
-9. [Example](example.md)
-10. [Validation Checklist](validation_checklist.md)
+5. [Design Principles](design_principles.md)
+6. [Best Practices](best_practices.md)
+7. [Standardization Rules](standardization_rules.md)
+8. [Common Pitfalls to Avoid](common_pitfalls.md)
+9. [Alignment Rules](alignment_rules.md)
+10. [Example](example.md)
+11. [Validation Checklist](validation_checklist.md)
 
 ## Quick Start
 
@@ -45,7 +46,11 @@ To add a new step to the pipeline:
 
 1. Review the [prerequisites](prerequisites.md) to ensure you have all required information
 2. Follow the [step creation process](creation_process.md) to implement all required components
-3. Validate your implementation using the [validation checklist](validation_checklist.md)
+3. **Run validation framework tests** to ensure alignment and builder correctness:
+   - Execute the **Unified Alignment Tester** in `cursus/validation/alignment` for 4-tier validation
+   - Execute the **Universal Step Builder Test** in `cursus/validation/builders` for comprehensive builder testing
+   - See the [Validation Framework Guide](validation_framework_guide.md) for comprehensive usage instructions
+4. Validate your implementation using the [validation checklist](validation_checklist.md)
 
 For detailed guidance on specific components, refer to the relevant sections in the [detailed component guide](component_guide.md).
 

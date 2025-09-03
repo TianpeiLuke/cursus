@@ -481,7 +481,7 @@ This document defines the comprehensive Property Path Reference Database based o
 
 ## Step Type to SageMaker Step Mapping
 
-Based on the existing registry system in `src/cursus/steps/registry/step_names.py`, here's the mapping from our step types to SageMaker step types:
+Based on the existing registry system in `src/cursus/registry/step_names.py`, here's the mapping from our step types to SageMaker step types:
 
 ```python
 STEP_TYPE_TO_SAGEMAKER_MAPPING = {

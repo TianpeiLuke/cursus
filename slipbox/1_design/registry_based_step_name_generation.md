@@ -500,7 +500,7 @@ abbreviation_map = {
 
 ### Comprehensive Test Coverage
 
-Added comprehensive unit tests in `test/steps/registry/test_step_names.py`:
+Added comprehensive unit tests in `test/registry/test_step_names.py`:
 
 - `test_get_canonical_name_from_file_name()`: Tests all registry mapping scenarios
 - `test_xgboost_model_evaluation_registry_integration()`: Specific test for the fixed case

@@ -653,7 +653,7 @@ All step builders must be properly classified according to their actual SageMake
 
 #### Step Registry Requirements
 
-All steps must be registered in `src/cursus/steps/registry/step_names.py` with the correct `sagemaker_step_type` field:
+All steps must be registered in `src/cursus/registry/step_names.py` with the correct `sagemaker_step_type` field:
 
 ```python
 STEP_NAMES = {

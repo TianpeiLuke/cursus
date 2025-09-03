@@ -160,7 +160,7 @@ The Planner agent creates the initial implementation plan using the enhanced `in
   - `src/cursus/steps/specs/` - Step specification examples
   - `src/cursus/steps/contracts/` - Script contract examples
   - `src/cursus/steps/scripts/` - Processing script examples
-  - `src/cursus/steps/registry/step_names.py` - Step registration patterns
+  - `src/cursus/registry/step_names.py` - Step registration patterns
 
 - Add user input fields for:
   - Initial step requirements and description
@@ -315,7 +315,7 @@ The Programmer agent implements the code using the enhanced `programmer_prompt_t
   - `src/cursus/steps/contracts/` - Script contract implementations
   - `src/cursus/steps/scripts/` - Processing script implementations
   - `src/cursus/steps/hyperparams/` - Hyperparameter class implementations
-  - `src/cursus/steps/registry/` - Registry integration examples
+  - `src/cursus/registry/` - Registry integration examples
 
 - Add user input fields for:
   - SageMaker step type specification
@@ -379,7 +379,7 @@ The Validator agent validates code using two specialized prompt templates:
   - `src/cursus/steps/configs/` - Configuration validation examples
   - `src/cursus/steps/specs/` - Specification validation examples
   - `src/cursus/steps/contracts/` - Contract validation examples
-  - `src/cursus/steps/registry/` - Registry validation examples
+  - `src/cursus/registry/` - Registry validation examples
 
 - Add user input field for test report location
 - Implement comprehensive two-level validation:

@@ -501,7 +501,7 @@ pipeline = template.build_pipeline()
 
 - Implementation: `src/cursus/core/compiler/`
 - Base Classes: `src/cursus/core/base.py`
-- Step Builder Registry: `src/cursus/steps/registry/`
+- Step Builder Registry: `src/cursus/registry/`
 - Configuration Classes: `src/cursus/steps/configs/`
 - Pipeline Template Base: `src/cursus/core/assembler/pipeline_template_base.py`
 

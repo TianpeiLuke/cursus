@@ -89,7 +89,7 @@ The current implementation in `src/cursus/validation/builders` has successfully 
 
 ### ✅ **IMPLEMENTED: Step Registry Integration**
 
-The `src/cursus/steps/registry/step_names.py` integration is fully implemented:
+The `src/cursus/registry/step_names.py` integration is fully implemented:
 
 ```python
 STEP_NAMES = {
