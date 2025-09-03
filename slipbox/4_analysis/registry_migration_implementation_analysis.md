@@ -133,6 +133,9 @@ All specification files updated to use new registry imports:
 #### Test Integration Files (1 file)
 - `test/integration/runtime/step_testing_script.py` - Updated import: `from cursus.registry.step_names import STEP_NAMES`
 
+#### Core Module Files (1 file)
+- `src/cursus/steps/__init__.py` - Removed registry import to eliminate deprecation warnings
+
 #### Workspace and Test Files (3 files)
 - `src/cursus/workspace/core/registry.py`
 - `src/cursus/mods/compiler/mods_dag_compiler.py`
@@ -262,6 +265,13 @@ Following the initial migration, a comprehensive cleanup of test files was perfo
 - `test/integration/runtime/step_testing_script.py`: Fixed `STEP_NAMES` import
 
 This cleanup ensures that all test infrastructure is fully aligned with the new registry location and eliminates any potential deprecation warnings during test execution.
+
+#### Deprecation Warning Elimination
+- **Issue**: `src/cursus/steps/__init__.py` was importing from `.registry` which triggered deprecation warnings
+- **Root Cause**: The steps module was re-exporting registry functionality through `from .registry import *`
+- **Solution**: Removed registry import from `src/cursus/steps/__init__.py` since registry functionality should be accessed directly from `cursus.registry`
+- **Result**: Eliminated all registry-related deprecation warnings during test execution
+- **Verification**: Confirmed through test runs that only unrelated Pydantic warnings remain
 
 ## Impact Assessment
 

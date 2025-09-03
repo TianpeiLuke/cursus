@@ -12,7 +12,6 @@ from .builders import *
 from .configs import *
 from .contracts import *
 from .hyperparams import *
-from .registry import *
 from .scripts import *
 from .specs import *
 
@@ -21,7 +20,6 @@ from .builders import __all__ as builders_all
 from .configs import __all__ as configs_all
 from .contracts import __all__ as contracts_all
 from .hyperparams import __all__ as hyperparams_all
-from .registry import __all__ as registry_all
 from .scripts import __all__ as scripts_all
 from .specs import __all__ as specs_all
 
@@ -30,7 +28,6 @@ __all__ = (
     configs_all +
     contracts_all +
     hyperparams_all +
-    registry_all +
     scripts_all +
     specs_all
 )
