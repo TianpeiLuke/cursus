@@ -66,7 +66,6 @@ from .test_workspace_module_loader import TestWorkspaceModuleLoader
 from .test_workspace_manager import TestWorkspaceManager
 from .test_workspace_alignment_tester import TestWorkspaceUnifiedAlignmentTester
 from .test_workspace_builder_test import TestWorkspaceUniversalStepBuilderTest
-from .test_workspace_orchestrator import TestWorkspaceValidationOrchestrator
 
 # Test discovery patterns
 TEST_PATTERNS = [
@@ -112,8 +111,7 @@ def create_test_suite():
         TestWorkspaceModuleLoader,
         TestWorkspaceManager,
         TestWorkspaceUnifiedAlignmentTester,
-        TestWorkspaceUniversalStepBuilderTest,
-        TestWorkspaceValidationOrchestrator
+        TestWorkspaceUniversalStepBuilderTest
     ]
     
     for test_class in test_classes:
@@ -162,8 +160,7 @@ def run_category_tests(category, verbosity=2):
         "workspace_management": [TestWorkspaceManager],
         "validation_extensions": [
             TestWorkspaceUnifiedAlignmentTester,
-            TestWorkspaceUniversalStepBuilderTest,
-            TestWorkspaceValidationOrchestrator
+            TestWorkspaceUniversalStepBuilderTest
         ]
     }
     
@@ -185,7 +182,7 @@ def get_test_info():
         dict: Test information including categories and test counts
     """
     info = {
-        "total_test_classes": 6,
+        "total_test_classes": 5,
         "categories": list(TEST_CATEGORIES.keys()),
         "test_files": [
             "test_workspace_file_resolver.py",
@@ -220,8 +217,7 @@ def get_test_info():
         TestWorkspaceModuleLoader, 
         TestWorkspaceManager,
         TestWorkspaceUnifiedAlignmentTester,
-        TestWorkspaceUniversalStepBuilderTest,
-        TestWorkspaceValidationOrchestrator
+        TestWorkspaceUniversalStepBuilderTest
     ]
     
     for test_class in all_test_classes:

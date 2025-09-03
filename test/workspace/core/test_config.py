@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, Any
 from unittest.mock import Mock, patch
 
-from src.cursus.core.workspace.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
+from src.cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
 
 
 class TestWorkspaceStepDefinition(unittest.TestCase):

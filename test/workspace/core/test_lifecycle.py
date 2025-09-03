@@ -13,8 +13,8 @@ from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
-from src.cursus.core.workspace.lifecycle import WorkspaceLifecycleManager
-from src.cursus.core.workspace.manager import WorkspaceContext
+from src.cursus.workspace.core.lifecycle import WorkspaceLifecycleManager
+from src.cursus.workspace.core.manager import WorkspaceContext
 
 
 class TestWorkspaceLifecycleManager(unittest.TestCase):

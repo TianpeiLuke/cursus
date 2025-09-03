@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
-from src.cursus.validation.workspace.workspace_manager import (
+from src.cursus.workspace.validation.workspace_manager import (
     WorkspaceManager,
     WorkspaceConfig,
     DeveloperInfo,

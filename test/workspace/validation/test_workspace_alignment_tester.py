@@ -14,8 +14,8 @@ import tempfile
 import os
 from pathlib import Path
 
-from src.cursus.validation.workspace.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
-from src.cursus.validation.workspace.workspace_manager import WorkspaceManager
+from src.cursus.workspace.validation.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
+from src.cursus.workspace.validation.workspace_manager import WorkspaceManager
 
 
 class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
@@ -118,7 +118,7 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertIn("developer_id", info)
     
-    @patch('src.cursus.validation.workspace.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
+    @patch('src.cursus.workspace.validation.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
     def test_run_workspace_validation_single_developer(self, mock_run_validation):
         """Test running validation for single developer workspace."""
         # Mock AlignmentReport object
@@ -138,7 +138,7 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
         self.assertIn("workspace_metadata", results)
         mock_run_validation.assert_called_once()
     
-    @patch('src.cursus.validation.workspace.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
+    @patch('src.cursus.workspace.validation.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
     def test_run_workspace_validation_all_developers(self, mock_run_validation):
         """Test running validation for all developer workspaces."""
         # Mock AlignmentReport object
@@ -160,7 +160,7 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
         self.assertIn("workspace_metadata", results)
         mock_run_validation.assert_called_once()
     
-    @patch('src.cursus.validation.workspace.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
+    @patch('src.cursus.workspace.validation.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
     def test_run_workspace_validation_with_errors(self, mock_run_validation):
         """Test validation with errors in one workspace."""
         # Mock AlignmentReport object with errors
@@ -189,7 +189,7 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
         self.assertIsNotNone(results)
         self.assertIn("workspace_metadata", results)
     
-    @patch('src.cursus.validation.workspace.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
+    @patch('src.cursus.workspace.validation.workspace_alignment_tester.UnifiedAlignmentTester.run_full_validation')
     def test_cross_workspace_dependency_analysis(self, mock_run_validation):
         """Test cross-workspace dependency analysis."""
         # Mock AlignmentReport object
@@ -217,7 +217,7 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
         self.assertIn("enabled", cross_workspace)
         self.assertIn("recommendations", cross_workspace)
     
-    @patch('src.cursus.validation.workspace.workspace_alignment_tester.UnifiedAlignmentTester.__init__')
+    @patch('src.cursus.workspace.validation.workspace_alignment_tester.UnifiedAlignmentTester.__init__')
     def test_inheritance_from_unified_alignment_tester(self, mock_init):
         """Test that WorkspaceUnifiedAlignmentTester properly inherits from UnifiedAlignmentTester."""
         mock_init.return_value = None

@@ -12,11 +12,11 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.core.workspace.manager import WorkspaceManager
-from src.cursus.core.workspace.lifecycle import WorkspaceLifecycleManager
-from src.cursus.core.workspace.isolation import WorkspaceIsolationManager
-from src.cursus.core.workspace.discovery import WorkspaceDiscoveryManager
-from src.cursus.core.workspace.integration import WorkspaceIntegrationManager
+from src.cursus.workspace.core.manager import WorkspaceManager
+from src.cursus.workspace.core.lifecycle import WorkspaceLifecycleManager
+from src.cursus.workspace.core.isolation import WorkspaceIsolationManager
+from src.cursus.workspace.core.discovery import WorkspaceDiscoveryManager
+from src.cursus.workspace.core.integration import WorkspaceIntegrationManager
 
 
 class TestWorkspaceManager(unittest.TestCase):

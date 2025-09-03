@@ -12,8 +12,8 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.core.workspace.isolation import WorkspaceIsolationManager, IsolationViolation
-from src.cursus.core.workspace.manager import WorkspaceContext
+from src.cursus.workspace.core.isolation import WorkspaceIsolationManager, IsolationViolation
+from src.cursus.workspace.core.manager import WorkspaceContext
 
 
 class TestWorkspaceIsolationManager(unittest.TestCase):

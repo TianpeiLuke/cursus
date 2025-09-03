@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.core.workspace.discovery import WorkspaceDiscoveryManager, ComponentInventory, DependencyGraph
+from src.cursus.workspace.core.discovery import WorkspaceDiscoveryManager, ComponentInventory, DependencyGraph
 
 
 class TestWorkspaceDiscoveryManager(unittest.TestCase):

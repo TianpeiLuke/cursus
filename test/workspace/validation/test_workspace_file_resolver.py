@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from src.cursus.validation.workspace.workspace_file_resolver import DeveloperWorkspaceFileResolver
+from src.cursus.workspace.validation.workspace_file_resolver import DeveloperWorkspaceFileResolver
 
 
 class TestDeveloperWorkspaceFileResolver(unittest.TestCase):

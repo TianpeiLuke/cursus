@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
-from src.cursus.validation.workspace.workspace_module_loader import WorkspaceModuleLoader
+from src.cursus.workspace.validation.workspace_module_loader import WorkspaceModuleLoader
 
 
 class TestWorkspaceModuleLoader(unittest.TestCase):

@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.core.workspace.integration import (
+from src.cursus.workspace.core.integration import (
     WorkspaceIntegrationManager, 
     StagedComponent, 
     IntegrationPipeline,
