@@ -24,7 +24,6 @@ from src.cursus.cli.workspace_cli import (
     workspace_cli,
     create_workspace,
     list_workspaces,
-    validate_isolation,
     workspace_info,
     health_check,
     remove_workspace,
@@ -67,7 +66,7 @@ class TestWorkspaceCliBasic(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         
         expected_commands = [
-            'create', 'list', 'validate-isolation', 'info', 'health-check', 'remove',
+            'create', 'list', 'validate', 'info', 'health-check', 'remove',
             'discover', 'build', 'test-compatibility', 'merge',
             'test-runtime', 'validate-alignment'
         ]
@@ -91,13 +90,18 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceManager')
-    def test_create_workspace_basic(self, mock_workspace_manager):
+    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
+    def test_create_workspace_basic(self, mock_workspace_api):
         """Test basic workspace creation."""
-        # Mock the workspace manager
-        mock_manager = Mock()
-        mock_manager.create_developer_workspace.return_value = str(self.workspace_root / "developers" / "test_dev")
-        mock_workspace_manager.return_value = mock_manager
+        # Mock the WorkspaceAPI
+        mock_api = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.message = "Workspace created successfully"
+        mock_result.workspace_path = str(self.workspace_root / "developers" / "test_dev")
+        mock_result.warnings = []
+        mock_api.setup_developer_workspace.return_value = mock_result
+        mock_workspace_api.return_value = mock_api
         
         # Mock template application
         with patch('src.cursus.cli.workspace_cli._apply_workspace_template') as mock_template, \
@@ -110,16 +114,21 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
             
             self.assertEqual(result.exit_code, 0)
             self.assertIn('Creating workspace for developer: test_dev', result.output)
-            self.assertIn('✓ Workspace created:', result.output)
-            mock_manager.create_developer_workspace.assert_called_once()
+            self.assertIn('✅', result.output)
+            mock_api.setup_developer_workspace.assert_called_once()
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceManager')
-    def test_create_workspace_with_template(self, mock_workspace_manager):
+    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
+    def test_create_workspace_with_template(self, mock_workspace_api):
         """Test workspace creation with template."""
-        # Mock the workspace manager
-        mock_manager = Mock()
-        mock_manager.create_developer_workspace.return_value = str(self.workspace_root / "developers" / "test_dev")
-        mock_workspace_manager.return_value = mock_manager
+        # Mock the WorkspaceAPI
+        mock_api = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.message = "Workspace created successfully"
+        mock_result.workspace_path = str(self.workspace_root / "developers" / "test_dev")
+        mock_result.warnings = []
+        mock_api.setup_developer_workspace.return_value = mock_result
+        mock_workspace_api.return_value = mock_api
         
         with patch('src.cursus.cli.workspace_cli._apply_workspace_template') as mock_template, \
              patch('src.cursus.cli.workspace_cli._show_workspace_structure') as mock_show:
@@ -132,7 +141,7 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
             
             self.assertEqual(result.exit_code, 0)
             self.assertIn('✓ Applied template: ml_pipeline', result.output)
-            mock_template.assert_called_once_with(mock_manager.create_developer_workspace.return_value, 'ml_pipeline')
+            mock_template.assert_called_once_with(str(mock_result.workspace_path), 'ml_pipeline')
 
 
 class TestWorkspaceListingCommands(unittest.TestCase):
@@ -150,15 +159,13 @@ class TestWorkspaceListingCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceManager')
-    def test_list_workspaces_empty(self, mock_workspace_manager):
+    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
+    def test_list_workspaces_empty(self, mock_workspace_api):
         """Test listing workspaces when none exist."""
-        # Mock empty workspace discovery
-        mock_manager = Mock()
-        mock_workspace_info = Mock()
-        mock_workspace_info.workspaces = {}
-        mock_manager.discover_workspaces.return_value = mock_workspace_info
-        mock_workspace_manager.return_value = mock_manager
+        # Mock empty workspace list
+        mock_api = Mock()
+        mock_api.list_workspaces.return_value = []
+        mock_workspace_api.return_value = mock_api
         
         result = self.runner.invoke(list_workspaces, [
             '--workspace-root', str(self.workspace_root)
@@ -167,24 +174,28 @@ class TestWorkspaceListingCommands(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn('No workspaces found', result.output)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceManager')
+    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
     @patch('src.cursus.cli.workspace_cli.WorkspaceComponentRegistry')
-    def test_list_workspaces_json_format(self, mock_registry, mock_workspace_manager):
+    def test_list_workspaces_json_format(self, mock_registry, mock_workspace_api):
         """Test listing workspaces in JSON format."""
         from datetime import datetime
         
-        # Mock workspace data
+        # Mock workspace data using Phase 4 API format
         mock_workspace = Mock()
-        mock_workspace.workspace_path = str(self.workspace_root / "developers" / "test_dev")
-        mock_workspace.is_valid = True
-        mock_workspace.last_modified = datetime.now()
+        mock_workspace.developer_id = 'test_dev'
+        mock_workspace.path = str(self.workspace_root / "developers" / "test_dev")
+        mock_workspace.status = 'HEALTHY'
+        mock_workspace.last_modified = datetime.now().isoformat()
+        mock_workspace.model_dump.return_value = {
+            'developer_id': 'test_dev',
+            'path': str(self.workspace_root / "developers" / "test_dev"),
+            'status': 'HEALTHY',
+            'last_modified': datetime.now().isoformat()
+        }
         
-        mock_workspace_info = Mock()
-        mock_workspace_info.workspaces = {'test_dev': mock_workspace}
-        
-        mock_manager = Mock()
-        mock_manager.discover_workspaces.return_value = mock_workspace_info
-        mock_workspace_manager.return_value = mock_manager
+        mock_api = Mock()
+        mock_api.list_workspaces.return_value = [mock_workspace]
+        mock_workspace_api.return_value = mock_api
         
         result = self.runner.invoke(list_workspaces, [
             '--workspace-root', str(self.workspace_root),
@@ -217,26 +228,36 @@ class TestWorkspaceValidationCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli._display_validation_result')
-    @patch('src.cursus.cli.workspace_cli.UnifiedValidationCore')
-    def test_validate_isolation_basic(self, mock_validation_core, mock_display):
-        """Test basic workspace isolation validation."""
-        # Mock validation result
+    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
+    @patch('src.cursus.cli.workspace_cli._display_health_result_v4')
+    @patch('src.cursus.cli.workspace_cli.WorkspaceStatus')
+    def test_validate_workspace_basic(self, mock_workspace_status, mock_display, mock_workspace_api):
+        """Test basic workspace validation."""
+        # Mock WorkspaceStatus enum
+        mock_workspace_status.HEALTHY = 'HEALTHY'
+        mock_workspace_status.WARNING = 'WARNING'
+        
+        # Mock health result (since no workspace-path is specified, it calls get_system_health)
         mock_result = Mock()
-        mock_result.summary.success_rate = 0.9
-        mock_result.model_dump.return_value = {'success': True}
+        mock_result.overall_status = 'HEALTHY'
+        mock_result.workspace_reports = []
+        mock_result.system_issues = []
+        mock_result.recommendations = []
+        mock_result.model_dump_json.return_value = '{"overall_status": "HEALTHY"}'
         
-        mock_validator = Mock()
-        mock_validator.validate_workspaces.return_value = mock_result
-        mock_validation_core.return_value = mock_validator
+        mock_api = Mock()
+        mock_api.get_system_health.return_value = mock_result
+        mock_workspace_api.return_value = mock_api
         
-        result = self.runner.invoke(validate_isolation, [
+        # Import the actual validate command from workspace_cli
+        from src.cursus.cli.workspace_cli import validate_workspace
+        
+        result = self.runner.invoke(validate_workspace, [
             '--workspace-root', str(self.workspace_root)
         ])
         
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('Validating workspace isolation...', result.output)
-        mock_validator.validate_workspaces.assert_called_once()
+        self.assertIn('Validating workspace...', result.output)
         mock_display.assert_called_once_with(mock_result)
 
 
