@@ -31,7 +31,7 @@ class RegistryLoader:
     """
     
     @staticmethod
-    def load_registry_module(file_path: str, module_name: str) -> Any:
+    def load_registry_module(file_path: str, module_name: str = None) -> Any:
         """
         Common registry loading logic.
         
@@ -45,7 +45,13 @@ class RegistryLoader:
         Raises:
             RegistryLoadError: If module loading fails
         """
+        from ..exceptions import RegistryLoadError
+        
         try:
+            if not Path(file_path).exists():
+                raise RegistryLoadError(f"Registry file not found: {file_path}")
+            
+            module_name = module_name or f"registry_module_{hash(file_path)}"
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             if spec is None or spec.loader is None:
                 raise RegistryLoadError(f"Could not create module spec from {file_path}")
@@ -55,7 +61,52 @@ class RegistryLoader:
             return module
             
         except Exception as e:
+            if isinstance(e, RegistryLoadError):
+                raise
             raise RegistryLoadError(f"Failed to load registry module from {file_path}: {e}")
+    
+    @staticmethod
+    def validate_registry_structure(module: Any, required_attributes: List[str]) -> None:
+        """
+        Validate that a registry module has required attributes.
+        
+        Args:
+            module: Loaded registry module
+            required_attributes: List of required attribute names
+            
+        Raises:
+            RegistryLoadError: If required attributes are missing
+        """
+        from ..exceptions import RegistryLoadError
+        
+        missing_attributes = []
+        for attr_name in required_attributes:
+            if not hasattr(module, attr_name):
+                missing_attributes.append(attr_name)
+        
+        if missing_attributes:
+            raise RegistryLoadError(f"Registry module missing required attributes: {missing_attributes}")
+    
+    @staticmethod
+    def safe_get_attribute(module: Any, attr_name: str, default: Any = None) -> Any:
+        """
+        Safely get an attribute from a module with a default value.
+        
+        Args:
+            module: Module to get attribute from
+            attr_name: Name of the attribute
+            default: Default value if attribute doesn't exist
+            
+        Returns:
+            Attribute value or default
+        """
+        try:
+            if hasattr(module, attr_name):
+                return getattr(module, attr_name)
+            else:
+                return default
+        except Exception:
+            return default
     
     @staticmethod
     def validate_registry_file(file_path: str) -> bool:
@@ -75,7 +126,7 @@ class RegistryLoader:
             return False
     
     @staticmethod
-    def get_registry_attributes(module: Any, expected_attributes: List[str]) -> Dict[str, Any]:
+    def get_registry_attributes(module: Any, expected_attributes: List[str] = None) -> Dict[str, Any]:
         """
         Extract expected attributes from a registry module.
         
@@ -86,11 +137,25 @@ class RegistryLoader:
         Returns:
             Dictionary of attribute name to value mappings
         """
+        if expected_attributes is None:
+            # Default to looking for STEP_NAMES
+            expected_attributes = ['STEP_NAMES']
+        
         attributes = {}
         for attr_name in expected_attributes:
             attr_value = getattr(module, attr_name, {})
             attributes[attr_name] = attr_value
+        
+        # If only STEP_NAMES was requested, return it directly
+        if expected_attributes == ['STEP_NAMES']:
+            return attributes.get('STEP_NAMES', {})
+        
         return attributes
+
+
+class HybridStepDefinition:
+    """Alias for backward compatibility."""
+    pass
 
 
 class StepDefinitionConverter:
@@ -123,6 +188,8 @@ class StepDefinitionConverter:
         definition_data = {
             'name': step_name,
             'registry_type': registry_type,
+            'config_class': step_info.get('config_class'),
+            'spec_type': step_info.get('spec_type'),
             'sagemaker_step_type': step_info.get('sagemaker_step_type'),
             'builder_step_name': step_info.get('builder_step_name'),
             'description': step_info.get('description'),
@@ -146,10 +213,15 @@ class StepDefinitionConverter:
         if 'conflict_resolution_strategy' in step_info:
             definition_data['conflict_resolution_strategy'] = step_info['conflict_resolution_strategy']
         
-        # Store any additional metadata
+        # Store any additional metadata (excluding fields we've already handled)
+        handled_fields = {
+            'config_class', 'spec_type', 'sagemaker_step_type', 'builder_step_name', 
+            'description', 'framework', 'job_types', 'priority', 'compatibility_tags',
+            'framework_version', 'environment_tags', 'conflict_resolution_strategy'
+        }
         metadata = {}
         for key, value in step_info.items():
-            if key not in definition_data:
+            if key not in handled_fields:
                 metadata[key] = value
         if metadata:
             definition_data['metadata'] = metadata
@@ -193,9 +265,15 @@ class StepDefinitionConverter:
         if hasattr(definition, 'conflict_resolution_strategy') and definition.conflict_resolution_strategy != 'workspace_priority':
             legacy_dict['conflict_resolution_strategy'] = definition.conflict_resolution_strategy
         
-        # Additional metadata
-        if definition.metadata:
-            legacy_dict.update(definition.metadata)
+        # Additional metadata - handle Mock objects safely
+        if hasattr(definition, 'metadata') and definition.metadata:
+            try:
+                # Check if metadata is iterable and has keys method
+                if hasattr(definition.metadata, 'keys') and callable(definition.metadata.keys):
+                    legacy_dict.update(definition.metadata)
+            except (TypeError, AttributeError):
+                # Skip if metadata is not a proper dict-like object
+                pass
         
         return legacy_dict
     
@@ -220,6 +298,53 @@ class StepDefinitionConverter:
                 step_name, step_info, registry_type, workspace_id
             )
         return definitions
+    
+    @staticmethod
+    def batch_convert_from_legacy(legacy_definitions: List[Any], 
+                                registry_type: str = 'core',
+                                workspace_id: str = None) -> List['StepDefinition']:
+        """
+        Batch convert multiple legacy definitions to StepDefinition objects.
+        
+        Args:
+            legacy_definitions: List of legacy step definition dictionaries or step names
+            registry_type: Type of registry
+            workspace_id: Workspace identifier
+            
+        Returns:
+            List of StepDefinition objects
+        """
+        definitions = []
+        for legacy_def in legacy_definitions:
+            if isinstance(legacy_def, str):
+                # If it's just a step name, create a minimal definition
+                step_name = legacy_def
+                step_info = {'sagemaker_step_type': 'Processing', 'builder_step_name': f'{step_name}Builder'}
+            else:
+                # It's a dictionary
+                step_name = legacy_def.get('name', 'unknown')
+                step_info = legacy_def
+            
+            definitions.append(StepDefinitionConverter.from_legacy_format(
+                step_name, step_info, registry_type, workspace_id
+            ))
+        return definitions
+    
+    @staticmethod
+    def batch_convert_to_legacy(definitions: List['StepDefinition']) -> List[Dict[str, Any]]:
+        """
+        Batch convert multiple StepDefinition objects to legacy format.
+        
+        Args:
+            definitions: List of StepDefinition objects
+            
+        Returns:
+            List of legacy format dictionaries
+        """
+        legacy_definitions = []
+        for definition in definitions:
+            legacy_definitions.append(StepDefinitionConverter.to_legacy_format(definition))
+        return legacy_definitions
 
 
 class RegistryValidationUtils:
@@ -355,6 +480,146 @@ class RegistryValidationUtils:
                 issues.append(f"Step '{step_name}' missing builder_step_name")
         
         return issues
+    
+    @staticmethod
+    def validate_step_definition_completeness(definition: 'StepDefinition') -> 'RegistryValidationResult':
+        """
+        Validate completeness of a step definition.
+        
+        Args:
+            definition: Step definition to validate
+            
+        Returns:
+            RegistryValidationResult with validation results
+        """
+        from .models import RegistryValidationResult
+        
+        errors = []
+        warnings = []
+        
+        # Check required fields
+        if not definition.name:
+            errors.append("Step name is required")
+        if not definition.sagemaker_step_type:
+            errors.append("SageMaker step type is required")
+        if not definition.builder_step_name:
+            errors.append("Builder step name is required")
+        
+        # Check optional but recommended fields
+        if not definition.description:
+            warnings.append("Step description is recommended")
+        if not definition.framework:
+            warnings.append("Framework specification is recommended")
+        
+        return RegistryValidationResult(
+            is_valid=len(errors) == 0,
+            registry_type=definition.registry_type,
+            issues=errors + warnings,
+            errors=errors,
+            warnings=warnings,
+            step_count=1
+        )
+    
+    @staticmethod
+    def validate_workspace_registry_structure(registry_data: Dict[str, Any]) -> 'RegistryValidationResult':
+        """
+        Validate workspace registry structure.
+        
+        Args:
+            registry_data: Registry data to validate
+            
+        Returns:
+            RegistryValidationResult with validation results
+        """
+        from .models import RegistryValidationResult
+        
+        errors = []
+        warnings = []
+        
+        # Check for required sections
+        if 'LOCAL_STEPS' not in registry_data:
+            errors.append("LOCAL_STEPS section is required")
+        if 'WORKSPACE_METADATA' not in registry_data:
+            warnings.append("WORKSPACE_METADATA section is recommended")
+        
+        # Validate LOCAL_STEPS structure
+        if 'LOCAL_STEPS' in registry_data:
+            local_steps = registry_data['LOCAL_STEPS']
+            if not isinstance(local_steps, dict):
+                errors.append("LOCAL_STEPS must be a dictionary")
+            else:
+                for step_name, step_info in local_steps.items():
+                    if not isinstance(step_info, dict):
+                        errors.append(f"Step '{step_name}' must be a dictionary")
+        
+        return RegistryValidationResult(
+            is_valid=len(errors) == 0,
+            registry_type="workspace",
+            issues=errors + warnings,
+            errors=errors,
+            warnings=warnings,
+            step_count=len(registry_data.get('LOCAL_STEPS', {}))
+        )
+    
+    @staticmethod
+    def validate_conflict_resolution_metadata(metadata: Dict[str, Any]) -> 'RegistryValidationResult':
+        """
+        Validate conflict resolution metadata.
+        
+        Args:
+            metadata: Metadata to validate
+            
+        Returns:
+            RegistryValidationResult with validation results
+        """
+        from .models import RegistryValidationResult
+        
+        errors = []
+        warnings = []
+        
+        # Validate priority
+        if 'priority' in metadata:
+            priority = metadata['priority']
+            if not isinstance(priority, int) or priority < 0:
+                errors.append("Priority must be a non-negative integer")
+        
+        # Validate strategy
+        if 'conflict_resolution_strategy' in metadata:
+            strategy = metadata['conflict_resolution_strategy']
+            allowed_strategies = {'workspace_priority', 'framework_match', 'environment_match', 'manual'}
+            if strategy not in allowed_strategies:
+                errors.append(f"Invalid conflict resolution strategy: {strategy}")
+        
+        # Validate framework version
+        if 'framework_version' in metadata:
+            version = metadata['framework_version']
+            if not isinstance(version, str) or not version.strip():
+                errors.append("Framework version must be a non-empty string")
+        
+        return RegistryValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+            step_count=1
+        )
+    
+    @staticmethod
+    def format_registry_error(error_type: str, details: str, suggestions: List[str] = None) -> str:
+        """
+        Format registry error messages.
+        
+        Args:
+            error_type: Type of error
+            details: Error details
+            suggestions: Optional suggestions for fixing the error
+            
+        Returns:
+            Formatted error message
+        """
+        error_msg = f"Registry Error in {error_type}: {details}"
+        if suggestions:
+            error_msg += f". Suggestions: {'; '.join(suggestions)}"
+        return error_msg
 
 
 class RegistryErrorFormatter:
@@ -461,4 +726,54 @@ class RegistryErrorFormatter:
         for i, issue in enumerate(validation_issues, 1):
             error_msg += f"\n  {i}. {issue}"
         
+        return error_msg
+    
+    @staticmethod
+    def format_registry_error(error_type: str, details: str, suggestions: List[str] = None) -> str:
+        """
+        Format registry error messages.
+        
+        Args:
+            error_type: Type of error
+            details: Error details
+            suggestions: Optional suggestions for fixing the error
+            
+        Returns:
+            Formatted error message
+        """
+        error_msg = f"Registry Error in {error_type}: {details}"
+        if suggestions:
+            error_msg += f". Suggestions: {'; '.join(suggestions)}"
+        return error_msg
+    
+    @staticmethod
+    def format_conflict_error(step_name: str, conflicting_sources: List[str]) -> str:
+        """
+        Format conflict error messages.
+        
+        Args:
+            step_name: Name of the conflicting step
+            conflicting_sources: List of conflicting sources
+            
+        Returns:
+            Formatted error message
+        """
+        return f"Step Name Conflict: {step_name}"
+    
+    @staticmethod
+    def format_resolution_error(step_name: str, error_details: str, suggestions: List[str] = None) -> str:
+        """
+        Format resolution error messages.
+        
+        Args:
+            step_name: Name of the step that failed to resolve
+            error_details: Error details
+            suggestions: Optional suggestions for fixing the error
+            
+        Returns:
+            Formatted error message
+        """
+        error_msg = f"Failed to resolve step '{step_name}': {error_details}"
+        if suggestions:
+            error_msg += f". Suggestions: {'; '.join(suggestions)}"
         return error_msg

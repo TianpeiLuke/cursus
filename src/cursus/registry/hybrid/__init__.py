@@ -75,6 +75,30 @@ from .workspace import (
     create_developer_workspace_config
 )
 
+# Context-Aware Registry Proxy (NEW - Section 2.2)
+from .proxy import (
+    ContextAwareRegistryProxy,
+    set_workspace_context,
+    get_workspace_context,
+    clear_workspace_context,
+    workspace_context,
+    get_global_registry_manager,
+    get_enhanced_compatibility,
+    get_context_aware_proxy,
+    reset_global_instances,
+    get_workspace_from_environment,
+    auto_set_workspace_from_environment,
+    validate_workspace_context,
+    debug_workspace_context,
+    with_workspace_context,
+    auto_workspace_context,
+    ensure_workspace_context,
+    get_effective_workspace_context,
+    update_compatibility_layer_context,
+    sync_all_contexts,
+    get_context_status
+)
+
 # Shared Utilities
 from .utils import (
     RegistryLoader,
@@ -134,6 +158,28 @@ __all__ = [
     "create_workspace_aware_registry",
     "get_default_workspace_config",
     "create_developer_workspace_config",
+    
+    # Context-Aware Registry Proxy (NEW - Section 2.2)
+    "ContextAwareRegistryProxy",
+    "set_workspace_context",
+    "get_workspace_context",
+    "clear_workspace_context",
+    "workspace_context",
+    "get_global_registry_manager",
+    "get_enhanced_compatibility",
+    "get_context_aware_proxy",
+    "reset_global_instances",
+    "get_workspace_from_environment",
+    "auto_set_workspace_from_environment",
+    "validate_workspace_context",
+    "debug_workspace_context",
+    "with_workspace_context",
+    "auto_workspace_context",
+    "ensure_workspace_context",
+    "get_effective_workspace_context",
+    "update_compatibility_layer_context",
+    "sync_all_contexts",
+    "get_context_status",
     
     # Shared Utilities
     "RegistryLoader",
