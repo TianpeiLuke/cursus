@@ -697,3 +697,7 @@ This analysis uses the same **Architecture Quality Criteria Framework** establis
 - **7 Weighted Quality Dimensions**: Robustness (20%), Maintainability (20%), Performance (15%), Modularity (15%), Testability (10%), Security (10%), Usability (10%)
 - **Quality Scoring System**: Excellent (90-100%), Good (70-89%), Adequate (50-69%), Poor (0-49%)
 - **Redundancy Assessment**: Justified vs Unjustified redundancy classification
+
+### **Evaluation Framework Reference**
+The criteria and principles used in this analysis have been consolidated into a comprehensive evaluation framework:
+- **[Code Redundancy Evaluation Guide](../1_design/code_redundancy_evaluation_guide.md)** - Comprehensive framework for evaluating code redundancies, extracted from this analysis and other system assessments, providing standardized criteria and methodologies for assessing architectural decisions and implementation efficiency
