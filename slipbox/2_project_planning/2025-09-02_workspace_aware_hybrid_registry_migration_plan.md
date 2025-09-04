@@ -139,24 +139,35 @@ developer_k/
 ### Hybrid Architecture Overview
 
 ```
-Hybrid Registry System
+Hybrid Registry System (Optimized 3-Level Structure)
 ├── Central Shared Registry/
 │   ├── src/cursus/registry/step_names.py (ENHANCED)
-│   ├── CoreStepRegistry (maintains 17 core steps)
-│   └── SharedRegistryManager
-├── Local Developer Registries/
-│   ├── developer_k/src/cursus_dev/registry/
-│   │   ├── workspace_registry.py (NEW)
-│   │   └── local_step_names.py (NEW)
-│   └── LocalRegistryManager
-├── Hybrid Registry Federation/
-│   ├── HybridRegistryManager (CENTRAL COORDINATOR)
-│   ├── RegistryInheritanceResolver
-│   └── IntelligentConflictResolver
-└── Compatibility Layer/
-    ├── BackwardCompatibilityAdapter
-    ├── ContextAwareRegistryProxy
-    └── LegacyAPIPreservation
+│   ├── src/cursus/registry/builder_registry.py (ENHANCED)
+│   └── src/cursus/registry/__init__.py (ENHANCED)
+├── Hybrid Registry Components/
+│   ├── src/cursus/registry/hybrid/manager.py
+│   │   ├── CoreStepRegistry
+│   │   ├── LocalStepRegistry
+│   │   └── HybridRegistryManager
+│   ├── src/cursus/registry/hybrid/models.py
+│   │   ├── HybridStepDefinition
+│   │   ├── ResolutionContext
+│   │   └── StepResolutionResult
+│   ├── src/cursus/registry/hybrid/resolver.py
+│   │   └── IntelligentConflictResolver
+│   ├── src/cursus/registry/hybrid/compatibility.py
+│   │   ├── EnhancedBackwardCompatibilityLayer
+│   │   └── ContextAwareRegistryProxy
+│   ├── src/cursus/registry/hybrid/utils.py
+│   │   ├── RegistryLoader
+│   │   ├── StepDefinitionConverter
+│   │   └── RegistryValidationUtils
+│   └── src/cursus/registry/hybrid/workspace.py
+│       ├── WorkspaceRegistryInitializer
+│       └── WorkspaceCLISupport
+└── Local Developer Registries/
+    └── developer_k/src/cursus_dev/registry/
+        └── workspace_registry.py (NEW)
 ```
 
 ## Detailed Migration Strategy
@@ -182,6 +193,32 @@ Hybrid Registry System
 - ✅ Import paths standardized across entire codebase
 - ✅ Backward compatibility maintained with deprecation warnings
 - ✅ All existing functionality preserved
+
+#### 0.6 Pydantic V2 Migration ✅ COMPLETED
+
+**Status**: ✅ **COMPLETED** - All dataclass definitions converted to Pydantic V2 BaseModel classes
+
+**Completed Work**:
+- **Hybrid Registry Models Migration**: All data models in `src/cursus/registry/hybrid/models.py` converted to Pydantic V2
+  - `HybridStepDefinition` - Enhanced step definition with workspace metadata
+  - `ResolutionContext` - Context for intelligent step resolution
+  - `StepResolutionResult` - Result of step conflict resolution
+  - All models use `BaseModel` with proper `model_config` and `Field()` validation
+- **Registry Configuration Migration**: Configuration classes converted to Pydantic V2
+  - `RegistryConfig` in `manager.py` - Registry configuration with validation
+  - `WorkspaceConfig` in `workspace.py` - Workspace configuration with metadata
+  - `WorkspaceStatus` in `workspace.py` - Workspace status tracking
+- **Conflict Resolution Models Migration**: Conflict resolution data structures converted
+  - `ConflictDetails` in `resolver.py` - Conflict detection metadata
+  - `ResolutionPlan` in `resolver.py` - Resolution strategy planning
+  - All models include proper field validation and type safety
+
+**Key Achievements**:
+- ✅ All dataclass decorators replaced with Pydantic V2 BaseModel inheritance
+- ✅ Enhanced type safety with Field() descriptors and validation
+- ✅ Improved data validation with Pydantic V2 field validators
+- ✅ Maintained all existing functionality while adding validation capabilities
+- ✅ Consistent model configuration across all hybrid registry components
 
 #### 0.2 Single Source of Truth Implementation ✅ COMPLETED
 
@@ -287,26 +324,28 @@ Phase 0 has successfully established a robust foundation for the hybrid registry
 
 ### Phase 1: Foundation Infrastructure (Weeks 1-2)
 
-#### 1.1 Create Shared Utility Components
+#### 1.1 Create Consolidated Hybrid Registry Components
 
-**Deliverable**: Shared utilities to eliminate code redundancy
+**Deliverable**: Optimized hybrid registry with minimal folder depth
 
 **Implementation Tasks**:
 
-1. **Create Registry Loading Utilities**
+1. **Create Consolidated Utilities**
 ```python
-# File: src/cursus/registry/hybrid/utils/registry_loader.py
+# File: src/cursus/registry/hybrid/utils.py
+"""Consolidated utilities for hybrid registry system."""
 import importlib.util
 from pathlib import Path
 from typing import Any, Dict, Optional, List
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from ..exceptions import RegistryLoadError
 
 class RegistryLoader:
-    """Shared utility for loading registry modules to eliminate redundancy."""
+    """Shared utility for loading registry modules."""
     
     @staticmethod
     def load_registry_module(file_path: str, module_name: str) -> Any:
-        """Common registry loading logic used by both core and local registries."""
+        """Common registry loading logic."""
         file_path = Path(file_path)
         
         if not file_path.exists():
@@ -327,11 +366,7 @@ class RegistryLoader:
     @staticmethod
     def validate_registry_structure(module: Any, required_attributes: List[str]) -> None:
         """Validate that loaded registry module has required attributes."""
-        missing_attrs = []
-        for attr in required_attributes:
-            if not hasattr(module, attr):
-                missing_attrs.append(attr)
-        
+        missing_attrs = [attr for attr in required_attributes if not hasattr(module, attr)]
         if missing_attrs:
             raise RegistryLoadError(f"Registry module missing required attributes: {missing_attrs}")
     
@@ -339,25 +374,19 @@ class RegistryLoader:
     def safe_get_attribute(module: Any, attr_name: str, default: Any = None) -> Any:
         """Safely get attribute from registry module with default fallback."""
         return getattr(module, attr_name, default)
-```
-
-2. **Create Step Definition Conversion Utilities**
-```python
-# File: src/cursus/registry/hybrid/utils/step_converter.py
-from typing import Dict, Any, Optional, List
-from ..models import HybridStepDefinition
 
 class StepDefinitionConverter:
-    """Shared utility for converting between legacy and hybrid step definition formats."""
+    """Utility for converting between legacy and hybrid step definition formats."""
     
     @staticmethod
     def from_legacy_format(step_name: str, step_info: Dict[str, Any], 
                           registry_type: str = 'core', 
                           workspace_id: Optional[str] = None,
-                          **metadata) -> HybridStepDefinition:
+                          **metadata) -> 'HybridStepDefinition':
         """Convert legacy STEP_NAMES format to HybridStepDefinition."""
-        # Extract core fields
-        core_fields = {
+        from .models import HybridStepDefinition
+        
+        all_fields = {
             'name': step_name,
             'config_class': step_info.get('config_class', ''),
             'builder_step_name': step_info.get('builder_step_name', ''),
@@ -365,25 +394,19 @@ class StepDefinitionConverter:
             'sagemaker_step_type': step_info.get('sagemaker_step_type', ''),
             'description': step_info.get('description', ''),
             'registry_type': registry_type,
-            'workspace_id': workspace_id
-        }
-        
-        # Extract conflict resolution metadata
-        conflict_fields = {
+            'workspace_id': workspace_id,
             'priority': step_info.get('priority', 100),
             'framework': step_info.get('framework'),
             'environment_tags': step_info.get('environment_tags', []),
             'compatibility_tags': step_info.get('compatibility_tags', []),
-            'conflict_resolution_strategy': step_info.get('conflict_resolution_strategy', 'workspace_priority')
+            'conflict_resolution_strategy': step_info.get('conflict_resolution_strategy', 'workspace_priority'),
+            **metadata
         }
-        
-        # Merge with additional metadata
-        all_fields = {**core_fields, **conflict_fields, **metadata}
         
         return HybridStepDefinition(**all_fields)
     
     @staticmethod
-    def to_legacy_format(definition: HybridStepDefinition) -> Dict[str, Any]:
+    def to_legacy_format(definition: 'HybridStepDefinition') -> Dict[str, Any]:
         """Convert HybridStepDefinition to legacy STEP_NAMES format."""
         return {
             'config_class': definition.config_class,
@@ -396,7 +419,7 @@ class StepDefinitionConverter:
     @staticmethod
     def batch_convert_from_legacy(step_names_dict: Dict[str, Dict[str, Any]], 
                                  registry_type: str = 'core',
-                                 workspace_id: Optional[str] = None) -> Dict[str, HybridStepDefinition]:
+                                 workspace_id: Optional[str] = None) -> Dict[str, 'HybridStepDefinition']:
         """Convert entire legacy STEP_NAMES dictionary to hybrid format."""
         converted = {}
         for step_name, step_info in step_names_dict.items():
@@ -406,26 +429,17 @@ class StepDefinitionConverter:
         return converted
     
     @staticmethod
-    def batch_convert_to_legacy(definitions: Dict[str, HybridStepDefinition]) -> Dict[str, Dict[str, Any]]:
+    def batch_convert_to_legacy(definitions: Dict[str, 'HybridStepDefinition']) -> Dict[str, Dict[str, Any]]:
         """Convert hybrid definitions back to legacy STEP_NAMES format."""
-        legacy_dict = {}
-        for step_name, definition in definitions.items():
-            legacy_dict[step_name] = StepDefinitionConverter.to_legacy_format(definition)
-        return legacy_dict
-```
-
-3. **Create Registry Validation Utilities**
-```python
-# File: src/cursus/registry/hybrid/utils/validation.py
-from typing import List, Dict, Any, Optional, Tuple
-from ..models import HybridStepDefinition
+        return {step_name: StepDefinitionConverter.to_legacy_format(definition) 
+                for step_name, definition in definitions.items()}
 
 class RegistryValidationUtils:
-    """Shared validation utilities to eliminate redundant validation patterns."""
+    """Shared validation utilities."""
     
     @staticmethod
     def validate_registry_type(registry_type: str) -> str:
-        """Shared registry type validation."""
+        """Validate registry type."""
         allowed_types = {'core', 'workspace', 'override'}
         if registry_type not in allowed_types:
             raise ValueError(f"Invalid registry_type '{registry_type}'. Must be one of {allowed_types}")
@@ -433,22 +447,21 @@ class RegistryValidationUtils:
     
     @staticmethod
     def validate_step_name(step_name: str) -> str:
-        """Shared step name validation."""
+        """Validate step name format."""
         if not step_name or not step_name.strip():
             raise ValueError("Step name cannot be empty")
         
-        # Check for valid identifier format
         if not step_name.replace('_', '').replace('-', '').isalnum():
             raise ValueError(f"Step name '{step_name}' contains invalid characters")
         
         return step_name.strip()
     
     @staticmethod
-    def validate_step_definition_completeness(definition: HybridStepDefinition) -> List[str]:
-        """Validate step definition has all required fields."""
+    def validate_step_definition_completeness(definition: 'HybridStepDefinition') -> List[str]:
+        """Validate step definition completeness."""
         issues = []
-        
         required_fields = ['config_class', 'builder_step_name', 'spec_type', 'sagemaker_step_type']
+        
         for field in required_fields:
             value = getattr(definition, field, None)
             if not value or not value.strip():
@@ -458,28 +471,21 @@ class RegistryValidationUtils:
     
     @staticmethod
     def validate_workspace_registry_structure(registry_data: Dict[str, Any]) -> List[str]:
-        """Validate workspace registry has proper structure."""
+        """Validate workspace registry structure."""
         issues = []
         
-        # Check for required sections
         if 'LOCAL_STEPS' not in registry_data and 'STEP_OVERRIDES' not in registry_data:
             issues.append("Registry must define either LOCAL_STEPS or STEP_OVERRIDES")
         
-        # Validate LOCAL_STEPS structure
-        local_steps = registry_data.get('LOCAL_STEPS', {})
-        if not isinstance(local_steps, dict):
-            issues.append("LOCAL_STEPS must be a dictionary")
-        
-        # Validate STEP_OVERRIDES structure
-        step_overrides = registry_data.get('STEP_OVERRIDES', {})
-        if not isinstance(step_overrides, dict):
-            issues.append("STEP_OVERRIDES must be a dictionary")
+        for key in ['LOCAL_STEPS', 'STEP_OVERRIDES']:
+            if key in registry_data and not isinstance(registry_data[key], dict):
+                issues.append(f"{key} must be a dictionary")
         
         return issues
     
     @staticmethod
     def format_registry_error(context: str, error: str, suggestions: Optional[List[str]] = None) -> str:
-        """Shared error message formatting for consistent error reporting."""
+        """Format registry error messages consistently."""
         message = f"Registry Error in {context}: {error}"
         
         if suggestions:
@@ -490,20 +496,17 @@ class RegistryValidationUtils:
         return message
     
     @staticmethod
-    def validate_conflict_resolution_metadata(definition: HybridStepDefinition) -> List[str]:
-        """Validate conflict resolution metadata is properly configured."""
+    def validate_conflict_resolution_metadata(definition: 'HybridStepDefinition') -> List[str]:
+        """Validate conflict resolution metadata."""
         issues = []
         
-        # Validate priority range
         if definition.priority < 0 or definition.priority > 1000:
             issues.append(f"Priority {definition.priority} outside valid range [0, 1000]")
         
-        # Validate resolution strategy
         valid_strategies = {'workspace_priority', 'framework_match', 'environment_match', 'priority_based'}
         if definition.conflict_resolution_strategy not in valid_strategies:
             issues.append(f"Invalid conflict resolution strategy: {definition.conflict_resolution_strategy}")
         
-        # Validate framework if specified
         if definition.framework:
             valid_frameworks = {'pytorch', 'tensorflow', 'xgboost', 'sklearn', 'pandas', 'numpy'}
             if definition.framework.lower() not in valid_frameworks:
@@ -512,9 +515,10 @@ class RegistryValidationUtils:
         return issues
 ```
 
-4. **Create Enhanced Step Definition Model**
+2. **Create Consolidated Models and Resolution**
 ```python
 # File: src/cursus/registry/hybrid/models.py
+"""Data models for hybrid registry system."""
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Dict, List, Any, Optional
 
@@ -537,19 +541,14 @@ class HybridStepDefinition(BaseModel):
     
     # Registry metadata
     registry_type: str = Field(..., description="Registry type: 'core', 'workspace', 'override'")
-    workspace_id: Optional[str] = Field(None, description="Workspace identifier for workspace registrations")
+    workspace_id: Optional[str] = Field(None, description="Workspace identifier")
     
     # Conflict resolution metadata
     priority: int = Field(default=100, description="Resolution priority (lower = higher priority)")
     framework: Optional[str] = Field(None, description="Framework used by step")
     environment_tags: List[str] = Field(default_factory=list, description="Environment compatibility tags")
-    compatibility_tags: List[str] = Field(default_factory=list, description="Compatibility tags for smart resolution")
-    
-    # Conflict resolution strategy
-    conflict_resolution_strategy: str = Field(
-        default="workspace_priority", 
-        description="Strategy: 'workspace_priority', 'framework_match', 'environment_match'"
-    )
+    compatibility_tags: List[str] = Field(default_factory=list, description="Compatibility tags")
+    conflict_resolution_strategy: str = Field(default="workspace_priority", description="Resolution strategy")
     
     @field_validator('registry_type')
     @classmethod
@@ -568,172 +567,12 @@ class HybridStepDefinition(BaseModel):
             'sagemaker_step_type': self.sagemaker_step_type,
             'description': self.description
         }
-```
 
-2. **Create Core Registry Manager**
-```python
-# File: src/cursus/registry/hybrid/core_registry.py
-from pathlib import Path
-from typing import Dict, Optional
-from .utils.registry_loader import RegistryLoader
-from .utils.step_converter import StepDefinitionConverter
-from .utils.validation import RegistryValidationUtils
-from .models import HybridStepDefinition
-from .exceptions import RegistryLoadError
-
-class CoreStepRegistry:
-    """Enhanced core registry that maintains the shared foundation."""
+class ResolutionContext(BaseModel):
+    """Context for intelligent step resolution."""
+    model_config = ConfigDict(validate_assignment=True, extra='forbid', frozen=False)
     
-    def __init__(self, registry_path: str = "src/cursus/registry/step_names.py"):
-        self.registry_path = Path(registry_path)
-        self._step_definitions: Dict[str, HybridStepDefinition] = {}
-        self._load_core_registry()
-    
-    def _load_core_registry(self):
-        """Load and convert existing STEP_NAMES to hybrid format using shared utilities."""
-        try:
-            # Use shared registry loader
-            module = RegistryLoader.load_registry_module(str(self.registry_path), "step_names")
-            RegistryLoader.validate_registry_structure(module, ['STEP_NAMES'])
-            
-            # Use shared converter for batch conversion
-            step_names = RegistryLoader.safe_get_attribute(module, 'STEP_NAMES', {})
-            self._step_definitions = StepDefinitionConverter.batch_convert_from_legacy(
-                step_names, registry_type='core'
-            )
-            
-            # Validate converted definitions
-            self._validate_core_definitions()
-            
-        except Exception as e:
-            error_msg = RegistryValidationUtils.format_registry_error(
-                "Core Registry Loading", 
-                str(e),
-                ["Check registry file exists", "Verify STEP_NAMES format", "Check file permissions"]
-            )
-            raise RegistryLoadError(error_msg)
-    
-    def _validate_core_definitions(self):
-        """Validate core step definitions using shared validation."""
-        for step_name, definition in self._step_definitions.items():
-            issues = RegistryValidationUtils.validate_step_definition_completeness(definition)
-            if issues:
-                raise RegistryLoadError(f"Core step '{step_name}' validation failed: {issues}")
-    
-    def get_step_definition(self, step_name: str) -> Optional[HybridStepDefinition]:
-        """Get step definition from core registry."""
-        return self._step_definitions.get(step_name)
-    
-    def get_all_step_definitions(self) -> Dict[str, HybridStepDefinition]:
-        """Get all core step definitions."""
-        return self._step_definitions.copy()
-```
-
-3. **Create Local Registry Manager**
-```python
-# File: src/cursus/registry/hybrid/local_registry.py
-from pathlib import Path
-from typing import Dict, Optional
-from .utils.registry_loader import RegistryLoader
-from .utils.step_converter import StepDefinitionConverter
-from .utils.validation import RegistryValidationUtils
-from .models import HybridStepDefinition
-from .exceptions import RegistryLoadError
-
-class LocalStepRegistry:
-    """Local workspace registry that extends core registry."""
-    
-    def __init__(self, workspace_path: str, core_registry: CoreStepRegistry):
-        self.workspace_path = Path(workspace_path)
-        self.workspace_id = self.workspace_path.name
-        self.core_registry = core_registry
-        self._local_definitions: Dict[str, HybridStepDefinition] = {}
-        self._overrides: Dict[str, HybridStepDefinition] = {}
-        self._load_local_registry()
-    
-    def _load_local_registry(self):
-        """Load workspace-specific registry definitions using shared utilities."""
-        registry_file = self.workspace_path / "src" / "cursus_dev" / "registry" / "workspace_registry.py"
-        
-        if not registry_file.exists():
-            return  # No local registry - that's okay
-        
-        try:
-            # Use shared registry loader
-            module = RegistryLoader.load_registry_module(str(registry_file), "workspace_registry")
-            
-            # Validate registry structure using shared validation
-            registry_data = {
-                'LOCAL_STEPS': RegistryLoader.safe_get_attribute(module, 'LOCAL_STEPS', {}),
-                'STEP_OVERRIDES': RegistryLoader.safe_get_attribute(module, 'STEP_OVERRIDES', {}),
-                'WORKSPACE_METADATA': RegistryLoader.safe_get_attribute(module, 'WORKSPACE_METADATA', {})
-            }
-            
-            structure_issues = RegistryValidationUtils.validate_workspace_registry_structure(registry_data)
-            if structure_issues:
-                raise RegistryLoadError(f"Invalid workspace registry structure: {structure_issues}")
-            
-            # Load local step definitions using shared converter
-            local_steps = registry_data['LOCAL_STEPS']
-            self._local_definitions = StepDefinitionConverter.batch_convert_from_legacy(
-                local_steps, registry_type='workspace', workspace_id=self.workspace_id
-            )
-            
-            # Load step overrides using shared converter
-            step_overrides = registry_data['STEP_OVERRIDES']
-            self._overrides = StepDefinitionConverter.batch_convert_from_legacy(
-                step_overrides, registry_type='override', workspace_id=self.workspace_id
-            )
-            
-            # Validate all definitions using shared validation
-            self._validate_local_definitions()
-                
-        except Exception as e:
-            error_msg = RegistryValidationUtils.format_registry_error(
-                f"Workspace Registry Loading ({self.workspace_id})",
-                str(e),
-                ["Check workspace_registry.py format", "Verify LOCAL_STEPS/STEP_OVERRIDES structure", "Check file permissions"]
-            )
-            raise RegistryLoadError(error_msg)
-    
-    def _validate_local_definitions(self):
-        """Validate local step definitions using shared validation."""
-        all_definitions = {**self._local_definitions, **self._overrides}
-        
-        for step_name, definition in all_definitions.items():
-            # Validate completeness
-            completeness_issues = RegistryValidationUtils.validate_step_definition_completeness(definition)
-            if completeness_issues:
-                raise RegistryLoadError(f"Local step '{step_name}' validation failed: {completeness_issues}")
-            
-            # Validate conflict resolution metadata
-            conflict_issues = RegistryValidationUtils.validate_conflict_resolution_metadata(definition)
-            if conflict_issues:
-                raise RegistryLoadError(f"Local step '{step_name}' conflict metadata invalid: {conflict_issues}")
-    
-    def get_step_definition(self, step_name: str) -> Optional[HybridStepDefinition]:
-        """Get step definition with workspace precedence."""
-        # Resolution order: overrides → local → core
-        if step_name in self._overrides:
-            return self._overrides[step_name]
-        if step_name in self._local_definitions:
-            return self._local_definitions[step_name]
-        return self.core_registry.get_step_definition(step_name)
-    
-    def get_all_step_definitions(self) -> Dict[str, HybridStepDefinition]:
-        """Get all step definitions with workspace precedence applied."""
-        all_definitions = self.core_registry.get_all_step_definitions()
-        all_definitions.update(self._local_definitions)
-        all_definitions.update(self._overrides)
-        return all_definitions
-    
-    def get_local_only_definitions(self) -> Dict[str, HybridStepDefinition]:
-        """Get only workspace-specific definitions."""
-        local_only = {}
-        local_only.update(self._local_definitions)
-        local_only.update(self._overrides)
-        return local_only
-```
+    workspace_id: Optional[str] = Field(None, description="Current workspace context")
 
 #### 1.2 Create Intelligent Conflict Resolution System
 
@@ -767,11 +606,7 @@ class ResolutionContext(BaseModel):
 
 class StepResolutionResult(BaseModel):
     """Result of step conflict resolution."""
-    model_config = ConfigDict(
-        validate_assignment=True,
-        extra='forbid',
-        frozen=False
-    )
+    model_config = ConfigDict(validate_assignment=True, extra='forbid', frozen=False)
     
     step_name: str = Field(..., description="Step name being resolved")
     resolved: bool = Field(..., description="Whether resolution was successful")
@@ -780,6 +615,46 @@ class StepResolutionResult(BaseModel):
     reason: str = Field(default="", description="Resolution explanation")
     conflicting_definitions: List[HybridStepDefinition] = Field(default_factory=list, description="All conflicts found")
 ```
+
+3. **Create Consolidated Registry Manager**
+```python
+# File: src/cursus/registry/hybrid/manager.py
+"""Consolidated registry management with all core components."""
+from pathlib import Path
+from typing import Dict, Optional, List
+from .utils import RegistryLoader, StepDefinitionConverter, RegistryValidationUtils
+from .models import HybridStepDefinition, ResolutionContext, StepResolutionResult
+from ..exceptions import RegistryLoadError
+
+class CoreStepRegistry:
+    """Enhanced core registry that maintains the shared foundation."""
+    
+    def __init__(self, registry_path: str = "src/cursus/registry/step_names.py"):
+        self.registry_path = Path(registry_path)
+        self._step_definitions: Dict[str, HybridStepDefinition] = {}
+        self._load_core_registry()
+    
+    def _load_core_registry(self):
+        """Load and convert existing STEP_NAMES to hybrid format using shared utilities."""
+        try:
+            module = RegistryLoader.load_registry_module(str(self.registry_path), "step_names")
+            RegistryLoader.validate_registry_structure(module, ['STEP_NAMES'])
+            
+            step_names = RegistryLoader.safe_get_attribute(module, 'STEP_NAMES', {})
+            self._step_definitions = StepDefinitionConverter.batch_convert_from_legacy(
+                step_names, registry_type='core'
+            )
+            
+            self._validate_core_definitions()
+            
+        except Exception as e:
+            error_msg = RegistryValidationUtils.format_registry_error(
+                "Core Registry Loading", str(e),
+                ["Check registry file exists", "Verify STEP_NAMES format", "Check file permissions"]
+            )
+            raise RegistryLoadError(error_msg)
+    
+    def _
 
 2. **Intelligent Conflict Resolver**
 ```python
@@ -3108,21 +2983,25 @@ Based on the comprehensive quality assessment in [2025-09-02 Hybrid Registry Mig
 
 **Impact**: Eliminates 50+ lines of duplicated validation logic and ensures consistent validation behavior.
 
-### Shared Utilities Architecture
+### Optimized Shared Utilities Architecture (3-Level Max)
 
 ```
-Shared Utilities Package
-├── utils/
+Optimized Hybrid Registry Structure
+├── src/cursus/registry/hybrid/
 │   ├── __init__.py
-│   ├── registry_loader.py      # RegistryLoader class
-│   ├── step_converter.py       # StepDefinitionConverter class
-│   └── validation.py           # RegistryValidationUtils class
-├── models.py                   # HybridStepDefinition (uses shared validation)
-├── core_registry.py           # CoreStepRegistry (uses all shared utilities)
-├── local_registry.py          # LocalStepRegistry (uses all shared utilities)
-├── compatibility.py           # EnhancedBackwardCompatibilityLayer
-└── legacy_api.py              # Optimized compatibility functions
+│   ├── utils.py                # Consolidated: RegistryLoader, StepDefinitionConverter, RegistryValidationUtils
+│   ├── models.py               # HybridStepDefinition, ResolutionContext, StepResolutionResult
+│   ├── manager.py              # CoreStepRegistry, LocalStepRegistry, HybridRegistryManager
+│   ├── resolver.py             # IntelligentConflictResolver
+│   ├── compatibility.py        # EnhancedBackwardCompatibilityLayer, ContextAwareRegistryProxy
+│   └── workspace.py            # WorkspaceRegistryInitializer, WorkspaceCLISupport
 ```
+
+**Key Optimizations**:
+- **Consolidated utilities.py**: All 3 utility classes in single file (eliminates utils/ subdirectory)
+- **Consolidated manager.py**: Core, Local, and Hybrid registries in single file
+- **Consolidated models.py**: All data models in single file
+- **Maximum 3 levels**: `src/cursus/registry/hybrid/utils.py` (no deeper nesting)
 
 ### Code Quality Improvements
 

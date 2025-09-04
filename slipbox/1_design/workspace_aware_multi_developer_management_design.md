@@ -137,6 +137,24 @@ workspace/                             # ✅ CONSOLIDATED WORKSPACE MODULE (Phas
 └── quality/                           # ✅ WORKSPACE QUALITY LAYER (3 components)
 ```
 
+#### Optimized Registry Integration (`src/cursus/registry/hybrid/`)
+
+The workspace system integrates with the optimized 3-level hybrid registry structure:
+
+```
+registry/hybrid/                       # ✅ OPTIMIZED 3-LEVEL REGISTRY STRUCTURE
+├── utils.py                           # ✅ Consolidated shared utilities
+│   ├── RegistryLoader                 # ✅ Common loading logic
+│   ├── StepDefinitionConverter        # ✅ Format conversions
+│   ├── RegistryValidationUtils        # ✅ Shared validation
+│   └── RegistryErrorFormatter         # ✅ Consistent error handling
+├── models.py                          # ✅ Data models (StepDefinition, ResolutionContext)
+├── manager.py                         # ✅ Registry management (CoreStepRegistry, WorkspaceStepRegistry)
+├── resolver.py                        # ✅ Conflict resolution (RegistryConflictResolver)
+├── compatibility.py                   # ✅ Backward compatibility (EnhancedBackwardCompatibilityLayer)
+└── workspace.py                       # ✅ Workspace management (WorkspaceRegistryLoader)
+```
+
 #### Workspace Core Layer (`src/cursus/workspace/core/`)
 
 Core workspace management components providing the foundation for multi-developer collaboration:

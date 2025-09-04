@@ -167,6 +167,13 @@ src/cursus/
 │   ├── specs/                         # Shared specifications
 │   └── scripts/                       # Shared processing scripts
 ├── registry/                          # Shared registry system
+│   └── hybrid/                        # ✅ OPTIMIZED 3-LEVEL HYBRID REGISTRY
+│       ├── utils.py                   # Consolidated shared utilities
+│       ├── models.py                  # Data models (StepDefinition, ResolutionContext)
+│       ├── manager.py                 # Registry management (CoreStepRegistry, WorkspaceStepRegistry)
+│       ├── resolver.py                # Conflict resolution (RegistryConflictResolver)
+│       ├── compatibility.py           # Backward compatibility (EnhancedBackwardCompatibilityLayer)
+│       └── workspace.py               # Workspace management (WorkspaceRegistryLoader)
 └── validation/                        # Shared validation frameworks
     ├── alignment/                     # Shared alignment testing
     ├── builders/                      # Shared step builder testing

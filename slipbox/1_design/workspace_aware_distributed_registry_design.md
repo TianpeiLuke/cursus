@@ -112,32 +112,35 @@ Building on the core architectural principles, the system achieves these design 
 ## Architecture Overview
 
 ```
-Hybrid Registry System with Shared Utilities
-├── Shared Utility Layer/
+Optimized 3-Level Hybrid Registry System
+src/cursus/registry/hybrid/
+├── utils.py (consolidated shared utilities)
 │   ├── RegistryLoader (common loading logic)
 │   ├── StepDefinitionConverter (format conversions)
 │   ├── RegistryValidationUtils (shared validation)
 │   └── RegistryErrorFormatter (consistent error handling)
-├── Core Registry/
-│   ├── CoreStepRegistry (base registry)
-│   ├── StepRegistrationManager
-│   └── RegistryValidator
-├── Workspace Registries/
+├── models.py (data models)
+│   ├── StepDefinition
+│   ├── NamespacedStepDefinition
+│   ├── ResolutionContext
+│   ├── StepResolutionResult
+│   └── RegistryValidationResult
+├── manager.py (registry management)
+│   ├── CoreStepRegistry
 │   ├── WorkspaceStepRegistry
-│   ├── WorkspaceRegistryLoader
-│   └── WorkspaceRegistryValidator
-├── Registry Federation/
-│   ├── DistributedRegistryManager
-│   ├── RegistryInheritanceResolver
-│   └── RegistryConflictResolver
-├── Discovery and Resolution/
+│   └── DistributedRegistryManager
+├── resolver.py (conflict resolution)
+│   ├── RegistryConflictResolver
 │   ├── RegistryDiscoveryService
-│   ├── ComponentResolver
-│   └── RegistryCache
-└── Compatibility Layer/
-    ├── BackwardCompatibilityAdapter
-    ├── GenericStepFieldAccessor
-    └── LegacyFormatConverter
+│   └── ComponentResolver
+├── compatibility.py (backward compatibility)
+│   ├── BackwardCompatibilityAdapter
+│   ├── GenericStepFieldAccessor
+│   └── EnhancedBackwardCompatibilityLayer
+└── workspace.py (workspace management)
+    ├── WorkspaceRegistryLoader
+    ├── WorkspaceRegistryValidator
+    └── WorkspaceComponentRegistry
 ```
 
 ## Enhanced Conflict Resolution Architecture
@@ -148,7 +151,10 @@ To address the critical step name collision scenarios, the enhanced registry sys
 
 #### Namespace Structure
 ```python
-class NamespacedStepDefinition(StepDefinition):
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from typing import Dict, List, Any, Optional
+
+class NamespacedStepDefinition(BaseModel):
     """Enhanced step definition with namespace support using Pydantic V2."""
     model_config = ConfigDict(
         validate_assignment=True,
@@ -157,9 +163,21 @@ class NamespacedStepDefinition(StepDefinition):
         str_strip_whitespace=True
     )
     
+    # Inherit from StepDefinition fields
+    name: str = Field(..., min_length=1, description="Step name identifier")
+    registry_type: str = Field(..., description="Registry type: 'core', 'workspace', 'override'")
+    sagemaker_step_type: Optional[str] = Field(None, description="SageMaker step type")
+    builder_step_name: Optional[str] = Field(None, description="Builder class name")
+    description: Optional[str] = Field(None, description="Step description")
+    framework: Optional[str] = Field(None, description="Framework used by step")
+    job_types: List[str] = Field(default_factory=list, description="Supported job types")
+    workspace_id: Optional[str] = Field(None, description="Workspace identifier for workspace registrations")
+    override_source: Optional[str] = Field(None, description="Source of override for tracking")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
     # Core namespace fields
     namespace: str = Field(..., min_length=1, description="Step namespace (workspace_id or 'core')")
-    qualified_name: str = Field(..., min_length=1, description="Fully qualified step name: namespace.name")
+    qualified_name: str = Field(default="", description="Fully qualified step name: namespace.name")
     
     # Conflict resolution metadata
     priority: int = Field(default=100, description="Resolution priority (lower = higher priority)")
@@ -173,10 +191,12 @@ class NamespacedStepDefinition(StepDefinition):
         description="Strategy for resolving conflicts: 'workspace_priority', 'framework_match', 'environment_match', 'manual'"
     )
     
-    def __post_init__(self):
+    @model_validator(mode='after')
+    def generate_qualified_name(self):
         """Generate qualified name after initialization."""
         if not self.qualified_name:
             self.qualified_name = f"{self.namespace}.{self.name}"
+        return self
     
     @field_validator('conflict_resolution_strategy')
     @classmethod
@@ -185,6 +205,15 @@ class NamespacedStepDefinition(StepDefinition):
         allowed_strategies = {'workspace_priority', 'framework_match', 'environment_match', 'manual'}
         if v not in allowed_strategies:
             raise ValueError(f"conflict_resolution_strategy must be one of {allowed_strategies}")
+        return v
+    
+    @field_validator('registry_type')
+    @classmethod
+    def validate_registry_type(cls, v: str) -> str:
+        """Validate registry type."""
+        allowed_types = {'core', 'workspace', 'override'}
+        if v not in allowed_types:
+            raise ValueError(f"registry_type must be one of {allowed_types}")
         return v
     
     def is_compatible_with(self, other: 'NamespacedStepDefinition') -> bool:
