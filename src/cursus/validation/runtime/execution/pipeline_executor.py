@@ -40,7 +40,7 @@ class PipelineExecutionResult(BaseModel):
 class PipelineExecutor:
     """Executes entire pipeline with data flow validation."""
     
-    def __init__(self, workspace_dir: str = "./developer_workspaces/developers/developer_1", testing_mode: str = "pre_execution", workspace_root: str = None):
+    def __init__(self, workspace_dir: str = "./development/projects/project_alpha", testing_mode: str = "pre_execution", workspace_root: str = None):
         """Initialize with workspace directory and testing mode.
         
         Args:

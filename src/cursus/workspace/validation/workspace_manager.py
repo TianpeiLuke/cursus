@@ -270,7 +270,7 @@ class WorkspaceManager:
         
         # Validate developer workspaces
         if developers_dir.exists():
-            dev_issues = self._validate_developer_workspaces(developers_dir, strict)
+            dev_issues = self._validate_development(developers_dir, strict)
             issues.extend(dev_issues)
         
         # Validate shared workspace
@@ -281,7 +281,7 @@ class WorkspaceManager:
         is_valid = len(issues) == 0
         return is_valid, issues
     
-    def _validate_developer_workspaces(
+    def _validate_development(
         self,
         developers_dir: Path,
         strict: bool

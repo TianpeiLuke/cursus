@@ -94,9 +94,9 @@ class WorkspaceLifecycleManager:
     def _load_available_templates(self) -> None:
         """Load available workspace templates."""
         try:
-            # Look for templates in developer_workspaces/templates/
+            # Look for templates in development/templates/
             if self.workspace_manager.workspace_root:
-                templates_dir = self.workspace_manager.workspace_root.parent / "developer_workspaces" / "templates"
+                templates_dir = self.workspace_manager.workspace_root.parent / "development" / "templates"
                 if templates_dir.exists():
                     for template_dir in templates_dir.iterdir():
                         if template_dir.is_dir():

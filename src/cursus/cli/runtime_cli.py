@@ -38,7 +38,7 @@ runtime.add_command(production_cli)
 @click.option('--data-size', default='small',
               type=click.Choice(['small', 'medium', 'large']),
               help='Size of test data')
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.option('--output-format', default='text',
               type=click.Choice(['text', 'json']),
@@ -104,7 +104,7 @@ def test_script(script_name: str, data_source: str, data_size: str,
         sys.exit(1)
 
 @runtime.command()
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory to list')
 def list_results(workspace_dir: str):
     """List previous test results"""
@@ -137,7 +137,7 @@ def list_results(workspace_dir: str):
         click.echo("No test results found")
 
 @runtime.command()
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory to clean')
 @click.confirmation_option(prompt='Are you sure you want to clean the workspace?')
 def clean_workspace(workspace_dir: str):
@@ -157,7 +157,7 @@ def clean_workspace(workspace_dir: str):
 @click.option('--data-source', default='synthetic', 
               type=click.Choice(['synthetic', 'local', 's3']),
               help='Data source for testing (synthetic, local, s3)')
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.option('--output-format', default='text',
               type=click.Choice(['text', 'json']),
@@ -248,7 +248,7 @@ def _display_pipeline_result(result):
 
 @runtime.command()
 @click.argument('script_path')
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 def discover_script(script_path: str, workspace_dir: str):
     """Check if a script can be discovered and analyzed
@@ -282,7 +282,7 @@ def discover_script(script_path: str, workspace_dir: str):
 @runtime.command()
 @click.argument('script_name')
 @click.argument('data_files', nargs=-1, required=True)
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.option('--description', default='',
               help='Description for the data files')
@@ -324,7 +324,7 @@ def add_local_data(script_name: str, data_files: tuple, workspace_dir: str, desc
         sys.exit(1)
 
 @runtime.command()
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.option('--script-name', default=None,
               help='Show data for specific script only')
@@ -376,7 +376,7 @@ def list_local_data(workspace_dir: str, script_name: str):
 @click.argument('script_name')
 @click.option('--data-key', default=None,
               help='Remove specific data key (if not provided, removes all data for script)')
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.confirmation_option(prompt='Are you sure you want to remove the local data?')
 def remove_local_data(script_name: str, data_key: str, workspace_dir: str):
@@ -401,7 +401,7 @@ def remove_local_data(script_name: str, data_key: str, workspace_dir: str):
         sys.exit(1)
 
 @runtime.command()
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.option('--script-name', default=None,
               help='Show history for specific script only')
@@ -469,7 +469,7 @@ def list_execution_history(workspace_dir: str, script_name: str, limit: int, out
         sys.exit(1)
 
 @runtime.command()
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.confirmation_option(prompt='Are you sure you want to clear execution history?')
 def clear_execution_history(workspace_dir: str):
@@ -494,7 +494,7 @@ def clear_execution_history(workspace_dir: str):
               help='Format of synthetic data')
 @click.option('--num-records', default=None, type=int,
               help='Number of records to generate (overrides data-size)')
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.option('--seed', default=42, type=int,
               help='Random seed for reproducible data generation')
@@ -547,7 +547,7 @@ def generate_synthetic_data(script_name: str, data_size: str, data_format: str,
         sys.exit(1)
 
 @runtime.command()
-@click.option('--workspace-dir', default='./developer_workspaces/developers/developer_1',
+@click.option('--workspace-dir', default='./development/projects/project_alpha',
               help='Workspace directory for test execution')
 @click.option('--output-format', default='text',
               type=click.Choice(['text', 'json']),

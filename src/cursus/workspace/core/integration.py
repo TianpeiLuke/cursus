@@ -143,7 +143,7 @@ class WorkspaceIntegrationManager:
         # Integration staging directory
         self.staging_root = None
         if self.workspace_manager.workspace_root:
-            self.staging_root = self.workspace_manager.workspace_root.parent / "developer_workspaces" / "integration_staging"
+            self.staging_root = self.workspace_manager.workspace_root.parent / "development" / "review"
         
         logger.info("Initialized workspace integration manager")
     

@@ -554,8 +554,8 @@ class WorkspaceIsolationManager:
             
             # Look for imports that reference other developer workspaces
             patterns = [
-                r'from\s+developer_workspaces\.developers\.([^.]+)',
-                r'import\s+developer_workspaces\.developers\.([^.]+)',
+                r'from\s+development\.developers\.([^.]+)',
+                r'import\s+development\.developers\.([^.]+)',
                 r'from\s+cursus_dev\.([^.]+)\.steps',
                 r'import\s+cursus_dev\.([^.]+)\.steps'
             ]
@@ -611,7 +611,7 @@ class WorkspaceIsolationManager:
             
             # Validate developer workspaces
             if developers_dir.exists():
-                dev_issues = self._validate_developer_workspaces(developers_dir, strict)
+                dev_issues = self._validate_development(developers_dir, strict)
                 issues.extend(dev_issues)
             
             # Validate shared workspace
@@ -627,7 +627,7 @@ class WorkspaceIsolationManager:
             logger.error(f"Failed to validate workspace structure: {e}")
             return False, [f"Validation error: {e}"]
     
-    def _validate_developer_workspaces(
+    def _validate_development(
         self,
         developers_dir: Path,
         strict: bool

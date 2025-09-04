@@ -41,7 +41,7 @@ class ProductionValidationRule(BaseModel):
 class RealDataTester:
     """Tests pipeline scripts using real production data."""
     
-    def __init__(self, workspace_dir: str = "./developer_workspaces/developers/developer_1", 
+    def __init__(self, workspace_dir: str = "./development/projects/project_alpha", 
                  specification_registry: Optional[SpecificationRegistry] = None):
         """Initialize with workspace directory.
         

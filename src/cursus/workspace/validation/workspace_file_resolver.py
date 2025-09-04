@@ -11,7 +11,7 @@ Architecture:
 - Provides workspace isolation and path management
 
 Developer Workspace Structure:
-developer_workspaces/
+development/
 ├── developers/
 │   ├── developer_1/
 │   │   └── src/cursus_dev/steps/
@@ -460,7 +460,7 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
             # Discover developer workspaces
             developers_dir = self.workspace_root / "developers"
             if developers_dir.exists():
-                dev_workspaces = self._discover_developer_workspaces(developers_dir)
+                dev_workspaces = self._discover_development(developers_dir)
                 discovery_result["workspaces"].extend(dev_workspaces)
                 discovery_result["summary"]["total_developers"] = len(dev_workspaces)
             
@@ -494,7 +494,7 @@ class DeveloperWorkspaceFileResolver(FlexibleFileResolver):
             discovery_result["error"] = str(e)
             return discovery_result
     
-    def _discover_developer_workspaces(self, developers_dir: Path) -> List[Dict[str, Any]]:
+    def _discover_development(self, developers_dir: Path) -> List[Dict[str, Any]]:
         """Discover developer workspaces."""
         workspaces = []
         

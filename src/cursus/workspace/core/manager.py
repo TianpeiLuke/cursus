@@ -15,7 +15,7 @@ Architecture:
 This consolidates functionality previously distributed across:
 - src/cursus/validation/workspace/workspace_manager.py
 - src/cursus/validation/runtime/integration/workspace_manager.py
-- developer_workspaces/workspace_manager/ (external - packaging violation)
+- development/workspace_manager/ (external - packaging violation)
 """
 
 import os

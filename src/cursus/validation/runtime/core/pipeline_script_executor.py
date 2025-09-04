@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class PipelineScriptExecutor:
     """Main orchestrator for pipeline script execution testing"""
     
-    def __init__(self, workspace_dir: str = "./developer_workspaces/developers/developer_1", workspace_root: str = None):
+    def __init__(self, workspace_dir: str = "./development/projects/project_alpha", workspace_root: str = None):
         """Initialize executor with workspace directory and optional workspace root for component discovery"""
         self.workspace_dir = Path(workspace_dir)
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
