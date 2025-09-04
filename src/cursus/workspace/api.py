@@ -125,7 +125,7 @@ class WorkspaceAPI:
         Args:
             base_path: Base path for workspace operations. If None, uses default.
         """
-        self.base_path = Path(base_path) if base_path else Path("developer_workspaces")
+        self.base_path = Path(base_path) if base_path else Path("development")
         self.logger = logging.getLogger(__name__)
         
         # Initialize underlying managers (lazy loading to avoid circular imports)

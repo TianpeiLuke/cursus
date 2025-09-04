@@ -32,7 +32,7 @@ def workspace_cli():
 @click.option('--template', help='Workspace template to use')
 @click.option('--from-existing', help='Clone from existing workspace')
 @click.option('--interactive', is_flag=True, help='Interactive setup')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--config', type=click.File('r'), help='JSON configuration file')
 @click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
@@ -126,7 +126,7 @@ def create_workspace(developer_name: str, template: str, from_existing: str,
 @click.option('--active', is_flag=True, help='Show only active workspaces')
 @click.option('--format', type=click.Choice(['table', 'json']), default='table',
               help='Output format')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--show-components', is_flag=True, help='Show component counts')
 def list_workspaces(active: bool, format: str, workspace_root: str, show_components: bool):
@@ -215,7 +215,7 @@ def list_workspaces(active: bool, format: str, workspace_root: str, show_compone
 
 @workspace_cli.command('validate')
 @click.option('--workspace-path', type=click.Path(exists=True), help='Specific workspace path to validate')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--report', help='Output report path')
 @click.option('--format', type=click.Choice(['text', 'json']), default='text',
@@ -279,7 +279,7 @@ def validate_workspace(workspace_path: str, workspace_root: str, report: str,
 
 @workspace_cli.command('info')
 @click.argument('developer_name')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--show-components', is_flag=True, help='Show detailed component information')
 @click.option('--format', type=click.Choice(['text', 'json']), default='text',
@@ -363,7 +363,7 @@ def workspace_info(developer_name: str, workspace_root: str, show_components: bo
 
 @workspace_cli.command('health-check')
 @click.option('--workspace', help='Specific workspace to check')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--fix-issues', is_flag=True, help='Attempt to fix detected issues')
 @click.option('--format', type=click.Choice(['text', 'json']), default='text',
@@ -469,7 +469,7 @@ def health_check(workspace: str, workspace_root: str, fix_issues: bool, format: 
 
 @workspace_cli.command('remove')
 @click.argument('developer_name')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--backup', is_flag=True, help='Create backup before removal')
 @click.confirmation_option(prompt='Are you sure you want to remove this workspace?')
@@ -515,7 +515,7 @@ def remove_workspace(developer_name: str, workspace_root: str, backup: bool):
 @workspace_cli.command('promote')
 @click.argument('workspace_path', type=click.Path(exists=True))
 @click.option('--target', default='staging', help='Target environment')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
 def promote_artifacts(workspace_path: str, target: str, workspace_root: str, output: str):
@@ -553,7 +553,7 @@ def promote_artifacts(workspace_path: str, target: str, workspace_root: str, out
         sys.exit(1)
 
 @workspace_cli.command('health')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
 def system_health(workspace_root: str, output: str):
@@ -582,7 +582,7 @@ def system_health(workspace_root: str, output: str):
 @workspace_cli.command('cleanup')
 @click.option('--inactive-days', type=int, default=30, help='Days of inactivity before cleanup')
 @click.option('--dry-run/--no-dry-run', default=True, help='Show what would be cleaned without doing it')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--output', type=click.Choice(['json', 'text']), default='text', help='Output format')
 def cleanup_workspaces(inactive_days: int, dry_run: bool, workspace_root: str, output: str):
@@ -938,7 +938,7 @@ def _display_validation_result(result):
 @click.option('--type-filter', help='Component type filter')
 @click.option('--format', type=click.Choice(['table', 'json']), default='table',
               help='Output format')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--show-details', is_flag=True, help='Show detailed component information')
 def discover_components(component_type: str, workspace: str, type_filter: str, 
@@ -994,7 +994,7 @@ def discover_components(component_type: str, workspace: str, type_filter: str,
 @workspace_cli.command('build')
 @click.argument('pipeline_name')
 @click.option('--workspace', help='Primary workspace for the pipeline')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--cross-workspace', is_flag=True, help='Enable cross-workspace component usage')
 @click.option('--output-path', help='Output path for generated pipeline')
@@ -1075,7 +1075,7 @@ def build_pipeline(pipeline_name: str, workspace: str, workspace_root: str,
 @workspace_cli.command('test-compatibility')
 @click.option('--source-workspace', required=True, help='Source workspace')
 @click.option('--target-workspace', required=True, help='Target workspace')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--component-type', help='Specific component type to test')
 @click.option('--format', type=click.Choice(['text', 'json']), default='text',
@@ -1120,7 +1120,7 @@ def test_compatibility(source_workspace: str, target_workspace: str, workspace_r
 @workspace_cli.command('merge')
 @click.argument('source_workspace')
 @click.argument('target_workspace')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--component-type', help='Specific component type to merge')
 @click.option('--component-name', help='Specific component to merge')
@@ -1315,7 +1315,7 @@ def _display_compatibility_result(result, source_workspace: str, target_workspac
 @workspace_cli.command('test-runtime')
 @click.argument('test_type', type=click.Choice(['script', 'pipeline', 'component', 'integration']))
 @click.option('--workspace', help='Target workspace for testing')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--test-name', help='Specific test or component name')
 @click.option('--cross-workspace', is_flag=True, help='Enable cross-workspace testing')
@@ -1411,7 +1411,7 @@ def test_runtime(test_type: str, workspace: str, workspace_root: str, test_name:
 # Phase 6.4: Validation and Alignment CLI Integration
 @workspace_cli.command('validate-alignment')
 @click.option('--workspace', help='Target workspace for validation')
-@click.option('--workspace-root', default='./developer_workspaces',
+@click.option('--workspace-root', default='./development',
               help='Root directory for workspaces')
 @click.option('--validation-level', 
               type=click.Choice(['script_contract', 'contract_spec', 'spec_dependency', 'builder_config', 'all']),

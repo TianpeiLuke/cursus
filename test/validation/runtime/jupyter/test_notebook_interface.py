@@ -19,7 +19,7 @@ from src.cursus.validation.runtime.jupyter.notebook_interface import (
     NotebookSession,
     JUPYTER_AVAILABLE
 )
-from src.cursus.core.workspace.registry import WorkspaceComponentRegistry
+from src.cursus.workspace.core.registry import WorkspaceComponentRegistry
 
 
 class TestNotebookSession(unittest.TestCase):

@@ -3,19 +3,19 @@ tags:
   - design
   - core_system
   - workspace_management
-  - multi_developer
+  - multi_project
   - pipeline_assembly
   - system_architecture
 keywords:
   - workspace-aware core
   - pipeline assembler extensions
   - dynamic component loading
-  - cross-workspace collaboration
+  - cross-project collaboration
   - component discovery
   - workspace isolation
 topics:
   - workspace-aware core design
-  - multi-developer pipeline assembly
+  - multi-project pipeline assembly
   - core system extensions
   - workspace integration architecture
 language: python
@@ -26,26 +26,26 @@ date of note: 2025-08-28
 
 ## Overview
 
-This document outlines the design for extending the Cursus core system (`src/cursus/core`) to support workspace-aware functionality, enabling pipeline assembly using customer-defined steps from multiple developer workspaces. The design maintains full backward compatibility while adding powerful multi-developer collaboration capabilities for pipeline building with DAGs.
+This document outlines the design for extending the Cursus core system (`src/cursus/core`) to support workspace-aware functionality, enabling pipeline assembly using customer-defined steps from multiple project workspaces. The design maintains full backward compatibility while adding powerful multi-project collaboration capabilities for pipeline building with DAGs.
 
 ## Problem Statement
 
-The current Cursus core system is designed for a single workspace model where all components (step builders, configs, contracts, specs, scripts) exist in the main `src/cursus/steps/` directory. To support the Multi-Developer Workspace Management System for pipeline building, we need to extend the core system to:
+The current Cursus core system is designed for a single workspace model where all components (step builders, configs, contracts, specs, scripts) exist in the main `src/cursus/steps/` directory. To support the Multi-Project Workspace Management System for pipeline building, we need to extend the core system to:
 
-1. **Discover Components Across Workspaces**: Automatically find and load step builders, configs, and other components from multiple developer workspaces
-2. **Workspace-Aware Pipeline Assembly**: Enable PipelineAssembler to build pipelines using components from different developer workspaces
+1. **Discover Components Across Workspaces**: Automatically find and load step builders, configs, and other components from multiple project workspaces
+2. **Workspace-Aware Pipeline Assembly**: Enable PipelineAssembler to build pipelines using components from different project workspaces
 3. **Dynamic Component Resolution**: Resolve step builders and configurations from workspace locations at runtime
-4. **Cross-Workspace DAG Support**: Allow DAGs to reference steps implemented by different developers
-5. **Maintain Workspace Isolation**: Ensure proper separation between developer environments while enabling collaboration
+4. **Cross-Workspace DAG Support**: Allow DAGs to reference steps implemented by different projects
+5. **Maintain Workspace Isolation**: Ensure proper separation between project environments while enabling collaboration
 
 ## Core Architectural Principles
 
-The Workspace-Aware Core System is built on the same fundamental principles as the Multi-Developer Workspace Management System:
+The Workspace-Aware Core System is built on the same fundamental principles as the Multi-Project Workspace Management System:
 
 ### Principle 1: Workspace Isolation
 **Everything that happens within a developer's workspace stays in that workspace.**
 
-This principle ensures complete isolation between developer environments during pipeline assembly:
+This principle ensures complete isolation between project environments during pipeline assembly:
 - Component loading and validation remain contained within their workspace context
 - Workspace-specific implementations don't interfere with other workspaces
 - Each workspace maintains its own component registry and module loading environment
@@ -82,7 +82,7 @@ Building on the core architectural principles, the system follows these design g
 
 **Note**: This design has been updated to reflect the **Phase 5 consolidated workspace architecture** completed on September 2, 2025, according to the [Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md). All workspace functionality is now centralized within `src/cursus/` for proper packaging compliance and improved maintainability.
 
-> **Cross-Reference**: This core system design integrates with the [Workspace-Aware Multi-Developer Management Design](workspace_aware_multi_developer_management_design.md) to provide the foundational pipeline assembly infrastructure that enables workspace-based collaboration. The multi-developer management system defines the overall workspace architecture and developer workflows, while this core system provides the technical infrastructure for pipeline assembly using workspace components.
+> **Cross-Reference**: This core system design integrates with the [Workspace-Aware Multi-Project Management Design](workspace_aware_multi_developer_management_design.md) to provide the foundational pipeline assembly infrastructure that enables workspace-based collaboration. The multi-project management system defines the overall workspace architecture and project workflows, while this core system provides the technical infrastructure for pipeline assembly using workspace components.
 
 ### Phase 5 Implementation Status: ✅ COMPLETED
 
@@ -106,8 +106,8 @@ Consolidated Workspace-Aware Core System (src/cursus/) - ✅ PHASE 5 COMPLETED
 └── api/                                # ✅ APIS WITH WORKSPACE EXTENSIONS
 
 External Structure (data-only):
-└── developer_workspaces/               # ✅ CLEANED UP WORKSPACE DATA
-    └── developers/                     # ✅ Individual developer workspaces
+└── development/                        # ✅ CLEANED UP WORKSPACE DATA
+    └── projects/                       # ✅ Individual project workspaces
 ```
 
 #### Consolidated Workspace Module (`src/cursus/workspace/`)
@@ -127,7 +127,7 @@ workspace/                              # ✅ CONSOLIDATED WORKSPACE MODULE
 
 #### Workspace Core Layer (`src/cursus/workspace/core/`)
 
-Core workspace management components providing the foundation for multi-developer collaboration:
+Core workspace management components providing the foundation for multi-project collaboration:
 
 ```
 core/                                   # ✅ WORKSPACE CORE LAYER - 9 COMPONENTS
@@ -191,19 +191,21 @@ core/                                  # ✅ SHARED CORE SYSTEM
 └── config_fields/                     # ✅ Shared configuration management
 ```
 
-#### External Developer Workspaces
+#### External Project Workspaces
 
-Data-only structure for individual developer environments:
+Data-only structure for individual project environments:
 
 ```
-developer_workspaces/                  # ✅ CLEANED UP WORKSPACE DATA
+development/                           # ✅ CLEANED UP WORKSPACE DATA
 ├── README.md                          # ✅ Documentation only
-├── shared_resources/                  # ✅ Shared workspace resources
-├── integration_staging/               # ✅ Integration staging area
-└── developers/                        # ✅ Individual developer workspaces
-    ├── developer_1/                   # ✅ Developer 1's isolated workspace
-    ├── developer_2/                   # ✅ Developer 2's isolated workspace
-    └── developer_3/                   # ✅ Developer 3's isolated workspace
+├── review/                            # ✅ Quality review process
+│   ├── pending/                       # ✅ Components awaiting review
+│   ├── reports/                       # ✅ Review reports and feedback
+│   └── validation/                    # ✅ Validation results
+└── projects/                          # ✅ Individual project workspaces
+    ├── project_1/                     # ✅ Project 1's isolated workspace
+    ├── project_2/                     # ✅ Project 2's isolated workspace
+    └── project_3/                     # ✅ Project 3's isolated workspace
 ```
 
 ### ✅ Phase 5 Consolidation Completed (September 2, 2025)
@@ -213,8 +215,8 @@ The **Phase 5 implementation** has successfully consolidated all workspace funct
 #### **Structural Redundancy Elimination**
 - **❌ REMOVED**: `src/cursus/core/workspace/` (10 modules moved to `src/cursus/workspace/core/`)
 - **❌ REMOVED**: `src/cursus/validation/workspace/` (14 modules moved to `src/cursus/workspace/validation/`)
-- **❌ REMOVED**: `developer_workspaces/workspace_manager/` (redundant directory)
-- **❌ REMOVED**: `developer_workspaces/validation_pipeline/` (redundant directory)
+- **❌ REMOVED**: `development/workspace_manager/` (redundant directory)
+- **❌ REMOVED**: `development/validation_pipeline/` (redundant directory)
 
 #### **Layered Architecture Implementation**
 - **✅ IMPLEMENTED**: `src/cursus/workspace/core/` layer with 10 consolidated core components
@@ -284,7 +286,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         self,
         dag: PipelineDAG,
         workspace_config_map: Dict[str, WorkspaceStepDefinition],
-        workspace_root: str = "developer_workspaces/developers",
+        workspace_root: str = "development/projects",
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         pipeline_parameters: Optional[List[ParameterString]] = None,
@@ -298,7 +300,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         Args:
             dag: PipelineDAG instance defining the pipeline structure
             workspace_config_map: Mapping from step name to WorkspaceStepConfig
-            workspace_root: Root directory containing developer workspaces
+            workspace_root: Root directory containing project workspaces
             sagemaker_session: SageMaker session for pipeline creation
             role: IAM role for pipeline execution
             pipeline_parameters: List of pipeline parameters
@@ -344,14 +346,14 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         for step_name, workspace_config in self.workspace_config_map.items():
             try:
-                # Get workspace module loader for this developer
-                loader = self._get_workspace_loader(workspace_config.developer_id)
+                # Get workspace module loader for this project
+                loader = self._get_workspace_loader(workspace_config.project_id)
                 
                 # Resolve config class from workspace
                 config_instance = self._create_config_instance(workspace_config, loader)
                 config_map[step_name] = config_instance
                 
-                logger.info(f"Resolved config for {step_name} from workspace {workspace_config.developer_id}")
+                logger.info(f"Resolved config for {step_name} from workspace {workspace_config.project_id}")
                 
             except Exception as e:
                 logger.error(f"Failed to resolve config for {step_name}: {e}")
@@ -370,14 +372,14 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         for step_name, workspace_config in self.workspace_config_map.items():
             try:
-                # Get workspace module loader for this developer
-                loader = self._get_workspace_loader(workspace_config.developer_id)
+                # Get workspace module loader for this project
+                loader = self._get_workspace_loader(workspace_config.project_id)
                 
                 # Load builder class from workspace
                 builder_class = loader.load_builder_class(workspace_config.step_type)
                 builder_map[workspace_config.step_type] = builder_class
                 
-                logger.info(f"Resolved builder {workspace_config.step_type} from workspace {workspace_config.developer_id}")
+                logger.info(f"Resolved builder {workspace_config.step_type} from workspace {workspace_config.project_id}")
                 
             except Exception as e:
                 logger.error(f"Failed to resolve builder for {workspace_config.step_type}: {e}")
@@ -385,21 +387,21 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         return builder_map
     
-    def _get_workspace_loader(self, developer_id: str) -> WorkspaceModuleLoader:
-        """Get or create workspace module loader for a developer."""
-        if developer_id not in self.workspace_loaders:
-            workspace_path = self.workspace_root / developer_id
+    def _get_workspace_loader(self, project_id: str) -> WorkspaceModuleLoader:
+        """Get or create workspace module loader for a project."""
+        if project_id not in self.workspace_loaders:
+            workspace_path = self.workspace_root / project_id
             if not workspace_path.exists():
-                raise ValueError(f"Workspace not found for developer: {developer_id}")
+                raise ValueError(f"Workspace not found for project: {project_id}")
             
-            self.workspace_loaders[developer_id] = WorkspaceModuleLoader(
+            self.workspace_loaders[project_id] = WorkspaceModuleLoader(
                 workspace_path=str(workspace_path),
-                developer_id=developer_id,
+                project_id=project_id,
                 enable_shared_fallback=True,
                 cache_modules=True
             )
         
-        return self.workspace_loaders[developer_id]
+        return self.workspace_loaders[project_id]
     
     def _create_config_instance(self, 
                                workspace_config: WorkspaceStepDefinition, 
@@ -409,7 +411,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         
         Args:
             workspace_config: Workspace step definition
-            loader: Workspace module loader for the developer
+            loader: Workspace module loader for the project
             
         Returns:
             Instantiated config object
@@ -455,21 +457,21 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         for step_name, workspace_config in self.workspace_config_map.items():
             try:
                 # Validate workspace exists and is valid
-                workspace_info = self.workspace_manager.get_workspace_info(workspace_config.developer_id)
+                workspace_info = self.workspace_manager.get_workspace_info(workspace_config.project_id)
                 if not workspace_info or not workspace_info.is_valid:
                     validation_results['overall_valid'] = False
                     validation_results['missing_components'].append({
                         'step_name': step_name,
-                        'developer_id': workspace_config.developer_id,
+                        'project_id': workspace_config.project_id,
                         'issue': 'Invalid or missing workspace'
                     })
                     continue
                 
                 # Validate specific component exists
-                loader = self._get_workspace_loader(workspace_config.developer_id)
-                file_resolver = DeveloperWorkspaceFileResolver(
+                loader = self._get_workspace_loader(workspace_config.project_id)
+                file_resolver = ProjectWorkspaceFileResolver(
                     workspace_root=str(self.workspace_root),
-                    developer_id=workspace_config.developer_id
+                    project_id=workspace_config.project_id
                 )
                 
                 # Check for required components
@@ -478,7 +480,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
                 
                 component_validation = {
                     'step_name': step_name,
-                    'developer_id': workspace_config.developer_id,
+                    'project_id': workspace_config.project_id,
                     'step_type': workspace_config.step_type,
                     'has_builder': builder_file is not None,
                     'has_config': config_file is not None,
@@ -496,7 +498,7 @@ class WorkspacePipelineAssembler(PipelineAssembler):
                 validation_results['overall_valid'] = False
                 validation_results['component_issues'].append({
                     'step_name': step_name,
-                    'developer_id': workspace_config.developer_id,
+                    'project_id': workspace_config.project_id,
                     'error': str(e)
                 })
         
@@ -538,12 +540,12 @@ from dataclasses import dataclass, field
 @dataclass
 class WorkspaceStepDefinition:
     """
-    Definition for a pipeline step that comes from a developer workspace.
+    Definition for a pipeline step that comes from a project workspace.
     
     This class defines how to locate and configure a step implementation
-    from a specific developer's workspace.
+    from a specific project's workspace.
     """
-    developer_id: str
+    project_id: str
     step_name: str
     step_type: str
     config_data: Dict[str, Any]
@@ -551,8 +553,8 @@ class WorkspaceStepDefinition:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
-        if not self.developer_id:
-            raise ValueError("developer_id is required")
+        if not self.project_id:
+            raise ValueError("project_id is required")
         if not self.step_name:
             raise ValueError("step_name is required")
         if not self.step_type:
@@ -576,8 +578,8 @@ class WorkspacePipelineDefinition(BaseModel):
         description="Shared parameters available to all steps"
     )
     workspace_root: str = Field(
-        default="developer_workspaces/developers",
-        description="Root directory containing developer workspaces"
+        default="development/projects",
+        description="Root directory containing project workspaces"
     )
     pipeline_description: Optional[str] = Field(
         default=None,
@@ -601,9 +603,9 @@ class WorkspacePipelineDefinition(BaseModel):
         
         return self
     
-    def get_developers(self) -> List[str]:
-        """Get list of unique developer IDs used in this pipeline."""
-        return list(set(config.developer_id for config in self.workspace_steps.values()))
+    def get_projects(self) -> List[str]:
+        """Get list of unique project IDs used in this pipeline."""
+        return list(set(config.project_id for config in self.workspace_steps.values()))
     
     def get_step_types(self) -> List[str]:
         """Get list of unique step types used in this pipeline."""
@@ -615,7 +617,7 @@ class WorkspacePipelineDefinition(BaseModel):
             'pipeline_name': self.pipeline_name,
             'workspace_steps': {
                 name: {
-                    'developer_id': config.developer_id,
+                    'project_id': config.project_id,
                     'step_name': config.step_name,
                     'step_type': config.step_type,
                     'config_data': config.config_data,
@@ -640,7 +642,7 @@ class WorkspacePipelineDefinition(BaseModel):
             pipeline_name=data['pipeline_name'],
             workspace_steps=workspace_steps,
             shared_parameters=data.get('shared_parameters', {}),
-            workspace_root=data.get('workspace_root', 'developer_workspaces/developers'),
+            workspace_root=data.get('workspace_root', 'development/projects'),
             pipeline_description=data.get('pipeline_description'),
             tags=data.get('tags', [])
         )
@@ -691,26 +693,26 @@ class WorkspaceComponentRegistry:
         # Discover all workspaces
         workspaces = self.workspace_manager.discover_workspaces()
         
-        for developer_id in workspaces:
+        for project_id in workspaces:
             try:
-                workspace_info = self.workspace_manager.get_workspace_info(developer_id)
+                workspace_info = self.workspace_manager.get_workspace_info(project_id)
                 if not workspace_info or not workspace_info.is_valid:
                     continue
                 
                 # Create file resolver for this workspace
-                file_resolver = DeveloperWorkspaceFileResolver(
+                file_resolver = ProjectWorkspaceFileResolver(
                     workspace_root=str(self.workspace_root),
-                    developer_id=developer_id
+                    project_id=project_id
                 )
                 
                 # Discover components in this workspace
                 workspace_components = file_resolver.find_all_workspace_components()
-                components[developer_id] = workspace_components
+                components[project_id] = workspace_components
                 
-                logger.debug(f"Found components in {developer_id}: {workspace_components}")
+                logger.debug(f"Found components in {project_id}: {workspace_components}")
                 
             except Exception as e:
-                logger.warning(f"Error scanning workspace {developer_id}: {e}")
+                logger.warning(f"Error scanning workspace {project_id}: {e}")
                 continue
         
         # Update cache
@@ -720,67 +722,67 @@ class WorkspaceComponentRegistry:
         logger.info(f"Component discovery complete. Found {len(components)} workspaces.")
         return components
     
-    def find_step_builder(self, step_type: str, preferred_developer: Optional[str] = None) -> Optional[Tuple[str, str]]:
+    def find_step_builder(self, step_type: str, preferred_project: Optional[str] = None) -> Optional[Tuple[str, str]]:
         """
         Find a step builder for the given step type.
         
         Args:
             step_type: Type of step to find builder for
-            preferred_developer: Preferred developer ID (optional)
+            preferred_project: Preferred project ID (optional)
             
         Returns:
-            Tuple of (developer_id, builder_file_path) if found, None otherwise
+            Tuple of (project_id, builder_file_path) if found, None otherwise
         """
         components = self.discover_all_components()
         
-        # First try preferred developer if specified
-        if preferred_developer and preferred_developer in components:
-            builders = components[preferred_developer].get('builders', {})
+        # First try preferred project if specified
+        if preferred_project and preferred_project in components:
+            builders = components[preferred_project].get('builders', {})
             for builder_name, builder_path in builders.items():
                 if self._matches_step_type(builder_name, step_type):
-                    return (preferred_developer, builder_path)
+                    return (preferred_project, builder_path)
         
-        # Search all developers
-        for developer_id, dev_components in components.items():
-            if preferred_developer and developer_id == preferred_developer:
+        # Search all projects
+        for project_id, dev_components in components.items():
+            if preferred_project and project_id == preferred_project:
                 continue  # Already checked above
             
             builders = dev_components.get('builders', {})
             for builder_name, builder_path in builders.items():
                 if self._matches_step_type(builder_name, step_type):
-                    return (developer_id, builder_path)
+                    return (project_id, builder_path)
         
         return None
     
-    def find_config_class(self, step_type: str, preferred_developer: Optional[str] = None) -> Optional[Tuple[str, str]]:
+    def find_config_class(self, step_type: str, preferred_project: Optional[str] = None) -> Optional[Tuple[str, str]]:
         """
         Find a config class for the given step type.
         
         Args:
             step_type: Type of step to find config for
-            preferred_developer: Preferred developer ID (optional)
+            preferred_project: Preferred project ID (optional)
             
         Returns:
-            Tuple of (developer_id, config_file_path) if found, None otherwise
+            Tuple of (project_id, config_file_path) if found, None otherwise
         """
         components = self.discover_all_components()
         
-        # First try preferred developer if specified
-        if preferred_developer and preferred_developer in components:
-            configs = components[preferred_developer].get('configs', {})
+        # First try preferred project if specified
+        if preferred_project and preferred_project in components:
+            configs = components[preferred_project].get('configs', {})
             for config_name, config_path in configs.items():
                 if self._matches_step_type(config_name, step_type):
-                    return (preferred_developer, config_path)
+                    return (preferred_project, config_path)
         
-        # Search all developers
-        for developer_id, dev_components in components.items():
-            if preferred_developer and developer_id == preferred_developer:
+        # Search all projects
+        for project_id, dev_components in components.items():
+            if preferred_project and project_id == preferred_project:
                 continue  # Already checked above
             
             configs = dev_components.get('configs', {})
             for config_name, config_path in configs.items():
                 if self._matches_step_type(config_name, step_type):
-                    return (developer_id, config_path)
+                    return (project_id, config_path)
         
         return None
     

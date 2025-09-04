@@ -5,7 +5,7 @@ import os
 from typing import Dict, Any, List
 
 # Workspace Configuration
-DEFAULT_WORKSPACE_DIR = "./developer_workspaces/developers/developer_1"
+DEFAULT_WORKSPACE_DIR = "./development/projects/project_alpha"
 DEFAULT_LOG_LEVEL = "INFO"
 
 # Data Configuration

@@ -23,21 +23,21 @@ language: python
 date of note: 2025-08-17
 ---
 
-# Multi-Developer Workspace Management System
+# Multi-Project Workspace Management System
 
 ## Overview
 
-This document outlines the design for a comprehensive developer workspace management system that extends the current Cursus architecture to support multiple developers working on step builders and pipeline components. The system provides isolated development environments, robust testing frameworks, and structured workflows for integrating new developer contributions into the main codebase.
+This document outlines the design for a comprehensive project workspace management system that extends the current Cursus architecture to support multiple projects working on step builders and pipeline components. The system provides isolated development environments, robust testing frameworks, and structured workflows for integrating new project contributions into the main codebase.
 
 ## Problem Statement
 
 The current Cursus system has a sophisticated validation and testing framework (Unified Alignment Tester, Universal Step Builder Test) but lacks infrastructure for:
 
-1. **Developer Isolation**: New developers need isolated workspaces to develop and test their code without affecting the main codebase
-2. **Code Validation Pipeline**: Systematic validation of developer contributions before integration
-3. **Workspace Management**: Structured organization of multiple developer workspaces
-4. **Integration Workflow**: Clear process for moving validated code from developer workspaces to production
-5. **Developer Onboarding**: Streamlined setup process for new contributors
+1. **Project Isolation**: New projects need isolated workspaces to develop and test their code without affecting the main codebase
+2. **Code Validation Pipeline**: Systematic validation of project contributions before integration
+3. **Workspace Management**: Structured organization of multiple project workspaces
+4. **Integration Workflow**: Clear process for moving validated code from project workspaces to production
+5. **Project Onboarding**: Streamlined setup process for new contributors
 
 ## Current System Analysis
 
@@ -50,21 +50,21 @@ The current Cursus system has a sophisticated validation and testing framework (
 
 ### Current Limitations
 - **Single Workspace**: All development happens in the main `src/cursus` directory
-- **No Developer Isolation**: No mechanism to separate developer code from production code
-- **Manual Integration**: No automated workflow for validating and integrating developer contributions
-- **Limited Collaboration**: No structured approach for multiple developers working simultaneously
+- **No Project Isolation**: No mechanism to separate project code from production code
+- **Manual Integration**: No automated workflow for validating and integrating project contributions
+- **Limited Collaboration**: No structured approach for multiple projects working simultaneously
 
 ## Core Architectural Principles
 
-The Multi-Developer Workspace Management System is built on two fundamental principles that generalize the Separation of Concerns design principle:
+The Multi-Project Workspace Management System is built on two fundamental principles that generalize the Separation of Concerns design principle:
 
 ### Principle 1: Workspace Isolation
-**Everything that happens within a developer's workspace stays in that workspace.**
+**Everything that happens within a project's workspace stays in that workspace.**
 
-This principle ensures complete isolation between developer environments:
-- Developer code, configurations, and experiments remain contained within their workspace
+This principle ensures complete isolation between project environments:
+- Project code, configurations, and experiments remain contained within their workspace
 - No cross-workspace interference or dependencies
-- Developers can experiment freely without affecting others
+- Projects can experiment freely without affecting others
 - Workspace-specific implementations and customizations are isolated
 - Each workspace maintains its own registry, validation results, and development artifacts
 
@@ -79,14 +79,14 @@ This principle defines the common foundation that all workspaces inherit:
 - Integration pathway from workspace to shared core is well-defined
 
 These principles create a clear separation between:
-- **Private Development Space**: Individual workspace environments for experimentation and development
+- **Private Development Space**: Individual project workspace environments for experimentation and development
 - **Shared Production Space**: Common core that provides stability and shared functionality
 
 ## Design Principles
 
 Building on the core architectural principles, the system follows these design guidelines:
 
-1. **Isolation First**: Each developer gets a completely isolated workspace (implements Workspace Isolation Principle)
+1. **Isolation First**: Each project gets a completely isolated workspace (implements Workspace Isolation Principle)
 2. **Shared Foundation**: All workspaces inherit from the common `src/cursus/` core (implements Shared Core Principle)
 3. **Validation Gate**: All code must pass comprehensive validation before integration
 4. **Non-Disruptive**: The system should not affect existing production workflows
@@ -100,7 +100,7 @@ The architecture is designed around the two core principles, creating a clear se
 
 > **Note**: This architecture reflects the **Phase 1 consolidated design** implemented according to the [2025-09-02 Workspace-Aware System Refactoring Migration Plan](../2_project_planning/2025-09-02_workspace_aware_system_refactoring_migration_plan.md), which centralizes all workspace management functionality within the package structure for proper packaging compliance and improved maintainability.
 
-> **Cross-Reference**: This multi-developer management system provides the overall workspace architecture and developer workflows that are supported by the [Workspace-Aware Core System Design](workspace_aware_core_system_design.md). The core system design provides the technical infrastructure for pipeline assembly using workspace components, while this document defines the comprehensive developer workspace management framework.
+> **Cross-Reference**: This multi-project management system provides the overall workspace architecture and project workflows that are supported by the [Workspace-Aware Core System Design](workspace_aware_core_system_design.md). The core system design provides the technical infrastructure for pipeline assembly using workspace components, while this document defines the comprehensive project workspace management framework.
 
 ### Phase 5 Implementation Status: ✅ COMPLETED
 
@@ -116,10 +116,9 @@ cursus/                                 # PROJECT ROOT
 │   ├── steps/                         # ✅ Core step implementations
 │   ├── validation/                    # ✅ Shared validation frameworks
 │   └── cli/                           # ✅ Command-line interfaces
-├── developer_workspaces/              # WORKSPACE DATA & INSTANCES (Principle 1)
-│   ├── shared_resources/              # ✅ Shared workspace resources
-│   ├── integration_staging/           # ✅ Integration staging area
-│   └── developers/                    # ✅ Individual developer workspaces (ISOLATED)
+├── development/                       # WORKSPACE DATA & INSTANCES (Principle 1)
+│   ├── projects/                      # ✅ Individual project workspaces (ISOLATED)
+│   └── review/                        # ✅ Quality review process
 └── slipbox/                           # ✅ SHARED CORE: Documentation
 ```
 
@@ -228,35 +227,32 @@ validation/                            # ✅ SHARED VALIDATION SYSTEM
 └── runtime/                           # ✅ Runtime validation and testing infrastructure
 ```
 
-#### Developer Workspaces (External Data Structure)
+#### Project Workspaces (External Data Structure)
 
-Individual developer environments implementing Principle 1 (Workspace Isolation):
+Individual project environments implementing Principle 1 (Workspace Isolation):
 
 ```
-developer_workspaces/                  # WORKSPACE DATA & INSTANCES (DATA ONLY)
+development/                           # WORKSPACE DATA & INSTANCES (DATA ONLY)
 ├── README.md                          # ✅ Documentation only
-├── shared_resources/                  # ✅ Shared workspace resources (data)
-│   ├── common_configs/                # ✅ Common configuration templates
-│   ├── shared_scripts/                # ✅ Shared utility scripts
-│   └── documentation/                 # ✅ Workspace documentation
-├── integration_staging/               # ✅ Integration staging area (data)
-│   ├── staging_areas/                 # ✅ Code staging for integration
-│   └── validation_results/            # ✅ Integration validation results
-└── developers/                        # ✅ Individual developer workspaces (ISOLATED)
-    ├── developer_1/                   # ✅ Developer 1's isolated workspace
-    │   ├── src/cursus_dev/            # ✅ Developer's isolated code (mirrors src/cursus)
-    │   │   ├── steps/                 # ✅ Developer's step implementations
-    │   │   │   ├── builders/          # ✅ Developer's step builders
-    │   │   │   ├── configs/           # ✅ Developer's configurations
-    │   │   │   ├── contracts/         # ✅ Developer's script contracts
-    │   │   │   ├── specs/             # ✅ Developer's specifications
-    │   │   │   └── scripts/           # ✅ Developer's processing scripts
-    │   │   └── registry/              # ✅ Developer's workspace registry
-    │   ├── test/                      # ✅ Developer's test suite
-    │   ├── docs/                      # ✅ Developer's documentation
-    │   └── validation_reports/        # ✅ Developer's validation results
-    ├── developer_2/                   # ✅ Developer 2's isolated workspace (same structure)
-    └── developer_3/                   # ✅ Developer 3's isolated workspace (same structure)
+├── projects/                          # ✅ Individual project workspaces (ISOLATED)
+│   ├── project_alpha/                 # ✅ Project Alpha's isolated workspace
+│   │   ├── src/cursus_dev/            # ✅ Project's isolated code (mirrors src/cursus)
+│   │   │   ├── steps/                 # ✅ Project's step implementations
+│   │   │   │   ├── builders/          # ✅ Project's step builders
+│   │   │   │   ├── configs/           # ✅ Project's configurations
+│   │   │   │   ├── contracts/         # ✅ Project's script contracts
+│   │   │   │   ├── specs/             # ✅ Project's specifications
+│   │   │   │   └── scripts/           # ✅ Project's processing scripts
+│   │   │   └── registry/              # ✅ Project's workspace registry
+│   │   ├── test/                      # ✅ Project's test suite
+│   │   ├── docs/                      # ✅ Project's documentation
+│   │   └── validation_reports/        # ✅ Project's validation results
+│   ├── project_beta/                  # ✅ Project Beta's isolated workspace (same structure)
+│   └── project_gamma/                 # ✅ Project Gamma's isolated workspace (same structure)
+└── review/                            # ✅ Quality review process (data)
+    ├── pending/                       # ✅ Components awaiting review
+    ├── reports/                       # ✅ Review reports
+    └── validation/                    # ✅ Review validation results
 ```
 
 ### ✅ Phase 5 Consolidation Completed (September 2, 2025)
@@ -305,7 +301,7 @@ The **Phase 5 implementation** has successfully consolidated all workspace funct
 
 ### Architectural Principles Implementation
 
-**Principle 1: Workspace Isolation** - Each developer workspace under `developer_workspaces/developers/` is completely isolated:
+**Principle 1: Workspace Isolation** - Each project workspace under `development/projects/` is completely isolated:
 - Independent `src/cursus_dev/` directory structure that mirrors the shared core
 - Isolated registry, validation results, and development artifacts
 - No cross-workspace dependencies or interference
@@ -313,12 +309,12 @@ The **Phase 5 implementation** has successfully consolidated all workspace funct
 
 **Principle 2: Shared Core** - Only `src/cursus/` contains shared components:
 - Core validation frameworks (`UnifiedAlignmentTester`, `UniversalStepBuilderTest`)
-- Shared step implementations, base classes, and utilities
+- Shared step implementations, base classes, utilities, templates, and examples
 - Common registry foundation that workspaces extend
 - Production-ready components that all workspaces inherit from
 
-**Integration Pathway** - `integration_staging/` provides the bridge between isolated workspaces and shared core:
-- Validated workspace components are staged here before integration
+**Quality Review Pathway** - `development/review/` provides the bridge between isolated workspaces and shared core:
+- Validated workspace components are reviewed here before integration
 - Final validation ensures compatibility with shared core
 - Successful components graduate from workspace isolation to shared core
 
@@ -354,23 +350,23 @@ class WorkspaceManager:
         self.discovery_manager = WorkspaceDiscoveryManager()
         self.integration_manager = WorkspaceIntegrationManager()
     
-    def create_developer_workspace(self, developer_id: str, workspace_type: str = "standard"):
+    def create_project_workspace(self, project_id: str, workspace_type: str = "standard"):
         """
-        Create a new isolated developer workspace using lifecycle manager.
+        Create a new isolated project workspace using lifecycle manager.
         
         Args:
-            developer_id: Unique identifier for the developer
+            project_id: Unique identifier for the project
             workspace_type: Type of workspace (standard, advanced, custom)
         """
-        return self.lifecycle_manager.create_workspace(developer_id, workspace_type)
+        return self.lifecycle_manager.create_workspace(project_id, workspace_type)
 
 # File: src/cursus/workspace/core/lifecycle.py
 class WorkspaceLifecycleManager:
     """Workspace lifecycle management"""
     
-    def create_workspace(self, developer_id: str, workspace_type: str = "standard"):
-        """Create new developer workspace with proper structure and templates"""
-        workspace_path = f"developer_workspaces/developers/{developer_id}"
+    def create_workspace(self, project_id: str, workspace_type: str = "standard"):
+        """Create new project workspace with proper structure and templates"""
+        workspace_path = f"development/projects/{project_id}"
         
         # Create workspace structure
         self._create_workspace_structure(workspace_path)
@@ -383,7 +379,7 @@ class WorkspaceLifecycleManager:
         self._setup_validation_config(workspace_path)
         
         # Register workspace
-        self._register_workspace(developer_id, workspace_path)
+        self._register_workspace(project_id, workspace_path)
         
         return workspace_path
 ```
@@ -399,9 +395,9 @@ class WorkspaceAPI:
         self.validation_manager = WorkspaceTestManager()
         self.template_manager = TemplateManager()
     
-    def setup_developer_workspace(self, developer_id: str, template: str = None) -> HealthReport:
+    def setup_project_workspace(self, project_id: str, template: str = None) -> HealthReport:
         """High-level workspace setup with comprehensive configuration"""
-        return self.core_manager.create_developer_workspace(developer_id, template or "standard")
+        return self.core_manager.create_project_workspace(project_id, template or "standard")
     
     def get_workspace_health(self, workspace_id: str) -> HealthReport:
         """Get comprehensive health report for workspace"""
@@ -414,16 +410,16 @@ class WorkspaceAPI:
         )
 ```
 
-### 2. Developer Workspace Structure
+### 2. Project Workspace Structure
 
-Each developer workspace follows a standardized structure:
+Each project workspace follows a standardized structure:
 
 ```
-developers/{developer_id}/
-├── README.md                           # Developer-specific documentation
+projects/{project_id}/
+├── README.md                           # Project-specific documentation
 ├── workspace_config.yaml              # Workspace configuration
-├── src/                               # Developer's code directory
-│   └── cursus_dev/                    # Developer's cursus extensions
+├── src/                               # Project's code directory
+│   └── cursus_dev/                    # Project's cursus extensions
 │       ├── steps/                     # New step implementations
 │       │   ├── builders/              # Step builders
 │       │   ├── configs/               # Step configurations
@@ -431,26 +427,26 @@ developers/{developer_id}/
 │       │   ├── specs/                 # Step specifications
 │       │   └── scripts/               # Processing scripts
 │       └── extensions/                # Other extensions
-├── test/                              # Developer's test suite
+├── test/                              # Project's test suite
 │   ├── unit/                          # Unit tests
 │   ├── integration/                   # Integration tests
 │   └── validation/                    # Validation test results
-├── docs/                              # Developer documentation
+├── docs/                              # Project documentation
 ├── examples/                          # Usage examples
 └── validation_reports/                # Validation results and reports
 ```
 
 ### 3. Validation Pipeline
 
-**Location**: `developer_workspaces/validation_pipeline/`
+**Location**: `src/cursus/workspace/validation/`
 
-The validation pipeline extends the existing validation frameworks to work with developer workspaces.
+The validation pipeline extends the existing validation frameworks to work with project workspaces.
 
 #### Key Components:
-- **`developer_code_validator.py`**: Main validation orchestrator for developer code
+- **`workspace_test_manager.py`**: Main validation orchestrator for project code
 - **`workspace_alignment_tester.py`**: Extends Unified Alignment Tester for workspace validation
-- **`developer_step_builder_tester.py`**: Extends Universal Step Builder Test for developer code
-- **`integration_validator.py`**: Validates integration with main codebase
+- **`workspace_builder_test.py`**: Extends Universal Step Builder Test for project code
+- **`cross_workspace_validator.py`**: Validates integration with main codebase
 
 #### Validation Levels:
 
@@ -460,142 +456,141 @@ The validation pipeline extends the existing validation frameworks to work with 
 - Checks workspace metadata and documentation
 
 **Level 2: Code Quality**
-- Extends existing alignment validation to developer code
+- Extends existing alignment validation to project code
 - Validates naming conventions and architectural compliance
-- Ensures adherence to developer guide standards
+- Ensures adherence to development guide standards
 
 **Level 3: Functional Validation**
-- Runs Universal Step Builder Tests on developer implementations
+- Runs Universal Step Builder Tests on project implementations
 - Validates step builders, configurations, contracts, and specifications
 - Ensures compatibility with existing pipeline infrastructure
 
 **Level 4: Integration Validation**
 - Tests integration with main codebase
-- Validates that developer code doesn't break existing functionality
+- Validates that project code doesn't break existing functionality
 - Ensures proper registry integration and dependency resolution
 
 **Level 5: End-to-End Validation**
-- Creates test pipelines using developer steps
+- Creates test pipelines using project steps
 - Validates complete workflow from configuration to execution
 - Performance and resource usage validation
 
-### 4. Integration Staging System
+### 4. Quality Review System
 
-**Location**: `integration_staging/`
+**Location**: `development/review/`
 
-The staging system manages the process of moving validated developer code into the main codebase.
+The review system manages the process of moving validated project code into the main codebase.
 
 #### Key Components:
-- **`staging_manager.py`**: Manages staged code and integration process
+- **`review_manager.py`**: Manages code under review and integration process
 - **`merge_validator.py`**: Final validation before merging to main codebase
-- **`conflict_resolver.py`**: Handles conflicts between developer contributions
-- **`integration_reporter.py`**: Generates integration reports and documentation
+- **`conflict_resolver.py`**: Handles conflicts between project contributions
+- **`review_reporter.py`**: Generates review reports and documentation
 
-#### Staging Process:
+#### Review Process:
 ```python
-class StagingManager:
-    def stage_developer_code(self, developer_id: str, component_paths: List[str]):
+class ReviewManager:
+    def submit_for_review(self, project_id: str, component_paths: List[str]):
         """
-        Stage validated developer code for integration.
+        Submit validated project code for review.
         
         Args:
-            developer_id: Developer identifier
-            component_paths: List of component paths to stage
+            project_id: Project identifier
+            component_paths: List of component paths to review
         """
-        # Validate code is ready for staging
-        validation_results = self._validate_for_staging(developer_id, component_paths)
+        # Validate code is ready for review
+        validation_results = self._validate_for_review(project_id, component_paths)
         
         if not validation_results.all_passed:
-            raise StagingValidationError("Code failed staging validation")
+            raise ReviewValidationError("Code failed review validation")
         
-        # Create staging area
-        staging_id = self._create_staging_area(developer_id)
+        # Create review area
+        review_id = self._create_review_area(project_id)
         
-        # Copy validated code to staging
-        self._copy_to_staging(developer_id, component_paths, staging_id)
+        # Copy validated code to review
+        self._copy_to_review(project_id, component_paths, review_id)
         
         # Run final integration tests
-        integration_results = self._run_integration_tests(staging_id)
+        integration_results = self._run_integration_tests(review_id)
         
-        # Generate integration report
-        self._generate_integration_report(staging_id, integration_results)
+        # Generate review report
+        self._generate_review_report(review_id, integration_results)
         
-        return staging_id
+        return review_id
 ```
 
-### 5. Shared Resources
+### 5. Shared Resources (Moved to `src/cursus/`)
 
-**Location**: `developer_workspaces/shared_resources/`
+**Location**: `src/cursus/templates/`, `src/cursus/utilities/`, `src/cursus/examples/`
 
-Shared utilities and templates used across all developer workspaces.
+Shared utilities and templates are now part of the core package following Principle 2.
 
 #### Key Components:
-- **`templates/`**: Workspace templates and scaffolding
-- **`utilities/`**: Common utilities for workspace management
-- **`validation_configs/`**: Standard validation configurations
-- **`examples/`**: Reference implementations and examples
+- **`src/cursus/templates/`**: Configuration templates and scaffolding
+- **`src/cursus/utilities/`**: Common utilities for development
+- **`src/cursus/examples/`**: Reference implementations and examples
 
-## Developer Workflow
+## Project Workflow
 
-### 1. Developer Onboarding
+### 1. Project Onboarding
 
 ```bash
-# Create new developer workspace
-python -m cursus.developer_tools create-workspace --developer-id "john_doe" --type "standard"
+# Create new project workspace
+python -m cursus.project_tools create-workspace --project-id "ml_optimization" --type "standard"
 
 # Initialize workspace
-cd developer_workspaces/developers/john_doe
-python -m cursus.developer_tools init-workspace
+cd development/projects/ml_optimization
+python -m cursus.project_tools init-workspace
 
 # Validate workspace setup
-python -m cursus.developer_tools validate-workspace
+python -m cursus.project_tools validate-workspace
 ```
 
 ### 2. Development Process
 
 ```bash
-# Develop new step (following existing developer guide)
+# Develop new step (following existing development guide)
 # Create step configuration, contract, specification, and builder
 
 # Run local validation
-python -m cursus.developer_tools validate-code --level all
+python -m cursus.project_tools validate-code --level all
 
 # Run step builder tests
-python -m cursus.developer_tools test-builders --verbose
+python -m cursus.project_tools test-builders --verbose
 
 # Generate validation report
-python -m cursus.developer_tools generate-report
+python -m cursus.project_tools generate-report
 ```
 
-### 3. Integration Process
+### 3. Review Process
 
 ```bash
-# Request code staging
-python -m cursus.developer_tools request-staging --components "steps/builders/my_new_step.py"
+# Submit code for review
+python -m cursus.project_tools submit-for-review --components "steps/builders/my_new_step.py"
 
 # System runs comprehensive validation
-# If validation passes, code is staged for integration
+# If validation passes, code is submitted for review
 
 # Final integration (performed by maintainers)
-python -m cursus.integration_tools integrate-staged-code --staging-id "staging_123"
+python -m cursus.review_tools integrate-reviewed-code --review-id "review_123"
 ```
 
 ## Validation Framework Extensions
 
-### Developer Code Validator
+### Project Code Validator
 
-Extends the existing Unified Alignment Tester to work with developer workspaces:
+Extends the existing Unified Alignment Tester to work with project workspaces:
 
 ```python
-class DeveloperCodeValidator:
+class ProjectCodeValidator:
     def __init__(self, workspace_path: str):
         self.workspace_path = workspace_path
         self.alignment_tester = UnifiedAlignmentTester()
         self.builder_tester = UniversalStepBuilderTest()
     
-    def validate_developer_code(self) -> ValidationResults:
+    def validate_project_code(self) -> ValidationResults:
         """
-        Comprehensive validation of developer code.
+        Comprehensive validation of project code.
         """
         results = ValidationResults()
         
@@ -619,7 +614,7 @@ class DeveloperCodeValidator:
 
 ### Workspace-Aware Testing
 
-Extends existing test frameworks to work with developer workspaces:
+Extends existing test frameworks to work with project workspaces:
 
 ```python
 class WorkspaceStepBuilderTester(UniversalStepBuilderTest):
@@ -627,9 +622,9 @@ class WorkspaceStepBuilderTester(UniversalStepBuilderTest):
         self.workspace_path = workspace_path
         super().__init__(**kwargs)
     
-    def discover_developer_builders(self) -> List[Type[StepBuilderBase]]:
+    def discover_project_builders(self) -> List[Type[StepBuilderBase]]:
         """
-        Discover step builders in developer workspace.
+        Discover step builders in project workspace.
         """
         # Scan workspace for builder implementations
         # Return list of builder classes for testing
@@ -639,7 +634,7 @@ class WorkspaceStepBuilderTester(UniversalStepBuilderTest):
         """
         Run universal tests on all builders in workspace.
         """
-        builders = self.discover_developer_builders()
+        builders = self.discover_project_builders()
         results = {}
         
         for builder_class in builders:
@@ -662,7 +657,9 @@ Each workspace has a configuration file defining its properties:
 ```yaml
 # workspace_config.yaml
 workspace:
-  developer_id: "john_doe"
+  project_id: "ml_optimization"
+  project_owner: "ml_team"
+  contributors: ["john_doe", "jane_smith"]
   created_date: "2025-08-17"
   workspace_type: "standard"
   version: "1.0"
@@ -673,8 +670,8 @@ validation:
   integration_validation: true
   e2e_validation: false  # Optional for development
 
-integration:
-  auto_staging: false
+review:
+  auto_submit: false
   require_approval: true
   target_branch: "main"
 
@@ -689,7 +686,7 @@ development:
 System-wide configuration for workspace management:
 
 ```yaml
-# developer_workspaces/config/global_config.yaml
+# development/config/global_config.yaml
 system:
   max_workspaces: 50
   workspace_retention_days: 90
@@ -700,44 +697,44 @@ validation:
   optional_levels: ["integration_validation", "e2e_validation"]
   pass_threshold: 0.8
 
-integration:
-  staging_retention_days: 30
+review:
+  review_retention_days: 30
   require_maintainer_approval: true
   auto_merge_threshold: 0.95
 ```
 
 ## CLI Tools
 
-### Developer Tools
+### Project Tools
 
 ```bash
 # Workspace management
-cursus-dev create-workspace --developer-id "john_doe" --type "standard"
-cursus-dev list-workspaces
-cursus-dev delete-workspace --developer-id "john_doe" --confirm
+cursus-project create-workspace --project-id "ml_optimization" --type "standard"
+cursus-project list-workspaces
+cursus-project delete-workspace --project-id "ml_optimization" --confirm
 
 # Development workflow
-cursus-dev validate-code --level all --verbose
-cursus-dev test-builders --pattern "*training*"
-cursus-dev generate-report --format json
+cursus-project validate-code --level all --verbose
+cursus-project test-builders --pattern "*training*"
+cursus-project generate-report --format json
 
-# Integration workflow
-cursus-dev request-staging --components "steps/builders/my_step.py"
-cursus-dev check-staging-status --staging-id "staging_123"
+# Review workflow
+cursus-project submit-for-review --components "steps/builders/my_step.py"
+cursus-project check-review-status --review-id "review_123"
 ```
 
-### Integration Tools (Maintainer)
+### Review Tools (Maintainer)
 
 ```bash
-# Staging management
-cursus-integration list-staged-code
-cursus-integration review-staging --staging-id "staging_123"
-cursus-integration integrate-code --staging-id "staging_123" --approve
+# Review management
+cursus-review list-pending-reviews
+cursus-review review-code --review-id "review_123"
+cursus-review integrate-code --review-id "review_123" --approve
 
 # System management
-cursus-integration cleanup-workspaces --older-than 90
-cursus-integration validate-system-integrity
-cursus-integration generate-system-report
+cursus-review cleanup-workspaces --older-than 90
+cursus-review validate-system-integrity
+cursus-review generate-system-report
 ```
 
 ## Security and Access Control
@@ -774,10 +771,10 @@ cursus-integration generate-system-report
 - Integration success rates and timing
 - Resource usage and capacity planning
 
-### Developer Experience
+### Project Experience
 
 - Onboarding success rates and time-to-first-contribution
-- Common developer issues and resolution patterns
+- Common project issues and resolution patterns
 - Documentation effectiveness metrics
 
 ## Implementation Plan
@@ -809,10 +806,10 @@ cursus-integration generate-system-report
 
 ## Success Metrics
 
-### Developer Experience
+### Project Experience
 - **Onboarding Time**: < 30 minutes from workspace creation to first successful validation
-- **Development Velocity**: Developers can create and validate new steps within 1 day
-- **Success Rate**: > 90% of developer contributions pass validation on first attempt
+- **Development Velocity**: Projects can create and validate new steps within 1 day
+- **Success Rate**: > 90% of project contributions pass validation on first attempt
 
 ### System Reliability
 - **Validation Accuracy**: < 5% false positive rate in validation pipeline
@@ -821,7 +818,7 @@ cursus-integration generate-system-report
 
 ### Code Quality
 - **Alignment Compliance**: 100% of integrated code passes alignment validation
-- **Test Coverage**: > 90% test coverage for all integrated developer code
+- **Test Coverage**: > 90% test coverage for all integrated project code
 - **Documentation Quality**: All integrated code includes complete documentation
 
 ## Risk Mitigation
@@ -832,7 +829,7 @@ cursus-integration generate-system-report
 - **Performance Impact**: Use isolated environments and resource limits
 
 ### Process Risks
-- **Developer Adoption**: Provide comprehensive onboarding and support
+- **Project Adoption**: Provide comprehensive onboarding and support
 - **Quality Control**: Implement multi-level validation and approval processes
 - **Maintenance Overhead**: Automate workspace management and cleanup
 
@@ -860,9 +857,9 @@ cursus-integration generate-system-report
 
 ## Conclusion
 
-The Multi-Developer Workspace Management System provides a comprehensive solution for supporting multiple developers in the Cursus ecosystem. By extending the existing robust validation and testing frameworks, the system ensures code quality while providing developers with isolated, productive environments.
+The Multi-Project Workspace Management System provides a comprehensive solution for supporting multiple projects in the Cursus ecosystem. By extending the existing robust validation and testing frameworks, the system ensures code quality while providing projects with isolated, productive environments.
 
-The design maintains backward compatibility with existing workflows while adding powerful new capabilities for developer collaboration, code validation, and integration management. The phased implementation approach allows for gradual rollout and refinement based on developer feedback.
+The design maintains backward compatibility with existing workflows while adding powerful new capabilities for project collaboration, code validation, and integration management. The phased implementation approach allows for gradual rollout and refinement based on project feedback.
 
 This system transforms Cursus from a single-developer codebase into a collaborative platform capable of supporting a growing community of contributors while maintaining the high standards of code quality and architectural compliance that define the project.
 

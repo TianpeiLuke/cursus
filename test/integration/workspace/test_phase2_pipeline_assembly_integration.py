@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Dict, Any, List
 from unittest.mock import Mock, patch
 
-from src.cursus.core.workspace.manager import WorkspaceManager
-from src.cursus.core.workspace.assembler import WorkspacePipelineAssembler
-from src.cursus.core.workspace.registry import WorkspaceComponentRegistry
-from src.cursus.core.workspace.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
-from src.cursus.core.workspace.compiler import WorkspaceDAGCompiler
+from src.cursus.workspace.core.manager import WorkspaceManager
+from src.cursus.workspace.core.assembler import WorkspacePipelineAssembler
+from src.cursus.workspace.core.registry import WorkspaceComponentRegistry
+from src.cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
+from src.cursus.workspace.core.compiler import WorkspaceDAGCompiler
 
 
 class TestPhase2PipelineAssemblyIntegration:

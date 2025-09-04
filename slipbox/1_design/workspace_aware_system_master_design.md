@@ -26,11 +26,11 @@ date of note: 2025-08-29
 
 ## Overview
 
-This master design document provides a comprehensive overview of the workspace-aware system architecture for Cursus, which represents a complete end-to-end refactoring of the existing single-workspace system to support multi-developer collaborative environments. The workspace-aware system transforms all major system blocks to enable isolated development environments while maintaining shared core functionality and ensuring seamless collaboration across multiple developer workspaces.
+This master design document provides a comprehensive overview of the workspace-aware system architecture for Cursus, which represents a complete end-to-end refactoring of the existing single-workspace system to support multi-project collaborative environments. The workspace-aware system transforms all major system blocks to enable isolated development environments while maintaining shared core functionality and ensuring seamless collaboration across multiple project workspaces.
 
 ## Executive Summary
 
-The workspace-aware system is a fundamental architectural transformation that extends Cursus from a single-developer codebase into a collaborative multi-developer platform. This transformation affects every major system component and introduces new capabilities for workspace isolation, cross-workspace collaboration, and distributed development workflows.
+The workspace-aware system is a fundamental architectural transformation that extends Cursus from a single-developer codebase into a collaborative multi-project platform. This transformation affects every major system component and introduces new capabilities for workspace isolation, cross-workspace collaboration, and distributed development workflows.
 
 ### Transformation Scope
 
@@ -47,21 +47,21 @@ The workspace-aware design represents an **end-to-end refactoring** of the exist
 The entire workspace-aware system is built on the foundational **Separation of Concerns** design principle, which is implemented through two fundamental workspace-specific principles:
 
 #### Foundation: Separation of Concerns
-The workspace-aware architecture applies the **Separation of Concerns** principle to clearly separate different aspects of the multi-developer system:
-- **Development Concerns**: Isolated within individual developer workspaces
+The workspace-aware architecture applies the **Separation of Concerns** principle to clearly separate different aspects of the multi-project system:
+- **Development Concerns**: Isolated within individual project workspaces
 - **Shared Infrastructure Concerns**: Centralized in the shared core system
-- **Integration Concerns**: Managed through dedicated staging and validation pathways
+- **Integration Concerns**: Managed through dedicated review and validation pathways
 - **Quality Assurance Concerns**: Distributed across workspace-specific and cross-workspace validation
 
 This separation ensures that each concern is handled in the most appropriate context, reducing complexity and improving maintainability.
 
 #### Principle 1: Workspace Isolation
-**Everything that happens within a developer's workspace stays in that workspace.**
+**Everything that happens within a project's workspace stays in that workspace.**
 
 This principle implements Separation of Concerns by isolating development activities:
-- Developer code, configurations, and experiments remain contained within their workspace
+- Project code, configurations, and experiments remain contained within their workspace
 - No cross-workspace interference or dependencies during development
-- Developers can experiment freely without affecting others
+- Projects can experiment freely without affecting others
 - Workspace-specific implementations and customizations are isolated
 - Each workspace maintains its own component registry and validation results
 
@@ -93,13 +93,13 @@ cursus/
 │   │   └── [API, templates, utils]     # High-level workspace interfaces
 │   ├── core/                            # Shared core system (pipeline assembly, DAG compilation)
 │   ├── steps/                           # Shared step implementations
+│   ├── registry/                        # Shared registry system
 │   ├── validation/                      # Shared validation frameworks
 │   ├── cli/                             # Command-line interfaces
 │   └── api/                             # APIs with workspace extensions
-├── developer_workspaces/                # WORKSPACE DATA & INSTANCES (Principle 1)
-│   ├── shared_resources/                # Shared workspace resources
-│   ├── integration_staging/             # Integration staging area
-│   └── developers/                      # Individual developer workspaces (isolated)
+├── development/                         # WORKSPACE DATA & INSTANCES (Principle 1)
+│   ├── projects/                        # Individual project workspaces (isolated)
+│   └── review/                          # Quality review process
 └── slipbox/                             # Documentation
 ```
 
@@ -213,35 +213,31 @@ src/cursus/cli/                        # Command-line interfaces
 └── validation_cli.py                  # Naming validation CLI
 ```
 
-#### 5. Developer Workspaces (External Data Structure)
+#### 5. Project Workspaces (External Data Structure)
 
-Individual developer workspaces with complete isolation:
+Individual project workspaces with complete isolation:
 
 ```
-developer_workspaces/                  # WORKSPACE DATA & INSTANCES
+development/                           # WORKSPACE DATA & INSTANCES
 ├── README.md                          # Documentation
-├── shared_resources/                  # Shared workspace resources
-│   ├── common_configs/
-│   ├── shared_scripts/
-│   └── documentation/
-├── integration_staging/               # Integration staging area
-│   ├── integration_reports/
-│   ├── staging_areas/
-│   └── validation_results/
-└── developers/                        # Individual developer workspaces (ISOLATED)
-    ├── developer_1/                   # Developer 1's isolated workspace
-    │   ├── src/cursus_dev/            # Developer's isolated code
-    │   │   ├── steps/                 # Developer's step implementations
-    │   │   │   ├── builders/          # Developer's step builders
-    │   │   │   ├── configs/           # Developer's configurations
-    │   │   │   ├── contracts/         # Developer's script contracts
-    │   │   │   ├── specs/             # Developer's specifications
-    │   │   │   └── scripts/           # Developer's processing scripts
-    │   │   └── registry/              # Developer's workspace registry
-    │   ├── test/                      # Developer's test suite
-    │   └── validation_reports/        # Developer's validation results
-    ├── developer_2/                   # Developer 2's isolated workspace (same structure)
-    └── developer_3/                   # Developer 3's isolated workspace (same structure)
+├── projects/                          # Individual project workspaces (ISOLATED)
+│   ├── project_alpha/                 # Project Alpha's isolated workspace
+│   │   ├── src/cursus_dev/            # Project's isolated code
+│   │   │   ├── steps/                 # Project's step implementations
+│   │   │   │   ├── builders/          # Project's step builders
+│   │   │   │   ├── configs/           # Project's configurations
+│   │   │   │   ├── contracts/         # Project's script contracts
+│   │   │   │   ├── specs/             # Project's specifications
+│   │   │   │   └── scripts/           # Project's processing scripts
+│   │   │   └── registry/              # Project's workspace registry
+│   │   ├── test/                      # Project's test suite
+│   │   └── validation_reports/        # Project's validation results
+│   ├── project_beta/                  # Project Beta's isolated workspace (same structure)
+│   └── project_gamma/                 # Project Gamma's isolated workspace (same structure)
+└── review/                            # Quality review process
+    ├── pending/                       # Components awaiting review
+    ├── reports/                       # Review reports
+    └── validation/                    # Review validation results
 ```
 
 ### ✅ Phase 5 Consolidation Completed (September 2, 2025)
@@ -251,8 +247,9 @@ The architecture shown above reflects the **completed Phase 5 implementation** w
 #### **Structural Redundancy Elimination**
 - **❌ REMOVED**: `src/cursus/core/workspace/` (10 modules moved to `src/cursus/workspace/core/`)
 - **❌ REMOVED**: `src/cursus/validation/workspace/` (14 modules moved to `src/cursus/workspace/validation/`)
-- **❌ REMOVED**: `developer_workspaces/workspace_manager/` (redundant directory)
-- **❌ REMOVED**: `developer_workspaces/validation_pipeline/` (redundant directory)
+- **❌ REMOVED**: `development/workspace_manager/` (redundant directory)
+- **❌ REMOVED**: `development/validation_pipeline/` (redundant directory)
+- **❌ REMOVED**: `development/shared_resources/` (moved to `src/cursus/`)
 
 #### **Layered Architecture Implementation**
 - **✅ IMPLEMENTED**: `src/cursus/workspace/core/` layer with 10 consolidated core components
@@ -301,14 +298,14 @@ The `src/cursus/validation/runtime/` infrastructure plays a critical role in the
 
 #### Core Runtime Execution (`validation/runtime/core/`)
 - **PipelineScriptExecutor**: Provides workspace-aware script discovery and execution testing
-  - Integrates with `WorkspaceComponentRegistry` for dynamic script discovery across developer workspaces
-  - Supports developer-specific script execution with isolated test environments
+  - Integrates with `WorkspaceComponentRegistry` for dynamic script discovery across project workspaces
+  - Supports project-specific script execution with isolated test environments
   - Enables cross-workspace script compatibility testing
 - **DataFlowManager**: Manages test data flow across workspace boundaries
 - **ScriptImportManager**: Handles dynamic loading and validation of workspace scripts
 
 #### Integration Testing Support (`validation/runtime/integration/`)
-- **WorkspaceManager**: Manages isolated test workspaces for each developer
+- **WorkspaceManager**: Manages isolated test workspaces for each project
   - Creates and maintains separate test environments for workspace isolation
   - Provides data caching and workspace cleanup capabilities
   - Supports the **Workspace Isolation Principle** by ensuring test environments don't interfere
@@ -317,17 +314,17 @@ The `src/cursus/validation/runtime/` infrastructure plays a critical role in the
 
 #### Test Data Management (`validation/runtime/data/`)
 - **LocalDataManager**: Handles workspace-aware test data provisioning
-  - Supports developer-specific test data while enabling shared dataset access
-  - Implements data isolation between developer workspaces
+  - Supports project-specific test data while enabling shared dataset access
+  - Implements data isolation between project workspaces
   - Enables cross-workspace data compatibility testing
 - **SyntheticDataGenerator**: Generates test data for isolated workspace testing
 - **S3OutputRegistry**: Manages test output data with workspace-aware organization
 
 #### Pipeline Execution Testing (`validation/runtime/execution/`)
 - **PipelineExecutor**: Orchestrates multi-workspace pipeline execution testing
-  - Validates pipelines that use components from multiple developer workspaces
+  - Validates pipelines that use components from multiple project workspaces
   - Ensures cross-workspace component compatibility during execution
-  - Supports integration staging validation
+  - Supports review process validation
 - **DataCompatibilityValidator**: Validates data compatibility across workspace components
 
 #### Production Readiness Validation (`validation/runtime/production/`)
@@ -336,7 +333,7 @@ The `src/cursus/validation/runtime/` infrastructure plays a critical role in the
 - **HealthChecker**: Monitors system health during multi-workspace operations
 - **PerformanceOptimizer**: Optimizes performance for cross-workspace operations
 
-#### Developer Experience Support (`validation/runtime/jupyter/`)
+#### Project Experience Support (`validation/runtime/jupyter/`)
 - **NotebookInterface**: Provides Jupyter integration for workspace-aware testing
 - **Visualization**: Enables visualization of cross-workspace test results
 - **Templates**: Provides notebook templates for workspace development and testing
@@ -345,17 +342,17 @@ The `src/cursus/validation/runtime/` infrastructure plays a critical role in the
 
 The runtime validation infrastructure integrates with the workspace-aware system through several key mechanisms:
 
-1. **Component Discovery Integration**: The `PipelineScriptExecutor` uses the `WorkspaceComponentRegistry` to discover and load scripts from developer workspaces, enabling dynamic testing of workspace components.
+1. **Component Discovery Integration**: The `PipelineScriptExecutor` uses the `WorkspaceComponentRegistry` to discover and load scripts from project workspaces, enabling dynamic testing of workspace components.
 
 2. **Isolated Test Environments**: The `WorkspaceManager` creates isolated test environments that align with the **Workspace Isolation Principle**, ensuring that testing in one workspace doesn't affect others.
 
-3. **Cross-Workspace Validation**: The execution and production validation components support testing of pipelines that span multiple developer workspaces, validating the integration points between workspace components.
+3. **Cross-Workspace Validation**: The execution and production validation components support testing of pipelines that span multiple project workspaces, validating the integration points between workspace components.
 
-4. **Developer-Specific Testing**: The data management components support developer-specific test data and configurations while enabling shared access to common test datasets.
+4. **Project-Specific Testing**: The data management components support project-specific test data and configurations while enabling shared access to common test datasets.
 
-5. **Integration Staging Support**: The runtime validation system provides the testing infrastructure needed for the integration staging process, validating components before they move from workspace to production.
+5. **Review Process Support**: The runtime validation system provides the testing infrastructure needed for the review process, validating components before they move from workspace to production.
 
-This runtime validation infrastructure is essential for maintaining code quality and system reliability in the multi-developer workspace environment, providing the testing foundation that enables confident collaboration and integration across developer workspaces.
+This runtime validation infrastructure is essential for maintaining code quality and system reliability in the multi-project workspace environment, providing the testing foundation that enables confident collaboration and integration across project workspaces.
 
 For comprehensive details on how the runtime validation system supports workspace-aware pipeline testing, see the **[Workspace-Aware Pipeline Runtime Testing Design](workspace_aware_pipeline_runtime_testing_design.md)**, which provides detailed specifications for multi-workspace pipeline execution testing, isolated test environments, and cross-workspace compatibility validation.
 
@@ -367,13 +364,13 @@ For comprehensive details on how the runtime validation system supports workspac
 **Workspace-Aware State**: Multi-workspace component discovery and cross-workspace pipeline building
 
 #### Key Components:
-- **WorkspacePipelineAssembler**: Extends PipelineAssembler to build pipelines using components from multiple developer workspaces
+- **WorkspacePipelineAssembler**: Extends PipelineAssembler to build pipelines using components from multiple project workspaces
 - **WorkspaceDAGCompiler**: Extends DAGCompiler to compile DAGs with workspace-aware component resolution
 - **WorkspaceAwareDAG**: Enhanced DAG that can reference steps from different workspaces
 - **WorkspaceComponentRegistry**: Registry for discovering and managing components across workspaces
 
 #### Capabilities:
-- Dynamic loading of step builders from developer workspaces
+- Dynamic loading of step builders from project workspaces
 - Cross-workspace component discovery and resolution
 - Workspace-aware dependency resolution
 - Isolated component validation and loading
@@ -383,12 +380,12 @@ For comprehensive details on how the runtime validation system supports workspac
 ### 2. Step System Transformation
 
 **Current State**: Single directory structure for all step implementations
-**Workspace-Aware State**: Distributed step implementations across isolated developer workspaces
+**Workspace-Aware State**: Distributed step implementations across isolated project workspaces
 
 #### Key Components:
 - **WorkspaceStepBuilderBase**: Workspace-aware base class for step builders
 - **WorkspaceModuleLoader**: Dynamic loading of step components from workspaces
-- **DeveloperWorkspaceFileResolver**: File resolution across workspace boundaries
+- **ProjectWorkspaceFileResolver**: File resolution across workspace boundaries
 - **WorkspaceStepDefinition**: Configuration model for workspace-based steps
 
 #### Capabilities:
@@ -468,7 +465,7 @@ For comprehensive details on how the runtime validation system supports workspac
 - **WorkspaceDataManager**: Workspace-aware test data management
 
 #### Capabilities:
-- Isolated test environments for each developer workspace
+- Isolated test environments for each project workspace
 - Cross-workspace pipeline testing and validation
 - Workspace-aware script discovery and execution
 - Cross-workspace compatibility testing and reporting
@@ -479,22 +476,22 @@ For comprehensive details on how the runtime validation system supports workspac
 ### 7. Command-Line Interface Transformation
 
 **Current State**: Basic CLI commands for runtime testing and validation without workspace awareness
-**Workspace-Aware State**: Comprehensive CLI system supporting full workspace lifecycle, cross-workspace operations, and developer experience optimization
+**Workspace-Aware State**: Comprehensive CLI system supporting full workspace lifecycle, cross-workspace operations, and project experience optimization
 
 #### Key Components:
 - **WorkspaceManagementCLI**: Complete workspace lifecycle management commands
 - **CrossWorkspaceOperationsCLI**: Component discovery, sharing, and collaboration commands
 - **DistributedRegistryCLI**: Registry federation and component management commands
-- **IntegrationStagingCLI**: Component promotion and approval workflow commands
+- **ReviewProcessCLI**: Component promotion and approval workflow commands
 - **WorkspaceAwareValidationCLI**: Cross-workspace validation and compatibility testing commands
 
 #### Capabilities:
 - Intuitive workspace creation, configuration, and management
 - Cross-workspace component discovery and integration
 - Distributed registry operations and federation
-- Integration staging workflows with approval processes
+- Review process workflows with approval processes
 - Comprehensive workspace-aware validation and testing
-- Developer experience optimization with guided workflows
+- Project experience optimization with guided workflows
 
 **Design Document**: [Workspace-Aware CLI Design](workspace_aware_cli_design.md)
 
@@ -507,14 +504,14 @@ The workspace-aware system components are designed to work together seamlessly:
 │                    Workspace-Aware System Integration           │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │ Multi-Developer │  │ Workspace-Aware │  │ Workspace-Aware │  │
+│  │ Multi-Project   │  │ Workspace-Aware │  │ Workspace-Aware │  │
 │  │   Workspace     │  │  Core System    │  │ Config Manager  │  │
 │  │  Management     │  │                 │  │                 │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 │           │                     │                     │          │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │ Distributed     │  │ Workspace-Aware │  │ Integration     │  │
-│  │ Registry System │  │ Validation      │  │ Staging System  │  │
+│  │ Distributed     │  │ Workspace-Aware │  │ Quality Review  │  │
+│  │ Registry System │  │ Validation      │  │    System       │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
 │                     Shared Core Foundation                      │
@@ -532,29 +529,29 @@ The workspace-aware system components are designed to work together seamlessly:
 3. **Registry System** facilitates component discovery across workspaces
 4. **Validation System** ensures quality and compatibility
 5. **Configuration Management** handles workspace-scoped configurations
-6. **Integration Staging** manages the pathway from workspace to production
+6. **Quality Review** manages the pathway from workspace to production
 
 ## Benefits Analysis
 
 ### Developer Productivity Benefits
 
 #### 1. Isolated Development Environments
-- **Benefit**: Developers can experiment freely without affecting others
+- **Benefit**: Projects can experiment freely without affecting others
 - **Impact**: Reduced development friction and faster iteration cycles
 - **Measurement**: 50% reduction in development setup time, 75% fewer environment conflicts
 
 #### 2. Collaborative Pipeline Building
-- **Benefit**: Teams can build pipelines using components from different developers
+- **Benefit**: Teams can build pipelines using components from different projects
 - **Impact**: Increased code reuse and cross-team collaboration
 - **Measurement**: 40% increase in component reuse, 60% faster pipeline development
 
 #### 3. Parallel Development
-- **Benefit**: Multiple developers can work on different components simultaneously
+- **Benefit**: Multiple projects can work on different components simultaneously
 - **Impact**: Accelerated development velocity and reduced bottlenecks
 - **Measurement**: 3x increase in concurrent development capacity
 
 #### 4. Specialized Expertise
-- **Benefit**: Developers can focus on their areas of expertise
+- **Benefit**: Projects can focus on their areas of expertise
 - **Impact**: Higher quality components and better architectural separation
 - **Measurement**: 30% improvement in component quality scores
 
@@ -563,7 +560,7 @@ The workspace-aware system components are designed to work together seamlessly:
 #### 1. Scalable Collaboration
 - **Benefit**: System scales to support large development teams
 - **Impact**: Enables organization-wide adoption and contribution
-- **Measurement**: Support for 50+ concurrent developers
+- **Measurement**: Support for 50+ concurrent projects
 
 #### 2. Maintained Code Quality
 - **Benefit**: Comprehensive validation ensures high standards across all workspaces
@@ -635,14 +632,14 @@ The workspace-aware system components are designed to work together seamlessly:
 
 ### Process Concerns
 
-#### 1. Developer Adoption
-- **Concern**: Developers may resist adopting new workspace-based workflows
+#### 1. Project Adoption
+- **Concern**: Projects may resist adopting new workspace-based workflows
 - **Mitigation**:
   - Comprehensive training and documentation
   - Gradual migration approach
   - Clear benefits demonstration
 - **Risk Level**: Medium
-- **Monitoring**: Developer adoption metrics and feedback surveys
+- **Monitoring**: Project adoption metrics and feedback surveys
 
 #### 2. Maintenance Overhead
 - **Concern**: Managing multiple workspaces may increase maintenance burden
@@ -678,7 +675,7 @@ The workspace-aware system components are designed to work together seamlessly:
 - **Mitigation**:
   - Automated security scanning
   - Component validation and approval processes
-  - Security training for developers
+  - Security training for project teams
 - **Risk Level**: Medium
 - **Monitoring**: Security scan results and vulnerability tracking
 
@@ -697,13 +694,13 @@ The workspace-aware system components are designed to work together seamlessly:
 **Objective**: Establish core workspace infrastructure and basic functionality
 
 #### Core Components:
-- Multi-Developer Workspace Management System
+- Multi-Project Workspace Management System
 - Basic workspace creation and management
 - Workspace-aware configuration management
 - Initial validation framework extensions
 
 #### Success Criteria:
-- Developers can create and manage isolated workspaces
+- Projects can create and manage isolated workspaces
 - Basic workspace validation is functional
 - Configuration management supports workspace scoping
 
@@ -784,13 +781,13 @@ The workspace-aware system components are designed to work together seamlessly:
 #### Productivity
 - **Workspace Setup Time**: < 15 minutes from creation to first successful validation
 - **Development Velocity**: 40% increase in component development speed
-- **Onboarding Time**: < 4 hours for new developers to become productive
+- **Onboarding Time**: < 4 hours for new projects to become productive
 - **Component Reuse**: 50% of new pipelines use existing workspace components
 
 #### Satisfaction
-- **Developer Satisfaction**: > 4.0/5.0 in quarterly surveys
-- **Adoption Rate**: > 80% of eligible developers using workspace system
-- **Support Ticket Volume**: < 5 tickets per developer per month
+- **Project Satisfaction**: > 4.0/5.0 in quarterly surveys
+- **Adoption Rate**: > 80% of eligible projects using workspace system
+- **Support Ticket Volume**: < 5 tickets per project per month
 - **Training Effectiveness**: > 90% completion rate for workspace training
 
 ### Business Metrics
@@ -827,9 +824,9 @@ This master design document coordinates the following comprehensive workspace-aw
 
 ### Core System Components
 
-#### 1. Multi-Developer Workspace Management
-- **[Workspace-Aware Multi-Developer Management Design](workspace_aware_multi_developer_management_design.md)** - Foundation architecture for isolated developer environments and collaborative workflows
-- **Primary Focus**: Workspace isolation, developer onboarding, integration staging
+#### 1. Multi-Project Workspace Management
+- **[Workspace-Aware Multi-Project Management Design](workspace_aware_multi_developer_management_design.md)** - Foundation architecture for isolated project environments and collaborative workflows
+- **Primary Focus**: Workspace isolation, project onboarding, quality review process
 
 #### 2. Core System Extensions
 - **[Workspace-Aware Core System Design](workspace_aware_core_system_design.md)** - Core system extensions for cross-workspace pipeline building and component discovery
