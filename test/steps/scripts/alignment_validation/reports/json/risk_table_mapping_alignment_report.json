@@ -22,10 +22,10 @@
         "details": {
           "script": "risk_table_mapping",
           "testability_parameters": [
-            "input_paths",
             "job_args",
+            "output_paths",
             "environ_vars",
-            "output_paths"
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -49,9 +49,9 @@
             "environ_vars"
           ],
           "used_parameters": [
-            "input_paths",
             "job_args",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -334,8 +334,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed testing data from tabular preprocessing step"
@@ -345,11 +345,11 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
+              "ModelTraining",
               "FeatureEngineering",
               "HyperparameterPrep",
-              "ProcessingStep",
               "ConfigurationStep",
-              "ModelTraining",
+              "ProcessingStep",
               "DataQuality",
               "DataPrep"
             ],
@@ -393,8 +393,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -404,11 +404,11 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
+              "ModelTraining",
               "FeatureEngineering",
               "HyperparameterPrep",
-              "ProcessingStep",
               "ConfigurationStep",
-              "ModelTraining",
+              "ProcessingStep",
               "DataQuality",
               "DataPrep"
             ],
@@ -452,8 +452,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed validation data from tabular preprocessing step"
@@ -463,11 +463,11 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
+              "ModelTraining",
               "FeatureEngineering",
               "HyperparameterPrep",
-              "ProcessingStep",
               "ConfigurationStep",
-              "ModelTraining",
+              "ProcessingStep",
               "DataQuality",
               "DataPrep"
             ],
@@ -511,8 +511,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -522,11 +522,11 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
+              "ModelTraining",
               "FeatureEngineering",
               "HyperparameterPrep",
-              "ProcessingStep",
               "ConfigurationStep",
-              "ModelTraining",
+              "ProcessingStep",
               "DataQuality",
               "DataPrep"
             ],
@@ -538,8 +538,8 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "RiskTableMapping_Training"
+              "RiskTableMapping_Training",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional pre-existing risk tables (training mode creates new ones if not provided)"
@@ -573,8 +573,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -584,11 +584,11 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
+              "ModelTraining",
               "FeatureEngineering",
               "HyperparameterPrep",
-              "ProcessingStep",
               "ConfigurationStep",
-              "ModelTraining",
+              "ProcessingStep",
               "DataQuality",
               "DataPrep"
             ],
@@ -600,8 +600,8 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "ProcessingStep",
-              "RiskTableMapping_Training"
+              "RiskTableMapping_Training",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "Optional pre-existing risk tables (training mode creates new ones if not provided)"
@@ -634,8 +634,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed training data from tabular preprocessing step"
@@ -645,11 +645,11 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
+                "ModelTraining",
                 "FeatureEngineering",
                 "HyperparameterPrep",
-                "ProcessingStep",
                 "ConfigurationStep",
-                "ModelTraining",
+                "ProcessingStep",
                 "DataQuality",
                 "DataPrep"
               ],
@@ -661,8 +661,8 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "ProcessingStep",
-                "RiskTableMapping_Training"
+                "RiskTableMapping_Training",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "Optional pre-existing risk tables (training mode creates new ones if not provided)"
@@ -694,8 +694,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed testing data from tabular preprocessing step"
@@ -705,11 +705,11 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
+                "ModelTraining",
                 "FeatureEngineering",
                 "HyperparameterPrep",
-                "ProcessingStep",
                 "ConfigurationStep",
-                "ModelTraining",
+                "ProcessingStep",
                 "DataQuality",
                 "DataPrep"
               ],
@@ -753,8 +753,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed validation data from tabular preprocessing step"
@@ -764,11 +764,11 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
+                "ModelTraining",
                 "FeatureEngineering",
                 "HyperparameterPrep",
-                "ProcessingStep",
                 "ConfigurationStep",
-                "ModelTraining",
+                "ProcessingStep",
                 "DataQuality",
                 "DataPrep"
               ],
@@ -812,8 +812,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -823,11 +823,11 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
+                "ModelTraining",
                 "FeatureEngineering",
                 "HyperparameterPrep",
-                "ProcessingStep",
                 "ConfigurationStep",
-                "ModelTraining",
+                "ProcessingStep",
                 "DataQuality",
                 "DataPrep"
               ],
@@ -869,8 +869,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -880,11 +880,11 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
+            "ModelTraining",
             "FeatureEngineering",
             "HyperparameterPrep",
-            "ProcessingStep",
             "ConfigurationStep",
-            "ModelTraining",
+            "ProcessingStep",
             "DataQuality",
             "DataPrep"
           ],
@@ -1020,8 +1020,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Preprocessed testing data from tabular preprocessing step"
@@ -1031,11 +1031,11 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
+            "ModelTraining",
             "FeatureEngineering",
             "HyperparameterPrep",
-            "ProcessingStep",
             "ConfigurationStep",
-            "ModelTraining",
+            "ProcessingStep",
             "DataQuality",
             "DataPrep"
           ],
@@ -1080,12 +1080,12 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "role",
-            "service_name",
             "bucket",
+            "role",
             "region",
             "pipeline_version",
-            "author"
+            "author",
+            "service_name"
           ],
           "builder": "risk_table_mapping"
         },
@@ -1704,7 +1704,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
     "contract_mapping": "risk_table_mapping_contract",
-    "validation_timestamp": "2025-09-03T12:55:33.533383",
+    "validation_timestamp": "2025-09-04T23:25:11.149134",
     "validator_version": "1.0.0"
   }
 }

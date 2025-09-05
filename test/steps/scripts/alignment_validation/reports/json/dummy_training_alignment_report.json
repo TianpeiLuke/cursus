@@ -10,10 +10,10 @@
         "details": {
           "script": "dummy_training",
           "testability_parameters": [
-            "input_paths",
             "job_args",
+            "output_paths",
             "environ_vars",
-            "output_paths"
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -38,8 +38,8 @@
             "environ_vars"
           ],
           "used_parameters": [
-            "input_paths",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -220,10 +220,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "TabularPreprocessing",
+              "XGBoostTraining",
               "ProcessingStep",
-              "PytorchTraining",
-              "XGBoostTraining"
+              "TabularPreprocessing",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -261,10 +261,10 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "TabularPreprocessing",
+              "XGBoostTraining",
               "ProcessingStep",
-              "PytorchTraining",
-              "XGBoostTraining"
+              "TabularPreprocessing",
+              "PytorchTraining"
             ],
             "data_type": "S3Uri",
             "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -301,10 +301,10 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "TabularPreprocessing",
+                "XGBoostTraining",
                 "ProcessingStep",
-                "PytorchTraining",
-                "XGBoostTraining"
+                "TabularPreprocessing",
+                "PytorchTraining"
               ],
               "data_type": "S3Uri",
               "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -338,10 +338,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "TabularPreprocessing",
+            "XGBoostTraining",
             "ProcessingStep",
-            "PytorchTraining",
-            "XGBoostTraining"
+            "TabularPreprocessing",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -448,10 +448,10 @@
           "dependency_type": "processing_output",
           "required": false,
           "compatible_sources": [
-            "TabularPreprocessing",
+            "XGBoostTraining",
             "ProcessingStep",
-            "PytorchTraining",
-            "XGBoostTraining"
+            "TabularPreprocessing",
+            "PytorchTraining"
           ],
           "data_type": "S3Uri",
           "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
@@ -488,12 +488,12 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "role",
-            "service_name",
             "bucket",
+            "role",
             "region",
             "pipeline_version",
-            "author"
+            "author",
+            "service_name"
           ],
           "builder": "dummy_training"
         },
@@ -1101,7 +1101,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
     "contract_mapping": "dummy_training_contract",
-    "validation_timestamp": "2025-09-03T12:55:33.433246",
+    "validation_timestamp": "2025-09-04T23:25:10.964343",
     "validator_version": "1.0.0"
   }
 }

@@ -33,10 +33,10 @@
         "details": {
           "script": "xgboost_training",
           "testability_parameters": [
-            "input_paths",
             "job_args",
+            "output_paths",
             "environ_vars",
-            "output_paths"
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -61,8 +61,8 @@
             "environ_vars"
           ],
           "used_parameters": [
-            "input_paths",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -335,8 +335,8 @@
             "required": true,
             "compatible_sources": [
               "RiskTableMapping",
-              "TabularPreprocessing",
               "ProcessingStep",
+              "TabularPreprocessing",
               "DataLoad"
             ],
             "data_type": "S3Uri",
@@ -383,8 +383,8 @@
             "required": true,
             "compatible_sources": [
               "RiskTableMapping",
-              "TabularPreprocessing",
               "ProcessingStep",
+              "TabularPreprocessing",
               "DataLoad"
             ],
             "data_type": "S3Uri",
@@ -430,8 +430,8 @@
               "required": true,
               "compatible_sources": [
                 "RiskTableMapping",
-                "TabularPreprocessing",
                 "ProcessingStep",
+                "TabularPreprocessing",
                 "DataLoad"
               ],
               "data_type": "S3Uri",
@@ -474,8 +474,8 @@
           "required": true,
           "compatible_sources": [
             "RiskTableMapping",
-            "TabularPreprocessing",
             "ProcessingStep",
+            "TabularPreprocessing",
             "DataLoad"
           ],
           "data_type": "S3Uri",
@@ -594,8 +594,8 @@
           "required": true,
           "compatible_sources": [
             "RiskTableMapping",
-            "TabularPreprocessing",
             "ProcessingStep",
+            "TabularPreprocessing",
             "DataLoad"
           ],
           "data_type": "S3Uri",
@@ -640,14 +640,14 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "role",
-            "service_name",
             "bucket",
+            "role",
             "region",
             "pipeline_version",
-            "training_entry_point",
+            "hyperparameters",
             "author",
-            "hyperparameters"
+            "service_name",
+            "training_entry_point"
           ],
           "builder": "xgboost_training"
         },
@@ -1218,7 +1218,7 @@
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py",
     "contract_mapping": "xgboost_training_contract",
-    "validation_timestamp": "2025-09-03T12:55:33.604648",
+    "validation_timestamp": "2025-09-04T23:25:11.220671",
     "validator_version": "1.0.0"
   }
 }
