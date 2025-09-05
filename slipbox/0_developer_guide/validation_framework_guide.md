@@ -4,16 +4,306 @@ This guide provides comprehensive instructions for using the validation framewor
 
 ## Overview
 
-The Cursus validation system consists of two complementary frameworks:
+The Cursus validation system consists of two complementary frameworks with both legacy and workspace-aware implementations:
 
+### Legacy Validation (Single Workspace)
 1. **Unified Alignment Tester** (`cursus/validation/alignment`) - Validates 4-tier alignment between components
 2. **Universal Step Builder Test** (`cursus/validation/builders`) - Performs 4-level builder testing
 
+### Workspace-Aware Validation (Multi-Developer Support)
+1. **Workspace Unified Alignment Tester** (`cursus/workspace/validation`) - Workspace-aware 4-tier alignment validation
+2. **Workspace Universal Step Builder Test** (`cursus/workspace/validation`) - Workspace-aware 4-level builder testing
+
+**Recommendation**: Use the workspace-aware validation frameworks for all new development, as they support both isolated developer workspaces and shared workspace fallback.
+
 Both frameworks must pass before integrating new steps into the pipeline system.
 
-## Unified Alignment Tester
+## Workspace-Aware Validation (Recommended)
 
-The Unified Alignment Tester validates the alignment between your step's components across four tiers:
+### Workspace Unified Alignment Tester
+
+The Workspace Unified Alignment Tester extends the legacy alignment tester with full workspace awareness, supporting both isolated developer workspaces and shared workspace fallback.
+
+#### Key Features
+- **Multi-Developer Support**: Validates steps in isolated developer workspaces (`development/projects/*/src/cursus_dev/`)
+- **Shared Fallback**: Automatically falls back to shared workspace (`src/cursus/steps/`) when components aren't found in developer workspace
+- **Cross-Workspace Validation**: Validates dependencies across different workspaces
+- **Workspace-Specific Reporting**: Enhanced error messages and statistics with workspace context
+
+#### Usage
+
+```python
+#!/usr/bin/env python3
+"""
+Workspace-aware alignment validation for your step.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.workspace.validation.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
+
+def main():
+    """Run workspace-aware alignment validation for your step."""
+    print("🔍 Workspace-Aware Step Alignment Validation")
+    print("=" * 60)
+    
+    # Initialize the workspace-aware tester
+    tester = WorkspaceUnifiedAlignmentTester(
+        workspace_root=project_root,
+        developer_id="your_developer_id",  # e.g., "developer_1"
+        enable_shared_fallback=True
+    )
+    
+    # Run workspace validation
+    try:
+        results = tester.run_workspace_validation(
+            target_scripts=["your_step_name"],  # Replace with your script name
+            workspace_context={
+                "validation_purpose": "development",
+                "step_type": "processing"  # or training, transform, etc.
+            }
+        )
+        
+        # Print results
+        success = results.get('success', False)
+        status_emoji = '✅' if success else '❌'
+        print(f"{status_emoji} Overall Status: {'PASSING' if success else 'FAILING'}")
+        
+        # Print workspace metadata
+        workspace_metadata = results.get('workspace_metadata', {})
+        print(f"\n🏢 Workspace Context:")
+        print(f"   Developer ID: {workspace_metadata.get('developer_id', 'Unknown')}")
+        print(f"   Shared Fallback: {workspace_metadata.get('enable_shared_fallback', False)}")
+        
+        # Print validation results for each script
+        script_results = results.get('results', {})
+        for script_name, script_result in script_results.items():
+            print(f"\n📋 Results for {script_name}:")
+            
+            for level_name, level_result in script_result.items():
+                if isinstance(level_result, dict) and 'passed' in level_result:
+                    level_passed = level_result.get('passed', False)
+                    level_details = level_result.get('details', {})
+                    
+                    status_emoji = '✅' if level_passed else '❌'
+                    print(f"   {status_emoji} {level_name}: {'PASS' if level_passed else 'FAIL'}")
+                    
+                    if not level_passed and level_details:
+                        print(f"      Issues: {level_details}")
+        
+        # Print cross-workspace validation if available
+        cross_workspace = results.get('cross_workspace_validation', {})
+        if cross_workspace.get('enabled', False):
+            print(f"\n🔗 Cross-Workspace Validation:")
+            shared_components = cross_workspace.get('shared_components_used', {})
+            if shared_components:
+                print(f"   Shared Components Used: {len(shared_components)} scripts")
+            
+            recommendations = cross_workspace.get('recommendations', [])
+            if recommendations:
+                print(f"   Recommendations:")
+                for rec in recommendations:
+                    print(f"     • {rec}")
+        
+        return 0 if success else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during workspace validation: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+### Workspace Universal Step Builder Test
+
+The Workspace Universal Step Builder Test extends the legacy builder test with workspace awareness and dynamic builder loading.
+
+#### Key Features
+- **Dynamic Builder Loading**: Loads builder classes from workspace directories using `WorkspaceModuleLoader`
+- **Workspace Integration Validation**: Validates builder dependencies and integration within workspace context
+- **Multi-Workspace Testing**: Can test all builders across different developer workspaces
+- **Workspace-Specific Error Reporting**: Enhanced error messages with workspace context
+
+#### Usage
+
+```python
+#!/usr/bin/env python3
+"""
+Workspace-aware builder validation for your step.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.workspace.validation.workspace_builder_test import WorkspaceUniversalStepBuilderTest
+
+def main():
+    """Run workspace-aware builder validation for your step."""
+    print("🔧 Workspace-Aware Step Builder Validation")
+    print("=" * 60)
+    
+    # Initialize the workspace-aware builder test
+    tester = WorkspaceUniversalStepBuilderTest(
+        workspace_root=project_root,
+        developer_id="your_developer_id",  # e.g., "developer_1"
+        builder_file_path="builders/builder_your_step.py",  # Relative to workspace
+        enable_shared_fallback=True
+    )
+    
+    # Run workspace builder test
+    try:
+        results = tester.run_workspace_builder_test(
+            test_config={
+                "enable_integration_tests": True,
+                "validate_dependencies": True
+            },
+            workspace_context={
+                "test_purpose": "development",
+                "step_type": "processing"
+            }
+        )
+        
+        # Print results
+        success = results.get('success', False)
+        status_emoji = '✅' if success else '❌'
+        print(f"{status_emoji} Overall Status: {'PASSING' if success else 'FAILING'}")
+        
+        # Print workspace metadata
+        workspace_metadata = results.get('workspace_metadata', {})
+        print(f"\n🏢 Workspace Context:")
+        print(f"   Developer ID: {workspace_metadata.get('developer_id', 'Unknown')}")
+        print(f"   Builder Class: {workspace_metadata.get('builder_class_name', 'Unknown')}")
+        print(f"   Shared Fallback: {workspace_metadata.get('enable_shared_fallback', False)}")
+        
+        # Print workspace validation results
+        workspace_validation = results.get('workspace_validation', {})
+        if workspace_validation:
+            builder_valid = workspace_validation.get('builder_class_valid', False)
+            print(f"\n🔧 Builder Integration:")
+            print(f"   Builder Class Valid: {'✅' if builder_valid else '❌'}")
+            
+            dependencies = workspace_validation.get('workspace_dependencies_available', {})
+            if dependencies:
+                print(f"   Dependencies:")
+                for dep_type, dep_info in dependencies.items():
+                    available = dep_info.get('available', False)
+                    from_shared = dep_info.get('from_shared', False)
+                    status = '✅' if available else '❌'
+                    source = ' (shared)' if from_shared else ' (workspace)'
+                    print(f"     {status} {dep_type}{source if available else ''}")
+            
+            issues = workspace_validation.get('integration_issues', [])
+            if issues:
+                print(f"   Integration Issues:")
+                for issue in issues:
+                    severity = issue.get('severity', 'INFO')
+                    description = issue.get('description', 'No description')
+                    print(f"     • {severity}: {description}")
+            
+            recommendations = workspace_validation.get('recommendations', [])
+            if recommendations:
+                print(f"   Recommendations:")
+                for rec in recommendations:
+                    print(f"     • {rec}")
+        
+        return 0 if success else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during workspace builder validation: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+#### Testing All Workspace Builders
+
+You can test all builders in a workspace at once:
+
+```python
+#!/usr/bin/env python3
+"""
+Test all builders in a developer workspace.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.workspace.validation.workspace_builder_test import WorkspaceUniversalStepBuilderTest
+
+def main():
+    """Test all builders in the workspace."""
+    print("🔧 Testing All Workspace Builders")
+    print("=" * 60)
+    
+    try:
+        # Test all builders for a developer
+        results = WorkspaceUniversalStepBuilderTest.test_all_workspace_builders(
+            workspace_root=project_root,
+            developer_id="your_developer_id",  # e.g., "developer_1"
+            test_config={
+                "enable_integration_tests": True,
+                "validate_dependencies": True
+            }
+        )
+        
+        # Print summary
+        success = results.get('success', False)
+        total_builders = results.get('total_builders', 0)
+        successful_tests = results.get('successful_tests', 0)
+        failed_tests = results.get('failed_tests', 0)
+        
+        print(f"📊 Test Summary:")
+        print(f"   Total Builders: {total_builders}")
+        print(f"   Successful Tests: {successful_tests}")
+        print(f"   Failed Tests: {failed_tests}")
+        print(f"   Success Rate: {(successful_tests/total_builders*100):.1f}%" if total_builders > 0 else "   Success Rate: N/A")
+        
+        # Print individual results
+        individual_results = results.get('results', {})
+        if individual_results:
+            print(f"\n📋 Individual Results:")
+            for builder_name, builder_result in individual_results.items():
+                builder_success = builder_result.get('success', False)
+                status_emoji = '✅' if builder_success else '❌'
+                print(f"   {status_emoji} {builder_name}")
+                
+                if not builder_success and 'error' in builder_result:
+                    print(f"      Error: {builder_result['error']}")
+        
+        # Print summary recommendations
+        summary = results.get('summary', {})
+        if summary and 'recommendations' in summary:
+            print(f"\n💡 Overall Recommendations:")
+            for rec in summary['recommendations']:
+                print(f"   • {rec}")
+        
+        return 0 if success and failed_tests == 0 else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during workspace builder testing: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+## Legacy Validation (Single Workspace)
+
+### Unified Alignment Tester
+
+The legacy Unified Alignment Tester validates the alignment between your step's components across four tiers in a single workspace:
 
 ### 4-Tier Validation Levels
 
