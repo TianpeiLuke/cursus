@@ -1,0 +1,2360 @@
+{
+  "timestamp": "20250904_232330",
+  "test_type": "Processing Step Builders",
+  "summary": {
+    "total_builders": 8,
+    "successful_builders": 8,
+    "total_tests": 280,
+    "total_passed": 280,
+    "overall_pass_rate": 100.0,
+    "builder_success_rate": 100.0
+  },
+  "detailed_results": {
+    "TabularPreprocessing": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 12
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 4
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 2
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 11
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "TabularPreprocessingStepBuilder",
+          "detected_step_name": "TabularPreprocessing",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ],
+          "step_name": "TabularPreprocessing"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "SKLearnProcessor",
+          "processor_method": "_create_processor",
+          "has_create_processor": true,
+          "has_get_processor": false,
+          "note": "Structural validation passed - _create_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "sklearn",
+          "note": "SKLearn framework expected - structural validation passed"
+        }
+      }
+    },
+    "RiskTableMapping": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 5
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 4
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 2
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 11
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "RiskTableMappingStepBuilder",
+          "detected_step_name": "RiskTableMapping",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ],
+          "step_name": "RiskTableMapping"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "SKLearnProcessor",
+          "processor_method": "_create_processor",
+          "has_create_processor": true,
+          "has_get_processor": false,
+          "note": "Structural validation passed - _create_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "sklearn",
+          "note": "SKLearn framework expected - structural validation passed"
+        }
+      }
+    },
+    "CurrencyConversion": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 21
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 4
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 2
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 11
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "CurrencyConversionStepBuilder",
+          "detected_step_name": "CurrencyConversion",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ],
+          "step_name": "CurrencyConversion"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "SKLearnProcessor",
+          "processor_method": "_create_processor",
+          "has_create_processor": true,
+          "has_get_processor": false,
+          "note": "Structural validation passed - _create_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "sklearn",
+          "note": "SKLearn framework expected - structural validation passed"
+        }
+      }
+    },
+    "DummyTraining": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 2
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 4
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 2
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 11
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "DummyTrainingStepBuilder",
+          "detected_step_name": "DummyTraining",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_get_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_get_processor"
+          ],
+          "step_name": "DummyTraining"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "SKLearnProcessor",
+          "processor_method": "_get_processor",
+          "has_create_processor": false,
+          "has_get_processor": true,
+          "note": "Structural validation passed - _get_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "sklearn",
+          "note": "SKLearn framework expected - structural validation passed"
+        }
+      }
+    },
+    "XGBoostModelEval": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 7
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 1
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 1
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 1
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "XGBoostModelEvalStepBuilder",
+          "detected_step_name": "XGBoostModelEval",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ],
+          "step_name": "XGBoostModelEval"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "XGBoostProcessor",
+          "processor_method": "_create_processor",
+          "has_create_processor": true,
+          "has_get_processor": false,
+          "note": "Structural validation passed - _create_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "xgboost",
+          "note": "XGBoost framework expected - structural validation passed"
+        }
+      }
+    },
+    "ModelCalibration": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 15
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 4
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 2
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 11
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "ModelCalibrationStepBuilder",
+          "detected_step_name": "ModelCalibration",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_get_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_get_processor"
+          ],
+          "step_name": "ModelCalibration"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "SKLearnProcessor",
+          "processor_method": "_get_processor",
+          "has_create_processor": false,
+          "has_get_processor": true,
+          "note": "Structural validation passed - _get_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "sklearn",
+          "note": "SKLearn framework expected - structural validation passed"
+        }
+      }
+    },
+    "Package": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 6
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 4
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 2
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 11
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "PackageStepBuilder",
+          "detected_step_name": "Package",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ],
+          "step_name": "Package"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "SKLearnProcessor",
+          "processor_method": "_create_processor",
+          "has_create_processor": true,
+          "has_get_processor": false,
+          "note": "Structural validation passed - _create_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "sklearn",
+          "note": "SKLearn framework expected - structural validation passed"
+        }
+      }
+    },
+    "Payload": {
+      "test_configuration_validation": {
+        "passed": true,
+        "name": "test_configuration_validation",
+        "assertions": 1
+      },
+      "test_documentation_standards": {
+        "passed": true,
+        "name": "test_documentation_standards",
+        "assertions": 2
+      },
+      "test_error_handling": {
+        "passed": true,
+        "name": "test_error_handling",
+        "assertions": 0
+      },
+      "test_inheritance": {
+        "passed": true,
+        "name": "test_inheritance",
+        "assertions": 1
+      },
+      "test_method_return_types": {
+        "passed": true,
+        "name": "test_method_return_types",
+        "assertions": 5
+      },
+      "test_naming_conventions": {
+        "passed": true,
+        "name": "test_naming_conventions",
+        "assertions": 14
+      },
+      "test_registry_integration": {
+        "passed": true,
+        "name": "test_registry_integration",
+        "assertions": 0
+      },
+      "<lambda>": {
+        "passed": true,
+        "name": "<lambda>",
+        "assertions": 0
+      },
+      "test_required_methods": {
+        "passed": true,
+        "name": "test_required_methods",
+        "assertions": 23
+      },
+      "test_type_hints": {
+        "passed": true,
+        "name": "test_type_hints",
+        "assertions": 0
+      },
+      "test_contract_alignment": {
+        "passed": true,
+        "name": "test_contract_alignment",
+        "assertions": 1
+      },
+      "test_environment_variable_handling": {
+        "passed": true,
+        "name": "test_environment_variable_handling",
+        "assertions": 1
+      },
+      "test_job_arguments": {
+        "passed": true,
+        "name": "test_job_arguments",
+        "assertions": 1
+      },
+      "test_specification_usage": {
+        "passed": true,
+        "name": "test_specification_usage",
+        "assertions": 1
+      },
+      "test_create_model_step_creation": {
+        "passed": true,
+        "name": "test_create_model_step_creation",
+        "assertions": 0
+      },
+      "test_processing_step_creation": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_create_step": true,
+          "method_signature": "(self, **kwargs) -> sagemaker.workflow.steps.ProcessingStep",
+          "note": "create_step method exists with proper signature"
+        }
+      },
+      "test_step_configuration_validity": {
+        "passed": true,
+        "name": "test_step_configuration_validity",
+        "assertions": 4
+      },
+      "test_step_dependencies_attachment": {
+        "passed": true,
+        "name": "test_step_dependencies_attachment",
+        "assertions": 1
+      },
+      "test_step_instantiation": {
+        "passed": true,
+        "name": "test_step_instantiation",
+        "assertions": 2
+      },
+      "test_step_name_generation": {
+        "passed": true,
+        "name": "test_step_name_generation",
+        "assertions": 11
+      },
+      "test_step_type_compliance": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "error_count": 0,
+          "warning_count": 0,
+          "info_count": 0,
+          "violations": []
+        }
+      },
+      "test_training_step_creation": {
+        "passed": true,
+        "name": "test_training_step_creation",
+        "assertions": 0
+      },
+      "test_transform_step_creation": {
+        "passed": true,
+        "name": "test_transform_step_creation",
+        "assertions": 0
+      },
+      "test_dependency_resolution": {
+        "passed": true,
+        "name": "test_dependency_resolution",
+        "assertions": 1
+      },
+      "test_step_creation": {
+        "passed": true,
+        "name": "test_step_creation",
+        "assertions": 1
+      },
+      "test_step_name": {
+        "passed": true,
+        "name": "test_step_name",
+        "assertions": 1
+      },
+      "test_step_type_detection": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "builder_class": "PayloadStepBuilder",
+          "detected_step_name": "Payload",
+          "sagemaker_step_type": "Processing",
+          "is_valid_step_type": true
+        }
+      },
+      "test_step_type_classification": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "sagemaker_step_type": "Processing",
+          "is_valid": true
+        }
+      },
+      "test_processing_processor_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ]
+        }
+      },
+      "test_processing_io_methods": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "required_methods": [
+            "_get_inputs",
+            "_get_outputs"
+          ],
+          "missing_methods": [],
+          "has_get_inputs": true,
+          "has_get_outputs": true
+        }
+      },
+      "test_processor_creation_method": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_methods": [
+            "_create_processor",
+            "_get_processor"
+          ],
+          "found_methods": [
+            "_create_processor"
+          ],
+          "step_name": "Payload"
+        }
+      },
+      "test_expected_processor_type": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_processor": "SKLearnProcessor",
+          "processor_method": "_create_processor",
+          "has_create_processor": true,
+          "has_get_processor": false,
+          "note": "Structural validation passed - _create_processor method exists"
+        }
+      },
+      "test_processing_environment_variables": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_env_method": true,
+          "note": "Environment variable method exists"
+        }
+      },
+      "test_job_arguments_handling": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "has_job_arguments_method": true,
+          "note": "Job arguments method is optional for Processing steps"
+        }
+      },
+      "test_framework_specific": {
+        "passed": true,
+        "error": null,
+        "details": {
+          "expected_framework": "sklearn",
+          "note": "SKLearn framework expected - structural validation passed"
+        }
+      }
+    }
+  },
+  "scoring": {
+    "TabularPreprocessing": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    },
+    "RiskTableMapping": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    },
+    "CurrencyConversion": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    },
+    "DummyTraining": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    },
+    "XGBoostModelEval": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    },
+    "ModelCalibration": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    },
+    "Package": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    },
+    "Payload": {
+      "overall": {
+        "score": 100.0,
+        "rating": "Excellent",
+        "passed": 19,
+        "total": 19,
+        "pass_rate": 100.0
+      },
+      "levels": {
+        "level1_interface": {
+          "score": 100.0,
+          "passed": 3,
+          "total": 3,
+          "tests": {
+            "test_error_handling": true,
+            "test_inheritance": true,
+            "test_required_methods": true
+          }
+        },
+        "level2_specification": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_contract_alignment": true,
+            "test_environment_variable_handling": true,
+            "test_job_arguments": true,
+            "test_specification_usage": true
+          }
+        },
+        "level3_step_creation": {
+          "score": 100.0,
+          "passed": 8,
+          "total": 8,
+          "tests": {
+            "test_create_model_step_creation": true,
+            "test_processing_step_creation": true,
+            "test_step_configuration_validity": true,
+            "test_step_dependencies_attachment": true,
+            "test_step_instantiation": true,
+            "test_step_name_generation": true,
+            "test_training_step_creation": true,
+            "test_transform_step_creation": true
+          }
+        },
+        "level4_integration": {
+          "score": 100.0,
+          "passed": 4,
+          "total": 4,
+          "tests": {
+            "test_registry_integration": true,
+            "test_dependency_resolution": true,
+            "test_step_creation": true,
+            "test_step_name": true
+          }
+        }
+      },
+      "failed_tests": []
+    }
+  }
+}
