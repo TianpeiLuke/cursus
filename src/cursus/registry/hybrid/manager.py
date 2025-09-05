@@ -12,20 +12,22 @@ from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
 import threading
 from contextlib import contextmanager
+from functools import lru_cache
 
 from .models import (
     StepDefinition,
-    NamespacedStepDefinition,
     ResolutionContext,
     StepResolutionResult,
     RegistryValidationResult,
     ConflictAnalysis
 )
 from .utils import (
-    RegistryLoader,
-    StepDefinitionConverter,
-    RegistryValidationUtils,
-    RegistryErrorFormatter
+    load_registry_module,
+    from_legacy_format,
+    to_legacy_format,
+    convert_registry_dict,
+    format_step_not_found_error,
+    format_registry_load_error
 )
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,11 @@ class UnifiedRegistryManager:
         self._workspace_overrides: Dict[str, Dict[str, StepDefinition]] = {}  # workspace_id -> overrides
         self._workspace_metadata: Dict[str, Dict[str, Any]] = {}  # workspace_id -> metadata
         
+        # Performance optimization: Caching infrastructure
+        self._legacy_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}  # workspace_id -> legacy_dict
+        self._definition_cache: Dict[str, Dict[str, StepDefinition]] = {}  # workspace_id -> definitions
+        self._step_list_cache: Dict[str, List[str]] = {}  # workspace_id -> step_names
+        
         # Thread safety
         self._lock = threading.RLock()
         
@@ -69,7 +76,7 @@ class UnifiedRegistryManager:
                 raise RegistryLoadError(f"Core registry file not found: {registry_path}")
             
             # Load the registry module
-            module = RegistryLoader.load_registry_module(str(registry_path), "core_registry")
+            module = load_registry_module(str(registry_path))
             
             # Check for STEP_NAMES attribute
             if not hasattr(module, 'STEP_NAMES'):
@@ -79,7 +86,7 @@ class UnifiedRegistryManager:
             
             # Convert to StepDefinition objects
             for step_name, step_info in step_names.items():
-                step_def = StepDefinitionConverter.from_legacy_format(
+                step_def = from_legacy_format(
                     step_name, step_info, registry_type="core", workspace_id=None
                 )
                 self._core_steps[step_name] = step_def
@@ -111,7 +118,7 @@ class UnifiedRegistryManager:
             if not registry_file.exists():
                 return
             
-            module = RegistryLoader.load_registry_module(str(registry_file), f"workspace_registry_{workspace_id}")
+            module = load_registry_module(str(registry_file))
             
             # Initialize workspace data
             self._workspace_steps[workspace_id] = {}
@@ -121,7 +128,7 @@ class UnifiedRegistryManager:
             # Load LOCAL_STEPS
             local_steps = getattr(module, 'LOCAL_STEPS', {})
             for step_name, step_info in local_steps.items():
-                step_def = StepDefinitionConverter.from_legacy_format(
+                step_def = from_legacy_format(
                     step_name, step_info, registry_type="workspace", workspace_id=workspace_id
                 )
                 self._workspace_steps[workspace_id][step_name] = step_def
@@ -129,7 +136,7 @@ class UnifiedRegistryManager:
             # Load STEP_OVERRIDES
             step_overrides = getattr(module, 'STEP_OVERRIDES', {})
             for step_name, step_info in step_overrides.items():
-                step_def = StepDefinitionConverter.from_legacy_format(
+                step_def = from_legacy_format(
                     step_name, step_info, registry_type="override", workspace_id=workspace_id
                 )
                 self._workspace_overrides[workspace_id][step_name] = step_def
@@ -185,9 +192,12 @@ class UnifiedRegistryManager:
             # Fallback to core registry
             return self._core_steps.get(step_name)
     
-    def get_all_step_definitions(self, workspace_id: str = None) -> Dict[str, StepDefinition]:
-        """Get all step definitions with optional workspace context."""
-        with self._lock:
+    @lru_cache(maxsize=32)
+    def _get_cached_definitions(self, workspace_id: Optional[str]) -> Dict[str, StepDefinition]:
+        """Cached version of get_all_step_definitions for performance optimization."""
+        cache_key = workspace_id or "core"
+        
+        if cache_key not in self._definition_cache:
             if workspace_id and workspace_id in self._workspace_steps:
                 # Start with core definitions
                 all_definitions = self._core_steps.copy()
@@ -198,10 +208,17 @@ class UnifiedRegistryManager:
                 # Apply workspace overrides
                 all_definitions.update(self._workspace_overrides[workspace_id])
                 
-                return all_definitions
+                self._definition_cache[cache_key] = all_definitions
             else:
                 # Return core definitions only
-                return self._core_steps.copy()
+                self._definition_cache[cache_key] = self._core_steps.copy()
+        
+        return self._definition_cache[cache_key]
+    
+    def get_all_step_definitions(self, workspace_id: str = None) -> Dict[str, StepDefinition]:
+        """Get all step definitions with caching for performance optimization."""
+        with self._lock:
+            return self._get_cached_definitions(workspace_id)
     
     def get_local_only_definitions(self, workspace_id: str) -> Dict[str, StepDefinition]:
         """Get only local and override definitions for a workspace (not core)."""
@@ -236,7 +253,9 @@ class UnifiedRegistryManager:
                 if step_def:
                     source = context.workspace_id if step_def.workspace_id == context.workspace_id else "core"
                     return StepResolutionResult(
-                        step_definition=step_def,
+                        step_name=step_name,
+                        resolved=True,
+                        selected_definition=step_def,
                         source_registry=source,
                         workspace_id=context.workspace_id,
                         resolution_strategy="workspace_priority",
@@ -250,7 +269,9 @@ class UnifiedRegistryManager:
             core_step = self._core_steps.get(step_name)
             if core_step:
                 return StepResolutionResult(
-                    step_definition=core_step,
+                    step_name=step_name,
+                    resolved=True,
+                    selected_definition=core_step,
                     source_registry="core",
                     workspace_id=context.workspace_id,
                     resolution_strategy="workspace_priority",
@@ -261,11 +282,13 @@ class UnifiedRegistryManager:
                 )
             
             # Step not found
-            error_msg = RegistryErrorFormatter.format_step_not_found_error(
+            error_msg = format_step_not_found_error(
                 step_name, context.workspace_id, self.list_all_steps()
             )
             return StepResolutionResult(
-                step_definition=None,
+                step_name=step_name,
+                resolved=False,
+                selected_definition=None,
                 source_registry="none",
                 workspace_id=context.workspace_id,
                 resolution_strategy="workspace_priority",
@@ -336,6 +359,9 @@ class UnifiedRegistryManager:
         """Add a new workspace registry."""
         with self._lock:
             self._load_workspace_registry(workspace_id, Path(workspace_path))
+            # Invalidate caches after adding workspace
+            self._invalidate_cache(workspace_id)
+            self._invalidate_all_caches()  # Also invalidate global caches
             logger.info(f"Added workspace registry: {workspace_id}")
     
     def remove_workspace_registry(self, workspace_id: str) -> bool:
@@ -345,6 +371,9 @@ class UnifiedRegistryManager:
                 del self._workspace_steps[workspace_id]
                 del self._workspace_overrides[workspace_id]
                 del self._workspace_metadata[workspace_id]
+                # Invalidate caches after removing workspace
+                self._invalidate_cache(workspace_id)
+                self._invalidate_all_caches()  # Also invalidate global caches
                 logger.info(f"Removed workspace registry: {workspace_id}")
                 return True
             return False
@@ -395,15 +424,48 @@ class UnifiedRegistryManager:
             
             return status
     
+    @lru_cache(maxsize=16)
+    def _get_cached_legacy_dict(self, workspace_id: Optional[str]) -> Dict[str, Dict[str, Any]]:
+        """Cached version of create_legacy_step_names_dict for performance optimization."""
+        cache_key = workspace_id or "core"
+        
+        if cache_key not in self._legacy_cache:
+            all_definitions = self._get_cached_definitions(workspace_id)
+            legacy_dict = {}
+            
+            for step_name, definition in all_definitions.items():
+                legacy_dict[step_name] = to_legacy_format(definition)
+            
+            self._legacy_cache[cache_key] = legacy_dict
+        
+        return self._legacy_cache[cache_key]
+    
     def create_legacy_step_names_dict(self, workspace_id: str = None) -> Dict[str, Dict[str, Any]]:
-        """Create legacy STEP_NAMES dictionary for backward compatibility."""
-        all_definitions = self.get_all_step_definitions(workspace_id)
-        legacy_dict = {}
+        """Create legacy STEP_NAMES dictionary for backward compatibility with caching."""
+        with self._lock:
+            return self._get_cached_legacy_dict(workspace_id)
+    
+    def _invalidate_cache(self, workspace_id: Optional[str] = None):
+        """Invalidate cached data when registry changes occur."""
+        if workspace_id:
+            # Invalidate specific workspace cache
+            cache_key = workspace_id
+            self._legacy_cache.pop(cache_key, None)
+            self._definition_cache.pop(cache_key, None)
+            self._step_list_cache.pop(cache_key, None)
+        else:
+            # Invalidate all caches
+            self._legacy_cache.clear()
+            self._definition_cache.clear()
+            self._step_list_cache.clear()
         
-        for step_name, definition in all_definitions.items():
-            legacy_dict[step_name] = StepDefinitionConverter.to_legacy_format(definition)
-        
-        return legacy_dict
+        # Clear LRU caches
+        self._get_cached_definitions.cache_clear()
+        self._get_cached_legacy_dict.cache_clear()
+    
+    def _invalidate_all_caches(self):
+        """Invalidate all cached data across all workspaces."""
+        self._invalidate_cache(None)
     
     @contextmanager
     def resolution_context(self, workspace_id: str):

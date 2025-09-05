@@ -96,9 +96,21 @@ def from_legacy_format(step_name: str,
     )
 
 
+# Legacy format field names for conversion optimization
+LEGACY_FIELDS = [
+    'config_class',
+    'builder_step_name', 
+    'spec_type',
+    'sagemaker_step_type',
+    'description',
+    'framework',
+    'job_types',
+]
+
+
 def to_legacy_format(definition: 'StepDefinition') -> Dict[str, Any]:
     """
-    Convert StepDefinition to legacy STEP_NAMES format.
+    Convert StepDefinition to legacy STEP_NAMES format using field list.
     
     Args:
         definition: StepDefinition object
@@ -108,23 +120,13 @@ def to_legacy_format(definition: 'StepDefinition') -> Dict[str, Any]:
     """
     legacy_dict = {}
     
-    # Standard fields
-    if definition.config_class:
-        legacy_dict['config_class'] = definition.config_class
-    if definition.builder_step_name:
-        legacy_dict['builder_step_name'] = definition.builder_step_name
-    if definition.spec_type:
-        legacy_dict['spec_type'] = definition.spec_type
-    if definition.sagemaker_step_type:
-        legacy_dict['sagemaker_step_type'] = definition.sagemaker_step_type
-    if definition.description:
-        legacy_dict['description'] = definition.description
-    if definition.framework:
-        legacy_dict['framework'] = definition.framework
-    if definition.job_types:
-        legacy_dict['job_types'] = definition.job_types
+    # Convert standard fields using field list
+    for field_name in LEGACY_FIELDS:
+        value = getattr(definition, field_name, None)
+        if value is not None:
+            legacy_dict[field_name] = value
     
-    # Additional metadata
+    # Add metadata if present
     if hasattr(definition, 'metadata') and definition.metadata:
         legacy_dict.update(definition.metadata)
     
@@ -151,34 +153,71 @@ def convert_registry_dict(registry_dict: Dict[str, Dict[str, Any]],
     }
 
 
-# Simple validation using Pydantic (replaces RegistryValidationUtils class)
-class RegistryValidationModel(BaseModel):
-    """Pydantic model for registry validation."""
-    registry_type: str
-    step_name: str
-    workspace_id: Optional[str] = None
+# Simple validation functions (replaces RegistryValidationModel class)
+def validate_registry_type(registry_type: str) -> str:
+    """
+    Validate registry type using enum values.
     
-    @field_validator('registry_type')
-    @classmethod
-    def validate_registry_type(cls, v: str) -> str:
-        allowed_types = {'core', 'workspace', 'override'}
-        if v not in allowed_types:
-            raise ValueError(f"registry_type must be one of {allowed_types}, got: {v}")
-        return v
+    Args:
+        registry_type: Registry type to validate
+        
+    Returns:
+        Validated registry type
+        
+    Raises:
+        ValueError: If registry type is invalid
+    """
+    from .models import RegistryType
+    try:
+        # Use enum validation
+        validated = RegistryType(registry_type)
+        return validated.value
+    except ValueError:
+        allowed_types = [rt.value for rt in RegistryType]
+        raise ValueError(f"registry_type must be one of {allowed_types}, got: {registry_type}")
+
+
+def validate_step_name(step_name: str) -> str:
+    """
+    Validate step name format.
     
-    @field_validator('step_name')
-    @classmethod
-    def validate_step_name(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Step name cannot be empty")
-        if not v.replace('_', '').replace('-', '').isalnum():
-            raise ValueError(f"Step name '{v}' contains invalid characters")
-        return v.strip()
+    Args:
+        step_name: Step name to validate
+        
+    Returns:
+        Validated and stripped step name
+        
+    Raises:
+        ValueError: If step name is invalid
+    """
+    if not step_name or not step_name.strip():
+        raise ValueError("Step name cannot be empty")
+    if not step_name.replace('_', '').replace('-', '').isalnum():
+        raise ValueError(f"Step name '{step_name}' contains invalid characters")
+    return step_name.strip()
+
+
+def validate_workspace_id(workspace_id: Optional[str]) -> Optional[str]:
+    """
+    Validate workspace ID format.
+    
+    Args:
+        workspace_id: Workspace ID to validate
+        
+    Returns:
+        Validated workspace ID or None
+        
+    Raises:
+        ValueError: If workspace ID is invalid
+    """
+    if workspace_id is None:
+        return None
+    return validate_step_name(workspace_id)  # Same validation rules
 
 
 def validate_registry_data(registry_type: str, step_name: str, workspace_id: str = None) -> bool:
     """
-    Validate registry data using Pydantic model.
+    Validate registry data using direct validation functions.
     
     Args:
         registry_type: Registry type to validate
@@ -189,38 +228,86 @@ def validate_registry_data(registry_type: str, step_name: str, workspace_id: str
         True if valid
         
     Raises:
-        ValidationError: If validation fails
+        ValueError: If validation fails
     """
-    RegistryValidationModel(
-        registry_type=registry_type,
-        step_name=step_name,
-        workspace_id=workspace_id
-    )
+    validate_registry_type(registry_type)
+    validate_step_name(step_name)
+    validate_workspace_id(workspace_id)
     return True
 
 
-# Simple error formatting functions (replaces RegistryErrorFormatter class)
+# Generic error formatting with templates (replaces multiple specific error functions)
+ERROR_TEMPLATES = {
+    'step_not_found': "Step '{step_name}' not found{context}{suggestions}",
+    'registry_load': "Failed to load registry from '{registry_path}': {error_details}",
+    'validation': "Validation failed for '{component_name}':{issues}",
+    'workspace_not_found': "Workspace '{workspace_id}' not found{suggestions}",
+    'conflict_detected': "Step name conflict detected for '{step_name}'{context}",
+    'invalid_registry_type': "Invalid registry type '{registry_type}'{suggestions}",
+}
+
+
+def format_registry_error(error_type: str, **kwargs) -> str:
+    """
+    Generic error formatter using templates.
+    
+    Args:
+        error_type: Type of error to format
+        **kwargs: Template variables
+        
+    Returns:
+        Formatted error message
+    """
+    template = ERROR_TEMPLATES.get(error_type, "Registry error: {error}")
+    
+    # Special formatting for specific error types
+    if error_type == 'step_not_found':
+        context = f" (workspace: {kwargs.get('workspace_context')})" if kwargs.get('workspace_context') else " (core registry)"
+        suggestions = f". Available steps: {', '.join(sorted(kwargs['available_steps']))}" if kwargs.get('available_steps') else ""
+        return template.format(context=context, suggestions=suggestions, **kwargs)
+    
+    elif error_type == 'validation':
+        issues = ''.join(f"\n  {i}. {issue}" for i, issue in enumerate(kwargs.get('validation_issues', []), 1))
+        return template.format(issues=issues, **kwargs)
+    
+    elif error_type == 'workspace_not_found':
+        suggestions = f". Available workspaces: {', '.join(sorted(kwargs['available_workspaces']))}" if kwargs.get('available_workspaces') else ""
+        return template.format(suggestions=suggestions, **kwargs)
+    
+    elif error_type == 'invalid_registry_type':
+        suggestions = f". Valid types: {', '.join(kwargs['valid_types'])}" if kwargs.get('valid_types') else ""
+        return template.format(suggestions=suggestions, **kwargs)
+    
+    else:
+        return template.format(**kwargs)
+
+
+# Backward compatibility functions (now use generic formatter)
 def format_step_not_found_error(step_name: str, 
                                workspace_context: str = None,
                                available_steps: List[str] = None) -> str:
-    """Format step not found error messages."""
-    context_info = f" (workspace: {workspace_context})" if workspace_context else " (core registry)"
-    error_msg = f"Step '{step_name}' not found{context_info}"
-    
-    if available_steps:
-        error_msg += f". Available steps: {', '.join(sorted(available_steps))}"
-    
-    return error_msg
+    """Format step not found error messages using generic formatter."""
+    return format_registry_error(
+        'step_not_found',
+        step_name=step_name,
+        workspace_context=workspace_context,
+        available_steps=available_steps
+    )
 
 
 def format_registry_load_error(registry_path: str, error_details: str) -> str:
-    """Format registry loading error messages."""
-    return f"Failed to load registry from '{registry_path}': {error_details}"
+    """Format registry loading error messages using generic formatter."""
+    return format_registry_error(
+        'registry_load',
+        registry_path=registry_path,
+        error_details=error_details
+    )
 
 
 def format_validation_error(component_name: str, validation_issues: List[str]) -> str:
-    """Format validation error messages."""
-    error_msg = f"Validation failed for '{component_name}':"
-    for i, issue in enumerate(validation_issues, 1):
-        error_msg += f"\n  {i}. {issue}"
-    return error_msg
+    """Format validation error messages using generic formatter."""
+    return format_registry_error(
+        'validation',
+        component_name=component_name,
+        validation_issues=validation_issues
+    )

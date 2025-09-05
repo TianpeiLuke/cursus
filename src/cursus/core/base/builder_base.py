@@ -156,15 +156,87 @@ class StepBuilderBase(ABC):
 
     @property
     def STEP_NAMES(self):
-        """Lazy load step names to avoid circular imports while maintaining Single Source of Truth."""
+        """
+        Lazy load step names with workspace context awareness.
+        
+        This property now supports workspace-aware step name resolution by:
+        1. Extracting workspace context from config or environment
+        2. Using hybrid registry manager for workspace-specific step names
+        3. Falling back to traditional registry if hybrid is unavailable
+        4. Maintaining backward compatibility with existing code
+        
+        Returns:
+            Dict[str, str]: Step names mapping for the current workspace context
+        """
         if not hasattr(self, '_step_names'):
             try:
-                from ...registry.step_names import BUILDER_STEP_NAMES
-                self._step_names = BUILDER_STEP_NAMES
+                # Get workspace context
+                workspace_context = self._get_workspace_context()
+                
+                # Try to use hybrid registry manager first
+                try:
+                    from ...registry.hybrid.manager import HybridRegistryManager
+                    hybrid_manager = HybridRegistryManager()
+                    
+                    # Get step names using the actual available method
+                    legacy_dict = hybrid_manager.create_legacy_step_names_dict(workspace_context)
+                    self._step_names = legacy_dict
+                    
+                    if workspace_context:
+                        self.log_debug(f"Loaded workspace-specific step names for context: {workspace_context}")
+                    else:
+                        self.log_debug("Loaded default step names from hybrid registry")
+                        
+                except ImportError:
+                    # Fallback to traditional registry
+                    self.log_debug("Hybrid registry not available, falling back to traditional registry")
+                    from ...registry.step_names import BUILDER_STEP_NAMES
+                    self._step_names = BUILDER_STEP_NAMES
+                    
             except ImportError:
-                # Fallback if import fails
+                # Final fallback if all imports fail
+                self.log_warning("No registry available, using empty step names")
                 self._step_names = {}
+                
         return self._step_names
+
+    def _get_workspace_context(self) -> Optional[str]:
+        """
+        Extract workspace context from configuration or environment variables.
+        
+        This method determines the current workspace context by checking:
+        1. Config object for workspace-related attributes
+        2. Environment variables for workspace identification
+        3. Pipeline name as workspace identifier
+        4. Returns None for default/global workspace
+        
+        Returns:
+            Optional[str]: Workspace context identifier or None for default
+        """
+        # Check config for explicit workspace context
+        if hasattr(self.config, 'workspace_context') and self.config.workspace_context:
+            return str(self.config.workspace_context)
+            
+        # Check config for workspace attribute
+        if hasattr(self.config, 'workspace') and self.config.workspace:
+            return str(self.config.workspace)
+            
+        # Check environment variables
+        import os
+        workspace_env = os.environ.get('CURSUS_WORKSPACE_CONTEXT')
+        if workspace_env:
+            return workspace_env
+            
+        # Use pipeline name as workspace context if available
+        if hasattr(self.config, 'pipeline_name') and self.config.pipeline_name:
+            return str(self.config.pipeline_name)
+            
+        # Check for project-specific context
+        if hasattr(self.config, 'project_name') and self.config.project_name:
+            return str(self.config.project_name)
+            
+        # Return None for default/global workspace
+        return None
 
     # Common properties that all steps might need
     COMMON_PROPERTIES = {

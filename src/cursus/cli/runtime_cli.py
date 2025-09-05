@@ -13,6 +13,7 @@ from ..validation.runtime.utils.result_models import TestResult
 from ..validation.runtime.data.local_data_manager import LocalDataManager
 from .runtime_s3_cli import s3
 from .production_cli import production_cli
+from .registry_cli import registry_cli
 
 @click.group()
 @click.version_option(version="0.1.0")
@@ -29,6 +30,9 @@ runtime.add_command(s3)
 
 # Add production commands as a subgroup
 runtime.add_command(production_cli)
+
+# Add registry commands as a subgroup
+runtime.add_command(registry_cli)
 
 @runtime.command()
 @click.argument('script_name')

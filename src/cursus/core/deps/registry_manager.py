@@ -13,16 +13,63 @@ logger = logging.getLogger(__name__)
 
 
 class RegistryManager:
-    """Manager for context-scoped registries with complete isolation."""
+    """
+    Manager for context-scoped registries with complete isolation and workspace awareness.
     
-    def __init__(self):
-        """Initialize the registry manager."""
+    This enhanced registry manager now supports:
+    1. Workspace-aware registry resolution
+    2. Integration with hybrid registry system
+    3. Backward compatibility with existing code
+    4. Thread-local workspace context management
+    """
+    
+    def __init__(self, workspace_context: Optional[str] = None):
+        """
+        Initialize the registry manager with optional workspace context.
+        
+        Args:
+            workspace_context: Optional workspace context for registry isolation
+        """
         self._registries: Dict[str, SpecificationRegistry] = {}
-        logger.info("Initialized registry manager")
+        self._workspace_context = workspace_context
+        self._hybrid_manager = None
+        logger.info(f"Initialized registry manager with workspace context: {workspace_context}")
+        
+    def _get_hybrid_manager(self):
+        """Get or create hybrid registry manager."""
+        if self._hybrid_manager is None:
+            try:
+                from ...registry.hybrid.manager import HybridRegistryManager
+                self._hybrid_manager = HybridRegistryManager()
+                logger.debug("Created hybrid registry manager")
+            except ImportError:
+                logger.debug("Hybrid registry not available")
+                self._hybrid_manager = None
+        return self._hybrid_manager
+        
+    def _get_workspace_aware_context_name(self, context_name: str) -> str:
+        """
+        Get workspace-aware context name by combining workspace context with local context.
+        
+        Args:
+            context_name: Local context name
+            
+        Returns:
+            Workspace-aware context name
+        """
+        if self._workspace_context:
+            return f"{self._workspace_context}::{context_name}"
+        return context_name
     
     def get_registry(self, context_name: str = "default", create_if_missing: bool = True) -> Optional[SpecificationRegistry]:
         """
-        Get the registry for a specific context.
+        Get the registry for a specific context with workspace awareness.
+        
+        This enhanced method now supports:
+        1. Workspace-aware context naming
+        2. Integration with hybrid registry system
+        3. Automatic registry population from hybrid sources
+        4. Backward compatibility with existing code
         
         Args:
             context_name: Name of the context (e.g., pipeline name, environment)
@@ -31,11 +78,38 @@ class RegistryManager:
         Returns:
             Context-specific registry or None if not found and create_if_missing is False
         """
-        if context_name not in self._registries and create_if_missing:
-            self._registries[context_name] = SpecificationRegistry(context_name)
-            logger.info(f"Created new registry for context '{context_name}'")
+        # Get workspace-aware context name
+        workspace_aware_context = self._get_workspace_aware_context_name(context_name)
         
-        return self._registries.get(context_name)
+        if workspace_aware_context not in self._registries and create_if_missing:
+            # Create new registry
+            registry = SpecificationRegistry(workspace_aware_context)
+            
+            # Try to populate from hybrid registry if available
+            hybrid_manager = self._get_hybrid_manager()
+            if hybrid_manager:
+                try:
+                    # Get step definitions from hybrid registry for this workspace context
+                    if self._workspace_context:
+                        step_definitions = hybrid_manager.get_all_step_definitions(self._workspace_context)
+                    else:
+                        step_definitions = hybrid_manager.get_all_step_definitions()
+                    
+                    # Convert step definitions to specifications and register them
+                    for step_name, step_def in step_definitions.items():
+                        # Create a minimal specification from step definition
+                        # This is a simplified conversion - in practice you might want more sophisticated mapping
+                        registry.register(step_name, step_def)
+                        
+                    logger.debug(f"Populated registry '{workspace_aware_context}' with {len(step_definitions)} specifications from hybrid registry")
+                    
+                except Exception as e:
+                    logger.debug(f"Could not populate registry from hybrid source: {e}")
+            
+            self._registries[workspace_aware_context] = registry
+            logger.info(f"Created new workspace-aware registry for context '{workspace_aware_context}'")
+        
+        return self._registries.get(workspace_aware_context)
     
     def list_contexts(self) -> List[str]:
         """

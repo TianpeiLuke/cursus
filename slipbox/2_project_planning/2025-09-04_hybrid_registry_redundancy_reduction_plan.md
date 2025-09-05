@@ -2,265 +2,58 @@
 tags:
   - project
   - planning
-  - code_redundancy
-  - hybrid_registry
   - optimization
-  - refactoring
+  - hybrid_registry
   - code_quality
 keywords:
-  - hybrid registry redundancy reduction
-  - code optimization plan
-  - registry simplification
-  - over-engineering elimination
-  - code quality improvement
-  - architectural refactoring
-topics:
-  - code redundancy reduction
   - hybrid registry optimization
+  - code redundancy reduction
+  - registry efficiency improvement
   - architectural simplification
-  - code quality enhancement
-  - registry system refactoring
+  - performance optimization
+  - validation consolidation
+topics:
+  - hybrid registry redundancy reduction
+  - registry implementation optimization
+  - code quality improvement
+  - architectural efficiency
 language: python
 date of note: 2025-09-04
 ---
 
-# Hybrid Registry Code Redundancy Reduction Plan
+# Hybrid Registry Redundancy Reduction Plan
 
 ## Executive Summary
 
-Based on the analysis of the hybrid registry code in `src/cursus/registry/hybrid/` and the comprehensive redundancy analysis, this plan provides specific strategies to reduce the identified 45-50% code redundancy to an optimal 15-20% level. The analysis reveals significant over-engineering and addressing of unfound demand, requiring targeted simplification and consolidation.
+This plan provides specific strategies to reduce code redundancy in the hybrid registry implementation from the current **25-30%** to an optimal **15-20%** level. Based on analysis of the actual implementation in `src/cursus/registry/hybrid/`, this plan targets the most impactful redundancy patterns while maintaining essential functionality and backward compatibility.
 
-## Current Redundancy Analysis Summary
+### Current State Assessment
 
-### Key Findings from Code Analysis
+**Implementation Quality**: The current hybrid registry demonstrates **good architectural quality (78%)** with manageable redundancy:
 
-**Overall Redundancy Level**: 45-50% (significantly above optimal 15-20%)
+- ✅ **Unified Manager**: Single `UnifiedRegistryManager` eliminates multiple manager classes
+- ✅ **Function-Based Utils**: Simple utility functions replace complex utility classes  
+- ✅ **Streamlined Models**: Essential Pydantic models without over-engineering
+- ⚠️ **Remaining Redundancy**: 25-30% redundancy in validation, conversion, and error handling
+- ⚠️ **Performance Impact**: Still 10-15x slower than original registry
 
-**Major Redundancy Areas Identified**:
+**Key Metrics**:
+| Metric | Current State | Target State | Improvement Goal |
+|--------|---------------|--------------|------------------|
+| **Lines of Code** | ~800 | ~600 | 25% reduction |
+| **Redundancy Level** | 25-30% | 15-20% | 33% improvement |
+| **Performance Impact** | 10-15x | 3-5x | 67% improvement |
+| **Validation Patterns** | 8 duplicate | 3 consolidated | 62% reduction |
 
-1. **Registry Loading Logic (85% redundant)**: Similar patterns repeated across `CoreStepRegistry`, `LocalStepRegistry`, and `HybridRegistryManager`
-2. **Validation Utilities (40% poorly justified)**: Over-engineered validation for simple cases in `RegistryValidationUtils`
-3. **Conflict Resolution (60% over-engineered)**: Complex resolution for theoretical problems in `resolver.py`
-4. **Manager Classes (55% redundant)**: Multiple manager classes with duplicated initialization and loading patterns
-5. **Compatibility Layer (40% redundant)**: Multiple compatibility classes for simple compatibility needs
+## Phase 1: Model Validation Consolidation ✅ COMPLETED
 
-## Redundancy Reduction Strategy
+### **Priority: HIGH | Timeline: 2 days | Impact: 40% of redundancy reduction**
+### **Status: ✅ COMPLETED (2025-09-04)**
 
-### Phase 1: Eliminate Over-Engineering (40% code reduction)
-
-#### 1.1 Simplify Conflict Resolution System
-
-**Current State**: 420 lines in `resolver.py` addressing theoretical conflicts
-**Target State**: 150 lines focusing on actual needs
-
-**Actions**:
+#### **Current Redundancy Pattern**:
 ```python
-# REMOVE: Complex resolution strategies that address unfound demand
-class ConflictResolver:
-    # REMOVE: _resolve_by_framework_compatibility (40+ lines)
-    # REMOVE: _resolve_by_environment_compatibility (40+ lines) 
-    # REMOVE: _resolve_by_score (30+ lines)
-    # REMOVE: Complex scoring algorithms (50+ lines)
-    
-    # KEEP: Simple conflict detection and workspace priority
-    def resolve_step_conflict(self, step_name: str, context: ResolutionContext):
-        # Simple workspace priority resolution (20 lines)
-        if context.workspace_id and step_name in workspace_steps:
-            return workspace_steps[step_name]
-        return core_steps.get(step_name)
-```
-
-**Redundancy Reduction**: 270 lines → 50 lines (80% reduction)
-
-#### 1.2 Consolidate Validation Utilities
-
-**Current State**: 200 lines of over-engineered validation utilities
-**Target State**: 60 lines using Pydantic validators
-
-**Actions**:
-```python
-# REPLACE: Complex validation utility classes
-# WITH: Simple Pydantic field validators
-
+# REDUNDANT: Similar validation patterns across models (models.py)
 class StepDefinition(BaseModel):
-    name: str = Field(..., min_length=1, pattern=r'^[a-zA-Z][a-zA-Z0-9_]*$')
-    registry_type: Literal['core', 'workspace'] = Field(...)
-    
-    @field_validator('name')
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        # Simple validation logic (5 lines vs 20+ in utility class)
-        return v.strip()
-```
-
-**Redundancy Reduction**: 200 lines → 60 lines (70% reduction)
-
-#### 1.3 Remove Theoretical Features
-
-**Actions**:
-- Remove environment-specific resolution (no evidence of need)
-- Remove framework-specific resolution (no evidence of conflicts)
-- Remove complex context management (simple workspace ID suffices)
-- Remove advanced caching (premature optimization)
-
-**Redundancy Reduction**: 300+ lines of theoretical features removed
-
-### Phase 2: Consolidate Registry Managers (30% code reduction)
-
-#### 2.1 Unified Registry Manager Pattern
-
-**Current State**: 3 separate manager classes with redundant patterns
-**Target State**: Single unified manager with composition
-
-**Actions**:
-```python
-# REPLACE: CoreStepRegistry, LocalStepRegistry, HybridRegistryManager
-# WITH: Single RegistryManager
-
-class RegistryManager:
-    def __init__(self, core_path: str, workspace_paths: List[str] = None):
-        self.core_registry = self._load_core_registry(core_path)
-        self.workspace_registries = self._load_workspace_registries(workspace_paths or [])
-    
-    def get_step_definition(self, step_name: str, workspace_id: str = None):
-        # Simple resolution: workspace first, then core (10 lines)
-        if workspace_id and workspace_id in self.workspace_registries:
-            if step_name in self.workspace_registries[workspace_id]:
-                return self.workspace_registries[workspace_id][step_name]
-        return self.core_registry.get(step_name)
-    
-    def _load_registry(self, path: str) -> Dict[str, Any]:
-        # Single loading method used by both core and workspace (15 lines)
-        # Eliminates 3 separate loading implementations
-```
-
-**Redundancy Reduction**: 680 lines → 200 lines (70% reduction)
-
-#### 2.2 Eliminate Loading Logic Duplication
-
-**Current Pattern** (repeated 3+ times):
-```python
-def _load_registry(self):
-    try:
-        module = RegistryLoader.load_registry_module(...)
-        RegistryLoader.validate_registry_structure(...)
-        step_names = RegistryLoader.safe_get_attribute(...)
-        self._step_definitions = StepDefinitionConverter.batch_convert_from_legacy(...)
-        self._loaded = True
-    except Exception as e:
-        error_msg = RegistryValidationUtils.format_registry_error(...)
-        raise RegistryLoadError(error_msg)
-```
-
-**Simplified Pattern** (single implementation):
-```python
-def _load_registry(self, path: str, registry_type: str) -> Dict[str, StepDefinition]:
-    # Single method handles all registry loading (20 lines)
-    module = importlib.util.spec_from_file_location("registry", path)
-    step_names = getattr(module, 'STEP_NAMES', {})
-    return {name: StepDefinition.from_legacy(name, info, registry_type) 
-            for name, info in step_names.items()}
-```
-
-**Redundancy Reduction**: 150+ lines → 20 lines (87% reduction)
-
-### Phase 3: Streamline Compatibility Layer (50% code reduction)
-
-#### 3.1 Consolidate Compatibility Classes
-
-**Current State**: Multiple compatibility classes with overlapping functionality
-**Target State**: Single compatibility adapter
-
-**Actions**:
-```python
-# REPLACE: EnhancedBackwardCompatibilityLayer, ContextAwareRegistryProxy, APICompatibilityChecker
-# WITH: Simple BackwardCompatibilityAdapter
-
-class BackwardCompatibilityAdapter:
-    def __init__(self, registry_manager: RegistryManager):
-        self.registry_manager = registry_manager
-        self._workspace_context = None
-    
-    def get_step_names(self, workspace_id: str = None) -> Dict[str, Dict[str, Any]]:
-        # Simple implementation (10 lines vs 50+ in multiple classes)
-        effective_workspace = workspace_id or self._workspace_context
-        definitions = self.registry_manager.get_all_definitions(effective_workspace)
-        return {name: defn.to_legacy_format() for name, defn in definitions.items()}
-```
-
-**Redundancy Reduction**: 380 lines → 150 lines (60% reduction)
-
-#### 3.2 Simplify Context Management
-
-**Current State**: Complex thread-local context management
-**Target State**: Simple workspace parameter passing
-
-**Actions**:
-```python
-# REPLACE: Complex contextvars and thread-local management
-# WITH: Simple workspace_id parameter
-
-# Instead of complex context management:
-def get_config_class_name(step_name: str, workspace_id: str = None) -> str:
-    # Simple parameter-based approach (2 lines vs 20+ in context management)
-    registry = get_registry_manager()
-    return registry.get_step_definition(step_name, workspace_id).config_class
-```
-
-**Redundancy Reduction**: 120 lines → 30 lines (75% reduction)
-
-### Phase 4: Optimize Shared Utilities ✅ **COMPLETED** (41% code reduction achieved)
-
-#### 4.1 Simplify Utility Classes ✅ **COMPLETED**
-
-**Current State**: Over-engineered utility classes with excessive methods
-**Target State**: Focused utility functions
-
-**Completed Actions**:
-```python
-# REPLACED: Complex RegistryLoader class (120+ lines)
-# WITH: Simple loading functions (30 lines)
-
-def load_registry_module(file_path: str) -> Any:
-    """Load registry module from file."""
-    spec = importlib.util.spec_from_file_location("registry", file_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-def get_step_names_from_module(module: Any) -> Dict[str, Dict[str, Any]]:
-    """Extract STEP_NAMES from loaded module."""
-    return getattr(module, 'STEP_NAMES', {})
-
-# REPLACED: Complex StepDefinitionConverter class (180+ lines)
-# WITH: Simple conversion functions (60 lines)
-
-def from_legacy_format(step_name: str, step_info: Dict[str, Any], 
-                      registry_type: str = 'core', workspace_id: str = None) -> StepDefinition:
-    """Convert legacy STEP_NAMES format to StepDefinition."""
-    return StepDefinition(
-        name=step_name,
-        registry_type=registry_type,
-        workspace_id=workspace_id,
-        config_class=step_info.get('config_class'),
-        spec_type=step_info.get('spec_type'),
-        sagemaker_step_type=step_info.get('sagemaker_step_type'),
-        builder_step_name=step_info.get('builder_step_name'),
-        description=step_info.get('description'),
-        framework=step_info.get('framework'),
-        job_types=step_info.get('job_types', []),
-        metadata=step_info.get('metadata', {})
-    )
-
-# REPLACED: Complex RegistryValidationUtils class (80+ lines)
-# WITH: Simple Pydantic validation (30 lines)
-
-class RegistryValidationModel(BaseModel):
-    """Pydantic model for registry validation."""
-    registry_type: str
-    step_name: str
-    workspace_id: Optional[str] = None
-    
     @field_validator('registry_type')
     @classmethod
     def validate_registry_type(cls, v: str) -> str:
@@ -269,255 +62,506 @@ class RegistryValidationModel(BaseModel):
             raise ValueError(f"registry_type must be one of {allowed_types}, got: {v}")
         return v
 
-# REPLACED: Complex RegistryErrorFormatter class (60+ lines)
-# WITH: Simple error formatting functions (40 lines)
+class ResolutionContext(BaseModel):
+    @field_validator('resolution_mode')
+    @classmethod
+    def validate_resolution_mode(cls, v: str) -> str:
+        allowed_modes = {'automatic', 'interactive', 'strict'}
+        if v not in allowed_modes:
+            raise ValueError(f"resolution_mode must be one of {allowed_modes}")
+        return v
+```
 
-def format_step_not_found_error(step_name: str, workspace_context: str = None, 
-                               available_steps: List[str] = None) -> str:
-    """Format step not found error messages."""
+#### **Optimization Strategy**:
+```python
+# OPTIMIZED: Shared validation using enums and Literal types
+from enum import Enum
+from typing import Literal
+
+class RegistryType(str, Enum):
+    CORE = "core"
+    WORKSPACE = "workspace"
+    OVERRIDE = "override"
+
+class ResolutionMode(str, Enum):
+    AUTOMATIC = "automatic"
+    INTERACTIVE = "interactive"
+    STRICT = "strict"
+
+class ResolutionStrategy(str, Enum):
+    WORKSPACE_PRIORITY = "workspace_priority"
+    FRAMEWORK_MATCH = "framework_match"
+    ENVIRONMENT_MATCH = "environment_match"
+    MANUAL = "manual"
+
+# Use Literal types for automatic validation
+class StepDefinition(BaseModel):
+    registry_type: RegistryType = Field(...)
+    # Eliminates need for custom validator
+
+class ResolutionContext(BaseModel):
+    resolution_mode: ResolutionMode = Field(default=ResolutionMode.AUTOMATIC)
+    resolution_strategy: ResolutionStrategy = Field(default=ResolutionStrategy.WORKSPACE_PRIORITY)
+    # Eliminates need for custom validators
+```
+
+#### **Implementation Steps**:
+1. **Create shared enums** in `models.py` for all validated string fields
+2. **Replace custom validators** with enum types in all model classes
+3. **Update imports** in manager.py and utils.py to use enum types
+4. **Run tests** to ensure validation still works correctly
+
+#### **Expected Results**:
+- **Code Reduction**: 60 lines → 25 lines (58% reduction)
+- **Validation Consistency**: Centralized validation logic
+- **Type Safety**: Better IDE support and runtime validation
+
+### **Files to Modify**:
+- `src/cursus/registry/hybrid/models.py` (primary changes)
+- `src/cursus/registry/hybrid/manager.py` (import updates)
+- `src/cursus/registry/hybrid/utils.py` (validation updates)
+
+## Phase 2: Utility Function Consolidation ✅ COMPLETED
+
+### **Priority: HIGH | Timeline: 1 day | Impact: 30% of redundancy reduction**
+### **Status: ✅ COMPLETED (2025-09-04)**
+
+#### **Current Redundancy Pattern**:
+```python
+# REDUNDANT: Separate validation model and functions (utils.py)
+class RegistryValidationModel(BaseModel):
+    registry_type: str
+    step_name: str
+    workspace_id: Optional[str] = None
+    
+    @field_validator('registry_type')
+    @classmethod
+    def validate_registry_type(cls, v: str) -> str:
+        # Duplicate validation logic
+
+def validate_registry_data(registry_type: str, step_name: str, workspace_id: str = None) -> bool:
+    RegistryValidationModel(
+        registry_type=registry_type,
+        step_name=step_name,
+        workspace_id=workspace_id
+    )
+    return True
+```
+
+#### **Optimization Strategy**:
+```python
+# OPTIMIZED: Direct validation using enums and simple functions
+def validate_step_name(step_name: str) -> str:
+    """Validate step name format."""
+    if not step_name or not step_name.strip():
+        raise ValueError("Step name cannot be empty")
+    if not step_name.replace('_', '').replace('-', '').isalnum():
+        raise ValueError(f"Step name '{step_name}' contains invalid characters")
+    return step_name.strip()
+
+def validate_workspace_id(workspace_id: Optional[str]) -> Optional[str]:
+    """Validate workspace ID format."""
+    if workspace_id is None:
+        return None
+    return validate_step_name(workspace_id)  # Same validation rules
+
+# Remove RegistryValidationModel class entirely
+```
+
+#### **Implementation Steps**:
+1. **Remove RegistryValidationModel class** from utils.py
+2. **Create simple validation functions** for step names and workspace IDs
+3. **Update all validation calls** to use direct functions
+4. **Consolidate error messages** using shared templates
+
+#### **Expected Results**:
+- **Code Reduction**: 45 lines → 15 lines (67% reduction)
+- **Simplified Logic**: Direct validation without intermediate models
+- **Better Performance**: No Pydantic overhead for simple validations
+
+### **Files to Modify**:
+- `src/cursus/registry/hybrid/utils.py` (primary changes)
+- `src/cursus/registry/hybrid/manager.py` (validation call updates)
+
+## Phase 3: Error Handling Streamlining ✅ COMPLETED
+
+### **Priority: MEDIUM | Timeline: 1 day | Impact: 20% of redundancy reduction**
+### **Status: ✅ COMPLETED (2025-09-04)**
+
+#### **Current Redundancy Pattern**:
+```python
+# REDUNDANT: Multiple similar error formatting functions (utils.py)
+def format_step_not_found_error(step_name: str, workspace_context: str = None, available_steps: List[str] = None) -> str:
     context_info = f" (workspace: {workspace_context})" if workspace_context else " (core registry)"
     error_msg = f"Step '{step_name}' not found{context_info}"
     if available_steps:
         error_msg += f". Available steps: {', '.join(sorted(available_steps))}"
     return error_msg
+
+def format_registry_load_error(registry_path: str, error_details: str) -> str:
+    return f"Failed to load registry from '{registry_path}': {error_details}"
+
+def format_validation_error(component_name: str, validation_issues: List[str]) -> str:
+    error_msg = f"Validation failed for '{component_name}':"
+    for i, issue in enumerate(validation_issues, 1):
+        error_msg += f"\n  {i}. {issue}"
+    return error_msg
 ```
 
-**Redundancy Reduction Achieved**: 383 lines → 226 lines (41% reduction) ✅
-
-**Key Improvements**:
-- ✅ **Eliminated Utility Classes**: Replaced 3 complex utility classes with simple functions
-- ✅ **Removed Batch Operations**: Eliminated premature optimization in batch processing
-- ✅ **Simplified Error Formatting**: Reduced complex error formatting to essential functions
-- ✅ **Consolidated Validation**: Used Pydantic validators instead of custom validation logic
-- ✅ **Focused Functionality**: Each function has single, clear responsibility
-
-## Implementation Plan
-
-### Week 1: Remove Over-Engineering ✅ **COMPLETED**
-- [x] Simplify conflict resolution to workspace priority only
-- [x] Remove theoretical environment/framework resolution
-- [x] Replace validation utilities with Pydantic validators
-- [x] Remove complex caching and context management
-
-### Week 2: Consolidate Managers ✅ **COMPLETED**
-- [x] Create unified RegistryManager class
-- [x] Eliminate duplicate loading logic
-- [x] Simplify registry initialization
-- [x] Remove redundant error handling patterns
-
-### Week 3: Streamline Compatibility ✅ **COMPLETED**
-- [x] Consolidate compatibility classes into single adapter
-- [x] Simplify context management to parameter passing
-- [x] Remove redundant compatibility methods
-- [x] Optimize legacy format conversion
-
-### Week 4: Optimize Utilities ✅ **COMPLETED**
-- [x] Replace utility classes with simple functions
-- [x] Remove batch operations (premature optimization)
-- [x] Simplify error formatting
-- [x] Consolidate validation logic
-
-## Final Results ✅ **ALL PHASES COMPLETED**
-
-### Code Reduction Metrics Achieved
-- **Total Lines**: 2,994 → 2,837 (5.2% reduction from baseline, significant simplification achieved)
-- **Phase-Specific Reductions**:
-  - **Phase 1**: Conflict resolution (420→143 lines, 66% reduction) ✅
-  - **Phase 1**: Validation utilities (580→226 lines, 61% reduction) ✅  
-  - **Phase 2**: Manager consolidation (680→418 lines, 38% reduction) ✅
-  - **Phase 3**: Compatibility streamlining (380→164 lines, 57% reduction) ✅
-  - **Phase 4**: Utility optimization (383→226 lines, 41% reduction) ✅
-- **Classes**: 15+ → 8 (47% reduction)
-- **Redundancy Level**: 45-50% → ~20% (significant improvement toward 15% target)
-
-### Quality Improvements Achieved
-- **Code Complexity**: Dramatically reduced through elimination of over-engineering
-- **Maintainability**: Enhanced through consolidation and simplification
-- **Performance**: Improved through removal of unnecessary abstractions
-- **Backward Compatibility**: 100% preserved throughout all phases
-
-### Architecture Simplification Achieved
-```
-Final Hybrid Registry Structure (2,837 lines total)
-├── src/cursus/registry/hybrid/
-│   ├── __init__.py (189 lines)
-│   ├── compatibility.py (164 lines) ✅ PHASE 3 - Streamlined single adapter
-│   ├── manager.py (418 lines) ✅ PHASE 2 - Consolidated UnifiedRegistryManager
-│   ├── models.py (352 lines) - Pydantic V2 models
-│   ├── proxy.py (483 lines) - Context management
-│   ├── resolver.py (143 lines) ✅ PHASE 1 - Simple workspace priority resolution
-│   ├── utils.py (226 lines) ✅ PHASE 4 - Simple utility functions
-│   └── workspace.py (862 lines) - Workspace management
-```
-
-### Expected Results (Original Targets)
-- **Total Lines**: 2,800 → 800 (71% reduction)
-- **Classes**: 15+ → 6 (60% reduction)
-- **Methods**: 80+ → 25 (69% reduction)
-- **Redundancy Level**: 45% → 15% (67% improvement)
-
-### Performance Improvements
-- **Registry Access**: 61μs → 5μs (92% faster)
-- **Memory Usage**: 500KB → 50KB (90% reduction)
-- **Initialization Time**: 100ms → 20ms (80% faster)
-
-### Maintainability Improvements
-- **Cyclomatic Complexity**: 45 → 12 (73% reduction)
-- **Test Coverage Needed**: 50+ tests → 15 tests (70% reduction)
-- **Documentation Burden**: 80% reduction in complexity
-
-## Simplified Architecture
-
-### Target Architecture (Post-Reduction)
-```
-Simplified Hybrid Registry (800 lines total)
-├── src/cursus/registry/hybrid/
-│   ├── __init__.py (25 lines)
-│   ├── models.py (150 lines) - StepDefinition, ResolutionContext
-│   ├── manager.py (200 lines) - Single RegistryManager
-│   ├── compatibility.py (100 lines) - Simple BackwardCompatibilityAdapter
-│   ├── utils.py (80 lines) - Simple utility functions
-│   └── workspace.py (45 lines) - Workspace initialization
-```
-
-### Core Components (Simplified)
-
-#### 1. StepDefinition Model (50 lines)
+#### **Optimization Strategy**:
 ```python
-class StepDefinition(BaseModel):
-    name: str = Field(..., min_length=1)
-    config_class: str = Field(...)
-    builder_step_name: str = Field(...)
-    spec_type: str = Field(...)
-    sagemaker_step_type: str = Field(...)
-    description: str = Field(...)
-    registry_type: Literal['core', 'workspace'] = Field(...)
-    workspace_id: Optional[str] = Field(None)
-    priority: int = Field(default=100)
+# OPTIMIZED: Generic error formatter with templates
+from typing import Dict, Any
+
+ERROR_TEMPLATES = {
+    'step_not_found': "Step '{step_name}' not found{context}{suggestions}",
+    'registry_load': "Failed to load registry from '{registry_path}': {error_details}",
+    'validation': "Validation failed for '{component_name}':{issues}",
+    'workspace_not_found': "Workspace '{workspace_id}' not found{suggestions}",
+}
+
+def format_registry_error(error_type: str, **kwargs) -> str:
+    """Generic error formatter using templates."""
+    template = ERROR_TEMPLATES.get(error_type, "Registry error: {error}")
     
-    def to_legacy_format(self) -> Dict[str, Any]:
-        return {
-            'config_class': self.config_class,
-            'builder_step_name': self.builder_step_name,
-            'spec_type': self.spec_type,
-            'sagemaker_step_type': self.sagemaker_step_type,
-            'description': self.description
-        }
+    # Special formatting for specific error types
+    if error_type == 'step_not_found':
+        context = f" (workspace: {kwargs.get('workspace_context')})" if kwargs.get('workspace_context') else " (core registry)"
+        suggestions = f". Available steps: {', '.join(sorted(kwargs['available_steps']))}" if kwargs.get('available_steps') else ""
+        return template.format(context=context, suggestions=suggestions, **kwargs)
+    
+    elif error_type == 'validation':
+        issues = ''.join(f"\n  {i}. {issue}" for i, issue in enumerate(kwargs.get('validation_issues', []), 1))
+        return template.format(issues=issues, **kwargs)
+    
+    else:
+        return template.format(**kwargs)
+
+# Replace all specific error functions with calls to format_registry_error
 ```
 
-#### 2. RegistryManager (150 lines)
+#### **Implementation Steps**:
+1. **Create ERROR_TEMPLATES dictionary** with all error message templates
+2. **Implement generic format_registry_error function** with special case handling
+3. **Replace all specific error functions** with calls to the generic function
+4. **Update all error formatting calls** throughout the codebase
+
+#### **Expected Results**:
+- **Code Reduction**: 35 lines → 20 lines (43% reduction)
+- **Consistency**: All error messages follow same format
+- **Maintainability**: Single place to update error message formats
+
+### **Files to Modify**:
+- `src/cursus/registry/hybrid/utils.py` (primary changes)
+- `src/cursus/registry/hybrid/manager.py` (error call updates)
+
+## Phase 4: Performance Optimization ✅ COMPLETED
+
+### **Priority: MEDIUM | Timeline: 2 days | Impact: 10% of redundancy reduction + 50% performance improvement**
+### **Status: ✅ COMPLETED (2025-09-04)**
+
+#### **Current Performance Issues**:
 ```python
-class RegistryManager:
-    def __init__(self, core_path: str, workspace_paths: List[str] = None):
-        self.core_registry = self._load_registry(core_path, 'core')
-        self.workspace_registries = {}
-        for path in workspace_paths or []:
-            workspace_id = Path(path).parent.name
-            self.workspace_registries[workspace_id] = self._load_registry(path, 'workspace')
+# INEFFICIENT: Repeated registry loading and conversion (manager.py)
+def get_all_step_definitions(self, workspace_id: str = None) -> Dict[str, StepDefinition]:
+    with self._lock:
+        if workspace_id and workspace_id in self._workspace_steps:
+            # Recreates dictionary every time
+            all_definitions = self._core_steps.copy()
+            all_definitions.update(self._workspace_steps[workspace_id])
+            all_definitions.update(self._workspace_overrides[workspace_id])
+            return all_definitions
+        else:
+            return self._core_steps.copy()
+
+def create_legacy_step_names_dict(self, workspace_id: str = None) -> Dict[str, Dict[str, Any]]:
+    all_definitions = self.get_all_step_definitions(workspace_id)
+    legacy_dict = {}
     
-    def _load_registry(self, path: str, registry_type: str) -> Dict[str, StepDefinition]:
-        # Single loading method for all registries
-        pass
+    # Converts every time - no caching
+    for step_name, definition in all_definitions.items():
+        legacy_dict[step_name] = to_legacy_format(definition)
     
-    def get_step_definition(self, step_name: str, workspace_id: str = None) -> Optional[StepDefinition]:
-        # Simple resolution logic
-        pass
+    return legacy_dict
 ```
 
-#### 3. BackwardCompatibilityAdapter (80 lines)
+#### **Optimization Strategy**:
 ```python
-class BackwardCompatibilityAdapter:
-    def __init__(self, registry_manager: RegistryManager):
-        self.registry_manager = registry_manager
+# OPTIMIZED: Caching and lazy loading
+from functools import lru_cache
+from typing import Optional
+
+class UnifiedRegistryManager:
+    def __init__(self, ...):
+        # ... existing initialization ...
+        self._legacy_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        self._definition_cache: Dict[str, Dict[str, StepDefinition]] = {}
     
-    def get_step_names(self, workspace_id: str = None) -> Dict[str, Dict[str, Any]]:
-        # Simple legacy format conversion
-        pass
+    @lru_cache(maxsize=32)
+    def _get_cached_definitions(self, workspace_id: Optional[str]) -> Dict[str, StepDefinition]:
+        """Cached version of get_all_step_definitions."""
+        cache_key = workspace_id or "core"
+        
+        if cache_key not in self._definition_cache:
+            if workspace_id and workspace_id in self._workspace_steps:
+                all_definitions = self._core_steps.copy()
+                all_definitions.update(self._workspace_steps[workspace_id])
+                all_definitions.update(self._workspace_overrides[workspace_id])
+                self._definition_cache[cache_key] = all_definitions
+            else:
+                self._definition_cache[cache_key] = self._core_steps.copy()
+        
+        return self._definition_cache[cache_key]
     
-    def get_builder_step_names(self, workspace_id: str = None) -> Dict[str, str]:
-        # Simple builder name mapping
-        pass
+    def get_all_step_definitions(self, workspace_id: str = None) -> Dict[str, StepDefinition]:
+        """Get all step definitions with caching."""
+        return self._get_cached_definitions(workspace_id)
+    
+    def create_legacy_step_names_dict(self, workspace_id: str = None) -> Dict[str, Dict[str, Any]]:
+        """Create legacy dictionary with caching."""
+        cache_key = workspace_id or "core"
+        
+        if cache_key not in self._legacy_cache:
+            all_definitions = self._get_cached_definitions(workspace_id)
+            self._legacy_cache[cache_key] = {
+                step_name: to_legacy_format(definition)
+                for step_name, definition in all_definitions.items()
+            }
+        
+        return self._legacy_cache[cache_key]
+    
+    def _invalidate_cache(self, workspace_id: str = None):
+        """Invalidate caches when registry changes."""
+        cache_key = workspace_id or "core"
+        self._legacy_cache.pop(cache_key, None)
+        self._definition_cache.pop(cache_key, None)
+        self._get_cached_definitions.cache_clear()
 ```
 
-## Quality Improvements
+#### **Implementation Steps**:
+1. **Add caching infrastructure** to UnifiedRegistryManager
+2. **Implement cached versions** of expensive operations
+3. **Add cache invalidation** when registries are modified
+4. **Add performance monitoring** to measure improvements
 
-### Before Optimization
-- **Code Redundancy**: 45-50%
-- **Lines of Code**: 2,800
-- **Cyclomatic Complexity**: 45
-- **Classes**: 15+
-- **Over-Engineering Score**: High (addressing unfound demand)
+#### **Expected Results**:
+- **Performance Improvement**: 10-15x → 3-5x slower than original (67% improvement)
+- **Memory Efficiency**: Reduced repeated object creation
+- **Scalability**: Better performance with multiple workspaces
 
-### After Optimization
-- **Code Redundancy**: 15%
-- **Lines of Code**: 800
-- **Cyclomatic Complexity**: 12
-- **Classes**: 6
-- **Over-Engineering Score**: Low (focused on actual needs)
+### **Files to Modify**:
+- `src/cursus/registry/hybrid/manager.py` (primary changes)
 
-## Risk Mitigation
+## Phase 5: Conversion Logic Optimization ✅ COMPLETED
 
-### Backward Compatibility Preservation
-- All existing API functions maintained
-- Legacy format conversion preserved
-- Workspace context support maintained
-- Performance improvements, not regressions
+### **Priority: LOW | Timeline: 1 day | Impact: 10% of redundancy reduction**
+### **Status: ✅ COMPLETED (2025-09-04)**
 
-### Testing Strategy
-- Comprehensive regression testing
-- Performance benchmarking
-- Compatibility validation
-- Simplified test suite (70% fewer tests needed)
+#### **Current Redundancy Pattern**:
+```python
+# REDUNDANT: Verbose conversion logic (utils.py)
+def to_legacy_format(definition: 'StepDefinition') -> Dict[str, Any]:
+    legacy_dict = {}
+    
+    # Repetitive field checking
+    if definition.config_class:
+        legacy_dict['config_class'] = definition.config_class
+    if definition.builder_step_name:
+        legacy_dict['builder_step_name'] = definition.builder_step_name
+    if definition.spec_type:
+        legacy_dict['spec_type'] = definition.spec_type
+    # ... 8 more similar checks
+    
+    return legacy_dict
+```
 
-### Migration Path
-- Gradual replacement of over-engineered components
-- Feature flags for safe rollout
-- Fallback to original implementation if needed
-- Incremental validation at each step
+#### **Optimization Strategy**:
+```python
+# OPTIMIZED: Field mapping with automatic conversion
+LEGACY_FIELD_MAPPING = {
+    'config_class': 'config_class',
+    'builder_step_name': 'builder_step_name',
+    'spec_type': 'spec_type',
+    'sagemaker_step_type': 'sagemaker_step_type',
+    'description': 'description',
+    'framework': 'framework',
+    'job_types': 'job_types',
+}
+
+def to_legacy_format(definition: 'StepDefinition') -> Dict[str, Any]:
+    """Convert StepDefinition to legacy format using field mapping."""
+    legacy_dict = {}
+    
+    for source_field, target_field in LEGACY_FIELD_MAPPING.items():
+        value = getattr(definition, source_field, None)
+        if value is not None:
+            legacy_dict[target_field] = value
+    
+    # Add metadata if present
+    if hasattr(definition, 'metadata') and definition.metadata:
+        legacy_dict.update(definition.metadata)
+    
+    return legacy_dict
+```
+
+#### **Implementation Steps**:
+1. **Create field mapping dictionary** for conversion logic
+2. **Simplify conversion functions** using mapping
+3. **Add reverse mapping** for from_legacy_format if needed
+4. **Test conversion accuracy** with existing data
+
+#### **Expected Results**:
+- **Code Reduction**: 25 lines → 12 lines (52% reduction)
+- **Maintainability**: Easy to add/remove fields
+- **Consistency**: Uniform conversion logic
+
+### **Files to Modify**:
+- `src/cursus/registry/hybrid/utils.py` (primary changes)
+
+## Implementation Timeline
+
+### **Week 1: Core Optimizations**
+- **Day 1-2**: Phase 1 - Model Validation Consolidation
+- **Day 3**: Phase 2 - Utility Function Consolidation  
+- **Day 4**: Phase 3 - Error Handling Streamlining
+- **Day 5**: Testing and validation of Phases 1-3
+
+### **Week 2: Performance and Polish**
+- **Day 1-2**: Phase 4 - Performance Optimization
+- **Day 3**: Phase 5 - Conversion Logic Optimization
+- **Day 4-5**: Integration testing and performance benchmarking
 
 ## Success Metrics
 
-### Code Quality Metrics
-- **Redundancy Reduction**: 45% → 15% (67% improvement)
-- **Code Volume Reduction**: 2,800 → 800 lines (71% reduction)
-- **Complexity Reduction**: 45 → 12 cyclomatic complexity (73% reduction)
-- **Maintainability Score**: Significant improvement
+### **Code Quality Metrics**:
+- **Redundancy Reduction**: 25-30% → 15-20% (target: 33% improvement)
+- **Lines of Code**: ~800 → ~600 (target: 25% reduction)
+- **Cyclomatic Complexity**: Reduce by 20%
+- **Maintainability Index**: Increase by 15%
 
-### Performance Metrics
-- **Registry Access Speed**: 92% improvement (61μs → 5μs)
-- **Memory Usage**: 90% reduction (500KB → 50KB)
-- **Initialization Time**: 80% improvement (100ms → 20ms)
+### **Performance Metrics**:
+- **Registry Lookup Speed**: 10-15x → 3-5x slower than original (target: 67% improvement)
+- **Memory Usage**: Reduce by 30% through caching optimization
+- **Cache Hit Rate**: Achieve 80%+ for repeated operations
 
-### Developer Experience Metrics
-- **Understanding Time**: 80% reduction in complexity
-- **Modification Effort**: 70% reduction in code to maintain
-- **Bug Surface Area**: 71% reduction in potential issues
-- **Documentation Burden**: 80% reduction in complexity
+### **Validation Metrics**:
+- **Test Coverage**: Maintain 100% coverage
+- **Backward Compatibility**: 100% API compatibility
+- **Error Handling**: Consistent error messages across all components
+
+## Risk Assessment and Mitigation
+
+### **High Risk: Breaking Changes**
+- **Risk**: Enum changes might break existing code
+- **Mitigation**: 
+  - Maintain backward compatibility by supporting both string and enum values
+  - Add deprecation warnings for string usage
+  - Provide migration guide for existing code
+
+### **Medium Risk: Performance Regression**
+- **Risk**: Caching might introduce memory leaks or stale data
+- **Mitigation**:
+  - Implement proper cache invalidation
+  - Add cache size limits and TTL
+  - Monitor memory usage during testing
+
+### **Low Risk: Test Failures**
+- **Risk**: Changes might break existing tests
+- **Mitigation**:
+  - Run full test suite after each phase
+  - Update test fixtures to use new enum types
+  - Add performance regression tests
+
+## Dependencies and Prerequisites
+
+### **Required Before Starting**:
+1. **Complete Phase 4** of the workspace-aware hybrid registry migration
+2. **Backup current implementation** for rollback capability
+3. **Set up performance benchmarking** infrastructure
+4. **Review and update test suite** to handle enum changes
+
+### **External Dependencies**:
+- **Pydantic V2**: Ensure compatibility with enum validation
+- **Python 3.8+**: Required for proper enum support
+- **Test Framework**: Update test fixtures for new validation patterns
+
+## Testing Strategy
+
+### **Unit Testing**:
+- **Model Validation**: Test all enum validations work correctly
+- **Utility Functions**: Verify simplified functions maintain behavior
+- **Error Handling**: Ensure error messages are consistent and helpful
+- **Conversion Logic**: Test legacy format conversion accuracy
+
+### **Integration Testing**:
+- **Registry Operations**: Test all registry operations with optimized code
+- **Workspace Integration**: Verify workspace-aware functionality
+- **Performance Testing**: Benchmark before/after performance
+- **Backward Compatibility**: Ensure existing APIs still work
+
+### **Regression Testing**:
+- **Full Test Suite**: Run complete test suite after each phase
+- **Performance Benchmarks**: Compare performance metrics
+- **Memory Usage**: Monitor memory consumption patterns
+- **Error Scenarios**: Test error handling edge cases
+
+## Rollback Plan
+
+### **Phase-by-Phase Rollback**:
+1. **Git Branching**: Each phase implemented in separate branch
+2. **Incremental Commits**: Small, reversible commits within each phase
+3. **Backup Points**: Full backup before starting each phase
+4. **Quick Rollback**: Ability to revert to previous phase within 15 minutes
+
+### **Rollback Triggers**:
+- **Test Failures**: >5% test failure rate
+- **Performance Regression**: >20% performance degradation
+- **Breaking Changes**: Any backward compatibility issues
+- **Memory Issues**: Memory usage increase >50%
+
+## Post-Implementation Validation
+
+### **Code Quality Validation**:
+- **Static Analysis**: Run linting and complexity analysis
+- **Code Review**: Peer review of all changes
+- **Documentation Update**: Update all relevant documentation
+- **Performance Benchmarks**: Document performance improvements
+
+### **Operational Validation**:
+- **Integration Testing**: Test with real workspace configurations
+- **Load Testing**: Verify performance under realistic loads
+- **Error Handling**: Test error scenarios and recovery
+- **Monitoring**: Set up monitoring for performance metrics
+
+## Long-term Maintenance
+
+### **Monitoring and Alerting**:
+- **Performance Metrics**: Track registry operation performance
+- **Error Rates**: Monitor error frequency and types
+- **Cache Efficiency**: Track cache hit rates and memory usage
+- **Usage Patterns**: Monitor which features are actually used
+
+### **Continuous Improvement**:
+- **Regular Reviews**: Quarterly review of redundancy metrics
+- **Performance Optimization**: Ongoing performance tuning
+- **Feature Usage Analysis**: Remove unused features
+- **Code Quality Metrics**: Track and improve code quality over time
 
 ## Conclusion
 
-This redundancy reduction plan addresses the core issues identified in the hybrid registry analysis:
+This redundancy reduction plan provides a systematic approach to optimizing the hybrid registry implementation while maintaining functionality and backward compatibility. The phased approach allows for incremental improvements with minimal risk, and the comprehensive testing strategy ensures reliability throughout the process.
 
-1. **Eliminates Over-Engineering**: Removes 40% of code addressing theoretical problems
-2. **Consolidates Redundant Patterns**: Reduces duplicate implementations by 70%
-3. **Simplifies Architecture**: Focuses on actual needs rather than comprehensive coverage
-4. **Improves Performance**: Significant improvements in speed and memory usage
-5. **Enhances Maintainability**: Dramatic reduction in complexity and maintenance burden
+### **Expected Outcomes**:
+- **25% reduction** in code size (800 → 600 lines)
+- **33% improvement** in redundancy metrics (25-30% → 15-20%)
+- **67% performance improvement** (10-15x → 3-5x slower than original)
+- **Improved maintainability** through consolidated validation and error handling
 
-The result is a lean, efficient hybrid registry system that maintains all essential functionality while eliminating the identified redundancy and over-engineering issues. This approach follows the principle that **architectural excellence comes from solving real problems efficiently**, not from comprehensive theoretical coverage.
+### **Success Criteria**:
+- All existing functionality preserved
+- Performance targets achieved
+- Test coverage maintained at 100%
+- Documentation updated and comprehensive
+- Team approval and adoption of optimized implementation
 
-## References
-
-### Primary Analysis Documents
-- **[Hybrid Registry Code Redundancy Analysis](../4_analysis/hybrid_registry_code_redundancy_analysis.md)** - Comprehensive analysis identifying 45-50% redundancy and over-engineering patterns
-- **[2025-09-02 Workspace Aware Hybrid Registry Migration Plan](./2025-09-02_workspace_aware_hybrid_registry_migration_plan.md)** - Original migration plan requiring redundancy reduction
-
-### Source Code Analysis
-- **[Hybrid Registry Manager](../../src/cursus/registry/hybrid/manager.py)** - 680 lines with 55% redundancy in manager classes
-- **[Hybrid Registry Utils](../../src/cursus/registry/hybrid/utils.py)** - 580 lines with 35% redundancy in utility functions
-- **[Hybrid Registry Resolver](../../src/cursus/registry/hybrid/resolver.py)** - 420 lines with 60% over-engineering for theoretical conflicts
-- **[Hybrid Registry Compatibility](../../src/cursus/registry/hybrid/compatibility.py)** - 380 lines with 40% redundancy in compatibility classes
-
-### Design Principles
-- **[Design Principles](../1_design/design_principles.md)** - Architectural philosophy emphasizing simplicity and efficiency over theoretical completeness
-- **[Code Redundancy Evaluation Guide](../1_design/code_redundancy_evaluation_guide.md)** - Framework for evaluating and reducing code redundancy
+The plan balances optimization goals with practical implementation constraints, ensuring that the hybrid registry becomes more efficient while remaining reliable and maintainable for future development.

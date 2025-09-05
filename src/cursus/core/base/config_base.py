@@ -323,16 +323,64 @@ class BasePipelineConfig(BaseModel):
         return reverse_mapping.get(step_name, step_name)
     
     @classmethod
-    def _get_step_registry(cls) -> Dict[str, str]:
-        """Lazy load step registry to avoid circular imports."""
-        if not cls._STEP_NAMES:
+    def _get_step_registry(cls, workspace_context: Optional[str] = None) -> Dict[str, str]:
+        """
+        Lazy load step registry with workspace context awareness.
+        
+        This method now supports workspace-aware step registry resolution by:
+        1. Using hybrid registry manager for workspace-specific registries
+        2. Falling back to traditional registry if hybrid is unavailable
+        3. Maintaining backward compatibility with existing code
+        
+        Args:
+            workspace_context: Optional workspace context for registry isolation
+            
+        Returns:
+            Dict[str, str]: Step registry mapping for the specified workspace context
+        """
+        # Create a cache key that includes workspace context
+        cache_key = f"_STEP_NAMES_{workspace_context or 'default'}"
+        
+        # Check if we already have this registry cached
+        if not hasattr(cls, cache_key) or not getattr(cls, cache_key):
             try:
-                from ...registry.step_names import CONFIG_STEP_REGISTRY
-                cls._STEP_NAMES = CONFIG_STEP_REGISTRY
+                # Try to use hybrid registry manager first
+                try:
+                    from ...registry.hybrid.manager import HybridRegistryManager
+                    hybrid_manager = HybridRegistryManager()
+                    
+                    # Get step registry using the actual available method
+                    legacy_dict = hybrid_manager.create_legacy_step_names_dict(workspace_context)
+                    
+                    # Convert to config step registry format (reverse mapping)
+                    # Handle the case where values might be complex dictionaries
+                    config_registry = {}
+                    for k, v in legacy_dict.items():
+                        if isinstance(v, dict):
+                            # If value is a dict, use the key as both key and value for config registry
+                            config_registry[k] = k
+                        else:
+                            # If value is a simple string, create reverse mapping
+                            config_registry[str(v)] = k
+                    
+                    if workspace_context:
+                        logger.debug(f"Loaded workspace-specific config step registry for context: {workspace_context}")
+                    else:
+                        logger.debug("Loaded default config step registry from hybrid registry")
+                        
+                    setattr(cls, cache_key, config_registry)
+                    
+                except ImportError:
+                    # Fallback to traditional registry
+                    logger.debug("Hybrid registry not available, falling back to traditional registry")
+                    from ...registry.step_names import CONFIG_STEP_REGISTRY
+                    setattr(cls, cache_key, CONFIG_STEP_REGISTRY)
+                    
             except ImportError:
                 logger.warning("Could not import step registry, using empty registry")
-                cls._STEP_NAMES = {}
-        return cls._STEP_NAMES
+                setattr(cls, cache_key, {})
+                
+        return getattr(cls, cache_key)
     
     @classmethod
     def from_base_config(cls, base_config: 'BasePipelineConfig', **kwargs) -> 'BasePipelineConfig':
