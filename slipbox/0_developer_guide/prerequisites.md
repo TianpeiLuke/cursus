@@ -51,11 +51,29 @@ Before implementing your new step, familiarize yourself with:
 
 Review these documents to understand our architecture:
 
-- [Specification-Driven Architecture](../pipeline_design/specification_driven_design.md)
-- [Hybrid Design](../pipeline_design/hybrid_design.md)
-- [Script-Specification Alignment](../project_planning/script_specification_alignment_prevention_plan.md)
-- [Script Contract](../pipeline_design/script_contract.md)
-- [Step Specification](../pipeline_design/step_specification.md)
+**Core Architecture:**
+- [Specification-Driven Architecture](../1_design/specification_driven_design.md) - Foundation of our system design
+- [Hybrid Design](../1_design/hybrid_design.md) - Hybrid registry and workspace architecture
+- [Design Principles](design_principles.md) - Core architectural principles
+
+**Development Standards:**
+- [Standardization Rules](standardization_rules.md) - Coding and naming conventions
+- [Alignment Rules](alignment_rules.md) - Component alignment requirements
+- [Validation Framework Guide](validation_framework_guide.md) - Validation tools and processes
+
+**Modern System Components:**
+- [Hybrid Registry Standardization Enforcement Design](../1_design/hybrid_registry_standardization_enforcement_design.md) - Registry system design
+- [Workspace Aware Distributed Registry Design](../1_design/workspace_aware_distributed_registry_design.md) - Workspace-aware registry architecture
+- [Step Builder Design](../1_design/createmodel_step_builder_patterns.md) - Step builder architecture patterns
+- [Config Manager Design](../1_design/config_manager_three_tier_implementation.md) - Configuration management system
+- [Script Contract Design](../1_design/level1_script_contract_alignment_design.md) - Script contract alignment patterns
+- [Step Specification Design](../1_design/level2_contract_specification_alignment_design.md) - Step specification alignment
+- [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - Zettelkasten-based catalog system
+- [Step Builder Registry Guide](step_builder_registry_guide.md) - Modern registry system usage
+- [Three-Tier Config Design](three_tier_config_design.md) - Configuration design patterns
+- [Config Field Manager Design](../1_design/config_field_manager_refactoring.md) - Configuration field management
+- [Validation Framework Design](../1_design/enhanced_universal_step_builder_tester_design.md) - Validation system architecture
+
 
 ### 2. Similar Existing Steps
 
