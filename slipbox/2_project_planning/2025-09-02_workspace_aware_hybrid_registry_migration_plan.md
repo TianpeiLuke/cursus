@@ -1343,22 +1343,20 @@ CONFIG_STEP_REGISTRY = get_config_step_registry()
 SPEC_STEP_TYPES = get_spec_step_types()
 ```
 
-### Phase 3: Local Registry Infrastructure (Weeks 5-6)
+### Phase 3: Simplified Local Registry Infrastructure (Weeks 5-6)
 
-#### 3.1 Create Local Registry Templates
+#### 3.1 Create Simple Registry Templates
 
-**Deliverable**: Standardized local registry format for developer workspaces
+**Deliverable**: Minimal local registry format for developer workspaces
 
 **Implementation Tasks**:
 
-1. **Workspace Registry Template**
+1. **Simplified Workspace Registry Template**
 ```python
 # Template: developer_workspaces/developers/developer_k/src/cursus_dev/registry/workspace_registry.py
 """
 Local registry for developer_k workspace.
-
-This file defines workspace-specific step implementations and
-overrides for core step definitions.
+Simple format following the redundancy evaluation guide principles.
 """
 
 # Local step definitions (new steps specific to this workspace)
@@ -1368,14 +1366,7 @@ LOCAL_STEPS = {
         "builder_step_name": "MyCustomProcessingStepBuilder",
         "spec_type": "MyCustomProcessing",
         "sagemaker_step_type": "Processing",
-        "description": "Custom processing step for developer_k",
-        
-        # Conflict resolution metadata
-        "framework": "pandas",
-        "environment_tags": ["development", "cpu"],
-        "compatibility_tags": ["custom", "experimental"],
-        "priority": 90,
-        "conflict_resolution_strategy": "workspace_priority"
+        "description": "Custom processing step for developer_k"
     },
     
     "ExperimentalTrainingStep": {
@@ -1383,14 +1374,7 @@ LOCAL_STEPS = {
         "builder_step_name": "ExperimentalTrainingStepBuilder",
         "spec_type": "ExperimentalTraining",
         "sagemaker_step_type": "Training",
-        "description": "Experimental training approach",
-        
-        # Conflict resolution metadata
-        "framework": "pytorch",
-        "environment_tags": ["development", "gpu"],
-        "compatibility_tags": ["experimental", "research"],
-        "priority": 95,
-        "conflict_resolution_strategy": "framework_match"
+        "description": "Experimental training approach"
     }
 }
 
@@ -1401,37 +1385,31 @@ STEP_OVERRIDES = {
         "builder_step_name": "CustomXGBoostTrainingStepBuilder",
         "spec_type": "CustomXGBoostTraining",
         "sagemaker_step_type": "Training",
-        "description": "Custom XGBoost implementation with enhanced features",
-        
-        # Conflict resolution metadata
-        "framework": "xgboost",
-        "environment_tags": ["development", "custom"],
-        "compatibility_tags": ["enhanced", "custom_metrics"],
-        "priority": 80,  # Higher priority than default
-        "conflict_resolution_strategy": "workspace_priority"
+        "description": "Custom XGBoost implementation with enhanced features"
     }
 }
 
-# Workspace metadata
+# Simple workspace metadata
 WORKSPACE_METADATA = {
     "developer_id": "developer_k",
     "version": "1.0.0",
-    "description": "Custom ML pipeline extensions",
-    "dependencies": ["pandas>=1.3.0", "pytorch>=1.9.0"],
-    
-    # Conflict resolution preferences
-    "default_resolution_strategy": "workspace_priority",
-    "preferred_frameworks": ["pytorch", "pandas", "xgboost"],
-    "environment_preferences": ["development", "cpu"],
-    "conflict_tolerance": "medium"
+    "description": "Custom ML pipeline extensions"
 }
 ```
 
-2. **Registry Initialization Script**
+**Key Simplifications Applied**:
+- ❌ **Removed**: Complex conflict resolution metadata (framework, environment_tags, compatibility_tags, priority, conflict_resolution_strategy)
+- ❌ **Removed**: Theoretical conflict resolution preferences (default_resolution_strategy, preferred_frameworks, environment_preferences, conflict_tolerance)
+- ✅ **Kept**: Essential step definition fields only
+- ✅ **Kept**: Simple workspace identification
+
+**Rationale**: Following the redundancy evaluation guide, these complex metadata fields address theoretical conflicts with no evidence of actual need. The simple workspace priority resolution in the current UnifiedRegistryManager is sufficient.
+
+2. **Simplified Registry Initialization Script**
 ```python
 # File: src/cursus/registry/hybrid/init_workspace_registry.py
 def create_workspace_registry(workspace_path: str, developer_id: str, template: str = "standard"):
-    """Create workspace registry structure for a developer."""
+    """Create simple workspace registry structure for a developer."""
     workspace_dir = Path(workspace_path)
     registry_dir = workspace_dir / "src" / "cursus_dev" / "registry"
     
@@ -1444,16 +1422,16 @@ def create_workspace_registry(workspace_path: str, developer_id: str, template: 
     
     # Create workspace_registry.py from template
     registry_file = registry_dir / "workspace_registry.py"
-    template_content = _get_registry_template(developer_id, template)
+    template_content = _get_simple_registry_template(developer_id)
     registry_file.write_text(template_content)
     
     return str(registry_file)
 
-def _get_registry_template(developer_id: str, template: str) -> str:
-    """Get registry template content."""
-    if template == "standard":
-        return f'''"""
+def _get_simple_registry_template(developer_id: str) -> str:
+    """Get simplified registry template content."""
+    return f'''"""
 Local registry for {developer_id} workspace.
+Simple format following redundancy evaluation guide.
 """
 
 # Local step definitions
@@ -1465,10 +1443,7 @@ LOCAL_STEPS = {{
     #     "builder_step_name": "MyCustomStepBuilder",
     #     "spec_type": "MyCustomStep",
     #     "sagemaker_step_type": "Processing",
-    #     "description": "My custom processing step",
-    #     "framework": "pandas",
-    #     "environment_tags": ["development"],
-    #     "priority": 90
+    #     "description": "My custom processing step"
     # }}
 }}
 
@@ -1481,26 +1456,27 @@ STEP_OVERRIDES = {{
     #     "builder_step_name": "CustomXGBoostTrainingStepBuilder",
     #     "spec_type": "CustomXGBoostTraining",
     #     "sagemaker_step_type": "Training",
-    #     "description": "Custom XGBoost with enhanced features",
-    #     "framework": "xgboost",
-    #     "priority": 80
+    #     "description": "Custom XGBoost with enhanced features"
     # }}
 }}
 
-# Workspace metadata
+# Simple workspace metadata
 WORKSPACE_METADATA = {{
     "developer_id": "{developer_id}",
     "version": "1.0.0",
-    "description": "Custom ML pipeline extensions",
-    "dependencies": [],
-    "default_resolution_strategy": "workspace_priority",
-    "preferred_frameworks": [],
-    "environment_preferences": ["development"]
+    "description": "Custom ML pipeline extensions"
 }}
 '''
-    else:
-        raise ValueError(f"Unknown template: {template}")
 ```
+
+**Key Simplifications Applied**:
+- ❌ **Removed**: Complex template system with multiple template types
+- ❌ **Removed**: Theoretical conflict resolution metadata in examples
+- ❌ **Removed**: Over-engineered workspace metadata fields
+- ✅ **Kept**: Essential registry structure and simple examples
+- ✅ **Kept**: Basic workspace identification
+
+**Rationale**: The redundancy evaluation guide shows that complex template systems and metadata address theoretical needs without validated demand. Simple templates are sufficient for actual use cases.
 
 #### 3.2 Create Registry Management CLI
 
@@ -1660,36 +1636,26 @@ class StepBuilderBase(ABC):
     def STEP_NAMES(self):
         """Lazy load step names with workspace context awareness."""
         if not hasattr(self, '_step_names'):
-            # Detect workspace context from config or environment
             workspace_id = self._get_workspace_context()
-            
-            # Use hybrid registry with workspace context
             compatibility_layer = get_enhanced_compatibility()
-            if workspace_id:
-                compatibility_layer.set_workspace_context(workspace_id)
-            
-            self._step_names = compatibility_layer.get_builder_step_names()
+            self._step_names = compatibility_layer.get_builder_step_names(workspace_id)
         return self._step_names
     
     def _get_workspace_context(self) -> Optional[str]:
         """Extract workspace context from config or environment."""
-        # Check config for workspace_id
+        # Simple priority: config -> environment -> thread-local
         if hasattr(self.config, 'workspace_id') and self.config.workspace_id:
             return self.config.workspace_id
         
-        # Check environment variable
         import os
         workspace_id = os.environ.get('CURSUS_WORKSPACE_ID')
         if workspace_id:
             return workspace_id
         
-        # Check thread-local context
         try:
             return get_workspace_context()
         except:
-            pass
-        
-        return None
+            return None
 ```
 
 #### 4.2 Enhance BasePipelineConfig Integration
@@ -1705,21 +1671,10 @@ class BasePipelineConfig(ABC):
     def get_step_registry(cls) -> Dict[str, str]:
         """Lazy load step registry with workspace context."""
         if not cls._STEP_NAMES:
-            # Get workspace context
-            workspace_id = cls._get_workspace_context()
-            
+            workspace_id = os.environ.get('CURSUS_WORKSPACE_ID')
             compatibility_layer = get_enhanced_compatibility()
-            if workspace_id:
-                compatibility_layer.set_workspace_context(workspace_id)
-            
-            cls._STEP_NAMES = compatibility_layer.get_config_step_registry()
+            cls._STEP_NAMES = compatibility_layer.get_config_step_registry(workspace_id)
         return cls._STEP_NAMES
-    
-    @classmethod
-    def _get_workspace_context(cls) -> Optional[str]:
-        """Extract workspace context for config classes."""
-        import os
-        return os.environ.get('CURSUS_WORKSPACE_ID')
 ```
 
 #### 4.3 Enhance Builder Registry Integration
@@ -1733,39 +1688,60 @@ class WorkspaceAwareStepBuilderRegistry(StepBuilderRegistry):
     
     def __init__(self):
         super().__init__()
-        # Integration with hybrid registry
         self.hybrid_registry = get_global_registry_manager()
         self.compatibility_layer = get_enhanced_compatibility()
     
     def get_builder_for_config(self, config: BasePipelineConfig, node_name: str = None) -> Type[StepBuilderBase]:
         """Enhanced config-to-builder resolution with workspace context."""
-        # Extract workspace context from config
         workspace_id = getattr(config, 'workspace_id', None)
-        
-        # Set workspace context for resolution
-        if workspace_id:
-            self.compatibility_layer.set_workspace_context(workspace_id)
-        
-        try:
-            # Use original logic but with workspace-aware registries
-            return super().get_builder_for_config(config, node_name)
-        finally:
-            # Clean up workspace context
-            if workspace_id:
-                self.compatibility_layer.clear_workspace_context()
+        return super().get_builder_for_config(config, node_name)
     
     def discover_builders(self) -> Dict[str, Type[StepBuilderBase]]:
         """Enhanced builder discovery with workspace support."""
-        # Get current workspace context
         workspace_id = get_workspace_context()
-        
-        # Discover builders from both core and workspace registries
         core_builders = super().discover_builders()
         
         if workspace_id:
-            # Add workspace-specific builders
             workspace_definitions = self.hybrid_registry.get_all_step_definitions(workspace_id)
             for step_name, definition in workspace_definitions.items():
+                if definition.registry_type in ['workspace', 'override']:
+                    try:
+                        builder_class = self._load_workspace_builder(definition, workspace_id)
+                        if builder_class:
+                            core_builders[step_name] = builder_class
+                    except Exception as e:
+                        registry_logger.warning(f"Failed to load workspace builder {step_name}: {e}")
+        
+        return core_builders
+
+def get_global_registry() -> WorkspaceAwareStepBuilderRegistry:
+    """Get global step builder registry instance with workspace awareness."""
+    global _global_registry
+    if _global_registry is None:
+        _global_registry = WorkspaceAwareStepBuilderRegistry()
+    return _global_registry
+```
+
+### Phase 5: Drop-in Registry Replacement (Weeks 9-10)
+
+#### 5.1 Replace step_names.py Module
+
+**Deliverable**: Seamless replacement of existing step_names.py with hybrid backend
+
+**Implementation Tasks**:
+
+1. **Create Enhanced step_names.py Replacement**
+```python
+# File: src/cursus/registry/step_names.py (REPLACED)
+"""
+Enhanced step names registry with hybrid backend support.
+Maintains 100% backward compatibility while adding workspace awareness.
+"""
+
+# Import hybrid registry components
+from .hybrid.legacy_api import *
+from .hybrid.proxy import (
+    set_workspace_context, 
                 if definition.registry_type in ['workspace', 'override']:
                     try:
                         builder_class = self._load_workspace_builder(definition, workspace_id)
@@ -1814,39 +1790,25 @@ from .hybrid.proxy import (
 # These now use the hybrid registry backend transparently
 __all__ = [
     # Core registry data structures
-    'STEP_NAMES',
-    'CONFIG_STEP_REGISTRY', 
-    'BUILDER_STEP_NAMES',
-    'SPEC_STEP_TYPES',
+    'STEP_NAMES', 'CONFIG_STEP_REGISTRY', 'BUILDER_STEP_NAMES', 'SPEC_STEP_TYPES',
     
     # Helper functions
-    'get_config_class_name',
-    'get_builder_step_name',
-    'get_spec_step_type',
-    'get_spec_step_type_with_job_type',
-    'get_step_name_from_spec_type',
-    'get_all_step_names',
-    'validate_step_name',
-    'validate_spec_type',
-    'get_step_description',
-    'list_all_step_info',
+    'get_config_class_name', 'get_builder_step_name', 'get_spec_step_type',
+    'get_spec_step_type_with_job_type', 'get_step_name_from_spec_type',
+    'get_all_step_names', 'validate_step_name', 'validate_spec_type',
+    'get_step_description', 'list_all_step_info',
     
     # SageMaker integration functions
-    'get_sagemaker_step_type',
-    'get_steps_by_sagemaker_type',
-    'get_all_sagemaker_step_types',
-    'validate_sagemaker_step_type',
+    'get_sagemaker_step_type', 'get_steps_by_sagemaker_type',
+    'get_all_sagemaker_step_types', 'validate_sagemaker_step_type',
     'get_sagemaker_step_type_mapping',
     
     # Advanced functions
-    'get_canonical_name_from_file_name',
-    'validate_file_name',
+    'get_canonical_name_from_file_name', 'validate_file_name',
     
     # Workspace context management (NEW)
-    'set_workspace_context',
-    'get_workspace_context',
-    'clear_workspace_context',
-    'workspace_context'
+    'set_workspace_context', 'get_workspace_context',
+    'clear_workspace_context', 'workspace_context'
 ]
 ```
 
@@ -1855,108 +1817,6 @@ __all__ = [
 # File: src/cursus/registry/__init__.py (ENHANCED)
 """
 Enhanced Pipeline Registry Module with hybrid registry support.
-Maintains backward compatibility while adding workspace awareness.
-"""
-
-from .exceptions import RegistryError
-
-# Enhanced builder registry with workspace support
-from .builder_registry import (
-    WorkspaceAwareStepBuilderRegistry as StepBuilderRegistry,
-    get_global_registry,
-    register_global_builder,
-    list_global_step_types
-)
-
-# Enhanced step names with workspace support (now using hybrid backend)
-from .step_names import (
-    STEP_NAMES,                    # Dynamic workspace-aware
-    CONFIG_STEP_REGISTRY,          # Dynamic workspace-aware
-    BUILDER_STEP_NAMES,            # Dynamic workspace-aware
-    SPEC_STEP_TYPES,               # Dynamic workspace-aware
-    get_config_class_name,         # Workspace-aware
-    get_builder_step_name,         # Workspace-aware
-    get_spec_step_type,            # Workspace-aware
-    get_spec_step_type_with_job_type,  # Workspace-aware
-    get_step_name_from_spec_type,  # Workspace-aware
-    get_all_step_names,            # Workspace-aware
-    validate_step_name,            # Workspace-aware
-    validate_spec_type,            # Workspace-aware
-    get_step_description,          # Workspace-aware
-    list_all_step_info,            # Workspace-aware
-    get_sagemaker_step_type,       # Workspace-aware
-    get_steps_by_sagemaker_type,   # Workspace-aware
-    get_all_sagemaker_step_types,  # Workspace-aware
-    validate_sagemaker_step_type,  # Workspace-aware
-    get_sagemaker_step_type_mapping,  # Workspace-aware
-    get_canonical_name_from_file_name,  # Enhanced workspace-aware
-    validate_file_name,            # Workspace-aware
-    # NEW: Workspace context management
-    set_workspace_context,
-    get_workspace_context,
-    clear_workspace_context,
-    workspace_context
-)
-
-# Hyperparameter registry (unchanged for now)
-from .hyperparameter_registry import (
-    HYPERPARAMETER_REGISTRY,
-    get_all_hyperparameter_classes,
-    get_hyperparameter_class_by_model_type,
-    get_module_path,
-    get_all_hyperparameter_info,
-    validate_hyperparameter_class
-)
-
-# Exact same __all__ list with additions for workspace context
-__all__ = [
-    # Exceptions
-    "RegistryError",
-    
-    # Builder registry
-    "StepBuilderRegistry",
-    "get_global_registry",
-    "register_global_builder", 
-    "list_global_step_types",
-    
-    # Step names and registry
-    "STEP_NAMES",
-    "CONFIG_STEP_REGISTRY",
-    "BUILDER_STEP_NAMES",
-    "SPEC_STEP_TYPES",
-    "get_config_class_name",
-    "get_builder_step_name",
-    "get_spec_step_type",
-    "get_spec_step_type_with_job_type",
-    "get_step_name_from_spec_type",
-    "get_all_step_names",
-    "validate_step_name",
-    "validate_spec_type",
-    "get_step_description",
-    "list_all_step_info",
-    "get_sagemaker_step_type",
-    "get_steps_by_sagemaker_type",
-    "get_all_sagemaker_step_types",
-    "validate_sagemaker_step_type",
-    "get_sagemaker_step_type_mapping",
-    "get_canonical_name_from_file_name",
-    "validate_file_name",
-    
-    # Hyperparameter registry
-    "HYPERPARAMETER_REGISTRY",
-    "get_all_hyperparameter_classes",
-    "get_hyperparameter_class_by_model_type",
-    "get_module_path",
-    "get_all_hyperparameter_info",
-    "validate_hyperparameter_class",
-    
-    # NEW: Workspace context management
-    "set_workspace_context",
-    "get_workspace_context", 
-    "clear_workspace_context",
-    "workspace_context"
-]
-```
 
 #### 5.2 Initialize Developer Workspace Registries
 
