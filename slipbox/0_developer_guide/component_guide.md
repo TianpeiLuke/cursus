@@ -17,12 +17,24 @@ The pipeline architecture follows a specification-driven approach with a six-lay
 
 The components are related as follows:
 
-- **Step Specifications** define how steps connect with other steps in the pipeline using logical names
-- **Script Contracts** define the interface between scripts and the SageMaker environment with container paths
+- **Step Specifications** define how steps connect with other steps in the pipeline using logical names and provide S3 path information for pipeline connectivity
+- **Script Contracts** define the interface between scripts and the SageMaker environment with container path information (where data should be placed/found inside containers)
 - **Processing Scripts** implement the actual business logic and are executed in SageMaker containers
-- **Step Builders** transform configurations and specifications into SageMaker steps with workspace-aware registration
+- **Step Builders** bridge specifications and contracts by creating SageMaker input/output objects (TrainingInput, ProcessingInput/Output, etc.) that map S3 sources to container destinations
 - **Configuration Classes** define the three-tier config structure (Essential, System, Derived fields) with field management
 - **Hyperparameters** (for training steps) define model-specific configuration parameters
+
+### Input/Output Mapping Pattern
+
+Step builders follow a consistent pattern across all step types:
+
+1. **For SageMaker Input Objects** (TrainingInput, ProcessingInput, etc.):
+   - **S3 source**: Provided by step specification dependencies
+   - **Container destination**: Provided by script contract expected_input_paths
+
+2. **For SageMaker Output Objects** (ProcessingOutput, etc.) or output parameters:
+   - **Container source**: Provided by script contract expected_output_paths  
+   - **S3 destination**: Provided by step specification outputs or generated from configuration
 
 ## Detailed Component Guides
 
@@ -43,15 +55,30 @@ The alignment between components is crucial for successful integration:
 ```mermaid
 graph TD
     A[Step Specification] --> B[Step Builder]
-    C[Script Contract] --> D[Processing Script]
-    B --> E[Configuration Classes]
-    D --> E
+    E[Configuration Classes] --> B
+    A --> C[Script Contract]
+    C --> D[Processing Script]
     E --> F[Hyperparameters]
     
-    A -.->|logical names| C
+    A -.->|contains| C
+    A -.->|S3 sources/destinations| B
+    C -.->|container paths| B
     C -.->|container paths| D
-    B -.->|SageMaker integration| D
+    B -.->|creates SageMaker objects| G[SageMaker Input/Output Objects]
+    G -.->|maps S3 to container| D
     E -.->|field management| F
+    B -.->|accesses via self.contract| C
+    B -.->|accesses via self.spec| A
+    
+    subgraph "Input/Output Mapping"
+        H[S3 Source<br/>from Specification] --> I[SageMaker Input Object]
+        J[Container Destination<br/>from Contract] --> I
+        I --> K[Script receives data<br/>at container path]
+        
+        L[Script writes data<br/>at container path] --> M[SageMaker Output Object]
+        N[Container Source<br/>from Contract] --> M
+        O[S3 Destination<br/>from Specification] --> M
+    end
 ```
 
 **4-Tier Alignment Validation System**:
