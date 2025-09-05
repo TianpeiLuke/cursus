@@ -8,13 +8,14 @@
 
 This guide provides a standardized procedure for adding a new step to the pipeline system using the modern workspace-aware development approach. Following these guidelines ensures that your implementation maintains consistency with the existing code structure and adheres to our design principles.
 
-Our pipeline architecture follows a specification-driven approach with a four-layer design:
+Our pipeline architecture follows a specification-driven approach with a six-layer design:
 
 1. **Step Specifications**: Define inputs and outputs with logical names
 2. **Script Contracts**: Define container paths for script inputs/outputs
-3. **Step Builders**: Connect specifications and contracts via SageMaker with workspace-aware registration
-4. **Processing Scripts**: Implement the actual business logic
-5. **Hyperparameters**: Define model-specific configuration parameters (for training steps)
+3. **Processing Scripts**: Implement SageMaker-compatible business logic with unified interface
+4. **Step Builders**: Connect specifications and contracts via SageMaker with workspace-aware registration
+5. **Configuration Classes**: Define three-tier config structure with field management
+6. **Hyperparameters**: Define model-specific configuration parameters (for training steps)
 
 Key architectural improvements include:
 - **Three-Tier Config Classification**: Clear separation of user inputs, system defaults, and derived values
@@ -47,9 +48,11 @@ Choose the approach that best fits your development needs. This guide covers bot
 3. [Detailed Component Guide](component_guide.md)
    - [Script Contract Development](script_contract.md)
    - [Step Specification Development](step_specification.md)
+   - [Processing Script Development](script_development_guide.md)
    - [Step Builder Implementation](step_builder.md)
+   - [Configuration Classes Development](three_tier_config_design.md)
+   - [Config Field Manager Guide](config_field_manager_guide.md)
    - [Adding a New Hyperparameter Class](hyperparameter_class.md)
-   - [Three-Tier Config Design](three_tier_config_design.md)
    - [Step Builder Registry Guide](step_builder_registry_guide.md)
 4. [Design Principles](design_principles.md)
 5. [Best Practices](best_practices.md)
@@ -70,8 +73,10 @@ To add a new step to the main workspace:
    ```bash
    # CLI approach
    cursus set-workspace main
-   
+   ```
+
    # Or in Python code
+   ```python
    from cursus.registry.hybrid.manager import UnifiedRegistryManager
    registry = UnifiedRegistryManager()
    registry.set_workspace_context("main")
@@ -140,6 +145,73 @@ To add a new step in an isolated project:
    ```
 
 For detailed guidance on specific components, refer to the relevant sections in the [detailed component guide](component_guide.md).
+
+## Step Creation Process Overview
+
+The complete step creation process follows this sequence:
+
+1. **Define Step Specification** - Establish logical inputs/outputs and step interface
+2. **Create Script Contract** - Define SageMaker container paths and script interface
+3. **Develop Processing Script** - Implement SageMaker-compatible business logic
+4. **Build Step Builder** - Connect specification and contract via SageMaker integration
+5. **Create Configuration Classes** - Implement three-tier config design with field management
+6. **Add Hyperparameters** (if training step) - Define model-specific configuration
+7. **Register and Validate** - Register with UnifiedRegistryManager and run validation tests
+
+Each step builds upon the previous ones, ensuring alignment across all layers of the architecture.
+
+## Processing Script Development
+
+Processing scripts are the core business logic that runs within SageMaker containers. They must follow standardized patterns for testability, container compatibility, and alignment with script contracts.
+
+### Key Requirements
+
+1. **Unified Main Function Interface**: All scripts must implement a standardized main function signature:
+   ```python
+   def main(
+       input_paths: Dict[str, str],
+       output_paths: Dict[str, str], 
+       environ_vars: Dict[str, str],
+       job_args: argparse.Namespace,
+       logger=None
+   ) -> Any:
+       """Main processing function with standardized interface."""
+       pass
+   ```
+
+2. **SageMaker Container Compatibility**: Scripts must work with SageMaker's standard container paths:
+   - Processing: `/opt/ml/processing/input/` and `/opt/ml/processing/output/`
+   - Training: `/opt/ml/input/data/`, `/opt/ml/model/`, `/opt/ml/output/data/`
+   - Transform: `/opt/ml/input/data/` and `/opt/ml/output/`
+
+3. **Script Contract Alignment**: Scripts must match the expectations defined in their script contracts, including:
+   - Entry point filename
+   - Expected input/output paths
+   - CLI arguments (contract uses hyphens, scripts use underscores via argparse)
+   - Environment variables
+
+### Development Workflow
+
+1. **Choose Script Template**: Select appropriate template (processing, training, or transform)
+2. **Implement Business Logic**: Add your processing logic to the main function
+3. **Add Error Handling**: Include comprehensive error handling and logging
+4. **Create Success/Failure Markers**: Ensure proper completion signaling
+5. **Unit Test**: Test the main function with various inputs
+6. **Integration Test**: Test in simulated container environment
+
+### Script Storage Locations
+
+**Shared Workspace (Traditional)**:
+```
+src/cursus/steps/scripts/your_script.py
+```
+
+**Isolated Development Workspace (Recommended)**:
+```
+development/projects/project_name/src/cursus_dev/steps/scripts/your_script.py
+```
+
+For comprehensive guidance including templates, best practices, and testing approaches, see the [Script Development Guide](script_development_guide.md).
 
 ## Adding a New Hyperparameter Class
 
@@ -219,6 +291,7 @@ For detailed guidance on using the registry system, workspace context management
 ## Related Documentation
 
 - [Creation Process](creation_process.md) - Complete step-by-step pipeline creation workflow
+- [Script Development Guide](script_development_guide.md) - Comprehensive guide for developing SageMaker-compatible scripts
 - [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - How to integrate your pipeline steps with the Zettelkasten-inspired catalog system
 - [Step Builder Registry Guide](step_builder_registry_guide.md) - Comprehensive guide to the UnifiedRegistryManager and hybrid registry system
 - [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical examples and usage patterns for registry operations

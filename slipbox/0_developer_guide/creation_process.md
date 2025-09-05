@@ -7,12 +7,13 @@ This document outlines the step-by-step process for adding a new step to the pip
 1. [Set Up Workspace Context](#1-set-up-workspace-context)
 2. [Create the Step Configuration](#2-create-the-step-configuration)
 3. [Create the Script Contract](#3-create-the-script-contract)
-4. [Create the Step Specification](#4-create-the-step-specification)
-5. [Create the Step Builder](#5-create-the-step-builder)
-6. [Register Step with Hybrid Registry System](#6-register-step-with-hybrid-registry-system)
-7. [Run Validation Framework Tests](#7-run-validation-framework-tests)
-8. [Create Unit Tests](#8-create-unit-tests)
-9. [Integrate With Pipeline Templates](#9-integrate-with-pipeline-templates)
+4. [Create the Processing Script](#4-create-the-processing-script)
+5. [Create the Step Specification](#5-create-the-step-specification)
+6. [Create the Step Builder](#6-create-the-step-builder)
+7. [Register Step with Hybrid Registry System](#7-register-step-with-hybrid-registry-system)
+8. [Run Validation Framework Tests](#8-run-validation-framework-tests)
+9. [Create Unit Tests](#9-create-unit-tests)
+10. [Integrate With Pipeline Templates](#10-integrate-with-pipeline-templates)
 
 ## Overview of the Process
 
@@ -21,12 +22,13 @@ Adding a new step to the pipeline involves creating several components that work
 1. Set up workspace context
 2. Create the step configuration class
 3. Create the script contract
-4. Create the step specification
-5. Implement the step builder (with automatic registry integration)
-6. Register step with hybrid registry system
-7. **Run validation framework tests**
-8. Create unit tests
-9. Integrate with pipeline templates
+4. Create the processing script
+5. Create the step specification
+6. Implement the step builder (with automatic registry integration)
+7. Register step with hybrid registry system
+8. **Run validation framework tests**
+9. Create unit tests
+10. Integrate with pipeline templates
 
 ## Detailed Steps
 
@@ -34,7 +36,7 @@ Adding a new step to the pipeline involves creating several components that work
 
 First, determine your development approach and set up the appropriate workspace context:
 
-#### For Main Workspace Development (`src/cursus/`)
+#### 1.1 For Main Workspace Development (`src/cursus/`)
 
 ```python
 from cursus.registry.hybrid.manager import UnifiedRegistryManager
@@ -44,7 +46,7 @@ registry = UnifiedRegistryManager()
 registry.set_workspace_context("main")
 ```
 
-#### For Isolated Project Development (`development/projects/*/`)
+#### 1.2 For Isolated Project Development (`development/projects/*/`)
 
 ```bash
 # Initialize or activate project workspace
@@ -180,7 +182,294 @@ The script contract defines:
 - Framework dependencies with version constraints
 - A description of the script's purpose
 
-### 4. Create the Step Specification
+### 4. Create the Processing Script
+
+Create the actual processing script that implements your business logic using the unified main function interface:
+
+**Create New File**: `src/cursus/steps/scripts/your_script.py`
+
+```python
+#!/usr/bin/env python3
+"""
+Processing script for YourNewStep.
+
+This script implements the business logic for your new step using the unified
+main function interface for testability and SageMaker container compatibility.
+"""
+import os
+import sys
+import argparse
+import logging
+import traceback
+from pathlib import Path
+from typing import Dict, Any
+
+# Container path constants
+CONTAINER_PATHS = {
+    "PROCESSING_INPUT_BASE": "/opt/ml/processing/input",
+    "PROCESSING_OUTPUT_BASE": "/opt/ml/processing/output",
+    "DATA_INPUT": "/opt/ml/processing/input/data",
+    "METADATA_INPUT": "/opt/ml/processing/input/metadata",
+    "DATA_OUTPUT": "/opt/ml/processing/output/data",
+    "METADATA_OUTPUT": "/opt/ml/processing/output/metadata"
+}
+
+def setup_logging() -> logging.Logger:
+    """Configure logging for CloudWatch compatibility."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
+    logger = logging.getLogger(__name__)
+    sys.stdout.flush()
+    return logger
+
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: argparse.Namespace,
+    logger=None
+) -> Dict[str, Any]:
+    """
+    Main processing function with unified interface.
+    
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments
+        logger: Optional logger function
+    
+    Returns:
+        Processing results dictionary
+    """
+    log = logger or print
+    
+    # Extract parameters from environment variables (aligned with contract)
+    required_param_1 = environ_vars.get("REQUIRED_PARAM_1")
+    required_param_2 = environ_vars.get("REQUIRED_PARAM_2")
+    
+    # Extract paths (aligned with contract)
+    input_data_dir = input_paths.get("input_data")
+    input_metadata_dir = input_paths.get("input_metadata")
+    output_data_dir = output_paths.get("output_data")
+    output_metadata_dir = output_paths.get("output_metadata")
+    
+    log(f"Starting processing with parameters:")
+    log(f"  Required Param 1: {required_param_1}")
+    log(f"  Required Param 2: {required_param_2}")
+    log(f"  Input data directory: {input_data_dir}")
+    log(f"  Input metadata directory: {input_metadata_dir}")
+    log(f"  Output data directory: {output_data_dir}")
+    log(f"  Output metadata directory: {output_metadata_dir}")
+    
+    # Validate required parameters
+    if not required_param_1:
+        raise ValueError("REQUIRED_PARAM_1 environment variable is required")
+    if not required_param_2:
+        raise ValueError("REQUIRED_PARAM_2 environment variable is required")
+    
+    # Create output directories
+    Path(output_data_dir).mkdir(parents=True, exist_ok=True)
+    Path(output_metadata_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Your business logic implementation here
+    try:
+        log("Starting data processing...")
+        
+        # Example: Read input data
+        input_files = list(Path(input_data_dir).glob("*.csv"))
+        log(f"Found {len(input_files)} input files")
+        
+        # Example: Process each file
+        processed_files = []
+        for input_file in input_files:
+            log(f"Processing file: {input_file.name}")
+            
+            # Your processing logic here
+            # For example: data transformation, feature engineering, etc.
+            
+            # Example: Write processed data
+            output_file = Path(output_data_dir) / f"processed_{input_file.name}"
+            # Your file processing and writing logic here
+            
+            processed_files.append(output_file.name)
+            log(f"Processed file saved: {output_file.name}")
+        
+        # Example: Create metadata
+        metadata = {
+            "processed_files": processed_files,
+            "processing_parameters": {
+                "required_param_1": required_param_1,
+                "required_param_2": required_param_2
+            },
+            "file_count": len(processed_files)
+        }
+        
+        # Write metadata
+        import json
+        metadata_file = Path(output_metadata_dir) / "processing_metadata.json"
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2)
+        
+        log(f"Processing completed successfully. Processed {len(processed_files)} files.")
+        
+        return {
+            "status": "success",
+            "processed_files": len(processed_files),
+            "metadata_file": str(metadata_file)
+        }
+        
+    except Exception as e:
+        log(f"Error during processing: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    try:
+        # Set up logging
+        logger = setup_logging()
+        
+        # Parse command line arguments (if any - processing scripts typically don't use CLI args)
+        parser = argparse.ArgumentParser(description="YourNewStep processing script")
+        # Add any CLI arguments if needed for your specific use case
+        args = parser.parse_args()
+        
+        # Set up paths using container defaults (aligned with contract)
+        input_paths = {
+            "input_data": CONTAINER_PATHS["DATA_INPUT"],
+            "input_metadata": CONTAINER_PATHS["METADATA_INPUT"]
+        }
+        
+        output_paths = {
+            "output_data": CONTAINER_PATHS["DATA_OUTPUT"],
+            "output_metadata": CONTAINER_PATHS["METADATA_OUTPUT"]
+        }
+        
+        # Collect environment variables (aligned with contract)
+        environ_vars = {
+            "REQUIRED_PARAM_1": os.environ.get("REQUIRED_PARAM_1"),
+            "REQUIRED_PARAM_2": os.environ.get("REQUIRED_PARAM_2"),
+            # Add other environment variables as needed
+        }
+        
+        # Validate required environment variables
+        required_vars = ["REQUIRED_PARAM_1", "REQUIRED_PARAM_2"]
+        missing_vars = [var for var in required_vars if not environ_vars.get(var)]
+        if missing_vars:
+            raise ValueError(f"Missing required environment variables: {missing_vars}")
+        
+        # Log startup information
+        logger.info("Starting YourNewStep processing script")
+        logger.info(f"Input paths: {input_paths}")
+        logger.info(f"Output paths: {output_paths}")
+        logger.info(f"Environment variables: {list(environ_vars.keys())}")
+        
+        # Execute main processing
+        result = main(input_paths, output_paths, environ_vars, args, logger.info)
+        
+        # Create success marker
+        success_path = Path(output_paths["output_data"]) / "_SUCCESS"
+        success_path.touch()
+        logger.info(f"Created success marker: {success_path}")
+        
+        logger.info("Script completed successfully")
+        logger.info(f"Processing result: {result}")
+        sys.exit(0)
+        
+    except Exception as e:
+        logging.error(f"Script failed with error: {e}")
+        logging.error(traceback.format_exc())
+        
+        # Create failure marker
+        try:
+            failure_path = Path(output_paths.get("output_data", "/tmp")) / "_FAILURE"
+            with open(failure_path, "w") as f:
+                f.write(f"Error: {str(e)}")
+            logging.error(f"Created failure marker: {failure_path}")
+        except:
+            pass
+        
+        sys.exit(1)
+```
+
+**Key Requirements for Script Implementation:**
+
+1. **Unified Main Function Interface**: The script must implement the standardized main function signature with `input_paths`, `output_paths`, `environ_vars`, `job_args`, and optional `logger` parameters.
+
+2. **Container Path Alignment**: The script must use the exact paths defined in the script contract. The container paths should match what's specified in your contract.
+
+3. **Environment Variable Handling**: Use the `environ_vars` dictionary rather than accessing `os.environ` directly. This enables better testability.
+
+4. **Error Handling**: Include comprehensive error handling with detailed logging and failure markers.
+
+5. **Success/Failure Markers**: Create `_SUCCESS` or `_FAILURE` files to indicate processing completion status.
+
+6. **Logging**: Use the standardized logging setup for CloudWatch compatibility.
+
+**Script Storage Locations:**
+
+Choose the appropriate location based on your development approach:
+
+**Shared Workspace (Traditional)**:
+```
+src/cursus/steps/scripts/your_script.py
+```
+
+**Isolated Development Workspace (Recommended)**:
+```
+development/projects/project_name/src/cursus_dev/steps/scripts/your_script.py
+```
+
+**Testing Your Script:**
+
+Create unit tests for your main function:
+
+```python
+import unittest
+import tempfile
+import shutil
+from pathlib import Path
+from your_script import main
+
+class TestYourScript(unittest.TestCase):
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.input_dir = Path(self.temp_dir) / "input"
+        self.output_dir = Path(self.temp_dir) / "output"
+        self.input_dir.mkdir(parents=True)
+        self.output_dir.mkdir(parents=True)
+    
+    def tearDown(self):
+        """Clean up test fixtures."""
+        shutil.rmtree(self.temp_dir)
+    
+    def test_main_function_success(self):
+        """Test successful execution of main function."""
+        # Set up test data
+        test_data_file = self.input_dir / "test_data.csv"
+        test_data_file.write_text("col1,col2,label\n1,2,0\n3,4,1\n")
+        
+        # Set up parameters
+        input_paths = {"input_data": str(self.input_dir)}
+        output_paths = {"output_data": str(self.output_dir)}
+        environ_vars = {"REQUIRED_PARAM_1": "test_value", "REQUIRED_PARAM_2": "42"}
+        args = argparse.Namespace()
+        
+        # Execute main function
+        result = main(input_paths, output_paths, environ_vars, args)
+        
+        # Verify results
+        self.assertEqual(result["status"], "success")
+        self.assertTrue((self.output_dir / "_SUCCESS").exists())
+```
+
+For comprehensive script development guidance including templates, best practices, and testing approaches, see the [Script Development Guide](script_development_guide.md).
+
+### 5. Create the Step Specification
 
 Define how your step connects with others in the pipeline:
 
@@ -258,7 +547,7 @@ The step specification defines:
 - Outputs for use by downstream steps
 - Job type variants if needed
 
-### 5. Create the Step Builder
+### 6. Create the Step Builder
 
 Implement the builder that creates the SageMaker step using the modern hybrid registry system:
 
@@ -389,11 +678,11 @@ The step builder:
 
 **Important**: The `create_step()` method returns a `ProcessingStep` in this example. Your step's `sagemaker_step_type` must match the actual SageMaker step type returned by this method. Available
 
-### 6. Register Step with Hybrid Registry System
+### 7. Register Step with Hybrid Registry System
 
 With the modern hybrid registry system, step registration is handled automatically through the UnifiedRegistryManager. However, you need to ensure your step is properly registered:
 
-#### Option A: Automatic Registration (Recommended)
+#### 7.1 Option A: Automatic Registration (Recommended)
 
 The UnifiedRegistryManager automatically discovers and registers your step if you follow the naming conventions:
 
@@ -406,7 +695,7 @@ The registry will automatically:
 - Extract step metadata from your configuration and specification
 - Register the step with the appropriate workspace context
 
-#### Option B: Explicit Registration (For Custom Cases)
+#### 7.2 Option B: Explicit Registration (For Custom Cases)
 
 If you need explicit control over registration, use the registry's validation-enabled registration:
 
@@ -430,7 +719,7 @@ if warnings:
         print(f"⚠️ {warning}")
 ```
 
-#### Option C: Workspace-Specific Registration
+#### 7.3 Option C: Workspace-Specific Registration
 
 For isolated workspace development:
 
@@ -454,7 +743,7 @@ registry.register_step_definition(
 )
 ```
 
-#### Verification
+#### 7.4 Verification
 
 Verify your step registration:
 
@@ -491,13 +780,13 @@ Choose the appropriate `sagemaker_step_type` based on what your `create_step()` 
 
 **Note**: The hybrid registry system maintains backward compatibility while providing workspace isolation and automatic discovery. Manual updates to `step_names_original.py` are only needed for legacy compatibility or when working with the fallback registry system.
 
-### 7. Run Validation Framework Tests
+### 8. Run Validation Framework Tests
 
 Before proceeding with unit tests, run the comprehensive validation framework to ensure your step implementation is correct.
 
 **For complete usage instructions, see the [Validation Framework Guide](validation_framework_guide.md).**
 
-#### 7.1 Unified Alignment Tester
+#### 8.1 Unified Alignment Tester
 
 Execute the **Unified Alignment Tester** located in `cursus/validation/alignment` to perform 4-tier validation:
 
@@ -608,7 +897,7 @@ The 4-tier validation includes:
 - **Level 3**: Specification-Dependencies Alignment (dependency compatibility)
 - **Level 4**: Builder-Configuration Alignment (builder config integration)
 
-#### 7.2 Universal Step Builder Test
+#### 8.2 Universal Step Builder Test
 
 Execute the **Universal Step Builder Test** located in `cursus/validation/builders` for comprehensive builder testing:
 
@@ -724,7 +1013,7 @@ The 4-level testing includes:
 - **Level 3**: Path Mapping Testing (input/output path correctness)
 - **Level 4**: Integration Testing (end-to-end step creation)
 
-#### 7.3 Step Type-Specific Validation
+#### 8.3 Step Type-Specific Validation
 
 The validation framework automatically applies step type-specific validation variants based on your `sagemaker_step_type`:
 
@@ -734,7 +1023,7 @@ The validation framework automatically applies step type-specific validation var
 - **CreateModel Steps**: Model creation validation patterns
 - **RegisterModel Steps**: Model registration validation patterns
 
-#### 7.4 Running the Validation Tests
+#### 8.4 Running the Validation Tests
 
 You can run these validation tests in several ways:
 
@@ -764,7 +1053,7 @@ python test/steps/builders/run_createmodel_tests.py # For CreateModel steps
 
 **Important**: Both validation frameworks must pass before proceeding to unit tests and integration.
 
-### 8. Create Unit Tests
+### 9. Create Unit Tests
 
 Implement tests to verify your components work correctly:
 
@@ -881,11 +1170,11 @@ class TestYourNewStepSpec(unittest.TestCase):
         self.assertFalse(input_metadata_dep.required)
 ```
 
-### 9. Integrate With Pipeline Catalog
+### 10. Integrate With Pipeline Catalog
 
 Once your step is created and validated, it becomes available for use in the Pipeline Catalog system. The modern pipeline catalog uses a Zettelkasten-based approach with connection-based discovery rather than traditional templates.
 
-#### Automatic Step Discovery
+#### 10.1 Automatic Step Discovery
 
 Your step is automatically available to all pipelines once registered with the hybrid registry system:
 
@@ -897,7 +1186,7 @@ cursus list-steps
 cursus catalog find --tags your_step_tags
 ```
 
-#### Using Your Step in Existing Pipelines
+#### 10.2 Using Your Step in Existing Pipelines
 
 Your step can be used in any pipeline that matches its dependency requirements:
 
@@ -918,7 +1207,7 @@ pipeline, report, dag_compiler, template = create_pipeline(
 )
 ```
 
-#### Creating New Pipelines with Your Step
+#### 10.3 Creating New Pipelines with Your Step
 
 To create a new pipeline that uses your step, follow the Pipeline Catalog patterns:
 
@@ -1074,7 +1363,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         return json.load(f)
 ```
 
-#### Pipeline Discovery and Usage
+#### 10.4 Pipeline Discovery and Usage
 
 Your step becomes discoverable through the catalog system:
 
@@ -1089,7 +1378,7 @@ cursus catalog recommend --use-case "pipeline using YourNewStep"
 cursus catalog connections --pipeline pipeline_with_your_step
 ```
 
-#### Best Practices for Pipeline Integration
+#### 10.5 Best Practices for Pipeline Integration
 
 1. **Use Descriptive Metadata**: Include comprehensive ZettelkastenMetadata with relevant tags and connections
 2. **Follow Naming Conventions**: Use semantic naming like `{use_case}_{complexity}` (e.g., `data_processing_standard`)
@@ -1097,7 +1386,7 @@ cursus catalog connections --pipeline pipeline_with_your_step
 4. **Include Use Cases**: Provide clear use case descriptions for better discoverability
 5. **Enable MODS Integration**: Support MODS features with graceful fallback for enhanced operational capabilities
 
-#### Validation
+#### 10.6 Validation
 
 Validate your pipeline integration:
 
