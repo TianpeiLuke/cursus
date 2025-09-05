@@ -24,7 +24,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create producer step specification with aliases
         producer_spec = StepSpecification(
             step_type="PreprocessingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             dependencies=[],  # No dependencies for this test
             outputs=[
                 OutputSpec(
@@ -40,7 +40,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create consumer step specification
         consumer_spec = StepSpecification(
             step_type="TrainingStep",
-            node_type="sink",
+            node_type=NodeType.SINK,
             dependencies=[
                 DependencySpec(
                     logical_name="training_data",
@@ -74,7 +74,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create producer step specification
         producer_spec = StepSpecification(
             step_type="PreprocessingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             dependencies=[],
             outputs=[
                 OutputSpec(
@@ -89,7 +89,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create consumer step specification
         consumer_spec = StepSpecification(
             step_type="TrainingStep",
-            node_type="sink",
+            node_type=NodeType.SINK,
             dependencies=[
                 DependencySpec(
                     logical_name="training_data",
@@ -141,7 +141,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Producer 1: Good type match but poor semantic match
         producer1_spec = StepSpecification(
             step_type="DataLoadingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="raw_data",
@@ -155,7 +155,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Producer 2: Perfect match (best candidate)
         producer2_spec = StepSpecification(
             step_type="PreprocessingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="training_dataset",
@@ -170,7 +170,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Producer 3: Good semantic match but wrong type
         producer3_spec = StepSpecification(
             step_type="EvaluationStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="training_metrics",
@@ -184,7 +184,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Consumer step that needs training data
         consumer_spec = StepSpecification(
             step_type="TrainingStep",
-            node_type="sink",
+            node_type=NodeType.SINK,
             dependencies=[
                 DependencySpec(
                     logical_name="training_data",
@@ -350,7 +350,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create a producer step
         producer_spec = StepSpecification(
             step_type="PreprocessingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="processed_data",
@@ -365,7 +365,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Use CUSTOM_PROPERTY type for validation_data to prevent matching with processed_data
         consumer_spec = StepSpecification(
             step_type="TrainingStep",
-            node_type="internal",
+            node_type=NodeType.INTERNAL,
             dependencies=[
                 DependencySpec(
                     logical_name="training_data",
@@ -413,7 +413,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create a consumer step with a required dependency
         consumer_spec = StepSpecification(
             step_type="TrainingStep",
-            node_type="sink",
+            node_type=NodeType.SINK,
             dependencies=[
                 DependencySpec(
                     logical_name="training_data",
@@ -428,7 +428,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create an incompatible producer (wrong type)
         wrong_type_producer = StepSpecification(
             step_type="PreprocessingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="processed_data",
@@ -464,7 +464,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create a specification for each registry
         spec1 = StepSpecification(
             step_type="PreprocessingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="processed_data",
@@ -477,7 +477,7 @@ class TestDependencyResolver(unittest.TestCase):
         
         spec2 = StepSpecification(
             step_type="ProcessingStep",  # Different name
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="data_output",  # Different name
@@ -560,7 +560,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create a chain of steps: data loading → preprocessing → training → evaluation
         data_loading_spec = StepSpecification(
             step_type="DataLoadingStep",
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="raw_data",
@@ -573,7 +573,7 @@ class TestDependencyResolver(unittest.TestCase):
         
         preprocessing_spec = StepSpecification(
             step_type="PreprocessingStep",
-            node_type="internal",
+            node_type=NodeType.INTERNAL,
             dependencies=[
                 DependencySpec(
                     logical_name="input_data",
@@ -601,7 +601,7 @@ class TestDependencyResolver(unittest.TestCase):
         
         training_spec = StepSpecification(
             step_type="TrainingStep",
-            node_type="internal",
+            node_type=NodeType.INTERNAL,
             dependencies=[
                 DependencySpec(
                     logical_name="training_data",
@@ -630,7 +630,7 @@ class TestDependencyResolver(unittest.TestCase):
         
         evaluation_spec = StepSpecification(
             step_type="EvaluationStep",
-            node_type="sink",
+            node_type=NodeType.SINK,
             dependencies=[
                 DependencySpec(
                     logical_name="model",
@@ -697,7 +697,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create a producer step with job type suffix
         producer_spec = StepSpecification(
             step_type="TabularPreprocessing_Training",  # Job type variant
-            node_type="source",
+            node_type=NodeType.SOURCE,
             outputs=[
                 OutputSpec(
                     logical_name="processed_data",
@@ -711,7 +711,7 @@ class TestDependencyResolver(unittest.TestCase):
         # Create a consumer step that expects the base step type (without job suffix)
         consumer_spec = StepSpecification(
             step_type="XGBoostTraining",
-            node_type="sink",
+            node_type=NodeType.SINK,
             dependencies=[
                 DependencySpec(
                     logical_name="training_data",

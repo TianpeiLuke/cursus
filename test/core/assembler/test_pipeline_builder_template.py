@@ -11,13 +11,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Mock the problematic imports to avoid circular import issues
-sys.modules['src.cursus.core.base.specification_base'] = MagicMock()
-sys.modules['src.cursus.core.deps.property_reference'] = MagicMock()
-sys.modules['src.cursus.core.deps.dependency_resolver'] = MagicMock()
-sys.modules['src.cursus.core.deps.registry_manager'] = MagicMock()
-sys.modules['src.cursus.core.deps.semantic_matcher'] = MagicMock()
-sys.modules['src.cursus.core.deps.factory'] = MagicMock()
+# Note: Removed global module mocks to prevent interference with other tests
+# These were causing mock interference in test/core/base/test_specification_base.py
 
 from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
 from src.cursus.core.assembler.pipeline_assembler import PipelineAssembler

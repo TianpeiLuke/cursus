@@ -16,6 +16,7 @@ from src.cursus.core.base import BasePipelineConfig, StepBuilderBase, OutputSpec
 from src.cursus.api.dag.base_dag import PipelineDAG
 from src.cursus.core.deps.registry_manager import RegistryManager
 from src.cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
+from src.cursus.core.base.enums import DependencyType, NodeType
 
 
 class MockConfig(BasePipelineConfig):
@@ -38,18 +39,38 @@ class MockStepBuilder(StepBuilderBase):
     
     def __init__(self, config, sagemaker_session=None, role=None, notebook_root=None, 
                  registry_manager=None, dependency_resolver=None):
-        # Create a mock specification first
-        self.spec = Mock(spec=StepSpecification)
-        self.spec.step_type = "MockStep"
-        self.spec.outputs = {
-            "output1": Mock(spec=OutputSpec, property_path="Steps.MockStep.OutputDataConfig.S3OutputPath"),
-            "output2": Mock(spec=OutputSpec, property_path="Steps.MockStep.ProcessingOutputConfig.Outputs.output2.S3Output.S3Uri")
-        }
-        self.spec.dependencies = {
-            "input1": Mock(spec=DependencySpec),
-            "input2": Mock(spec=DependencySpec)
-        }
-        self.spec.get_output_by_name_or_alias = Mock(side_effect=lambda name: self.spec.outputs.get(name))
+        # Create real OutputSpec and DependencySpec instances to avoid mock interference
+        output1 = OutputSpec(
+            logical_name="output1",
+            description="Mock output 1",
+            property_path="properties.MockStep.Properties.OutputDataConfig.S3OutputPath",
+            output_type=DependencyType.PROCESSING_OUTPUT
+        )
+        output2 = OutputSpec(
+            logical_name="output2",
+            description="Mock output 2",
+            property_path="properties.MockStep.Properties.ProcessingOutputConfig.Outputs.output2.S3Output.S3Uri",
+            output_type=DependencyType.PROCESSING_OUTPUT
+        )
+        
+        input1 = DependencySpec(
+            logical_name="input1",
+            description="Mock input 1",
+            dependency_type=DependencyType.PROCESSING_OUTPUT
+        )
+        input2 = DependencySpec(
+            logical_name="input2",
+            description="Mock input 2",
+            dependency_type=DependencyType.PROCESSING_OUTPUT
+        )
+        
+        # Create real StepSpecification instance
+        self.spec = StepSpecification(
+            step_type="MockStep",
+            node_type=NodeType.INTERNAL,
+            dependencies=[input1, input2],
+            outputs=[output1, output2]
+        )
         
         # Call parent constructor
         super().__init__(

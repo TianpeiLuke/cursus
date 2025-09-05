@@ -16,6 +16,7 @@ from src.cursus.core.base.specification_base import (
 from src.cursus.core.base.contract_base import (
     ValidationResult, AlignmentResult
 )
+from src.cursus.core.base.enums import DependencyType, NodeType
 
 
 class TestOutputSpec(unittest.TestCase):

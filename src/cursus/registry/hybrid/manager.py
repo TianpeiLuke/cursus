@@ -67,32 +67,22 @@ class UnifiedRegistryManager:
         self._discover_and_load_workspaces()
     
     def _load_core_registry(self):
-        """Load core registry from file."""
+        """Load core registry from original step names to avoid circular imports."""
         from ..exceptions import RegistryLoadError
         
         try:
-            registry_path = Path(self.core_registry_path)
-            if not registry_path.exists():
-                raise RegistryLoadError(f"Core registry file not found: {registry_path}")
-            
-            # Load the registry module
-            module = load_registry_module(str(registry_path))
-            
-            # Check for STEP_NAMES attribute
-            if not hasattr(module, 'STEP_NAMES'):
-                raise RegistryLoadError(f"STEP_NAMES not found in {registry_path}")
-            
-            step_names = getattr(module, 'STEP_NAMES', {})
+            # Import directly from step_names_original to avoid circular imports
+            from ..step_names_original import STEP_NAMES as ORIGINAL_STEP_NAMES
             
             # Convert to StepDefinition objects
-            for step_name, step_info in step_names.items():
+            for step_name, step_info in ORIGINAL_STEP_NAMES.items():
                 step_def = from_legacy_format(
                     step_name, step_info, registry_type="core", workspace_id=None
                 )
                 self._core_steps[step_name] = step_def
             
             self._core_loaded = True
-            logger.debug(f"Loaded {len(self._core_steps)} core steps")
+            logger.debug(f"Loaded {len(self._core_steps)} core steps from original registry")
             
         except Exception as e:
             if isinstance(e, RegistryLoadError):

@@ -2,6 +2,7 @@
 Comprehensive test runner for all base classes in cursus.core.base
 
 This module runs all tests for the base classes and provides a summary.
+Note: This file is renamed to avoid pytest auto-discovery to prevent duplicate test execution.
 """
 
 import unittest
@@ -14,53 +15,76 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Import all test modules
-from test.core.base.test_config_base import TestBasePipelineConfig
-from test.core.base.test_builder_base import TestStepBuilderBase
-from test.core.base.test_specification_base import (
-    TestOutputSpec, TestDependencySpec, TestValidationResult, 
-    TestAlignmentResult, TestStepSpecification
-)
-from test.core.base.test_contract_base import (
-    TestValidationResult as TestContractValidationResult,
-    TestScriptContract, TestScriptAnalyzer
-)
-from test.core.base.test_hyperparameters_base import TestModelHyperparameters
-from test.core.base.test_enums import (
-    TestDependencyType, TestNodeType, TestEnumInteraction, TestEnumEdgeCases
-)
+# Import test modules dynamically to avoid pytest auto-discovery conflicts
+def import_test_modules():
+    """Import test modules dynamically to avoid conflicts."""
+    from test.core.base.test_config_base import TestBasePipelineConfig
+    from test.core.base.test_builder_base import TestStepBuilderBase
+    from test.core.base.test_specification_base import (
+        TestOutputSpec, TestDependencySpec, TestValidationResult, 
+        TestAlignmentResult, TestStepSpecification
+    )
+    from test.core.base.test_contract_base import (
+        TestValidationResult as TestContractValidationResult,
+        TestScriptContract, TestScriptAnalyzer
+    )
+    from test.core.base.test_hyperparameters_base import TestModelHyperparameters
+    from test.core.base.test_enums import (
+        TestDependencyType, TestNodeType, TestEnumInteraction, TestEnumEdgeCases
+    )
+    
+    return {
+        'TestBasePipelineConfig': TestBasePipelineConfig,
+        'TestStepBuilderBase': TestStepBuilderBase,
+        'TestOutputSpec': TestOutputSpec,
+        'TestDependencySpec': TestDependencySpec,
+        'TestValidationResult': TestValidationResult,
+        'TestAlignmentResult': TestAlignmentResult,
+        'TestStepSpecification': TestStepSpecification,
+        'TestContractValidationResult': TestContractValidationResult,
+        'TestScriptContract': TestScriptContract,
+        'TestScriptAnalyzer': TestScriptAnalyzer,
+        'TestModelHyperparameters': TestModelHyperparameters,
+        'TestDependencyType': TestDependencyType,
+        'TestNodeType': TestNodeType,
+        'TestEnumInteraction': TestEnumInteraction,
+        'TestEnumEdgeCases': TestEnumEdgeCases,
+    }
 
 
 def create_test_suite():
     """Create a comprehensive test suite for all base classes."""
     suite = unittest.TestSuite()
     
+    # Import test classes
+    test_classes = import_test_modules()
+    
     # Add config_base tests
-    suite.addTest(unittest.makeSuite(TestBasePipelineConfig))
+    suite.addTest(unittest.makeSuite(test_classes['TestBasePipelineConfig']))
     
     # Add builder_base tests
-    suite.addTest(unittest.makeSuite(TestStepBuilderBase))
+    suite.addTest(unittest.makeSuite(test_classes['TestStepBuilderBase']))
     
     # Add specification_base tests
-    suite.addTest(unittest.makeSuite(TestOutputSpec))
-    suite.addTest(unittest.makeSuite(TestDependencySpec))
-    suite.addTest(unittest.makeSuite(TestValidationResult))
-    suite.addTest(unittest.makeSuite(TestAlignmentResult))
-    suite.addTest(unittest.makeSuite(TestStepSpecification))
+    suite.addTest(unittest.makeSuite(test_classes['TestOutputSpec']))
+    suite.addTest(unittest.makeSuite(test_classes['TestDependencySpec']))
+    suite.addTest(unittest.makeSuite(test_classes['TestValidationResult']))
+    suite.addTest(unittest.makeSuite(test_classes['TestAlignmentResult']))
+    suite.addTest(unittest.makeSuite(test_classes['TestStepSpecification']))
     
     # Add contract_base tests
-    suite.addTest(unittest.makeSuite(TestContractValidationResult))
-    suite.addTest(unittest.makeSuite(TestScriptContract))
-    suite.addTest(unittest.makeSuite(TestScriptAnalyzer))
+    suite.addTest(unittest.makeSuite(test_classes['TestContractValidationResult']))
+    suite.addTest(unittest.makeSuite(test_classes['TestScriptContract']))
+    suite.addTest(unittest.makeSuite(test_classes['TestScriptAnalyzer']))
     
     # Add hyperparameters_base tests
-    suite.addTest(unittest.makeSuite(TestModelHyperparameters))
+    suite.addTest(unittest.makeSuite(test_classes['TestModelHyperparameters']))
     
     # Add enums tests
-    suite.addTest(unittest.makeSuite(TestDependencyType))
-    suite.addTest(unittest.makeSuite(TestNodeType))
-    suite.addTest(unittest.makeSuite(TestEnumInteraction))
-    suite.addTest(unittest.makeSuite(TestEnumEdgeCases))
+    suite.addTest(unittest.makeSuite(test_classes['TestDependencyType']))
+    suite.addTest(unittest.makeSuite(test_classes['TestNodeType']))
+    suite.addTest(unittest.makeSuite(test_classes['TestEnumInteraction']))
+    suite.addTest(unittest.makeSuite(test_classes['TestEnumEdgeCases']))
     
     return suite
 
