@@ -11,13 +11,14 @@ from typing import Dict, Any
 
 from src.cursus.registry.hybrid.models import (
     StepDefinition,
-    NamespacedStepDefinition,
     ResolutionContext,
     StepResolutionResult,
     RegistryValidationResult,
     ConflictAnalysis,
-    StepComponentResolution,
-    DistributedRegistryValidationResult
+    RegistryType,
+    ResolutionMode,
+    ResolutionStrategy,
+    ConflictType
 )
 
 
@@ -105,7 +106,7 @@ class TestStepDefinition(unittest.TestCase):
                 registry_type="invalid_type"  # Invalid
             )
         
-        self.assertIn("registry_type must be one of", str(exc_info.exception))
+        self.assertIn("Input should be 'core', 'workspace' or 'override'", str(exc_info.exception))
     
     def test_step_definition_to_legacy_format(self):
         """Test conversion to legacy format."""
@@ -118,17 +119,18 @@ class TestStepDefinition(unittest.TestCase):
             description="Test step description",
             registry_type="core"
         )
-        
+
         legacy_format = definition.to_legacy_format()
-        
+
         expected = {
             'config_class': "TestStepConfig",
             'builder_step_name': "TestStepBuilder",
             'spec_type': "TestStep",
             'sagemaker_step_type': "Processing",
-            'description': "Test step description"
+            'description': "Test step description",
+            'job_types': []  # Default empty list is included
         }
-        
+
         self.assertEqual(legacy_format, expected)
     
     def test_step_definition_string_stripping(self):
@@ -151,44 +153,46 @@ class TestStepDefinition(unittest.TestCase):
         self.assertEqual(definition.description, "Test step description")
 
 
-class TestNamespacedStepDefinition(unittest.TestCase):
-    """Test NamespacedStepDefinition data model."""
+class TestRegistryType(unittest.TestCase):
+    """Test RegistryType enum."""
     
-    def test_namespaced_step_definition_creation(self):
-        """Test creating namespaced step definition."""
-        definition = NamespacedStepDefinition(
-            name="TestStep",
-            config_class="TestStepConfig",
-            builder_step_name="TestStepBuilder",
-            spec_type="TestStep",
-            sagemaker_step_type="Processing",
-            description="Test step description",
-            registry_type="workspace",
-            namespace="developer_1",
-            fully_qualified_name="developer_1.TestStep"
-        )
-        
-        self.assertEqual(definition.name, "TestStep")
-        self.assertEqual(definition.namespace, "developer_1")
-        self.assertEqual(definition.fully_qualified_name, "developer_1.TestStep")
-        self.assertEqual(definition.registry_type, "workspace")
+    def test_registry_type_values(self):
+        """Test RegistryType enum values."""
+        self.assertEqual(RegistryType.CORE, "core")
+        self.assertEqual(RegistryType.WORKSPACE, "workspace")
+        self.assertEqual(RegistryType.OVERRIDE, "override")
+
+
+class TestResolutionMode(unittest.TestCase):
+    """Test ResolutionMode enum."""
     
-    def test_namespaced_step_definition_validation(self):
-        """Test validation of namespaced step definition."""
-        with self.assertRaises(ValidationError) as exc_info:
-            NamespacedStepDefinition(
-                name="TestStep",
-                config_class="TestStepConfig",
-                builder_step_name="TestStepBuilder",
-                spec_type="TestStep",
-                sagemaker_step_type="Processing",
-                description="Test step description",
-                registry_type="workspace",
-                namespace="",  # Empty namespace
-                fully_qualified_name="TestStep"
-            )
-        
-        self.assertIn("String should have at least 1 character", str(exc_info.exception))
+    def test_resolution_mode_values(self):
+        """Test ResolutionMode enum values."""
+        self.assertEqual(ResolutionMode.AUTOMATIC, "automatic")
+        self.assertEqual(ResolutionMode.INTERACTIVE, "interactive")
+        self.assertEqual(ResolutionMode.STRICT, "strict")
+
+
+class TestResolutionStrategy(unittest.TestCase):
+    """Test ResolutionStrategy enum."""
+    
+    def test_resolution_strategy_values(self):
+        """Test ResolutionStrategy enum values."""
+        self.assertEqual(ResolutionStrategy.WORKSPACE_PRIORITY, "workspace_priority")
+        self.assertEqual(ResolutionStrategy.FRAMEWORK_MATCH, "framework_match")
+        self.assertEqual(ResolutionStrategy.ENVIRONMENT_MATCH, "environment_match")
+        self.assertEqual(ResolutionStrategy.MANUAL, "manual")
+
+
+class TestConflictType(unittest.TestCase):
+    """Test ConflictType enum."""
+    
+    def test_conflict_type_values(self):
+        """Test ConflictType enum values."""
+        self.assertEqual(ConflictType.NAME_CONFLICT, "name_conflict")
+        self.assertEqual(ConflictType.FRAMEWORK_CONFLICT, "framework_conflict")
+        self.assertEqual(ConflictType.VERSION_CONFLICT, "version_conflict")
+        self.assertEqual(ConflictType.WORKSPACE_CONFLICT, "workspace_conflict")
 
 
 class TestResolutionContext(unittest.TestCase):
@@ -224,7 +228,7 @@ class TestResolutionContext(unittest.TestCase):
                 resolution_mode="invalid_mode"
             )
         
-        self.assertIn("resolution_mode must be one of", str(exc_info.exception))
+        self.assertIn("Input should be 'automatic', 'interactive' or 'strict'", str(exc_info.exception))
     
     def test_resolution_context_validation_valid_modes(self):
         """Test validation passes for valid resolution modes."""
@@ -240,12 +244,20 @@ class TestStepResolutionResult(unittest.TestCase):
     
     def test_step_resolution_result_success(self):
         """Test creating successful resolution result."""
-        mock_definition = Mock()
+        step_def = StepDefinition(
+            name="TestStep",
+            registry_type="workspace",
+            config_class="TestConfig",
+            builder_step_name="TestBuilder",
+            spec_type="TestSpec",
+            sagemaker_step_type="Processing"
+        )
         
         result = StepResolutionResult(
             step_name="TestStep",
             resolved=True,
-            selected_definition=mock_definition,
+            selected_definition=step_def,
+            source_registry="workspace",
             resolution_strategy="workspace_priority",
             reason="Found in current workspace",
             conflicting_definitions=[]
@@ -253,7 +265,8 @@ class TestStepResolutionResult(unittest.TestCase):
         
         self.assertEqual(result.step_name, "TestStep")
         self.assertTrue(result.resolved)
-        self.assertEqual(result.selected_definition, mock_definition)
+        self.assertEqual(result.selected_definition, step_def)
+        self.assertEqual(result.source_registry, "workspace")
         self.assertEqual(result.resolution_strategy, "workspace_priority")
         self.assertEqual(result.reason, "Found in current workspace")
         self.assertEqual(result.conflicting_definitions, [])
@@ -263,26 +276,44 @@ class TestStepResolutionResult(unittest.TestCase):
         result = StepResolutionResult(
             step_name="UnknownStep",
             resolved=False,
+            source_registry="none",
+            resolution_strategy="none",
             reason="Step not found in any registry"
         )
         
         self.assertEqual(result.step_name, "UnknownStep")
         self.assertFalse(result.resolved)
         self.assertIsNone(result.selected_definition)
-        self.assertIsNone(result.resolution_strategy)
+        self.assertEqual(result.source_registry, "none")
+        self.assertEqual(result.resolution_strategy, "none")
         self.assertEqual(result.reason, "Step not found in any registry")
         self.assertEqual(result.conflicting_definitions, [])
     
     def test_step_resolution_result_with_conflicts(self):
         """Test creating resolution result with conflicts."""
-        mock_def1 = Mock()
-        mock_def2 = Mock()
-        conflicting_definitions = [mock_def1, mock_def2]
+        step_def1 = StepDefinition(
+            name="ConflictedStep",
+            registry_type="core",
+            config_class="CoreConfig",
+            builder_step_name="CoreBuilder",
+            spec_type="CoreSpec",
+            sagemaker_step_type="Processing"
+        )
+        step_def2 = StepDefinition(
+            name="ConflictedStep",
+            registry_type="workspace",
+            config_class="WorkspaceConfig",
+            builder_step_name="WorkspaceBuilder",
+            spec_type="WorkspaceSpec",
+            sagemaker_step_type="Processing"
+        )
+        conflicting_definitions = [step_def1, step_def2]
         
         result = StepResolutionResult(
             step_name="ConflictedStep",
             resolved=True,
-            selected_definition=mock_def1,
+            selected_definition=step_def1,
+            source_registry="core",
             resolution_strategy="priority_based",
             reason="Selected based on priority",
             conflicting_definitions=conflicting_definitions
@@ -290,7 +321,8 @@ class TestStepResolutionResult(unittest.TestCase):
         
         self.assertEqual(result.step_name, "ConflictedStep")
         self.assertTrue(result.resolved)
-        self.assertEqual(result.selected_definition, mock_def1)
+        self.assertEqual(result.selected_definition, step_def1)
+        self.assertEqual(result.source_registry, "core")
         self.assertEqual(result.conflicting_definitions, conflicting_definitions)
         self.assertEqual(len(result.conflicting_definitions), 2)
 
@@ -339,12 +371,28 @@ class TestConflictAnalysis(unittest.TestCase):
     
     def test_conflict_analysis_creation(self):
         """Test creating conflict analysis."""
-        mock_def1 = Mock()
-        mock_def2 = Mock()
+        step_def1 = StepDefinition(
+            name="ConflictedStep",
+            registry_type="core",
+            config_class="CoreConfig",
+            builder_step_name="CoreBuilder",
+            spec_type="CoreSpec",
+            sagemaker_step_type="Processing"
+        )
+        step_def2 = StepDefinition(
+            name="ConflictedStep",
+            registry_type="workspace",
+            config_class="WorkspaceConfig",
+            builder_step_name="WorkspaceBuilder",
+            spec_type="WorkspaceSpec",
+            sagemaker_step_type="Processing"
+        )
         
         analysis = ConflictAnalysis(
             step_name="ConflictedStep",
-            conflicting_definitions=[mock_def1, mock_def2],
+            conflicting_definitions=[step_def1, step_def2],
+            conflicting_sources=["core", "workspace"],
+            resolution_strategy="workspace_priority",
             conflict_type="workspace_collision",
             resolution_strategies=["workspace_priority", "framework_match"],
             recommended_strategy="workspace_priority",
@@ -352,88 +400,13 @@ class TestConflictAnalysis(unittest.TestCase):
         )
         
         self.assertEqual(analysis.step_name, "ConflictedStep")
-        self.assertEqual(analysis.conflicting_definitions, [mock_def1, mock_def2])
+        self.assertEqual(analysis.conflicting_definitions, [step_def1, step_def2])
+        self.assertEqual(analysis.conflicting_sources, ["core", "workspace"])
+        self.assertEqual(analysis.resolution_strategy, "workspace_priority")
         self.assertEqual(analysis.conflict_type, "workspace_collision")
         self.assertEqual(analysis.resolution_strategies, ["workspace_priority", "framework_match"])
         self.assertEqual(analysis.recommended_strategy, "workspace_priority")
         self.assertEqual(analysis.impact_assessment, "Low impact - isolated to development")
-
-
-class TestStepComponentResolution(unittest.TestCase):
-    """Test StepComponentResolution data model."""
-    
-    def test_step_component_resolution_creation(self):
-        """Test creating step component resolution."""
-        resolution = StepComponentResolution(
-            step_name="TestStep",
-            config_class="TestStepConfig",
-            builder_class="TestStepBuilder",
-            spec_class="TestStepSpec",
-            script_path="/path/to/script.py",
-            contract_class="TestStepContract",
-            workspace_id="developer_1",
-            resolution_source="workspace_registry"
-        )
-        
-        self.assertEqual(resolution.step_name, "TestStep")
-        self.assertEqual(resolution.config_class, "TestStepConfig")
-        self.assertEqual(resolution.builder_class, "TestStepBuilder")
-        self.assertEqual(resolution.spec_class, "TestStepSpec")
-        self.assertEqual(resolution.script_path, "/path/to/script.py")
-        self.assertEqual(resolution.contract_class, "TestStepContract")
-        self.assertEqual(resolution.workspace_id, "developer_1")
-        self.assertEqual(resolution.resolution_source, "workspace_registry")
-
-
-class TestDistributedRegistryValidationResult(unittest.TestCase):
-    """Test DistributedRegistryValidationResult data model."""
-    
-    def test_distributed_validation_result_creation(self):
-        """Test creating distributed validation result."""
-        core_result = RegistryValidationResult(
-            registry_type="core",
-            is_valid=True,
-            step_count=17,
-            issues=[],
-            warnings=[]
-        )
-        
-        workspace_results = {
-            "developer_1": RegistryValidationResult(
-                registry_type="workspace",
-                is_valid=True,
-                step_count=3,
-                issues=[],
-                warnings=[]
-            )
-        }
-        
-        conflicts = {
-            "ConflictedStep": ConflictAnalysis(
-                step_name="ConflictedStep",
-                conflicting_definitions=[],
-                conflict_type="workspace_collision",
-                resolution_strategies=["workspace_priority"],
-                recommended_strategy="workspace_priority",
-                impact_assessment="Low impact"
-            )
-        }
-        
-        result = DistributedRegistryValidationResult(
-            overall_status="HEALTHY",
-            core_registry_result=core_result,
-            workspace_results=workspace_results,
-            conflicts=conflicts,
-            total_step_count=20,
-            recommendations=["Consider renaming conflicted steps"]
-        )
-        
-        self.assertEqual(result.overall_status, "HEALTHY")
-        self.assertEqual(result.core_registry_result, core_result)
-        self.assertEqual(result.workspace_results, workspace_results)
-        self.assertEqual(result.conflicts, conflicts)
-        self.assertEqual(result.total_step_count, 20)
-        self.assertEqual(result.recommendations, ["Consider renaming conflicted steps"])
 
 
 class TestModelValidation(unittest.TestCase):
@@ -556,6 +529,7 @@ class TestModelSerialization(unittest.TestCase):
             "step_name": "TestStep",
             "resolved": True,
             "selected_definition": None,
+            "source_registry": "workspace",
             "resolution_strategy": "workspace_priority",
             "reason": "Found in workspace",
             "conflicting_definitions": []
@@ -565,6 +539,7 @@ class TestModelSerialization(unittest.TestCase):
         
         self.assertEqual(result.step_name, "TestStep")
         self.assertTrue(result.resolved)
+        self.assertEqual(result.source_registry, "workspace")
         self.assertEqual(result.resolution_strategy, "workspace_priority")
         self.assertEqual(result.reason, "Found in workspace")
 

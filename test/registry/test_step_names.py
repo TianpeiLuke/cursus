@@ -1,11 +1,16 @@
-"""Unit tests for the step names registry module."""
+"""Unit tests for the enhanced step names registry module with workspace awareness."""
 
 import unittest
+import os
+from unittest.mock import patch, MagicMock
 from src.cursus.registry.step_names import (
+    # Core registry data structures (now dynamic)
     STEP_NAMES,
     CONFIG_STEP_REGISTRY,
     BUILDER_STEP_NAMES,
     SPEC_STEP_TYPES,
+    
+    # Original helper functions (now workspace-aware)
     get_config_class_name,
     get_builder_step_name,
     get_spec_step_type,
@@ -17,7 +22,28 @@ from src.cursus.registry.step_names import (
     get_step_description,
     list_all_step_info,
     get_canonical_name_from_file_name,
-    validate_file_name
+    validate_file_name,
+    
+    # NEW: Workspace context management
+    set_workspace_context,
+    get_workspace_context,
+    clear_workspace_context,
+    workspace_context,
+    
+    # NEW: Workspace-aware registry functions
+    get_step_names,
+    get_config_step_registry,
+    get_builder_step_names,
+    get_spec_step_types,
+    
+    # NEW: Workspace management functions
+    list_available_workspaces,
+    get_workspace_step_count,
+    has_workspace_conflicts,
+    
+    # Internal functions for testing
+    _get_registry_manager,
+    _create_fallback_manager
 )
 
 
@@ -370,6 +396,337 @@ class TestStepNames(unittest.TestCase):
         self.assertEqual(step_info["builder_step_name"], "XGBoostModelEvalStepBuilder")
         self.assertEqual(step_info["spec_type"], "XGBoostModelEval")
         self.assertEqual(step_info["sagemaker_step_type"], "Processing")
+
+
+class TestWorkspaceContextManagement(unittest.TestCase):
+    """Test case for workspace context management functionality."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        # Clear any existing workspace context
+        clear_workspace_context()
+    
+    def tearDown(self):
+        """Clean up after tests."""
+        # Clear workspace context after each test
+        clear_workspace_context()
+        # Clear environment variable if set
+        if 'CURSUS_WORKSPACE_ID' in os.environ:
+            del os.environ['CURSUS_WORKSPACE_ID']
+    
+    def test_workspace_context_basic_operations(self):
+        """Test basic workspace context operations."""
+        # Initially no context
+        self.assertIsNone(get_workspace_context())
+        
+        # Set workspace context
+        set_workspace_context("test_workspace")
+        self.assertEqual(get_workspace_context(), "test_workspace")
+        
+        # Clear workspace context
+        clear_workspace_context()
+        self.assertIsNone(get_workspace_context())
+    
+    def test_workspace_context_environment_variable(self):
+        """Test workspace context from environment variable."""
+        # Set environment variable
+        os.environ['CURSUS_WORKSPACE_ID'] = "env_workspace"
+        
+        # Should return environment variable value
+        self.assertEqual(get_workspace_context(), "env_workspace")
+        
+        # Explicit context should override environment
+        set_workspace_context("explicit_workspace")
+        self.assertEqual(get_workspace_context(), "explicit_workspace")
+        
+        # Clear explicit context, should fall back to environment
+        clear_workspace_context()
+        self.assertEqual(get_workspace_context(), "env_workspace")
+    
+    def test_workspace_context_manager(self):
+        """Test workspace context manager."""
+        # Set initial context
+        set_workspace_context("initial_workspace")
+        
+        # Use context manager
+        with workspace_context("temp_workspace"):
+            self.assertEqual(get_workspace_context(), "temp_workspace")
+        
+        # Should restore original context
+        self.assertEqual(get_workspace_context(), "initial_workspace")
+        
+        # Test with no initial context
+        clear_workspace_context()
+        with workspace_context("temp_workspace"):
+            self.assertEqual(get_workspace_context(), "temp_workspace")
+        
+        # Should be None after context manager
+        self.assertIsNone(get_workspace_context())
+    
+    def test_workspace_aware_functions(self):
+        """Test that functions work with workspace context."""
+        # Test without workspace context
+        step_names_core = get_step_names()
+        self.assertIsInstance(step_names_core, dict)
+        
+        # Test with workspace context
+        set_workspace_context("test_workspace")
+        step_names_workspace = get_step_names()
+        self.assertIsInstance(step_names_workspace, dict)
+        
+        # Test explicit workspace parameter
+        step_names_explicit = get_step_names("explicit_workspace")
+        self.assertIsInstance(step_names_explicit, dict)
+        
+        # Test other workspace-aware functions
+        config_registry = get_config_step_registry("test_workspace")
+        self.assertIsInstance(config_registry, dict)
+        
+        builder_names = get_builder_step_names("test_workspace")
+        self.assertIsInstance(builder_names, dict)
+        
+        spec_types = get_spec_step_types("test_workspace")
+        self.assertIsInstance(spec_types, dict)
+    
+    def test_workspace_aware_helper_functions(self):
+        """Test that helper functions work with workspace context."""
+        # Test with workspace context
+        set_workspace_context("test_workspace")
+        
+        # These should work the same as before
+        config_class = get_config_class_name("XGBoostTraining")
+        self.assertEqual(config_class, "XGBoostTrainingConfig")
+        
+        # Test with explicit workspace parameter
+        config_class_explicit = get_config_class_name("XGBoostTraining", "explicit_workspace")
+        self.assertEqual(config_class_explicit, "XGBoostTrainingConfig")
+        
+        # Test other functions
+        builder_name = get_builder_step_name("XGBoostTraining", "test_workspace")
+        self.assertEqual(builder_name, "XGBoostTrainingStepBuilder")
+        
+        spec_type = get_spec_step_type("XGBoostTraining", "test_workspace")
+        self.assertEqual(spec_type, "XGBoostTraining")
+        
+        # Test validation functions
+        self.assertTrue(validate_step_name("XGBoostTraining", "test_workspace"))
+        self.assertFalse(validate_step_name("NonExistentStep", "test_workspace"))
+
+
+class TestRegistryManagerAndFallback(unittest.TestCase):
+    """Test case for registry manager and fallback functionality."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        clear_workspace_context()
+    
+    def tearDown(self):
+        """Clean up after tests."""
+        clear_workspace_context()
+    
+    def test_registry_manager_initialization(self):
+        """Test registry manager initialization."""
+        manager = _get_registry_manager()
+        self.assertIsNotNone(manager)
+        
+        # Should have required methods
+        self.assertTrue(hasattr(manager, 'create_legacy_step_names_dict'))
+    
+    def test_fallback_manager_creation(self):
+        """Test fallback manager creation."""
+        fallback_manager = _create_fallback_manager()
+        self.assertIsNotNone(fallback_manager)
+        
+        # Should have required methods
+        self.assertTrue(hasattr(fallback_manager, 'create_legacy_step_names_dict'))
+        self.assertTrue(hasattr(fallback_manager, 'get_step_definition'))
+        self.assertTrue(hasattr(fallback_manager, 'has_step'))
+        self.assertTrue(hasattr(fallback_manager, 'list_steps'))
+        
+        # Test fallback functionality
+        step_names = fallback_manager.create_legacy_step_names_dict()
+        self.assertIsInstance(step_names, dict)
+        self.assertGreater(len(step_names), 0)
+        
+        # Test specific step lookup
+        self.assertTrue(fallback_manager.has_step("XGBoostTraining"))
+        self.assertFalse(fallback_manager.has_step("NonExistentStep"))
+        
+        step_list = fallback_manager.list_steps()
+        self.assertIsInstance(step_list, list)
+        self.assertIn("XGBoostTraining", step_list)
+    
+    def test_hybrid_registry_fallback_behavior(self):
+        """Test that fallback manager provides expected functionality."""
+        # Test the fallback manager directly
+        fallback_manager = _create_fallback_manager()
+        self.assertIsNotNone(fallback_manager)
+        
+        # Should provide basic functionality
+        step_names = fallback_manager.create_legacy_step_names_dict()
+        self.assertIsInstance(step_names, dict)
+        self.assertGreater(len(step_names), 0)
+        
+        # Should contain expected steps
+        self.assertIn("XGBoostTraining", step_names)
+        self.assertIn("PyTorchTraining", step_names)
+        
+        # Test that it behaves like the original registry
+        xgb_info = step_names["XGBoostTraining"]
+        self.assertEqual(xgb_info["config_class"], "XGBoostTrainingConfig")
+        self.assertEqual(xgb_info["builder_step_name"], "XGBoostTrainingStepBuilder")
+    
+    def test_workspace_management_functions(self):
+        """Test workspace management functions."""
+        # These functions should not fail even if hybrid registry is not available
+        workspaces = list_available_workspaces()
+        self.assertIsInstance(workspaces, list)
+        
+        step_count = get_workspace_step_count("test_workspace")
+        self.assertIsInstance(step_count, int)
+        self.assertGreaterEqual(step_count, 0)
+        
+        conflicts = has_workspace_conflicts()
+        self.assertIsInstance(conflicts, bool)
+
+
+class TestBackwardCompatibility(unittest.TestCase):
+    """Test case for backward compatibility with original implementation."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        clear_workspace_context()
+    
+    def tearDown(self):
+        """Clean up after tests."""
+        clear_workspace_context()
+    
+    def test_module_level_variables_exist(self):
+        """Test that module-level variables still exist and work."""
+        # These should exist and be dictionaries
+        self.assertIsInstance(STEP_NAMES, dict)
+        self.assertIsInstance(CONFIG_STEP_REGISTRY, dict)
+        self.assertIsInstance(BUILDER_STEP_NAMES, dict)
+        self.assertIsInstance(SPEC_STEP_TYPES, dict)
+        
+        # Should have content
+        self.assertGreater(len(STEP_NAMES), 0)
+        self.assertGreater(len(CONFIG_STEP_REGISTRY), 0)
+        self.assertGreater(len(BUILDER_STEP_NAMES), 0)
+        self.assertGreater(len(SPEC_STEP_TYPES), 0)
+    
+    def test_original_function_signatures(self):
+        """Test that original function signatures still work."""
+        # These should work without workspace parameters
+        config_class = get_config_class_name("XGBoostTraining")
+        self.assertEqual(config_class, "XGBoostTrainingConfig")
+        
+        builder_name = get_builder_step_name("XGBoostTraining")
+        self.assertEqual(builder_name, "XGBoostTrainingStepBuilder")
+        
+        spec_type = get_spec_step_type("XGBoostTraining")
+        self.assertEqual(spec_type, "XGBoostTraining")
+        
+        # Validation functions
+        self.assertTrue(validate_step_name("XGBoostTraining"))
+        self.assertFalse(validate_step_name("NonExistentStep"))
+        
+        # File name resolution
+        canonical_name = get_canonical_name_from_file_name("xgboost_training")
+        self.assertEqual(canonical_name, "XGBoostTraining")
+    
+    def test_error_messages_consistency(self):
+        """Test that error messages are consistent with original implementation."""
+        # Test invalid step name error
+        with self.assertRaises(ValueError) as context:
+            get_config_class_name("InvalidStepName")
+        
+        error_message = str(context.exception)
+        self.assertIn("Unknown step name", error_message)
+        self.assertIn("InvalidStepName", error_message)
+        self.assertIn("Available steps", error_message)
+    
+    def test_data_structure_consistency(self):
+        """Test that data structures maintain expected format."""
+        # STEP_NAMES should have expected structure
+        for step_name, info in STEP_NAMES.items():
+            self.assertIsInstance(step_name, str)
+            self.assertIsInstance(info, dict)
+            
+            # Required fields
+            required_fields = ["config_class", "builder_step_name", "spec_type", "description"]
+            for field in required_fields:
+                self.assertIn(field, info)
+                self.assertIsInstance(info[field], str)
+        
+        # Generated registries should be consistent
+        for config_class, step_name in CONFIG_STEP_REGISTRY.items():
+            self.assertIn(step_name, STEP_NAMES)
+            self.assertEqual(STEP_NAMES[step_name]["config_class"], config_class)
+        
+        for step_name, builder_name in BUILDER_STEP_NAMES.items():
+            self.assertIn(step_name, STEP_NAMES)
+            self.assertEqual(STEP_NAMES[step_name]["builder_step_name"], builder_name)
+        
+        for step_name, spec_type in SPEC_STEP_TYPES.items():
+            self.assertIn(step_name, STEP_NAMES)
+            self.assertEqual(STEP_NAMES[step_name]["spec_type"], spec_type)
+
+
+class TestEnhancedFunctionality(unittest.TestCase):
+    """Test case for enhanced functionality added in Phase 5."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        clear_workspace_context()
+    
+    def tearDown(self):
+        """Clean up after tests."""
+        clear_workspace_context()
+    
+    def test_enhanced_file_name_resolution(self):
+        """Test enhanced file name resolution with workspace context."""
+        # Test with workspace context
+        set_workspace_context("test_workspace")
+        
+        canonical_name = get_canonical_name_from_file_name("xgboost_model_evaluation")
+        self.assertEqual(canonical_name, "XGBoostModelEval")
+        
+        # Test with explicit workspace parameter
+        canonical_name_explicit = get_canonical_name_from_file_name(
+            "xgboost_model_evaluation", "explicit_workspace"
+        )
+        self.assertEqual(canonical_name_explicit, "XGBoostModelEval")
+    
+    def test_workspace_aware_error_messages(self):
+        """Test that error messages include workspace context information."""
+        set_workspace_context("test_workspace")
+        
+        with self.assertRaises(ValueError) as context:
+            get_canonical_name_from_file_name("completely_unknown_step")
+        
+        error_message = str(context.exception)
+        # Should include workspace context in error message
+        self.assertIn("workspace: test_workspace", error_message)
+    
+    def test_environment_variable_integration(self):
+        """Test integration with CURSUS_WORKSPACE_ID environment variable."""
+        # Set environment variable
+        os.environ['CURSUS_WORKSPACE_ID'] = "env_test_workspace"
+        
+        try:
+            # Should use environment variable
+            context = get_workspace_context()
+            self.assertEqual(context, "env_test_workspace")
+            
+            # Functions should use environment context
+            step_names = get_step_names()  # Should use env context
+            self.assertIsInstance(step_names, dict)
+            
+        finally:
+            # Clean up
+            if 'CURSUS_WORKSPACE_ID' in os.environ:
+                del os.environ['CURSUS_WORKSPACE_ID']
 
 
 if __name__ == '__main__':
