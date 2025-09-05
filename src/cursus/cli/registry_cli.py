@@ -297,17 +297,17 @@ def validate_step_definition(name: str, config_class: Optional[str], builder_nam
                            sagemaker_type: Optional[str], auto_correct: bool, performance: bool):
     """Validate a step definition against standardization rules."""
     try:
-        from cursus.registry.validation_utils import (
+        from ..registry.validation_utils import (
             validate_new_step_definition, auto_correct_step_definition,
             create_validation_report, get_performance_metrics
         )
         
         # Build step data dictionary
-        step_data = {"step_name": name}
+        step_data = {"name": name}
         if config_class:
             step_data["config_class"] = config_class
         if builder_name:
-            step_data["builder_name"] = builder_name
+            step_data["builder_step_name"] = builder_name
         if sagemaker_type:
             step_data["sagemaker_step_type"] = sagemaker_type
         
@@ -364,7 +364,7 @@ def validate_step_definition(name: str, config_class: Optional[str], builder_nam
 def validation_status():
     """Show validation system status and performance metrics."""
     try:
-        from cursus.registry.validation_utils import get_validation_status, get_performance_metrics
+        from ..registry.validation_utils import get_validation_status, get_performance_metrics
         
         click.echo("📊 Validation System Status")
         click.echo("=" * 40)
@@ -408,7 +408,7 @@ def validation_status():
 def reset_validation_metrics():
     """Reset validation performance metrics and cache."""
     try:
-        from cursus.registry.validation_utils import reset_performance_metrics
+        from ..registry.validation_utils import reset_performance_metrics
         
         reset_performance_metrics()
         click.echo("✅ Validation metrics and cache have been reset")
