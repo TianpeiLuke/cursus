@@ -37,6 +37,20 @@ if not registry_logger.handlers:
     registry_logger.addHandler(handler)
     registry_logger.setLevel(logging.INFO)
 
+# Import validation utilities for step registration validation
+try:
+    from .validation_utils import (
+        validate_new_step_definition,
+        auto_correct_step_definition,
+        get_validation_errors_with_suggestions,
+        register_step_with_validation
+    )
+    _VALIDATION_AVAILABLE = True
+    registry_logger.debug("Validation utilities loaded for step registration")
+except ImportError as e:
+    registry_logger.warning(f"Validation utilities not available for step registration: {e}")
+    _VALIDATION_AVAILABLE = False
+
 
 # Create reverse mapping from builder step names to canonical step names for efficient lookup
 REVERSE_BUILDER_MAPPING = {
@@ -111,21 +125,70 @@ class StepBuilderRegistry:
     }
     
     @classmethod
-    def register_builder_class(cls, step_type: str, builder_class: Type[StepBuilderBase]) -> None:
+    def register_builder_class(cls, step_type: str, builder_class: Type[StepBuilderBase], 
+                              validation_mode: str = "warn") -> List[str]:
         """
-        Register a builder class directly in the registry.
+        Register a builder class directly in the registry with validation.
         
         Args:
             step_type: Step type name
             builder_class: Step builder class
+            validation_mode: Validation mode ("warn", "strict", "auto_correct")
+            
+        Returns:
+            List of validation warnings/messages
+            
+        Raises:
+            ValueError: If validation fails in strict mode or builder class is invalid
         """
         # Import at runtime to avoid circular import
         from ..core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
         if not issubclass(builder_class, RuntimeStepBuilderBase):
             raise ValueError(f"Builder class must extend StepBuilderBase: {builder_class}")
         
+        warnings = []
+        
+        # Perform standardization validation if available
+        if _VALIDATION_AVAILABLE:
+            # Prepare step data for validation
+            step_data = {
+                "builder_step_name": builder_class.__name__,
+                "sagemaker_step_type": "Processing"  # Default, can be overridden
+            }
+            
+            # Look up additional info from STEP_NAMES if available
+            if step_type in STEP_NAMES:
+                step_info = STEP_NAMES[step_type]
+                step_data.update({
+                    "config_class": step_info.get("config_class", f"{step_type}Config"),
+                    "sagemaker_step_type": step_info.get("sagemaker_step_type", "Processing"),
+                    "description": step_info.get("description", f"{step_type} step")
+                })
+            else:
+                # Infer config class name
+                step_data["config_class"] = f"{step_type}Config"
+            
+            # Validate the step definition
+            try:
+                validation_warnings = register_step_with_validation(
+                    step_type, step_data, cls.BUILDER_REGISTRY, validation_mode
+                )
+                warnings.extend(validation_warnings)
+                
+                # Log validation results
+                if validation_warnings:
+                    for warning in validation_warnings:
+                        registry_logger.info(f"Step registration validation: {warning}")
+                
+            except ValueError as e:
+                # Re-raise validation errors in strict mode
+                raise ValueError(f"Step registration validation failed: {e}")
+        
+        # Register the builder
         cls.BUILDER_REGISTRY[step_type] = builder_class
         registry_logger.info(f"Registered builder: {step_type} -> {builder_class.__name__}")
+        
+        return warnings
     
     @classmethod
     def discover_builders(cls):
@@ -352,21 +415,74 @@ class StepBuilderRegistry:
         
         return builder_map[canonical_step_type]
     
-    def register_builder(self, step_type: str, builder_class: Type[StepBuilderBase]) -> None:
+    def register_builder(self, step_type: str, builder_class: Type[StepBuilderBase], 
+                        validation_mode: str = "warn") -> List[str]:
         """
-        Register a new step builder (for extensibility).
+        Register a new step builder (for extensibility) with validation.
         
         Args:
             step_type: Step type name
             builder_class: Step builder class
+            validation_mode: Validation mode ("warn", "strict", "auto_correct")
+            
+        Returns:
+            List of validation warnings/messages
+            
+        Raises:
+            ValueError: If validation fails in strict mode or builder class is invalid
         """
         # Import at runtime to avoid circular import
         from ..core.base.builder_base import StepBuilderBase as RuntimeStepBuilderBase
         if not issubclass(builder_class, RuntimeStepBuilderBase):
             raise ValueError(f"Builder class must extend StepBuilderBase: {builder_class}")
         
+        warnings = []
+        
+        # Perform standardization validation if available
+        if _VALIDATION_AVAILABLE:
+            # Prepare step data for validation
+            step_data = {
+                "builder_step_name": builder_class.__name__,
+                "sagemaker_step_type": "Processing"  # Default, can be overridden
+            }
+            
+            # Look up additional info from STEP_NAMES if available
+            if step_type in STEP_NAMES:
+                step_info = STEP_NAMES[step_type]
+                step_data.update({
+                    "config_class": step_info.get("config_class", f"{step_type}Config"),
+                    "sagemaker_step_type": step_info.get("sagemaker_step_type", "Processing"),
+                    "description": step_info.get("description", f"{step_type} step")
+                })
+            else:
+                # Infer config class name
+                step_data["config_class"] = f"{step_type}Config"
+            
+            # Get existing steps (combine class registry and custom builders)
+            existing_steps = self.BUILDER_REGISTRY.copy()
+            existing_steps.update(self._custom_builders)
+            
+            # Validate the step definition
+            try:
+                validation_warnings = register_step_with_validation(
+                    step_type, step_data, existing_steps, validation_mode
+                )
+                warnings.extend(validation_warnings)
+                
+                # Log validation results
+                if validation_warnings:
+                    for warning in validation_warnings:
+                        self.logger.info(f"Custom step registration validation: {warning}")
+                
+            except ValueError as e:
+                # Re-raise validation errors in strict mode
+                raise ValueError(f"Custom step registration validation failed: {e}")
+        
+        # Register the custom builder
         self._custom_builders[step_type] = builder_class
         self.logger.info(f"Registered custom builder: {step_type} -> {builder_class.__name__}")
+        
+        return warnings
     
     def unregister_builder(self, step_type: str) -> None:
         """
