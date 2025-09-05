@@ -1,385 +1,546 @@
-# Step Builder Registry and Auto-Discovery Guide
+# Step Builder Registry Guide: UnifiedRegistryManager
 
-**Version**: 1.0  
-**Date**: July 30, 2025  
+**Version**: 2.0  
+**Date**: September 5, 2025  
 **Author**: MODS Development Team
 
 ## Overview
 
-This guide explains how to use the Step Builder Registry system with its auto-discovery and registration capabilities. The registry provides a centralized lookup system that maps pipeline step names to their corresponding builder classes, making it easier to add new steps and maintain consistent naming across the pipeline system.
+This guide explains how to use the modern UnifiedRegistryManager system for step builder registration and discovery. The UnifiedRegistryManager provides workspace-aware caching, context management, and consolidated registry functionality that replaces the legacy registry system.
 
 ## Key Features
 
-The Step Builder Registry offers several key features:
+The UnifiedRegistryManager offers several key features:
 
-1. **Auto-Discovery**: Automatic discovery of step builders in the codebase
-2. **Decorator-Based Registration**: Simple `@register_builder` decorator for explicit registration
-3. **Single Source of Truth**: Alignment with the central step names registry
-4. **Legacy Support**: Backward compatibility through aliasing
-5. **Validation**: Built-in validation to catch inconsistencies
+1. **Workspace-Aware Registration**: Context-sensitive step builder registration and lookup
+2. **Unified Registry**: Single consolidated registry replacing CoreStepRegistry, LocalStepRegistry, and HybridRegistryManager
+3. **Workspace Context Management**: Automatic context switching and isolation
+4. **Hybrid Resolution**: Priority-based resolution across workspace contexts
+5. **Caching**: Intelligent caching with workspace-aware invalidation
+6. **Legacy Compatibility**: Backward compatibility with @register_builder decorator
 
-## Using the @register_builder Decorator
+## UnifiedRegistryManager Basics
 
-### Basic Usage
-
-The simplest way to register a new step builder is with the `@register_builder` decorator:
+### Getting the Registry Instance
 
 ```python
-from ..pipeline_registry.builder_registry import register_builder
-from .builder_step_base import StepBuilderBase
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+
+# Get registry instance (singleton pattern)
+registry = UnifiedRegistryManager()
+```
+
+### Workspace Context Management
+
+The registry operates with workspace contexts that determine resolution priority:
+
+```python
+# Set workspace context
+registry.set_workspace_context("main")  # Main workspace
+registry.set_workspace_context("project_alpha")  # Project workspace
+
+# Get current workspace context
+current_context = registry.workspace_context
+print(f"Current workspace: {current_context}")
+
+# Clear workspace context (resets to default)
+registry.set_workspace_context(None)
+```
+
+## Registration Patterns
+
+### Main Workspace Registration
+
+For development in the main codebase (`src/cursus/`):
+
+```python
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+
+# Get registry instance
+registry = UnifiedRegistryManager()
+
+# Set main workspace context (default)
+registry.set_workspace_context("main")
+
+# Register step builder
+registry.register_step_builder("XGBoostTraining", XGBoostTrainingStepBuilder)
+
+# Register with additional metadata
+registry.register_step_builder(
+    "XGBoostTraining", 
+    XGBoostTrainingStepBuilder,
+    metadata={
+        "description": "XGBoost model training step",
+        "version": "2.0",
+        "workspace": "main"
+    }
+)
+```
+
+### Isolated Project Registration
+
+For development in isolated projects (`development/projects/*/src/cursus_dev/`):
+
+```python
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+
+# Get registry instance
+registry = UnifiedRegistryManager()
+
+# Set project workspace context
+registry.set_workspace_context("project_alpha")
+
+# Register project-specific step builder
+registry.register_step_builder("CustomProcessing", CustomProcessingStepBuilder)
+
+# The registry will prioritize project-specific builders over shared ones
+```
+
+### Legacy Decorator Support
+
+The `@register_builder` decorator is still supported and uses UnifiedRegistryManager internally:
+
+```python
+from cursus.registry.decorators import register_builder
 
 @register_builder("XGBoostTraining")
 class XGBoostTrainingStepBuilder(StepBuilderBase):
     """Builder for XGBoost training step."""
     
-    # Implementation here
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
+        # Implementation here
 ```
 
-This decorator automatically registers your step builder with the specified name in the registry. When the pipeline system needs to create a step of type "XGBoostTraining", it will find and use this builder.
+The decorator automatically:
+1. Uses the current workspace context
+2. Registers with UnifiedRegistryManager
+3. Maintains backward compatibility
 
-### Auto-Derived Name
+## Registry Lookup and Resolution
 
-If you don't specify a name, the decorator will:
-
-1. First check if the class name exists in the `STEP_NAMES` registry
-2. If found, use the canonical step type from the registry
-3. If not found, fall back to deriving it from the class name by removing the "StepBuilder" suffix:
+### Basic Lookup
 
 ```python
-@register_builder()  # No name provided
-class TabularPreprocessingStepBuilder(StepBuilderBase):
-    """Builder for tabular preprocessing step."""
+# Get step builder by name
+builder_class = registry.get_step_builder("XGBoostTraining")
+
+# Check if step builder exists
+if registry.has_step_builder("XGBoostTraining"):
+    builder_class = registry.get_step_builder("XGBoostTraining")
+    builder = builder_class(config)
+```
+
+### Workspace-Aware Resolution
+
+The registry follows a priority-based resolution strategy:
+
+1. **Project-specific builders** (`src/cursus_dev/`) - highest priority
+2. **Shared builders** (`src/cursus/`) - fallback
+3. **Default implementations** - last resort
+
+```python
+# Set project workspace
+registry.set_workspace_context("project_alpha")
+
+# This will first look in project_alpha workspace, then fall back to shared
+builder_class = registry.get_step_builder("XGBoostTraining")
+```
+
+### Listing Available Builders
+
+```python
+# List all step builders in current workspace
+builders = registry.list_step_builders()
+
+# List builders in specific workspace
+builders = registry.list_step_builders(workspace="project_alpha")
+
+# List all builders across all workspaces
+all_builders = registry.list_all_step_builders()
+```
+
+## Workspace Management
+
+### Creating Workspace Context
+
+```python
+# Initialize workspace context for a new project
+registry.initialize_workspace("project_beta")
+
+# Set workspace context
+registry.set_workspace_context("project_beta")
+
+# Register project-specific builders
+registry.register_step_builder("ProjectSpecificStep", ProjectSpecificStepBuilder)
+```
+
+### Workspace Isolation
+
+Each workspace maintains its own registry state:
+
+```python
+# Register in main workspace
+registry.set_workspace_context("main")
+registry.register_step_builder("SharedStep", SharedStepBuilder)
+
+# Register in project workspace
+registry.set_workspace_context("project_alpha")
+registry.register_step_builder("SharedStep", ProjectSpecificStepBuilder)
+
+# Resolution depends on current context
+registry.set_workspace_context("project_alpha")
+builder = registry.get_step_builder("SharedStep")  # Gets ProjectSpecificStepBuilder
+
+registry.set_workspace_context("main")
+builder = registry.get_step_builder("SharedStep")  # Gets SharedStepBuilder
+```
+
+### Cross-Workspace Access
+
+```python
+# Access builders from specific workspace
+builder = registry.get_step_builder("SharedStep", workspace="main")
+
+# Check builder availability across workspaces
+workspaces = registry.find_step_builder_workspaces("SharedStep")
+print(f"SharedStep available in: {workspaces}")
+```
+
+## Caching and Performance
+
+### Workspace-Aware Caching
+
+The UnifiedRegistryManager implements intelligent caching:
+
+```python
+# Cache is automatically managed per workspace
+registry.set_workspace_context("project_alpha")
+builder1 = registry.get_step_builder("XGBoostTraining")  # Cache miss
+
+# Subsequent calls use cache
+builder2 = registry.get_step_builder("XGBoostTraining")  # Cache hit
+
+# Cache is isolated per workspace
+registry.set_workspace_context("main")
+builder3 = registry.get_step_builder("XGBoostTraining")  # Different cache
+```
+
+### Cache Management
+
+```python
+# Clear cache for current workspace
+registry.clear_cache()
+
+# Clear cache for specific workspace
+registry.clear_cache(workspace="project_alpha")
+
+# Clear all caches
+registry.clear_all_caches()
+
+# Get cache statistics
+stats = registry.get_cache_stats()
+print(f"Cache hits: {stats['hits']}, misses: {stats['misses']}")
+```
+
+## Integration with CLI
+
+The UnifiedRegistryManager integrates with CLI commands for workspace management:
+
+### CLI Commands
+
+```bash
+# Set workspace context
+cursus set-workspace project_alpha
+
+# List available step builders
+cursus list-steps --workspace project_alpha
+
+# Validate registry integrity
+cursus validate-registry --workspace project_alpha
+
+# Clear registry cache
+cursus clear-cache --workspace project_alpha
+```
+
+### CLI Integration in Code
+
+```python
+from cursus.cli.workspace_cli import WorkspaceCLI
+
+# Initialize CLI integration
+cli = WorkspaceCLI()
+
+# Set workspace via CLI
+cli.set_workspace("project_alpha")
+
+# List steps via CLI
+steps = cli.list_steps(workspace="project_alpha")
+```
+
+## Validation and Debugging
+
+### Registry Validation
+
+```python
+# Validate registry integrity
+validation_result = registry.validate()
+
+if validation_result.is_valid:
+    print("Registry is valid")
+else:
+    print("Registry validation errors:")
+    for error in validation_result.errors:
+        print(f"  - {error}")
+```
+
+### Debugging Registry State
+
+```python
+# Get registry state information
+state = registry.get_state()
+print(f"Current workspace: {state['current_workspace']}")
+print(f"Registered builders: {state['builder_count']}")
+print(f"Cache size: {state['cache_size']}")
+
+# Get detailed workspace information
+workspace_info = registry.get_workspace_info("project_alpha")
+print(f"Builders in project_alpha: {workspace_info['builders']}")
+```
+
+### Registry Inspection
+
+```python
+# Inspect specific builder registration
+builder_info = registry.inspect_step_builder("XGBoostTraining")
+print(f"Builder class: {builder_info['class']}")
+print(f"Workspace: {builder_info['workspace']}")
+print(f"Registration time: {builder_info['registered_at']}")
+print(f"Metadata: {builder_info['metadata']}")
+```
+
+## Complete Example: Isolated Project Development
+
+Here's a complete example of using UnifiedRegistryManager in an isolated project:
+
+```python
+# File: development/projects/project_alpha/src/cursus_dev/steps/builders/custom_processing_builder.py
+
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+from cursus.core.step_builder import StepBuilderBase
+from ..custom_processing_step import CustomProcessingStep
+
+class CustomProcessingStepBuilder(StepBuilderBase):
+    """Builder for custom processing step in project_alpha."""
     
-    # Implementation here
-```
-
-In this example, the step type will be automatically set to "TabularPreprocessing".
-
-### Registration Timing
-
-The decorator registers the builder class when the module is imported, ensuring that all builders are available when the registry is accessed.
-
-## Auto-Discovery Mechanism
-
-Even without using the decorator, the registry can automatically discover step builder classes:
-
-1. During initialization, the registry scans the `src/pipeline_steps` directory
-2. It finds all files with names starting with `builder_`
-3. In each file, it looks for classes that inherit from `StepBuilderBase`
-4. It registers each class with a name derived from the class name
-
-To enable auto-discovery:
-
-1. Name your file using the pattern `builder_xxx_step.py`
-2. Place it in the `src/pipeline_steps` directory
-3. Make your class inherit from `StepBuilderBase`
-
-## Integration with Step Names Registry (Single Source of Truth)
-
-The step builder registry is now tightly integrated with the central step names registry (`step_names.py`) which serves as the single source of truth for step naming:
-
-```python
-# In src/pipeline_registry/step_names.py
-STEP_NAMES = {
-    "XGBoostTraining": {
-        "config_class": "XGBoostTrainingConfig",
-        "builder_step_name": "XGBoostTrainingStepBuilder", 
-        "spec_type": "XGBoostTraining",
-        "description": "XGBoost model training step"
-    },
-    # Other steps...
-}
-```
-
-When registering builders (either through auto-discovery or decorator), the registry now:
-
-1. First checks the `STEP_NAMES` registry using a reverse mapping from builder class name to step type
-2. Looks for a matching entry in `STEP_NAMES` based on the `builder_step_name` field
-3. Registers the builder with the canonical name (e.g., "XGBoostTraining")
-4. Only if not found in the registry, falls back to string manipulation (removing "StepBuilder" suffix)
-5. Logs warnings when builders aren't found in the registry, guiding developers to update the registry
-
-This registry-first approach ensures consistent naming across all pipeline components and makes the system more robust against errors that could occur with string manipulation alone.
-
-## Using the Registry
-
-### Getting a Builder for a Configuration
-
-To get a builder for a specific configuration:
-
-```python
-from src.pipeline_registry.builder_registry import get_global_registry
-
-# Get the global registry instance
-registry = get_global_registry()
-
-# Get a builder class for a configuration
-builder_class = registry.get_builder_for_config(my_config)
-builder = builder_class(my_config)
-```
-
-### Getting a Builder by Step Type
-
-To get a builder for a specific step type:
-
-```python
-# Get a builder class by step type
-builder_class = registry.get_builder_for_step_type("XGBoostTraining")
-builder = builder_class(my_config)
-```
-
-### Listing Supported Step Types
-
-To list all supported step types:
-
-```python
-# List all supported step types
-step_types = registry.list_supported_step_types()
-print(f"Supported step types: {step_types}")
-```
-
-### Validating the Registry
-
-To check for inconsistencies in the registry:
-
-```python
-# Validate the registry
-validation = registry.validate_registry()
-
-# Check for issues
-if validation['invalid']:
-    print("Invalid registry entries:")
-    for entry in validation['invalid']:
-        print(f"  - {entry}")
-
-if validation['missing']:
-    print("Missing registry entries:")
-    for entry in validation['missing']:
-        print(f"  - {entry}")
-```
-
-## Complete Example
-
-Here's a complete example of implementing and registering a step builder:
-
-```python
-# src/pipeline_steps/builder_new_processing_step.py
-
-from typing import Dict, List, Any, Optional
-from pathlib import Path
-
-from sagemaker.processing import ProcessingInput, ProcessingOutput
-from sagemaker.workflow.steps import ProcessingStep
-
-from ..pipeline_registry.builder_registry import register_builder
-from ..pipeline_deps.base_specifications import StepSpecification
-from ..pipeline_script_contracts.base_script_contract import ScriptContract
-from .builder_step_base import StepBuilderBase
-from .config_new_processing_step import NewProcessingStepConfig
-from ..pipeline_step_specs.new_processing_step_spec import NEW_PROCESSING_STEP_SPEC
-
-@register_builder("NewProcessing")
-class NewProcessingStepBuilder(StepBuilderBase):
-    """Builder for a new processing step."""
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
+        self.config = config
     
-    def __init__(
-        self, 
-        config, 
-        sagemaker_session=None, 
-        role=None, 
-        notebook_root=None,
-        registry_manager=None,
-        dependency_resolver=None
-    ):
-        if not isinstance(config, NewProcessingStepConfig):
-            raise ValueError(
-                "NewProcessingStepBuilder requires a NewProcessingStepConfig instance."
-            )
-            
-        super().__init__(
-            config=config,
-            spec=NEW_PROCESSING_STEP_SPEC,
-            sagemaker_session=sagemaker_session,
-            role=role,
-            notebook_root=notebook_root,
-            registry_manager=registry_manager,
-            dependency_resolver=dependency_resolver
-        )
-        self.config: NewProcessingStepConfig = config
+    def build_step(self, **kwargs):
+        return CustomProcessingStep(self.config)
     
-    def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
-        """Get inputs for the processor using the specification and contract."""
-        return self._get_spec_driven_processor_inputs(inputs)
+    def validate_config(self, config):
+        # Project-specific validation logic
+        required_fields = ['input_path', 'output_path', 'custom_param']
+        for field in required_fields:
+            if not hasattr(config, field):
+                raise ValueError(f"Missing required field: {field}")
+        return True
+
+# Register in project workspace
+registry = UnifiedRegistryManager()
+registry.set_workspace_context("project_alpha")
+registry.register_step_builder("CustomProcessing", CustomProcessingStepBuilder)
+
+# Usage in project code
+def create_custom_processing_step(config):
+    registry = UnifiedRegistryManager()
+    registry.set_workspace_context("project_alpha")
     
-    def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
-        """Get outputs for the processor using the specification and contract."""
-        return self._get_spec_driven_processor_outputs(outputs)
+    # This will get the project-specific builder
+    builder_class = registry.get_step_builder("CustomProcessing")
+    builder = builder_class(config)
     
-    def _get_environment_variables(self) -> Dict[str, str]:
-        """Get environment variables for the processor."""
-        # Get standard environment variables from contract
-        env_vars = super()._get_environment_variables()
-        
-        # Add custom environment variables
-        env_vars.update({
-            "CUSTOM_PARAM": self.config.custom_param
-        })
-        
-        return env_vars
-    
-    def create_step(self, **kwargs) -> ProcessingStep:
-        """Create the processing step."""
-        # Extract inputs from dependencies
-        dependencies = kwargs.get('dependencies', [])
-        extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
-        
-        # Get processor inputs and outputs
-        inputs = self._get_inputs(extracted_inputs)
-        outputs = self._get_outputs({})
-        
-        # Create processor
-        processor = self._get_processor()
-        
-        # Set environment variables
-        env_vars = self._get_environment_variables()
-        
-        # Create and return the step
-        step = processor.run(
-            inputs=inputs,
-            outputs=outputs,
-            container_arguments=[],
-            container_entrypoint=["python", self.config.get_script_path()],
-            job_name=self._generate_job_name(),
-            wait=False,
-            environment=env_vars
-        )
-        
-        # Store specification in step for future reference
-        setattr(step, '_spec', self.spec)
-        
-        return step
+    return builder.build_step()
 ```
 
 ## Best Practices
 
-### 1. Always Use the Decorator
-
-For clarity and explicitness, always use the `@register_builder` decorator even though the auto-discovery mechanism might find your builder without it.
-
-### 2. Match Names in Registry
-
-Ensure that the step type name used in `@register_builder` matches the canonical name in `STEP_NAMES`:
+### 1. Always Set Workspace Context
 
 ```python
-# In src/pipeline_registry/step_names.py
-STEP_NAMES = {
-    "NewProcessing": {  # This key...
-        "config_class": "NewProcessingStepConfig",
-        "builder_step_name": "NewProcessingStepBuilder", 
-        "spec_type": "NewProcessing",
-        "description": "New processing step"
-    }
-}
+# Good: Explicit workspace context
+registry = UnifiedRegistryManager()
+registry.set_workspace_context("project_alpha")
+builder = registry.get_step_builder("MyStep")
 
-# In src/pipeline_steps/builder_new_processing_step.py
-@register_builder("NewProcessing")  # ...should match this name
-class NewProcessingStepBuilder(StepBuilderBase):
-    # Implementation...
+# Avoid: Relying on default context
+registry = UnifiedRegistryManager()
+builder = registry.get_step_builder("MyStep")  # Uses default context
 ```
 
-### 3. Follow Naming Conventions
-
-Adhere to naming conventions to ensure consistent discovery and registration:
-
-- Step Builder Class: `PascalCaseStepBuilder` (e.g., `NewProcessingStepBuilder`)
-- File Name: `builder_snake_case_step.py` (e.g., `builder_new_processing_step.py`)
-- Step Type: `PascalCase` (e.g., `NewProcessing`)
-
-### 4. Validate the Registry
-
-After adding new step builders, validate the registry to catch any inconsistencies:
+### 2. Use Workspace-Specific Registration
 
 ```python
-from src.pipeline_registry.builder_registry import get_global_registry
+# Good: Register in appropriate workspace
+registry.set_workspace_context("project_alpha")
+registry.register_step_builder("ProjectStep", ProjectStepBuilder)
+
+# Avoid: Registering in wrong workspace
+registry.set_workspace_context("main")
+registry.register_step_builder("ProjectStep", ProjectStepBuilder)  # Wrong workspace
+```
+
+### 3. Handle Resolution Failures Gracefully
+
+```python
+# Good: Check availability before use
+if registry.has_step_builder("MyStep"):
+    builder_class = registry.get_step_builder("MyStep")
+else:
+    # Handle missing builder
+    raise ValueError(f"Step builder 'MyStep' not found in workspace '{registry.workspace_context}'")
+
+# Better: Use try-catch
+try:
+    builder_class = registry.get_step_builder("MyStep")
+except KeyError as e:
+    # Handle missing builder with context
+    available_builders = registry.list_step_builders()
+    raise ValueError(f"Step builder 'MyStep' not found. Available: {available_builders}") from e
+```
+
+### 4. Use Metadata for Documentation
+
+```python
+# Good: Include descriptive metadata
+registry.register_step_builder(
+    "CustomProcessing",
+    CustomProcessingStepBuilder,
+    metadata={
+        "description": "Custom data processing for project_alpha",
+        "version": "1.0",
+        "author": "Project Alpha Team",
+        "dependencies": ["pandas", "numpy"],
+        "workspace": "project_alpha"
+    }
+)
+```
+
+### 5. Validate Registry State
+
+```python
+# Good: Regular validation
+def setup_project_registry():
+    registry = UnifiedRegistryManager()
+    registry.set_workspace_context("project_alpha")
+    
+    # Register builders
+    registry.register_step_builder("CustomStep", CustomStepBuilder)
+    
+    # Validate after registration
+    validation = registry.validate()
+    if not validation.is_valid:
+        raise RuntimeError(f"Registry validation failed: {validation.errors}")
+    
+    return registry
+```
+
+## Migration from Legacy Registry
+
+### Old Pattern (Deprecated)
+
+```python
+# Old way - don't use
+from src.pipeline_registry.builder_registry import register_builder, get_global_registry
+
+@register_builder("XGBoostTraining")
+class XGBoostTrainingStepBuilder(StepBuilderBase):
+    pass
 
 registry = get_global_registry()
-validation = registry.validate_registry()
-
-# Check validation results
-print(f"Valid entries: {len(validation['valid'])}")
-print(f"Invalid entries: {validation['invalid']}")
-print(f"Missing entries: {validation['missing']}")
+builder = registry.get_builder_for_step_type("XGBoostTraining")
 ```
 
-### 5. Keep a Single Source of Truth
+### New Pattern (Recommended)
 
-Always update the `STEP_NAMES` dictionary in `step_names.py` when adding a new step. This ensures that all parts of the system use consistent naming.
+```python
+# New way - use this
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
 
-## Common Pitfalls
+class XGBoostTrainingStepBuilder(StepBuilderBase):
+    pass
 
-### 1. Missing Registry Entry
+# Explicit registration
+registry = UnifiedRegistryManager()
+registry.set_workspace_context("main")
+registry.register_step_builder("XGBoostTraining", XGBoostTrainingStepBuilder)
 
-**Problem**: You've added a new step builder, but it's not being registered.
+# Or use legacy decorator (still supported)
+from cursus.registry.decorators import register_builder
 
-**Solutions**:
-- Check that your file follows the naming convention (`builder_xxx_step.py`)
-- Ensure your class inherits from `StepBuilderBase`
-- Verify that you've added the `@register_builder` decorator
-- Check that the step name matches an entry in `STEP_NAMES`
+@register_builder("XGBoostTraining")
+class XGBoostTrainingStepBuilder(StepBuilderBase):
+    pass
+```
 
-### 2. Inconsistent Naming
+## Troubleshooting
 
-**Problem**: Your step is registered with a different name than expected.
+### Common Issues
 
-**Solutions**:
-- Use an explicit name in the decorator: `@register_builder("MyStep")`
-- Ensure the class name follows the convention: `MyStepStepBuilder`
-- Check that the name matches the entry in `STEP_NAMES`
+1. **Builder Not Found**
+   ```python
+   # Check workspace context
+   print(f"Current workspace: {registry.workspace_context}")
+   
+   # List available builders
+   builders = registry.list_step_builders()
+   print(f"Available builders: {builders}")
+   
+   # Check other workspaces
+   workspaces = registry.find_step_builder_workspaces("MyStep")
+   print(f"MyStep found in workspaces: {workspaces}")
+   ```
 
-### 3. Import Errors
+2. **Wrong Builder Returned**
+   ```python
+   # Check resolution order
+   builder_info = registry.inspect_step_builder("MyStep")
+   print(f"Resolved from workspace: {builder_info['workspace']}")
+   
+   # Force specific workspace
+   builder = registry.get_step_builder("MyStep", workspace="main")
+   ```
 
-**Problem**: The auto-discovery mechanism is failing due to import errors.
-
-**Solutions**:
-- Ensure all required imports in your builder file are available
-- Check for circular imports
-- Use relative imports for internal modules
-
-### 4. Multiple Registration
-
-**Problem**: Your step is being registered multiple times with different names.
-
-**Solutions**:
-- Use explicit names in the decorator
-- Ensure your class name follows conventions
-- Check that you're not manually registering the same class elsewhere
-
-### 5. Missing from Step Names Registry
-
-**Problem**: You're seeing warnings that your step builder isn't found in the `STEP_NAMES` registry.
-
-**Solutions**:
-- Add your step to the `STEP_NAMES` registry in `src/pipeline_registry/step_names.py`
-- Make sure the `builder_step_name` field matches your class name exactly
-- This is critical for ensuring your step is properly discovered and registered
+3. **Cache Issues**
+   ```python
+   # Clear cache if stale data
+   registry.clear_cache()
+   
+   # Check cache stats
+   stats = registry.get_cache_stats()
+   print(f"Cache stats: {stats}")
+   ```
 
 ## Related Resources
 
-- [Step Builder Registry Design](../pipeline_design/step_builder_registry_design.md)
-- [Step Names Registry](../pipeline_design/step_names_registry_design.md)
 - [Adding a New Pipeline Step](./adding_new_pipeline_step.md)
-- [Step Creation Process](./creation_process.md)
-- [Standardization Rules](./standardization_rules.md)
+- [Step Builder Registry Usage](./step_builder_registry_usage.md)
+- [Workspace-Aware Development Guide](../01_workspace_aware_developer_guide/ws_README.md)
+- [UnifiedRegistryManager Design](../1_design/hybrid_registry_standardization_enforcement_design.md)
+- [Workspace-Aware Architecture](../1_design/workspace_aware_distributed_registry_design.md)
 
-## Recent Improvements
+## Recent Changes
 
-The step builder registry has been enhanced with the following improvements:
+### Version 2.0 Updates
 
-1. **STEP_NAMES Registry Integration**: Uses the central `STEP_NAMES` registry as the single source of truth
-2. **Reverse Mapping**: Efficiently maps builder class names to canonical step types
-3. **Consistent Logic**: Both decorator and discovery method use identical step type inference logic
-4. **Registry-First Approach**: First checks the registry before falling back to string manipulation
-5. **Enhanced Logging**: Provides clear guidance when steps are missing from the registry
-6. **Backward Compatibility**: Maintains support for classes not yet added to the registry
+1. **Complete rewrite** for UnifiedRegistryManager
+2. **Workspace-aware registration** and lookup
+3. **Consolidated registry** replacing legacy system
+4. **Enhanced caching** with workspace isolation
+5. **CLI integration** for workspace management
+6. **Improved validation** and debugging capabilities
+7. **Backward compatibility** with legacy decorators
 
-These improvements make the registration system more reliable, consistent, and easier to maintain.
+This guide reflects the modern UnifiedRegistryManager approach and should be used for all new development.

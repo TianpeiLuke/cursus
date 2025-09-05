@@ -2,59 +2,62 @@
 
 This document outlines the step-by-step process for adding a new step to the pipeline. Follow these steps in order to ensure proper integration with the existing architecture.
 
+## Table of Contents
+
+1. [Set Up Workspace Context](#1-set-up-workspace-context)
+2. [Create the Step Configuration](#2-create-the-step-configuration)
+3. [Create the Script Contract](#3-create-the-script-contract)
+4. [Create the Step Specification](#4-create-the-step-specification)
+5. [Create the Step Builder](#5-create-the-step-builder)
+6. [Register Step with Hybrid Registry System](#6-register-step-with-hybrid-registry-system)
+7. [Run Validation Framework Tests](#7-run-validation-framework-tests)
+8. [Create Unit Tests](#8-create-unit-tests)
+9. [Integrate With Pipeline Templates](#9-integrate-with-pipeline-templates)
+
 ## Overview of the Process
 
 Adding a new step to the pipeline involves creating several components that work together:
 
-1. Register the new step name in the step registry
+1. Set up workspace context
 2. Create the step configuration class
-3. Develop the script contract
+3. Create the script contract
 4. Create the step specification
-5. Implement the step builder
-6. Update required registry files
+5. Implement the step builder (with automatic registry integration)
+6. Register step with hybrid registry system
 7. **Run validation framework tests**
 8. Create unit tests
 9. Integrate with pipeline templates
 
 ## Detailed Steps
 
-### 1. Register the New Step Name
+### 1. Set Up Workspace Context
 
-First, register your step in the central step registry:
+First, determine your development approach and set up the appropriate workspace context:
 
-**File to Update**: `src/cursus/registry/step_names.py`
+#### For Main Workspace Development (`src/cursus/`)
 
 ```python
-STEP_NAMES = {
-    # ... existing steps ...
-    
-    "YourNewStep": {
-        "config_class": "YourNewStepConfig",
-        "builder_step_name": "YourNewStepBuilder",
-        "spec_type": "YourNewStep",
-        "sagemaker_step_type": "Processing",  # Based on create_step() return type
-        "description": "Description of your new step"
-    },
-}
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+
+# Set main workspace context
+registry = UnifiedRegistryManager()
+registry.set_workspace_context("main")
 ```
 
-**Important**: The `sagemaker_step_type` field must match the actual SageMaker step type returned by your step builder's `create_step()` method:
+#### For Isolated Project Development (`development/projects/*/`)
 
-- **"Processing"** - for steps that return `ProcessingStep`
-- **"Training"** - for steps that return `TrainingStep`  
-- **"Transform"** - for steps that return `TransformStep`
-- **"CreateModel"** - for steps that return `CreateModelStep`
-- **"RegisterModel"** - for steps that return custom registration steps (like `MimsModelRegistrationProcessingStep`)
-- **"Lambda"** - for steps that return `LambdaStep`
-- **"Base"** - for base/utility steps
-
-This registration connects your step's components together and makes them discoverable by the pipeline system.
+```bash
+# Initialize or activate project workspace
+cursus init-workspace --project your_project --type isolated
+cd development/projects/your_project
+cursus activate-workspace your_project
+```
 
 ### 2. Create the Step Configuration
 
 Create a configuration class using the three-tier field classification design:
 
-**Create New File**: `src/pipeline_steps/config_your_new_step.py`
+**Create New File**: `src/cursus/steps/configs/config_your_new_step.py`
 
 ```python
 from typing import Dict, Any, Optional, List
@@ -116,7 +119,7 @@ class YourNewStepConfig(BasePipelineConfig):
     # Get the script contract
     def get_script_contract(self):
         """Return the script contract for this step."""
-        from ..pipeline_script_contracts.your_new_step_contract import YOUR_NEW_STEP_CONTRACT
+        from ..contracts.your_new_step_contract import YOUR_NEW_STEP_CONTRACT
         return YOUR_NEW_STEP_CONTRACT
 ```
 
@@ -132,7 +135,7 @@ For more details on the three-tier design, see [Three-Tier Config Design](three_
 
 Define the contract between your script and the SageMaker environment:
 
-**Create New File**: `src/pipeline_script_contracts/your_new_step_contract.py`
+**Create New File**: `src/cursus/steps/contracts/your_new_step_contract.py`
 
 ```python
 from pydantic import BaseModel
@@ -181,18 +184,17 @@ The script contract defines:
 
 Define how your step connects with others in the pipeline:
 
-**Create New File**: `src/pipeline_step_specs/your_new_step_spec.py`
+**Create New File**: `src/cursus/steps/specs/your_new_step_spec.py`
 
 ```python
 from typing import Dict, List, Optional
 
-from ..pipeline_deps.base_specifications import StepSpecification, NodeType, DependencySpec, OutputSpec, DependencyType
-from ..pipeline_script_contracts.your_new_step_contract import YOUR_NEW_STEP_CONTRACT
-from ..pipeline_registry.step_names import get_spec_step_type
+from ...core.base.specification_base import StepSpecification, NodeType, DependencySpec, OutputSpec, DependencyType
+from ...registry.step_names import get_spec_step_type
 
 def _get_your_new_step_contract():
     """Get the script contract for this step."""
-    from ..pipeline_script_contracts.your_new_step_contract import YOUR_NEW_STEP_CONTRACT
+    from ..contracts.your_new_step_contract import YOUR_NEW_STEP_CONTRACT
     return YOUR_NEW_STEP_CONTRACT
 
 YOUR_NEW_STEP_SPEC = StepSpecification(
@@ -258,9 +260,9 @@ The step specification defines:
 
 ### 5. Create the Step Builder
 
-Implement the builder that creates the SageMaker step, using the `@register_builder` decorator:
+Implement the builder that creates the SageMaker step using the modern hybrid registry system:
 
-**Create New File**: `src/pipeline_steps/builder_your_new_step.py`
+**Create New File**: `src/cursus/steps/builders/builder_your_new_step.py`
 
 ```python
 from typing import Dict, List, Any, Optional
@@ -269,14 +271,12 @@ from pathlib import Path
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow.steps import ProcessingStep
 
-from ..pipeline_registry.builder_registry import register_builder
-from ..pipeline_deps.base_specifications import StepSpecification
-from ..pipeline_script_contracts.base_script_contract import ScriptContract
-from .builder_step_base import StepBuilderBase
-from .config_your_new_step import YourNewStepConfig
-from ..pipeline_step_specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
+from ...registry.hybrid.manager import UnifiedRegistryManager
+from ...core.base.specification_base import StepSpecification
+from ...core.base.builder_base import StepBuilderBase
+from ..configs.config_your_new_step import YourNewStepConfig
+from ..specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
 
-@register_builder("YourNewStep")
 class YourNewStepBuilder(StepBuilderBase):
     """Builder for YourNewStep processing step."""
     
@@ -311,6 +311,12 @@ class YourNewStepBuilder(StepBuilderBase):
             dependency_resolver=dependency_resolver
         )
         self.config: YourNewStepConfig = config
+        
+        # Register with UnifiedRegistryManager (automatic discovery handles this)
+        if registry_manager is None:
+            registry_manager = UnifiedRegistryManager()
+        # Registration is handled automatically by the hybrid registry system
+        # based on naming conventions and file location
     
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """Get inputs for the processor using the specification and contract."""
@@ -337,6 +343,9 @@ class YourNewStepBuilder(StepBuilderBase):
         Args:
             **kwargs: Additional keyword arguments for step creation.
                      Should include 'dependencies' list if step has dependencies.
+        
+        Returns:
+            ProcessingStep: The SageMaker processing step
         """
         # Extract inputs from dependencies using the resolver
         dependencies = kwargs.get('dependencies', [])
@@ -371,36 +380,116 @@ class YourNewStepBuilder(StepBuilderBase):
 ```
 
 The step builder:
+- Integrates with the hybrid registry system through automatic discovery
 - Gets the appropriate specification based on job type
-- Creates a SageMaker processor
+- Creates a SageMaker processor (Processing step in this example)
 - Sets up inputs and outputs based on the specification
 - Configures environment variables from the config
 - Creates and returns the SageMaker step
 
-### 6. Update Step Names Registry
+**Important**: The `create_step()` method returns a `ProcessingStep` in this example. Your step's `sagemaker_step_type` must match the actual SageMaker step type returned by this method. Available
 
-Add your new step to the central step names registry:
+### 6. Register Step with Hybrid Registry System
 
-**File to Update**: `src/cursus/registry/step_names.py`
+With the modern hybrid registry system, step registration is handled automatically through the UnifiedRegistryManager. However, you need to ensure your step is properly registered:
+
+#### Option A: Automatic Registration (Recommended)
+
+The UnifiedRegistryManager automatically discovers and registers your step if you follow the naming conventions:
+
+1. **File Naming**: Your builder file should follow the pattern `builder_your_new_step.py`
+2. **Class Naming**: Your builder class should be named `YourNewStepBuilder`
+3. **Location**: Place your builder in `src/cursus/steps/builders/`
+
+The registry will automatically:
+- Discover your step builder
+- Extract step metadata from your configuration and specification
+- Register the step with the appropriate workspace context
+
+#### Option B: Explicit Registration (For Custom Cases)
+
+If you need explicit control over registration, use the registry's validation-enabled registration:
 
 ```python
-# Add to existing STEP_NAMES dictionary
-STEP_NAMES = {
-    # ... existing steps ...
-    
-    "YourNewStep": {
-        "config_class": "YourNewStepConfig",
-        "builder_step_name": "YourNewStepBuilder",
-        "spec_type": "YourNewStep",
-        "sagemaker_step_type": "Processing",  # Based on create_step() return type
-        "description": "Description of your new step"
-    },
-}
+from cursus.registry.step_names import add_new_step_with_validation
+
+# Register your step with validation
+warnings = add_new_step_with_validation(
+    step_name="YourNewStep",
+    config_class="YourNewStepConfig", 
+    builder_name="YourNewStepBuilder",
+    sagemaker_type="Processing",  # Based on create_step() return type
+    description="Description of your new step",
+    validation_mode="warn",  # Options: "warn", "strict", "auto_correct"
+    workspace_id=None  # Use current workspace context
+)
+
+# Check for any validation warnings
+if warnings:
+    for warning in warnings:
+        print(f"⚠️ {warning}")
 ```
 
-**Important**: Ensure the `sagemaker_step_type` field matches the actual SageMaker step type returned by your step builder's `create_step()` method. This field is used by the Universal Builder Test framework for step-type-specific validation and testing.
+#### Option C: Workspace-Specific Registration
 
-Note: With the auto-discovery system, you don't need to manually update `__init__.py` files anymore. The `@register_builder` decorator automatically handles registration, and step builder files are discovered based on their naming pattern.
+For isolated workspace development:
+
+```python
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+
+# Get registry manager with workspace context
+registry = UnifiedRegistryManager()
+registry.set_workspace_context("your_project")
+
+# Register step in specific workspace
+registry.register_step_definition(
+    "YourNewStep",
+    {
+        "config_class": "YourNewStepConfig",
+        "builder_step_name": "YourNewStepBuilder", 
+        "spec_type": "YourNewStep",
+        "sagemaker_step_type": "Processing",
+        "description": "Description of your new step"
+    }
+)
+```
+
+#### Verification
+
+Verify your step registration:
+
+```bash
+# List all registered steps
+cursus list-steps
+
+# List steps in specific workspace
+cursus list-steps --workspace your_project
+
+# Check step details
+cursus describe-step YourNewStep
+```
+
+**Important**: The `sagemaker_step_type` field must match the actual SageMaker step type returned by your step builder's `create_step()` method. This field is used by the Universal Builder Test framework for step-type-specific validation and testing.
+
+**Available SageMaker Step Types:**
+- **Processing**: For data processing, feature engineering, and data transformation steps
+- **Training**: For model training steps using SageMaker training jobs
+- **Transform**: For batch transform jobs and model inference steps
+- **CreateModel**: For creating SageMaker model artifacts and endpoints
+- **RegisterModel**: For registering models in the SageMaker Model Registry
+- **Lambda**: For AWS Lambda function execution steps
+- **Base**: For custom step implementations that don't fit standard categories
+
+Choose the appropriate `sagemaker_step_type` based on what your `create_step()` method returns:
+- Return `ProcessingStep` → use `sagemaker_step_type="Processing"`
+- Return `TrainingStep` → use `sagemaker_step_type="Training"`
+- Return `TransformStep` → use `sagemaker_step_type="Transform"`
+- Return `CreateModelStep` → use `sagemaker_step_type="CreateModel"`
+- Return `RegisterModelStep` → use `sagemaker_step_type="RegisterModel"`
+- Return `LambdaStep` → use `sagemaker_step_type="Lambda"`
+- Return custom step → use `sagemaker_step_type="Base"`
+
+**Note**: The hybrid registry system maintains backward compatibility while providing workspace isolation and automatic discovery. Manual updates to `step_names_original.py` are only needed for legacy compatibility or when working with the fallback registry system.
 
 ### 7. Run Validation Framework Tests
 
@@ -676,136 +765,19 @@ python test/steps/builders/run_createmodel_tests.py # For CreateModel steps
 **Important**: Both validation frameworks must pass before proceeding to unit tests and integration.
 
 ### 8. Create Unit Tests
-### 7. Run Validation Framework Tests
-
-Before proceeding with unit tests, run the comprehensive validation framework to ensure your step implementation is correct:
-
-#### 7.1 Unified Alignment Tester
-
-Execute the **Unified Alignment Tester** located in `cursus/validation/alignment` to perform 4-tier validation:
-
-**Option A: Using CLI Commands (Recommended)**
-```bash
-# Validate a specific script with detailed output and scoring
-python -m cursus.cli.alignment_cli validate your_new_step --verbose --show-scoring
-
-# Validate a specific alignment level only
-python -m cursus.cli.alignment_cli validate-level your_new_step 1 --verbose
-
-# Generate comprehensive visualization and scoring reports
-python -m cursus.cli.alignment_cli visualize your_new_step --output-dir ./validation_reports --verbose
-
-# Run validation for all scripts with reports
-python -m cursus.cli.alignment_cli validate-all --output-dir ./reports --format both --verbose
-```
-
-**Option B: Using Test Scripts (Pattern from existing tests)**
-```bash
-# Create individual validation script following the pattern from validate_tabular_preprocessing.py
-python test/steps/scripts/alignment_validation/validate_your_new_step.py
-
-# Run comprehensive alignment validation for all scripts
-python test/steps/scripts/alignment_validation/run_alignment_validation.py
-```
-
-**Option C: Direct Python Usage (Following existing patterns)**
-```python
-#!/usr/bin/env python3
-"""
-Alignment validation for your new step.
-Based on pattern from validate_tabular_preprocessing.py
-"""
-import sys
-from pathlib import Path
-
-# Add the project root to the Python path
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
-
-from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-
-def main():
-    """Run alignment validation for your new step."""
-    print("🔍 Your New Step Alignment Validation")
-    print("=" * 60)
-    
-    # Initialize the tester with directory paths
-    tester = UnifiedAlignmentTester(
-        scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
-        contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
-        specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
-        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
-        configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
-    )
-    
-    # Run validation for your specific script
-    script_name = "your_new_step"  # Replace with your actual script name
-    
-    try:
-        results = tester.validate_specific_script(script_name)
-        
-        # Print results
-        status = results.get('overall_status', 'UNKNOWN')
-        status_emoji = '✅' if status == 'PASSING' else '❌'
-        print(f"{status_emoji} Overall Status: {status}")
-        
-        # Print level-by-level results
-        for level_num, level_name in enumerate([
-            "Script ↔ Contract",
-            "Contract ↔ Specification", 
-            "Specification ↔ Dependencies",
-            "Builder ↔ Configuration"
-        ], 1):
-            level_key = f"level{level_num}"
-            level_result = results.get(level_key, {})
-            level_passed = level_result.get('passed', False)
-            level_issues = level_result.get('issues', [])
-            
-            status_emoji = '✅' if level_passed else '❌'
-            print(f"\n{status_emoji} Level {level_num}: {level_name}")
-            print(f"   Status: {'PASS' if level_passed else 'FAIL'}")
-            print(f"   Issues: {len(level_issues)}")
-            
-            # Print issues with details
-            for issue in level_issues:
-                severity = issue.get('severity', 'ERROR')
-                message = issue.get('message', 'No message')
-                recommendation = issue.get('recommendation', '')
-                
-                print(f"   • {severity}: {message}")
-                if recommendation:
-                    print(f"     💡 Recommendation: {recommendation}")
-        
-        return 0 if status == 'PASSING' else 1
-        
-    except Exception as e:
-        print(f"❌ ERROR during validation: {e}")
-        return 2
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-
-The 4-tier validation includes:
-- **Level 1**: Script-Contract Alignment (script paths match contract definitions)
-- **Level 2**: Contract-Specification Alignment (logical names consistency)
-- **Level 3**: Specification-Dependencies Alignment (dependency compatibility)
-- **Level 4**: Builder-Configuration Alignment (builder config integration)
-
-### 8. Create Unit Tests
 
 Implement tests to verify your components work correctly:
 
-**Create New File**: `test/pipeline_steps/test_builder_your_new_step.py`
+**Create New File**: `test/steps/builders/test_builder_your_new_step.py`
 
 ```python
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.pipeline_steps.builder_your_new_step import YourNewStepBuilder
-from src.pipeline_steps.config_your_new_step import YourNewStepConfig
-from src.pipeline_step_specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
-from src.pipeline_deps.base_specifications import NodeType, DependencyType
+from cursus.steps.builders.builder_your_new_step import YourNewStepBuilder
+from cursus.steps.configs.config_your_new_step import YourNewStepConfig
+from cursus.steps.specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
+from cursus.core.base.specification_base import NodeType, DependencyType
 
 class TestYourNewStepBuilder(unittest.TestCase):
     def setUp(self):
@@ -857,7 +829,7 @@ class TestYourNewStepBuilder(unittest.TestCase):
         self.assertEqual(env_vars["REQUIRED_PARAM_1"], "value1")
         self.assertEqual(env_vars["REQUIRED_PARAM_2"], "42")
     
-    @patch('src.pipeline_steps.builder_your_new_step.YourNewStepBuilder._get_processor')
+    @patch('cursus.steps.builders.builder_your_new_step.YourNewStepBuilder._get_processor')
     def test_create_step(self, mock_get_processor):
         """Test step creation with dependencies."""
         # Mock dependencies
@@ -874,13 +846,13 @@ class TestYourNewStepBuilder(unittest.TestCase):
         mock_processor.run.assert_called_once()
 ```
 
-**Create New File**: `test/pipeline_step_specs/test_your_new_step_spec.py`
+**Create New File**: `test/steps/specs/test_your_new_step_spec.py`
 
 ```python
 import unittest
 
-from src.pipeline_step_specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
-from src.pipeline_deps.base_specifications import ValidationResult
+from cursus.steps.specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
+from cursus.steps.specs.base_specifications import ValidationResult
 
 class TestYourNewStepSpec(unittest.TestCase):
     def test_contract_alignment(self):
@@ -909,45 +881,238 @@ class TestYourNewStepSpec(unittest.TestCase):
         self.assertFalse(input_metadata_dep.required)
 ```
 
-### 8. Integrate With Pipeline Templates
+### 9. Integrate With Pipeline Catalog
 
-Finally, make your step usable in pipeline templates:
+Once your step is created and validated, it becomes available for use in the Pipeline Catalog system. The modern pipeline catalog uses a Zettelkasten-based approach with connection-based discovery rather than traditional templates.
 
-**File to Update**: `src/pipeline_builder/template_pipeline_your_template.py`
+#### Automatic Step Discovery
+
+Your step is automatically available to all pipelines once registered with the hybrid registry system:
+
+```bash
+# Verify your step is available
+cursus list-steps
+
+# Check if your step appears in pipeline discovery
+cursus catalog find --tags your_step_tags
+```
+
+#### Using Your Step in Existing Pipelines
+
+Your step can be used in any pipeline that matches its dependency requirements:
 
 ```python
-# Add your step to the template's DAG creation
-def _create_pipeline_dag(self) -> PipelineDAG:
+# Example: Using your step in a pipeline
+from cursus.pipeline_catalog.pipelines.your_pipeline import create_pipeline
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+
+# Your step is automatically available through the registry
+registry = UnifiedRegistryManager()
+available_steps = registry.list_steps()
+
+# Pipeline builders can now discover and use your step
+pipeline, report, dag_compiler, template = create_pipeline(
+    config_path="config.json",
+    session=pipeline_session,
+    role=role
+)
+```
+
+#### Creating New Pipelines with Your Step
+
+To create a new pipeline that uses your step, follow the Pipeline Catalog patterns:
+
+**Create New File**: `src/cursus/pipeline_catalog/pipelines/pipeline_with_your_step.py`
+
+```python
+"""
+Pipeline using YourNewStep - A pipeline demonstrating your new step.
+
+This pipeline showcases the usage of YourNewStep in a complete workflow.
+"""
+
+from typing import Dict, Any, Optional, Tuple
+from pathlib import Path
+
+from cursus.core.dag.dag_compiler import DAGCompiler
+from cursus.core.dag.pipeline_dag import PipelineDAG
+from cursus.pipeline_catalog.utils.zettelkasten_metadata import ZettelkastenMetadata
+from cursus.steps.builders.builder_your_new_step import YourNewStepBuilder
+from cursus.steps.configs.config_your_new_step import YourNewStepConfig
+
+# Zettelkasten metadata for pipeline discovery
+PIPELINE_METADATA = ZettelkastenMetadata(
+    id="pipeline_with_your_step",
+    title="Pipeline with YourNewStep",
+    description="A complete pipeline demonstrating YourNewStep usage",
+    tags=["your_new_step", "processing", "example"],
+    framework_tags=["sagemaker"],
+    task_tags=["processing", "transformation"],
+    complexity_tags=["standard"],
+    connections={
+        "alternatives": ["other_similar_pipeline"],
+        "extensions": ["enhanced_pipeline_with_your_step"],
+        "components": ["your_new_step"],
+        "progressions": ["basic_pipeline", "advanced_pipeline"]
+    },
+    use_cases=[
+        "Demonstrate YourNewStep functionality",
+        "Process data using your new step",
+        "Example workflow with custom step"
+    ]
+)
+
+def create_dag() -> PipelineDAG:
+    """Create the pipeline DAG with YourNewStep."""
     dag = PipelineDAG()
     
-    # Add your node
+    # Add your step to the DAG
     dag.add_node("your_new_step")
     
-    # Add connections
-    dag.add_edge("previous_step", "your_new_step")
-    dag.add_edge("your_new_step", "next_step")
+    # Add other steps as needed
+    dag.add_node("preprocessing_step")
+    dag.add_node("postprocessing_step")
+    
+    # Define step connections
+    dag.add_edge("preprocessing_step", "your_new_step")
+    dag.add_edge("your_new_step", "postprocessing_step")
     
     return dag
 
-# Add your configuration to the template's config map
-def _create_config_map(self) -> Dict[str, BasePipelineConfig]:
-    config_map = {}
+def create_pipeline(
+    config_path: str,
+    session,
+    role: str,
+    enable_mods: bool = False
+) -> Tuple[Any, Dict[str, Any], DAGCompiler, Optional[Any]]:
+    """
+    Create pipeline with YourNewStep.
     
-    # Add your config
-    your_new_step_config = self._get_config_by_type(YourNewStepConfig)
-    if your_new_step_config:
-        config_map["your_new_step"] = your_new_step_config
+    Args:
+        config_path: Path to configuration file
+        session: SageMaker session
+        role: IAM role ARN
+        enable_mods: Enable MODS features if available
     
-    # Other configs...
-    return config_map
-
-# Add your builder to the template's builder map
-def _create_step_builder_map(self) -> Dict[str, Type[StepBuilderBase]]:
-    return {
-        # Existing mappings...
-        "your_new_step": YourNewStepBuilder
+    Returns:
+        Tuple of (pipeline, report, dag_compiler, template)
+    """
+    # Load configuration
+    config = load_config(config_path)
+    
+    # Create step configurations
+    your_step_config = YourNewStepConfig(**config.get("your_new_step", {}))
+    
+    # Create step builders
+    step_builders = {
+        "your_new_step": YourNewStepBuilder(
+            config=your_step_config,
+            sagemaker_session=session,
+            role=role
+        )
     }
+    
+    # Create DAG
+    dag = create_dag()
+    
+    # Create DAG compiler
+    dag_compiler = DAGCompiler(
+        dag=dag,
+        step_builders=step_builders,
+        session=session,
+        role=role
+    )
+    
+    # Compile pipeline
+    pipeline = dag_compiler.compile()
+    
+    # Generate report
+    report = {
+        "pipeline_name": "pipeline_with_your_step",
+        "steps": list(step_builders.keys()),
+        "dag_structure": dag.to_dict(),
+        "metadata": PIPELINE_METADATA.to_dict()
+    }
+    
+    # MODS integration (if available)
+    template = None
+    if enable_mods:
+        try:
+            from cursus.mods.template_registration import register_template
+            template = register_template(pipeline, PIPELINE_METADATA)
+        except ImportError:
+            # Graceful fallback if MODS not available
+            pass
+    
+    # Sync to registry
+    sync_to_registry(PIPELINE_METADATA)
+    
+    return pipeline, report, dag_compiler, template
+
+def get_enhanced_dag_metadata() -> Dict[str, Any]:
+    """Get enhanced metadata for the DAG."""
+    return {
+        "zettelkasten_metadata": PIPELINE_METADATA.to_dict(),
+        "step_metadata": {
+            "your_new_step": {
+                "builder_class": "YourNewStepBuilder",
+                "config_class": "YourNewStepConfig",
+                "sagemaker_step_type": "Processing"
+            }
+        }
+    }
+
+def sync_to_registry(metadata: ZettelkastenMetadata) -> None:
+    """Sync pipeline metadata to the catalog registry."""
+    from cursus.pipeline_catalog.utils.registry_sync import sync_pipeline_metadata
+    sync_pipeline_metadata(metadata)
+
+def load_config(config_path: str) -> Dict[str, Any]:
+    """Load configuration from file."""
+    import json
+    with open(config_path, 'r') as f:
+        return json.load(f)
 ```
+
+#### Pipeline Discovery and Usage
+
+Your step becomes discoverable through the catalog system:
+
+```bash
+# Find pipelines that use your step
+cursus catalog find --tags your_new_step
+
+# Get recommendations for pipelines with your step
+cursus catalog recommend --use-case "pipeline using YourNewStep"
+
+# Show connections to pipelines using your step
+cursus catalog connections --pipeline pipeline_with_your_step
+```
+
+#### Best Practices for Pipeline Integration
+
+1. **Use Descriptive Metadata**: Include comprehensive ZettelkastenMetadata with relevant tags and connections
+2. **Follow Naming Conventions**: Use semantic naming like `{use_case}_{complexity}` (e.g., `data_processing_standard`)
+3. **Define Clear Connections**: Specify alternatives, extensions, and progressions to help users discover related pipelines
+4. **Include Use Cases**: Provide clear use case descriptions for better discoverability
+5. **Enable MODS Integration**: Support MODS features with graceful fallback for enhanced operational capabilities
+
+#### Validation
+
+Validate your pipeline integration:
+
+```bash
+# Validate pipeline registry
+cursus catalog registry validate
+
+# Test pipeline discovery
+cursus catalog find --pipeline pipeline_with_your_step
+
+# Check pipeline metadata
+cursus catalog registry export --pipelines pipeline_with_your_step
+```
+
+Your step is now fully integrated into the Pipeline Catalog ecosystem and can be discovered, used, and connected with other pipelines through the modern Zettelkasten-based approach.
 
 ## Alignment and Validation
 
@@ -974,6 +1139,7 @@ Use the [validation checklist](validation_checklist.md) to verify your implement
 - [Script Contract Development](script_contract.md) - Script contract creation guide
 - [Step Specification Development](step_specification.md) - Step specification creation guide
 - [Three-Tier Config Design](three_tier_config_design.md) - Configuration design patterns
-- [Step Builder Registry Guide](step_builder_registry_guide.md) - Registry usage and auto-discovery
+- [Step Builder Registry Guide](step_builder_registry_guide.md) - Comprehensive guide to the UnifiedRegistryManager and hybrid registry system
+- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical examples and usage patterns for registry operations
 - [Common Pitfalls](common_pitfalls.md) - Common mistakes to avoid
 - [Example](example.md) - Complete step implementation example
