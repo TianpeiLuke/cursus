@@ -286,6 +286,137 @@ def resolve_step(step_name: str, workspace: Optional[str], framework: Optional[s
     except Exception as e:
         click.echo(f"❌ Step resolution failed: {e}")
 
+@registry_cli.command('validate-step-definition')
+@click.option('--name', required=True, help='Step name to validate')
+@click.option('--config-class', help='Config class name (optional)')
+@click.option('--builder-name', help='Builder class name (optional)')
+@click.option('--sagemaker-type', help='SageMaker step type (optional)')
+@click.option('--auto-correct', is_flag=True, help='Apply auto-correction to naming violations')
+@click.option('--performance', is_flag=True, help='Show performance metrics')
+def validate_step_definition(name: str, config_class: Optional[str], builder_name: Optional[str], 
+                           sagemaker_type: Optional[str], auto_correct: bool, performance: bool):
+    """Validate a step definition against standardization rules."""
+    try:
+        from cursus.registry.validation_utils import (
+            validate_new_step_definition, auto_correct_step_definition,
+            create_validation_report, get_performance_metrics
+        )
+        
+        # Build step data dictionary
+        step_data = {"step_name": name}
+        if config_class:
+            step_data["config_class"] = config_class
+        if builder_name:
+            step_data["builder_name"] = builder_name
+        if sagemaker_type:
+            step_data["sagemaker_step_type"] = sagemaker_type
+        
+        click.echo(f"🔍 Validating step definition: {name}")
+        
+        if auto_correct:
+            # Apply auto-correction
+            corrected_data = auto_correct_step_definition(step_data)
+            click.echo("🔧 Auto-correction applied:")
+            
+            for key, value in corrected_data.items():
+                if key in step_data and step_data[key] != value:
+                    click.echo(f"   {key}: {step_data[key]} → {value}")
+                elif key not in step_data:
+                    click.echo(f"   {key}: (added) {value}")
+            
+            step_data = corrected_data
+        
+        # Create validation report
+        report = create_validation_report(name, step_data, "strict")
+        
+        # Display results
+        if report["is_valid"]:
+            click.echo("✅ Step definition is valid")
+        else:
+            click.echo("❌ Step definition has validation errors:")
+            for error in report["errors"]:
+                click.echo(f"   • {error}")
+        
+        # Show detailed errors with suggestions
+        if report.get("detailed_errors"):
+            click.echo("\n📋 Detailed Analysis:")
+            for detailed_error in report["detailed_errors"]:
+                click.echo(f"   {detailed_error}")
+        
+        # Show suggested corrections
+        if report.get("corrections_available") and report.get("suggested_corrections"):
+            click.echo("\n🔧 Suggested Corrections:")
+            for field, correction in report["suggested_corrections"].items():
+                click.echo(f"   {field}: {correction['original']} → {correction['corrected']}")
+        
+        # Show performance metrics if requested
+        if performance:
+            metrics = get_performance_metrics()
+            click.echo(f"\n📊 Performance Metrics:")
+            click.echo(f"   Validation time: {metrics['average_time_ms']:.2f}ms")
+            click.echo(f"   Cache hit rate: {metrics['cache_stats']['hit_rate']:.1%}")
+            click.echo(f"   Total validations: {metrics['total_validations']}")
+        
+    except Exception as e:
+        click.echo(f"❌ Validation failed: {e}")
+
+@registry_cli.command('validation-status')
+def validation_status():
+    """Show validation system status and performance metrics."""
+    try:
+        from cursus.registry.validation_utils import get_validation_status, get_performance_metrics
+        
+        click.echo("📊 Validation System Status")
+        click.echo("=" * 40)
+        
+        # Get system status
+        status = get_validation_status()
+        click.echo(f"System Status: {'🟢 Active' if status['validation_available'] else '🔴 Inactive'}")
+        click.echo(f"Implementation: {status['implementation_approach']}")
+        click.echo(f"Supported Modes: {', '.join(status['supported_modes'])}")
+        
+        # Get performance metrics
+        metrics = get_performance_metrics()
+        click.echo(f"\n📈 Performance Metrics:")
+        click.echo(f"   Total validations: {metrics['total_validations']}")
+        click.echo(f"   Average validation time: {metrics['average_time_ms']:.2f}ms")
+        click.echo(f"   Cache hit rate: {metrics['cache_stats']['hit_rate']:.1%}")
+        click.echo(f"   Cache size: {metrics['cache_stats']['cache_size']}")
+        
+        # Performance assessment
+        avg_time = metrics['average_time_ms']
+        if avg_time < 1.0:
+            perf_status = "🟢 Excellent"
+        elif avg_time < 5.0:
+            perf_status = "🟡 Good"
+        else:
+            perf_status = "🔴 Needs optimization"
+        
+        click.echo(f"   Performance: {perf_status} ({avg_time:.2f}ms avg)")
+        
+        # Recent activity
+        if metrics['total_validations'] > 0:
+            click.echo(f"\n🕒 Recent Activity:")
+            click.echo(f"   Last validation: {metrics.get('last_validation_time', 'N/A')}")
+            click.echo(f"   Error rate: {metrics.get('error_rate', 0):.1%}")
+        
+    except Exception as e:
+        click.echo(f"❌ Failed to get validation status: {e}")
+
+@registry_cli.command('reset-validation-metrics')
+@click.confirmation_option(prompt='Are you sure you want to reset all validation metrics?')
+def reset_validation_metrics():
+    """Reset validation performance metrics and cache."""
+    try:
+        from cursus.registry.validation_utils import reset_performance_metrics
+        
+        reset_performance_metrics()
+        click.echo("✅ Validation metrics and cache have been reset")
+        click.echo("📊 Performance tracking restarted from zero")
+        
+    except Exception as e:
+        click.echo(f"❌ Failed to reset validation metrics: {e}")
+
 # Helper functions for workspace creation
 def _create_workspace_structure(workspace_dir: Path) -> None:
     """Create complete workspace directory structure."""
