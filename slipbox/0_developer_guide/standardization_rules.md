@@ -132,7 +132,7 @@ All components must implement standardized interfaces:
 
 All step builders must:
 - Inherit from `StepBuilderBase`
-- Use the `@register_builder` decorator to register with the registry (or have their naming follow the standard pattern to be auto-discovered)
+- Be registered with the UnifiedRegistryManager (either through explicit registration or auto-discovery)
 - Follow the strict naming convention `XXXStepBuilder` where XXX is the step type
 - Implement the required methods:
   - `validate_configuration()`
@@ -140,12 +140,12 @@ All step builders must:
   - `_get_outputs()`
   - `create_step()`
 
+**Note**: The legacy `@register_builder` decorator is deprecated. Use the UnifiedRegistryManager for registration.
+
 Example:
 
 ```python
-from cursus.steps.registry.builder_registry import register_builder
-
-@register_builder() # Step type will be auto-derived from class name (YourStepBuilder -> YourStep)
+# Modern approach - UnifiedRegistryManager handles registration
 class YourStepBuilder(StepBuilderBase):
     """Builder for your processing step."""
     

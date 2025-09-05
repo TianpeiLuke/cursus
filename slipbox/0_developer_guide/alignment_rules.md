@@ -225,10 +225,21 @@ invalid_syntax_spec = StepSpecification(
 #### Property Path Validation Rules
 
 ```python
+# Legacy validation approach (single workspace)
 from ...validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
-# Validate property paths against SageMaker step types using the unified alignment tester
+# Validate property paths against SageMaker step types using the legacy alignment tester
 tester = UnifiedAlignmentTester()
+
+# For workspace-aware validation (recommended)
+from ...workspace.validation.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
+
+# Validate property paths with workspace awareness
+workspace_tester = WorkspaceUnifiedAlignmentTester(
+    workspace_root="/path/to/workspace",
+    developer_id="developer_1",
+    enable_shared_fallback=True
+)
 
 # This will pass validation
 valid_spec = StepSpecification(
