@@ -1,283 +1,294 @@
 """
-Central registry for all pipeline step names.
-Single source of truth for step naming across config, builders, and specifications.
+Enhanced step names registry with hybrid backend support.
+Maintains 100% backward compatibility while adding workspace awareness.
+
+This module provides a drop-in replacement for the original step_names.py that:
+- Uses the hybrid registry backend transparently
+- Maintains all existing functions and variables
+- Adds workspace context management capabilities
+- Provides seamless workspace-aware step resolution
 """
 
-from typing import Dict, List
+import os
+import logging
+from typing import Dict, List, Optional, ContextManager
+from contextlib import contextmanager
 
-# Core step name registry - canonical names used throughout the system
-STEP_NAMES = {
-    "Base": {
-        "config_class": "BasePipelineConfig",
-        "builder_step_name": "StepBuilderBase",
-        "spec_type": "Base",
-        "sagemaker_step_type": "Base",  # Special case
-        "description": "Base pipeline configuration"
-    },
+# Set up logging
+logger = logging.getLogger(__name__)
 
-    # Processing Steps (keep Processing as-is)
-    "Processing": {
-        "config_class": "ProcessingStepConfigBase",
-        "builder_step_name": "ProcessingStepBuilder",
-        "spec_type": "Processing",
-        "sagemaker_step_type": "Processing",
-        "description": "Base processing step"
-    },
+# Global workspace context management
+_current_workspace_context: Optional[str] = None
 
-    # Data Loading Steps
-    "CradleDataLoading": {
-        "config_class": "CradleDataLoadConfig",
-        "builder_step_name": "CradleDataLoadingStepBuilder",
-        "spec_type": "CradleDataLoading",
-        "sagemaker_step_type": "CradleDataLoading",
-        "description": "Cradle data loading step"
-    },
+def set_workspace_context(workspace_id: str) -> None:
+    """
+    Set current workspace context for registry resolution.
+    
+    Args:
+        workspace_id: Workspace identifier to set as current context
+    """
+    global _current_workspace_context
+    _current_workspace_context = workspace_id
+    logger.debug(f"Set workspace context to: {workspace_id}")
 
-    # Processing Steps
-    "TabularPreprocessing": {
-        "config_class": "TabularPreprocessingConfig",
-        "builder_step_name": "TabularPreprocessingStepBuilder",
-        "spec_type": "TabularPreprocessing",
-        "sagemaker_step_type": "Processing",
-        "description": "Tabular data preprocessing step"
-    },
-    "RiskTableMapping": {
-        "config_class": "RiskTableMappingConfig",
-        "builder_step_name": "RiskTableMappingStepBuilder",
-        "spec_type": "RiskTableMapping",
-        "sagemaker_step_type": "Processing",
-        "description": "Risk table mapping step for categorical features"
-    },
-    "CurrencyConversion": {
-        "config_class": "CurrencyConversionConfig",
-        "builder_step_name": "CurrencyConversionStepBuilder",
-        "spec_type": "CurrencyConversion",
-        "sagemaker_step_type": "Processing",
-        "description": "Currency conversion processing step"
-    },
+def get_workspace_context() -> Optional[str]:
+    """
+    Get current workspace context.
     
-    # Training Steps
-    "PyTorchTraining": {
-        "config_class": "PyTorchTrainingConfig",
-        "builder_step_name": "PyTorchTrainingStepBuilder",
-        "spec_type": "PyTorchTraining",
-        "sagemaker_step_type": "Training",
-        "description": "PyTorch model training step"
-    },
-    "XGBoostTraining": {
-        "config_class": "XGBoostTrainingConfig",
-        "builder_step_name": "XGBoostTrainingStepBuilder",
-        "spec_type": "XGBoostTraining",
-        "sagemaker_step_type": "Training",
-        "description": "XGBoost model training step"
-    },
-    "DummyTraining": {
-        "config_class": "DummyTrainingConfig",
-        "builder_step_name": "DummyTrainingStepBuilder",
-        "spec_type": "DummyTraining",
-        "sagemaker_step_type": "Processing",
-        "description": "Training step that uses a pretrained model"
-    },
+    Returns:
+        Current workspace identifier or None if no context set
+    """
+    # Check explicit context first
+    if _current_workspace_context:
+        return _current_workspace_context
     
-    # Evaluation Steps
-    "XGBoostModelEval": {
-        "config_class": "XGBoostModelEvalConfig",
-        "builder_step_name": "XGBoostModelEvalStepBuilder",
-        "spec_type": "XGBoostModelEval",
-        "sagemaker_step_type": "Processing",
-        "description": "XGBoost model evaluation step"
-    },
+    # Check environment variable
+    env_context = os.environ.get('CURSUS_WORKSPACE_ID')
+    if env_context:
+        return env_context
     
-    # Model Steps
-    "PyTorchModel": {
-        "config_class": "PyTorchModelConfig",
-        "builder_step_name": "PyTorchModelStepBuilder",
-        "spec_type": "PyTorchModel",
-        "sagemaker_step_type": "CreateModel",
-        "description": "PyTorch model creation step"
-    },
-    "XGBoostModel": {
-        "config_class": "XGBoostModelConfig",
-        "builder_step_name": "XGBoostModelStepBuilder",
-        "spec_type": "XGBoostModel",
-        "sagemaker_step_type": "CreateModel",
-        "description": "XGBoost model creation step"
-    },
+    return None
+
+def clear_workspace_context() -> None:
+    """Clear current workspace context."""
+    global _current_workspace_context
+    _current_workspace_context = None
+    logger.debug("Cleared workspace context")
+
+@contextmanager
+def workspace_context(workspace_id: str) -> ContextManager[None]:
+    """
+    Context manager for temporary workspace context.
     
-    # Model Processing Steps
-    "ModelCalibration": {
-        "config_class": "ModelCalibrationConfig",
-        "builder_step_name": "ModelCalibrationStepBuilder",
-        "spec_type": "ModelCalibration",
-        "sagemaker_step_type": "Processing",
-        "description": "Calibrates model prediction scores to accurate probabilities"
-    },
+    Args:
+        workspace_id: Workspace identifier for temporary context
+        
+    Usage:
+        with workspace_context("developer_1"):
+            step_names = get_step_names()  # Uses developer_1 context
+    """
+    old_context = get_workspace_context()
+    try:
+        set_workspace_context(workspace_id)
+        yield
+    finally:
+        if old_context:
+            set_workspace_context(old_context)
+        else:
+            clear_workspace_context()
+
+# Global registry manager instance
+_global_registry_manager = None
+
+def _get_registry_manager():
+    """Get or create global registry manager instance."""
+    global _global_registry_manager
+    if _global_registry_manager is None:
+        try:
+            from .hybrid.manager import UnifiedRegistryManager
+            _global_registry_manager = UnifiedRegistryManager()
+            logger.debug("Initialized hybrid registry manager")
+        except Exception as e:
+            logger.warning(f"Failed to initialize hybrid registry manager: {e}")
+            # Fallback to original implementation
+            _global_registry_manager = _create_fallback_manager()
+    return _global_registry_manager
+
+def _create_fallback_manager():
+    """Create fallback manager using original step_names data."""
+    logger.info("Using fallback registry manager with original step_names")
     
-    # Deployment Steps
-    "Package": {
-        "config_class": "PackageConfig",
-        "builder_step_name": "PackageStepBuilder",
-        "spec_type": "Package",
-        "sagemaker_step_type": "Processing",
-        "description": "Model packaging step"
-    },
-    "Registration": {
-        "config_class": "RegistrationConfig",
-        "builder_step_name": "RegistrationStepBuilder",
-        "spec_type": "Registration",
-        "sagemaker_step_type": "MimsModelRegistrationProcessing",
-        "description": "Model registration step"
-    },
-    "Payload": {
-        "config_class": "PayloadConfig",
-        "builder_step_name": "PayloadStepBuilder",
-        "spec_type": "Payload",
-        "sagemaker_step_type": "Processing",
-        "description": "Payload testing step"
-    },
+    class FallbackManager:
+        def __init__(self):
+            # Import original step names
+            from .step_names_original import STEP_NAMES as ORIGINAL_STEP_NAMES
+            self._step_names = ORIGINAL_STEP_NAMES
+        
+        def create_legacy_step_names_dict(self, workspace_id: str = None) -> Dict[str, Dict[str, str]]:
+            return self._step_names.copy()
+        
+        def get_step_definition(self, step_name: str, workspace_id: str = None):
+            return self._step_names.get(step_name)
+        
+        def has_step(self, step_name: str, workspace_id: str = None) -> bool:
+            return step_name in self._step_names
+        
+        def list_steps(self, workspace_id: str = None) -> List[str]:
+            return list(self._step_names.keys())
     
-    # Utility Steps
-    "HyperparameterPrep": {
-        "config_class": "HyperparameterPrepConfig",
-        "builder_step_name": "HyperparameterPrepStepBuilder",
-        "spec_type": "HyperparameterPrep",
-        "sagemaker_step_type": "Lambda",  # Special classification
-        "description": "Hyperparameter preparation step"
-    },
+    return FallbackManager()
+
+# Core registry data structures with workspace awareness
+def get_step_names(workspace_id: str = None) -> Dict[str, Dict[str, str]]:
+    """
+    Get STEP_NAMES dictionary with workspace context.
     
-    # Transform Steps
-    "BatchTransform": {
-        "config_class": "BatchTransformStepConfig",
-        "builder_step_name": "BatchTransformStepBuilder",
-        "spec_type": "BatchTransform",
-        "sagemaker_step_type": "Transform",
-        "description": "Batch transform step"
+    Args:
+        workspace_id: Optional workspace context override
+        
+    Returns:
+        Step names dictionary in original format
+    """
+    effective_workspace = workspace_id or get_workspace_context()
+    manager = _get_registry_manager()
+    return manager.create_legacy_step_names_dict(effective_workspace)
+
+# Dynamic registry variables that update with workspace context
+@property
+def STEP_NAMES() -> Dict[str, Dict[str, str]]:
+    """Dynamic STEP_NAMES that respects workspace context."""
+    return get_step_names()
+
+# Generate derived registries dynamically
+def get_config_step_registry(workspace_id: str = None) -> Dict[str, str]:
+    """Get CONFIG_STEP_REGISTRY with workspace context."""
+    step_names = get_step_names(workspace_id)
+    return {
+        info["config_class"]: step_name 
+        for step_name, info in step_names.items()
+        if "config_class" in info
     }
-}
 
-# Generate the mappings that existing code expects
-CONFIG_STEP_REGISTRY = {
-    info["config_class"]: step_name 
-    for step_name, info in STEP_NAMES.items()
-}
+def get_builder_step_names(workspace_id: str = None) -> Dict[str, str]:
+    """Get BUILDER_STEP_NAMES with workspace context."""
+    step_names = get_step_names(workspace_id)
+    return {
+        step_name: info["builder_step_name"]
+        for step_name, info in step_names.items()
+        if "builder_step_name" in info
+    }
 
-BUILDER_STEP_NAMES = {
-    step_name: info["builder_step_name"]
-    for step_name, info in STEP_NAMES.items()
-}
+def get_spec_step_types(workspace_id: str = None) -> Dict[str, str]:
+    """Get SPEC_STEP_TYPES with workspace context."""
+    step_names = get_step_names(workspace_id)
+    return {
+        step_name: info["spec_type"]
+        for step_name, info in step_names.items()
+        if "spec_type" in info
+    }
 
-# Generate step specification types
-SPEC_STEP_TYPES = {
-    step_name: info["spec_type"]
-    for step_name, info in STEP_NAMES.items()
-}
+# Backward compatibility: Create module-level variables
+# These will be dynamically updated based on workspace context
+STEP_NAMES = get_step_names()
+CONFIG_STEP_REGISTRY = get_config_step_registry()
+BUILDER_STEP_NAMES = get_builder_step_names()
+SPEC_STEP_TYPES = get_spec_step_types()
 
+# Helper functions with workspace awareness
+def get_config_class_name(step_name: str, workspace_id: str = None) -> str:
+    """Get config class name with workspace context."""
+    step_names = get_step_names(workspace_id)
+    if step_name not in step_names:
+        available_steps = sorted(step_names.keys())
+        raise ValueError(f"Unknown step name: {step_name}. Available steps: {available_steps}")
+    return step_names[step_name]["config_class"]
 
-# Helper functions
-def get_config_class_name(step_name: str) -> str:
-    """Get config class name for a step."""
-    if step_name not in STEP_NAMES:
-        raise ValueError(f"Unknown step name: {step_name}")
-    return STEP_NAMES[step_name]["config_class"]
+def get_builder_step_name(step_name: str, workspace_id: str = None) -> str:
+    """Get builder step class name with workspace context."""
+    step_names = get_step_names(workspace_id)
+    if step_name not in step_names:
+        available_steps = sorted(step_names.keys())
+        raise ValueError(f"Unknown step name: {step_name}. Available steps: {available_steps}")
+    return step_names[step_name]["builder_step_name"]
 
-def get_builder_step_name(step_name: str) -> str:
-    """Get builder step class name for a step."""
-    if step_name not in STEP_NAMES:
-        raise ValueError(f"Unknown step name: {step_name}")
-    return STEP_NAMES[step_name]["builder_step_name"]
+def get_spec_step_type(step_name: str, workspace_id: str = None) -> str:
+    """Get step_type value for StepSpecification with workspace context."""
+    step_names = get_step_names(workspace_id)
+    if step_name not in step_names:
+        available_steps = sorted(step_names.keys())
+        raise ValueError(f"Unknown step name: {step_name}. Available steps: {available_steps}")
+    return step_names[step_name]["spec_type"]
 
-def get_spec_step_type(step_name: str) -> str:
-    """Get step_type value for StepSpecification."""
-    if step_name not in STEP_NAMES:
-        raise ValueError(f"Unknown step name: {step_name}")
-    return STEP_NAMES[step_name]["spec_type"]
-
-def get_spec_step_type_with_job_type(step_name: str, job_type: str = None) -> str:
-    """Get step_type with optional job_type suffix."""
-    base_type = get_spec_step_type(step_name)
+def get_spec_step_type_with_job_type(step_name: str, job_type: str = None, workspace_id: str = None) -> str:
+    """Get step_type with optional job_type suffix, workspace-aware."""
+    base_type = get_spec_step_type(step_name, workspace_id)
     if job_type:
         return f"{base_type}_{job_type.capitalize()}"
     return base_type
 
-def get_step_name_from_spec_type(spec_type: str) -> str:
-    """Get canonical step name from spec_type."""
-    # Handle job type variants (e.g., "TabularPreprocessing_Training" -> "TabularPreprocessing")
+def get_step_name_from_spec_type(spec_type: str, workspace_id: str = None) -> str:
+    """Get canonical step name from spec_type with workspace context."""
     base_spec_type = spec_type.split('_')[0] if '_' in spec_type else spec_type
-    
-    reverse_mapping = {info["spec_type"]: step_name 
-                      for step_name, info in STEP_NAMES.items()}
+    step_names = get_step_names(workspace_id)
+    reverse_mapping = {info["spec_type"]: step_name for step_name, info in step_names.items()}
     return reverse_mapping.get(base_spec_type, spec_type)
 
-def get_all_step_names() -> List[str]:
-    """Get all canonical step names."""
-    return list(STEP_NAMES.keys())
+def get_all_step_names(workspace_id: str = None) -> List[str]:
+    """Get all canonical step names with workspace context."""
+    step_names = get_step_names(workspace_id)
+    return list(step_names.keys())
 
-# Validation functions
-def validate_step_name(step_name: str) -> bool:
-    """Validate that a step name exists in the registry."""
-    return step_name in STEP_NAMES
+def validate_step_name(step_name: str, workspace_id: str = None) -> bool:
+    """Validate step name exists with workspace context."""
+    step_names = get_step_names(workspace_id)
+    return step_name in step_names
 
-def validate_spec_type(spec_type: str) -> bool:
-    """Validate that a spec_type exists in the registry."""
-    # Handle job type variants
+def validate_spec_type(spec_type: str, workspace_id: str = None) -> bool:
+    """Validate spec_type exists with workspace context."""
     base_spec_type = spec_type.split('_')[0] if '_' in spec_type else spec_type
-    return base_spec_type in [info["spec_type"] for info in STEP_NAMES.values()]
+    step_names = get_step_names(workspace_id)
+    return base_spec_type in [info["spec_type"] for info in step_names.values()]
 
-def get_step_description(step_name: str) -> str:
-    """Get description for a step."""
-    if step_name not in STEP_NAMES:
-        raise ValueError(f"Unknown step name: {step_name}")
-    return STEP_NAMES[step_name]["description"]
+def get_step_description(step_name: str, workspace_id: str = None) -> str:
+    """Get step description with workspace context."""
+    step_names = get_step_names(workspace_id)
+    if step_name not in step_names:
+        available_steps = sorted(step_names.keys())
+        raise ValueError(f"Unknown step name: {step_name}. Available steps: {available_steps}")
+    return step_names[step_name]["description"]
 
-def list_all_step_info() -> Dict[str, Dict[str, str]]:
-    """Get complete step information for all registered steps."""
-    return STEP_NAMES.copy()
+def list_all_step_info(workspace_id: str = None) -> Dict[str, Dict[str, str]]:
+    """Get complete step information with workspace context."""
+    return get_step_names(workspace_id)
 
-# SageMaker Step Type Classification Functions
-def get_sagemaker_step_type(step_name: str) -> str:
-    """Get SageMaker step type for a step."""
-    if step_name not in STEP_NAMES:
-        raise ValueError(f"Unknown step name: {step_name}")
-    return STEP_NAMES[step_name]["sagemaker_step_type"]
+# SageMaker Step Type Classification Functions with workspace awareness
+def get_sagemaker_step_type(step_name: str, workspace_id: str = None) -> str:
+    """Get SageMaker step type with workspace context."""
+    step_names = get_step_names(workspace_id)
+    if step_name not in step_names:
+        available_steps = sorted(step_names.keys())
+        raise ValueError(f"Unknown step name: {step_name}. Available steps: {available_steps}")
+    return step_names[step_name]["sagemaker_step_type"]
 
-def get_steps_by_sagemaker_type(sagemaker_type: str) -> List[str]:
-    """Get all step names that create a specific SageMaker step type."""
+def get_steps_by_sagemaker_type(sagemaker_type: str, workspace_id: str = None) -> List[str]:
+    """Get steps by SageMaker type with workspace context."""
+    step_names = get_step_names(workspace_id)
     return [
-        step_name for step_name, info in STEP_NAMES.items()
+        step_name for step_name, info in step_names.items()
         if info["sagemaker_step_type"] == sagemaker_type
     ]
 
-def get_all_sagemaker_step_types() -> List[str]:
-    """Get all unique SageMaker step types."""
-    return list(set(info["sagemaker_step_type"] for info in STEP_NAMES.values()))
+def get_all_sagemaker_step_types(workspace_id: str = None) -> List[str]:
+    """Get all SageMaker step types with workspace context."""
+    step_names = get_step_names(workspace_id)
+    return list(set(info["sagemaker_step_type"] for info in step_names.values()))
 
 def validate_sagemaker_step_type(sagemaker_type: str) -> bool:
-    """Validate that a SageMaker step type exists in the registry."""
-    valid_types = {"Processing", "Training", "Transform", "CreateModel", "RegisterModel", "Base", "Utility"}
+    """Validate SageMaker step type."""
+    valid_types = {"Processing", "Training", "Transform", "CreateModel", "RegisterModel", "Base", "Utility", "Lambda", "CradleDataLoading", "MimsModelRegistrationProcessing"}
     return sagemaker_type in valid_types
 
-def get_sagemaker_step_type_mapping() -> Dict[str, List[str]]:
-    """Get mapping of SageMaker step types to step names."""
+def get_sagemaker_step_type_mapping(workspace_id: str = None) -> Dict[str, List[str]]:
+    """Get SageMaker step type mapping with workspace context."""
+    step_names = get_step_names(workspace_id)
     mapping = {}
-    for step_name, info in STEP_NAMES.items():
+    for step_name, info in step_names.items():
         sagemaker_type = info["sagemaker_step_type"]
         if sagemaker_type not in mapping:
             mapping[sagemaker_type] = []
         mapping[sagemaker_type].append(step_name)
     return mapping
 
-def get_canonical_name_from_file_name(file_name: str) -> str:
+def get_canonical_name_from_file_name(file_name: str, workspace_id: str = None) -> str:
     """
-    Get canonical step name from file name using registry-first algorithmic conversion.
-    
-    This function uses a deterministic algorithm that tries multiple interpretations
-    of the file name against the registry, eliminating the need for hard-coded mappings.
+    Enhanced file name resolution with workspace context awareness.
     
     Args:
-        file_name: File-based name (e.g., "model_evaluation_xgb", "dummy_training", "xgboost_training")
+        file_name: File-based name (e.g., "model_evaluation_xgb", "dummy_training")
+        workspace_id: Optional workspace context for resolution
         
     Returns:
-        Canonical step name (e.g., "XGBoostModelEval", "DummyTraining", "XGBoostTraining")
+        Canonical step name (e.g., "XGBoostModelEval", "DummyTraining")
         
     Raises:
         ValueError: If file name cannot be mapped to a canonical name
@@ -285,28 +296,30 @@ def get_canonical_name_from_file_name(file_name: str) -> str:
     if not file_name:
         raise ValueError("File name cannot be empty")
     
+    # Get workspace-aware step names
+    step_names = get_step_names(workspace_id)
+    
     parts = file_name.split('_')
     job_type_suffixes = ['training', 'validation', 'testing', 'calibration']
     
-    # Strategy 1: Try full name as PascalCase (handles cases like "xgboost_training" -> "XGBoostTraining")
+    # Strategy 1: Try full name as PascalCase
     full_pascal = ''.join(word.capitalize() for word in parts)
-    if full_pascal in STEP_NAMES:
+    if full_pascal in step_names:
         return full_pascal
     
     # Strategy 2: Try without last part if it's a job type suffix
     if len(parts) > 1 and parts[-1] in job_type_suffixes:
         base_parts = parts[:-1]
         base_pascal = ''.join(word.capitalize() for word in base_parts)
-        if base_pascal in STEP_NAMES:
+        if base_pascal in step_names:
             return base_pascal
     
     # Strategy 3: Handle special abbreviations and patterns
-    # Convert known abbreviations to full names
     abbreviation_map = {
         'xgb': 'XGBoost',
-        'xgboost': 'XGBoost',  # Add full xgboost mapping
+        'xgboost': 'XGBoost',
         'pytorch': 'PyTorch',
-        'mims': '',  # Remove MIMS prefix
+        'mims': '',
         'tabular': 'Tabular',
         'preprocess': 'Preprocessing'
     }
@@ -316,7 +329,7 @@ def get_canonical_name_from_file_name(file_name: str) -> str:
     for part in parts:
         if part in abbreviation_map:
             expansion = abbreviation_map[part]
-            if expansion:  # Only add non-empty expansions
+            if expansion:
                 expanded_parts.append(expansion)
         else:
             expanded_parts.append(part.capitalize())
@@ -324,27 +337,23 @@ def get_canonical_name_from_file_name(file_name: str) -> str:
     # Try expanded version
     if expanded_parts:
         expanded_pascal = ''.join(expanded_parts)
-        if expanded_pascal in STEP_NAMES:
+        if expanded_pascal in step_names:
             return expanded_pascal
         
         # Try expanded version without job type suffix
         if len(expanded_parts) > 1 and parts[-1] in job_type_suffixes:
             expanded_base = ''.join(expanded_parts[:-1])
-            if expanded_base in STEP_NAMES:
+            if expanded_base in step_names:
                 return expanded_base
     
     # Strategy 4: Handle compound names (like "model_evaluation_xgb")
     if len(parts) >= 3:
-        # Try different combinations for compound names
         combinations_to_try = [
-            # For "model_evaluation_xgb" -> "XGBoostModelEval"
-            (parts[-1], parts[0], parts[1]),  # xgb, model, evaluation -> XGBoost, Model, Eval
-            # For other patterns
+            (parts[-1], parts[0], parts[1]),  # xgb, model, evaluation → XGBoost, Model, Eval
             (parts[0], parts[1], parts[-1]),  # model, evaluation, xgb
         ]
         
         for combo in combinations_to_try:
-            # Apply abbreviation expansion to combination
             expanded_combo = []
             for part in combo:
                 if part in abbreviation_map:
@@ -352,68 +361,56 @@ def get_canonical_name_from_file_name(file_name: str) -> str:
                     if expansion:
                         expanded_combo.append(expansion)
                 else:
-                    # Special handling for "evaluation" -> "Eval"
                     if part == 'evaluation':
                         expanded_combo.append('Eval')
                     else:
                         expanded_combo.append(part.capitalize())
             
             combo_pascal = ''.join(expanded_combo)
-            if combo_pascal in STEP_NAMES:
+            if combo_pascal in step_names:
                 return combo_pascal
     
     # Strategy 5: Fuzzy matching against registry entries
-    # Calculate similarity scores for all registry entries
     best_match = None
     best_score = 0.0
     
-    for canonical_name in STEP_NAMES.keys():
+    for canonical_name in step_names.keys():
         score = _calculate_name_similarity(file_name, canonical_name)
-        if score > best_score and score >= 0.8:  # High threshold for fuzzy matching
+        if score > best_score and score >= 0.8:
             best_score = score
             best_match = canonical_name
     
     if best_match:
         return best_match
     
-    # If all strategies fail, provide detailed error message
+    # Enhanced error message with workspace context
     tried_variations = [
         full_pascal,
         ''.join(word.capitalize() for word in parts[:-1]) if len(parts) > 1 and parts[-1] in job_type_suffixes else None,
         ''.join(expanded_parts) if expanded_parts else None
     ]
-    tried_variations = [v for v in tried_variations if v]  # Remove None values
+    tried_variations = [v for v in tried_variations if v]
+    
+    workspace_context = get_workspace_context()
+    context_info = f" (workspace: {workspace_context})" if workspace_context else " (core registry)"
     
     raise ValueError(
-        f"Cannot map file name '{file_name}' to canonical name. "
+        f"Cannot map file name '{file_name}' to canonical name{context_info}. "
         f"Tried variations: {tried_variations}. "
-        f"Available canonical names: {sorted(STEP_NAMES.keys())}"
+        f"Available canonical names: {sorted(step_names.keys())}"
     )
 
 def _calculate_name_similarity(file_name: str, canonical_name: str) -> float:
-    """
-    Calculate similarity score between file name and canonical name.
-    
-    Args:
-        file_name: File-based name (e.g., "xgboost_training")
-        canonical_name: Canonical name (e.g., "XGBoostTraining")
-        
-    Returns:
-        Similarity score between 0.0 and 1.0
-    """
-    # Convert both to lowercase for comparison
+    """Calculate similarity score between file name and canonical name."""
     file_lower = file_name.lower().replace('_', '')
     canonical_lower = canonical_name.lower()
     
-    # Exact match after normalization
     if file_lower == canonical_lower:
         return 1.0
     
-    # Check if file name is contained in canonical name
     if file_lower in canonical_lower:
         return 0.9
     
-    # Check if canonical name contains most of the file name parts
     file_parts = file_name.lower().split('_')
     matches = sum(1 for part in file_parts if part in canonical_lower)
     
@@ -424,10 +421,70 @@ def _calculate_name_similarity(file_name: str, canonical_name: str) -> float:
     else:
         return matches / len(file_parts) * 0.7
 
-def validate_file_name(file_name: str) -> bool:
-    """Validate that a file name can be mapped to a canonical name."""
+def validate_file_name(file_name: str, workspace_id: str = None) -> bool:
+    """Validate file name can be mapped with workspace context."""
     try:
-        get_canonical_name_from_file_name(file_name)
+        get_canonical_name_from_file_name(file_name, workspace_id)
         return True
     except ValueError:
         return False
+
+# Workspace management functions
+def list_available_workspaces() -> List[str]:
+    """List all available workspace contexts."""
+    try:
+        manager = _get_registry_manager()
+        if hasattr(manager, 'get_registry_status'):
+            status = manager.get_registry_status()
+            return [ws_id for ws_id in status.keys() if ws_id != 'core']
+        return []
+    except Exception as e:
+        logger.warning(f"Failed to list workspaces: {e}")
+        return []
+
+def get_workspace_step_count(workspace_id: str) -> int:
+    """Get number of steps available in a workspace."""
+    try:
+        manager = _get_registry_manager()
+        if hasattr(manager, 'get_step_count'):
+            return manager.get_step_count(workspace_id)
+        return len(get_step_names(workspace_id))
+    except Exception as e:
+        logger.warning(f"Failed to get step count for workspace {workspace_id}: {e}")
+        return 0
+
+def has_workspace_conflicts() -> bool:
+    """Check if there are any step name conflicts between workspaces."""
+    try:
+        manager = _get_registry_manager()
+        if hasattr(manager, 'get_step_conflicts'):
+            conflicts = manager.get_step_conflicts()
+            return len(conflicts) > 0
+        return False
+    except Exception as e:
+        logger.warning(f"Failed to check workspace conflicts: {e}")
+        return False
+
+# Update module-level variables when workspace context changes
+def _refresh_module_variables():
+    """Refresh module-level variables with current workspace context."""
+    global STEP_NAMES, CONFIG_STEP_REGISTRY, BUILDER_STEP_NAMES, SPEC_STEP_TYPES
+    current_workspace = get_workspace_context()
+    STEP_NAMES = get_step_names(current_workspace)
+    CONFIG_STEP_REGISTRY = get_config_step_registry(current_workspace)
+    BUILDER_STEP_NAMES = get_builder_step_names(current_workspace)
+    SPEC_STEP_TYPES = get_spec_step_types(current_workspace)
+
+# Auto-refresh variables when workspace context is set
+def _set_workspace_context_with_refresh(workspace_id: str) -> None:
+    """Set workspace context and refresh module variables."""
+    global _current_workspace_context
+    _current_workspace_context = workspace_id
+    _refresh_module_variables()
+
+# Override the original set_workspace_context to include refresh
+original_set_workspace_context = set_workspace_context
+def set_workspace_context(workspace_id: str) -> None:
+    """Set workspace context and refresh module variables."""
+    original_set_workspace_context(workspace_id)
+    _refresh_module_variables()
