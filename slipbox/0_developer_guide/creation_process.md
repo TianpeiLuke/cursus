@@ -1127,6 +1127,7 @@ Use the [validation checklist](validation_checklist.md) to verify your implement
 
 ## Related Documentation
 
+- [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - How to integrate your pipeline steps with the Zettelkasten-inspired catalog system
 - [Adding New Pipeline Step](adding_new_pipeline_step.md) - Main developer guide with overview and quick start
 - [Prerequisites](prerequisites.md) - Required information before starting step creation
 - [Design Principles](design_principles.md) - Core architectural principles to follow

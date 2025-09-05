@@ -215,3 +215,14 @@ For detailed guidance on using the registry system, workspace context management
 - [Script-Specification Alignment](../project_planning/script_specification_alignment_prevention_plan.md)
 - [Script Contract](../pipeline_design/script_contract.md)
 - [Step Specification](../pipeline_design/step_specification.md)
+
+## Related Documentation
+
+- [Creation Process](creation_process.md) - Complete step-by-step pipeline creation workflow
+- [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - How to integrate your pipeline steps with the Zettelkasten-inspired catalog system
+- [Step Builder Registry Guide](step_builder_registry_guide.md) - Comprehensive guide to the UnifiedRegistryManager and hybrid registry system
+- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical examples and usage patterns for registry operations
+- [Step Builder](step_builder.md) - Detailed guide to step builder implementation
+- [Step Specification](step_specification.md) - How to define step specifications
+- [Validation Framework Guide](validation_framework_guide.md) - Comprehensive validation system
+- [Best Practices](best_practices.md) - Development best practices and guidelines

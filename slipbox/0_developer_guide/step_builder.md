@@ -28,9 +28,8 @@ from ...core.base.contract_base import ScriptContract
 from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_your_step import YourStepConfig
 from ..specs.your_step_spec import YOUR_STEP_SPEC
-from ..registry.builder_registry import register_builder
+from ...registry.hybrid.manager import UnifiedRegistryManager
 
-@register_builder()
 class YourStepBuilder(StepBuilderBase):
     """Builder for YourStep processing step."""
     
@@ -62,6 +61,12 @@ class YourStepBuilder(StepBuilderBase):
             dependency_resolver=dependency_resolver
         )
         self.config: YourStepConfig = config
+        
+        # Register with UnifiedRegistryManager (automatic discovery handles this)
+        if registry_manager is None:
+            registry_manager = UnifiedRegistryManager()
+        # Registration is handled automatically by the hybrid registry system
+        # based on naming conventions and file location
     
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """Get inputs for the processor using the specification and contract."""
@@ -227,7 +232,7 @@ from sagemaker.sklearn import SKLearnProcessor
 
 from ..configs.config_your_step import YourStepConfig
 from ...core.base.builder_base import StepBuilderBase
-from ..registry.builder_registry import register_builder
+from ...registry.hybrid.manager import UnifiedRegistryManager
 
 # Import different specifications for different job types
 try:
@@ -240,7 +245,6 @@ except ImportError:
     YOUR_STEP_TRAINING_SPEC = YOUR_STEP_CALIBRATION_SPEC = YOUR_STEP_VALIDATION_SPEC = YOUR_STEP_TESTING_SPEC = None
     SPECS_AVAILABLE = False
 
-@register_builder()
 class YourStepBuilder(StepBuilderBase):
     """Builder that supports multiple job type variants."""
     
@@ -256,6 +260,13 @@ class YourStepBuilder(StepBuilderBase):
         
         super().__init__(config=config, spec=spec, **kwargs)
         self.config: YourStepConfig = config
+        
+        # Register with UnifiedRegistryManager (automatic discovery handles this)
+        registry_manager = kwargs.get('registry_manager')
+        if registry_manager is None:
+            registry_manager = UnifiedRegistryManager()
+        # Registration is handled automatically by the hybrid registry system
+        # based on naming conventions and file location
     
     def _get_spec_for_job_type(self, job_type: str):
         """Get the appropriate specification for the given job type."""
@@ -928,35 +939,76 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
 > - **[Step Builder Registry Guide](step_builder_registry_guide.md)** - Complete guide to the registry architecture and implementation
 > - **[Step Builder Registry Usage](step_builder_registry_usage.md)** - Practical usage examples and best practices
 
-### Automatic Registration with Decorator
+### Automatic Registration with UnifiedRegistryManager
 
-The most important step when creating a new step builder is to register it with the system using the `@register_builder()` decorator:
+With the modern hybrid registry system, step registration is handled automatically through the UnifiedRegistryManager. Step builders are discovered and registered based on naming conventions and file location:
 
 ```python
-from ..registry.builder_registry import register_builder
+from ...registry.hybrid.manager import UnifiedRegistryManager
 
-@register_builder()
 class YourNewStepBuilder(StepBuilderBase):
     """Builder for your new step type."""
-    pass
+    
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
+        
+        # Register with UnifiedRegistryManager (automatic discovery handles this)
+        registry_manager = kwargs.get('registry_manager')
+        if registry_manager is None:
+            registry_manager = UnifiedRegistryManager()
+        # Registration is handled automatically by the hybrid registry system
+        # based on naming conventions and file location
 ```
 
-The `@register_builder()` decorator:
+The UnifiedRegistryManager provides:
 
-1. **Automatically discovers the step type** from the class name using the centralized `STEP_NAMES` registry
-2. **Registers the builder** in the global registry for automatic discovery
-3. **Enables pipeline assembly** to find and use your builder
-4. **Supports step type variants** for different job types
+1. **Automatic Discovery**: Discovers step builders based on naming conventions
+2. **Workspace-Aware Registration**: Supports both main and isolated workspace contexts
+3. **Hybrid Registry Support**: Integrates with both core and local registries
+4. **Caching and Performance**: Efficient caching for improved performance
+5. **Backward Compatibility**: Maintains compatibility with legacy registration patterns
 
-### Manual Registration (Alternative)
+### Manual Registration (For Custom Cases)
 
-If you need more control over the registration process:
+If you need explicit control over registration, use the registry's validation-enabled registration:
 
 ```python
-from ..registry.builder_registry import register_global_builder
+from cursus.registry.step_names import add_new_step_with_validation
 
-# Register manually with explicit step type
-register_global_builder("YourStepType", YourStepBuilder)
+# Register your step with validation
+warnings = add_new_step_with_validation(
+    step_name="YourNewStep",
+    config_class="YourNewStepConfig", 
+    builder_name="YourNewStepBuilder",
+    sagemaker_type="Processing",  # Based on create_step() return type
+    description="Description of your new step",
+    validation_mode="warn",  # Options: "warn", "strict", "auto_correct"
+    workspace_id=None  # Use current workspace context
+)
+```
+
+### Workspace-Specific Registration
+
+For isolated workspace development:
+
+```python
+from cursus.registry.hybrid.manager import UnifiedRegistryManager
+
+# Get registry manager with workspace context
+registry = UnifiedRegistryManager()
+registry.set_workspace_context("your_project")
+
+# Register step in specific workspace
+registry.register_step_definition(
+    "YourNewStep",
+    {
+        "config_class": "YourNewStepConfig",
+        "builder_step_name": "YourNewStepBuilder", 
+        "spec_type": "YourNewStep",
+        "sagemaker_step_type": "Processing",
+        "description": "Description of your new step"
+    }
+)
 ```
 
 ### Registration Requirements
