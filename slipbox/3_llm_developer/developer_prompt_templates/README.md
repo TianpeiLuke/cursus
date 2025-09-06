@@ -85,7 +85,7 @@ Our agentic ML pipeline development system employs **four specialized AI agents*
 
 ### 🗺️ Complete Workflow Diagram
 
-![Agentic ML Pipeline Development Workflow](agentic_workflow_complete_diagram.png)
+![Agentic ML Pipeline Development Workflow](agentic_workflow_complete_diagram.svg)
 
 *Complete 7-step agentic workflow diagram showing the interaction between 4 specialized AI agents across 2 main phases with human-in-the-loop oversight.*
 
