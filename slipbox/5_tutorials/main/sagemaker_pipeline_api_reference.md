@@ -308,38 +308,114 @@ print(f"Created DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
 
 ### Configuration File Structure
 
-Pipeline configurations are defined in JSON format:
+The configuration system uses a hierarchical structure organized into several key sections:
 
+#### Root Structure
+```
+root/
+├── configuration/
+│   ├── processing/
+│   │   ├── processing_shared
+│   │   └── processing_specific
+│   ├── shared
+│   └── specific/
+│       ├── CradleDataLoading_calibration
+│       ├── CradleDataLoading_training
+│       ├── Registration
+│       └── XGBoostTraining
+├── metadata/
+│   ├── config_types/
+│   │   ├── Base → "BasePipelineConfig"
+│   │   ├── CradleDataLoading_calibration → "CradleDataLoadConfig"
+│   │   ├── CradleDataLoading_training → "CradleDataLoadConfig"
+│   │   ├── Package → "PackageStepConfig"
+│   │   ├── Payload → "PayloadConfig"
+│   │   ├── Processing → "ProcessingStepConfigBase"
+│   │   ├── Registration → "ModelRegistrationConfig"
+│   │   ├── TabularPreprocessing_calibration → "TabularPreprocessingConfig"
+│   │   ├── TabularPreprocessing_training → "TabularPreprocessingConfig"
+│   │   ├── XGBoostModelEval_calibration → "XGBoostModelEvalConfig"
+│   │   └── XGBoostTraining → "XGBoostTrainingConfig"
+│   ├── created_at → "2025-07-10T17:02:40.028426"
+│   └── field_sources/
+│       ├── all
+│       ├── processing
+│       └── specific
+```
+
+#### Configuration Hierarchy
+
+**Base Configuration (`BasePipelineConfig`)**
 ```json
 {
-  "pipeline_name": "my-pipeline",
-  "pipeline_description": "Pipeline description",
-  
-  "base_config": {
-    "region": "us-east-1",
-    "role": "arn:aws:iam::123456789012:role/SageMakerRole",
-    "bucket": "my-sagemaker-bucket",
-    "prefix": "pipeline-prefix"
+  "region": "us-east-1",
+  "role": "arn:aws:iam::123456789012:role/SageMakerRole",
+  "bucket": "my-sagemaker-bucket",
+  "prefix": "pipeline-prefix"
+}
+```
+
+**Processing Configurations**
+- `processing_shared`: Common settings for all processing steps
+- `processing_specific`: Step-specific processing configurations
+
+**Step-Specific Configurations**
+- `CradleDataLoading_training`: Data loading for training phase
+- `CradleDataLoading_calibration`: Data loading for calibration phase
+- `XGBoostTraining`: XGBoost model training configuration
+- `Registration`: Model registration settings
+
+**Example Complete Configuration Structure:**
+```json
+{
+  "configuration": {
+    "shared": {
+      "region": "us-east-1",
+      "role": "arn:aws:iam::123456789012:role/SageMakerRole",
+      "bucket": "my-sagemaker-bucket"
+    },
+    "processing": {
+      "processing_shared": {
+        "instance_type": "ml.m5.large",
+        "instance_count": 1,
+        "volume_size": 30
+      }
+    },
+    "specific": {
+      "CradleDataLoading_training": {
+        "input_data_s3_uri": "s3://bucket/training-data",
+        "output_data_s3_uri": "s3://bucket/processed-training"
+      },
+      "CradleDataLoading_calibration": {
+        "input_data_s3_uri": "s3://bucket/calibration-data",
+        "output_data_s3_uri": "s3://bucket/processed-calibration"
+      },
+      "XGBoostTraining": {
+        "instance_type": "ml.m5.xlarge",
+        "hyperparameters": {
+          "max_depth": 6,
+          "learning_rate": 0.1,
+          "n_estimators": 100
+        }
+      },
+      "Registration": {
+        "model_package_group_name": "xgboost-model-group",
+        "approval_status": "PendingManualApproval"
+      }
+    }
   },
-  
-  "data_loading_config": {
-    "instance_type": "ml.m5.large",
-    "instance_count": 1,
-    "volume_size": 30,
-    "max_runtime_in_seconds": 3600,
-    "input_data_s3_uri": "s3://bucket/input-data",
-    "output_data_s3_uri": "s3://bucket/processed-data"
-  },
-  
-  "training_config": {
-    "instance_type": "ml.m5.xlarge",
-    "instance_count": 1,
-    "volume_size": 30,
-    "max_runtime_in_seconds": 7200,
-    "hyperparameters": {
-      "max_depth": 6,
-      "learning_rate": 0.1,
-      "n_estimators": 100
+  "metadata": {
+    "config_types": {
+      "Base": "BasePipelineConfig",
+      "CradleDataLoading_training": "CradleDataLoadConfig",
+      "CradleDataLoading_calibration": "CradleDataLoadConfig",
+      "XGBoostTraining": "XGBoostTrainingConfig",
+      "Registration": "ModelRegistrationConfig"
+    },
+    "field_sources": {
+      "all": ["shared", "processing", "specific"],
+      "processing": ["processing_shared", "processing_specific"],
+      "specific": ["step-specific configurations"]
     }
   }
 }
