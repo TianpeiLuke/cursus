@@ -85,6 +85,21 @@ Our agentic ML pipeline development system employs **four specialized AI agents*
 
 ### 🗺️ Complete Workflow Diagram
 
+![Agentic ML Pipeline Development Workflow](agentic_workflow_complete_diagram.png)
+
+*Complete 7-step agentic workflow diagram showing the interaction between 4 specialized AI agents across 2 main phases with human-in-the-loop oversight.*
+
+**Key Features of the Diagram:**
+- **Edge-to-Edge Arrows**: All connections start and end precisely at block edges
+- **Non-Overlapping Labels**: Decision labels and flow annotations are positioned to avoid line overlap
+- **Color-Coded Agents**: Each agent type has distinct colors for easy identification
+- **Phase Separation**: Clear visual distinction between Plan Development and Code Implementation phases
+- **Decision Points**: Diamond-shaped decision nodes with clear Yes/No paths
+- **Human Oversight**: Dotted lines showing human-in-the-loop integration points
+- **Statistics Panel**: Workflow metrics and agent distribution summary
+
+**Interactive Mermaid Version** (for web viewing):
+
 ```mermaid
 flowchart TD
     %% User Input
