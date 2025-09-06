@@ -36,8 +36,6 @@ from .shared_dags import (
     get_all_shared_dags
 )
 
-__version__ = "1.0.0"
-
 __all__ = [
     # Utilities
     "CatalogRegistry",
@@ -73,7 +71,6 @@ def get_catalog_info() -> Dict[str, Any]:
         catalog_data = registry.load_catalog()
         
         return {
-            "version": __version__,
             "total_pipelines": catalog_data.get("metadata", {}).get("total_pipelines", 0),
             "frameworks": catalog_data.get("metadata", {}).get("frameworks", []),
             "complexity_levels": catalog_data.get("metadata", {}).get("complexity_levels", []),
@@ -84,7 +81,6 @@ def get_catalog_info() -> Dict[str, Any]:
         }
     except Exception as e:
         return {
-            "version": __version__,
             "error": f"Failed to load catalog info: {e}",
             "standard_pipelines": len(get_registered_pipelines()),
             "mods_pipelines": len(get_registered_mods_pipelines()),
