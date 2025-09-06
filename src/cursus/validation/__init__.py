@@ -19,6 +19,13 @@ from .simple_integration import (
     validate_step_integration
 )
 
+# Import simplified runtime testing components
+from .runtime import (
+    RuntimeTester,
+    ScriptTestResult,
+    DataCompatibilityResult
+)
+
 # Framework information
 __approach__ = "Simplified Integration"
 __complexity_reduction__ = "67% integration complexity reduction achieved"
@@ -36,7 +43,12 @@ __all__ = [
     
     # Legacy functions (deprecated)
     'validate_step_builder',
-    'validate_step_integration'
+    'validate_step_integration',
+    
+    # Runtime testing components
+    'RuntimeTester',
+    'ScriptTestResult',
+    'DataCompatibilityResult'
 ]
 
 

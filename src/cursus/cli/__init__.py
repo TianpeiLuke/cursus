@@ -1,13 +1,12 @@
 """Command-line interfaces for the Cursus package."""
 
-from .runtime_cli import runtime, main as runtime_main
+from .runtime_testing_cli import cli as runtime_testing_cli
 
 __all__ = [
-    "runtime",
-    "runtime_main",
+    "runtime_testing_cli",
     "main"
 ]
 
 def main():
-    """Main CLI entry point."""
-    runtime_main()
+    """Main CLI entry point - simplified runtime testing."""
+    runtime_testing_cli()
