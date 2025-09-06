@@ -466,6 +466,7 @@ class DataCompatibilityResult:
   - Core methods: `test_script()`, `test_data_compatibility()`, `test_pipeline_flow()`
   - Script discovery: `_find_script_path()` with multiple search locations
   - Data execution: `_execute_script_with_data()` with proper script development guide integration
+  - **CRITICAL FIX APPLIED**: `test_script()` now actually executes script main functions with user's local data and config
 - ✅ **CLI Interface**: `src/cursus/cli/runtime_testing_cli.py` (130 lines)
   - Commands: `test_script`, `test_pipeline`, `test_compatibility`
   - Output formats: text and JSON

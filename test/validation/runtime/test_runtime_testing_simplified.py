@@ -43,12 +43,19 @@ class TestUserRequirements:
                             'input_paths', 'output_paths', 'environ_vars', 'job_args'
                         ]
                         
-                        result = tester.test_script("test_script")
-                        
-                        assert isinstance(result, ScriptTestResult)
-                        assert result.success == True
-                        assert result.has_main_function == True
-                        assert result.script_name == "test_script"
+                        with patch('pandas.DataFrame.to_csv'), \
+                             patch('pathlib.Path.mkdir'), \
+                             patch('argparse.Namespace'):
+                            
+                            result = tester.test_script("test_script")
+                            
+                            assert isinstance(result, ScriptTestResult)
+                            assert result.success == True
+                            assert result.has_main_function == True
+                            assert result.script_name == "test_script"
+                            
+                            # CRITICAL: Verify that main function was actually called
+                            mock_module.main.assert_called_once()
     
     def test_script_missing_main_function(self):
         """Test script without main function fails validation"""

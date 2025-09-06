@@ -125,81 +125,292 @@ The design integrates seamlessly with existing Cursus patterns:
 
 ## Detailed Design
 
+### **Core Testing Strategy Overview**
+
+The runtime testing system implements three complementary test types that progressively validate script functionality and data flow:
+
+#### **1. Individual Script Testing (`test_script`)**
+**Purpose**: Validates that individual scripts can execute properly with standardized main function signature.
+
+**Process**:
+1. **Script Discovery**: Locates the script file using predefined search paths
+2. **Signature Validation**: Verifies the script has a `main(input_paths, output_paths, environ_vars, job_args)` function
+3. **Data Preparation**: Identifies user's local test data or generates sample data
+4. **Environment Setup**: Extracts `environ_vars` and `job_args` from user configuration or script contracts
+5. **Execution**: Actually calls the script's main function with prepared parameters
+6. **Result Validation**: Confirms successful execution and captures any errors
+
+**Key Value**: Ensures scripts can run independently before testing integration.
+
+#### **2. Data Compatibility Testing (`test_data_compatibility`)**
+**Purpose**: Validates that data output from one script can be successfully consumed by another script.
+
+**Process**:
+1. **Producer Execution**: Runs the first script (producer) with test data and captures its output locally
+2. **Output Validation**: Verifies the producer script generated expected output files
+3. **Consumer Preparation**: Uses the producer's output as input for the second script (consumer)
+4. **Consumer Execution**: Runs the consumer script with the producer's output data
+5. **Compatibility Analysis**: Determines if the data flow succeeded and identifies any format mismatches
+
+**Key Value**: Validates data transfer consistency between connected pipeline steps.
+
+#### **3. End-to-End Pipeline Flow Testing (`test_pipeline_flow`)**
+**Purpose**: Validates complete pipeline execution by testing data flow through the entire DAG.
+
+**Process**:
+1. **DAG Traversal**: Processes pipeline steps in topological order based on DAG structure
+2. **Sequential Execution**: For each connected pair of nodes in the DAG:
+   - Executes the producer script and saves output locally
+   - Uses producer output as input for consumer script
+   - Executes consumer script and validates successful processing
+3. **Flow Validation**: Ensures data flows correctly through the entire pipeline
+4. **Error Aggregation**: Collects and reports any failures in the pipeline flow
+
+**Key Value**: Provides confidence in end-to-end pipeline functionality before deployment.
+
+### **Runtime Testing Data Structure**
+
+To support the three testing modes, we define a focused data structure that provides exactly what's needed for script execution testing:
+
+```python
+from pydantic import BaseModel, Field
+from typing import Dict, List, Optional, Any
+from pathlib import Path
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.steps.contracts.training_script_contract import TrainingScriptContract
+import argparse
+
+class ScriptExecutionSpec(BaseModel):
+    """Specification for executing a single script with main() interface"""
+    script_name: str = Field(..., description="Name of the script to test")
+    script_path: Optional[str] = Field(None, description="Full path to script file")
+    
+    # Main function parameters (exactly what script needs)
+    input_paths: Dict[str, str] = Field(default_factory=dict, description="Input paths for script main()")
+    output_paths: Dict[str, str] = Field(default_factory=dict, description="Output paths for script main()")
+    environ_vars: Dict[str, str] = Field(default_factory=dict, description="Environment variables for script main()")
+    job_args: Dict[str, Any] = Field(default_factory=dict, description="Job arguments for script main()")
+    
+    # Contract reference for validation
+    contract: Optional[TrainingScriptContract] = Field(None, description="Script contract for parameter validation")
+
+class PipelineTestingSpec(BaseModel):
+    """Specification for testing an entire pipeline flow"""
+    
+    # Copy of the pipeline DAG structure
+    dag: PipelineDAG = Field(..., description="Copy of Pipeline DAG defining step dependencies and execution order")
+    
+    # Script execution specifications for each step
+    script_specs: Dict[str, ScriptExecutionSpec] = Field(..., description="Execution specs for each pipeline step")
+    
+    # Testing workspace configuration
+    test_workspace_root: str = Field(default="test/integration/runtime", description="Root directory for test data and outputs")
+    workspace_aware_root: Optional[str] = Field(None, description="Workspace-aware project root")
+
+class RuntimeTestingConfiguration(BaseModel):
+    """Complete configuration for runtime testing system"""
+    
+    # Core pipeline testing specification
+    pipeline_spec: PipelineTestingSpec = Field(..., description="Pipeline testing specification")
+    
+    # Testing mode configuration
+    test_individual_scripts: bool = Field(default=True, description="Whether to test scripts individually first")
+    test_data_compatibility: bool = Field(default=True, description="Whether to test data compatibility between connected scripts")
+    test_pipeline_flow: bool = Field(default=True, description="Whether to test complete pipeline flow")
+    
+    # Workspace configuration
+    use_workspace_aware: bool = Field(default=False, description="Whether to use workspace-aware project structure")
+
+class PipelineTestingSpecBuilder:
+    """Builder to generate PipelineTestingSpec from DAG and contracts"""
+    
+    def __init__(self, contracts_dir: str = "src/cursus/steps/contracts", test_data_dir: str = "test/integration/runtime"):
+        self.contracts_dir = Path(contracts_dir)
+        self.test_data_dir = Path(test_data_dir)
+    
+    def build_from_dag(self, dag: PipelineDAG) -> PipelineTestingSpec:
+        """
+        Build PipelineTestingSpec from a PipelineDAG with automatic contract detection
+        
+        Args:
+            dag: Pipeline DAG structure to copy and build specs for
+            
+        Returns:
+            Complete PipelineTestingSpec ready for runtime testing
+        """
+        script_specs = {}
+        
+        for node in dag.nodes:
+            # Auto-detect and load contract if available
+            contract = self._load_contract_for_node(node)
+            
+            # Build script execution spec
+            script_specs[node] = self._build_script_spec(node, contract)
+        
+        return PipelineTestingSpec(
+            dag=dag,  # Copy the DAG structure
+            script_specs=script_specs,
+            test_workspace_root=str(self.test_data_dir)
+        )
+    
+    def _load_contract_for_node(self, node_name: str) -> Optional[TrainingScriptContract]:
+        """Auto-detect and load contract for a pipeline node"""
+        # Try common contract naming patterns
+        contract_patterns = [
+            f"{node_name}_contract.py",
+            f"{node_name.lower()}_contract.py",
+            f"{node_name.replace('_', '')}_contract.py"
+        ]
+        
+        for pattern in contract_patterns:
+            contract_path = self.contracts_dir / pattern
+            if contract_path.exists():
+                # Load contract from file (implementation would import and parse)
+                # For now, return None - actual implementation would load the contract
+                return None
+        
+        return None
+    
+    def _build_script_spec(self, node_name: str, contract: Optional[TrainingScriptContract]) -> ScriptExecutionSpec:
+        """Build ScriptExecutionSpec for a single node"""
+        
+        # Default paths following script development guide patterns
+        input_paths = {"data_input": str(self.test_data_dir / node_name / "input")}
+        output_paths = {"data_output": str(self.test_data_dir / node_name / "output")}
+        
+        # Extract from contract if available
+        if contract:
+            environ_vars = getattr(contract, 'optional_env_vars', {})
+            job_args = getattr(contract, 'expected_arguments', {})
+        else:
+            # Provide sensible defaults
+            environ_vars = {"LABEL_FIELD": "label"}
+            job_args = {"job_type": "testing"}
+        
+        return ScriptExecutionSpec(
+            script_name=node_name,
+            input_paths=input_paths,
+            output_paths=output_paths,
+            environ_vars=environ_vars,
+            job_args=job_args,
+            contract=contract
+        )
+    
+    def get_script_main_params(self, spec: ScriptExecutionSpec) -> Dict[str, Any]:
+        """
+        Get parameters ready for script main() function call
+        
+        Returns:
+            Dictionary with input_paths, output_paths, environ_vars, job_args ready for main()
+        """
+        return {
+            "input_paths": spec.input_paths,
+            "output_paths": spec.output_paths,
+            "environ_vars": spec.environ_vars,
+            "job_args": argparse.Namespace(**spec.job_args) if spec.job_args else argparse.Namespace(job_type="testing")
+        }
+```
+
+### **Integration with Script Contracts**
+
+The builder automatically integrates with existing script contracts to extract execution parameters:
+
+```python
+# Example: Using PipelineTestingSpecBuilder with automatic contract detection
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.steps.contracts.xgboost_training_contract import XGBOOST_TRAIN_CONTRACT
+
+# Create DAG
+dag = PipelineDAG(
+    nodes=["data_loading", "xgboost_training", "model_evaluation"],
+    edges=[("data_loading", "xgboost_training"), ("xgboost_training", "model_evaluation")]
+)
+
+# Build pipeline testing spec with automatic contract detection
+builder = PipelineTestingSpecBuilder(
+    contracts_dir="src/cursus/steps/contracts",
+    test_data_dir="test/integration/runtime"
+)
+
+pipeline_spec = builder.build_from_dag(dag)
+
+# Access script execution parameters ready for main() function
+xgboost_spec = pipeline_spec.script_specs["xgboost_training"]
+main_params = builder.get_script_main_params(xgboost_spec)
+
+# main_params contains:
+# {
+#     "input_paths": {"data_input": "test/integration/runtime/xgboost_training/input"},
+#     "output_paths": {"data_output": "test/integration/runtime/xgboost_training/output"},
+#     "environ_vars": {"MODEL_TYPE": "xgboost", "EVAL_METRIC": "auc"},
+#     "job_args": argparse.Namespace(job_type="training", n_estimators=100)
+# }
+```
+
+### **Test Data Organization**
+
+The system supports both standard and workspace-aware project structures:
+
+```
+# Standard structure
+test/integration/runtime/
+├── script_a/
+│   ├── input/
+│   │   └── test_data.csv
+│   └── output/
+└── script_b/
+    ├── input/
+    └── output/
+
+# Workspace-aware structure  
+development/projects/project_xxx/test/integration/runtime/
+├── script_a/
+│   ├── input/
+│   │   └── user_test_data.csv
+│   └── output/
+└── script_b/
+    ├── input/
+    └── output/
+```
+
 ### **Core Components**
 
-#### **1. RuntimeTester Class**
+The system consists of three main components:
 
-```python
-class RuntimeTester:
-    """Simple, effective runtime testing for pipeline scripts"""
-    
-    def __init__(self, workspace_dir: str = "./test_workspace"):
-        """Initialize with minimal setup"""
-        self.workspace_dir = Path(workspace_dir)
-        self.workspace_dir.mkdir(parents=True, exist_ok=True)
-    
-    def test_script(self, script_name: str) -> ScriptTestResult:
-        """Test single script functionality - addresses user requirement 1"""
-        
-    def test_data_compatibility(self, script_a: str, script_b: str, 
-                               sample_data: Dict) -> DataCompatibilityResult:
-        """Test data compatibility between scripts - addresses user requirement 2"""
-        
-    def test_pipeline_flow(self, pipeline_config: Dict) -> Dict[str, Any]:
-        """Test end-to-end pipeline flow - addresses user requirement 3"""
-        
-    def _find_script_path(self, script_name: str) -> str:
-        """Simple script discovery using existing patterns"""
-        
-    def _generate_test_data(self, script_name: str, format: str = "csv") -> str:
-        """Generate minimal test data for validation"""
-```
-
-#### **2. Data Models**
-
-```python
-@dataclass
-class ScriptTestResult:
-    """Simple result model for script testing"""
-    script_name: str
-    success: bool
-    error_message: Optional[str] = None
-    execution_time: float = 0.0
-    has_main_function: bool = False
-
-@dataclass
-class DataCompatibilityResult:
-    """Result model for data compatibility testing"""
-    script_a: str
-    script_b: str
-    compatible: bool
-    compatibility_issues: List[str] = field(default_factory=list)
-    data_format_a: Optional[str] = None
-    data_format_b: Optional[str] = None
-```
+1. **RuntimeTester Class**: Core testing engine with methods for script testing, data compatibility validation, and pipeline flow testing
+2. **Result Data Models**: Pydantic v2 models for structured test results (ScriptTestResult, DataCompatibilityResult)
+3. **CLI Interface**: Simple command-line interface supporting all testing modes with workspace-aware project support
 
 ### **Implementation Details**
 
 #### **Script Functionality Validation**
 
 ```python
-def test_script(self, script_name: str) -> ScriptTestResult:
-    """Test script can be imported and has main function"""
-    start_time = time.time()
-    
-    try:
-        script_path = self._find_script_path(script_name)
+    def test_script(self, script_name: str, user_config: Optional[Dict] = None) -> ScriptTestResult:
+        """Test script functionality by ACTUALLY EXECUTING IT with user's local data"""
+        start_time = time.time()
         
-        # Import script using standard Python import
-        spec = importlib.util.spec_from_file_location("script", script_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        
-        # Check for main function with correct signature
-        has_main = hasattr(module, 'main') and callable(module.main)
-        
-        # Validate main function signature matches script development guide
-        if has_main:
+        try:
+            script_path = self._find_script_path(script_name)
+            
+            # Import script using standard Python import
+            spec = importlib.util.spec_from_file_location("script", script_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Check for main function with correct signature
+            has_main = hasattr(module, 'main') and callable(module.main)
+            
+            if not has_main:
+                return ScriptTestResult(
+                    script_name=script_name,
+                    success=False,
+                    error_message="Script missing main() function",
+                    execution_time=time.time() - start_time,
+                    has_main_function=False
+                )
+            
+            # Validate main function signature matches script development guide
             sig = inspect.signature(module.main)
             expected_params = ['input_paths', 'output_paths', 'environ_vars', 'job_args']
             actual_params = list(sig.parameters.keys())
@@ -212,23 +423,49 @@ def test_script(self, script_name: str) -> ScriptTestResult:
                     execution_time=time.time() - start_time,
                     has_main_function=True
                 )
-        
-        return ScriptTestResult(
-            script_name=script_name,
-            success=has_main,
-            error_message=None if has_main else "Script missing main() function",
-            execution_time=time.time() - start_time,
-            has_main_function=has_main
-        )
-        
-    except Exception as e:
-        return ScriptTestResult(
-            script_name=script_name,
-            success=False,
-            error_message=str(e),
-            execution_time=time.time() - start_time,
-            has_main_function=False
-        )
+            
+            # ACTUALLY EXECUTE THE SCRIPT with user's local data and config
+            test_dir = self.workspace_dir / f"test_{script_name}"
+            test_dir.mkdir(exist_ok=True)
+            
+            # Use user's local data if provided, otherwise generate sample data
+            if user_config and user_config.get("input_data_path"):
+                input_data_path = user_config["input_data_path"]
+            else:
+                # Generate sample data for testing
+                sample_data = self._generate_sample_data()
+                input_data_path = test_dir / "input_data.csv"
+                pd.DataFrame(sample_data).to_csv(input_data_path, index=False)
+            
+            # Prepare execution parameters using user's config or defaults
+            input_paths = {"data_input": str(input_data_path)}
+            output_paths = {"data_output": str(test_dir)}
+            
+            # Use user's environment variables or defaults
+            environ_vars = user_config.get("environ_vars", {"LABEL_FIELD": "label"}) if user_config else {"LABEL_FIELD": "label"}
+            
+            # Use user's job arguments or defaults
+            job_args = user_config.get("job_args", argparse.Namespace(job_type="testing")) if user_config else argparse.Namespace(job_type="testing")
+            
+            # EXECUTE THE MAIN FUNCTION
+            module.main(input_paths, output_paths, environ_vars, job_args)
+            
+            return ScriptTestResult(
+                script_name=script_name,
+                success=True,
+                error_message=None,
+                execution_time=time.time() - start_time,
+                has_main_function=True
+            )
+            
+        except Exception as e:
+            return ScriptTestResult(
+                script_name=script_name,
+                success=False,
+                error_message=str(e),
+                execution_time=time.time() - start_time,
+                has_main_function=has_main if 'has_main' in locals() else False
+            )
 ```
 
 #### **Data Compatibility Testing**
@@ -434,32 +671,79 @@ def _generate_sample_data(self) -> Dict:
 
 ### **CLI Interface**
 
+The CLI interface is updated to work with the new `PipelineTestingSpec` data structure:
+
 ```python
 def main():
-    """Simple CLI interface for runtime testing"""
+    """CLI interface for runtime testing with PipelineTestingSpec integration"""
     parser = argparse.ArgumentParser(description="Pipeline Runtime Testing")
     parser.add_argument("--script", help="Test single script")
-    parser.add_argument("--pipeline", help="Test pipeline from config file")
+    parser.add_argument("--dag-file", help="Test pipeline from DAG file (JSON format)")
     parser.add_argument("--compatibility", nargs=2, metavar=('SCRIPT_A', 'SCRIPT_B'),
                        help="Test data compatibility between two scripts")
-    parser.add_argument("--workspace", default="./test_workspace", 
-                       help="Workspace directory for testing")
+    parser.add_argument("--test-data-dir", default="test/integration/runtime", 
+                       help="Test data directory")
+    parser.add_argument("--contracts-dir", default="src/cursus/steps/contracts",
+                       help="Script contracts directory")
+    parser.add_argument("--workspace-aware", action="store_true",
+                       help="Use workspace-aware project structure")
     
     args = parser.parse_args()
-    tester = RuntimeTester(args.workspace)
     
     if args.script:
-        result = tester.test_script(args.script)
+        # Single script testing with ScriptExecutionSpec
+        builder = PipelineTestingSpecBuilder(
+            contracts_dir=args.contracts_dir,
+            test_data_dir=args.test_data_dir
+        )
+        
+        # Create minimal DAG for single script
+        single_dag = PipelineDAG(nodes=[args.script], edges=[])
+        testing_spec = builder.build_from_dag(single_dag)
+        
+        # Create runtime configuration
+        config = RuntimeTestingConfiguration(
+            pipeline_spec=testing_spec,
+            use_workspace_aware=args.workspace_aware
+        )
+        
+        tester = RuntimeTester(config)
+        script_spec = testing_spec.script_specs[args.script]
+        main_params = builder.get_script_main_params(script_spec)
+        
+        result = tester.test_script_with_spec(script_spec, main_params)
         print(f"Script {args.script}: {'PASS' if result.success else 'FAIL'}")
         if not result.success:
             print(f"  Error: {result.error_message}")
         print(f"  Execution time: {result.execution_time:.3f}s")
     
-    elif args.pipeline:
-        with open(args.pipeline) as f:
-            config = json.load(f)
+    elif args.dag_file:
+        # Pipeline flow testing from DAG file
+        with open(args.dag_file) as f:
+            dag_data = json.load(f)
         
-        results = tester.test_pipeline_flow(config)
+        # Create DAG from file
+        dag = PipelineDAG(
+            nodes=dag_data["nodes"],
+            edges=dag_data["edges"]
+        )
+        
+        # Build testing specification with automatic contract detection
+        builder = PipelineTestingSpecBuilder(
+            contracts_dir=args.contracts_dir,
+            test_data_dir=args.test_data_dir
+        )
+        testing_spec = builder.build_from_dag(dag)
+        
+        # Create runtime configuration
+        config = RuntimeTestingConfiguration(
+            pipeline_spec=testing_spec,
+            use_workspace_aware=args.workspace_aware
+        )
+        
+        tester = RuntimeTester(config)
+        results = tester.test_pipeline_flow_with_spec(testing_spec)
+        
         print(f"Pipeline: {'PASS' if results['pipeline_success'] else 'FAIL'}")
         
         for script_name, result in results['script_results'].items():
@@ -475,8 +759,27 @@ def main():
     
     elif args.compatibility:
         script_a, script_b = args.compatibility
-        sample_data = tester._generate_sample_data()
-        result = tester.test_data_compatibility(script_a, script_b, sample_data)
+        
+        # Create DAG for compatibility testing
+        compat_dag = PipelineDAG(
+            nodes=[script_a, script_b], 
+            edges=[(script_a, script_b)]
+        )
+        
+        builder = PipelineTestingSpecBuilder(
+            contracts_dir=args.contracts_dir,
+            test_data_dir=args.test_data_dir
+        )
+        testing_spec = builder.build_from_dag(compat_dag)
+        
+        config = RuntimeTestingConfiguration(pipeline_spec=testing_spec)
+        tester = RuntimeTester(config)
+        
+        # Get execution specs for both scripts
+        spec_a = testing_spec.script_specs[script_a]
+        spec_b = testing_spec.script_specs[script_b]
+        
+        result = tester.test_data_compatibility_with_specs(spec_a, spec_b)
         
         print(f"Data compatibility {script_a} -> {script_b}: {'PASS' if result.compatible else 'FAIL'}")
         if result.compatibility_issues:
@@ -489,6 +792,230 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+## Pipeline Testing Specification Format
+
+### **New Pipeline Testing Specification Structure**
+
+The redesigned system uses `PipelineTestingSpec` (not to be confused with SageMaker pipeline configs) that focuses specifically on script execution testing:
+
+```python
+# Example: Building PipelineTestingSpec from existing DAG
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.validation.runtime_testing import PipelineTestingSpecBuilder
+
+# 1. Copy existing DAG structure
+dag = PipelineDAG(
+    nodes=["CradleDataLoading_training", "TabularPreprocessing_training", "XGBoostTraining"],
+    edges=[
+        ("CradleDataLoading_training", "TabularPreprocessing_training"),
+        ("TabularPreprocessing_training", "XGBoostTraining")
+    ]
+)
+
+# 2. Build testing specification with automatic contract detection
+builder = PipelineTestingSpecBuilder(
+    contracts_dir="src/cursus/steps/contracts",
+    test_data_dir="test/integration/runtime"
+)
+
+pipeline_testing_spec = builder.build_from_dag(dag)
+
+# 3. The resulting spec contains everything needed for script testing:
+# - Copy of the DAG structure
+# - ScriptExecutionSpec for each node with main() parameters
+# - Automatic contract integration for environ_vars and job_args
+# - Test workspace configuration
+```
+
+### **ScriptExecutionSpec Structure**
+
+Each script in the pipeline gets a `ScriptExecutionSpec` that contains exactly what's needed for the main() function:
+
+```python
+# Example ScriptExecutionSpec for XGBoost training
+xgboost_spec = ScriptExecutionSpec(
+    script_name="xgboost_training",
+    script_path=None,  # Auto-discovered
+    
+    # Main function parameters (ready to pass to main())
+    input_paths={"data_input": "test/integration/runtime/xgboost_training/input"},
+    output_paths={"data_output": "test/integration/runtime/xgboost_training/output"},
+    environ_vars={"MODEL_TYPE": "xgboost", "EVAL_METRIC": "auc"},  # From contract
+    job_args={"job_type": "training", "n_estimators": 100},  # From contract
+    
+    contract=XGBOOST_TRAIN_CONTRACT  # Reference to original contract
+)
+
+# Get parameters ready for script main() function
+builder = PipelineTestingSpecBuilder()
+main_params = builder.get_script_main_params(xgboost_spec)
+
+# main_params is ready to pass directly to script.main(**main_params)
+```
+
+### **Integration with Existing Cursus Components**
+
+#### **From PipelineDAG (cursus.api.dag.base_dag)**
+```python
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.pipeline_catalog.shared_dags.xgboost import create_xgboost_simple_dag
+
+# Use existing DAG definitions directly
+dag = create_xgboost_simple_dag()
+
+# Build testing spec from DAG (copies DAG structure)
+builder = PipelineTestingSpecBuilder()
+testing_spec = builder.build_from_dag(dag)
+
+# The testing spec contains a copy of the DAG for testing purposes
+assert testing_spec.dag.nodes == dag.nodes
+assert testing_spec.dag.edges == dag.edges
+```
+
+#### **From Script Contracts (automatic detection)**
+```python
+# Builder automatically detects and loads contracts
+# No manual configuration needed - contracts are auto-discovered by naming patterns:
+# - xgboost_training_contract.py
+# - xgboosttraining_contract.py  
+# - XGBoostTraining_contract.py
+
+# Contract information is automatically extracted:
+# - environ_vars from contract.optional_env_vars
+# - job_args from contract.expected_arguments
+```
+
+### **User Workflow for Pipeline Testing**
+
+1. **User has existing PipelineDAG** from cursus.pipeline_catalog or custom DAG
+2. **User builds testing specification** using PipelineTestingSpecBuilder
+3. **Builder automatically detects contracts** and extracts execution parameters
+4. **Runtime testing system**:
+   - Uses the copied DAG structure for execution order
+   - Executes each script with contract-derived parameters
+   - Tests data flow between connected scripts using DAG edges
+   - Validates end-to-end pipeline execution
+
+### **Simplified Usage for Basic Testing**
+
+For users who just want to test script execution without complex setup:
+
+```python
+# Minimal usage - just provide DAG
+from cursus.api.dag.base_dag import PipelineDAG
+
+simple_dag = PipelineDAG(
+    nodes=["data_loading", "preprocessing", "training"],
+    edges=[("data_loading", "preprocessing"), ("preprocessing", "training")]
+)
+
+# Builder handles everything else automatically
+builder = PipelineTestingSpecBuilder()
+testing_spec = builder.build_from_dag(simple_dag)
+
+# System will:
+# 1. Auto-detect contracts for each script
+# 2. Generate default parameters if no contracts found
+# 3. Set up test workspace structure
+# 4. Provide ready-to-use ScriptExecutionSpecs
+```
+
+## User Requirements for Runtime Testing
+
+### **What Users Need to Provide**
+
+To run the 3 core tests in RuntimeTester, users need to provide minimal information:
+
+#### **For Individual Script Testing (`test_script`)**
+**Required:**
+- Script name (e.g., "currency_conversion")
+
+**Optional:**
+- Test data directory (defaults to "test/integration/runtime")
+- Contracts directory (defaults to "src/cursus/steps/contracts")
+
+**System Automatically Provides:**
+- Script discovery (searches standard paths)
+- Contract detection (auto-loads if available)
+- Sample test data generation (if no user data provided)
+- Default environment variables and job arguments
+
+#### **For Data Compatibility Testing (`test_data_compatibility`)**
+**Required:**
+- Two script names (e.g., "script_a", "script_b")
+
+**Optional:**
+- Test data directory
+- Contracts directory
+
+**System Automatically Provides:**
+- Script discovery for both scripts
+- Contract detection for both scripts
+- Sample data generation for testing
+- Data flow execution and compatibility analysis
+
+#### **For Pipeline Flow Testing (`test_pipeline_flow`)**
+**Required:**
+- PipelineDAG (either from existing DAG definitions or custom DAG with nodes and edges)
+
+**Optional:**
+- Test data directory
+- Contracts directory
+- Workspace-aware project structure flag
+
+**System Automatically Provides:**
+- Script discovery for all pipeline nodes
+- Contract detection for all scripts
+- ScriptExecutionSpec generation for each node
+- Sample data generation and flow testing
+- End-to-end execution validation
+
+### **Minimal User Input Examples**
+
+```python
+# Example 1: Test single script - user provides only script name
+from cursus.validation.runtime_testing import PipelineTestingSpecBuilder, RuntimeTestingConfiguration, RuntimeTester
+from cursus.api.dag.base_dag import PipelineDAG
+
+builder = PipelineTestingSpecBuilder()
+dag = PipelineDAG(nodes=["my_script"], edges=[])
+spec = builder.build_from_dag(dag)
+config = RuntimeTestingConfiguration(pipeline_spec=spec)
+tester = RuntimeTester(config)
+
+# System handles everything else automatically
+script_spec = spec.script_specs["my_script"]
+main_params = builder.get_script_main_params(script_spec)
+result = tester.test_script_with_spec(script_spec, main_params)
+
+# Example 2: Test pipeline flow - user provides only DAG structure
+pipeline_dag = PipelineDAG(
+    nodes=["data_loading", "preprocessing", "training"],
+    edges=[("data_loading", "preprocessing"), ("preprocessing", "training")]
+)
+
+spec = builder.build_from_dag(pipeline_dag)
+config = RuntimeTestingConfiguration(pipeline_spec=spec)
+tester = RuntimeTester(config)
+
+# System automatically:
+# - Discovers all scripts
+# - Loads contracts if available
+# - Generates test data
+# - Tests all 3 modes (individual scripts, compatibility, pipeline flow)
+results = tester.test_pipeline_flow_with_spec(spec)
+```
+
+### **What Users DON'T Need to Provide**
+
+- Script file paths (auto-discovered)
+- Contract loading (auto-detected)
+- Test data (auto-generated if not provided)
+- Environment variables (extracted from contracts or defaults provided)
+- Job arguments (extracted from contracts or defaults provided)
+- Input/output path configuration (auto-configured based on workspace structure)
+- Error handling setup (built into the system)
 
 ## Usage Examples
 
@@ -531,25 +1058,74 @@ python -m cursus.validation.runtime_testing --pipeline my_pipeline.json
 ### **Programmatic Usage**
 
 ```python
-from cursus.validation.runtime_testing import RuntimeTester
+from cursus.validation.runtime_testing import (
+    RuntimeTester, PipelineTestingSpecBuilder, RuntimeTestingConfiguration
+)
+from cursus.api.dag.base_dag import PipelineDAG
 
-# Initialize tester
-tester = RuntimeTester("./my_test_workspace")
+# Example 1: Test single script with automatic contract detection
+builder = PipelineTestingSpecBuilder(
+    contracts_dir="src/cursus/steps/contracts",
+    test_data_dir="test/integration/runtime"
+)
+
+# Create minimal DAG for single script
+single_dag = PipelineDAG(nodes=["currency_conversion"], edges=[])
+testing_spec = builder.build_from_dag(single_dag)
+
+# Create runtime configuration
+config = RuntimeTestingConfiguration(pipeline_spec=testing_spec)
+tester = RuntimeTester(config)
+
+# Get script execution spec and parameters
+script_spec = testing_spec.script_specs["currency_conversion"]
+main_params = builder.get_script_main_params(script_spec)
 
 # Test script functionality
-result = tester.test_script("currency_conversion")
+result = tester.test_script_with_spec(script_spec, main_params)
 if result.success:
     print(f"Script works! Execution time: {result.execution_time:.3f}s")
 else:
     print(f"Script failed: {result.error_message}")
 
-# Test data compatibility
-sample_data = {"amount": [100, 200], "currency": ["USD", "EUR"]}
-compat_result = tester.test_data_compatibility("script_a", "script_b", sample_data)
+# Example 2: Test data compatibility between two scripts
+compat_dag = PipelineDAG(
+    nodes=["script_a", "script_b"], 
+    edges=[("script_a", "script_b")]
+)
+compat_spec = builder.build_from_dag(compat_dag)
+compat_config = RuntimeTestingConfiguration(pipeline_spec=compat_spec)
+compat_tester = RuntimeTester(compat_config)
+
+# Get execution specs for both scripts
+spec_a = compat_spec.script_specs["script_a"]
+spec_b = compat_spec.script_specs["script_b"]
+
+compat_result = compat_tester.test_data_compatibility_with_specs(spec_a, spec_b)
 if compat_result.compatible:
     print("Scripts are data compatible!")
 else:
     print(f"Compatibility issues: {compat_result.compatibility_issues}")
+
+# Example 3: Test complete pipeline flow
+pipeline_dag = PipelineDAG(
+    nodes=["data_loading", "preprocessing", "training"],
+    edges=[("data_loading", "preprocessing"), ("preprocessing", "training")]
+)
+
+pipeline_spec = builder.build_from_dag(pipeline_dag)
+pipeline_config = RuntimeTestingConfiguration(pipeline_spec=pipeline_spec)
+pipeline_tester = RuntimeTester(pipeline_config)
+
+# Test end-to-end pipeline flow
+flow_results = pipeline_tester.test_pipeline_flow_with_spec(pipeline_spec)
+print(f"Pipeline: {'PASS' if flow_results['pipeline_success'] else 'FAIL'}")
+
+for script_name, result in flow_results['script_results'].items():
+    print(f"  Script {script_name}: {'PASS' if result.success else 'FAIL'}")
+
+for flow_name, result in flow_results['data_flow_results'].items():
+    print(f"  Data flow {flow_name}: {'PASS' if result.compatible else 'FAIL'}")
 ```
 
 ## Performance Characteristics

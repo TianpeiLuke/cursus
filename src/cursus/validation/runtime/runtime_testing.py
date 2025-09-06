@@ -46,8 +46,8 @@ class RuntimeTester:
         self.workspace_dir = Path(workspace_dir)
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
     
-    def test_script(self, script_name: str) -> ScriptTestResult:
-        """Test single script functionality - USER REQUIREMENT 1 & 2"""
+    def test_script(self, script_name: str, sample_data: Optional[Dict] = None) -> ScriptTestResult:
+        """Test single script functionality by ACTUALLY EXECUTING IT - USER REQUIREMENT 1 & 2"""
         start_time = time.time()
         
         try:
@@ -61,28 +61,58 @@ class RuntimeTester:
             # Check for main function with correct signature
             has_main = hasattr(module, 'main') and callable(module.main)
             
+            if not has_main:
+                return ScriptTestResult(
+                    script_name=script_name,
+                    success=False,
+                    error_message="Script missing main() function",
+                    execution_time=time.time() - start_time,
+                    has_main_function=False
+                )
+            
             # Validate main function signature matches script development guide
-            if has_main:
-                import inspect
-                sig = inspect.signature(module.main)
-                expected_params = ['input_paths', 'output_paths', 'environ_vars', 'job_args']
-                actual_params = list(sig.parameters.keys())
-                
-                if not all(param in actual_params for param in expected_params):
-                    return ScriptTestResult(
-                        script_name=script_name,
-                        success=False,
-                        error_message="Main function signature doesn't match script development guide",
-                        execution_time=time.time() - start_time,
-                        has_main_function=True
-                    )
+            import inspect
+            sig = inspect.signature(module.main)
+            expected_params = ['input_paths', 'output_paths', 'environ_vars', 'job_args']
+            actual_params = list(sig.parameters.keys())
+            
+            if not all(param in actual_params for param in expected_params):
+                return ScriptTestResult(
+                    script_name=script_name,
+                    success=False,
+                    error_message="Main function signature doesn't match script development guide",
+                    execution_time=time.time() - start_time,
+                    has_main_function=True
+                )
+            
+            # ACTUALLY EXECUTE THE SCRIPT with test data
+            test_dir = self.workspace_dir / f"test_{script_name}"
+            test_dir.mkdir(exist_ok=True)
+            
+            # Create test input data
+            if sample_data is None:
+                sample_data = self._generate_sample_data()
+            
+            input_data_path = test_dir / "input_data.csv"
+            output_data_path = test_dir / "output_data.csv"
+            
+            pd.DataFrame(sample_data).to_csv(input_data_path, index=False)
+            
+            # Prepare execution parameters following script development guide
+            input_paths = {"data_input": str(input_data_path)}
+            output_paths = {"data_output": str(test_dir)}
+            environ_vars = {"LABEL_FIELD": "label"}
+            job_args = argparse.Namespace(job_type="testing")
+            
+            # EXECUTE THE MAIN FUNCTION
+            module.main(input_paths, output_paths, environ_vars, job_args)
             
             return ScriptTestResult(
                 script_name=script_name,
-                success=has_main,
-                error_message=None if has_main else "Script missing main() function",
+                success=True,
+                error_message=None,
                 execution_time=time.time() - start_time,
-                has_main_function=has_main
+                has_main_function=True
             )
             
         except Exception as e:
@@ -91,7 +121,7 @@ class RuntimeTester:
                 success=False,
                 error_message=str(e),
                 execution_time=time.time() - start_time,
-                has_main_function=False
+                has_main_function=has_main if 'has_main' in locals() else False
             )
     
     def test_data_compatibility(self, script_a: str, script_b: str, 
