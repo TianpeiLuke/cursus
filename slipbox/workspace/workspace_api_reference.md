@@ -102,7 +102,7 @@ def validate_workspace(
 
 **Example:**
 ```python
-report = api.validate_workspace("developer_workspaces/developers/john_doe")
+report = api.validate_workspace("development/projects/john_doe")
 
 if report.status == WorkspaceStatus.HEALTHY:
     print("✅ Workspace is ready for development")
@@ -185,35 +185,38 @@ else:
     print(f"Promotion failed: {result.message}")
 ```
 
-### get_workspace_info()
+### list_workspaces()
 
-Retrieves detailed information about a workspace.
+Lists all available workspaces.
 
 **Signature:**
 ```python
-def get_workspace_info(
-    self,
-    developer_id: str
-) -> Optional[WorkspaceInfo]
+def list_workspaces(self) -> List[WorkspaceInfo]
 ```
 
 **Parameters:**
-- `developer_id`: Developer identifier
+- None
 
-**Returns:** `WorkspaceInfo` object or None if workspace doesn't exist
+**Returns:** List of `WorkspaceInfo` objects
 
 **Example:**
 ```python
-info = api.get_workspace_info("john_doe")
+workspaces = api.list_workspaces()
 
-if info:
-    print(f"Workspace: {info.workspace_path}")
+for info in workspaces:
+    print(f"Developer: {info.developer_id}")
+    print(f"Path: {info.path}")
     print(f"Status: {info.status}")
-    print(f"Created: {info.created_at}")
-    print(f"Components: {info.component_count}")
-    print(f"Valid: {info.is_valid}")
+    print(f"Created: {info.created_at or 'Unknown'}")
+    print(f"Size: {info.size_bytes or 0} bytes")
+    print("---")
+
+# Find specific workspace
+john_workspace = next((w for w in workspaces if w.developer_id == "john_doe"), None)
+if john_workspace:
+    print(f"Found John's workspace at: {john_workspace.path}")
 else:
-    print("Workspace not found")
+    print("John's workspace not found")
 ```
 
 ### cleanup_workspace()
@@ -414,24 +417,21 @@ print(f"Developers with XGBoost components: {xgboost_developers}")
 ```python
 # Monitor workspace health across all developers
 def monitor_workspace_health():
-    components = api.discover_workspace_components()
+    workspaces = api.list_workspaces()
     health_report = {}
     
-    for dev_id in components.keys():
+    for info in workspaces:
         try:
-            info = api.get_workspace_info(dev_id)
-            if info:
-                workspace_path = info.workspace_path
-                report = api.validate_workspace(workspace_path)
-                
-                health_report[dev_id] = {
-                    'status': report.status,
-                    'component_count': info.component_count,
-                    'violations': len(report.violations),
-                    'last_modified': info.last_modified
-                }
+            report = api.validate_workspace(info.path)
+            
+            health_report[info.developer_id] = {
+                'status': report.status,
+                'component_count': len(report.issues) if hasattr(report, 'issues') else 0,
+                'violations': len(report.issues) if hasattr(report, 'issues') else 0,
+                'last_modified': info.last_modified or 'Unknown'
+            }
         except Exception as e:
-            health_report[dev_id] = {'error': str(e)}
+            health_report[info.developer_id] = {'error': str(e)}
     
     return health_report
 
@@ -441,7 +441,7 @@ for dev_id, status in health.items():
     if 'error' in status:
         print(f"❌ {dev_id}: {status['error']}")
     elif status['status'] == WorkspaceStatus.HEALTHY:
-        print(f"✅ {dev_id}: {status['component_count']} components")
+        print(f"✅ {dev_id}: healthy workspace")
     else:
         print(f"⚠️ {dev_id}: {status['violations']} violations")
 ```
@@ -492,7 +492,7 @@ workspace_config = {
 assembler = WorkspacePipelineAssembler(
     dag=dag,
     workspace_config_map=workspace_config,
-    workspace_root="developer_workspaces/developers"
+    workspace_root="development/projects"
 )
 
 # Validate components before assembly
@@ -514,9 +514,11 @@ else:
 **Issue: Workspace validation fails with "Invalid workspace structure"**
 ```python
 # Check workspace structure
-info = api.get_workspace_info("developer_id")
+workspaces = api.list_workspaces()
+info = next((w for w in workspaces if w.developer_id == "developer_id"), None)
+
 if info:
-    print(f"Workspace path: {info.workspace_path}")
+    print(f"Workspace path: {info.path}")
     
     # Validate specific paths
     required_paths = [
@@ -527,7 +529,7 @@ if info:
     ]
     
     for path in required_paths:
-        full_path = info.workspace_path / path
+        full_path = info.path / path
         if not full_path.exists():
             print(f"❌ Missing: {full_path}")
         else:
@@ -541,15 +543,16 @@ components = api.discover_workspace_components(developer_id="problem_dev")
 
 if not components:
     print("No components found. Checking workspace...")
-    info = api.get_workspace_info("problem_dev")
+    workspaces = api.list_workspaces()
+    info = next((w for w in workspaces if w.developer_id == "problem_dev"), None)
     
     if not info:
         print("❌ Workspace doesn't exist")
-    elif not info.is_valid:
+    elif info.status != WorkspaceStatus.HEALTHY:
         print("❌ Workspace is invalid")
         # Try to validate and get specific errors
-        report = api.validate_workspace(info.workspace_path)
-        for violation in report.violations:
+        report = api.validate_workspace(info.path)
+        for violation in report.issues:
             print(f"  - {violation}")
     else:
         print("✅ Workspace exists and is valid")
@@ -570,9 +573,10 @@ except Exception as e:
     print(f"Promotion failed: {e}")
     
     # Check if component exists
-    info = api.get_workspace_info("dev_id")
+    workspaces = api.list_workspaces()
+    info = next((w for w in workspaces if w.developer_id == "dev_id"), None)
     if info:
-        component_full_path = info.workspace_path / "problematic/component.py"
+        component_full_path = info.path / "problematic/component.py"
         if component_full_path.exists():
             print("✅ Component file exists")
             # Check file permissions
@@ -607,7 +611,7 @@ except Exception as e:
 | `validate_workspace()` | Validate workspace | `ValidationReport` |
 | `discover_workspace_components()` | Find components | `Dict[str, Any]` |
 | `promote_workspace_component()` | Promote component | `PromotionResult` |
-| `get_workspace_info()` | Get workspace details | `WorkspaceInfo` |
+| `list_workspaces()` | List all workspaces | `List[WorkspaceInfo]` |
 | `cleanup_workspace()` | Clean workspace | `CleanupResult` |
 
 For additional examples and advanced usage patterns, see the [Workspace Quick Start Guide](workspace_quick_start.md).

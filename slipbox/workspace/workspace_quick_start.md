@@ -51,7 +51,7 @@ print(f"Workspace root: {api.base_path}")
 **Expected Output:**
 ```
 ✅ Workspace API initialized successfully
-Workspace root: /path/to/your/project/developer_workspaces/developers
+Workspace root: /path/to/your/project/development/projects
 ```
 
 ## Step 2: Create Your First Workspace (3 minutes)
@@ -85,8 +85,8 @@ else:
 ```
 
 **What this creates:**
-- A new directory structure under `developer_workspaces/developers/your_name/`
-- Standard ML pipeline template files
+- A new directory structure under `development/projects/your_name/`
+- Standard ML pipeline template files with `src/cursus_dev/` organization
 - Proper workspace isolation boundaries
 
 ## Step 3: Validate Your Workspace (2 minutes)
@@ -131,18 +131,16 @@ Let's examine what was created in your workspace:
 
 ```python
 # Get detailed workspace information
-info = api.get_workspace_info("your_name")
+workspaces = api.list_workspaces()
+info = next((w for w in workspaces if w.developer_id == "your_name"), None)
 
 if info:
     print(f"📋 Workspace Details:")
-    print(f"   Path: {info.workspace_path}")
-    print(f"   Created: {info.created_at}")
-    print(f"   Components: {info.component_count}")
-    print(f"   Size: {info.size_bytes} bytes")
-    print(f"   Valid: {'✅' if info.is_valid else '❌'}")
-    
-    if info.template_used:
-        print(f"   Template: {info.template_used}")
+    print(f"   Path: {info.path}")
+    print(f"   Created: {info.created_at or 'Unknown'}")
+    print(f"   Size: {info.size_bytes or 0} bytes")
+    print(f"   Valid: {'✅' if info.status.name == 'HEALTHY' else '❌'}")
+    print(f"   Status: {info.status.name}")
 ```
 
 **Explore the file structure:**
@@ -150,7 +148,7 @@ if info:
 import os
 from pathlib import Path
 
-workspace_path = Path(info.workspace_path)
+workspace_path = Path(info.path)
 print(f"\n📁 Workspace Structure:")
 
 # Show the directory tree
@@ -215,7 +213,7 @@ Let's create a simple step builder in your workspace:
 from pathlib import Path
 
 # Create a simple custom step builder
-workspace_path = Path(info.workspace_path)
+workspace_path = Path(info.path)
 builder_dir = workspace_path / "src" / "cursus_dev" / "steps" / "builders"
 
 # Ensure the directory exists
@@ -289,7 +287,7 @@ Let's validate that your new component is properly recognized:
 
 ```python
 # Re-validate the workspace after adding components
-report = api.validate_workspace(info.workspace_path)
+report = api.validate_workspace(info.path)
 
 print(f"🔍 Updated Validation Results:")
 print(f"Status: {report.status}")
@@ -449,7 +447,7 @@ def cleanup_workspace_routine(developer_id: str):
 ```python
 # Check if workspace directory exists
 import os
-workspace_path = f"developer_workspaces/developers/your_name"
+workspace_path = f"development/projects/your_name"
 if not os.path.exists(workspace_path):
     print("❌ Workspace directory doesn't exist")
     print("💡 Try running setup_developer_workspace() again")
@@ -469,7 +467,7 @@ if not components:
 ### Issue: "Validation fails"
 ```python
 # Get detailed validation info
-report = api.validate_workspace("developer_workspaces/developers/your_name")
+report = api.validate_workspace("development/projects/your_name")
 if report.violations:
     print("🔍 Validation Issues:")
     for violation in report.violations:
