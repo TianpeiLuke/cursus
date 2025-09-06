@@ -910,4 +910,66 @@ mlops_pipeline.upsert()
 7. **Design for parallelism** when possible
 8. **Use meaningful names** for steps and pipelines
 
-For additional examples and advanced patterns, see the [SageMaker Pipeline Quick Start Guide](sagemaker_pipeline_quick_start.md) and explore the pipeline catalog examples in `src/cursus/pipeline_catalog/`.
+## Related Documentation and Code References
+
+### Core Documentation
+- **[SageMaker Pipeline Quick Start Guide](sagemaker_pipeline_quick_start.md)** - Step-by-step tutorial for getting started
+- **[Cursus Developer Guide](../../0_developer_guide/README.md)** - Complete development documentation
+- **[Workspace-Aware Developer Guide](../../01_developer_guide_workspace_aware/README.md)** - Team collaboration patterns
+- **[Design Principles](../../1_design/design_principles.md)** - Architectural foundations
+- **[Specification-Driven Design](../../1_design/specification_driven_design.md)** - Core design philosophy
+
+### Implementation References
+- **[Pipeline Catalog Examples](../../../src/cursus/pipeline_catalog/)** - Production-ready pipeline implementations
+  - **[XGBoost E2E Pipeline](../../../src/cursus/pipeline_catalog/pipelines/xgb_e2e_comprehensive.py)** - Complete implementation example
+  - **[Shared DAGs](../../../src/cursus/pipeline_catalog/shared_dags/)** - Reusable DAG patterns
+- **[Demo Notebooks](../../../demo/)** - Interactive examples
+  - **[Configuration Demo](../../../demo/demo_config.ipynb)** - Configuration system walkthrough
+  - **[Pipeline Demo](../../../demo/demo_pipeline.ipynb)** - End-to-end execution example
+
+### Core API Components
+- **[DAG Compiler Source](../../../src/cursus/core/compiler/dag_compiler.py)** - Main compilation engine implementation
+- **[Pipeline DAG Source](../../../src/cursus/api/dag/base_dag.py)** - DAG structure implementation
+- **[Step Builders](../../../src/cursus/steps/builders/)** - All step builder implementations
+- **[Step Configurations](../../../src/cursus/steps/configs/)** - Configuration class definitions
+- **[Step Specifications](../../../src/cursus/steps/specs/)** - Input/output specification definitions
+
+### Configuration System
+- **[Base Configuration](../../../src/cursus/core/base/config_base.py)** - Base configuration classes
+- **[Config Field Manager](../../1_design/config_field_manager_refactoring.md)** - Advanced configuration management
+- **[Three-Tier Config Design](../../0_developer_guide/three_tier_config_design.md)** - Configuration architecture
+- **[Configuration Utils](../../../src/cursus/steps/configs/utils.py)** - Configuration merging and utilities
+
+### Step Development
+- **[Adding New Steps Guide](../../0_developer_guide/adding_new_pipeline_step.md)** - Creating custom steps
+- **[Step Builder Guide](../../0_developer_guide/step_builder.md)** - Step builder patterns
+- **[Script Contract Guide](../../0_developer_guide/script_contract.md)** - Processing script development
+- **[Validation Framework](../../0_developer_guide/validation_framework_guide.md)** - Step validation patterns
+
+### Registry and Discovery
+- **[Step Registry](../../../src/cursus/registry/)** - Step registration system
+- **[Registry Guide](../../0_developer_guide/step_builder_registry_guide.md)** - Using the step registry
+- **[Hybrid Registry](../../01_developer_guide_workspace_aware/ws_hybrid_registry_integration.md)** - Workspace registry patterns
+
+### Advanced Features
+- **[Dependency Resolution](../../1_design/dependency_resolution_system.md)** - How dependencies are resolved
+- **[Pipeline Compiler Design](../../1_design/pipeline_compiler.md)** - Compilation architecture
+- **[MODS Integration](../../1_design/mods_dag_compiler_design.md)** - Model Operations integration
+- **[Pipeline Runtime](../../1_design/pipeline_runtime_core_engine_design.md)** - Runtime execution patterns
+
+### Testing and Validation
+- **[Testing Guide](../../0_developer_guide/script_testability_implementation.md)** - Testing pipeline components
+- **[Validation Checklist](../../0_developer_guide/validation_checklist.md)** - Pre-deployment validation
+- **[Best Practices](../../0_developer_guide/best_practices.md)** - Development best practices
+
+### CLI and Tools
+- **[CLI Commands](../../../src/cursus/cli/)** - Command-line interface
+- **[Workspace CLI](../../01_developer_guide_workspace_aware/ws_workspace_cli_reference.md)** - Workspace management tools
+- **[Pipeline Catalog CLI](../../0_developer_guide/pipeline_catalog_integration_guide.md)** - Catalog management
+
+### Reference Materials
+- **[SageMaker Property Reference](../../0_developer_guide/sagemaker_property_path_reference_database.md)** - Complete property mappings
+- **[Hyperparameter Classes](../../0_developer_guide/hyperparameter_class.md)** - Model hyperparameter handling
+- **[Common Pitfalls](../../0_developer_guide/common_pitfalls.md)** - Avoiding common issues
+
+For additional examples and advanced patterns, explore the comprehensive documentation and code examples referenced above.
