@@ -18,11 +18,11 @@ src_path = Path(__file__).parent.parent.parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
 # Import test modules
-from test_notebook_interface import *
-from test_visualization import *
-from test_debugger import *
-from test_templates import *
-from test_advanced import *
+from .test_notebook_interface import *
+from .test_visualization import *
+from .test_debugger import *
+from .test_templates import *
+from .test_advanced import *
 
 
 class TestResult:

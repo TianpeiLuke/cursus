@@ -17,7 +17,7 @@ import matplotlib.patches as mpatches
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from test_training_step_builders import TrainingStepBuilderTestSuite
+from .test_training_step_builders import TrainingStepBuilderTestSuite
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 
 

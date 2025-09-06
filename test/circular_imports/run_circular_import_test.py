@@ -14,7 +14,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from test.circular_imports.test_circular_imports import run_circular_import_tests
+from .test_circular_imports import run_circular_import_tests
 
 if __name__ == '__main__':
     print("Running Cursus Package Circular Import Test...")

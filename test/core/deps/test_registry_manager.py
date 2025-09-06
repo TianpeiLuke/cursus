@@ -16,7 +16,7 @@ from src.cursus.core.deps.specification_registry import SpecificationRegistry
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from test.core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from .test_helpers import IsolatedTestCase, reset_all_global_state
 
 
 class TestRegistryManagerCore(IsolatedTestCase):

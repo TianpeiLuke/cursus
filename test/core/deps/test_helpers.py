@@ -39,7 +39,7 @@ class IsolatedTestCase(unittest.TestCase):
 
 # Example usage:
 """
-from test.core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from .test_helpers import IsolatedTestCase, reset_all_global_state
 
 class TestMyFeature(IsolatedTestCase):
     def test_something(self):

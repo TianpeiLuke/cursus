@@ -12,13 +12,13 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 # Import all test modules
-from test.validation.alignment.test_framework_patterns import TestFrameworkPatterns
-from test.validation.alignment.test_step_type_enhancement_router import TestStepTypeEnhancementRouter
-from test.validation.alignment.step_type_enhancers.test_base_enhancer import (
+from .test_framework_patterns import TestFrameworkPatterns
+from .test_step_type_enhancement_router import TestStepTypeEnhancementRouter
+from .step_type_enhancers.test_base_enhancer import (
     TestBaseStepEnhancer, 
     TestBaseStepEnhancerEdgeCases
 )
-from test.validation.alignment.step_type_enhancers.test_training_enhancer import TestTrainingStepEnhancer
+from .step_type_enhancers.test_training_enhancer import TestTrainingStepEnhancer
 
 
 class TestStepTypeEnhancementSystemComprehensive(unittest.TestCase):

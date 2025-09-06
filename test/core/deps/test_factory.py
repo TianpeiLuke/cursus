@@ -26,7 +26,7 @@ from src.cursus.core.deps import (
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from test.core.deps.test_helpers import IsolatedTestCase
+from .test_helpers import IsolatedTestCase
 
 
 class TestFactoryFunctions(IsolatedTestCase):

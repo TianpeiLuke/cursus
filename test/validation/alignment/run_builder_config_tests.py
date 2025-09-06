@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'src'))
 # Import test modules
 from analyzers.test_config_analyzer import TestConfigurationAnalyzer
 from analyzers.test_builder_analyzer import TestBuilderCodeAnalyzer
-from test_builder_config_alignment import TestBuilderConfigurationAlignmentTester
+from .test_builder_config_alignment import TestBuilderConfigurationAlignmentTester
 
 
 def create_test_suite():

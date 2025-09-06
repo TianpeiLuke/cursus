@@ -12,7 +12,7 @@ from src.cursus.core.deps import RegistryManager
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from test.deps.test_helpers import IsolatedTestCase
+from ..core.deps.test_helpers import IsolatedTestCase
 
 
 class TestRegistryManagerPipelineIntegration(IsolatedTestCase):

@@ -11,7 +11,7 @@ Tests the integration aspects of StepSpecification including:
 import unittest
 import json
 from typing import List, Dict
-from test.deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from ..core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
 from src.cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec,

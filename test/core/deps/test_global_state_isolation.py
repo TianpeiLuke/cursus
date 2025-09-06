@@ -11,7 +11,7 @@ from src.cursus.core.deps import RegistryManager, get_registry, create_dependenc
 from src.cursus.core.base.specification_base import (
     StepSpecification, OutputSpec, DependencyType, NodeType
 )
-from test.core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from .test_helpers import IsolatedTestCase, reset_all_global_state
 
 
 class TestWithoutIsolation(unittest.TestCase):

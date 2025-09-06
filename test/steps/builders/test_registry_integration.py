@@ -157,7 +157,7 @@ class TestRegistryIntegration(unittest.TestCase):
         """Test that existing test files can use the centralized discovery."""
         # Import the test suites to verify they work
         try:
-            from test_training_step_builders import TrainingStepBuilderTestSuite
+            from .test_training_step_builders import TrainingStepBuilderTestSuite
             
             # Test that the suite can get training steps
             suite = TrainingStepBuilderTestSuite()
