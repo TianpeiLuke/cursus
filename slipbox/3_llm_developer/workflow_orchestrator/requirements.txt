@@ -1,0 +1,24 @@
+# Requirements for LangGraph Bedrock Workflow Orchestrator
+
+# Core AWS dependencies
+boto3>=1.34.0
+botocore>=1.34.0
+
+# LangGraph and LangChain
+langgraph>=0.0.40
+langchain>=0.1.0
+langchain-core>=0.1.0
+
+# Additional utilities
+pydantic>=2.0.0
+typing-extensions>=4.0.0
+asyncio>=3.4.3
+
+# Optional: For enhanced logging and monitoring
+structlog>=23.0.0
+rich>=13.0.0
+
+# Development dependencies (optional)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
