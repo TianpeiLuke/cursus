@@ -416,8 +416,666 @@ Our principles apply throughout the development lifecycle:
    - Use **Registry Pattern** to locate components needing modification
    - Follow **Avoid Hardcoding** to make changes in a single place
 
+## Anti-Over-Engineering Principles
+
+Based on comprehensive code redundancy analysis of our systems, we have identified critical anti-over-engineering principles that prevent unnecessary complexity and ensure efficient, maintainable code. These principles emerged from analyzing systems with severe over-engineering issues (52% redundancy, 21x complexity increase) and guide us toward simpler, more effective solutions.
+
+### 9. Demand Validation First
+
+**Always validate user demand before implementing features**
+
+Validate actual user requirements before building sophisticated solutions to prevent addressing unfound demand:
+
+- **Evidence-Based Development**: Require concrete evidence of user need before feature development
+- **User Request Documentation**: Document specific user requests that drive feature requirements
+- **Theoretical vs Actual Needs**: Distinguish between theoretical completeness and actual user problems
+- **Incremental Feature Addition**: Add features only after validating demand for existing functionality
+
+**Example - Demand Validation Decision Tree**:
+```python
+def evaluate_new_feature(feature_description: str, complexity_estimate: int) -> str:
+    """Evaluate whether a new feature should be implemented"""
+    
+    # Gate 1: Demand Validation
+    user_requests = count_user_requests_for_feature(feature_description)
+    if user_requests == 0:
+        return "REJECT: No validated user demand"
+    
+    # Gate 2: Simplicity Assessment
+    if complexity_estimate > 100:  # lines of code
+        simple_alternative = find_simple_alternative(feature_description)
+        if simple_alternative and simple_alternative.complexity < complexity_estimate / 5:
+            return f"MODIFY: Use simple alternative ({simple_alternative.description})"
+    
+    # Gate 3: Performance Impact
+    performance_impact = estimate_performance_impact(feature_description)
+    if performance_impact > 2.0:  # 2x performance degradation
+        return "REJECT: Unacceptable performance impact"
+    
+    return "APPROVE: Feature meets validation criteria"
+
+# Usage in feature planning
+feature_decision = evaluate_new_feature(
+    "Jupyter notebook integration for script testing", 
+    800  # estimated lines of code
+)
+print(feature_decision)  # "REJECT: No validated user demand"
+```
+
+**Anti-Pattern - Building for Theoretical Completeness**:
+```python
+# WRONG - Building sophisticated features without validated demand
+class CompleteTestingFramework:
+    def __init__(self):
+        self.jupyter_interface = JupyterNotebookInterface()  # 800 lines, no user requests
+        self.s3_integration = S3DataDownloader()            # 500 lines, theoretical need
+        self.performance_profiler = PerformanceProfiler()   # 300 lines, no evidence of need
+        self.workspace_manager = WorkspaceManager()         # 400 lines, theoretical problem
+    
+    def test_with_all_features(self, script_name: str):
+        # Complex testing with unvalidated features
+        pass
+
+# CORRECT - Start with validated core functionality
+def test_script_simple(script_name: str) -> bool:
+    """Test script execution - addresses actual user need"""
+    try:
+        # Simple, fast, effective solution for validated requirement
+        spec = importlib.util.spec_from_file_location("script", f"scripts/{script_name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return hasattr(module, 'main')
+    except:
+        return False
+```
+
+### 10. Simplicity First
+
+**Prefer simple solutions over complex architectures**
+
+Choose the simplest solution that solves the actual problem effectively:
+
+- **Occam's Razor**: The simplest solution is usually the best solution
+- **Complexity Budget**: Treat complexity as a limited resource to be spent carefully
+- **Simple vs Easy**: Choose solutions that are simple to understand, not just easy to implement
+- **Progressive Enhancement**: Start simple, add complexity only when proven necessary
+
+**Example - Complexity Budget Management**:
+```python
+class ComplexityBudget:
+    """Track and manage system complexity to prevent over-engineering"""
+    
+    def __init__(self, max_lines: int = 500, max_files: int = 5):
+        self.max_lines = max_lines
+        self.max_files = max_files
+        self.current_lines = 0
+        self.current_files = 0
+    
+    def request_complexity(self, feature_name: str, lines: int, files: int) -> bool:
+        """Request complexity budget for a new feature"""
+        if self.current_lines + lines > self.max_lines:
+            print(f"REJECT {feature_name}: Would exceed line budget ({self.current_lines + lines} > {self.max_lines})")
+            return False
+        
+        if self.current_files + files > self.max_files:
+            print(f"REJECT {feature_name}: Would exceed file budget ({self.current_files + files} > {self.max_files})")
+            return False
+        
+        self.current_lines += lines
+        self.current_files += files
+        print(f"APPROVE {feature_name}: Budget remaining ({self.max_lines - self.current_lines} lines, {self.max_files - self.current_files} files)")
+        return True
+
+# Usage in system design
+budget = ComplexityBudget(max_lines=500, max_files=5)
+budget.request_complexity("Core script testing", 100, 1)  # APPROVE
+budget.request_complexity("Basic error handling", 50, 1)   # APPROVE
+budget.request_complexity("Jupyter integration", 800, 5)   # REJECT - exceeds budget
+```
+
+**Anti-Pattern - Architecture Astronautics**:
+```python
+# WRONG - Over-engineered multi-layer architecture for simple problem
+class AbstractScriptTestingFramework(ABC):
+    @abstractmethod
+    def create_execution_context(self) -> ExecutionContext: pass
+    
+    @abstractmethod
+    def prepare_data_flow_manager(self) -> DataFlowManager: pass
+
+class EnhancedScriptTestingFramework(AbstractScriptTestingFramework):
+    def __init__(self):
+        self.context_factory = ExecutionContextFactory()
+        self.data_flow_manager = EnhancedDataFlowManager()
+        self.workspace_registry = WorkspaceComponentRegistry()
+        # ... 200+ lines of complex initialization
+
+# CORRECT - Simple, direct solution
+def test_script(script_name: str) -> bool:
+    """Simple script testing - solves the actual problem"""
+    try:
+        spec = importlib.util.spec_from_file_location("script", f"scripts/{script_name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return hasattr(module, 'main')
+    except:
+        return False
+```
+
+### 11. Performance Awareness
+
+**Consider performance impact of architectural decisions**
+
+Maintain awareness of performance implications when making design choices:
+
+- **Performance First**: Consider performance impact before adding complexity
+- **Measure Don't Guess**: Use actual measurements rather than assumptions about performance
+- **Acceptable Degradation**: Define acceptable performance degradation limits (e.g., 2x maximum)
+- **Performance Regression Testing**: Test that new features don't degrade performance unacceptably
+
+**Example - Performance Impact Assessment**:
+```python
+import time
+from typing import Callable, Any
+
+def performance_gate(max_degradation: float = 2.0):
+    """Decorator to prevent performance regressions"""
+    def decorator(func: Callable) -> Callable:
+        def wrapper(*args, **kwargs) -> Any:
+            # Measure baseline performance (simple implementation)
+            start_time = time.time()
+            baseline_result = simple_baseline_implementation(*args, **kwargs)
+            baseline_time = time.time() - start_time
+            
+            # Measure new implementation performance
+            start_time = time.time()
+            result = func(*args, **kwargs)
+            new_time = time.time() - start_time
+            
+            # Check performance degradation
+            degradation = new_time / baseline_time if baseline_time > 0 else float('inf')
+            
+            if degradation > max_degradation:
+                raise PerformanceRegressionError(
+                    f"Performance degradation {degradation:.1f}x exceeds limit {max_degradation}x"
+                )
+            
+            return result
+        return wrapper
+    return decorator
+
+@performance_gate(max_degradation=2.0)
+def enhanced_script_testing(script_name: str) -> bool:
+    """Enhanced testing that must not degrade performance > 2x"""
+    # Implementation must stay within performance budget
+    return test_script_with_enhancements(script_name)
+
+def simple_baseline_implementation(script_name: str) -> bool:
+    """Simple baseline for performance comparison"""
+    return test_script(script_name)
+```
+
+**Anti-Pattern - Performance Ignorance**:
+```python
+# WRONG - Complex implementation without performance consideration
+def complex_script_testing(script_name: str) -> bool:
+    """Complex testing with 100x performance degradation"""
+    # Initialize complex framework (1000ms startup time)
+    framework = CompleteTestingFramework()
+    
+    # Complex workspace discovery (500ms)
+    workspace = framework.discover_workspace_context()
+    
+    # Sophisticated data flow setup (300ms)
+    data_flow = framework.setup_enhanced_data_flow()
+    
+    # Execute with comprehensive monitoring (200ms)
+    result = framework.execute_with_monitoring(script_name)
+    
+    return result  # Total: ~2000ms vs 1ms for simple solution
+
+# CORRECT - Performance-conscious implementation
+def performance_aware_testing(script_name: str) -> bool:
+    """Fast, effective testing (1ms execution time)"""
+    try:
+        spec = importlib.util.spec_from_file_location("script", f"scripts/{script_name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return hasattr(module, 'main')
+    except:
+        return False
+```
+
+### 12. Evidence-Based Architecture
+
+**Base architectural decisions on evidence rather than assumptions**
+
+Make architectural decisions based on concrete evidence rather than theoretical concerns:
+
+- **Data-Driven Decisions**: Use metrics and measurements to guide architectural choices
+- **User Behavior Analysis**: Base features on actual user behavior patterns
+- **Problem Evidence**: Require evidence that problems actually exist before solving them
+- **Success Metrics**: Define measurable success criteria for architectural decisions
+
+**Example - Evidence-Based Decision Framework**:
+```python
+from dataclasses import dataclass
+from typing import List, Dict, Any
+import json
+
+@dataclass
+class ArchitecturalEvidence:
+    """Evidence supporting an architectural decision"""
+    evidence_type: str  # "user_request", "performance_data", "error_logs", etc.
+    description: str
+    data: Dict[str, Any]
+    confidence: float  # 0.0 to 1.0
+    source: str
+
+@dataclass
+class ArchitecturalDecision:
+    """Record of an architectural decision with supporting evidence"""
+    decision: str
+    evidence: List[ArchitecturalEvidence]
+    alternatives_considered: List[str]
+    decision_date: str
+    
+    def evidence_score(self) -> float:
+        """Calculate overall evidence score"""
+        if not self.evidence:
+            return 0.0
+        return sum(e.confidence for e in self.evidence) / len(self.evidence)
+    
+    def is_well_supported(self, min_score: float = 0.7) -> bool:
+        """Check if decision has sufficient evidence"""
+        return self.evidence_score() >= min_score
+
+# Example usage
+def evaluate_architectural_decision(decision: str, evidence: List[ArchitecturalEvidence]) -> str:
+    """Evaluate whether an architectural decision is well-supported"""
+    arch_decision = ArchitecturalDecision(
+        decision=decision,
+        evidence=evidence,
+        alternatives_considered=["simple_solution", "complex_solution"],
+        decision_date="2025-09-06"
+    )
+    
+    if not arch_decision.is_well_supported():
+        return f"REJECT: Insufficient evidence (score: {arch_decision.evidence_score():.2f})"
+    
+    return f"APPROVE: Well-supported decision (score: {arch_decision.evidence_score():.2f})"
+
+# Example - Evaluating S3 integration feature
+s3_evidence = [
+    ArchitecturalEvidence(
+        evidence_type="user_request",
+        description="User requests for S3 integration",
+        data={"request_count": 0, "user_count": 0},
+        confidence=0.0,  # No user requests
+        source="user_feedback_system"
+    ),
+    ArchitecturalEvidence(
+        evidence_type="theoretical_benefit",
+        description="Theoretical benefit of S3 integration",
+        data={"estimated_benefit": "high"},
+        confidence=0.2,  # Low confidence - theoretical only
+        source="architecture_team"
+    )
+]
+
+decision_result = evaluate_architectural_decision(
+    "Add S3 integration to script testing",
+    s3_evidence
+)
+print(decision_result)  # "REJECT: Insufficient evidence (score: 0.10)"
+```
+
+**Anti-Pattern - Assumption-Based Architecture**:
+```python
+# WRONG - Building features based on assumptions
+class AssumedNeedsFramework:
+    def __init__(self):
+        # ASSUMPTION: Users need multi-workspace support
+        self.workspace_manager = MultiWorkspaceManager()
+        
+        # ASSUMPTION: Users need performance profiling
+        self.profiler = DetailedPerformanceProfiler()
+        
+        # ASSUMPTION: Users need S3 integration
+        self.s3_downloader = S3DataDownloader()
+        
+        # ASSUMPTION: Users need Jupyter integration
+        self.jupyter_interface = JupyterNotebookInterface()
+
+# CORRECT - Evidence-based feature development
+class EvidenceBasedTester:
+    def __init__(self):
+        # EVIDENCE: Users requested basic script testing (5 user requests)
+        self.core_tester = SimpleScriptTester()
+        
+        # Features added only after evidence of demand
+        self.optional_features = {}
+    
+    def add_feature_if_demanded(self, feature_name: str, evidence: List[ArchitecturalEvidence]):
+        """Add features only with sufficient evidence"""
+        decision = ArchitecturalDecision(feature_name, evidence, [], "2025-09-06")
+        if decision.is_well_supported():
+            self.optional_features[feature_name] = create_feature(feature_name)
+```
+
+### 13. Incremental Complexity
+
+**Add complexity incrementally based on validated needs**
+
+Introduce complexity gradually, only when simpler solutions prove insufficient:
+
+- **Start Minimal**: Begin with the simplest solution that could possibly work
+- **Validate Before Extending**: Prove current solution works before adding complexity
+- **Incremental Enhancement**: Add one feature at a time with validation
+- **Complexity Justification**: Require clear justification for each complexity increase
+
+**Example - Incremental Development Strategy**:
+```python
+from enum import Enum
+from typing import Optional, Dict, Any
+
+class ComplexityLevel(Enum):
+    MINIMAL = 1      # Core functionality only
+    BASIC = 2        # Core + essential features
+    ENHANCED = 3     # Basic + validated enhancements
+    ADVANCED = 4     # Enhanced + specialized features
+
+class IncrementalSystem:
+    """System that grows incrementally based on validated needs"""
+    
+    def __init__(self, initial_level: ComplexityLevel = ComplexityLevel.MINIMAL):
+        self.current_level = initial_level
+        self.features = {}
+        self.validation_results = {}
+        
+        # Always start with minimal core
+        self._initialize_core()
+    
+    def _initialize_core(self):
+        """Initialize minimal core functionality"""
+        self.features['core'] = SimpleScriptTester()
+    
+    def request_upgrade(self, target_level: ComplexityLevel, justification: str) -> bool:
+        """Request upgrade to higher complexity level"""
+        if target_level <= self.current_level:
+            return True  # Already at or above target level
+        
+        # Validate current level before upgrading
+        if not self._validate_current_level():
+            print(f"Cannot upgrade: Current level {self.current_level} not validated")
+            return False
+        
+        # Check if upgrade is justified
+        if not self._is_upgrade_justified(target_level, justification):
+            print(f"Upgrade to {target_level} not justified: {justification}")
+            return False
+        
+        # Perform incremental upgrade
+        return self._perform_upgrade(target_level)
+    
+    def _validate_current_level(self) -> bool:
+        """Validate that current complexity level is working well"""
+        # Check user satisfaction, performance, bug reports, etc.
+        return self.validation_results.get(self.current_level, False)
+    
+    def _is_upgrade_justified(self, target_level: ComplexityLevel, justification: str) -> bool:
+        """Check if complexity upgrade is justified"""
+        required_evidence = {
+            ComplexityLevel.BASIC: ["user_requests", "performance_acceptable"],
+            ComplexityLevel.ENHANCED: ["user_requests", "current_limitations", "performance_acceptable"],
+            ComplexityLevel.ADVANCED: ["multiple_user_requests", "business_case", "performance_acceptable"]
+        }
+        
+        # In real implementation, check actual evidence
+        return len(justification) > 50  # Simplified check
+    
+    def _perform_upgrade(self, target_level: ComplexityLevel) -> bool:
+        """Perform incremental upgrade to target level"""
+        if target_level == ComplexityLevel.BASIC:
+            self.features['error_reporting'] = BasicErrorReporter()
+            self.features['simple_logging'] = SimpleLogger()
+        elif target_level == ComplexityLevel.ENHANCED:
+            self.features['data_setup'] = SimpleDataSetup()
+            self.features['result_formatting'] = ResultFormatter()
+        elif target_level == ComplexityLevel.ADVANCED:
+            # Only add if truly justified
+            self.features['advanced_reporting'] = AdvancedReporter()
+        
+        self.current_level = target_level
+        return True
+
+# Usage example
+system = IncrementalSystem(ComplexityLevel.MINIMAL)
+
+# Validate minimal level works
+system.validation_results[ComplexityLevel.MINIMAL] = True
+
+# Request upgrade with justification
+upgrade_success = system.request_upgrade(
+    ComplexityLevel.BASIC,
+    "Users requested better error messages and basic logging for debugging failed tests"
+)
+
+if upgrade_success:
+    print(f"Successfully upgraded to {system.current_level}")
+```
+
+**Anti-Pattern - Big Bang Complexity**:
+```python
+# WRONG - Adding all complexity at once
+class BigBangFramework:
+    def __init__(self):
+        # Adding all features simultaneously without validation
+        self.core_tester = ScriptTester()
+        self.workspace_manager = WorkspaceManager()          # Unvalidated
+        self.s3_integration = S3DataDownloader()             # Unvalidated
+        self.jupyter_interface = JupyterInterface()          # Unvalidated
+        self.performance_profiler = PerformanceProfiler()    # Unvalidated
+        self.advanced_reporting = AdvancedReporter()         # Unvalidated
+        self.data_flow_manager = DataFlowManager()           # Unvalidated
+        # Result: 4,200+ lines, 52% redundancy, poor performance
+
+# CORRECT - Incremental complexity addition
+class IncrementalFramework:
+    def __init__(self):
+        # Start with proven core functionality
+        self.core_tester = SimpleScriptTester()  # 50 lines, validated
+        
+        # Add features incrementally as demand is validated
+        self.optional_features = {}
+    
+    def add_validated_feature(self, feature_name: str, evidence_score: float):
+        """Add feature only if demand is validated"""
+        if evidence_score >= 0.7:  # High confidence threshold
+            self.optional_features[feature_name] = create_feature(feature_name)
+            print(f"Added {feature_name} based on validated demand")
+        else:
+            print(f"Rejected {feature_name}: insufficient evidence ({evidence_score:.2f})")
+```
+
+## Quality Gates Framework
+
+To prevent over-engineering and ensure architectural quality, we implement a comprehensive quality gates framework that evaluates features and architectural decisions before implementation.
+
+### Feature Evaluation Decision Tree
+
+```python
+def evaluate_feature_for_implementation(
+    feature_name: str,
+    user_requests: int,
+    complexity_estimate: int,
+    performance_impact: float,
+    evidence_quality: float
+) -> str:
+    """
+    Comprehensive feature evaluation using quality gates
+    
+    Args:
+        feature_name: Name of the proposed feature
+        user_requests: Number of validated user requests for this feature
+        complexity_estimate: Estimated lines of code for implementation
+        performance_impact: Expected performance degradation (1.0 = no impact, 2.0 = 2x slower)
+        evidence_quality: Quality of evidence supporting the feature (0.0-1.0)
+    
+    Returns:
+        Decision: APPROVE, MODIFY, or REJECT with reasoning
+    """
+    
+    # Gate 1: Demand Validation
+    if user_requests == 0:
+        return f"REJECT {feature_name}: No validated user demand (0 requests)"
+    
+    if evidence_quality < 0.5:
+        return f"REJECT {feature_name}: Poor evidence quality ({evidence_quality:.2f} < 0.5)"
+    
+    # Gate 2: Simplicity Assessment
+    if complexity_estimate > 200:  # Lines of code threshold
+        return f"MODIFY {feature_name}: Too complex ({complexity_estimate} lines). Simplify or break into phases."
+    
+    # Gate 3: Performance Impact
+    if performance_impact > 2.0:
+        return f"REJECT {feature_name}: Unacceptable performance impact ({performance_impact:.1f}x degradation)"
+    
+    # Gate 4: Evidence-Based Architecture
+    if evidence_quality < 0.7 and complexity_estimate > 100:
+        return f"MODIFY {feature_name}: Insufficient evidence for complexity. Start simpler."
+    
+    # Gate 5: Incremental Complexity
+    if complexity_estimate > 50 and user_requests < 3:
+        return f"MODIFY {feature_name}: Start with simpler version for {user_requests} users"
+    
+    # All gates passed
+    confidence_score = min(evidence_quality * (user_requests / 5.0), 1.0)
+    return f"APPROVE {feature_name}: All quality gates passed (confidence: {confidence_score:.2f})"
+
+# Example usage for runtime testing features
+features_to_evaluate = [
+    ("Basic Script Testing", 5, 50, 1.1, 0.9),      # Core functionality
+    ("Error Reporting", 3, 30, 1.0, 0.8),           # Basic enhancement
+    ("S3 Integration", 0, 500, 3.0, 0.2),           # Over-engineered feature
+    ("Jupyter Interface", 0, 800, 2.5, 0.1),        # Unfound demand
+    ("Performance Profiling", 1, 300, 1.5, 0.3),    # Premature optimization
+]
+
+print("Feature Evaluation Results:")
+print("=" * 50)
+for feature_name, requests, complexity, performance, evidence in features_to_evaluate:
+    decision = evaluate_feature_for_implementation(
+        feature_name, requests, complexity, performance, evidence
+    )
+    print(f"{decision}")
+```
+
+### Architecture Quality Metrics
+
+Track key metrics to prevent over-engineering and maintain system quality:
+
+```python
+@dataclass
+class ArchitectureQualityMetrics:
+    """Metrics for tracking architectural quality and preventing over-engineering"""
+    
+    # Code Efficiency Metrics
+    total_lines_of_code: int
+    redundancy_percentage: float
+    complexity_per_feature: Dict[str, int]
+    
+    # Performance Metrics
+    startup_time_ms: float
+    operation_time_ms: float
+    memory_usage_mb: float
+    
+    # Quality Metrics
+    maintainability_score: float  # 0.0-1.0
+    usability_score: float        # 0.0-1.0
+    reliability_score: float      # 0.0-1.0
+    
+    # Demand Validation Metrics
+    features_with_validated_demand: int
+    features_without_demand: int
+    user_satisfaction_score: float  # 0.0-1.0
+    
+    def calculate_over_engineering_risk(self) -> str:
+        """Calculate risk of over-engineering based on metrics"""
+        risk_factors = []
+        
+        # Check redundancy
+        if self.redundancy_percentage > 40:
+            risk_factors.append(f"High redundancy ({self.redundancy_percentage:.1f}%)")
+        
+        # Check complexity
+        avg_complexity = sum(self.complexity_per_feature.values()) / len(self.complexity_per_feature)
+        if avg_complexity > 200:
+            risk_factors.append(f"High complexity per feature ({avg_complexity:.0f} lines)")
+        
+        # Check performance
+        if self.operation_time_ms > 100:
+            risk_factors.append(f"Poor performance ({self.operation_time_ms:.0f}ms operations)")
+        
+        # Check demand validation
+        total_features = self.features_with_validated_demand + self.features_without_demand
+        unfound_demand_ratio = self.features_without_demand / total_features if total_features > 0 else 0
+        if unfound_demand_ratio > 0.3:
+            risk_factors.append(f"High unfound demand ({unfound_demand_ratio:.1%})")
+        
+        # Check usability
+        if self.usability_score < 0.6:
+            risk_factors.append(f"Poor usability ({self.usability_score:.2f})")
+        
+        if not risk_factors:
+            return "LOW: Well-architected system"
+        elif len(risk_factors) <= 2:
+            return f"MEDIUM: {'; '.join(risk_factors)}"
+        else:
+            return f"HIGH: {'; '.join(risk_factors)}"
+
+# Example - Runtime Testing System Metrics
+runtime_testing_metrics = ArchitectureQualityMetrics(
+    total_lines_of_code=4200,
+    redundancy_percentage=52.0,
+    complexity_per_feature={
+        "script_testing": 280,
+        "pipeline_execution": 520,
+        "data_management": 1200,
+        "s3_integration": 500,
+        "jupyter_interface": 800,
+        "production_support": 600,
+    },
+    startup_time_ms=1000,
+    operation_time_ms=100,
+    memory_usage_mb=50,
+    maintainability_score=0.45,
+    usability_score=0.30,
+    reliability_score=0.75,
+    features_with_validated_demand=2,
+    features_without_demand=5,
+    user_satisfaction_score=0.40
+)
+
+risk_assessment = runtime_testing_metrics.calculate_over_engineering_risk()
+print(f"Over-engineering Risk: {risk_assessment}")
+# Output: "HIGH: High redundancy (52.0%); High complexity per feature (483 lines); 
+#          Poor performance (100ms operations); High unfound demand (71.4%); Poor usability (0.30)"
+```
+
+These anti-over-engineering principles work together with our existing core architectural principles to create a comprehensive framework for building efficient, maintainable systems that solve real user problems without unnecessary complexity.
+
 ## Conclusion
 
 By adhering to these design principles, we create a robust, maintainable pipeline architecture that supports a wide range of machine learning workflows. When developing new steps, ensure your implementation follows these principles to maintain consistency and quality across the system.
 
 The cross-cutting nature of our core architectural principles (Single Source of Truth, Declarative Over Imperative, Type-Safe Specifications, and Explicit Over Implicit) provides a foundation that strengthens all aspects of the system design. By consistently applying these principles, we create a coherent architecture where components work together seamlessly while remaining independently maintainable.
+
+**The anti-over-engineering principles (Demand Validation First, Simplicity First, Performance Awareness, Evidence-Based Architecture, and Incremental Complexity) serve as critical safeguards against the tendency to build sophisticated solutions for theoretical problems.** These principles ensure that our architectural sophistication serves real user needs rather than theoretical completeness, maintaining the balance between capability and simplicity that characterizes excellent software architecture.
+## Conclusion
+
+By adhering to these design principles, we create a robust, maintainable pipeline architecture that supports a wide range of machine learning workflows. When developing new steps, ensure your implementation follows these principles to maintain consistency and quality across the system.
+
+The cross-cutting nature of our core architectural principles (Single Source of Truth, Declarative Over Imperative, Type-Safe Specifications, and Explicit Over Implicit) provides a foundation that strengthens all aspects of the system design. By consistently applying these principles, we create a coherent architecture where components work together seamlessly while remaining independently maintainable.
+
+**The anti-over-engineering principles (Demand Validation First, Simplicity First, Performance Awareness, Evidence-Based Architecture, and Incremental Complexity) serve as critical safeguards against the tendency to build sophisticated solutions for theoretical problems.** These principles ensure that our architectural sophistication serves real user needs rather than theoretical completeness, maintaining the balance between capability and simplicity that characterizes excellent software architecture.

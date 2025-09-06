@@ -440,6 +440,346 @@ class TrainingStepBuilder:
 - Prevents hidden global state issues
 - Improves code understanding and maintenance
 
+## Anti-Over-Engineering Principles
+
+### 9. Demand Validation Principle
+
+**Principle**: Validate actual user demand before implementing features, especially complex ones.
+
+**Rationale**: Prevents building sophisticated solutions for theoretical problems without validated requirements.
+
+```python
+# Violation: Building features without validated demand (Discouraged)
+class PipelineTestingNotebook:  # 800 lines
+    def interactive_debug(self, pipeline_dag: Dict, break_at_step: str = None):
+        # Complex interactive debugging - no evidence users requested this
+        pass
+        
+    def deep_dive_analysis(self, pipeline_name: str, s3_execution_arn: str):
+        # Sophisticated S3 analysis - no validated user requirement
+        pass
+
+# Principle-Compliant: Start with validated needs (Preferred)
+class SimpleScriptTester:
+    def test_script(self, script_name: str) -> bool:
+        # Addresses validated need: "Can this script be imported and executed?"
+        # Only implement after confirming users actually need this functionality
+        try:
+            spec = importlib.util.spec_from_file_location("script", f"scripts/{script_name}.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return hasattr(module, 'main')
+        except:
+            return False
+```
+
+**Benefits**:
+- Prevents building features for imagined scenarios
+- Reduces code complexity and maintenance burden
+- Focuses development effort on actual user problems
+- Enables faster delivery of valuable functionality
+
+**Demand Validation Framework**:
+```python
+def validate_feature_demand(feature_description: str) -> bool:
+    """Framework for validating feature demand before implementation"""
+    
+    # 1. User Evidence
+    user_requests = count_user_requests(feature_description)
+    if user_requests == 0:
+        return False
+    
+    # 2. Problem Evidence
+    problem_reports = count_problem_reports(feature_description)
+    if problem_reports == 0:
+        return False
+    
+    # 3. Usage Analytics
+    similar_feature_usage = analyze_similar_feature_usage(feature_description)
+    if similar_feature_usage < 0.1:  # Less than 10% usage
+        return False
+    
+    return True
+```
+
+### 10. Simplicity First Principle
+
+**Principle**: Start with the simplest solution that solves the problem, add complexity only when validated.
+
+**Rationale**: Simple solutions are easier to understand, maintain, debug, and often perform better.
+
+```python
+# Violation: Complex solution for simple problem (Discouraged)
+class EnhancedDataFlowManager:  # 320 lines
+    def setup_step_inputs(self, step_name: str, upstream_outputs: Dict, 
+                         step_contract: Optional[Any] = None) -> Dict[str, str]:
+        # 50+ lines of enhanced input setup with timing-aware path resolution
+        # Complex synthetic path resolution
+        # S3 path preparation for unimplemented features
+        pass
+
+# Principle-Compliant: Simple solution first (Preferred)
+def setup_test_data(script_name: str) -> str:
+    """Create simple test data directory for script"""
+    test_dir = f"./test_data/{script_name}"
+    os.makedirs(test_dir, exist_ok=True)
+    return test_dir  # 4 lines, solves the actual problem
+```
+
+**Benefits**:
+- Faster development and deployment
+- Easier debugging and maintenance
+- Lower cognitive load for developers
+- Better performance characteristics
+- Reduced surface area for bugs
+
+**Simplicity Assessment Framework**:
+```python
+def assess_solution_complexity(solution_description: str, lines_of_code: int) -> str:
+    """Assess if solution complexity is justified"""
+    
+    simple_alternative = find_simple_alternative(solution_description)
+    
+    if simple_alternative and lines_of_code > simple_alternative.lines * 3:
+        return f"OVER_COMPLEX: Consider {simple_alternative.description} ({simple_alternative.lines} lines)"
+    
+    if lines_of_code > 200 and not has_validated_complexity_need(solution_description):
+        return "SIMPLIFY: Break into smaller components or reduce scope"
+    
+    return "ACCEPTABLE: Complexity appears justified"
+```
+
+### 11. Performance Awareness Principle
+
+**Principle**: Consider performance impact of architectural decisions, especially for frequently used operations.
+
+**Rationale**: Complex architectures often perform worse than simple alternatives, impacting user experience.
+
+```python
+# Violation: Performance degradation through complexity (Discouraged)
+def test_script_isolation(script_name: str):
+    # 1. Initialize PipelineScriptExecutor (workspace setup, registry initialization)
+    # 2. Discover script path (workspace-aware discovery with fallbacks)
+    # 3. Import via ScriptImportManager (complex import with monitoring)
+    # 4. Prepare ExecutionContext (complex context with data sources)
+    # 5. Execute with comprehensive error handling
+    # Total: ~100ms+ for simple script test
+
+# Principle-Compliant: Performance-aware design (Preferred)
+def test_script_simple(script_name: str) -> bool:
+    try:
+        spec = importlib.util.spec_from_file_location("script", f"scripts/{script_name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return hasattr(module, 'main')
+    except:
+        return False
+    # Total: ~1ms for same functionality
+```
+
+**Benefits**:
+- Better user experience with faster operations
+- Lower resource consumption
+- Improved system scalability
+- Reduced infrastructure costs
+
+**Performance Impact Guidelines**:
+- **Acceptable**: <2x performance degradation for significant functionality gain
+- **Concerning**: 2-10x degradation requires strong justification
+- **Unacceptable**: >10x degradation for basic operations
+
+### 12. Evidence-Based Architecture Principle
+
+**Principle**: Base architectural decisions on evidence of actual usage patterns and requirements.
+
+**Rationale**: Prevents building for theoretical scenarios that may never occur in practice.
+
+```python
+# Violation: Architecture based on assumptions (Discouraged)
+class WorkspaceAwareExecutor:
+    def __init__(self, workspace_root: str = None):
+        # Assumption: Multiple developers will have conflicting script implementations
+        # Reality: No evidence of multi-developer script conflicts
+        self.workspace_registry = WorkspaceComponentRegistry(workspace_root)
+        self.cross_workspace_dependencies = []
+
+# Principle-Compliant: Evidence-based decisions (Preferred)
+class ScriptTester:
+    def __init__(self):
+        # Based on evidence: Users need to test if scripts can be imported
+        # No evidence of workspace conflicts, so keep it simple
+        pass
+```
+
+**Benefits**:
+- Avoids solving non-existent problems
+- Focuses resources on validated needs
+- Reduces system complexity
+- Improves maintainability
+
+**Evidence Collection Framework**:
+```python
+def collect_architecture_evidence(feature_area: str) -> Dict[str, Any]:
+    """Collect evidence for architectural decisions"""
+    
+    return {
+        'user_requests': count_feature_requests(feature_area),
+        'problem_reports': count_problem_reports(feature_area),
+        'usage_analytics': get_usage_analytics(feature_area),
+        'performance_requirements': get_performance_requirements(feature_area),
+        'scalability_evidence': get_scalability_evidence(feature_area)
+    }
+```
+
+### 13. Incremental Complexity Principle
+
+**Principle**: Add complexity incrementally, only when simpler solutions prove insufficient.
+
+**Rationale**: Enables learning from actual usage before committing to complex solutions.
+
+```python
+# Violation: Complex solution from start (Discouraged)
+class ComprehensiveRuntimeTester:  # 4,200+ lines from day one
+    def __init__(self):
+        # All features implemented upfront without validation
+        self.isolation_tester = IsolationTester()
+        self.pipeline_tester = PipelineTester()
+        self.deep_dive_tester = DeepDiveTester()
+        self.jupyter_interface = JupyterInterface()
+        self.s3_integration = S3Integration()
+        self.performance_profiler = PerformanceProfiler()
+
+# Principle-Compliant: Incremental approach (Preferred)
+class RuntimeTester:
+    def __init__(self):
+        # Start with minimal viable functionality
+        pass
+    
+    def test_script(self, script_name: str) -> bool:
+        # Phase 1: Basic script testing (50 lines)
+        # Add features only after validating need
+        pass
+    
+    # Phase 2: Add pipeline testing (if users request it)
+    # Phase 3: Add S3 integration (if users request it)
+    # Phase 4: Add Jupyter interface (if users request it)
+```
+
+**Benefits**:
+- Learn from actual usage patterns before adding complexity
+- Avoid building unused features
+- Faster time to market with core functionality
+- Lower maintenance burden
+- Better understanding of actual requirements
+
+**Incremental Development Framework**:
+```python
+def plan_incremental_development(feature_area: str) -> List[str]:
+    """Plan incremental development phases"""
+    
+    phases = []
+    
+    # Phase 1: Minimal Viable Product
+    phases.append(f"MVP: Core {feature_area} functionality (50-200 lines)")
+    
+    # Phase 2: Based on user feedback
+    phases.append(f"Enhancement: Add requested features based on usage")
+    
+    # Phase 3: Advanced features (only if validated)
+    phases.append(f"Advanced: Complex features with proven demand")
+    
+    return phases
+```
+
+## Quality Gates Framework
+
+### Feature Development Decision Tree
+
+```python
+def evaluate_new_feature(feature_description: str, complexity_estimate: int) -> str:
+    """Comprehensive framework for evaluating new feature proposals"""
+    
+    # Gate 1: Demand Validation
+    if not validate_feature_demand(feature_description):
+        return "REJECT: No validated user demand"
+    
+    # Gate 2: Simplicity Assessment
+    simple_alternative = find_simple_alternative(feature_description)
+    if simple_alternative and complexity_estimate > simple_alternative.complexity * 3:
+        return f"SIMPLIFY: Use {simple_alternative.description} instead"
+    
+    # Gate 3: Performance Impact
+    performance_impact = estimate_performance_impact(complexity_estimate)
+    if performance_impact > 10:  # 10x degradation
+        return "OPTIMIZE: Performance impact too high"
+    
+    # Gate 4: Evidence-Based Architecture
+    evidence = collect_architecture_evidence(feature_description)
+    if evidence['user_requests'] == 0 and evidence['problem_reports'] == 0:
+        return "DEFER: Insufficient evidence for architectural decision"
+    
+    # Gate 5: Incremental Complexity
+    if complexity_estimate > 200 and not has_incremental_plan(feature_description):
+        return "PLAN: Break into incremental phases"
+    
+    return "APPROVE: Feature meets all design principles"
+```
+
+### Architecture Quality Metrics
+
+Track these metrics to ensure adherence to design principles:
+
+```python
+class ArchitectureQualityMetrics:
+    """Track adherence to design principles"""
+    
+    def __init__(self):
+        self.metrics = {}
+    
+    def track_redundancy(self, component: str, redundancy_percentage: float):
+        """Track code redundancy (target: 15-25%)"""
+        self.metrics[f"{component}_redundancy"] = redundancy_percentage
+    
+    def track_complexity(self, component: str, lines_of_code: int, cyclomatic_complexity: int):
+        """Track component complexity"""
+        self.metrics[f"{component}_loc"] = lines_of_code
+        self.metrics[f"{component}_complexity"] = cyclomatic_complexity
+    
+    def track_performance(self, operation: str, execution_time_ms: float):
+        """Track performance impact (target: <2x degradation)"""
+        self.metrics[f"{operation}_performance"] = execution_time_ms
+    
+    def track_demand_validation(self, feature: str, user_requests: int, usage_rate: float):
+        """Track demand validation metrics"""
+        self.metrics[f"{feature}_demand"] = {
+            'user_requests': user_requests,
+            'usage_rate': usage_rate
+        }
+    
+    def generate_quality_report(self) -> Dict[str, str]:
+        """Generate quality assessment report"""
+        report = {}
+        
+        for metric_name, value in self.metrics.items():
+            if 'redundancy' in metric_name:
+                if value <= 25:
+                    report[metric_name] = "GOOD"
+                elif value <= 35:
+                    report[metric_name] = "ACCEPTABLE"
+                else:
+                    report[metric_name] = "POOR - Over-engineering likely"
+            
+            elif 'performance' in metric_name:
+                if value <= 10:  # <10ms
+                    report[metric_name] = "EXCELLENT"
+                elif value <= 100:  # <100ms
+                    report[metric_name] = "GOOD"
+                else:
+                    report[metric_name] = "POOR - Performance degradation"
+        
+        return report
+```
+
 ## Integration Principles
 
 ### 1. Layered Architecture
