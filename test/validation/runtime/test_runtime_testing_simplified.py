@@ -5,14 +5,17 @@ from pathlib import Path
 
 # Add src to Python path for imports
 src_path = Path(__file__).parent.parent.parent.parent / "src"
-sys.path.insert(0, str(src_path))
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 import pytest
 import json
 import tempfile
 from unittest.mock import Mock, patch
 
-from cursus.validation.runtime.runtime_testing import RuntimeTester, ScriptTestResult, DataCompatibilityResult
+# Direct import - should work now with proper sys.path
+sys.path.insert(0, str(src_path / "cursus"))
+from validation.runtime.runtime_testing import RuntimeTester, ScriptTestResult, DataCompatibilityResult
 
 
 class TestUserRequirements:
@@ -205,17 +208,24 @@ class TestCLIInterface:
         """Test script path discovery logic"""
         tester = RuntimeTester()
         
-        with patch('pathlib.Path.exists') as mock_exists:
-            mock_exists.side_effect = lambda: str(mock_exists.call_args[0][0]) == "scripts/test_script.py"
+        # Patch the Path import in the runtime_testing module
+        with patch('validation.runtime.runtime_testing.Path') as mock_path_class:
+            # Mock Path instances
+            mock_path_instance = Mock()
+            mock_path_class.return_value = mock_path_instance
             
-            # Mock the Path constructor to return the expected path
-            with patch('pathlib.Path') as mock_path:
-                mock_path_instance = Mock()
-                mock_path_instance.exists.return_value = True
-                mock_path.return_value = mock_path_instance
-                
-                result = tester._find_script_path("test_script")
-                assert result == "scripts/test_script.py"
+            # Mock exists method to return True only for the expected path
+            def mock_exists():
+                # Get the path string that was passed to Path()
+                if mock_path_class.call_args:
+                    path_str = str(mock_path_class.call_args[0][0])
+                    return path_str == "scripts/test_script.py"
+                return False
+            
+            mock_path_instance.exists = mock_exists
+            
+            result = tester._find_script_path("test_script")
+            assert result == "scripts/test_script.py"
     
     def test_script_path_not_found(self):
         """Test script path discovery when script doesn't exist"""
