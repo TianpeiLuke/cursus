@@ -1524,5 +1524,10 @@ def _display_alignment_validation_results(result: Any):
     # This is a placeholder for the actual result display logic
     pass
 
-if __name__ == '__main__':
+def main():
+    """Main entry point for workspace CLI."""
     workspace_cli()
+
+
+if __name__ == '__main__':
+    main()

@@ -1263,5 +1263,10 @@ def list_scripts(ctx, scripts_dir):
         return 1
 
 
-if __name__ == '__main__':
+def main():
+    """Main entry point for alignment CLI."""
     alignment()
+
+
+if __name__ == '__main__':
+    main()

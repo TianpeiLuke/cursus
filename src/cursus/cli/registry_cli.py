@@ -659,5 +659,10 @@ class ExampleCustomStepConfig(BasePipelineConfig):
         validate_assignment = True
 ''')
 
-if __name__ == '__main__':
+def main():
+    """Main entry point for registry CLI."""
     registry_cli()
+
+
+if __name__ == '__main__':
+    main()
