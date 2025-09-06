@@ -31,12 +31,22 @@ You are an expert ML Pipeline Engineer tasked with implementing a new pipeline s
 
 ## Pipeline Architecture Context
 
-Our pipeline architecture follows a specification-driven approach with a four-layer design:
+Our pipeline architecture follows a **specification-driven approach** with a **six-layer design** supporting both **shared workspace** and **isolated workspace** development:
 
-1. **Step Specifications**: Define inputs and outputs with logical names
-2. **Script Contracts**: Define container paths for script inputs/outputs
-3. **Step Builders**: Connect specifications and contracts via SageMaker
-4. **Processing Scripts**: Implement the actual business logic
+### 6-Layer Architecture
+1. **Step Specifications**: Define inputs and outputs with logical names and dependency relationships
+2. **Script Contracts**: Define container paths and environment variables for script execution
+3. **Processing Scripts**: Implement business logic using unified main function interface for testability
+4. **Step Builders**: Connect specifications and contracts via SageMaker with UnifiedRegistryManager integration
+5. **Configuration Classes**: Manage step parameters using three-tier field classification (Essential/System/Derived)
+6. **Hyperparameters**: Handle ML-specific parameter tuning and optimization
+
+### Key Modern Features
+- **UnifiedRegistryManager System**: Single consolidated registry replacing legacy patterns
+- **Workspace-Aware Development**: Support for both shared and isolated development approaches
+- **Pipeline Catalog Integration**: Zettelkasten-inspired pipeline catalog with connection-based discovery
+- **Enhanced Validation Framework**: Workspace-aware validation with isolation capabilities
+- **Three-Tier Configuration Design**: Essential/System/Derived field categorization for better maintainability
 
 ## User Input Requirements
 
@@ -69,79 +79,225 @@ Based on the provided implementation plan, create all necessary code files for t
 
 [INJECT VALIDATED IMPLEMENTATION PLAN HERE]
 
-## Knowledge Base - Developer Guide References
+## Knowledge Base - Implementation References
 
-### Creation Process
-**Source**: `slipbox/0_developer_guide/creation_process.md`
-- Complete step creation process and workflow
-- Sequential development phases and dependencies
-- Quality gates and validation checkpoints
-- Integration testing and validation procedures
+### Core Implementation Guides
+- [Script Development Guide](../../0_developer_guide/script_development_guide.md) - Unified main function interface
+- [Script Contract Development](../../0_developer_guide/script_contract.md) - Contract implementation patterns
+- [Step Specification Development](../../0_developer_guide/step_specification.md) - Specification patterns
+- [Step Builder Implementation](../../0_developer_guide/step_builder.md) - Builder implementation guide
+- [Three-Tier Config Design](../../0_developer_guide/three_tier_config_design.md) - Configuration patterns
+- [Hyperparameter Class](../../0_developer_guide/hyperparameter_class.md) - Hyperparameter implementation
 
-### Alignment Rules
-**Source**: `slipbox/0_developer_guide/alignment_rules.md`
-- Implementation alignment requirements between components
-- Script-to-contract path alignment strategies
-- Contract-to-specification logical name matching
-- Specification-to-dependency consistency requirements
-- Builder-to-configuration parameter passing rules
-- Environment variable declaration and usage patterns
-- Output property path correctness validation
-- Cross-component semantic matching requirements
+### Registry and Validation
+- [Step Builder Registry Guide](../../0_developer_guide/step_builder_registry_guide.md) - UnifiedRegistryManager system
+- [Step Builder Registry Usage](../../0_developer_guide/step_builder_registry_usage.md) - Practical registry examples
+- [Validation Framework Guide](../../0_developer_guide/validation_framework_guide.md) - Workspace-aware validation
 
-### Standardization Rules
-**Source**: `slipbox/0_developer_guide/standardization_rules.md`
-- Code standardization requirements and patterns
-- Naming conventions for all components
-- Interface standardization requirements
-- Documentation standards and completeness
-- Error handling standardization patterns
-- Testing standards and coverage requirements
-- Code organization and structure standards
+### Design Pattern References
+- [Processing Step Builder Patterns](../../1_design/processing_step_builder_patterns.md) - Processing step patterns
+- [Training Step Builder Patterns](../../1_design/training_step_builder_patterns.md) - Training step patterns
+- [CreateModel Step Builder Patterns](../../1_design/createmodel_step_builder_patterns.md) - Model creation patterns
+- [Transform Step Builder Patterns](../../1_design/transform_step_builder_patterns.md) - Transform step patterns
 
-### Step Builder Implementation Guide
-**Source**: `slipbox/0_developer_guide/step_builder.md`
-- Step builder implementation patterns and requirements
-- Base class inheritance and method implementation
-- Input/output handling patterns
-- Error handling and validation approaches
-- Integration with SageMaker components
+### Code Implementation Examples
+- Builder Implementations: `src/cursus/steps/builders/` - Complete builder examples by step type
+- Configuration Classes: `src/cursus/steps/configs/` - Three-tier configuration examples
+- Step Specifications: `src/cursus/steps/specs/` - Specification implementation examples
+- Script Contracts: `src/cursus/steps/contracts/` - Contract implementation examples
+- Processing Scripts: `src/cursus/steps/scripts/` - Script implementation examples with unified main function
+- Registry Integration: `src/cursus/registry/step_names_original.py` - Step registration examples
 
-### Step Specification Implementation Guide
-**Source**: `slipbox/0_developer_guide/step_specification.md`
-- Specification implementation patterns and requirements
-- Input/output specification design
-- Dependency specification patterns
-- Compatible sources specification approaches
-- Integration with dependency resolution
+## IMPORTANT: Domain Knowledge Acquisition
 
-### Script Contract Implementation Guide
-**Source**: `slipbox/0_developer_guide/script_contract.md`
-- Contract implementation patterns and requirements
-- Path specification and environment variable patterns
-- Container integration patterns
-- Contract-specification alignment approaches
+**Before beginning any implementation work, you MUST:**
 
-### Three-Tier Configuration Implementation
-**Source**: `slipbox/0_developer_guide/three_tier_config_design.md`
-- Configuration implementation patterns and requirements
-- Three-tier configuration architecture
-- Parameter validation and type checking
-- Configuration inheritance and composition patterns
+1. **Read Relevant Documentation**: Thoroughly review the documentation references provided above to understand:
+   - Current architectural patterns and design principles
+   - Workspace-aware development approaches
+   - Modern registry and validation systems
+   - Component alignment requirements and best practices
 
-### Component Implementation Guide
-**Source**: `slipbox/0_developer_guide/component_guide.md`
-- Component implementation patterns and best practices
-- Cross-component integration approaches
-- Component lifecycle management
-- Component testing and validation
+2. **Study Code Examples**: Examine the referenced code examples to understand:
+   - Implementation patterns and coding standards
+   - Registry integration approaches
+   - Configuration and validation patterns
+   - Script development and testing approaches
 
-### Hyperparameter Class Implementation
-**Source**: `slipbox/0_developer_guide/hyperparameter_class.md`
-- Hyperparameter class implementation patterns
-- Parameter validation and type checking
-- Integration with configuration classes
-- Hyperparameter serialization and deserialization
+3. **Understand Design Context**: Gain deep understanding of:
+   - Why the 6-layer architecture was adopted
+   - How workspace-aware development supports multi-developer collaboration
+   - The relationship between specifications, contracts, builders, and scripts
+   - Modern validation and testing approaches
+
+**Your implementation quality depends on your understanding of these domain-specific patterns and principles. Take time to read and understand the referenced documentation and code examples before generating any implementation.**
+
+## Workspace-Aware Implementation Patterns
+
+### Script Development Integration
+**Source**: `slipbox/0_developer_guide/script_development_guide.md`
+- Unified main function interface for enhanced testability
+- SageMaker compatibility patterns and requirements
+- Contract-based path access patterns and implementations
+- Error handling and validation approaches for scripts
+- Integration with testing frameworks and validation tools
+
+### Enhanced Script Pattern
+
+**Enhanced Script Pattern**:
+```python
+#!/usr/bin/env python
+"""
+[StepName] processing script with unified main function interface.
+"""
+
+import logging
+from pathlib import Path
+from typing import Optional
+
+# Workspace-aware imports
+if __name__ == "__main__":
+    # Runtime imports for script execution
+    from cursus.core.contract_enforcer import ContractEnforcer
+    from cursus.steps.contracts.[name]_contract import [NAME]_CONTRACT
+
+logger = logging.getLogger(__name__)
+
+def main() -> int:
+    """
+    Main entry point with unified interface and workspace awareness.
+    
+    Returns:
+        int: Exit code (0 for success, non-zero for failure)
+    """
+    try:
+        # Contract validation and enforcement
+        contract = [NAME]_CONTRACT
+        with ContractEnforcer(contract) as enforcer:
+            # Get paths from contract (workspace-aware)
+            input_path = enforcer.get_input_path("data")
+            output_path = enforcer.get_output_path("output")
+            
+            # Execute main processing logic
+            result = process_data(input_path, output_path)
+            logger.info(f"Processing completed successfully: {result}")
+            return 0
+            
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
+        return 1
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        return 2
+    except Exception as e:
+        logger.error(f"Error in processing: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return 3
+
+def process_data(input_path: Path, output_path: Path) -> dict:
+    """
+    Process data with workspace-aware path handling.
+    
+    Args:
+        input_path: Input data path from contract
+        output_path: Output data path from contract
+        
+    Returns:
+        dict: Processing results and metadata
+    """
+    # Implementation logic here
+    pass
+
+if __name__ == "__main__":
+    exit(main())
+```
+
+### Configuration Pattern Examples
+
+**Enhanced Configuration Template**:
+```python
+"""
+[StepName] Configuration with Three-Tier Field Categorization and Workspace Awareness
+
+This module implements the configuration class for [StepName] steps using a self-contained 
+design where each field is properly categorized according to the three-tier design:
+1. Essential User Inputs (Tier 1) - Required fields that must be provided by users
+2. System Fields (Tier 2) - Fields with reasonable defaults that can be overridden
+3. Derived Fields (Tier 3) - Fields calculated from other fields, private with read-only properties
+"""
+
+from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr
+from typing import Dict, Optional, Any, TYPE_CHECKING
+from pathlib import Path
+import logging
+
+# Workspace-aware imports
+if TYPE_CHECKING:
+    from ...core.base.contract_base import ScriptContract
+
+# Import appropriate base config class based on workspace type
+try:
+    # Shared workspace import
+    from .config_processing_step_base import ProcessingStepConfigBase
+except ImportError:
+    # Isolated workspace import with fallback
+    from src.cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+
+# Import contract (workspace-aware)
+from ..contracts.[name]_contract import [NAME]_CONTRACT
+
+logger = logging.getLogger(__name__)
+
+class [StepName]Config(ProcessingStepConfigBase):
+    """
+    Configuration for the [StepName] step with three-tier field categorization and workspace awareness.
+    
+    Fields are categorized into:
+    - Tier 1: Essential User Inputs - Required from users
+    - Tier 2: System Fields - Default values that can be overridden
+    - Tier 3: Derived Fields - Private with read-only property access
+    """
+
+    # ===== Essential User Inputs (Tier 1) =====
+    step_specific_param: str = Field(
+        description="Step-specific required parameter that users must provide."
+    )
+    
+    # ===== System Fields with Defaults (Tier 2) =====
+    processing_entry_point: str = Field(
+        default="[name].py",
+        description="Relative path (within processing_source_dir) to the [name] script."
+    )
+    
+    # ===== Derived Fields (Tier 3) =====
+    _derived_value: Optional[str] = PrivateAttr(default=None)
+    _workspace_context: Optional[str] = PrivateAttr(default=None)
+    
+    @property
+    def derived_value(self) -> str:
+        """Get derived value calculated from step-specific parameters."""
+        if self._derived_value is None:
+            self._derived_value = f"{self.step_specific_param}_processed"
+        return self._derived_value
+    
+    @property
+    def workspace_context(self) -> str:
+        """Get workspace context for this configuration."""
+        if self._workspace_context is None:
+            # Detect workspace type
+            import os
+            current_path = Path.cwd()
+            if "development/projects" in str(current_path):
+                self._workspace_context = "isolated"
+            else:
+                self._workspace_context = "shared"
+        return self._workspace_context
+    
+    def get_script_contract(self) -> 'ScriptContract':
+        """Get script contract for this configuration."""
+        return [NAME]_CONTRACT
+```
 
 ## Knowledge Base - Design Pattern References
 

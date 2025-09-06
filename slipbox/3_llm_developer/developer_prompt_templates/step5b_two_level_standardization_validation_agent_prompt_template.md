@@ -99,11 +99,20 @@ Please provide the following information:
 ### Design Principles
 **Source**: `slipbox/0_developer_guide/design_principles.md`
 - Specification-driven architecture principles
-- Four-layer design pattern enforcement
+- Six-layer design pattern enforcement (modernized from four-layer)
 - Separation of concerns between components
 - Dependency injection and inversion of control
 - Configuration-driven behavior
 - Testability and maintainability requirements
+- Workspace-aware development support
+- UnifiedRegistryManager integration patterns
+
+### Three-Tier Configuration Design
+**Source**: `slipbox/0_developer_guide/three_tier_config_design.md`
+- Essential/System/Derived field categorization
+- Configuration field management patterns
+- Three-tier design implementation guidelines
+- Field categorization validation requirements
 
 **Consistency**: Uniform patterns across all components
 **Modularity**: Clear separation of concerns between components
@@ -241,12 +250,50 @@ Please provide the following information:
 - Environment variable declaration standardization patterns
 
 ### Registry Standardization Examples
-**Source**: `src/cursus/steps/registry/`
-- Registry integration standardization examples
+**Source**: `src/cursus/registry/step_names_original.py`
+- STEP_NAMES dictionary structure and registry entries
 - Step registration standardization patterns and requirements
 - Naming consistency standardization approaches
 - Registry-based validation standardization implementations
 - Step discovery and instantiation standardization patterns
+- UnifiedRegistryManager integration patterns
+
+## Knowledge Base - Workspace-Aware Development References
+
+### Workspace-Aware System Architecture
+**Source**: `slipbox/1_design/workspace_aware_system_master_design.md`
+- Complete workspace-aware system architecture
+- Shared vs isolated workspace development patterns
+- Workspace context management and isolation
+- Multi-developer collaboration framework
+
+### Workspace-Aware Development Guide
+**Source**: `slipbox/01_developer_guide_workspace_aware/README.md`
+- Workspace-aware development workflows
+- Isolated project development patterns
+- Workspace setup and configuration
+- CLI integration for workspace management
+
+### Workspace CLI Reference
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_workspace_cli_reference.md`
+- Workspace CLI commands and usage
+- Project initialization and management
+- Workspace validation and testing commands
+- Integration with development workflows
+
+### Multi-Developer Management
+**Source**: `slipbox/1_design/workspace_aware_multi_developer_management_design.md`
+- Multi-developer collaboration patterns
+- Workspace isolation and sharing strategies
+- Conflict resolution and merge strategies
+- Team development workflow integration
+
+### Registry Integration
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_hybrid_registry_integration.md`
+- Workspace-aware registry integration patterns
+- UnifiedRegistryManager workspace context handling
+- Registry isolation and sharing mechanisms
+- Step discovery in workspace contexts
 
 ## Available Standardization Validation Tools
 

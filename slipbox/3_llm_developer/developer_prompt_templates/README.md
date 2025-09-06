@@ -1,8 +1,62 @@
 # Agentic ML Pipeline Development Workflow Prompts
 
-This directory contains the specialized prompt templates that power our **7-step agentic workflow** for automated ML pipeline step development. These prompts enable a multi-agent system with human-in-the-loop validation to ensure high-quality, compliant pipeline step implementations.
+This directory contains the specialized prompt templates that power our **7-step agentic workflow** for automated ML pipeline step development. These prompts enable a multi-agent system with human-in-the-loop validation to ensure high-quality, compliant pipeline step implementations with **workspace-aware development support**.
 
 > **📋 Complete Design Reference**: See [Agentic Workflow Design](../../1_design/agentic_workflow_design.md) for the complete system architecture and detailed specifications.
+
+## 🏗️ Modern Architecture Overview
+
+Our pipeline architecture follows a **specification-driven approach** with a **six-layer design** supporting both **shared workspace** and **isolated workspace** development:
+
+### 6-Layer Architecture
+1. **Step Specifications**: Define inputs and outputs with logical names and dependency relationships
+2. **Script Contracts**: Define container paths and environment variables for script execution
+3. **Processing Scripts**: Implement business logic using unified main function interface for testability
+4. **Step Builders**: Connect specifications and contracts via SageMaker with UnifiedRegistryManager integration
+5. **Configuration Classes**: Manage step parameters using three-tier field classification (Essential/System/Derived)
+6. **Hyperparameters**: Handle ML-specific parameter tuning and optimization
+
+### Key Modern Features
+- **UnifiedRegistryManager System**: Single consolidated registry replacing legacy patterns
+- **Workspace-Aware Development**: Support for both shared and isolated development approaches
+- **Pipeline Catalog Integration**: Zettelkasten-inspired pipeline catalog with connection-based discovery
+- **Enhanced Validation Framework**: Workspace-aware validation with isolation capabilities
+- **Three-Tier Configuration Design**: Essential/System/Derived field categorization for better maintainability
+
+## 🔧 Workspace-Aware Development Support
+
+### Developer Workflow Types
+
+#### Type 1: Shared Workspace Developer
+**Profile**: Core maintainers and senior developers with direct modification rights
+**Workspace**: Direct access to `src/cursus/steps/` for shared component development
+**Development Path**:
+```
+src/cursus/steps/
+├── builders/builder_new_step.py      # Direct creation in shared space
+├── configs/config_new_step.py        # Shared configuration classes
+├── contracts/new_step_contract.py    # Shared script contracts
+├── specs/new_step_spec.py            # Shared step specifications
+└── scripts/new_step.py               # Shared processing scripts
+```
+
+#### Type 2: Isolated Workspace Developer
+**Profile**: Project teams and external contributors working in isolated environments
+**Workspace**: `development/projects/project_xxx/src/cursus_dev/` with read-only access to shared code
+**Development Path**:
+```
+development/projects/project_xxx/
+├── src/cursus_dev/                   # Isolated development space
+│   ├── steps/
+│   │   ├── builders/builder_new_step.py    # Project-specific builders
+│   │   ├── configs/config_new_step.py      # Project configurations
+│   │   ├── contracts/new_step_contract.py  # Project contracts
+│   │   ├── specs/new_step_spec.py          # Project specifications
+│   │   └── scripts/new_step.py             # Project scripts
+│   └── registry/                     # Project-specific registry
+├── test/                             # Project test suite
+└── validation_reports/               # Project validation results
+```
 
 ## 🔄 Agentic Workflow Overview
 

@@ -29,12 +29,31 @@ You are an expert ML Pipeline Architect tasked with validating a new pipeline st
 
 ## Pipeline Architecture Context
 
-Our pipeline architecture follows a specification-driven approach with a four-layer design:
+Our pipeline architecture follows a **specification-driven approach** with a **six-layer design** supporting both **shared workspace** and **isolated workspace** development:
 
-1. **Step Specifications**: Define inputs and outputs with logical names
-2. **Script Contracts**: Define container paths for script inputs/outputs
-3. **Step Builders**: Connect specifications and contracts via SageMaker
-4. **Processing Scripts**: Implement the actual business logic
+### 6-Layer Architecture
+1. **Step Specifications**: Define inputs and outputs with logical names and dependency relationships
+2. **Script Contracts**: Define container paths and environment variables for script execution
+3. **Processing Scripts**: Implement business logic using unified main function interface for testability
+4. **Step Builders**: Connect specifications and contracts via SageMaker with UnifiedRegistryManager integration
+5. **Configuration Classes**: Manage step parameters using three-tier field classification (Essential/System/Derived)
+6. **Hyperparameters**: Handle ML-specific parameter tuning and optimization
+
+### Key Modern Features
+- **UnifiedRegistryManager System**: Single consolidated registry replacing legacy patterns
+- **Workspace-Aware Development**: Support for both shared and isolated development approaches
+- **Pipeline Catalog Integration**: Zettelkasten-inspired pipeline catalog with connection-based discovery
+- **Enhanced Validation Framework**: Workspace-aware validation with isolation capabilities
+- **Three-Tier Configuration Design**: Essential/System/Derived field categorization for better maintainability
+
+**Critical Alignment Rules**:
+- Scripts must use paths exactly as defined in contracts
+- Contracts must have logical names matching specification dependencies/outputs
+- Specifications must have resolvable dependencies following known patterns
+- Builders must access all required configuration fields and handle logical names correctly
+- Configuration classes must follow three-tier field categorization
+- Registry integration must use UnifiedRegistryManager patterns
+- Workspace-aware components must handle both shared and isolated development contexts
 
 ## Your Task
 
@@ -48,23 +67,171 @@ Based on the provided implementation and plan, validate that the new pipeline st
 
 [INJECT PROGRAMMER OUTPUT HERE]
 
-## Relevant Documentation
+## Knowledge Base - Developer Guide References
 
 ### Design Principles
+**Source**: `slipbox/0_developer_guide/design_principles.md`
+- Specification-driven architecture principles
+- Six-layer design pattern enforcement (modernized from four-layer)
+- Separation of concerns between components
+- Dependency injection and inversion of control
+- Configuration-driven behavior
+- Testability and maintainability requirements
+- Workspace-aware development support
+- UnifiedRegistryManager integration patterns
 
-[INJECT DESIGN_PRINCIPLES DOCUMENT HERE]
-
-### Common Pitfalls
-
-[INJECT COMMON_PITFALLS DOCUMENT HERE]
-
-### Validation Checklist
-
-[INJECT VALIDATION_CHECKLIST DOCUMENT HERE]
+### Alignment Rules
+**Source**: `slipbox/0_developer_guide/alignment_rules.md`
+- Critical alignment requirements between components
+- Script-to-contract path alignment strategies (including CLI hyphens vs Python underscores)
+- Contract-to-specification logical name matching
+- Specification-to-dependency consistency requirements
+- Specification-to-SageMaker property paths validation (step type specific)
+- Builder-to-configuration parameter passing rules
+- Environment variable declaration and usage patterns
+- Output property path correctness validation
+- Cross-component semantic matching requirements
+- Enhanced dependency validation with unified alignment tester integration
 
 ### Standardization Rules
+**Source**: `slipbox/0_developer_guide/standardization_rules.md`
+- Code standardization requirements and patterns
+- Naming conventions for all components (STEP_NAMES registry patterns)
+- Interface standardization requirements (StepBuilderBase inheritance, required methods)
+- Documentation standards and completeness
+- Error handling standardization patterns
+- Testing standards and coverage requirements (85% minimum, Universal Builder Test framework)
+- Script testability standards and implementation patterns
+- SageMaker step type classification standards
+- Code organization and structure standards
 
-[INJECT STANDARDIZATION_RULES DOCUMENT HERE]
+### Common Pitfalls
+**Source**: `slipbox/0_developer_guide/common_pitfalls.md`
+- Common implementation pitfalls to avoid during validation
+- Hardcoded path usage instead of contract references
+- Environment variable handling errors and missing defaults
+- Directory vs. file path confusion patterns
+- Incomplete compatible sources specifications
+- Property path inconsistency and formatting issues
+- Missing script validation implementations
+- Cross-component integration failures
+
+### Validation Checklist
+**Source**: `slipbox/0_developer_guide/validation_checklist.md`
+- Comprehensive validation requirements for all components
+- Step-by-step validation procedures
+- Quality gates and acceptance criteria
+- Integration testing requirements
+- Performance and scalability considerations
+
+### Best Practices
+**Source**: `slipbox/0_developer_guide/best_practices.md`
+- Development best practices for pipeline components
+- Code quality standards and guidelines
+- Performance optimization techniques
+- Security considerations and implementations
+- Maintainability and extensibility patterns
+
+### Three-Tier Configuration Design
+**Source**: `slipbox/0_developer_guide/three_tier_config_design.md`
+- Essential/System/Derived field categorization
+- Configuration field management patterns
+- Three-tier design implementation guidelines
+- Field categorization validation requirements
+
+### Script Testability Implementation
+**Source**: `slipbox/0_developer_guide/script_testability_implementation.md`
+- Detailed script testability refactoring patterns
+- Parameterized main function implementation guide
+- Environment collection entry point patterns
+- Helper function parameterization strategies
+- Container path handling standards
+- Unit testing standards for scripts
+- Error handling with success/failure markers
+- Script contract integration requirements
+- 12-point script refactoring checklist
+- Hybrid execution mode support (container/local)
+
+## Knowledge Base - Workspace-Aware Development References
+
+### Workspace-Aware Development Guide
+**Source**: `slipbox/01_developer_guide_workspace_aware/README.md`
+- Workspace-aware development workflows
+- Isolated project development patterns
+- Workspace setup and configuration
+- CLI integration for workspace management
+
+### Workspace CLI Reference
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_workspace_cli_reference.md`
+- Workspace CLI commands and usage
+- Project initialization and management
+- Workspace validation and testing commands
+- Integration with development workflows
+
+### Workspace Setup Guide
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_workspace_setup_guide.md`
+- Workspace environment setup procedures
+- Configuration requirements and options
+- Development tool integration
+- Workspace isolation and sharing mechanisms
+
+### Hybrid Registry Integration
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_hybrid_registry_integration.md`
+- Workspace-aware registry integration patterns
+- UnifiedRegistryManager workspace context handling
+- Registry isolation and sharing mechanisms
+- Step discovery in workspace contexts
+
+## Knowledge Base - Implementation Examples
+
+### Builder Implementation Examples
+**Source**: `src/cursus/steps/builders/`
+- Existing step builder implementations for validation reference
+- Proven implementation patterns for validation
+- Integration examples with SageMaker components for validation
+- Error handling and validation implementations
+- Input/output handling validation patterns
+- Resource configuration validation examples
+
+### Configuration Implementation Examples
+**Source**: `src/cursus/steps/configs/`
+- Configuration class validation examples
+- Three-tier configuration pattern validation
+- Parameter validation and type checking examples
+- Configuration inheritance and composition validation
+- Integration validation with builder classes
+
+### Specification Implementation Examples
+**Source**: `src/cursus/steps/specs/`
+- Step specification validation examples
+- Input/output specification validation patterns
+- Dependency specification validation implementations
+- Compatible sources specification validation examples
+- Integration validation with dependency resolution
+
+### Script Contract Examples
+**Source**: `src/cursus/steps/contracts/`
+- Script contract validation examples
+- Path specification and environment variable validation patterns
+- Container integration validation patterns
+- Contract-specification alignment validation examples
+- Environment variable declaration validation patterns
+
+### Processing Script Examples
+**Source**: `src/cursus/steps/scripts/`
+- Processing script validation examples
+- Unified main function interface validation patterns
+- Script testability validation implementations
+- Container path handling and environment variable validation
+- Error handling and logging validation patterns
+
+### Registry Integration Examples
+**Source**: `src/cursus/registry/step_names_original.py`
+- STEP_NAMES dictionary structure and registry entries
+- Step registration validation patterns and requirements
+- Naming consistency validation approaches
+- Registry-based validation implementations
+- Step discovery and instantiation validation patterns
 
 ## Instructions
 

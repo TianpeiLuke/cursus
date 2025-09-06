@@ -87,11 +87,33 @@ Based on the provided implementation plan and validation report, create a revise
 ### Design Principles
 **Source**: `slipbox/0_developer_guide/design_principles.md`
 - Specification-driven architecture principles
-- Four-layer design pattern enforcement
+- Six-layer design pattern enforcement (modernized from four-layer)
 - Separation of concerns between components
 - Dependency injection and inversion of control
 - Configuration-driven behavior
 - Testability and maintainability requirements
+- Workspace-aware development support
+- UnifiedRegistryManager integration patterns
+
+### Three-Tier Configuration Design
+**Source**: `slipbox/0_developer_guide/three_tier_config_design.md`
+- Essential/System/Derived field categorization
+- Configuration field management patterns
+- Three-tier design implementation guidelines
+- Field categorization validation requirements
+
+### Script Testability Implementation
+**Source**: `slipbox/0_developer_guide/script_testability_implementation.md`
+- Detailed script testability refactoring patterns
+- Parameterized main function implementation guide
+- Environment collection entry point patterns
+- Helper function parameterization strategies
+- Container path handling standards
+- Unit testing standards for scripts
+- Error handling with success/failure markers
+- Script contract integration requirements
+- 12-point script refactoring checklist
+- Hybrid execution mode support (container/local)
 
 ### Common Pitfalls
 **Source**: `slipbox/0_developer_guide/common_pitfalls.md`
@@ -207,11 +229,72 @@ Based on the provided implementation plan and validation report, create a revise
 - Contract-specification alignment examples
 
 ### Registry Integration References
-**Source**: `src/cursus/steps/registry/`
-- Registry integration implementation examples
+**Source**: `src/cursus/registry/step_names_original.py`
+- STEP_NAMES dictionary structure and registry entries
 - Step registration patterns and requirements
 - Naming consistency implementation approaches
 - Registry-based validation implementations
+- UnifiedRegistryManager integration patterns
+
+## Knowledge Base - Workspace-Aware Development References
+
+### Workspace-Aware System Architecture
+**Source**: `slipbox/1_design/workspace_aware_system_master_design.md`
+- Complete workspace-aware system architecture
+- Shared vs isolated workspace development patterns
+- Workspace context management and isolation
+- Multi-developer collaboration framework
+
+### Workspace-Aware Development Guide
+**Source**: `slipbox/01_developer_guide_workspace_aware/README.md`
+- Workspace-aware development workflows
+- Isolated project development patterns
+- Workspace setup and configuration
+- CLI integration for workspace management
+
+### Workspace CLI Reference
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_workspace_cli_reference.md`
+- Workspace CLI commands and usage
+- Project initialization and management
+- Workspace validation and testing commands
+- Integration with development workflows
+
+### Multi-Developer Management
+**Source**: `slipbox/1_design/workspace_aware_multi_developer_management_design.md`
+- Multi-developer collaboration patterns
+- Workspace isolation and sharing strategies
+- Conflict resolution and merge strategies
+- Team development workflow integration
+
+### Registry Integration
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_hybrid_registry_integration.md`
+- Workspace-aware registry integration patterns
+- UnifiedRegistryManager workspace context handling
+- Registry isolation and sharing mechanisms
+- Step discovery in workspace contexts
+
+## Knowledge Base - Validation Framework References
+
+### Two-Level Alignment Validation System
+**Source**: `slipbox/1_design/two_level_alignment_validation_system_design.md`
+- Two-level validation system architecture
+- LLM-based validation approaches
+- Tool-based validation integration
+- Validation metrics and scoring systems
+
+### Universal Testing Framework
+**Source**: `slipbox/1_design/universal_step_builder_test.md`
+- Universal testing framework for step builders
+- Comprehensive test coverage requirements
+- Automated testing patterns and approaches
+- Integration testing methodologies
+
+### Step Type Classification Validation
+**Source**: `slipbox/1_design/sagemaker_step_type_classification_design.md`
+- Step type validation requirements
+- SageMaker step type specific patterns
+- Classification validation approaches
+- Type-specific validation criteria
 
 ## Expected Output Format
 

@@ -6,12 +6,45 @@ You are an expert ML Pipeline Architect tasked with planning a new pipeline step
 
 ## Pipeline Architecture Context
 
-Our pipeline architecture follows a specification-driven approach with a four-layer design:
+Our pipeline architecture follows a **specification-driven approach** with a **six-layer design** supporting both **shared workspace** and **isolated workspace** development:
 
-1. **Step Specifications**: Define inputs and outputs with logical names
-2. **Script Contracts**: Define container paths for script inputs/outputs
-3. **Step Builders**: Connect specifications and contracts via SageMaker
-4. **Processing Scripts**: Implement the actual business logic
+### 6-Layer Architecture
+1. **Step Specifications**: Define inputs and outputs with logical names and dependency relationships
+2. **Script Contracts**: Define container paths and environment variables for script execution
+3. **Processing Scripts**: Implement business logic using unified main function interface for testability
+4. **Step Builders**: Connect specifications and contracts via SageMaker with UnifiedRegistryManager integration
+5. **Configuration Classes**: Manage step parameters using three-tier field classification (Essential/System/Derived)
+6. **Hyperparameters**: Handle ML-specific parameter tuning and optimization
+
+### Key Modern Features
+- **UnifiedRegistryManager System**: Single consolidated registry replacing legacy patterns
+- **Workspace-Aware Development**: Support for both shared and isolated development approaches
+- **Pipeline Catalog Integration**: Zettelkasten-inspired pipeline catalog with connection-based discovery
+- **Enhanced Validation Framework**: Workspace-aware validation with isolation capabilities
+- **Three-Tier Configuration Design**: Essential/System/Derived field categorization for better maintainability
+
+## Workspace-Aware Development Support
+
+### Developer Workflow Type Detection
+
+Please identify the developer workflow type for this implementation:
+
+1. **Shared Workspace Developer**:
+   - Direct access to `src/cursus/steps/` for modification
+   - Core maintainer or senior developer role
+   - Working on shared/production components
+   - Full system access and permissions
+
+2. **Isolated Workspace Developer**:
+   - Working in `development/projects/project_xxx/` environment
+   - Project team or external contributor
+   - Read-only access to shared `src/cursus/steps/` code
+   - Uses hybrid registry with project-specific components
+
+**USER INPUT REQUIRED**: Please specify:
+- **Developer Type**: Shared Workspace or Isolated Workspace
+- **Project ID** (if Isolated Workspace): `project_xxx`
+- **Workspace Path** (if Isolated Workspace): `development/projects/project_xxx/`
 
 ## Your Task
 
@@ -49,6 +82,60 @@ Based on the provided requirements, create a detailed plan for implementing a ne
    - Which design patterns should be referenced?
    - Example: `processing_step_builder_patterns.md`, `training_step_builder_patterns.md`
 
+## Knowledge Base - Developer Guide References
+
+### Core Developer Guide
+- [Developer Guide README](../../0_developer_guide/README.md) - Updated September 2025 with 6-layer architecture
+- [Design Principles](../../0_developer_guide/design_principles.md) - Core architectural principles and patterns
+- [Creation Process](../../0_developer_guide/creation_process.md) - Complete 10-step process with consistent numbering
+- [Prerequisites](../../0_developer_guide/prerequisites.md) - Updated for modern system requirements
+- [Component Guide](../../0_developer_guide/component_guide.md) - 6-layer architecture overview
+- [Best Practices](../../0_developer_guide/best_practices.md) - Development best practices
+- [Common Pitfalls](../../0_developer_guide/common_pitfalls.md) - Common mistakes to avoid
+- [Alignment Rules](../../0_developer_guide/alignment_rules.md) - Component alignment requirements
+
+### Workspace-Aware Developer Guide
+- [Workspace-Aware Developer Guide README](../../01_developer_guide_workspace_aware/README.md) - Isolated project development
+- [Workspace Setup Guide](../../01_developer_guide_workspace_aware/ws_workspace_setup_guide.md) - Project initialization
+- [Adding New Pipeline Step (Workspace-Aware)](../../01_developer_guide_workspace_aware/ws_adding_new_pipeline_step.md) - Workspace-specific development
+- [Hybrid Registry Integration](../../01_developer_guide_workspace_aware/ws_hybrid_registry_integration.md) - Registry patterns
+
+### Design Document References
+- [Workspace-Aware System Master Design](../../1_design/workspace_aware_system_master_design.md) - Complete system architecture
+- [Workspace-Aware Multi-Developer Management Design](../../1_design/workspace_aware_multi_developer_management_design.md) - Multi-developer framework
+- [Agentic Workflow Design](../../1_design/agentic_workflow_design.md) - Complete system architecture for agentic workflows
+
+### Code Examples References
+- Registry Examples: `src/cursus/registry/step_names_original.py` - Actual STEP_NAMES dictionary structure
+- Builder Examples: `src/cursus/steps/builders/` - Complete builder implementations by step type
+- Configuration Examples: `src/cursus/steps/configs/` - Configuration class implementations
+- Contract Examples: `src/cursus/steps/contracts/` - Script contract implementations
+- Specification Examples: `src/cursus/steps/specs/` - Step specification implementations
+
+## IMPORTANT: Domain Knowledge Acquisition
+
+**Before beginning any implementation work, you MUST:**
+
+1. **Read Relevant Documentation**: Thoroughly review the documentation references provided above to understand:
+   - Current architectural patterns and design principles
+   - Workspace-aware development approaches
+   - Modern registry and validation systems
+   - Component alignment requirements and best practices
+
+2. **Study Code Examples**: Examine the referenced code examples to understand:
+   - Implementation patterns and coding standards
+   - Registry integration approaches
+   - Configuration and validation patterns
+   - Script development and testing approaches
+
+3. **Understand Design Context**: Gain deep understanding of:
+   - Why the 6-layer architecture was adopted
+   - How workspace-aware development supports multi-developer collaboration
+   - The relationship between specifications, contracts, builders, and scripts
+   - Modern validation and testing approaches
+
+**Your implementation quality depends on your understanding of these domain-specific patterns and principles. Take time to read and understand the referenced documentation and code examples before generating any implementation.**
+
 ## Relevant Documentation
 
 ### Creation Process Overview
@@ -58,7 +145,7 @@ Based on the provided requirements, create a detailed plan for implementing a ne
 The step creation process follows a systematic approach:
 
 1. **Requirements Analysis**: Understand the business requirements and technical constraints
-2. **Architectural Design**: Design the step components following our four-layer architecture
+2. **Architectural Design**: Design the step components following our 6-layer architecture
 3. **Component Implementation**: Implement script contract, step specification, configuration, and step builder
 4. **Integration**: Integrate with existing pipeline components and registries
 5. **Validation**: Ensure alignment between all components and compliance with standards
@@ -233,13 +320,75 @@ The step creation process follows a systematic approach:
 - Error handling and logging
 - Business logic implementation
 
-### Registry Integration Examples (from `src/cursus/steps/registry/step_names.py`)
+### Registry Integration Examples (from `src/cursus/steps/registry/step_names_original.py`)
 
 **Step Registration Patterns**:
 - Step name definitions
 - Builder class associations
 - Step type classifications
 - Description and metadata
+
+## Workspace-Specific Implementation Patterns
+
+### For Shared Workspace Developers
+
+**File Locations**:
+- Script Contract: `src/cursus/steps/contracts/[name]_contract.py`
+- Step Specification: `src/cursus/steps/specs/[name]_spec.py`
+- Configuration: `src/cursus/steps/configs/config_[name]_step.py`
+- Step Builder: `src/cursus/steps/builders/builder_[name]_step.py`
+- Processing Script: `src/cursus/steps/scripts/[name].py`
+
+**Registry Integration**:
+```python
+# Update src/cursus/registry/step_names_original.py
+STEP_NAMES = {
+    "[StepName]": {
+        "config_class": "[StepName]Config",
+        "builder_step_name": "[StepName]StepBuilder",
+        "spec_type": "[StepName]",
+        "sagemaker_step_type": "Processing",
+        "description": "[Brief description]"
+    },
+}
+```
+
+### For Isolated Workspace Developers
+
+**File Locations**:
+- Script Contract: `development/projects/[project_id]/src/cursus_dev/steps/contracts/[name]_contract.py`
+- Step Specification: `development/projects/[project_id]/src/cursus_dev/steps/specs/[name]_spec.py`
+- Configuration: `development/projects/[project_id]/src/cursus_dev/steps/configs/config_[name]_step.py`
+- Step Builder: `development/projects/[project_id]/src/cursus_dev/steps/builders/builder_[name]_step.py`
+- Processing Script: `development/projects/[project_id]/src/cursus_dev/steps/scripts/[name].py`
+
+**Workspace Registry Integration**:
+```python
+# Create development/projects/[project_id]/src/cursus_dev/registry/project_step_names.py
+PROJECT_STEP_NAMES = {
+    "[StepName]": {
+        "config_class": "[StepName]Config",
+        "builder_step_name": "[StepName]StepBuilder",
+        "spec_type": "[StepName]",
+        "sagemaker_step_type": "Processing",
+        "description": "[Brief description]",
+        "workspace_id": "[project_id]"
+    },
+}
+
+# Register with workspace-aware registry system
+from src.cursus.registry.step_names import set_workspace_context
+with set_workspace_context("[project_id]"):
+    # Project-specific steps are accessible through hybrid registry
+    pass
+```
+
+**Hybrid Registry Access Pattern**:
+```python
+# Isolated workspace builders can access shared components
+from src.cursus.steps.builders.builder_shared_step import SharedStepBuilder  # Read-only access
+from ..builders.builder_project_step import ProjectStepBuilder  # Project-specific
+```
 
 ## Critical Implementation Patterns
 

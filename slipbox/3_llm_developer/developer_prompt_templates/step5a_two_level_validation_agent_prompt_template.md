@@ -72,18 +72,31 @@ Please provide the following information:
 
 ## System Architecture Understanding
 
-You are working within a specification-driven ML pipeline architecture with four layers:
+You are working within a **specification-driven ML pipeline architecture** with a **six-layer design** supporting both **shared workspace** and **isolated workspace** development:
 
-1. **Step Specifications**: Define inputs and outputs with logical names
-2. **Script Contracts**: Define container paths for script inputs/outputs  
-3. **Step Builders**: Connect specifications and contracts via SageMaker
-4. **Processing Scripts**: Implement the actual business logic
+### 6-Layer Architecture
+1. **Step Specifications**: Define inputs and outputs with logical names and dependency relationships
+2. **Script Contracts**: Define container paths and environment variables for script execution
+3. **Processing Scripts**: Implement business logic using unified main function interface for testability
+4. **Step Builders**: Connect specifications and contracts via SageMaker with UnifiedRegistryManager integration
+5. **Configuration Classes**: Manage step parameters using three-tier field classification (Essential/System/Derived)
+6. **Hyperparameters**: Handle ML-specific parameter tuning and optimization
+
+### Key Modern Features
+- **UnifiedRegistryManager System**: Single consolidated registry replacing legacy patterns
+- **Workspace-Aware Development**: Support for both shared and isolated development approaches
+- **Pipeline Catalog Integration**: Zettelkasten-inspired pipeline catalog with connection-based discovery
+- **Enhanced Validation Framework**: Workspace-aware validation with isolation capabilities
+- **Three-Tier Configuration Design**: Essential/System/Derived field categorization for better maintainability
 
 **Critical Alignment Rules**:
 - Scripts must use paths exactly as defined in contracts
 - Contracts must have logical names matching specification dependencies/outputs
 - Specifications must have resolvable dependencies following known patterns
 - Builders must access all required configuration fields and handle logical names correctly
+- Configuration classes must follow three-tier field categorization
+- Registry integration must use UnifiedRegistryManager patterns
+- Workspace-aware components must handle both shared and isolated development contexts
 
 ## Knowledge Base - Developer Guide References
 
@@ -259,6 +272,43 @@ You are working within a specification-driven ML pipeline architecture with four
 - Registry-based validation implementations
 - Step discovery and instantiation validation patterns
 
+## Knowledge Base - Workspace-Aware Development References
+
+### Workspace-Aware System Architecture
+**Source**: `slipbox/1_design/workspace_aware_system_master_design.md`
+- Complete workspace-aware system architecture
+- Shared vs isolated workspace development patterns
+- Workspace context management and isolation
+- Multi-developer collaboration framework
+
+### Workspace-Aware Development Guide
+**Source**: `slipbox/01_developer_guide_workspace_aware/README.md`
+- Workspace-aware development workflows
+- Isolated project development patterns
+- Workspace setup and configuration
+- CLI integration for workspace management
+
+### Workspace CLI Reference
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_workspace_cli_reference.md`
+- Workspace CLI commands and usage
+- Project initialization and management
+- Workspace validation and testing commands
+- Integration with development workflows
+
+### Multi-Developer Management
+**Source**: `slipbox/1_design/workspace_aware_multi_developer_management_design.md`
+- Multi-developer collaboration patterns
+- Workspace isolation and sharing strategies
+- Conflict resolution and merge strategies
+- Team development workflow integration
+
+### Registry Integration
+**Source**: `slipbox/01_developer_guide_workspace_aware/ws_hybrid_registry_integration.md`
+- Workspace-aware registry integration patterns
+- UnifiedRegistryManager workspace context handling
+- Registry isolation and sharing mechanisms
+- Step discovery in workspace contexts
+
 ## Available Strict Validation Tools
 
 You have access to these deterministic validation tools that enforce critical alignment rules with zero tolerance:
@@ -302,6 +352,30 @@ You have access to these deterministic validation tools that enforce critical al
 - **Returns**: Cross-component alignment analysis with consistency issues
 - **Use When**: Need to verify consistency across component boundaries
 - **Alignment Rules**: Specify which alignment rules to check across components
+
+### validate_workspace_context_strict(component_paths, workspace_type, isolation_requirements)
+- **Purpose**: Strict validation of workspace-aware component implementation
+- **Enforcement**: Components must properly handle workspace context and isolation
+- **Returns**: Deterministic pass/fail with workspace context violations
+- **Use When**: Need to verify workspace-aware development patterns
+- **Workspace Type**: 'shared' or 'isolated' workspace development context
+- **Isolation Requirements**: Specify required isolation patterns and boundaries
+
+### validate_registry_integration_strict(component_paths, registry_context, workspace_context)
+- **Purpose**: Strict validation of UnifiedRegistryManager integration patterns
+- **Enforcement**: All registry access must use UnifiedRegistryManager patterns
+- **Returns**: Deterministic pass/fail with registry integration issues
+- **Use When**: Need to verify modern registry integration patterns
+- **Registry Context**: Available registry entries and expected patterns
+- **Workspace Context**: Workspace-specific registry requirements and constraints
+
+### validate_three_tier_config_strict(config_path, field_categorization, usage_patterns)
+- **Purpose**: Strict validation of three-tier configuration field categorization
+- **Enforcement**: All fields must be properly categorized as Essential/System/Derived
+- **Returns**: Deterministic pass/fail with field categorization violations
+- **Use When**: Need to verify three-tier configuration design compliance
+- **Field Categorization**: Expected field categories and classification rules
+- **Usage Patterns**: How fields are used across different components
 
 ## Validation Strategy
 
