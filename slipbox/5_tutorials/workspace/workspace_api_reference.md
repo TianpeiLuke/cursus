@@ -115,26 +115,28 @@ else:
 
 ### discover_workspace_components()
 
-Discovers all components across developer workspaces.
+Discovers all components across developer workspaces with enhanced caching and unified registry integration.
 
 **Signature:**
 ```python
 def discover_workspace_components(
     self,
     developer_id: Optional[str] = None,
-    component_type: Optional[str] = None
+    component_type: Optional[str] = None,
+    use_cache: bool = True
 ) -> Dict[str, Any]
 ```
 
 **Parameters:**
 - `developer_id`: Optional filter by specific developer
 - `component_type`: Optional filter by component type ("builders", "configs", etc.)
+- `use_cache`: Whether to use cached results for improved performance
 
-**Returns:** Dictionary of discovered components
+**Returns:** Dictionary of discovered components with enhanced metadata
 
 **Example:**
 ```python
-# Discover all components
+# Discover all components with caching
 all_components = api.discover_workspace_components()
 
 print("Available workspace components:")
@@ -143,11 +145,23 @@ for dev_id, components in all_components.items():
     for comp_type, files in components.items():
         print(f"  {comp_type}: {len(files)} files")
 
-# Discover components for specific developer
+# Discover components for specific developer (cached)
 john_components = api.discover_workspace_components(developer_id="john_doe")
 
-# Discover only builders
-builders = api.discover_workspace_components(component_type="builders")
+# Discover only builders with fresh scan
+builders = api.discover_workspace_components(
+    component_type="builders", 
+    use_cache=False
+)
+
+# Access enhanced component metadata
+for dev_id, components in all_components.items():
+    builders = components.get('builders', {})
+    for builder_name, builder_info in builders.items():
+        print(f"Builder: {builder_name}")
+        if isinstance(builder_info, dict):
+            print(f"  Path: {builder_info.get('path', 'Unknown')}")
+            print(f"  Modified: {builder_info.get('modified', 'Unknown')}")
 ```
 
 ### promote_workspace_component()

@@ -314,7 +314,7 @@ if success:
 
 ### `WorkspaceComponentRegistry`
 
-The primary workspace-aware registry for component discovery and management across developer workspaces.
+The primary workspace-aware registry for component discovery and management across developer workspaces, now enhanced with unified registry integration and improved caching.
 
 ```python
 from cursus.workspace.core.registry import WorkspaceComponentRegistry
@@ -322,12 +322,18 @@ from cursus.workspace.core.registry import WorkspaceComponentRegistry
 # Initialize workspace component registry
 workspace_registry = WorkspaceComponentRegistry('/path/to/workspace')
 
-# Discover all components
+# Discover all components with enhanced caching
 components = workspace_registry.discover_components()
 print(f"Total components: {components['summary']['total_components']}")
 
-# Find builder for specific developer
+# Find builder for specific developer with core registry fallback
 builder_class = workspace_registry.find_builder_class('processing', 'developer_1')
+
+# Access unified registry manager integration
+if hasattr(workspace_registry, 'unified_manager'):
+    print("✅ Unified registry integration available")
+    # Use unified caching
+    cache_data = workspace_registry.unified_manager.get_component_cache()
 ```
 
 #### Methods
