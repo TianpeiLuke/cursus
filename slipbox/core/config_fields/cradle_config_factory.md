@@ -3,830 +3,264 @@ tags:
   - code
   - core
   - config_fields
+  - cradle_config
   - factory_functions
-  - cradle_integration
 keywords:
-  - cradle config factory
-  - configuration generation
-  - factory functions
-  - data loading configuration
-  - MDS EDX integration
+  - create_cradle_data_load_config
+  - create_training_and_calibration_configs
+  - CradleDataLoadConfig
+  - factory pattern
+  - configuration creation
 topics:
-  - configuration factory
-  - data loading
-  - cradle integration
+  - configuration management
+  - factory pattern
+  - cradle data loading
 language: python
 date of note: 2025-09-07
 ---
 
 # Cradle Configuration Factory
 
+Helper functions for creating CradleDataLoadConfig objects with minimal inputs, deriving nested configurations from essential user inputs.
+
 ## Overview
 
-The `cradle_config_factory.py` module provides helper functions for creating complex `CradleDataLoadConfig` objects with minimal user inputs. It implements factory patterns to simplify the creation of nested configuration structures by deriving complex configurations from essential user inputs, following the **Simplified Configuration Creation** principle.
+The `cradle_config_factory` module provides utilities to simplify the creation of complex CradleDataLoadConfig objects by deriving nested configurations from essential user inputs. This module implements the factory pattern to reduce the complexity of creating data loading configurations for the Cradle system.
 
-## Purpose
+The factory functions handle the creation of nested data source configurations, transform specifications, output specifications, and job specifications from a minimal set of user inputs. This approach significantly reduces the boilerplate code required to create complete configuration objects while ensuring all necessary components are properly configured.
 
-This module provides factory functions that:
-- Simplify creation of complex CradleDataLoadConfig objects
-- Generate nested configurations from essential user inputs
-- Handle MDS and EDX data source configuration automatically
-- Support both training and calibration job types
-- Provide intelligent defaults for common use cases
-- Generate SQL transformations automatically
+## Classes and Methods
 
-## Module Constants
+### Functions
+- [`create_cradle_data_load_config`](#create_cradle_data_load_config) - Create a single CradleDataLoadConfig with minimal inputs
+- [`create_training_and_calibration_configs`](#create_training_and_calibration_configs) - Create both training and calibration configs with consistent settings
 
-### Default Schema Definitions
+### Helper Functions
+- [`_map_region_to_aws_region`](#_map_region_to_aws_region) - Map marketplace region to AWS region
+- [`_create_field_schema`](#_create_field_schema) - Convert field names to schema dictionaries
+- [`_format_edx_manifest_key`](#_format_edx_manifest_key) - Format EDX manifest key with date components
+- [`_create_edx_manifest`](#_create_edx_manifest) - Create EDX manifest ARN with date components
+- [`_generate_transform_sql`](#_generate_transform_sql) - Generate SQL query to join MDS and EDX data
+- [`_get_all_fields`](#_get_all_fields) - Get combined list of all fields from MDS and EDX sources
 
-```python
-# Default values
-DEFAULT_TAG_SCHEMA = [
-    'order_id',
-    'marketplace_id',
-    'tag_date',
-    'is_abuse',
-    'abuse_type',
-    'concession_type'
-]
+## API Reference
 
-DEFAULT_MDS_BASE_FIELDS = [
-    'objectId', 
-    'transactionDate'
-]
-```
+### create_cradle_data_load_config
 
-These constants provide sensible defaults for common data loading scenarios while allowing customization when needed.
+create_cradle_data_load_config(_base_config_, _job_type_, _mds_field_list_, _start_date_, _end_date_, _tag_edx_provider_, _tag_edx_subject_, _tag_edx_dataset_, _etl_job_id_, _edx_manifest_comment=None_, _service_name=None_, _cradle_account="Buyer-Abuse-RnD-Dev"_, _org_id=0_, _cluster_type="STANDARD"_, _output_format="PARQUET"_, _output_save_mode="ERRORIFEXISTS"_, _split_job=False_, _days_per_split=7_, _merge_sql=None_, _s3_input_override=None_, _transform_sql=None_, _tag_schema=None_, _use_dedup_sql=None_, _mds_join_key="objectId"_, _edx_join_key="order_id"_, _join_type="JOIN"_)
 
-## Core Factory Functions
+Create a CradleDataLoadConfig with minimal required inputs. This helper function simplifies the creation of a CradleDataLoadConfig by handling the generation of nested configurations from essential user inputs.
 
-### Primary Factory Function
+**Parameters:**
+- **base_config** (_BasePipelineConfig_) – Base configuration for inheritance
+- **job_type** (_str_) – Type of job ('training' or 'calibration')
+- **mds_field_list** (_List[str]_) – List of fields to include from MDS
+- **start_date** (_str_) – Start date for data pull (format: YYYY-MM-DDT00:00:00)
+- **end_date** (_str_) – End date for data pull (format: YYYY-MM-DDT00:00:00)
+- **tag_edx_provider** (_str_) – EDX provider for tags
+- **tag_edx_subject** (_str_) – EDX subject for tags
+- **tag_edx_dataset** (_str_) – EDX dataset for tags
+- **etl_job_id** (_str_) – ETL job ID for the EDX manifest
+- **edx_manifest_comment** (_Optional[str]_) – Optional comment for EDX manifest key
+- **service_name** (_Optional[str]_) – Name of the MDS service (if not in base_config)
+- **cradle_account** (_str_) – Cradle account name (default: "Buyer-Abuse-RnD-Dev")
+- **org_id** (_int_) – Default organization ID for regional MDS bucket (default: 0)
+- **cluster_type** (_str_) – Cradle cluster type (default: "STANDARD")
+- **output_format** (_str_) – Output format (default: "PARQUET")
+- **output_save_mode** (_str_) – Output save mode (default: "ERRORIFEXISTS")
+- **split_job** (_bool_) – Whether to split the job (default: False)
+- **days_per_split** (_int_) – Days per split if splitting (default: 7)
+- **merge_sql** (_Optional[str]_) – SQL to merge split results, required if split_job=True
+- **s3_input_override** (_Optional[str]_) – S3 input override
+- **transform_sql** (_Optional[str]_) – Custom transform SQL, auto-generated if not provided
+- **tag_schema** (_Optional[List[str]]_) – Schema for tag data, default provided if not specified
+- **use_dedup_sql** (_Optional[bool]_) – Whether to use dedup SQL format (default: same as split_job)
+- **mds_join_key** (_str_) – Join key field name from MDS (default: "objectId")
+- **edx_join_key** (_str_) – Join key field name from EDX (default: "order_id")
+- **join_type** (_str_) – SQL join type (default: "JOIN")
 
-The main factory function for creating CradleDataLoadConfig objects:
-
-```python
-def create_cradle_data_load_config(
-    # Base configuration (for inheritance)
-    base_config: BasePipelineConfig,
-    
-    # Job configuration
-    job_type: str,  # 'training' or 'calibration'
-    
-    # MDS field list (direct fields to include)
-    mds_field_list: List[str],
-    
-    # Data timeframe
-    start_date: str,
-    end_date: str,
-    
-    # EDX data source
-    tag_edx_provider: str,
-    tag_edx_subject: str,
-    tag_edx_dataset: str,
-    etl_job_id: str,
-    edx_manifest_comment: Optional[str] = None,  # Optional comment for EDX manifest key
-    
-    # MDS data source (if not in base_config)
-    service_name: Optional[str] = None,
-    
-    # Infrastructure configuration
-    cradle_account: str = "Buyer-Abuse-RnD-Dev",
-    org_id: int = 0,  # Default organization ID for regional MDS bucket
-    
-    # Optional overrides with reasonable defaults
-    cluster_type: str = "STANDARD",
-    output_format: str = "PARQUET",
-    output_save_mode: str = "ERRORIFEXISTS",
-    split_job: bool = False,
-    days_per_split: int = 7,
-    merge_sql: Optional[str] = None,
-    s3_input_override: Optional[str] = None,
-    transform_sql: Optional[str] = None,  # Auto-generated if not provided
-    tag_schema: Optional[List[str]] = None,  # Default provided if not specified
-    use_dedup_sql: Optional[bool] = None,  # Whether to use dedup SQL format (default: same as split_job)
-    
-    # Join configuration
-    mds_join_key: str = 'objectId',
-    edx_join_key: str = 'order_id',
-    join_type: str = 'JOIN'
-) -> CradleDataLoadConfig:
-    """
-    Create a CradleDataLoadConfig with minimal required inputs.
-    
-    This helper function simplifies the creation of a CradleDataLoadConfig
-    by handling the generation of nested configurations from essential user inputs.
-    """
-```
-
-### Dual Configuration Factory
-
-Factory function for creating both training and calibration configurations:
+**Returns:**
+- **CradleDataLoadConfig** – A fully configured CradleDataLoadConfig object
 
 ```python
-def create_training_and_calibration_configs(
-    # Base config for inheritance
-    base_config: BasePipelineConfig,
-    
-    # MDS field list
-    mds_field_list: List[str],
-    
-    # EDX data source
-    tag_edx_provider: str,
-    tag_edx_subject: str,
-    tag_edx_dataset: str,
-    etl_job_id: str,
-    
-    # Data timeframes
-    training_start_date: str,
-    training_end_date: str,
-    calibration_start_date: str,
-    calibration_end_date: str,
-    
-    # Additional configuration options...
-) -> Dict[str, CradleDataLoadConfig]:
-    """
-    Create both training and calibration CradleDataLoadConfig objects with consistent settings.
-    
-    Returns:
-        Dict[str, CradleDataLoadConfig]: Dictionary with 'training' and 'calibration' configs
-    """
-```
+from cursus.core.config_fields.cradle_config_factory import create_cradle_data_load_config
 
-## Helper Functions
-
-### Region Mapping
-
-```python
-def _map_region_to_aws_region(region: str) -> str:
-    """
-    Map marketplace region to AWS region.
-    
-    Args:
-        region (str): Marketplace region ('NA', 'EU', 'FE')
-        
-    Returns:
-        str: AWS region name
-    """
-    region_mapping = {
-        "NA": "us-east-1",
-        "EU": "eu-west-1",
-        "FE": "us-west-2"
-    }
-    
-    if region not in region_mapping:
-        raise ValueError(f"Invalid region: {region}. Must be one of {list(region_mapping.keys())}")
-        
-    return region_mapping[region]
-```
-
-### Schema Generation
-
-```python
-def _create_field_schema(fields: List[str]) -> List[Dict[str, str]]:
-    """
-    Convert a list of field names to schema dictionaries.
-    
-    Args:
-        fields (List[str]): List of field names
-        
-    Returns:
-        List[Dict[str, str]]: List of schema dictionaries
-    """
-    return [{'field_name': field, 'field_type': 'STRING'} for field in fields]
-```
-
-### EDX Manifest Generation
-
-```python
-def _format_edx_manifest_key(
-    etl_job_id: str,
-    start_date: str,
-    end_date: str,
-    comment: Optional[str] = None
-) -> str:
-    """
-    Format an EDX manifest key with date components and optional comment.
-    
-    This function supports two formats:
-    1. With comment: ["etl_job_id",start_dateZ,end_dateZ,"comment"]
-    2. Without comment: ["etl_job_id",start_dateZ,end_dateZ]
-    
-    Args:
-        etl_job_id (str): ETL job ID
-        start_date (str): Start date string
-        end_date (str): End date string
-        comment (Optional[str]): Optional comment or region code (None for no comment)
-        
-    Returns:
-        str: Properly formatted EDX manifest key
-    """
-    # Ensure the date strings do not already have 'Z' appended
-    start_date_clean = start_date.rstrip('Z')
-    end_date_clean = end_date.rstrip('Z')
-    
-    # Format depends on whether comment is provided
-    if comment:
-        return f'["{etl_job_id}",{start_date_clean}Z,{end_date_clean}Z,"{comment}"]'
-    else:
-        return f'["{etl_job_id}",{start_date_clean}Z,{end_date_clean}Z]'
-
-def _create_edx_manifest(
-    provider: str,
-    subject: str,
-    dataset: str,
-    etl_job_id: str,
-    start_date: str,
-    end_date: str,
-    comment: Optional[str] = None
-) -> str:
-    """
-    Create an EDX manifest ARN with date components.
-    
-    Returns:
-        str: Properly formatted EDX manifest ARN
-    """
-    # Format the manifest key using the helper function
-    manifest_key = _format_edx_manifest_key(etl_job_id, start_date, end_date, comment)
-    
-    return (
-        f'arn:amazon:edx:iad::manifest/'
-        f'{provider}/{subject}/{dataset}/'
-        f'{manifest_key}'
-    )
-```
-
-## SQL Generation Engine
-
-### Advanced Transform SQL Generation
-
-The module includes a sophisticated SQL generation engine:
-
-```python
-def _generate_transform_sql(
-    mds_source_name: str,
-    edx_source_name: str,
-    mds_field_list: List[str],
-    tag_schema: List[str],
-    mds_join_key: str = 'objectId',
-    edx_join_key: str = 'order_id',
-    join_type: str = 'JOIN',
-    use_dedup_sql: bool = False
-) -> str:
-    """
-    Generate a SQL query to join MDS and EDX data with configurable join keys.
-    
-    This function ensures there are no duplicate fields in the SELECT clause
-    by checking for fields that appear in both MDS and tag schema.
-    Field names are compared case-insensitively to prevent duplications
-    where the only difference is case (e.g., "OrderId" and "orderid").
-    
-    Two SQL formats are supported:
-    1. Standard format (default): Direct join with source prefixes for each column
-    2. Deduplication format: Uses a subquery with ROW_NUMBER() to ensure only one 
-       record per objectId/order_id pair, and lists fields without source prefixes
-    
-    Special handling for join keys:
-    - Both join keys (from MDS and EDX) are explicitly included in the SQL
-    - This ensures the join operation works correctly even with case differences
-    - The keys are aliased to avoid ambiguity and collisions
-    """
-```
-
-#### Standard SQL Format
-
-For simple joins without deduplication:
-
-```sql
-SELECT
-mds_source.objectId as mds_source_objectId,
-edx_source.order_id as edx_source_order_id,
-mds_source.transactionDate,
-mds_source.field1,
-edx_source.marketplace_id,
-edx_source.is_abuse
-FROM RAW_MDS_NA
-JOIN TAGS 
-ON RAW_MDS_NA.objectId=TAGS.order_id
-```
-
-#### Deduplication SQL Format
-
-For joins with row deduplication:
-
-```sql
-SELECT
-    field1,
-    is_abuse,
-    marketplace_id,
-    objectId,
-    order_id,
-    transactionDate
-FROM (
-    SELECT
-        RAW_MDS_NA.field1,
-        TAGS.is_abuse,
-        TAGS.marketplace_id,
-        RAW_MDS_NA.objectId,
-        TAGS.order_id,
-        RAW_MDS_NA.transactionDate,
-        ROW_NUMBER() OVER (PARTITION BY RAW_MDS_NA.objectId, TAGS.order_id ORDER BY RAW_MDS_NA.transactionDate DESC) as row_num
-    FROM RAW_MDS_NA
-    JOIN TAGS ON RAW_MDS_NA.objectId = TAGS.order_id
-)
-WHERE row_num = 1
-```
-
-### Field Deduplication Logic
-
-```python
-def _get_all_fields(
-    mds_fields: List[str],
-    tag_fields: List[str]
-) -> List[str]:
-    """
-    Get a combined list of all fields from MDS and EDX sources.
-    
-    This function handles case-insensitivity to avoid duplicate columns in SQL SELECT
-    statements where the only difference is case (e.g., "OrderId" and "orderid").
-    When duplicates with different cases are found, the first occurrence is kept.
-    
-    Args:
-        mds_fields (List[str]): List of MDS fields
-        tag_fields (List[str]): List of tag fields
-        
-    Returns:
-        List[str]: Combined and deduplicated list of fields
-    """
-    # Track lowercase field names to detect duplicates
-    seen_lowercase = {}
-    deduplicated_fields = []
-    
-    # Process all fields, keeping only the first occurrence when case-insensitive duplicates exist
-    for field in mds_fields + tag_fields:
-        field_lower = field.lower()
-        if field_lower not in seen_lowercase:
-            seen_lowercase[field_lower] = True
-            deduplicated_fields.append(field)
-    
-    return sorted(deduplicated_fields)
-```
-
-## Usage Examples
-
-### Basic Configuration Creation
-
-```python
-from src.cursus.core.config_fields.cradle_config_factory import create_cradle_data_load_config
-from src.cursus.core.base.config_base import BasePipelineConfig
-
-# Create base configuration
-base_config = BasePipelineConfig(
-    author="data-scientist",
-    bucket="my-ml-bucket",
-    role="arn:aws:iam::123456789012:role/SageMakerRole",
-    region="NA",
-    service_name="buyer-abuse",
-    pipeline_version="1.0.0"
-)
-
-# Create training data loading configuration
+# Create training data loading config
 training_config = create_cradle_data_load_config(
-    base_config=base_config,
+    base_config=base_pipeline_config,
     job_type="training",
-    mds_field_list=[
-        "orderId",
-        "customerId", 
-        "transactionAmount",
-        "paymentMethod"
-    ],
+    mds_field_list=["objectId", "transactionDate", "amount", "marketplace_id"],
     start_date="2025-01-01T00:00:00",
-    end_date="2025-01-31T23:59:59",
-    tag_edx_provider="abuse-detection",
-    tag_edx_subject="buyer-abuse",
-    tag_edx_dataset="training-labels",
-    etl_job_id="training-job-2025-01"
+    end_date="2025-01-31T00:00:00",
+    tag_edx_provider="buyer-abuse",
+    tag_edx_subject="tags",
+    tag_edx_dataset="abuse_labels",
+    etl_job_id="training_job_2025_01"
 )
 
-print(f"Created training config: {training_config}")
-print(f"Generated SQL: {training_config.transform_spec.transform_sql}")
-```
-
-### Advanced Configuration with Custom Settings
-
-```python
-# Create configuration with custom SQL and splitting
-advanced_config = create_cradle_data_load_config(
-    base_config=base_config,
-    job_type="training",
-    mds_field_list=["orderId", "customerId", "transactionAmount"],
-    start_date="2025-01-01T00:00:00",
-    end_date="2025-03-31T23:59:59",
-    tag_edx_provider="abuse-detection",
-    tag_edx_subject="buyer-abuse", 
-    tag_edx_dataset="training-labels",
-    etl_job_id="training-job-q1-2025",
-    
-    # Advanced options
+# Create calibration config with custom settings
+calibration_config = create_cradle_data_load_config(
+    base_config=base_pipeline_config,
+    job_type="calibration",
+    mds_field_list=["objectId", "transactionDate", "amount"],
+    start_date="2025-02-01T00:00:00",
+    end_date="2025-02-28T00:00:00",
+    tag_edx_provider="buyer-abuse",
+    tag_edx_subject="tags",
+    tag_edx_dataset="abuse_labels",
+    etl_job_id="calibration_job_2025_02",
     split_job=True,
     days_per_split=14,
-    use_dedup_sql=True,
-    merge_sql="SELECT * FROM INPUT WHERE transactionAmount > 0",
-    join_type="LEFT JOIN",
-    mds_join_key="orderId",
-    edx_join_key="order_id",
-    
-    # Custom tag schema
-    tag_schema=[
-        "order_id",
-        "marketplace_id", 
-        "is_fraudulent",
-        "fraud_type",
-        "confidence_score"
-    ]
+    merge_sql="SELECT * FROM INPUT ORDER BY transactionDate"
 )
-
-print(f"Split job enabled: {advanced_config.transform_spec.job_split_options.split_job}")
-print(f"Days per split: {advanced_config.transform_spec.job_split_options.days_per_split}")
 ```
 
-### Creating Both Training and Calibration Configs
+### create_training_and_calibration_configs
+
+create_training_and_calibration_configs(_base_config_, _mds_field_list_, _tag_edx_provider_, _tag_edx_subject_, _tag_edx_dataset_, _etl_job_id_, _training_start_date_, _training_end_date_, _calibration_start_date_, _calibration_end_date_, _service_name=None_, _edx_manifest_comment=None_, _cradle_account="Buyer-Abuse-RnD-Dev"_, _cluster_type="STANDARD"_, _output_format="PARQUET"_, _output_save_mode="ERRORIFEXISTS"_, _split_job=False_, _days_per_split=7_, _merge_sql=None_, _transform_sql=None_, _tag_schema=None_)
+
+Create both training and calibration CradleDataLoadConfig objects with consistent settings.
+
+**Parameters:**
+- **base_config** (_BasePipelineConfig_) – Base config for inheritance
+- **mds_field_list** (_List[str]_) – List of fields to include from MDS
+- **tag_edx_provider** (_str_) – EDX provider for tags
+- **tag_edx_subject** (_str_) – EDX subject for tags
+- **tag_edx_dataset** (_str_) – EDX dataset for tags
+- **etl_job_id** (_str_) – ETL job ID for the EDX manifest
+- **training_start_date** (_str_) – Training data start date
+- **training_end_date** (_str_) – Training data end date
+- **calibration_start_date** (_str_) – Calibration data start date
+- **calibration_end_date** (_str_) – Calibration data end date
+- **service_name** (_Optional[str]_) – Name of the MDS service (if not in base_config)
+- **edx_manifest_comment** (_Optional[str]_) – Optional comment for EDX manifest key
+- **cradle_account** (_str_) – Cradle account name (default: "Buyer-Abuse-RnD-Dev")
+- **cluster_type** (_str_) – Cradle cluster type (default: "STANDARD")
+- **output_format** (_str_) – Output format (default: "PARQUET")
+- **output_save_mode** (_str_) – Output save mode (default: "ERRORIFEXISTS")
+- **split_job** (_bool_) – Whether to split the job (default: False)
+- **days_per_split** (_int_) – Days per split if splitting (default: 7)
+- **merge_sql** (_Optional[str]_) – SQL to merge split results
+- **transform_sql** (_Optional[str]_) – Custom transform SQL
+- **tag_schema** (_Optional[List[str]]_) – Schema for tag data
+
+**Returns:**
+- **Dict[str, CradleDataLoadConfig]** – Dictionary with 'training' and 'calibration' configs
 
 ```python
-from src.cursus.core.config_fields.cradle_config_factory import create_training_and_calibration_configs
+from cursus.core.config_fields.cradle_config_factory import create_training_and_calibration_configs
 
-# Create both configurations with consistent settings
+# Create both training and calibration configs at once
 configs = create_training_and_calibration_configs(
-    base_config=base_config,
-    mds_field_list=["orderId", "customerId", "transactionAmount"],
-    
-    # EDX configuration
-    tag_edx_provider="abuse-detection",
-    tag_edx_subject="buyer-abuse",
-    tag_edx_dataset="labels",
-    etl_job_id="ml-pipeline-2025-q1",
-    
-    # Training data timeframe
+    base_config=base_pipeline_config,
+    mds_field_list=["objectId", "transactionDate", "amount", "marketplace_id"],
+    tag_edx_provider="buyer-abuse",
+    tag_edx_subject="tags",
+    tag_edx_dataset="abuse_labels",
+    etl_job_id="pipeline_job_2025_01",
     training_start_date="2025-01-01T00:00:00",
-    training_end_date="2025-02-28T23:59:59",
-    
-    # Calibration data timeframe  
-    calibration_start_date="2025-03-01T00:00:00",
-    calibration_end_date="2025-03-31T23:59:59",
-    
-    # Shared configuration
-    split_job=True,
-    days_per_split=7,
-    output_format="PARQUET"
+    training_end_date="2025-01-31T00:00:00",
+    calibration_start_date="2025-02-01T00:00:00",
+    calibration_end_date="2025-02-28T00:00:00"
 )
 
 training_config = configs["training"]
 calibration_config = configs["calibration"]
-
-print(f"Training config job type: {training_config.job_type}")
-print(f"Calibration config job type: {calibration_config.job_type}")
-print(f"Both configs use same MDS fields: {training_config.data_sources_spec.data_sources[0].mds_data_source_properties.output_schema}")
 ```
 
-### Integration with Pipeline Templates
+### Helper Functions
 
-```python
-from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
+#### _map_region_to_aws_region
 
-class CradleDataPipelineTemplate(PipelineTemplateBase):
-    
-    def _create_config_map(self) -> Dict[str, BasePipelineConfig]:
-        """Create configuration map using the factory."""
-        
-        # Create base configuration from template settings
-        base_config = BasePipelineConfig(
-            author=self.author,
-            bucket=self.bucket,
-            role=self.role,
-            region=self.region,
-            service_name=self.service_name,
-            pipeline_version=self.pipeline_version
-        )
-        
-        # Create data loading configurations using factory
-        data_configs = create_training_and_calibration_configs(
-            base_config=base_config,
-            mds_field_list=self.mds_fields,
-            tag_edx_provider=self.edx_provider,
-            tag_edx_subject=self.edx_subject,
-            tag_edx_dataset=self.edx_dataset,
-            etl_job_id=self.etl_job_id,
-            training_start_date=self.training_start,
-            training_end_date=self.training_end,
-            calibration_start_date=self.calibration_start,
-            calibration_end_date=self.calibration_end
-        )
-        
-        return {
-            "data_loading_training": data_configs["training"],
-            "data_loading_calibration": data_configs["calibration"]
-        }
-```
+_map_region_to_aws_region(_region_)
 
-## Configuration Generation Process
+Map marketplace region to AWS region.
 
-The factory function follows a systematic process to generate complex configurations:
+**Parameters:**
+- **region** (_str_) – Marketplace region ('NA', 'EU', 'FE')
 
-### 1. Input Validation and Defaults
+**Returns:**
+- **str** – AWS region name
 
-```python
-# Use default tag schema if not provided
-if tag_schema is None:
-    tag_schema = DEFAULT_TAG_SCHEMA
-    
-# Get service_name from base_config if not provided
-if service_name is None:
-    service_name = base_config.service_name
-    
-# Get the region from base_config
-region = base_config.region
+#### _create_field_schema
 
-# Set path validation env var if needed
-if "MODS_SKIP_PATH_VALIDATION" not in os.environ:
-    os.environ["MODS_SKIP_PATH_VALIDATION"] = "true"
+_create_field_schema(_fields_)
 
-# If split_job is True, ensure merge_sql is provided
-if split_job and merge_sql is None:
-    merge_sql = "SELECT * FROM INPUT"  # Default merge SQL
-    
-# Set use_dedup_sql default if not provided
-if use_dedup_sql is None:
-    use_dedup_sql = split_job  # Default to using dedup SQL when split_job is True
-```
+Convert a list of field names to schema dictionaries.
 
-### 2. MDS Data Source Configuration
+**Parameters:**
+- **fields** (_List[str]_) – List of field names
 
-```python
-# Create complete MDS field list by combining base fields with provided fields
-complete_mds_field_list = list(set(DEFAULT_MDS_BASE_FIELDS + mds_field_list))
-mds_field_list = sorted(mds_field_list)
+**Returns:**
+- **List[Dict[str, str]]** – List of schema dictionaries
 
-# Create MDS schema
-mds_output_schema = _create_field_schema(complete_mds_field_list)
+#### _format_edx_manifest_key
 
-# Create MDS data source inner config
-mds_data_source_inner_config = MdsDataSourceConfig(
-    service_name=service_name,
-    region=region,
-    output_schema=mds_output_schema,
-    org_id=org_id  # Use the provided org_id parameter
-)
-```
+_format_edx_manifest_key(_etl_job_id_, _start_date_, _end_date_, _comment=None_)
 
-### 3. EDX Data Source Configuration
+Format an EDX manifest key with date components and optional comment.
 
-```python
-# Create EDX manifest key with proper Z suffixes for timestamps
-# Use edx_manifest_comment as-is (including None) - don't default to region
-edx_manifest_key = _format_edx_manifest_key(
-    etl_job_id=etl_job_id,
-    start_date=start_date,
-    end_date=end_date,
-    comment=edx_manifest_comment
-)
+**Parameters:**
+- **etl_job_id** (_str_) – ETL job ID
+- **start_date** (_str_) – Start date string
+- **end_date** (_str_) – End date string
+- **comment** (_Optional[str]_) – Optional comment or region code
 
-# Create EDX schema overrides
-edx_schema_overrides = _create_field_schema(tag_schema)
+**Returns:**
+- **str** – Properly formatted EDX manifest key
 
-# Create EDX data source inner config
-edx_source_inner_config = EdxDataSourceConfig(
-    edx_provider=tag_edx_provider,
-    edx_subject=tag_edx_subject,
-    edx_dataset=tag_edx_dataset,
-    edx_manifest_key=edx_manifest_key,
-    schema_overrides=edx_schema_overrides
-)
-```
+#### _create_edx_manifest
 
-### 4. Transform SQL Generation
+_create_edx_manifest(_provider_, _subject_, _dataset_, _etl_job_id_, _start_date_, _end_date_, _comment=None_)
 
-```python
-# Generate transform SQL if not provided
-if transform_sql is None:
-    transform_sql = _generate_transform_sql(
-        mds_source_name=mds_data_source.data_source_name,
-        edx_source_name=edx_data_source.data_source_name,
-        mds_field_list=complete_mds_field_list,
-        tag_schema=tag_schema,
-        mds_join_key=mds_join_key,
-        edx_join_key=edx_join_key,
-        join_type=join_type,
-        use_dedup_sql=use_dedup_sql
-    )
-```
+Create an EDX manifest ARN with date components.
 
-### 5. Final Configuration Assembly
+**Parameters:**
+- **provider** (_str_) – EDX provider name
+- **subject** (_str_) – EDX subject
+- **dataset** (_str_) – EDX dataset name
+- **etl_job_id** (_str_) – ETL job ID
+- **start_date** (_str_) – Start date string
+- **end_date** (_str_) – End date string
+- **comment** (_Optional[str]_) – Optional comment or region code
 
-```python
-# Use from_base_config to inherit from the base configuration
-# This ensures all base fields (region, role, etc.) are properly inherited
-# while also respecting the three-tier design pattern
-cradle_data_load_config = CradleDataLoadConfig.from_base_config(
-    base_config,
-    
-    # Add step-specific fields
-    job_type=job_type,
-    data_sources_spec=data_sources_spec,
-    transform_spec=transform_spec,
-    output_spec=output_spec,
-    cradle_job_spec=cradle_job_spec,
-    s3_input_override=s3_input_override
-)
-```
+**Returns:**
+- **str** – Properly formatted EDX manifest ARN
 
-## Error Handling and Validation
+#### _generate_transform_sql
 
-### Region Validation
+_generate_transform_sql(_mds_source_name_, _edx_source_name_, _mds_field_list_, _tag_schema_, _mds_join_key="objectId"_, _edx_join_key="order_id"_, _join_type="JOIN"_, _use_dedup_sql=False_)
 
-```python
-def _map_region_to_aws_region(region: str) -> str:
-    """Map marketplace region to AWS region."""
-    region_mapping = {
-        "NA": "us-east-1",
-        "EU": "eu-west-1",
-        "FE": "us-west-2"
-    }
-    
-    if region not in region_mapping:
-        raise ValueError(f"Invalid region: {region}. Must be one of {list(region_mapping.keys())}")
-        
-    return region_mapping[region]
-```
+Generate a SQL query to join MDS and EDX data with configurable join keys.
 
-### Input Validation
+**Parameters:**
+- **mds_source_name** (_str_) – Logical name for MDS source
+- **edx_source_name** (_str_) – Logical name for EDX source
+- **mds_field_list** (_List[str]_) – List of fields from MDS
+- **tag_schema** (_List[str]_) – List of fields from EDX tags
+- **mds_join_key** (_str_) – Join key field name from MDS (default: "objectId")
+- **edx_join_key** (_str_) – Join key field name from EDX (default: "order_id")
+- **join_type** (_str_) – SQL join type (default: "JOIN")
+- **use_dedup_sql** (_bool_) – Whether to use the deduplication SQL format with subquery (default: False)
 
-```python
-# Validate required parameters
-if not mds_field_list:
-    raise ValueError("mds_field_list cannot be empty")
+**Returns:**
+- **str** – SQL query string
 
-if not start_date or not end_date:
-    raise ValueError("start_date and end_date are required")
+#### _get_all_fields
 
-if job_type not in ["training", "calibration"]:
-    raise ValueError("job_type must be 'training' or 'calibration'")
-```
+_get_all_fields(_mds_fields_, _tag_fields_)
 
-### SQL Generation Safety
+Get a combined list of all fields from MDS and EDX sources. This function handles case-insensitivity to avoid duplicate columns in SQL SELECT statements.
 
-The SQL generation includes safety measures:
+**Parameters:**
+- **mds_fields** (_List[str]_) – List of MDS fields
+- **tag_fields** (_List[str]_) – List of tag fields
 
-```python
-# Ensure no duplicate fields in SELECT clause
-seen_lowercase = {}
-deduplicated_fields = []
-
-for field in mds_fields + tag_fields:
-    field_lower = field.lower()
-    if field_lower not in seen_lowercase:
-        seen_lowercase[field_lower] = True
-        deduplicated_fields.append(field)
-```
-
-## Performance Considerations
-
-### Field Deduplication
-
-The factory uses efficient algorithms for field deduplication:
-
-```python
-# O(n) deduplication using set-based tracking
-complete_mds_field_list = list(set(DEFAULT_MDS_BASE_FIELDS + mds_field_list))
-```
-
-### SQL Generation Optimization
-
-The SQL generation is optimized for readability and performance:
-
-```python
-# Sort fields for consistent output
-outer_field_list = ',\n    '.join(sorted(outer_select_fields))
-inner_field_list = ',\n        '.join(sorted(inner_select_fields))
-```
-
-### Memory Efficiency
-
-The factory functions avoid unnecessary object creation:
-
-```python
-# Reuse existing configurations when possible
-if service_name is None:
-    service_name = base_config.service_name  # Reuse from base config
-```
-
-## Design Patterns
-
-### Factory Pattern
-
-The module implements the factory pattern for complex object creation:
-
-```python
-def create_cradle_data_load_config(...) -> CradleDataLoadConfig:
-    """Factory function that encapsulates complex object creation logic."""
-    # Complex creation logic hidden from users
-    return fully_configured_object
-```
-
-### Builder Pattern Elements
-
-The factory incorporates builder pattern elements:
-
-```python
-# Step-by-step construction
-data_sources_spec = DataSourcesSpecificationConfig(...)
-transform_spec = TransformSpecificationConfig(...)
-output_spec = OutputSpecificationConfig(...)
-cradle_job_spec = CradleJobSpecificationConfig(...)
-
-# Final assembly
-config = CradleDataLoadConfig.from_base_config(base_config, ...)
-```
-
-### Template Method Pattern
-
-The dual configuration factory uses template method pattern:
-
-```python
-def create_training_and_calibration_configs(...):
-    """Template method that creates both configurations using the same process."""
-    
-    # Create training config using template
-    training_config = create_cradle_data_load_config(
-        base_config=base_config,
-        job_type="training",
-        # ... other parameters
-    )
-    
-    # Create calibration config using same template
-    calibration_config = create_cradle_data_load_config(
-        base_config=base_config,
-        job_type="calibration", 
-        # ... other parameters
-    )
-    
-    return {"training": training_config, "calibration": calibration_config}
-```
-
-## Integration Points
-
-### Base Configuration Integration
-
-The factory integrates with the base configuration system:
-
-```python
-# Inherit from base configuration using three-tier pattern
-cradle_data_load_config = CradleDataLoadConfig.from_base_config(
-    base_config,
-    # Additional step-specific fields
-)
-```
-
-### Pipeline Template Integration
-
-The factory is designed for use in pipeline templates:
-
-```python
-def _create_config_map(self) -> Dict[str, BasePipelineConfig]:
-    """Pipeline template method using the factory."""
-    configs = create_training_and_calibration_configs(...)
-    return {
-        "data_loading_training": configs["training"],
-        "data_loading_calibration": configs["calibration"]
-    }
-```
-
-### Configuration Field System Integration
-
-The factory works with the configuration field management system:
-
-```python
-# Uses configuration constants and patterns
-from .constants import DEFAULT_TAG_SCHEMA, DEFAULT_MDS_BASE_FIELDS
-
-# Integrates with type-aware serialization
-# Generated configurations are fully serializable
-```
+**Returns:**
+- **List[str]** – Combined and deduplicated list of fields
 
 ## Related Documentation
 
-### Core Dependencies
-- [Configuration Base](../base/config_base.md): Base configuration class used for inheritance
-- [Configuration Constants](constants.md): May use constants for default values
-- [Configuration Class Store](config_class_store.md): Generated configurations can be registered
-
-### Integration Points
-- [Pipeline Template Base](../assembler/pipeline_template_base.md): Uses factory functions for configuration creation
-- [Configuration Merger](../config_field/config_merger.md): Generated configurations can be merged
-- [Type-Aware Configuration Serializer](type_aware_config_serializer.md): Generated configurations are serializable
-
-### Cradle Integration
-- **CradleDataLoadConfig**: The main configuration class created by the factory
-- **MDS/EDX Data Sources**: External data source configurations
-- **Cradle Job Specifications**: Infrastructure and job configuration
-
-### System Overview
-- [Configuration Fields Overview](README.md): System overview and integration
+- [Configuration Fields Overview](README.md) - System overview and integration
+- [Type-Aware Configuration Serializer](type_aware_config_serializer.md) - Used for step name generation
+- [Configuration Constants](constants.md) - Defines constants used in factory functions

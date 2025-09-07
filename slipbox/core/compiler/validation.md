@@ -4,149 +4,321 @@ tags:
   - core
   - compiler
   - validation
-  - quality_assurance
+  - dag_validation
 keywords:
-  - validation engine
-  - pipeline validation
-  - compatibility checking
+  - ValidationEngine
+  - ValidationResult
+  - ResolutionPreview
+  - ConversionReport
   - DAG validation
   - configuration validation
 topics:
-  - validation framework
-  - quality assurance
-  - pipeline compatibility
+  - validation
+  - DAG compatibility
+  - pipeline validation
 language: python
-date of note: 2025-08-07
+date of note: 2025-09-07
 ---
 
-# Validation Engine
+# Validation
 
-## Purpose
+Validation and preview classes for the Pipeline API, providing classes for validating DAG-config compatibility and previewing resolution results before pipeline generation.
 
-The `ValidationEngine` provides comprehensive validation capabilities for the Pipeline API, ensuring compatibility between DAGs, configurations, and step builders before pipeline generation. This helps catch issues early and provides detailed feedback to users.
+## Overview
 
-## Core Problem Solved
+The `validation` module provides classes for validating DAG-config compatibility and previewing resolution results before pipeline generation. It includes comprehensive validation of DAG nodes against available configurations, step builder resolution, configuration validation, and dependency checking.
 
-Pipeline generation can fail for various reasons:
-1. Missing configurations for DAG nodes
-2. Missing step builders for configuration types
-3. Configuration validation errors
-4. Dependency resolution issues
+The module provides detailed reporting capabilities with actionable recommendations for fixing validation issues. It supports both summary and detailed reporting formats, making it easy to diagnose and resolve pipeline compilation problems.
 
-The validation engine catches these issues early in the process and provides detailed reports to help users diagnose and fix problems.
+## Classes and Methods
+
+### Classes
+- [`ValidationEngine`](#validationengine) - Engine for validating DAG-config compatibility
+- [`ValidationResult`](#validationresult) - Result of DAG-config compatibility validation
+- [`ResolutionPreview`](#resolutionpreview) - Preview of how DAG nodes will be resolved
+- [`ConversionReport`](#conversionreport) - Report generated after successful pipeline conversion
+
+## API Reference
+
+### ValidationEngine
+
+_class_ cursus.core.compiler.validation.ValidationEngine
+
+Engine for validating DAG-config compatibility.
+
+```python
+from cursus.core.compiler.validation import ValidationEngine
+
+# Create validation engine
+engine = ValidationEngine()
+```
+
+#### validate_dag_compatibility
+
+validate_dag_compatibility(_dag_nodes_, _available_configs_, _config_map_, _builder_registry_)
+
+Validate DAG-config compatibility.
+
+**Parameters:**
+- **dag_nodes** (_List[str]_) – List of DAG node names
+- **available_configs** (_Dict[str, Any]_) – Available configuration instances
+- **config_map** (_Dict[str, Any]_) – Resolved node-to-config mapping
+- **builder_registry** (_Dict[str, Any]_) – Available step builders
+
+**Returns:**
+- **ValidationResult** – ValidationResult with detailed validation information
+
+```python
+# Validate DAG compatibility
+validation_result = engine.validate_dag_compatibility(
+    dag_nodes=["data_load", "training", "evaluation"],
+    available_configs=available_configs,
+    config_map=resolved_config_map,
+    builder_registry=builder_registry
+)
+
+if validation_result.is_valid:
+    print("✅ Validation passed")
+else:
+    print("❌ Validation failed")
+    print(validation_result.detailed_report())
+```
+
+### ValidationResult
+
+_class_ cursus.core.compiler.validation.ValidationResult(_is_valid_, _missing_configs_, _unresolvable_builders_, _config_errors_, _dependency_issues_, _warnings_)
+
+Result of DAG-config compatibility validation.
+
+**Parameters:**
+- **is_valid** (_bool_) – Whether validation passed
+- **missing_configs** (_List[str]_) – List of missing configuration names
+- **unresolvable_builders** (_List[str]_) – List of unresolvable step builders
+- **config_errors** (_Dict[str, List[str]]_) – Configuration errors by node
+- **dependency_issues** (_List[str]_) – List of dependency issues
+- **warnings** (_List[str]_) – List of validation warnings
+
+```python
+# Create validation result
+result = ValidationResult(
+    is_valid=False,
+    missing_configs=["missing_node"],
+    unresolvable_builders=["UnknownStep"],
+    config_errors={"node1": ["Invalid parameter"]},
+    dependency_issues=["Circular dependency"],
+    warnings=["Low confidence resolution"]
+)
+```
+
+#### summary
+
+summary()
+
+Human-readable validation summary.
+
+**Returns:**
+- **str** – Summary of validation results
+
+```python
+# Get validation summary
+summary = validation_result.summary()
+print(summary)
+# Output: "❌ Validation failed: 1 missing configs, 1 unresolvable builders"
+```
+
+#### detailed_report
+
+detailed_report()
+
+Detailed validation report with recommendations.
+
+**Returns:**
+- **str** – Detailed validation report
+
+```python
+# Get detailed validation report
+report = validation_result.detailed_report()
+print(report)
+# Output includes:
+# - Missing configurations
+# - Unresolvable step builders
+# - Configuration errors
+# - Dependency issues
+# - Warnings
+# - Recommendations for fixes
+```
+
+### ResolutionPreview
+
+_class_ cursus.core.compiler.validation.ResolutionPreview(_node_config_map_, _config_builder_map_, _resolution_confidence_, _ambiguous_resolutions_, _recommendations_)
+
+Preview of how DAG nodes will be resolved.
+
+**Parameters:**
+- **node_config_map** (_Dict[str, str]_) – Node to config type mapping
+- **config_builder_map** (_Dict[str, str]_) – Config type to builder type mapping
+- **resolution_confidence** (_Dict[str, float]_) – Confidence scores for resolutions
+- **ambiguous_resolutions** (_List[str]_) – List of ambiguous resolutions
+- **recommendations** (_List[str]_) – List of recommendations
+
+```python
+# Create resolution preview
+preview = ResolutionPreview(
+    node_config_map={"data_load": "CradleDataLoadConfig", "training": "XGBoostTrainingConfig"},
+    config_builder_map={"CradleDataLoadConfig": "CradleDataLoadingBuilder"},
+    resolution_confidence={"data_load": 0.95, "training": 0.87},
+    ambiguous_resolutions=["training has 2 similar candidates"],
+    recommendations=["Consider renaming 'training' for better matching"]
+)
+```
+
+#### display
+
+display()
+
+Display-friendly resolution preview.
+
+**Returns:**
+- **str** – Formatted resolution preview
+
+```python
+# Display resolution preview
+preview_text = preview.display()
+print(preview_text)
+# Output:
+# Resolution Preview
+# ==================================================
+# 
+# Node → Configuration Mappings:
+#   🟢 data_load → CradleDataLoadConfig (confidence: 0.95)
+#   🟡 training → XGBoostTrainingConfig (confidence: 0.87)
+# 
+# Configuration → Builder Mappings:
+#   ✓ CradleDataLoadConfig → CradleDataLoadingBuilder
+# 
+# ⚠️  Ambiguous Resolutions:
+#   - training has 2 similar candidates
+# 
+# 💡 Recommendations:
+#   - Consider renaming 'training' for better matching
+```
+
+### ConversionReport
+
+_class_ cursus.core.compiler.validation.ConversionReport(_pipeline_name_, _steps_, _resolution_details_, _avg_confidence_, _warnings_, _metadata_)
+
+Report generated after successful pipeline conversion.
+
+**Parameters:**
+- **pipeline_name** (_str_) – Name of the generated pipeline
+- **steps** (_List[str]_) – List of pipeline steps
+- **resolution_details** (_Dict[str, Dict[str, Any]]_) – Detailed resolution information
+- **avg_confidence** (_float_) – Average confidence score
+- **warnings** (_List[str]_) – List of warnings
+- **metadata** (_Dict[str, Any]_) – Additional metadata
+
+```python
+# Create conversion report
+report = ConversionReport(
+    pipeline_name="my-ml-pipeline",
+    steps=["data_load", "training", "evaluation"],
+    resolution_details={
+        "data_load": {
+            "config_type": "CradleDataLoadConfig",
+            "builder_type": "CradleDataLoadingBuilder",
+            "confidence": 0.95
+        }
+    },
+    avg_confidence=0.89,
+    warnings=["Low confidence for 'evaluation' step"],
+    metadata={"dag_nodes": 3, "compilation_time": "2.3s"}
+)
+```
+
+#### summary
+
+summary()
+
+Summary of conversion results.
+
+**Returns:**
+- **str** – Summary of conversion results
+
+```python
+# Get conversion summary
+summary = report.summary()
+print(summary)
+# Output: "Pipeline 'my-ml-pipeline' created successfully with 3 steps (avg confidence: 0.89)"
+```
+
+#### detailed_report
+
+detailed_report()
+
+Detailed conversion report.
+
+**Returns:**
+- **str** – Detailed conversion report
+
+```python
+# Get detailed conversion report
+detailed = report.detailed_report()
+print(detailed)
+# Output includes:
+# - Pipeline name and step count
+# - Average confidence score
+# - Step resolution details
+# - Warnings
+# - Additional metadata
+```
 
 ## Validation Process
 
-The validation engine performs multiple checks:
+The validation engine performs comprehensive checks:
 
-### 1. DAG-Configuration Compatibility
+### 1. Configuration Availability
+Checks that all DAG nodes have corresponding configuration instances available.
 
-Ensures each DAG node has a corresponding configuration.
+### 2. Step Builder Resolution
+Validates that all configuration types can be mapped to available step builders, including:
+- Direct step type matching
+- Job type variant handling
+- Legacy alias resolution
+- Special case handling for known step types
 
-```python
-validation_result = validation_engine.validate_dag_compatibility(
-    dag_nodes=["data_load", "preprocess", "train"],
-    available_configs=loaded_configs,
-    config_map=config_map,
-    builder_registry=builder_map
-)
+### 3. Configuration Validation
+Runs individual configuration validation if available, checking:
+- Required field presence
+- Value constraints and formats
+- Configuration-specific business rules
 
-if not validation_result.is_valid:
-    print(f"Missing configurations: {validation_result.missing_configs}")
-```
+### 4. Dependency Resolution
+Validates that DAG dependencies can be properly resolved (placeholder for future enhancement).
 
-### 2. Configuration-Builder Compatibility
+### 5. Warning Generation
+Identifies potential issues that don't prevent compilation but may indicate problems:
+- Low confidence resolutions
+- Ambiguous node mappings
+- Deprecated configuration patterns
 
-Ensures each configuration has a corresponding step builder.
+## Error Categories
 
-```python
-if validation_result.unresolvable_builders:
-    print(f"Missing builders: {validation_result.unresolvable_builders}")
-    print(f"Available builders: {validation_result.builder_registry_stats}")
-```
+### Missing Configurations
+DAG nodes that don't have corresponding configuration instances.
 
-### 3. Configuration-Specific Validation
+### Unresolvable Builders
+Configuration types that can't be mapped to step builders.
 
-Runs specific validation logic for each configuration type.
+### Configuration Errors
+Individual configuration validation failures.
 
-```python
-if validation_result.config_errors:
-    for config_name, errors in validation_result.config_errors.items():
-        print(f"Errors in {config_name}: {errors}")
-```
+### Dependency Issues
+Problems with DAG dependency resolution.
 
-### 4. Dependency Resolution Validation
+## Related Documentation
 
-Ensures all dependencies can be resolved correctly.
-
-```python
-if validation_result.dependency_issues:
-    print(f"Dependency issues: {validation_result.dependency_issues}")
-```
-
-## Validation Result
-
-The validation process returns a `ValidationResult` containing:
-
-- `is_valid`: Boolean indicating if validation passed
-- `missing_configs`: List of DAG nodes without configurations
-- `unresolvable_builders`: List of configuration types without builders
-- `config_errors`: Dictionary of configuration-specific errors
-- `dependency_issues`: List of dependency resolution issues
-- `warnings`: List of non-critical issues
-- `detailed_report()`: Method to generate a detailed report
-- `summary()`: Method to generate a summary report
-
-## Resolution Preview
-
-The validation engine also provides a `ResolutionPreview` that shows how DAG nodes will be resolved to configurations and builders:
-
-```python
-preview = validation_engine.preview_resolution(
-    dag_nodes=["data_load", "preprocess", "train"],
-    available_configs=loaded_configs
-)
-
-print(preview.display())
-```
-
-The preview includes:
-- `node_config_map`: Mapping from nodes to config types
-- `config_builder_map`: Mapping from config types to builder types
-- `resolution_confidence`: Confidence scores for each resolution
-- `ambiguous_resolutions`: List of potentially ambiguous resolutions
-- `recommendations`: Suggested improvements
-
-## Conversion Report
-
-After pipeline generation, the validation engine can generate a `ConversionReport` with detailed information about the conversion process:
-
-```python
-report = ConversionReport(
-    pipeline_name="my-pipeline",
-    steps=dag_nodes,
-    resolution_details=resolution_details,
-    avg_confidence=0.85,
-    warnings=warnings,
-    metadata=metadata
-)
-
-print(report.detailed_report())
-```
-
-The report includes:
-- Pipeline details (name, steps)
-- Resolution details for each step
-- Average confidence score
-- Warnings and recommendations
-- Metadata about the conversion process
-
-## Integration with Other Components
-
-The validation engine is used by:
-
-- `PipelineDAGCompiler`: For pre-compilation validation
-- `DynamicPipelineTemplate`: For configuration validation
-- `MODSPipelineDAGCompiler`: For MODS-specific validation
-
-It serves as a quality assurance layer, ensuring that only compatible and well-formed pipelines are generated.
+- [DAG Compiler](dag_compiler.md) - Uses ValidationEngine for DAG compatibility checking
+- [Dynamic Template](dynamic_template.md) - Uses ValidationEngine during template creation
+- [Compiler Exceptions](exceptions.md) - ValidationError raised for validation failures
+- [Configuration Resolver](config_resolver.md) - Provides resolution data for validation
+- [Compiler Overview](README.md) - System overview and integration

@@ -3,17 +3,18 @@ tags:
   - code
   - core
   - compiler
-  - dag_compiler
+  - dag_compilation
   - pipeline_generation
 keywords:
-  - DAG compiler
-  - pipeline compilation
+  - PipelineDAGCompiler
+  - compile_dag_to_pipeline
+  - DAG compilation
   - SageMaker pipeline
-  - DAG conversion
-  - pipeline generation
+  - pipeline template
+  - validation
 topics:
   - DAG compilation
-  - pipeline assembly
+  - pipeline generation
   - SageMaker integration
 language: python
 date of note: 2025-09-07
@@ -21,671 +22,57 @@ date of note: 2025-09-07
 
 # DAG Compiler
 
+Main API functions for compiling PipelineDAG structures into executable SageMaker pipelines.
+
 ## Overview
 
-The DAG Compiler is the main entry point of the Pipeline API, responsible for compiling PipelineDAG structures into executable SageMaker pipelines. It provides both simple one-call functions and advanced APIs for validation, debugging, and customization, serving as the orchestrator that connects all pieces of the pipeline generation process.
+The `dag_compiler` module provides the main API functions for compiling PipelineDAG structures into executable SageMaker pipelines. It offers both simple one-call compilation and advanced compilation with detailed control over the process, including validation, debugging, and customization options.
 
-## Module Structure
+The module handles the complete compilation pipeline from DAG structure to executable SageMaker Pipeline, including configuration resolution, step builder mapping, validation, and template generation. It provides comprehensive error handling and detailed reporting for troubleshooting compilation issues.
 
-```python
-"""
-DAG Compiler for the Pipeline API.
+## Classes and Methods
 
-This module provides the main API functions for compiling PipelineDAG structures
-into executable SageMaker pipelines.
-"""
+### Classes
+- [`PipelineDAGCompiler`](#pipelinedagcompiler) - Advanced API for DAG-to-template compilation with additional control
 
-from typing import Optional, Dict, Any, Tuple
-import logging
-from pathlib import Path
+### Functions
+- [`compile_dag_to_pipeline`](#compile_dag_to_pipeline) - Simple one-call compilation from DAG to pipeline
 
-from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.pipeline_context import PipelineSession
+## API Reference
 
-from ...api.dag.base_dag import PipelineDAG
-from .config_resolver import StepConfigResolver
-from ...registry.builder_registry import StepBuilderRegistry
-from .validation import ValidationResult, ResolutionPreview, ConversionReport, ValidationEngine
-from .exceptions import PipelineAPIError, ConfigurationError, ValidationError
-from ...registry.exceptions import RegistryError
-```
+### compile_dag_to_pipeline
 
-## Key Design Choices
+compile_dag_to_pipeline(_dag_, _config_path_, _sagemaker_session=None_, _role=None_, _pipeline_name=None_, _**kwargs_)
 
-### 1. Dual API Design Pattern
+Compile a PipelineDAG into a complete SageMaker Pipeline. This is the main entry point for users who want a simple, one-call compilation from DAG to pipeline.
 
-The module provides two complementary interfaces to accommodate different usage patterns:
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance defining the pipeline structure
+- **config_path** (_str_) – Path to configuration file containing step configs
+- **sagemaker_session** (_Optional[PipelineSession]_) – SageMaker session for pipeline execution
+- **role** (_Optional[str]_) – IAM role for pipeline execution
+- **pipeline_name** (_Optional[str]_) – Optional pipeline name override
+- ****kwargs** – Additional arguments passed to template constructor
 
-#### Simple Function Interface
+**Returns:**
+- **Pipeline** – Generated SageMaker Pipeline ready for execution
 
-```python
-def compile_dag_to_pipeline(
-    dag: PipelineDAG,
-    config_path: str,
-    sagemaker_session: Optional[PipelineSession] = None,
-    role: Optional[str] = None,
-    pipeline_name: Optional[str] = None,
-    **kwargs
-) -> Pipeline:
-    """
-    Compile a PipelineDAG into a complete SageMaker Pipeline.
-    
-    This is the main entry point for users who want a simple, one-call
-    compilation from DAG to pipeline.
-    
-    Args:
-        dag: PipelineDAG instance defining the pipeline structure
-        config_path: Path to configuration file containing step configs
-        sagemaker_session: SageMaker session for pipeline execution
-        role: IAM role for pipeline execution
-        pipeline_name: Optional pipeline name override
-        **kwargs: Additional arguments passed to template constructor
-        
-    Returns:
-        Generated SageMaker Pipeline ready for execution
-        
-    Raises:
-        ValueError: If DAG nodes don't have corresponding configurations
-        ConfigurationError: If configuration validation fails
-        RegistryError: If step builders not found for config types
-    """
-    try:
-        # Validate inputs first before accessing dag.nodes
-        if not isinstance(dag, PipelineDAG):
-            raise ValueError("dag must be a PipelineDAG instance")
-        
-        if not dag.nodes:
-            raise ValueError("DAG must contain at least one node")
-            
-        logger.info(f"Compiling DAG with {len(dag.nodes)} nodes to pipeline")
-        
-        config_path_obj = Path(config_path)
-        if not config_path_obj.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        
-        # Create compiler
-        compiler = PipelineDAGCompiler(
-            config_path=config_path,
-            sagemaker_session=sagemaker_session,
-            role=role,
-            **kwargs
-        )
-        
-        # Use compile method which uses our create_template method
-        pipeline = compiler.compile(dag, pipeline_name=pipeline_name)
-        
-        logger.info(f"Successfully compiled DAG to pipeline: {pipeline.name}")
-        return pipeline
-        
-    except Exception as e:
-        logger.error(f"Failed to compile DAG to pipeline: {e}")
-        raise PipelineAPIError(f"DAG compilation failed: {e}") from e
-```
-
-This function provides a streamlined interface for common use cases where users want immediate pipeline generation without intermediate steps.
-
-#### Advanced Class Interface
+**Raises:**
+- **ValueError** – If DAG nodes don't have corresponding configurations
+- **ConfigurationError** – If configuration validation fails
+- **RegistryError** – If step builders not found for config types
 
 ```python
-class PipelineDAGCompiler:
-    """
-    Advanced API for DAG-to-template compilation with additional control.
-    
-    This class provides more control over the compilation process, including
-    validation, debugging, and customization options.
-    """
-    
-    def __init__(
-        self,
-        config_path: str,
-        sagemaker_session: Optional[PipelineSession] = None,
-        role: Optional[str] = None,
-        config_resolver: Optional[StepConfigResolver] = None,
-        builder_registry: Optional[StepBuilderRegistry] = None,
-        **kwargs
-    ):
-        """
-        Initialize compiler with configuration and session.
-        
-        Args:
-            config_path: Path to configuration file
-            sagemaker_session: SageMaker session for pipeline execution
-            role: IAM role for pipeline execution
-            config_resolver: Custom config resolver (optional)
-            builder_registry: Custom builder registry (optional)
-            **kwargs: Additional arguments for template constructor
-        """
-        self.config_path = config_path
-        self.sagemaker_session = sagemaker_session
-        self.role = role
-        self.template_kwargs = kwargs
-        
-        # Initialize components
-        self.config_resolver = config_resolver or StepConfigResolver()
-        self.builder_registry = builder_registry or StepBuilderRegistry()
-        self.validation_engine = ValidationEngine()
-        
-        self.logger = logging.getLogger(__name__)
-        
-        # Store the last template created during compilation
-        self._last_template = None
-        
-        # Validate config file exists
-        config_path_obj = Path(config_path)
-        if not config_path_obj.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
-```
+from cursus.core.compiler.dag_compiler import compile_dag_to_pipeline
+from cursus.api.dag.base_dag import PipelineDAG
 
-### 2. Comprehensive Validation Framework
-
-The compiler includes sophisticated validation capabilities that check multiple aspects of pipeline compatibility:
-
-```python
-def validate_dag_compatibility(self, dag: PipelineDAG) -> ValidationResult:
-    """
-    Validate that DAG nodes have corresponding configurations.
-    
-    Returns detailed validation results including:
-    - Missing configurations
-    - Unresolvable step builders
-    - Configuration validation errors
-    - Dependency resolution issues
-    
-    Args:
-        dag: PipelineDAG instance to validate
-        
-    Returns:
-        ValidationResult with detailed validation information
-    """
-    try:
-        self.logger.info(f"Validating DAG compatibility for {len(dag.nodes)} nodes")
-        
-        # Create a template using our create_template method
-        temp_template = self.create_template(dag)
-        
-        # Get resolved mappings
-        dag_nodes = list(dag.nodes)
-        available_configs = temp_template.configs
-        
-        try:
-            config_map = temp_template._create_config_map()
-        except Exception as e:
-            # If config resolution fails, create partial validation result
-            return ValidationResult(
-                is_valid=False,
-                missing_configs=dag_nodes,
-                unresolvable_builders=[],
-                config_errors={'resolution': [str(e)]},
-                dependency_issues=[],
-                warnings=[]
-            )
-        
-        try:
-            builder_map = temp_template._create_step_builder_map()
-        except Exception as e:
-            # If builder resolution fails, create partial validation result
-            return ValidationResult(
-                is_valid=False,
-                missing_configs=[],
-                unresolvable_builders=list(config_map.keys()),
-                config_errors={'builder_resolution': [str(e)]},
-                dependency_issues=[],
-                warnings=[]
-            )
-        
-        # Run comprehensive validation
-        validation_result = self.validation_engine.validate_dag_compatibility(
-            dag_nodes=dag_nodes,
-            available_configs=available_configs,
-            config_map=config_map,
-            builder_registry=builder_map
-        )
-        
-        self.logger.info(f"Validation completed: {validation_result.summary()}")
-        return validation_result
-        
-    except Exception as e:
-        self.logger.error(f"Validation failed with error: {e}")
-        return ValidationResult(
-            is_valid=False,
-            missing_configs=[],
-            unresolvable_builders=[],
-            config_errors={'validation_error': [str(e)]},
-            dependency_issues=[],
-            warnings=[]
-        )
-```
-
-The validation framework provides:
-- **Graceful Error Handling**: Creates partial validation results when specific steps fail
-- **Comprehensive Coverage**: Checks configuration resolution, builder mapping, and dependencies
-- **Detailed Reporting**: Provides specific information about each type of validation failure
-- **Progressive Validation**: Continues validation even when early steps fail
-
-### 3. Resolution Preview and Debugging
-
-The compiler provides detailed preview capabilities for understanding how DAG nodes will be resolved:
-
-```python
-def preview_resolution(self, dag: PipelineDAG) -> ResolutionPreview:
-    """
-    Preview how DAG nodes will be resolved to configs and builders.
-    
-    Returns a detailed preview showing:
-    - Node → Configuration mappings
-    - Configuration → Step Builder mappings
-    - Detected step types and dependencies
-    - Potential issues or ambiguities
-    
-    Args:
-        dag: PipelineDAG instance to preview
-        
-    Returns:
-        ResolutionPreview with detailed resolution information
-    """
-    try:
-        self.logger.info(f"Previewing resolution for {len(dag.nodes)} DAG nodes")
-        
-        # Create a template using our create_template method
-        temp_template = self.create_template(dag)
-        
-        # Get preview data
-        dag_nodes = list(dag.nodes)
-        available_configs = temp_template.configs
-        
-        # Get metadata from template if available
-        metadata = None
-        if hasattr(temp_template, '_loaded_metadata'):
-            metadata = temp_template._loaded_metadata
-        
-        # Get resolution candidates
-        preview_data = self.config_resolver.preview_resolution(
-            dag_nodes=dag_nodes,
-            available_configs=available_configs,
-            metadata=metadata
-        )
-        
-        # Build preview result
-        node_config_map = {}
-        config_builder_map = {}
-        resolution_confidence = {}
-        ambiguous_resolutions = []
-        recommendations = []
-        
-        for node, candidates in preview_data.items():
-            if candidates:
-                best_candidate = candidates[0]
-                config_type = best_candidate['config_type']
-                confidence = best_candidate['confidence']
-                
-                node_config_map[node] = config_type
-                resolution_confidence[node] = confidence
-                
-                # Get builder for this config type
-                try:
-                    step_type = self.builder_registry._config_class_to_step_type(config_type)
-                    builder_class = self.builder_registry.get_builder_for_step_type(step_type)
-                    config_builder_map[config_type] = builder_class.__name__
-                except Exception:
-                    config_builder_map[config_type] = "UNKNOWN"
-                
-                # Check for ambiguity
-                if len(candidates) > 1 and abs(candidates[0]['confidence'] - candidates[1]['confidence']) < 0.1:
-                    ambiguous_resolutions.append(f"{node} has {len(candidates)} similar candidates")
-                
-                # Add recommendations for low confidence
-                if confidence < 0.8:
-                    recommendations.append(f"Consider renaming '{node}' for better matching")
-            else:
-                node_config_map[node] = "UNRESOLVED"
-                resolution_confidence[node] = 0.0
-                recommendations.append(f"Add configuration for node '{node}'")
-        
-        preview = ResolutionPreview(
-            node_config_map=node_config_map,
-            config_builder_map=config_builder_map,
-            resolution_confidence=resolution_confidence,
-            ambiguous_resolutions=ambiguous_resolutions,
-            recommendations=recommendations
-        )
-        
-        self.logger.info("Resolution preview completed successfully")
-        return preview
-        
-    except Exception as e:
-        self.logger.error(f"Failed to generate resolution preview: {e}")
-        # Return empty preview with error
-        return ResolutionPreview(
-            node_config_map={},
-            config_builder_map={},
-            resolution_confidence={},
-            ambiguous_resolutions=[],
-            recommendations=[f"Preview failed: {str(e)}"]
-        )
-```
-
-### 4. Template Creation and Management
-
-The compiler provides sophisticated template creation and management capabilities:
-
-```python
-def create_template(self, dag: PipelineDAG, **kwargs) -> "DynamicPipelineTemplate":
-    """
-    Create a pipeline template from the DAG without generating the pipeline.
-    
-    This allows inspecting or modifying the template before pipeline generation.
-    
-    Args:
-        dag: PipelineDAG instance to create a template for
-        **kwargs: Additional arguments for template
-        
-    Returns:
-        DynamicPipelineTemplate instance ready for pipeline generation
-        
-    Raises:
-        PipelineAPIError: If template creation fails
-    """
-    try:
-        # Import here to avoid circular import
-        from .dynamic_template import DynamicPipelineTemplate
-        
-        self.logger.info(f"Creating template for DAG with {len(dag.nodes)} nodes")
-        
-        # Merge kwargs with default values
-        template_kwargs = {**self.template_kwargs}
-        
-        # Set default skip_validation if not provided
-        if 'skip_validation' not in kwargs:
-            template_kwargs['skip_validation'] = False  # Enable validation by default
-        
-        # Update with any other kwargs provided
-        template_kwargs.update(kwargs)
-        
-        # Create dynamic template
-        template = DynamicPipelineTemplate(
-            dag=dag,
-            config_path=self.config_path,
-            config_resolver=self.config_resolver,
-            builder_registry=self.builder_registry,
-            sagemaker_session=self.sagemaker_session,
-            role=self.role,
-            **template_kwargs
-        )
-        
-        self.logger.info(f"Successfully created template")
-        return template
-        
-    except Exception as e:
-        self.logger.error(f"Failed to create template: {e}")
-        raise PipelineAPIError(f"Template creation failed: {e}") from e
-```
-
-## Core Compilation Methods
-
-### Standard Compilation
-
-```python
-def compile(self, dag: PipelineDAG, pipeline_name: Optional[str] = None, **kwargs) -> Pipeline:
-    """
-    Compile DAG to pipeline with full control.
-    
-    Args:
-        dag: PipelineDAG instance to compile
-        pipeline_name: Optional pipeline name override
-        **kwargs: Additional arguments for template
-        
-    Returns:
-        Generated SageMaker Pipeline
-        
-    Raises:
-        PipelineAPIError: If compilation fails
-    """
-    try:
-        self.logger.info(f"Compiling DAG with {len(dag.nodes)} nodes to pipeline")
-        
-        # Reuse our create_template method but enforce skip_validation=True for performance
-        # as the validation is typically done separately before compilation
-        template_kwargs = {**self.template_kwargs, **kwargs}
-        template_kwargs['skip_validation'] = True  # Skip validation for performance during direct compilation
-        
-        template = self.create_template(dag, **template_kwargs)
-        
-        # Build pipeline
-        pipeline = template.generate_pipeline()
-        
-        # Store the template after generate_pipeline() has updated its internal state
-        self._last_template = template
-        
-        # Override pipeline name if provided or generate a new one
-        if pipeline_name:
-            pipeline.name = pipeline_name
-        else:
-            # Import here to avoid circular import
-            from .name_generator import generate_pipeline_name
-            
-            # Get base_config from template
-            base_config = template.base_config
-            base_name = getattr(base_config, 'pipeline_name', 'mods')
-            version = getattr(base_config, 'pipeline_version', '1.0')
-            # Generate a name using the same approach as PipelineTemplateBase
-            pipeline.name = generate_pipeline_name(base_name, version)
-        
-        self.logger.info(f"Successfully compiled DAG to pipeline: {pipeline.name}")
-        return pipeline
-        
-    except Exception as e:
-        self.logger.error(f"Failed to compile DAG to pipeline: {e}")
-        raise PipelineAPIError(f"DAG compilation failed: {e}") from e
-```
-
-### Compilation with Detailed Reporting
-
-```python
-def compile_with_report(
-    self,
-    dag: PipelineDAG,
-    pipeline_name: Optional[str] = None,
-    **kwargs
-) -> Tuple[Pipeline, ConversionReport]:
-    """
-    Compile DAG to pipeline and return detailed compilation report.
-    
-    Args:
-        dag: PipelineDAG instance to compile
-        pipeline_name: Optional pipeline name override
-        **kwargs: Additional arguments for template
-        
-    Returns:
-        Tuple of (Pipeline, ConversionReport)
-    """
-    try:
-        self.logger.info(f"Compiling DAG with detailed reporting")
-        
-        # Compile pipeline
-        pipeline = self.compile(dag, pipeline_name=pipeline_name, **kwargs)
-        
-        # Generate report
-        dag_nodes = list(dag.nodes)
-        resolution_details = {}
-        total_confidence = 0.0
-        warnings = []
-        
-        # Get resolution preview for report details
-        preview = self.preview_resolution(dag)
-        
-        for node in dag_nodes:
-            if node in preview.node_config_map:
-                config_type = preview.node_config_map[node]
-                confidence = preview.resolution_confidence.get(node, 0.0)
-                builder_type = preview.config_builder_map.get(config_type, 'Unknown')
-                
-                resolution_details[node] = {
-                    'config_type': config_type,
-                    'builder_type': builder_type,
-                    'confidence': confidence
-                }
-                
-                total_confidence += confidence
-                
-                if confidence < 0.8:
-                    warnings.append(f"Low confidence resolution for node '{node}': {confidence:.2f}")
-        
-        avg_confidence = total_confidence / len(dag_nodes) if dag_nodes else 0.0
-        
-        # Add ambiguity warnings
-        warnings.extend(preview.ambiguous_resolutions)
-        
-        report = ConversionReport(
-            pipeline_name=pipeline.name,
-            steps=dag_nodes,
-            resolution_details=resolution_details,
-            avg_confidence=avg_confidence,
-            warnings=warnings,
-            metadata={
-                'dag_nodes': len(dag_nodes),
-                'dag_edges': len(dag.edges),
-                'config_path': self.config_path,
-                'builder_registry_stats': self.builder_registry.get_registry_stats()
-            }
-        )
-        
-        self.logger.info(f"Compilation completed with report: {report.summary()}")
-        return pipeline, report
-        
-    except Exception as e:
-        self.logger.error(f"Failed to compile DAG with report: {e}")
-        raise PipelineAPIError(f"DAG compilation with report failed: {e}") from e
-```
-
-## Advanced Features
-
-### 1. Execution Document Integration
-
-The compiler provides specialized support for execution document filling, particularly useful for MODS integration:
-
-```python
-def compile_and_fill_execution_doc(
-    self, 
-    dag: PipelineDAG, 
-    execution_doc: Dict[str, Any],
-    pipeline_name: Optional[str] = None,
-    **kwargs
-) -> Tuple[Pipeline, Dict[str, Any]]:
-    """
-    Compile a DAG to pipeline and fill an execution document in one step.
-    
-    This method ensures proper sequencing of the pipeline generation and 
-    execution document filling, addressing timing issues with template metadata.
-    
-    Args:
-        dag: PipelineDAG instance to compile
-        execution_doc: Execution document template to fill
-        pipeline_name: Optional pipeline name override
-        **kwargs: Additional arguments for template
-        
-    Returns:
-        Tuple of (compiled_pipeline, filled_execution_doc)
-    """
-    # First compile the pipeline (this also stores the template)
-    pipeline = self.compile(dag, pipeline_name=pipeline_name, **kwargs)
-    
-    # Now use the stored template to fill the execution document
-    if self._last_template is not None:
-        filled_doc = self._last_template.fill_execution_document(execution_doc)
-        return pipeline, filled_doc
-    else:
-        self.logger.warning("No template available for execution document filling")
-        return pipeline, execution_doc
-```
-
-This method addresses a critical timing issue where execution document filling requires metadata that's only available after pipeline generation is complete.
-
-### 2. Template State Management
-
-The compiler maintains template state for advanced use cases:
-
-```python
-def get_last_template(self) -> Optional["DynamicPipelineTemplate"]:
-    """
-    Get the last template used during compilation.
-    
-    This template will have its pipeline_metadata populated from the generation process.
-    Use this method to get access to a template that has gone through the complete
-    pipeline generation process, particularly useful for execution document generation.
-    
-    Returns:
-        The last template used in compilation, or None if no compilation has occurred
-    """
-    return self._last_template
-```
-
-### 3. Configuration File Validation
-
-```python
-def validate_config_file(self) -> Dict[str, Any]:
-    """
-    Validate the configuration file structure.
-    
-    Returns:
-        Dictionary with validation results
-    """
-    try:
-        # Create a minimal DAG to test config loading
-        test_dag = PipelineDAG()
-        test_dag.add_node("test_node")
-        
-        # Use create_template with skip_validation=True to just test config loading
-        temp_template = self.create_template(dag=test_dag, skip_validation=True)
-        
-        configs = temp_template.configs
-        
-        return {
-            'valid': True,
-            'config_count': len(configs),
-            'config_types': [type(config).__name__ for config in configs.values()],
-            'config_names': list(configs.keys())
-        }
-        
-    except Exception as e:
-        return {
-            'valid': False,
-            'error': str(e),
-            'config_count': 0,
-            'config_types': [],
-            'config_names': []
-        }
-```
-
-### 4. Registry Integration
-
-```python
-def get_supported_step_types(self) -> list:
-    """
-    Get list of supported step types.
-    
-    Returns:
-        List of supported step type names
-    """
-    return self.builder_registry.list_supported_step_types()
-```
-
-## Usage Examples
-
-### Simple Usage
-
-```python
-from src.cursus.core.compiler.dag_compiler import compile_dag_to_pipeline
-from src.cursus.api.dag.base_dag import PipelineDAG
-
-# Create a DAG
+# Create a simple DAG
 dag = PipelineDAG()
 dag.add_node("data_load")
 dag.add_node("preprocess")
-dag.add_node("train")
 dag.add_edge("data_load", "preprocess")
-dag.add_edge("preprocess", "train")
 
-# Compile to pipeline
+# Compile to SageMaker Pipeline
 pipeline = compile_dag_to_pipeline(
     dag=dag,
     config_path="configs/my_pipeline.json",
@@ -693,188 +80,288 @@ pipeline = compile_dag_to_pipeline(
     role="arn:aws:iam::123456789012:role/SageMakerRole"
 )
 
-# Deploy and run
+# Execute the pipeline
 pipeline.upsert()
-execution = pipeline.start()
 ```
 
-### Advanced Usage with Validation
+### PipelineDAGCompiler
+
+_class_ cursus.core.compiler.dag_compiler.PipelineDAGCompiler(_config_path_, _sagemaker_session=None_, _role=None_, _config_resolver=None_, _builder_registry=None_, _**kwargs_)
+
+Advanced API for DAG-to-template compilation with additional control. This class provides more control over the compilation process, including validation, debugging, and customization options.
+
+**Parameters:**
+- **config_path** (_str_) – Path to configuration file
+- **sagemaker_session** (_Optional[PipelineSession]_) – SageMaker session for pipeline execution
+- **role** (_Optional[str]_) – IAM role for pipeline execution
+- **config_resolver** (_Optional[StepConfigResolver]_) – Custom config resolver (optional)
+- **builder_registry** (_Optional[StepBuilderRegistry]_) – Custom builder registry (optional)
+- ****kwargs** – Additional arguments for template constructor
 
 ```python
-from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler
+from cursus.core.compiler.dag_compiler import PipelineDAGCompiler
 
-# Create compiler
+# Create compiler with custom settings
 compiler = PipelineDAGCompiler(
-    config_path="configs/my_pipeline.json",
+    config_path="configs/pipeline.json",
     sagemaker_session=session,
-    role=role
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
 )
 
-# Validate DAG compatibility first
+# Validate DAG before compilation
 validation_result = compiler.validate_dag_compatibility(dag)
 if not validation_result.is_valid:
-    print("Validation failed:")
-    print(validation_result.detailed_report())
-    exit(1)
+    print(f"Validation failed: {validation_result.summary()}")
 
+# Preview resolution
+preview = compiler.preview_resolution(dag)
+print(f"Node mappings: {preview.node_config_map}")
+
+# Compile with detailed report
+pipeline, report = compiler.compile_with_report(dag)
+print(f"Compilation report: {report.summary()}")
+```
+
+#### validate_dag_compatibility
+
+validate_dag_compatibility(_dag_)
+
+Validate that DAG nodes have corresponding configurations. Returns detailed validation results including missing configurations, unresolvable step builders, configuration validation errors, and dependency resolution issues.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance to validate
+
+**Returns:**
+- **ValidationResult** – ValidationResult with detailed validation information
+
+```python
+# Validate DAG compatibility
+validation_result = compiler.validate_dag_compatibility(dag)
+
+if validation_result.is_valid:
+    print("DAG is valid and ready for compilation")
+else:
+    print(f"Validation issues found:")
+    for error in validation_result.config_errors:
+        print(f"  - {error}")
+    
+    if validation_result.missing_configs:
+        print(f"Missing configs: {validation_result.missing_configs}")
+```
+
+#### preview_resolution
+
+preview_resolution(_dag_)
+
+Preview how DAG nodes will be resolved to configs and builders. Returns a detailed preview showing node → configuration mappings, configuration → step builder mappings, detected step types and dependencies, and potential issues or ambiguities.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance to preview
+
+**Returns:**
+- **ResolutionPreview** – ResolutionPreview with detailed resolution information
+
+```python
 # Preview resolution before compilation
 preview = compiler.preview_resolution(dag)
-print("Resolution Preview:")
-print(preview.display())
 
+# Examine node-to-config mappings
+for node, config_type in preview.node_config_map.items():
+    confidence = preview.resolution_confidence.get(node, 0.0)
+    builder = preview.config_builder_map.get(config_type, 'Unknown')
+    print(f"Node '{node}' -> {config_type} -> {builder} (confidence: {confidence:.2f})")
+
+# Check for issues
+if preview.ambiguous_resolutions:
+    print("Ambiguous resolutions found:")
+    for issue in preview.ambiguous_resolutions:
+        print(f"  - {issue}")
+
+# Review recommendations
+for recommendation in preview.recommendations:
+    print(f"Recommendation: {recommendation}")
+```
+
+#### compile
+
+compile(_dag_, _pipeline_name=None_, _**kwargs_)
+
+Compile DAG to pipeline with full control.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance to compile
+- **pipeline_name** (_Optional[str]_) – Optional pipeline name override
+- ****kwargs** – Additional arguments for template
+
+**Returns:**
+- **Pipeline** – Generated SageMaker Pipeline
+
+**Raises:**
+- **PipelineAPIError** – If compilation fails
+
+```python
+# Compile with custom pipeline name
+pipeline = compiler.compile(
+    dag=dag,
+    pipeline_name="my-custom-pipeline",
+    skip_validation=False
+)
+
+print(f"Compiled pipeline: {pipeline.name}")
+```
+
+#### compile_with_report
+
+compile_with_report(_dag_, _pipeline_name=None_, _**kwargs_)
+
+Compile DAG to pipeline and return detailed compilation report.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance to compile
+- **pipeline_name** (_Optional[str]_) – Optional pipeline name override
+- ****kwargs** – Additional arguments for template
+
+**Returns:**
+- **Tuple[Pipeline, ConversionReport]** – Tuple of (Pipeline, ConversionReport)
+
+```python
 # Compile with detailed reporting
 pipeline, report = compiler.compile_with_report(dag)
-print("Compilation Report:")
-print(report.detailed_report())
+
+print(f"Pipeline: {report.pipeline_name}")
+print(f"Steps: {len(report.steps)}")
+print(f"Average confidence: {report.avg_confidence:.2f}")
+
+# Review resolution details
+for node, details in report.resolution_details.items():
+    print(f"Node '{node}': {details['config_type']} -> {details['builder_type']}")
+
+# Check warnings
+if report.warnings:
+    print("Warnings:")
+    for warning in report.warnings:
+        print(f"  - {warning}")
 ```
 
-### Custom Components Usage
+#### create_template
+
+create_template(_dag_, _**kwargs_)
+
+Create a pipeline template from the DAG without generating the pipeline. This allows inspecting or modifying the template before pipeline generation.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance to create a template for
+- ****kwargs** – Additional arguments for template
+
+**Returns:**
+- **DynamicPipelineTemplate** – DynamicPipelineTemplate instance ready for pipeline generation
+
+**Raises:**
+- **PipelineAPIError** – If template creation fails
 
 ```python
-from src.cursus.core.compiler.config_resolver import StepConfigResolver
-from src.cursus.registry.builder_registry import StepBuilderRegistry
+# Create template for inspection
+template = compiler.create_template(dag)
 
-# Create custom components
-custom_resolver = StepConfigResolver()
-custom_registry = StepBuilderRegistry()
+# Inspect template properties
+print(f"Base config: {type(template.base_config).__name__}")
+print(f"Available configs: {list(template.configs.keys())}")
 
-# Create compiler with custom components
-compiler = PipelineDAGCompiler(
-    config_path="configs/my_pipeline.json",
-    config_resolver=custom_resolver,
-    builder_registry=custom_registry,
-    sagemaker_session=session,
-    role=role
-)
-
-# Use as normal
-pipeline = compiler.compile(dag)
+# Generate pipeline when ready
+pipeline = template.generate_pipeline()
 ```
 
-### Execution Document Integration
+#### compile_and_fill_execution_doc
+
+compile_and_fill_execution_doc(_dag_, _execution_doc_, _pipeline_name=None_, _**kwargs_)
+
+Compile a DAG to pipeline and fill an execution document in one step. This method ensures proper sequencing of the pipeline generation and execution document filling, addressing timing issues with template metadata.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance to compile
+- **execution_doc** (_Dict[str, Any]_) – Execution document template to fill
+- **pipeline_name** (_Optional[str]_) – Optional pipeline name override
+- ****kwargs** – Additional arguments for template
+
+**Returns:**
+- **Tuple[Pipeline, Dict[str, Any]]** – Tuple of (compiled_pipeline, filled_execution_doc)
 
 ```python
-# Compile pipeline and fill execution document in one step
-execution_doc_template = {
-    "PIPELINE_STEP_CONFIGS": {
-        "data_load": {"STEP_TYPE": ["PROCESSING_STEP"]},
-        "registration": {"STEP_TYPE": ["PROCESSING_STEP", "ModelRegistration"]}
-    }
+# Execution document template
+execution_doc = {
+    "pipeline_name": "{{pipeline_name}}",
+    "steps": "{{step_names}}",
+    "execution_role": "{{execution_role}}"
 }
 
+# Compile and fill document
 pipeline, filled_doc = compiler.compile_and_fill_execution_doc(
     dag=dag,
-    execution_doc=execution_doc_template
+    execution_doc=execution_doc,
+    pipeline_name="my-pipeline"
 )
 
-print(f"Pipeline: {pipeline.name}")
-print(f"Filled execution document: {filled_doc}")
+print(f"Filled document: {filled_doc}")
 ```
 
-## Error Handling and Robustness
+#### get_supported_step_types
 
-### Comprehensive Exception Handling
+get_supported_step_types()
 
-The compiler implements comprehensive error handling with specific exception types:
+Get list of supported step types.
+
+**Returns:**
+- **List[str]** – List of supported step type names
 
 ```python
-try:
-    pipeline = compile_dag_to_pipeline(dag, config_path)
-except ValueError as e:
-    print(f"Invalid input: {e}")
-except FileNotFoundError as e:
-    print(f"Configuration file issue: {e}")
-except ConfigurationError as e:
-    print(f"Configuration problem: {e}")
-except RegistryError as e:
-    print(f"Step builder issue: {e}")
-except PipelineAPIError as e:
-    print(f"General compilation error: {e}")
+# Check supported step types
+supported_types = compiler.get_supported_step_types()
+print(f"Supported step types: {supported_types}")
 ```
 
-### Graceful Degradation
+#### validate_config_file
 
-The validation system provides graceful degradation when specific validation steps fail:
+validate_config_file()
+
+Validate the configuration file structure.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary with validation results
 
 ```python
-try:
-    config_map = temp_template._create_config_map()
-except Exception as e:
-    # If config resolution fails, create partial validation result
-    return ValidationResult(
-        is_valid=False,
-        missing_configs=dag_nodes,
-        unresolvable_builders=[],
-        config_errors={'resolution': [str(e)]},
-        dependency_issues=[],
-        warnings=[]
-    )
+# Validate configuration file
+config_validation = compiler.validate_config_file()
+
+if config_validation['valid']:
+    print(f"Config file is valid with {config_validation['config_count']} configurations")
+    print(f"Config types: {config_validation['config_types']}")
+else:
+    print(f"Config file validation failed: {config_validation['error']}")
 ```
 
-## Integration Points
+#### get_last_template
 
-### Dynamic Template Integration
+get_last_template()
 
-The compiler creates and manages `DynamicPipelineTemplate` instances:
+Get the last template used during compilation. This template will have its pipeline_metadata populated from the generation process.
+
+**Returns:**
+- **Optional[DynamicPipelineTemplate]** – The last template used in compilation, or None if no compilation has occurred
 
 ```python
-# Create dynamic template
-template = DynamicPipelineTemplate(
-    dag=dag,
-    config_path=self.config_path,
-    config_resolver=self.config_resolver,
-    builder_registry=self.builder_registry,
-    sagemaker_session=self.sagemaker_session,
-    role=self.role,
-    **template_kwargs
-)
+# Compile pipeline
+pipeline = compiler.compile(dag)
+
+# Get the template used for compilation
+template = compiler.get_last_template()
+if template:
+    print(f"Template metadata: {template.pipeline_metadata}")
 ```
 
-### Validation Engine Integration
+## Related Documentation
 
-The compiler integrates with the validation engine for comprehensive checks:
-
-```python
-# Run comprehensive validation
-validation_result = self.validation_engine.validate_dag_compatibility(
-    dag_nodes=dag_nodes,
-    available_configs=available_configs,
-    config_map=config_map,
-    builder_registry=builder_map
-)
-```
-
-### Config Resolver Integration
-
-The compiler uses the config resolver for intelligent node-to-configuration mapping:
-
-```python
-# Get resolution candidates
-preview_data = self.config_resolver.preview_resolution(
-    dag_nodes=dag_nodes,
-    available_configs=available_configs,
-    metadata=metadata
-)
-```
-
-## Benefits of the Design
-
-The DAG Compiler design provides several key benefits:
-
-1. **Dual Interface**: Simple function for common cases, advanced class for complex scenarios
-2. **Comprehensive Validation**: Multi-level validation with detailed error reporting
-3. **Debugging Support**: Extensive preview and reporting capabilities
-4. **Template Management**: Sophisticated template creation and state management
-5. **Error Resilience**: Graceful error handling with specific exception types
-6. **Integration Ready**: Seamless integration with execution document systems
-7. **Customizable**: Support for custom resolvers and registries
-8. **Performance Optimized**: Intelligent validation skipping and caching
-
-## Related Components
-
-- [Dynamic Pipeline Template](dynamic_template.md): Template implementation used by the compiler
-- [Config Resolver](config_resolver.md): Intelligent DAG node-to-configuration mapping
-- [Validation Engine](validation.md): Comprehensive validation framework
-- [Step Builder Registry](../registry/builder_registry.md): Configuration-to-builder mapping
-- [Pipeline Exceptions](exceptions.md): Custom exception hierarchy for error handling
-- [Name Generator](name_generator.md): Pipeline name generation utilities
+- [Configuration Resolver](config_resolver.md) - Used for resolving DAG nodes to configurations
+- [Dynamic Template](dynamic_template.md) - Template system used for pipeline generation
+- [Validation](validation.md) - Validation engine for DAG compatibility checking
+- [Compiler Exceptions](exceptions.md) - Exception classes used in compilation
+- [Compiler Overview](README.md) - System overview and integration

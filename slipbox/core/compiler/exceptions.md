@@ -3,152 +3,273 @@ tags:
   - code
   - core
   - compiler
-  - error_handling
   - exceptions
+  - error_handling
 keywords:
-  - custom exceptions
-  - error handling
-  - pipeline validation
-  - exception hierarchy
-  - error diagnostics
+  - PipelineAPIError
+  - ConfigurationError
+  - AmbiguityError
+  - ValidationError
+  - ResolutionError
+  - exception handling
 topics:
   - error handling
-  - exception management
-  - pipeline validation
+  - exception classes
+  - pipeline compilation
 language: python
-date of note: 2025-08-07
+date of note: 2025-09-07
 ---
 
-# Pipeline API Exceptions
+# Compiler Exceptions
 
-## Purpose
+Custom exception classes for the Pipeline API to provide clear, actionable error messages for users.
 
-The exceptions module defines a hierarchy of custom exception classes specific to the Pipeline API. These exceptions provide structured error information to help users diagnose and resolve issues during pipeline generation.
+## Overview
 
-## Exception Hierarchy
+The `exceptions` module defines custom exceptions used throughout the Pipeline API to provide clear, actionable error messages for users. These exceptions are designed to give detailed information about what went wrong during pipeline compilation, including specific nodes that failed, available alternatives, and suggestions for resolution.
 
-```
-PipelineAPIError (Base class)
-├── ConfigurationError
-│   └── AmbiguityError
-├── ValidationError
-└── ResolutionError
-```
+The exception hierarchy provides specialized error types for different failure scenarios including configuration errors, resolution ambiguity, validation failures, and general pipeline API errors. Each exception includes relevant context information to help users diagnose and fix issues.
 
-## Core Problem Solved
+## Classes and Methods
 
-When errors occur during pipeline generation, generic Python exceptions often lack context about what went wrong and how to fix it. The custom exception classes:
+### Exception Classes
+- [`PipelineAPIError`](#pipelineapierror) - Base exception for all Pipeline API errors
+- [`ConfigurationError`](#configurationerror) - Raised when configuration-related errors occur
+- [`AmbiguityError`](#ambiguityerror) - Raised when multiple configurations could match a DAG node
+- [`ValidationError`](#validationerror) - Raised when DAG-config validation fails
+- [`ResolutionError`](#resolutionerror) - Raised when DAG node resolution fails
 
-1. Provide specific error types for different failure scenarios
-2. Include detailed context information about the error
-3. Allow for structured error handling
-4. Make troubleshooting more efficient
-
-## Exception Types
+## API Reference
 
 ### PipelineAPIError
 
-Base exception class for all Pipeline API exceptions.
+_class_ cursus.core.compiler.exceptions.PipelineAPIError
+
+Base exception for all Pipeline API errors.
 
 ```python
+from cursus.core.compiler.exceptions import PipelineAPIError
+
 try:
-    pipeline = compile_dag_to_pipeline(dag, config_path)
+    # Pipeline API operation
+    pass
 except PipelineAPIError as e:
-    print(f"Pipeline generation failed: {e}")
+    print(f"Pipeline API error: {e}")
 ```
 
 ### ConfigurationError
 
-Raised when configuration issues prevent pipeline generation.
+_class_ cursus.core.compiler.exceptions.ConfigurationError(_message_, _missing_configs=None_, _available_configs=None_)
+
+Raised when configuration-related errors occur.
+
+**Parameters:**
+- **message** (_str_) – Error message describing the configuration issue
+- **missing_configs** (_Optional[List[str]]_) – List of missing configuration names
+- **available_configs** (_Optional[List[str]]_) – List of available configuration names
+
+**Attributes:**
+- **missing_configs** (_List[str]_) – List of missing configuration names
+- **available_configs** (_List[str]_) – List of available configuration names
 
 ```python
+from cursus.core.compiler.exceptions import ConfigurationError
+
 try:
-    pipeline = compile_dag_to_pipeline(dag, config_path)
+    # Configuration resolution
+    pass
 except ConfigurationError as e:
-    print(f"Configuration issue: {e}")
+    print(f"Configuration error: {e}")
     print(f"Missing configs: {e.missing_configs}")
     print(f"Available configs: {e.available_configs}")
+    
+    # Suggest fixes
+    if e.missing_configs and e.available_configs:
+        print("Suggestions:")
+        for missing in e.missing_configs:
+            similar = [cfg for cfg in e.available_configs if missing.lower() in cfg.lower()]
+            if similar:
+                print(f"  - For '{missing}', consider: {similar}")
 ```
 
 ### AmbiguityError
 
-A specialized configuration error raised when multiple configurations match a node with similar confidence.
+_class_ cursus.core.compiler.exceptions.AmbiguityError(_message_, _node_name=None_, _candidates=None_)
+
+Raised when multiple configurations could match a DAG node.
+
+**Parameters:**
+- **message** (_str_) – Error message describing the ambiguity
+- **node_name** (_Optional[str]_) – Name of the ambiguous DAG node
+- **candidates** (_Optional[List[Any]]_) – List of candidate configurations
+
+**Attributes:**
+- **node_name** (_Optional[str]_) – Name of the ambiguous DAG node
+- **candidates** (_List[Any]_) – List of candidate configurations
 
 ```python
+from cursus.core.compiler.exceptions import AmbiguityError
+
 try:
-    pipeline = compile_dag_to_pipeline(dag, config_path)
+    # Node resolution
+    pass
 except AmbiguityError as e:
-    print(f"Ambiguous configuration: {e}")
-    print(f"Node: {e.node_name}")
-    print(f"Candidates: {e.candidates}")
-    print("Try using more specific node names or add job_type attributes")
+    print(f"Ambiguity error: {e}")
+    print(f"Ambiguous node: {e.node_name}")
+    
+    # Show candidates with details
+    if e.candidates:
+        print("Candidate configurations:")
+        for candidate in e.candidates:
+            if isinstance(candidate, dict):
+                config_type = candidate.get('config_type', 'Unknown')
+                confidence = candidate.get('confidence', 0.0)
+                job_type = candidate.get('job_type', 'N/A')
+                print(f"  - {config_type} (job_type='{job_type}', confidence={confidence:.2f})")
 ```
 
 ### ValidationError
 
-Raised when validation checks fail during pipeline generation.
+_class_ cursus.core.compiler.exceptions.ValidationError(_message_, _validation_errors=None_)
+
+Raised when DAG-config validation fails.
+
+**Parameters:**
+- **message** (_str_) – Error message describing the validation failure
+- **validation_errors** (_Optional[Dict[str, List[str]]]_) – Dictionary of validation errors by category
+
+**Attributes:**
+- **validation_errors** (_Dict[str, List[str]]_) – Dictionary of validation errors by category
 
 ```python
+from cursus.core.compiler.exceptions import ValidationError
+
 try:
-    pipeline = compile_dag_to_pipeline(dag, config_path)
+    # DAG validation
+    pass
 except ValidationError as e:
-    print(f"Validation failed: {e}")
-    for category, errors in e.validation_errors.items():
-        print(f"  {category}: {errors}")
+    print(f"Validation error: {e}")
+    
+    # Show detailed validation errors
+    if e.validation_errors:
+        for category, errors in e.validation_errors.items():
+            print(f"{category} errors:")
+            for error in errors:
+                print(f"  - {error}")
+                
+    # Handle specific validation categories
+    if 'missing_configs' in e.validation_errors:
+        missing = e.validation_errors['missing_configs']
+        print(f"Add configurations for: {missing}")
+        
+    if 'unresolvable_builders' in e.validation_errors:
+        unresolvable = e.validation_errors['unresolvable_builders']
+        print(f"Register step builders for: {unresolvable}")
 ```
 
 ### ResolutionError
 
-Raised when the resolver cannot map nodes to configurations.
+_class_ cursus.core.compiler.exceptions.ResolutionError(_message_, _failed_nodes=None_, _suggestions=None_)
+
+Raised when DAG node resolution fails.
+
+**Parameters:**
+- **message** (_str_) – Error message describing the resolution failure
+- **failed_nodes** (_Optional[List[str]]_) – List of nodes that failed to resolve
+- **suggestions** (_Optional[List[str]]_) – List of suggestions for fixing the issue
+
+**Attributes:**
+- **failed_nodes** (_List[str]_) – List of nodes that failed to resolve
+- **suggestions** (_List[str]_) – List of suggestions for fixing the issue
 
 ```python
+from cursus.core.compiler.exceptions import ResolutionError
+
 try:
-    pipeline = compile_dag_to_pipeline(dag, config_path)
+    # Node resolution
+    pass
 except ResolutionError as e:
-    print(f"Resolution failed: {e}")
-    print(f"Unresolved nodes: {e.unresolved_nodes}")
+    print(f"Resolution error: {e}")
+    print(f"Failed nodes: {e.failed_nodes}")
+    
+    # Show suggestions
+    if e.suggestions:
+        print("Suggestions:")
+        for suggestion in e.suggestions:
+            print(f"  - {suggestion}")
+            
+    # Implement fixes based on suggestions
+    for node in e.failed_nodes:
+        print(f"Consider renaming node '{node}' or adding matching configuration")
 ```
 
-## Integration with External Exceptions
+## Exception Hierarchy
 
-The Pipeline API also re-exports relevant exceptions from dependent modules:
-
-- `RegistryError` from `pipeline_registry.exceptions`: Raised when the registry cannot map configurations to step builders.
-
-```python
-from src.pipeline_api.exceptions import RegistryError
-
-try:
-    pipeline = compile_dag_to_pipeline(dag, config_path)
-except RegistryError as e:
-    print(f"Registry issue: {e}")
-    print(f"Unresolvable types: {e.unresolvable_types}")
-    print(f"Available builders: {e.available_builders}")
+```
+PipelineAPIError (base)
+├── ConfigurationError
+├── AmbiguityError  
+├── ValidationError
+└── ResolutionError
 ```
 
-## Best Practices
+## Error Handling Patterns
 
-1. **Catch specific exceptions first**: More specific exceptions should be caught before more general ones.
-2. **Extract context information**: Use the additional attributes on exception instances to provide helpful error messages.
-3. **Provide resolution hints**: Use the exception information to suggest how the user might fix the issue.
+### Comprehensive Error Handling
 
 ```python
-from src.pipeline_api.exceptions import ConfigurationError, ValidationError, RegistryError, PipelineAPIError
+from cursus.core.compiler.exceptions import (
+    PipelineAPIError, ConfigurationError, AmbiguityError, 
+    ValidationError, ResolutionError
+)
 
 try:
+    # Pipeline compilation
     pipeline = compile_dag_to_pipeline(dag, config_path)
+    
 except ConfigurationError as e:
-    print(f"Configuration issue: {e}")
-    # Configuration-specific handling
+    print("Configuration issue - check your config file")
+    print(f"Missing: {e.missing_configs}")
+    print(f"Available: {e.available_configs}")
+    
+except AmbiguityError as e:
+    print("Multiple configs match - be more specific")
+    print(f"Ambiguous node: {e.node_name}")
+    
 except ValidationError as e:
-    print(f"Validation failed: {e}")
-    # Validation-specific handling
-except RegistryError as e:
-    print(f"Registry issue: {e}")
-    # Registry-specific handling
+    print("Validation failed - fix configuration issues")
+    for category, errors in e.validation_errors.items():
+        print(f"{category}: {errors}")
+        
+except ResolutionError as e:
+    print("Resolution failed - check node names")
+    print(f"Failed nodes: {e.failed_nodes}")
+    
 except PipelineAPIError as e:
-    print(f"Other pipeline error: {e}")
-    # Generic handling
+    print(f"General pipeline error: {e}")
 ```
 
-These exceptions enable better error handling, clearer error messages, and more efficient troubleshooting when working with the Pipeline API.
+### Graceful Degradation
+
+```python
+def safe_compile_pipeline(dag, config_path):
+    """Compile pipeline with graceful error handling."""
+    try:
+        return compile_dag_to_pipeline(dag, config_path)
+    except AmbiguityError as e:
+        # Try with first candidate
+        print(f"Warning: Using first candidate for ambiguous node {e.node_name}")
+        return compile_dag_to_pipeline(dag, config_path, use_first_match=True)
+    except ConfigurationError as e:
+        # Provide fallback configuration
+        print(f"Warning: Configuration error, using defaults: {e}")
+        return None
+```
+
+## Related Documentation
+
+- [DAG Compiler](dag_compiler.md) - Uses these exceptions for error reporting
+- [Configuration Resolver](config_resolver.md) - Raises ConfigurationError and AmbiguityError
+- [Dynamic Template](dynamic_template.md) - Raises ValidationError during template creation
+- [Validation](validation.md) - Raises ValidationError for validation failures
+- [Compiler Overview](README.md) - System overview and integration
