@@ -29,7 +29,7 @@ Here's a simple example to create and compile a machine learning pipeline:
 .. code-block:: python
 
    import cursus
-   from cursus import PipelineDAG
+   from cursus.api import PipelineDAG
    
    # Create a new DAG
    dag = PipelineDAG()
@@ -58,17 +58,15 @@ For more control over the compilation process:
 .. code-block:: python
 
    from cursus.core.compiler import PipelineDAGCompiler
-   from cursus.core.config_fields import ConfigMerger
+   from cursus.core.config_fields import load_configs
    
    # Create compiler with custom configuration
    compiler = PipelineDAGCompiler()
-   config_merger = ConfigMerger()
    
    # Compile with advanced options
    pipeline = compiler.compile(
        dag,
        pipeline_name="advanced-pipeline",
-       config_merger=config_merger,
        enable_caching=True,
        role_arn="arn:aws:iam::123456789012:role/SageMakerRole"
    )
@@ -80,25 +78,26 @@ Cursus provides pre-built step builders for common ML tasks:
 
 .. code-block:: python
 
-   from cursus.steps.builders import BuilderXGBoostTrainingStep
-   from cursus.steps.configs import ConfigXGBoostTrainingStep
+   from cursus.steps.builders import XGBoostTrainingStepBuilder
+   from cursus.steps.configs import XGBoostTrainingConfig
    
    # Configure XGBoost training step
-   config = ConfigXGBoostTrainingStep(
-       model_name="fraud-detector",
+   config = XGBoostTrainingConfig(
+       input_path="s3://my-bucket/preprocessed-data/",
+       output_path="s3://my-bucket/model-artifacts/",
+       training_instance_type="ml.m5.xlarge",
+       training_instance_count=1,
        hyperparameters={
            "max_depth": 6,
            "eta": 0.3,
            "objective": "binary:logistic",
            "num_round": 100
-       },
-       instance_type="ml.m5.xlarge",
-       instance_count=1
+       }
    )
    
    # Build the step
-   builder = BuilderXGBoostTrainingStep()
-   training_step = builder.build(config)
+   builder = XGBoostTrainingStepBuilder(config=config)
+   training_step = builder.create_step()
 
 Pipeline Validation
 ~~~~~~~~~~~~~~~~~~~
@@ -107,7 +106,7 @@ Validate your pipeline before execution:
 
 .. code-block:: python
 
-   from cursus.validation.alignment import UnifiedAlignmentTester
+   from cursus.validation import UnifiedAlignmentTester
    
    # Create alignment tester
    tester = UnifiedAlignmentTester()
@@ -132,11 +131,12 @@ Here's a complete example of a typical ML pipeline:
 
 .. code-block:: python
 
-   from cursus import PipelineDAG, compile_dag_to_pipeline
+   from cursus.api import PipelineDAG
+   from cursus.core.compiler import compile_dag_to_pipeline
    from cursus.steps.configs import (
-       ConfigTabularPreprocessingStep,
-       ConfigXGBoostTrainingStep,
-       ConfigXGBoostModelEvalStep
+       TabularPreprocessingConfig,
+       XGBoostTrainingConfig,
+       XGBoostModelEvalConfig
    )
    
    # Create DAG
@@ -152,22 +152,24 @@ Here's a complete example of a typical ML pipeline:
    dag.add_edge("training", "evaluation")
    
    # Configure steps
-   preprocessing_config = ConfigTabularPreprocessingStep(
-       input_data="s3://my-bucket/raw-data/",
-       output_data="s3://my-bucket/processed-data/",
+   preprocessing_config = TabularPreprocessingConfig(
+       input_path="s3://my-bucket/raw-data/",
+       output_path="s3://my-bucket/processed-data/",
        processing_instance_type="ml.m5.large"
    )
    
-   training_config = ConfigXGBoostTrainingStep(
-       model_name="my-model",
-       hyperparameters={"max_depth": 5, "eta": 0.2},
-       instance_type="ml.m5.xlarge"
+   training_config = XGBoostTrainingConfig(
+       input_path="s3://my-bucket/processed-data/",
+       output_path="s3://my-bucket/model-artifacts/",
+       training_instance_type="ml.m5.xlarge",
+       hyperparameters={"max_depth": 5, "eta": 0.2}
    )
    
-   evaluation_config = ConfigXGBoostModelEvalStep(
-       model_name="my-model",
-       test_data="s3://my-bucket/test-data/",
-       instance_type="ml.m5.large"
+   evaluation_config = XGBoostModelEvalConfig(
+       input_path="s3://my-bucket/model-artifacts/",
+       test_data_path="s3://my-bucket/test-data/",
+       output_path="s3://my-bucket/evaluation-results/",
+       processing_instance_type="ml.m5.large"
    )
    
    # Compile pipeline
@@ -191,19 +193,21 @@ For inference pipelines:
 
 .. code-block:: python
 
-   from cursus.steps.configs import ConfigBatchTransformStep
+   from cursus.api import PipelineDAG
+   from cursus.core.compiler import compile_dag_to_pipeline
+   from cursus.steps.configs import BatchTransformStepConfig
    
    # Create inference DAG
    inference_dag = PipelineDAG()
    inference_dag.add_node("batch_transform")
    
    # Configure batch transform
-   transform_config = ConfigBatchTransformStep(
+   transform_config = BatchTransformStepConfig(
        model_name="my-trained-model",
-       input_data="s3://my-bucket/inference-data/",
+       input_path="s3://my-bucket/inference-data/",
        output_path="s3://my-bucket/predictions/",
-       instance_type="ml.m5.large",
-       instance_count=2
+       transform_instance_type="ml.m5.large",
+       transform_instance_count=2
    )
    
    # Compile and execute

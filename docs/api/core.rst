@@ -240,7 +240,7 @@ Basic Pipeline Compilation
 .. code-block:: python
 
    from cursus.core.compiler import PipelineDAGCompiler
-   from cursus.api.dag import PipelineDAG
+   from cursus.api import PipelineDAG
    
    # Create a DAG
    dag = PipelineDAG()
@@ -257,19 +257,16 @@ Advanced Configuration Management
 
 .. code-block:: python
 
-   from cursus.core.config_fields import ConfigMerger, ConfigFieldCategorizer
+   from cursus.core.config_fields import load_configs, serialize_config
    from cursus.core.base import BasePipelineConfig
    
-   # Create configuration merger
-   merger = ConfigMerger()
-   categorizer = ConfigFieldCategorizer()
+   # Load and serialize configurations
+   config = load_configs("pipeline_config.yaml")
+   serialized = serialize_config(config)
    
-   # Merge configurations with categorization
+   # Work with base configuration
    base_config = BasePipelineConfig()
    step_config = {"hyperparameters": {"learning_rate": 0.01}}
-   
-   merged_config = merger.merge(base_config, step_config)
-   categories = categorizer.categorize(merged_config)
 
 Custom Step Builder
 ~~~~~~~~~~~~~~~~~~~
@@ -282,7 +279,7 @@ Custom Step Builder
    class CustomStepBuilder(StepBuilderBase):
        """Custom step builder implementation."""
        
-       def build(self, config: BasePipelineConfig) -> ProcessingStep:
+       def create_step(self, config: BasePipelineConfig) -> ProcessingStep:
            """Build a custom processing step."""
            # Implementation details
            return ProcessingStep(
@@ -295,7 +292,7 @@ Configuration Validation
 
 .. code-block:: python
 
-   from cursus.core.base import ScriptContract, ValidationResult
+   from cursus.core import ScriptContract, ValidationResult
    
    class CustomContract(ScriptContract):
        """Custom validation contract."""
