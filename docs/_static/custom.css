@@ -1,0 +1,148 @@
+/* Custom CSS for Cursus documentation */
+
+/* Improve code block styling */
+.highlight {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 1em;
+    margin: 1em 0;
+}
+
+/* Better spacing for API documentation */
+.class > dt, .function > dt, .method > dt {
+    background-color: #f8f9fa;
+    border-left: 4px solid #007bff;
+    padding: 0.5em;
+    margin-top: 1em;
+}
+
+/* Improve parameter list styling */
+.field-list {
+    margin: 1em 0;
+}
+
+.field-list > dt {
+    font-weight: bold;
+    color: #495057;
+}
+
+/* Better table styling */
+table.docutils {
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+table.docutils th,
+table.docutils td {
+    border: 1px solid #dee2e6;
+    padding: 0.5em;
+}
+
+table.docutils th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+/* Improve admonition styling */
+.admonition {
+    margin: 1em 0;
+    padding: 1em;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.admonition.note {
+    background-color: #e7f3ff;
+    border-left-color: #007bff;
+}
+
+.admonition.warning {
+    background-color: #fff3cd;
+    border-left-color: #ffc107;
+}
+
+.admonition.tip {
+    background-color: #d1ecf1;
+    border-left-color: #17a2b8;
+}
+
+/* Better code inline styling */
+code.literal {
+    background-color: #f8f9fa;
+    color: #e83e8c;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* Improve navigation styling */
+.wy-nav-content-wrap {
+    margin-left: 300px;
+}
+
+@media screen and (max-width: 768px) {
+    .wy-nav-content-wrap {
+        margin-left: 0;
+    }
+}
+
+/* Better spacing for module documentation */
+.section > .section {
+    margin-top: 2em;
+}
+
+/* Improve source code links */
+.viewcode-link {
+    float: right;
+    font-size: 0.8em;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.viewcode-link:hover {
+    text-decoration: underline;
+}
+
+/* Better styling for autosummary tables */
+table.longtable {
+    width: 100%;
+}
+
+table.longtable td {
+    vertical-align: top;
+}
+
+/* Improve search results */
+.search li {
+    margin-bottom: 1em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Better footer styling */
+.rst-footer-buttons {
+    margin-top: 2em;
+    padding-top: 1em;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Improve version selector */
+.rst-versions {
+    border-top: 1px solid #27ae60;
+}
+
+/* Custom styling for package structure */
+.highlight-text pre {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+/* Better mobile responsiveness */
+@media screen and (max-width: 480px) {
+    .wy-table-responsive table td,
+    .wy-table-responsive table th {
+        white-space: normal;
+    }
+}
