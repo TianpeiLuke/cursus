@@ -5,6 +5,9 @@ Validates script functionality and data transfer consistency for pipeline develo
 Based on validated user story: "examine the script's functionality and their data 
 transfer consistency along the DAG, without worrying about the resolution of 
 step-to-step or step-to-script dependencies."
+
+Refactored implementation with PipelineTestingSpecBuilder and ScriptExecutionSpec
+for user-centric approach with local persistence.
 """
 
 import importlib.util
@@ -13,39 +16,237 @@ import os
 import time
 import argparse
 import pandas as pd
+import inspect
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
-from datetime import datetime
 
+# Import from separate model files
+from .runtime_models import (
+    ScriptTestResult, 
+    DataCompatibilityResult, 
+    ScriptExecutionSpec, 
+    PipelineTestingSpec, 
+    RuntimeTestingConfiguration
+)
+from .runtime_spec_builder import PipelineTestingSpecBuilder
 
-class ScriptTestResult(BaseModel):
-    """Simple result model for script testing"""
-    script_name: str
-    success: bool
-    error_message: Optional[str] = None
-    execution_time: float = 0.0
-    has_main_function: bool = False
-
-
-class DataCompatibilityResult(BaseModel):
-    """Result model for data compatibility testing"""
-    script_a: str
-    script_b: str
-    compatible: bool
-    compatibility_issues: List[str] = Field(default_factory=list)
-    data_format_a: Optional[str] = None
-    data_format_b: Optional[str] = None
+# Import PipelineDAG for integration
+from cursus.api.dag.base_dag import PipelineDAG
 
 
 class RuntimeTester:
-    """Simple, effective runtime testing for pipeline scripts"""
+    """Core testing engine that uses PipelineTestingSpecBuilder for parameter extraction"""
     
-    def __init__(self, workspace_dir: str = "./test_workspace"):
-        """Initialize with minimal setup"""
-        self.workspace_dir = Path(workspace_dir)
-        self.workspace_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, config: RuntimeTestingConfiguration):
+        self.config = config
+        self.pipeline_spec = config.pipeline_spec
+        self.workspace_dir = Path(config.pipeline_spec.test_workspace_root)
+        
+        # Create builder instance for parameter extraction
+        self.builder = PipelineTestingSpecBuilder(
+            test_data_dir=config.pipeline_spec.test_workspace_root
+        )
     
+    def test_script_with_spec(self, script_spec: ScriptExecutionSpec, main_params: Dict[str, Any]) -> ScriptTestResult:
+        """Test script functionality using ScriptExecutionSpec"""
+        start_time = time.time()
+        
+        try:
+            script_path = self._find_script_path(script_spec.script_name)
+            
+            # Import script using standard Python import
+            spec = importlib.util.spec_from_file_location("script", script_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Check for main function with correct signature
+            has_main = hasattr(module, 'main') and callable(module.main)
+            
+            if not has_main:
+                return ScriptTestResult(
+                    script_name=script_spec.script_name,
+                    success=False,
+                    error_message="Script missing main() function",
+                    execution_time=time.time() - start_time,
+                    has_main_function=False
+                )
+            
+            # Validate main function signature matches script development guide
+            sig = inspect.signature(module.main)
+            expected_params = ['input_paths', 'output_paths', 'environ_vars', 'job_args']
+            actual_params = list(sig.parameters.keys())
+            
+            if not all(param in actual_params for param in expected_params):
+                return ScriptTestResult(
+                    script_name=script_spec.script_name,
+                    success=False,
+                    error_message="Main function signature doesn't match script development guide",
+                    execution_time=time.time() - start_time,
+                    has_main_function=True
+                )
+            
+            # Create test directories based on ScriptExecutionSpec
+            test_dir = Path(script_spec.output_paths["data_output"])
+            test_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Use ScriptExecutionSpec input data path or generate sample data
+            input_data_path = script_spec.input_paths.get("data_input")
+            if not input_data_path or not Path(input_data_path).exists():
+                # Generate sample data for testing
+                sample_data = self._generate_sample_data()
+                input_data_path = test_dir / "input_data.csv"
+                pd.DataFrame(sample_data).to_csv(input_data_path, index=False)
+            
+            # EXECUTE THE MAIN FUNCTION with ScriptExecutionSpec parameters
+            module.main(**main_params)
+            
+            return ScriptTestResult(
+                script_name=script_spec.script_name,
+                success=True,
+                error_message=None,
+                execution_time=time.time() - start_time,
+                has_main_function=True
+            )
+            
+        except Exception as e:
+            return ScriptTestResult(
+                script_name=script_spec.script_name,
+                success=False,
+                error_message=str(e),
+                execution_time=time.time() - start_time,
+                has_main_function=has_main if 'has_main' in locals() else False
+            )
+    
+    def test_data_compatibility_with_specs(self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec) -> DataCompatibilityResult:
+        """Test data compatibility between scripts using ScriptExecutionSpecs"""
+        
+        try:
+            # Execute script A using its ScriptExecutionSpec
+            main_params_a = self.builder.get_script_main_params(spec_a)
+            script_a_result = self.test_script_with_spec(spec_a, main_params_a)
+            
+            if not script_a_result.success:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=False,
+                    compatibility_issues=[f"Script A failed: {script_a_result.error_message}"]
+                )
+            
+            # Check if script A produced output
+            output_dir_a = Path(spec_a.output_paths["data_output"])
+            output_files = list(output_dir_a.glob("*.csv"))
+            
+            if not output_files:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=False,
+                    compatibility_issues=["Script A did not produce output data"]
+                )
+            
+            # Use script A's output as script B's input
+            # Create a modified spec_b with script A's output as input
+            modified_spec_b = ScriptExecutionSpec(
+                script_name=spec_b.script_name,
+                step_name=spec_b.step_name,
+                script_path=spec_b.script_path,
+                input_paths={"data_input": str(output_files[0])},  # Use script A's output
+                output_paths=spec_b.output_paths,
+                environ_vars=spec_b.environ_vars,
+                job_args=spec_b.job_args
+            )
+            
+            # Test script B with script A's output
+            main_params_b = self.builder.get_script_main_params(modified_spec_b)
+            script_b_result = self.test_script_with_spec(modified_spec_b, main_params_b)
+            
+            # Analyze compatibility
+            compatibility_issues = []
+            if not script_b_result.success:
+                compatibility_issues.append(f"Script B failed with script A output: {script_b_result.error_message}")
+            
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=script_b_result.success,
+                compatibility_issues=compatibility_issues,
+                data_format_a="csv",
+                data_format_b="csv"
+            )
+            
+        except Exception as e:
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=[f"Compatibility test failed: {str(e)}"]
+            )
+    
+    def test_pipeline_flow_with_spec(self, pipeline_spec: PipelineTestingSpec) -> Dict[str, Any]:
+        """Test end-to-end pipeline flow using PipelineTestingSpec and PipelineDAG"""
+        
+        results = {
+            "pipeline_success": True,
+            "script_results": {},
+            "data_flow_results": {},
+            "errors": []
+        }
+        
+        try:
+            dag = pipeline_spec.dag
+            script_specs = pipeline_spec.script_specs
+            
+            if not dag.nodes:
+                results["pipeline_success"] = False
+                results["errors"].append("No nodes found in pipeline DAG")
+                return results
+            
+            # Test each script individually first using ScriptExecutionSpec
+            for node_name in dag.nodes:
+                if node_name not in script_specs:
+                    results["pipeline_success"] = False
+                    results["errors"].append(f"No ScriptExecutionSpec found for node: {node_name}")
+                    continue
+                    
+                script_spec = script_specs[node_name]
+                main_params = self.builder.get_script_main_params(script_spec)
+                
+                script_result = self.test_script_with_spec(script_spec, main_params)
+                results["script_results"][node_name] = script_result
+                
+                if not script_result.success:
+                    results["pipeline_success"] = False
+                    results["errors"].append(f"Script {node_name} failed: {script_result.error_message}")
+            
+            # Test data flow between connected scripts using DAG edges
+            for edge in dag.edges:
+                script_a, script_b = edge
+                
+                if script_a not in script_specs or script_b not in script_specs:
+                    results["pipeline_success"] = False
+                    results["errors"].append(f"Missing ScriptExecutionSpec for edge: {script_a} -> {script_b}")
+                    continue
+                
+                spec_a = script_specs[script_a]
+                spec_b = script_specs[script_b]
+                
+                # Test data compatibility using ScriptExecutionSpecs
+                compat_result = self.test_data_compatibility_with_specs(spec_a, spec_b)
+                results["data_flow_results"][f"{script_a}->{script_b}"] = compat_result
+                
+                if not compat_result.compatible:
+                    results["pipeline_success"] = False
+                    results["errors"].extend(compat_result.compatibility_issues)
+            
+            return results
+            
+        except Exception as e:
+            results["pipeline_success"] = False
+            results["errors"].append(f"Pipeline flow test failed: {str(e)}")
+            return results
+    
+    # Keep existing methods for backward compatibility
     def test_script(self, script_name: str, sample_data: Optional[Dict] = None) -> ScriptTestResult:
         """Test single script functionality by ACTUALLY EXECUTING IT - USER REQUIREMENT 1 & 2"""
         start_time = time.time()
@@ -71,7 +272,6 @@ class RuntimeTester:
                 )
             
             # Validate main function signature matches script development guide
-            import inspect
             sig = inspect.signature(module.main)
             expected_params = ['input_paths', 'output_paths', 'environ_vars', 'job_args']
             actual_params = list(sig.parameters.keys())

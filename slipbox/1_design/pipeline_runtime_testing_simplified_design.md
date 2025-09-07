@@ -181,18 +181,68 @@ from cursus.steps.contracts.training_script_contract import TrainingScriptContra
 import argparse
 
 class ScriptExecutionSpec(BaseModel):
-    """Specification for executing a single script with main() interface"""
+    """User-owned specification for executing a single script with main() interface"""
     script_name: str = Field(..., description="Name of the script to test")
+    step_name: str = Field(..., description="Step name that matches PipelineDAG node name")
     script_path: Optional[str] = Field(None, description="Full path to script file")
     
-    # Main function parameters (exactly what script needs)
+    # Main function parameters (exactly what script needs) - user-provided
     input_paths: Dict[str, str] = Field(default_factory=dict, description="Input paths for script main()")
     output_paths: Dict[str, str] = Field(default_factory=dict, description="Output paths for script main()")
     environ_vars: Dict[str, str] = Field(default_factory=dict, description="Environment variables for script main()")
     job_args: Dict[str, Any] = Field(default_factory=dict, description="Job arguments for script main()")
     
-    # Contract reference for validation
-    contract: Optional[TrainingScriptContract] = Field(None, description="Script contract for parameter validation")
+    # User metadata for reuse
+    last_updated: Optional[str] = Field(None, description="Timestamp when spec was last updated")
+    user_notes: Optional[str] = Field(None, description="User notes about this script configuration")
+    
+    def save_to_file(self, specs_dir: str) -> str:
+        """Save ScriptExecutionSpec to JSON file for reuse with auto-generated filename"""
+        import json
+        from datetime import datetime
+        from pathlib import Path
+        
+        # Update timestamp
+        self.last_updated = datetime.now().isoformat()
+        
+        # Auto-generate filename based on script name for local runtime testing
+        filename = f"{self.script_name}_runtime_test_spec.json"
+        file_path = Path(specs_dir) / filename
+        
+        with open(file_path, 'w') as f:
+            json.dump(self.dict(), f, indent=2)
+        
+        return str(file_path)
+    
+    @classmethod
+    def load_from_file(cls, script_name: str, specs_dir: str) -> 'ScriptExecutionSpec':
+        """Load ScriptExecutionSpec from JSON file using auto-generated filename"""
+        import json
+        from pathlib import Path
+        
+        # Auto-generate filename based on script name (same pattern as save_to_file)
+        filename = f"{script_name}_runtime_test_spec.json"
+        file_path = Path(specs_dir) / filename
+        
+        if not file_path.exists():
+            raise FileNotFoundError(f"ScriptExecutionSpec file not found: {file_path}")
+        
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        return cls(**data)
+    
+    @classmethod
+    def create_default(cls, script_name: str, step_name: str, test_data_dir: str = "test/integration/runtime") -> 'ScriptExecutionSpec':
+        """Create a default ScriptExecutionSpec with minimal setup"""
+        return cls(
+            script_name=script_name,
+            step_name=step_name,
+            input_paths={"data_input": f"{test_data_dir}/{script_name}/input"},
+            output_paths={"data_output": f"{test_data_dir}/{script_name}/output"},
+            environ_vars={"LABEL_FIELD": "label"},
+            job_args={"job_type": "testing"}
+        )
 
 class PipelineTestingSpec(BaseModel):
     """Specification for testing an entire pipeline flow"""
@@ -222,30 +272,47 @@ class RuntimeTestingConfiguration(BaseModel):
     use_workspace_aware: bool = Field(default=False, description="Whether to use workspace-aware project structure")
 
 class PipelineTestingSpecBuilder:
-    """Builder to generate PipelineTestingSpec from DAG and contracts"""
+    """Builder to generate PipelineTestingSpec from DAG with local spec persistence and validation"""
     
-    def __init__(self, contracts_dir: str = "src/cursus/steps/contracts", test_data_dir: str = "test/integration/runtime"):
-        self.contracts_dir = Path(contracts_dir)
+    def __init__(self, test_data_dir: str = "test/integration/runtime"):
         self.test_data_dir = Path(test_data_dir)
+        self.specs_dir = self.test_data_dir / ".specs"  # Hidden directory for saved specs
+        self.specs_dir.mkdir(parents=True, exist_ok=True)
     
-    def build_from_dag(self, dag: PipelineDAG) -> PipelineTestingSpec:
+    def build_from_dag(self, dag: PipelineDAG, validate: bool = True) -> PipelineTestingSpec:
         """
-        Build PipelineTestingSpec from a PipelineDAG with automatic contract detection
+        Build PipelineTestingSpec from a PipelineDAG with automatic saved spec loading and validation
         
         Args:
             dag: Pipeline DAG structure to copy and build specs for
+            validate: Whether to validate that all specs are properly filled
             
         Returns:
             Complete PipelineTestingSpec ready for runtime testing
+            
+        Raises:
+            ValueError: If validation fails and required specs are missing or incomplete
         """
         script_specs = {}
+        missing_specs = []
+        incomplete_specs = []
         
+        # Load or create specs for each DAG node
         for node in dag.nodes:
-            # Auto-detect and load contract if available
-            contract = self._load_contract_for_node(node)
-            
-            # Build script execution spec
-            script_specs[node] = self._build_script_spec(node, contract)
+            try:
+                spec = self._load_or_create_script_spec(node)
+                script_specs[node] = spec
+                
+                # Check if spec is complete (has required fields filled)
+                if validate and not self._is_spec_complete(spec):
+                    incomplete_specs.append(node)
+                    
+            except FileNotFoundError:
+                missing_specs.append(node)
+        
+        # Validate all specs are present and complete
+        if validate:
+            self._validate_specs_completeness(dag.nodes, missing_specs, incomplete_specs)
         
         return PipelineTestingSpec(
             dag=dag,  # Copy the DAG structure
@@ -253,48 +320,234 @@ class PipelineTestingSpecBuilder:
             test_workspace_root=str(self.test_data_dir)
         )
     
-    def _load_contract_for_node(self, node_name: str) -> Optional[TrainingScriptContract]:
-        """Auto-detect and load contract for a pipeline node"""
-        # Try common contract naming patterns
-        contract_patterns = [
-            f"{node_name}_contract.py",
-            f"{node_name.lower()}_contract.py",
-            f"{node_name.replace('_', '')}_contract.py"
+    def _load_or_create_script_spec(self, node_name: str) -> ScriptExecutionSpec:
+        """Load saved ScriptExecutionSpec or create default if not found"""
+        try:
+            # Try to load saved spec using auto-generated filename
+            saved_spec = ScriptExecutionSpec.load_from_file(node_name, str(self.specs_dir))
+            print(f"Loaded saved spec for {node_name} (last updated: {saved_spec.last_updated})")
+            return saved_spec
+        except FileNotFoundError:
+            # Create default spec if no saved spec found
+            print(f"Creating default spec for {node_name}")
+            default_spec = ScriptExecutionSpec.create_default(node_name, node_name, str(self.test_data_dir))
+            
+            # Save the default spec for future use
+            self.save_script_spec(default_spec)
+            
+            return default_spec
+        except Exception as e:
+            print(f"Warning: Could not load saved spec for {node_name}: {e}")
+            # Create default spec if loading failed
+            print(f"Creating default spec for {node_name}")
+            default_spec = ScriptExecutionSpec.create_default(node_name, node_name, str(self.test_data_dir))
+            
+            # Save the default spec for future use
+            self.save_script_spec(default_spec)
+            
+            return default_spec
+    
+    def save_script_spec(self, spec: ScriptExecutionSpec) -> None:
+        """Save ScriptExecutionSpec to local file for reuse"""
+        saved_path = spec.save_to_file(str(self.specs_dir))
+        print(f"Saved spec for {spec.script_name} to {saved_path}")
+    
+    def update_script_spec(self, node_name: str, **updates) -> ScriptExecutionSpec:
+        """Update specific fields in a ScriptExecutionSpec and save it"""
+        # Load existing spec or create default
+        existing_spec = self._load_or_create_script_spec(node_name)
+        
+        # Update fields
+        spec_dict = existing_spec.dict()
+        spec_dict.update(updates)
+        
+        # Create updated spec
+        updated_spec = ScriptExecutionSpec(**spec_dict)
+        
+        # Save updated spec
+        self.save_script_spec(updated_spec)
+        
+        return updated_spec
+    
+    def list_saved_specs(self) -> List[str]:
+        """List all saved ScriptExecutionSpec names based on naming pattern"""
+        spec_files = list(self.specs_dir.glob("*_runtime_test_spec.json"))
+        # Extract script name from filename pattern: {script_name}_runtime_test_spec.json
+        return [f.stem.replace("_runtime_test_spec", "") for f in spec_files]
+    
+    def get_script_spec_by_name(self, script_name: str) -> Optional[ScriptExecutionSpec]:
+        """Get ScriptExecutionSpec by script name (for step name matching)"""
+        try:
+            return ScriptExecutionSpec.load_from_file(script_name, str(self.specs_dir))
+        except FileNotFoundError:
+            return None
+        except Exception as e:
+            print(f"Error loading spec for {script_name}: {e}")
+            return None
+    
+    def match_step_to_spec(self, step_name: str, available_specs: List[str]) -> Optional[str]:
+        """
+        Match a pipeline step name to the most appropriate ScriptExecutionSpec
+        
+        Args:
+            step_name: Name of the pipeline step
+            available_specs: List of available spec names
+            
+        Returns:
+            Best matching spec name or None if no good match found
+        """
+        # Direct match
+        if step_name in available_specs:
+            return step_name
+        
+        # Try common variations
+        variations = [
+            step_name.lower(),
+            step_name.replace('_', ''),
+            step_name.replace('-', '_'),
+            step_name.split('_')[0],  # First part of compound names
         ]
         
-        for pattern in contract_patterns:
-            contract_path = self.contracts_dir / pattern
-            if contract_path.exists():
-                # Load contract from file (implementation would import and parse)
-                # For now, return None - actual implementation would load the contract
-                return None
+        for variation in variations:
+            if variation in available_specs:
+                return variation
         
-        return None
+        # Fuzzy matching - find specs that contain step name parts
+        step_parts = step_name.lower().split('_')
+        best_match = None
+        best_score = 0
+        
+        for spec_name in available_specs:
+            spec_parts = spec_name.lower().split('_')
+            common_parts = set(step_parts) & set(spec_parts)
+            score = len(common_parts) / max(len(step_parts), len(spec_parts))
+            
+            if score > best_score and score > 0.5:  # At least 50% match
+                best_match = spec_name
+                best_score = score
+        
+        return best_match
     
-    def _build_script_spec(self, node_name: str, contract: Optional[TrainingScriptContract]) -> ScriptExecutionSpec:
-        """Build ScriptExecutionSpec for a single node"""
+    def _is_spec_complete(self, spec: ScriptExecutionSpec) -> bool:
+        """
+        Check if a ScriptExecutionSpec has all required fields properly filled
         
-        # Default paths following script development guide patterns
-        input_paths = {"data_input": str(self.test_data_dir / node_name / "input")}
-        output_paths = {"data_output": str(self.test_data_dir / node_name / "output")}
+        Args:
+            spec: ScriptExecutionSpec to validate
+            
+        Returns:
+            True if spec is complete, False otherwise
+        """
+        # Check required fields are not empty
+        if not spec.script_name or not spec.step_name:
+            return False
         
-        # Extract from contract if available
-        if contract:
-            environ_vars = getattr(contract, 'optional_env_vars', {})
-            job_args = getattr(contract, 'expected_arguments', {})
-        else:
-            # Provide sensible defaults
-            environ_vars = {"LABEL_FIELD": "label"}
-            job_args = {"job_type": "testing"}
+        # Check that essential paths are provided
+        if not spec.input_paths or not spec.output_paths:
+            return False
         
-        return ScriptExecutionSpec(
-            script_name=node_name,
-            input_paths=input_paths,
-            output_paths=output_paths,
-            environ_vars=environ_vars,
-            job_args=job_args,
-            contract=contract
-        )
+        # Check that input/output paths are not just empty strings
+        if not any(path.strip() for path in spec.input_paths.values()):
+            return False
+        
+        if not any(path.strip() for path in spec.output_paths.values()):
+            return False
+        
+        return True
+    
+    def _validate_specs_completeness(self, dag_nodes: List[str], missing_specs: List[str], incomplete_specs: List[str]) -> None:
+        """
+        Validate that all DAG nodes have complete ScriptExecutionSpecs
+        
+        Args:
+            dag_nodes: List of all DAG node names
+            missing_specs: List of nodes with missing specs
+            incomplete_specs: List of nodes with incomplete specs
+            
+        Raises:
+            ValueError: If validation fails with detailed error message
+        """
+        if missing_specs or incomplete_specs:
+            error_messages = []
+            
+            if missing_specs:
+                error_messages.append(f"Missing ScriptExecutionSpec files for nodes: {', '.join(missing_specs)}")
+                error_messages.append("Please create ScriptExecutionSpec for these nodes using:")
+                for node in missing_specs:
+                    error_messages.append(f"  builder.update_script_spec('{node}', input_paths={{...}}, output_paths={{...}})")
+            
+            if incomplete_specs:
+                error_messages.append(f"Incomplete ScriptExecutionSpec for nodes: {', '.join(incomplete_specs)}")
+                error_messages.append("Please update these specs with required fields:")
+                for node in incomplete_specs:
+                    error_messages.append(f"  builder.update_script_spec('{node}', input_paths={{...}}, output_paths={{...}})")
+            
+            error_messages.append(f"\nAll {len(dag_nodes)} DAG nodes must have complete ScriptExecutionSpec before testing.")
+            error_messages.append("Use builder.update_script_spec(node_name, **fields) to fill in missing information.")
+            
+            raise ValueError("\n".join(error_messages))
+    
+    def update_script_spec_interactive(self, node_name: str) -> ScriptExecutionSpec:
+        """
+        Interactively update a ScriptExecutionSpec by prompting user for missing fields
+        
+        Args:
+            node_name: Name of the DAG node to update
+            
+        Returns:
+            Updated ScriptExecutionSpec
+        """
+        # Load existing spec or create default
+        existing_spec = self._load_or_create_script_spec(node_name)
+        
+        print(f"\nUpdating ScriptExecutionSpec for node: {node_name}")
+        print(f"Current spec: {existing_spec.script_name}")
+        
+        # Prompt for input paths
+        if not existing_spec.input_paths or not any(path.strip() for path in existing_spec.input_paths.values()):
+            print("\nInput paths are required. Current:", existing_spec.input_paths)
+            input_path = input(f"Enter input path for {node_name} (e.g., 'test/data/{node_name}/input'): ").strip()
+            if input_path:
+                existing_spec.input_paths = {"data_input": input_path}
+        
+        # Prompt for output paths
+        if not existing_spec.output_paths or not any(path.strip() for path in existing_spec.output_paths.values()):
+            print("\nOutput paths are required. Current:", existing_spec.output_paths)
+            output_path = input(f"Enter output path for {node_name} (e.g., 'test/data/{node_name}/output'): ").strip()
+            if output_path:
+                existing_spec.output_paths = {"data_output": output_path}
+        
+        # Prompt for environment variables (optional)
+        if not existing_spec.environ_vars:
+            env_vars = input(f"Enter environment variables for {node_name} (JSON format, or press Enter for defaults): ").strip()
+            if env_vars:
+                try:
+                    import json
+                    existing_spec.environ_vars = json.loads(env_vars)
+                except json.JSONDecodeError:
+                    print("Invalid JSON format, using defaults")
+                    existing_spec.environ_vars = {"LABEL_FIELD": "label"}
+            else:
+                existing_spec.environ_vars = {"LABEL_FIELD": "label"}
+        
+        # Prompt for job arguments (optional)
+        if not existing_spec.job_args:
+            job_args = input(f"Enter job arguments for {node_name} (JSON format, or press Enter for defaults): ").strip()
+            if job_args:
+                try:
+                    import json
+                    existing_spec.job_args = json.loads(job_args)
+                except json.JSONDecodeError:
+                    print("Invalid JSON format, using defaults")
+                    existing_spec.job_args = {"job_type": "testing"}
+            else:
+                existing_spec.job_args = {"job_type": "testing"}
+        
+        # Save updated spec
+        self.save_script_spec(existing_spec)
+        print(f"Updated and saved ScriptExecutionSpec for {node_name}")
+        
+        return existing_spec
     
     def get_script_main_params(self, spec: ScriptExecutionSpec) -> Dict[str, Any]:
         """
@@ -311,14 +564,14 @@ class PipelineTestingSpecBuilder:
         }
 ```
 
-### **Integration with Script Contracts**
+### **User-Centric Runtime Testing Approach**
 
-The builder automatically integrates with existing script contracts to extract execution parameters:
+The system is designed to be completely user-centric where users own their script specifications:
 
 ```python
-# Example: Using PipelineTestingSpecBuilder with automatic contract detection
+# Example: User-centric pipeline testing with local spec persistence
 from cursus.api.dag.base_dag import PipelineDAG
-from cursus.steps.contracts.xgboost_training_contract import XGBOOST_TRAIN_CONTRACT
+from cursus.validation.runtime_testing import PipelineTestingSpecBuilder
 
 # Create DAG
 dag = PipelineDAG(
@@ -326,24 +579,26 @@ dag = PipelineDAG(
     edges=[("data_loading", "xgboost_training"), ("xgboost_training", "model_evaluation")]
 )
 
-# Build pipeline testing spec with automatic contract detection
-builder = PipelineTestingSpecBuilder(
-    contracts_dir="src/cursus/steps/contracts",
-    test_data_dir="test/integration/runtime"
-)
-
+# Build pipeline testing spec with local persistence (no contracts needed)
+builder = PipelineTestingSpecBuilder(test_data_dir="test/integration/runtime")
 pipeline_spec = builder.build_from_dag(dag)
+
+# System automatically:
+# 1. Creates ScriptExecutionSpec for each DAG node
+# 2. Saves specs locally in .specs directory for reuse
+# 3. Loads saved specs on subsequent runs
+# 4. Matches step names to corresponding ScriptExecutionSpecs
 
 # Access script execution parameters ready for main() function
 xgboost_spec = pipeline_spec.script_specs["xgboost_training"]
 main_params = builder.get_script_main_params(xgboost_spec)
 
-# main_params contains:
+# main_params contains user-provided values:
 # {
 #     "input_paths": {"data_input": "test/integration/runtime/xgboost_training/input"},
 #     "output_paths": {"data_output": "test/integration/runtime/xgboost_training/output"},
-#     "environ_vars": {"MODEL_TYPE": "xgboost", "EVAL_METRIC": "auc"},
-#     "job_args": argparse.Namespace(job_type="training", n_estimators=100)
+#     "environ_vars": {"LABEL_FIELD": "label"},  # User-provided defaults
+#     "job_args": argparse.Namespace(job_type="testing")  # User-provided defaults
 # }
 ```
 
@@ -380,6 +635,36 @@ The system consists of three main components:
 1. **RuntimeTester Class**: Core testing engine with methods for script testing, data compatibility validation, and pipeline flow testing
 2. **Result Data Models**: Pydantic v2 models for structured test results (ScriptTestResult, DataCompatibilityResult)
 3. **CLI Interface**: Simple command-line interface supporting all testing modes with workspace-aware project support
+
+### **RuntimeTester Class Implementation**
+
+```python
+class RuntimeTester:
+    """Core testing engine that uses PipelineTestingSpecBuilder for parameter extraction"""
+    
+    def __init__(self, config: RuntimeTestingConfiguration):
+        self.config = config
+        self.pipeline_spec = config.pipeline_spec
+        self.workspace_dir = Path(config.pipeline_spec.test_workspace_root)
+        
+        # Create builder instance for parameter extraction
+        self.builder = PipelineTestingSpecBuilder(
+            test_data_dir=config.pipeline_spec.test_workspace_root
+        )
+    
+    def test_script_with_spec(self, script_spec: ScriptExecutionSpec, main_params: Dict[str, Any]) -> ScriptTestResult:
+        """Test script functionality using ScriptExecutionSpec"""
+        # Implementation details shown below...
+    
+    def test_data_compatibility_with_specs(self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec) -> DataCompatibilityResult:
+        """Test data compatibility between scripts using ScriptExecutionSpecs"""
+        # Implementation details shown below...
+    
+    def test_pipeline_flow_with_spec(self, pipeline_spec: PipelineTestingSpec) -> Dict[str, Any]:
+        """Test end-to-end pipeline flow using PipelineTestingSpec and PipelineDAG"""
+        # Uses self.builder.get_script_main_params() to extract parameters
+        # Implementation details shown below...
+```
 
 ### **Implementation Details**
 
@@ -551,8 +836,8 @@ def test_data_compatibility(self, script_a: str, script_b: str,
 #### **Pipeline Flow Testing**
 
 ```python
-def test_pipeline_flow(self, pipeline_config: Dict) -> Dict[str, Any]:
-    """Test end-to-end pipeline flow with data transfer"""
+def test_pipeline_flow_with_spec(self, pipeline_spec: PipelineTestingSpec) -> Dict[str, Any]:
+    """Test end-to-end pipeline flow using PipelineTestingSpec and PipelineDAG"""
     
     results = {
         "pipeline_success": True,
@@ -562,32 +847,45 @@ def test_pipeline_flow(self, pipeline_config: Dict) -> Dict[str, Any]:
     }
     
     try:
-        steps = pipeline_config.get("steps", {})
-        if not steps:
+        dag = pipeline_spec.dag
+        script_specs = pipeline_spec.script_specs
+        
+        if not dag.nodes:
             results["pipeline_success"] = False
-            results["errors"].append("No steps found in pipeline configuration")
+            results["errors"].append("No nodes found in pipeline DAG")
             return results
         
-        # Test each script individually first
-        for step_name in steps:
-            script_result = self.test_script(step_name)
-            results["script_results"][step_name] = script_result
+        # Test each script individually first using ScriptExecutionSpec
+        for node_name in dag.nodes:
+            if node_name not in script_specs:
+                results["pipeline_success"] = False
+                results["errors"].append(f"No ScriptExecutionSpec found for node: {node_name}")
+                continue
+                
+            script_spec = script_specs[node_name]
+            main_params = self.builder.get_script_main_params(script_spec)
+            
+            script_result = self.test_script_with_spec(script_spec, main_params)
+            results["script_results"][node_name] = script_result
             
             if not script_result.success:
                 results["pipeline_success"] = False
-                results["errors"].append(f"Script {step_name} failed: {script_result.error_message}")
+                results["errors"].append(f"Script {node_name} failed: {script_result.error_message}")
         
-        # Test data flow between connected scripts
-        step_list = list(steps.keys())
-        for i in range(len(step_list) - 1):
-            script_a = step_list[i]
-            script_b = step_list[i + 1]
+        # Test data flow between connected scripts using DAG edges
+        for edge in dag.edges:
+            script_a, script_b = edge
             
-            # Generate sample data for testing
-            sample_data = self._generate_sample_data()
+            if script_a not in script_specs or script_b not in script_specs:
+                results["pipeline_success"] = False
+                results["errors"].append(f"Missing ScriptExecutionSpec for edge: {script_a} -> {script_b}")
+                continue
             
-            # Test data compatibility
-            compat_result = self.test_data_compatibility(script_a, script_b, sample_data)
+            spec_a = script_specs[script_a]
+            spec_b = script_specs[script_b]
+            
+            # Test data compatibility using ScriptExecutionSpecs
+            compat_result = self.test_data_compatibility_with_specs(spec_a, spec_b)
             results["data_flow_results"][f"{script_a}->{script_b}"] = compat_result
             
             if not compat_result.compatible:
@@ -600,6 +898,142 @@ def test_pipeline_flow(self, pipeline_config: Dict) -> Dict[str, Any]:
         results["pipeline_success"] = False
         results["errors"].append(f"Pipeline flow test failed: {str(e)}")
         return results
+
+def test_script_with_spec(self, script_spec: ScriptExecutionSpec, main_params: Dict[str, Any]) -> ScriptTestResult:
+    """Test script functionality using ScriptExecutionSpec"""
+    start_time = time.time()
+    
+    try:
+        script_path = self._find_script_path(script_spec.script_name)
+        
+        # Import script using standard Python import
+        spec = importlib.util.spec_from_file_location("script", script_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # Check for main function with correct signature
+        has_main = hasattr(module, 'main') and callable(module.main)
+        
+        if not has_main:
+            return ScriptTestResult(
+                script_name=script_spec.script_name,
+                success=False,
+                error_message="Script missing main() function",
+                execution_time=time.time() - start_time,
+                has_main_function=False
+            )
+        
+        # Validate main function signature matches script development guide
+        sig = inspect.signature(module.main)
+        expected_params = ['input_paths', 'output_paths', 'environ_vars', 'job_args']
+        actual_params = list(sig.parameters.keys())
+        
+        if not all(param in actual_params for param in expected_params):
+            return ScriptTestResult(
+                script_name=script_spec.script_name,
+                success=False,
+                error_message="Main function signature doesn't match script development guide",
+                execution_time=time.time() - start_time,
+                has_main_function=True
+            )
+        
+        # Create test directories based on ScriptExecutionSpec
+        test_dir = Path(script_spec.output_paths["data_output"])
+        test_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Use ScriptExecutionSpec input data path or generate sample data
+        input_data_path = script_spec.input_paths.get("data_input")
+        if not input_data_path or not Path(input_data_path).exists():
+            # Generate sample data for testing
+            sample_data = self._generate_sample_data()
+            input_data_path = test_dir / "input_data.csv"
+            pd.DataFrame(sample_data).to_csv(input_data_path, index=False)
+        
+        # EXECUTE THE MAIN FUNCTION with ScriptExecutionSpec parameters
+        module.main(**main_params)
+        
+        return ScriptTestResult(
+            script_name=script_spec.script_name,
+            success=True,
+            error_message=None,
+            execution_time=time.time() - start_time,
+            has_main_function=True
+        )
+        
+    except Exception as e:
+        return ScriptTestResult(
+            script_name=script_spec.script_name,
+            success=False,
+            error_message=str(e),
+            execution_time=time.time() - start_time,
+            has_main_function=has_main if 'has_main' in locals() else False
+        )
+
+def test_data_compatibility_with_specs(self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec) -> DataCompatibilityResult:
+    """Test data compatibility between scripts using ScriptExecutionSpecs"""
+    
+    try:
+        # Execute script A using its ScriptExecutionSpec
+        main_params_a = self.builder.get_script_main_params(spec_a)
+        script_a_result = self.test_script_with_spec(spec_a, main_params_a)
+        
+        if not script_a_result.success:
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=[f"Script A failed: {script_a_result.error_message}"]
+            )
+        
+        # Check if script A produced output
+        output_dir_a = Path(spec_a.output_paths["data_output"])
+        output_files = list(output_dir_a.glob("*.csv"))
+        
+        if not output_files:
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=["Script A did not produce output data"]
+            )
+        
+        # Use script A's output as script B's input
+        # Create a modified spec_b with script A's output as input
+        modified_spec_b = ScriptExecutionSpec(
+            script_name=spec_b.script_name,
+            step_name=spec_b.step_name,
+            script_path=spec_b.script_path,
+            input_paths={"data_input": str(output_files[0])},  # Use script A's output
+            output_paths=spec_b.output_paths,
+            environ_vars=spec_b.environ_vars,
+            job_args=spec_b.job_args
+        )
+        
+        # Test script B with script A's output
+        main_params_b = self.builder.get_script_main_params(modified_spec_b)
+        script_b_result = self.test_script_with_spec(modified_spec_b, main_params_b)
+        
+        # Analyze compatibility
+        compatibility_issues = []
+        if not script_b_result.success:
+            compatibility_issues.append(f"Script B failed with script A output: {script_b_result.error_message}")
+        
+        return DataCompatibilityResult(
+            script_a=spec_a.script_name,
+            script_b=spec_b.script_name,
+            compatible=script_b_result.success,
+            compatibility_issues=compatibility_issues,
+            data_format_a="csv",
+            data_format_b="csv"
+        )
+        
+    except Exception as e:
+        return DataCompatibilityResult(
+            script_a=spec_a.script_name,
+            script_b=spec_b.script_name,
+            compatible=False,
+            compatibility_issues=[f"Compatibility test failed: {str(e)}"]
+        )
 ```
 
 #### **Helper Methods**

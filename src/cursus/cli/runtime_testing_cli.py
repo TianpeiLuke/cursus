@@ -6,6 +6,9 @@ import sys
 from pathlib import Path
 
 from ..validation.runtime.runtime_testing import RuntimeTester
+from ..validation.runtime.runtime_models import RuntimeTestingConfiguration
+from ..validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from ..api.dag.base_dag import PipelineDAG
 
 
 @click.group()

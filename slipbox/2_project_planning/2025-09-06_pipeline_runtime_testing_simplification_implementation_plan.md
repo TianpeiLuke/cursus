@@ -1055,6 +1055,21 @@ rm -rf test/validation/runtime/workspace/
 - **Outcome**: Template for preventing over-engineering in future development
 - **Metrics**: Adoption of design principles across other system components
 
+## 🔄 Continual Improvement and Next Steps
+
+### **Phase 5: Script Refactoring Implementation (Post-Completion)**
+
+Following the successful completion of this simplification implementation plan, the next phase involves refactoring the actual runtime testing script to fully implement the comprehensive simplified design:
+
+- **[Pipeline Runtime Testing Script Refactoring Plan](./2025-09-06_pipeline_runtime_testing_script_refactoring_plan.md)** - Detailed implementation plan for refactoring `src/cursus/validation/runtime/runtime_testing.py` to include:
+  - Complete `PipelineTestingSpecBuilder` implementation
+  - `ScriptExecutionSpec` with local persistence
+  - Comprehensive validation logic
+  - Interactive user update methods
+  - Full PipelineDAG integration
+
+This continual effort ensures that the theoretical simplified design is fully realized in the actual codebase, providing users with the complete user-centric runtime testing system.
+
 ## 🎉 Conclusion
 
 This implementation plan provides a comprehensive roadmap for addressing the severe over-engineering identified in the pipeline runtime testing system. By focusing on **validated user requirements** and adhering to **anti-over-engineering design principles**, we can deliver a solution that provides **equivalent functionality with 94% less code, 50x better performance, and dramatically improved maintainability**.
@@ -1069,3 +1084,5 @@ The plan demonstrates how proper **user story validation** and **design principl
 - **Incremental Growth**: Start simple, add complexity only with validated demand
 
 This implementation will transform the pipeline runtime testing system from a **cautionary tale of over-engineering** into a **success story of user-focused design**, demonstrating the power of proper requirements validation and design principles adherence in creating systems that truly serve user needs.
+
+The **continual improvement approach** ensures that this simplification effort extends beyond design into full implementation, providing a complete end-to-end transformation of the runtime testing system.
