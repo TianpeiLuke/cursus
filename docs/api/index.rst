@@ -9,15 +9,13 @@ Overview
 The Cursus API is organized into several key modules:
 
 - **Core Framework** (:doc:`core`): Core compilation and configuration engine
-- **Public API** (:doc:`api`): High-level interfaces for pipeline creation
+- **Public API** (:doc:`api`): High-level interfaces for pipeline creation and DAG management
 - **CLI Interface** (:doc:`cli`): Command-line tools and utilities
 - **Pipeline Steps** (:doc:`steps`): Step builders, configurations, contracts, and specifications
-- **Data Processing** (:doc:`processing`): Data processing components
 - **Registry System** (:doc:`registry`): Component discovery and management
 - **Validation Framework** (:doc:`validation`): Pipeline validation and testing
-- **Pipeline Catalog** (:doc:`pipeline_catalog`): Pre-built pipeline templates
-- **Workspace Management** (:doc:`workspace`): Multi-environment support
-- **MODS Integration** (:doc:`mods`): MODS-specific implementations
+- **Pipeline Catalog** (:doc:`pipeline_catalog`): Zettelkasten-inspired pipeline organization
+- **Workspace Management** (:doc:`workspace`): Multi-environment support and collaboration
 
 Quick Reference
 ---------------
@@ -80,7 +78,11 @@ Module Documentation
 .. toctree::
    :maxdepth: 2
 
+   api
    core
+   cli
+   pipeline_catalog
+   workspace
    registry
    steps
    validation
