@@ -31,21 +31,32 @@ from .runtime_models import (
 from .runtime_spec_builder import PipelineTestingSpecBuilder
 
 # Import PipelineDAG for integration
-from cursus.api.dag.base_dag import PipelineDAG
+from ...api.dag.base_dag import PipelineDAG
 
 
 class RuntimeTester:
     """Core testing engine that uses PipelineTestingSpecBuilder for parameter extraction"""
     
-    def __init__(self, config: RuntimeTestingConfiguration):
-        self.config = config
-        self.pipeline_spec = config.pipeline_spec
-        self.workspace_dir = Path(config.pipeline_spec.test_workspace_root)
-        
-        # Create builder instance for parameter extraction
-        self.builder = PipelineTestingSpecBuilder(
-            test_data_dir=config.pipeline_spec.test_workspace_root
-        )
+    def __init__(self, config_or_workspace_dir):
+        # Support both new RuntimeTestingConfiguration and old string workspace_dir for backward compatibility
+        if isinstance(config_or_workspace_dir, RuntimeTestingConfiguration):
+            self.config = config_or_workspace_dir
+            self.pipeline_spec = config_or_workspace_dir.pipeline_spec
+            self.workspace_dir = Path(config_or_workspace_dir.pipeline_spec.test_workspace_root)
+            
+            # Create builder instance for parameter extraction
+            self.builder = PipelineTestingSpecBuilder(
+                test_data_dir=config_or_workspace_dir.pipeline_spec.test_workspace_root
+            )
+        else:
+            # Backward compatibility: treat as workspace directory string
+            workspace_dir = str(config_or_workspace_dir)
+            self.config = None
+            self.pipeline_spec = None
+            self.workspace_dir = Path(workspace_dir)
+            
+            # Create builder instance for parameter extraction
+            self.builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir)
     
     def test_script_with_spec(self, script_spec: ScriptExecutionSpec, main_params: Dict[str, Any]) -> ScriptTestResult:
         """Test script functionality using ScriptExecutionSpec"""

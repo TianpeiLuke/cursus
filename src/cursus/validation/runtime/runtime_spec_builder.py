@@ -9,7 +9,7 @@ import argparse
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from cursus.api.dag.base_dag import PipelineDAG
+from ...api.dag.base_dag import PipelineDAG
 from .runtime_models import ScriptExecutionSpec, PipelineTestingSpec
 
 

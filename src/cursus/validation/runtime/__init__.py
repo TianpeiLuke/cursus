@@ -8,11 +8,15 @@ step-to-step or step-to-script dependencies."
 """
 
 # Simplified runtime testing components
-from .runtime_testing import (
-    RuntimeTester,
+from .runtime_testing import RuntimeTester
+from .runtime_models import (
     ScriptTestResult,
-    DataCompatibilityResult
+    DataCompatibilityResult,
+    ScriptExecutionSpec,
+    PipelineTestingSpec,
+    RuntimeTestingConfiguration
 )
+from .runtime_spec_builder import PipelineTestingSpecBuilder
 
 # Main API exports - Simplified to user requirements only
 __all__ = [

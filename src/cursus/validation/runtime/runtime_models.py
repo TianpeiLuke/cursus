@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 # Import PipelineDAG for integration
-from cursus.api.dag.base_dag import PipelineDAG
+from ...api.dag.base_dag import PipelineDAG
 
 
 class ScriptTestResult(BaseModel):

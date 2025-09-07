@@ -18,14 +18,14 @@ import tempfile
 import json
 from datetime import datetime
 
-from cursus.validation.runtime.runtime_models import (
+from src.cursus.validation.runtime.runtime_models import (
     ScriptTestResult,
     DataCompatibilityResult,
     ScriptExecutionSpec,
     PipelineTestingSpec,
     RuntimeTestingConfiguration
 )
-from cursus.api.dag.base_dag import PipelineDAG
+from src.cursus.api.dag.base_dag import PipelineDAG
 
 
 class TestScriptTestResult(unittest.TestCase):

@@ -18,12 +18,12 @@ import tempfile
 import json
 from unittest.mock import Mock, patch, MagicMock
 
-from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
-from cursus.validation.runtime.runtime_models import (
+from src.cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from src.cursus.validation.runtime.runtime_models import (
     ScriptExecutionSpec,
     PipelineTestingSpec
 )
-from cursus.api.dag.base_dag import PipelineDAG
+from src.cursus.api.dag.base_dag import PipelineDAG
 
 
 class TestPipelineTestingSpecBuilder(unittest.TestCase):

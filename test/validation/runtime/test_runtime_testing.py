@@ -19,16 +19,16 @@ import json
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 
-from cursus.validation.runtime.runtime_testing import RuntimeTester
-from cursus.validation.runtime.runtime_models import (
+from src.cursus.validation.runtime.runtime_testing import RuntimeTester
+from src.cursus.validation.runtime.runtime_models import (
     ScriptTestResult,
     DataCompatibilityResult,
     ScriptExecutionSpec,
     PipelineTestingSpec,
     RuntimeTestingConfiguration
 )
-from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
-from cursus.api.dag.base_dag import PipelineDAG
+from src.cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from src.cursus.api.dag.base_dag import PipelineDAG
 
 
 class TestRuntimeTester(unittest.TestCase):
