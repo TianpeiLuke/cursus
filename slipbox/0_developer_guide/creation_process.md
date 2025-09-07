@@ -1051,7 +1051,217 @@ python test/steps/builders/run_transform_tests.py   # For Transform steps
 python test/steps/builders/run_createmodel_tests.py # For CreateModel steps
 ```
 
-**Important**: Both validation frameworks must pass before proceeding to unit tests and integration.
+#### 8.3 Script Runtime Testing
+
+Execute the **Script Runtime Tester** located in `cursus/validation/runtime` for actual script execution validation:
+
+**Option A: Using CLI Commands (Recommended)**
+```bash
+# Test single script functionality
+cursus runtime test-script your_script_name --workspace-dir ./test_workspace --verbose
+
+# Test data compatibility between connected scripts
+cursus runtime test-compatibility script_a script_b --workspace-dir ./test_workspace --verbose
+
+# Test complete pipeline flow
+cursus runtime test-pipeline pipeline_config.json --workspace-dir ./test_workspace --verbose
+
+# Test with JSON output for CI/CD integration
+cursus runtime test-script your_script_name --output-format json --workspace-dir ./test_workspace
+```
+
+**Option B: Direct Python Usage**
+```python
+#!/usr/bin/env python3
+"""
+Runtime testing for your new step.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.validation.runtime.runtime_testing import RuntimeTester
+from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
+
+def main():
+    """Run runtime testing for your new step."""
+    print("🚀 Script Runtime Testing")
+    print("=" * 60)
+    
+    # Configure runtime testing
+    config = RuntimeTestingConfiguration(
+        workspace_dir="./test_workspace",
+        timeout_seconds=300,
+        enable_logging=True,
+        log_level="INFO",
+        cleanup_after_test=True,
+        preserve_outputs=False
+    )
+    
+    tester = RuntimeTester(config)
+    
+    # Test individual script
+    script_name = "your_script_name"  # Replace with your actual script name
+    
+    try:
+        print(f"\n1️⃣ Testing Script: {script_name}")
+        result = tester.test_script(script_name)
+        
+        if result.success:
+            print(f"  ✅ PASS ({result.execution_time:.3f}s)")
+            print(f"  Has main function: {'Yes' if result.has_main_function else 'No'}")
+        else:
+            print(f"  ❌ FAIL: {result.error_message}")
+            if not result.has_main_function:
+                print("    💡 Add main(input_paths, output_paths, environ_vars, job_args) function")
+        
+        return 0 if result.success else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during runtime testing: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+The 3-mode runtime validation includes:
+- **Individual Script Testing**: Verifies scripts can execute without import/syntax errors
+- **Data Compatibility Testing**: Ensures data output by one script is compatible with input expectations of the next script
+- **Pipeline Flow Testing**: Tests complete end-to-end pipeline execution with data flowing correctly between steps
+
+#### 8.4 Complete Validation Workflow
+
+For comprehensive validation, run all three frameworks in sequence:
+
+```python
+#!/usr/bin/env python3
+"""
+Complete validation workflow for your new step.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+from cursus.validation.runtime.runtime_testing import RuntimeTester
+from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
+
+def run_complete_validation_workflow(step_name: str, builder_class, script_name: str):
+    """Run complete validation workflow with all three frameworks."""
+    
+    print("🎯 Complete Validation Workflow")
+    print("=" * 80)
+    
+    validation_results = {
+        'alignment': None,
+        'builder': None,
+        'runtime': None,
+        'overall_passed': False
+    }
+    
+    # 1. Alignment Validation
+    print("\n1️⃣ Running Alignment Validation...")
+    try:
+        alignment_tester = UnifiedAlignmentTester(
+            scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
+            contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
+            specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
+            builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
+            configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
+        )
+        
+        alignment_results = alignment_tester.validate_specific_script(step_name)
+        alignment_passed = alignment_results.get('overall_status') == 'PASSING'
+        validation_results['alignment'] = alignment_results
+        
+        print(f"   {'✅' if alignment_passed else '❌'} Alignment Validation: {'PASS' if alignment_passed else 'FAIL'}")
+        
+    except Exception as e:
+        print(f"   ❌ Alignment Validation: ERROR - {e}")
+        alignment_passed = False
+    
+    # 2. Builder Validation
+    print("\n2️⃣ Running Builder Validation...")
+    try:
+        builder_tester = UniversalStepBuilderTest(
+            builder_class,
+            verbose=False,
+            enable_scoring=True
+        )
+        
+        builder_results = builder_tester.run_all_tests()
+        test_results = builder_results.get('test_results', builder_results)
+        passed_tests = sum(1 for result in test_results.values() 
+                          if isinstance(result, dict) and result.get("passed", False))
+        total_tests = len([r for r in test_results.values() if isinstance(r, dict)])
+        builder_passed = passed_tests == total_tests
+        validation_results['builder'] = builder_results
+        
+        print(f"   {'✅' if builder_passed else '❌'} Builder Validation: {'PASS' if builder_passed else 'FAIL'} ({passed_tests}/{total_tests})")
+        
+    except Exception as e:
+        print(f"   ❌ Builder Validation: ERROR - {e}")
+        builder_passed = False
+    
+    # 3. Runtime Validation
+    print("\n3️⃣ Running Runtime Validation...")
+    try:
+        config = RuntimeTestingConfiguration(
+            workspace_dir="./test_workspace",
+            timeout_seconds=300,
+            enable_logging=False,  # Quiet for workflow
+            cleanup_after_test=True
+        )
+        
+        runtime_tester = RuntimeTester(config)
+        runtime_result = runtime_tester.test_script(script_name)
+        runtime_passed = runtime_result.success
+        validation_results['runtime'] = runtime_result
+        
+        print(f"   {'✅' if runtime_passed else '❌'} Runtime Validation: {'PASS' if runtime_passed else 'FAIL'}")
+        if not runtime_passed:
+            print(f"      Error: {runtime_result.error_message}")
+        
+    except Exception as e:
+        print(f"   ❌ Runtime Validation: ERROR - {e}")
+        runtime_passed = False
+    
+    # Overall Results
+    overall_passed = alignment_passed and builder_passed and runtime_passed
+    validation_results['overall_passed'] = overall_passed
+    
+    print(f"\n🏆 Complete Validation Summary:")
+    print("=" * 80)
+    print(f"✅ Alignment Validation: {'PASS' if alignment_passed else 'FAIL'}")
+    print(f"✅ Builder Validation: {'PASS' if builder_passed else 'FAIL'}")
+    print(f"✅ Runtime Validation: {'PASS' if runtime_passed else 'FAIL'}")
+    print(f"\n🎯 Overall Result: {'✅ READY FOR INTEGRATION' if overall_passed else '❌ NEEDS FIXES'}")
+    
+    if not overall_passed:
+        print(f"\n💡 Next Steps:")
+        if not alignment_passed:
+            print(f"   • Fix alignment issues between script, contract, specification, and builder")
+        if not builder_passed:
+            print(f"   • Fix builder implementation and integration issues")
+        if not runtime_passed:
+            print(f"   • Fix script execution issues and ensure main function compliance")
+    
+    return validation_results
+
+# Usage example:
+# from cursus.steps.builders.builder_your_new_step import YourNewStepBuilder
+# results = run_complete_validation_workflow("your_new_step", YourNewStepBuilder, "your_script")
+```
+
+**Important**: All three validation frameworks must pass before proceeding to unit tests and integration.
 
 ### 9. Create Unit Tests
 

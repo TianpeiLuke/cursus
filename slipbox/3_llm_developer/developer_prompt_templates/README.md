@@ -67,7 +67,7 @@ Our agentic ML pipeline development system employs **four specialized AI agents*
 | Agent | Role | Color Code | Primary Function |
 |-------|------|------------|------------------|
 | 🎯 **Planner Agent** | Blue | Plan Creation & Revision | Creates and revises implementation plans |
-| 🔍 **Validator Agent** | Purple | Quality Assurance | Validates plans and code with adaptive approaches:<br/>• **Plan Validation**: Level 1 only (LLM analysis)<br/>• **Code Validation**: Two-level (LLM + tools) |
+| 🔍 **Validator Agent** | Purple | Quality Assurance | Validates plans and code with adaptive approaches:<br/>• **Plan Validation**: Level 1 only (LLM analysis)<br/>• **Code Validation**: Three-level (LLM + tools + runtime) |
 | 💻 **Programmer Agent** | Green | Code Implementation | Generates and refines production-ready code |
 | 👤 **Human-in-the-Loop** | Orange | Oversight & Guidance | Provides requirements, reviews, and approvals |
 
@@ -80,7 +80,7 @@ Our agentic ML pipeline development system employs **four specialized AI agents*
 
 **Phase 2: Code Implementation & Validation** (Steps 4-7)
 - Code generation based on validated plan
-- Two-level code validation with tool integration
+- Three-level code validation with tool integration and runtime testing
 - Iterative code refinement until validation passes
 
 ### 🗺️ Complete Workflow Diagram
@@ -119,7 +119,7 @@ flowchart TD
     subgraph Phase2 ["Phase 2: Code Implementation & Validation"]
         F --> G[Step 4: Code Implementation<br/>Agent: Programmer<br/>Template: step4_programmer_prompt_template.md]
         
-        G --> H[Step 5: Code Validation<br/>Agent: Validator<br/>Templates:<br/>• step5a_two_level_validation_agent_prompt_template.md<br/>• step5b_two_level_standardization_validation_agent_prompt_template.md]
+        G --> H[Step 5: Code Validation<br/>Agent: Validator<br/>Templates:<br/>• step5a_three_level_validation_agent_prompt_template.md<br/>• step5b_two_level_standardization_validation_agent_prompt_template.md]
         
         H --> I{Validation<br/>Passed?}
         I -->|No| J[Step 6: Code Refinement<br/>Agent: Programmer<br/>Template: step6_code_refinement_programmer_prompt_template.md]
@@ -184,11 +184,11 @@ flowchart TD
 
 ### Step 5: Code Validation 🔍
 **Agent**: Validator | **Templates**: 
-- `step5a_two_level_validation_agent_prompt_template.md` (alignment validation)
+- `step5a_three_level_validation_agent_prompt_template.md` (alignment validation with runtime testing)
 - `step5b_two_level_standardization_validation_agent_prompt_template.md` (standardization validation)
 - **Input**: Generated code implementation
-- **Output**: Two-level validation report with tool integration
-- **Key Features**: LLM analysis + deterministic tool validation
+- **Output**: Three-level validation report with tool integration and runtime testing
+- **Key Features**: LLM analysis + deterministic tool validation + script runtime testing
 
 ### Step 6: Code Refinement 💻
 **Agent**: Programmer | **Template**: `step6_code_refinement_programmer_prompt_template.md`
@@ -232,12 +232,12 @@ flowchart TD
 - **Output**: Complete code files in the correct project structure locations
 - **Key Focus**: Following the plan precisely while ensuring alignment across components
 
-### Step 5a: [Two-Level Validation Agent Prompt Template](step5a_two_level_validation_agent_prompt_template.md)
+### Step 5a: [Three-Level Validation Agent Prompt Template](step5a_three_level_validation_agent_prompt_template.md)
 - **Agent**: Validator
-- **Purpose**: Validate code implementation using two-level validation (LLM + tools)
+- **Purpose**: Validate code implementation using three-level validation (LLM + tools + runtime)
 - **Input**: Implementation code, implementation plan
-- **Output**: Comprehensive validation report with tool integration results
-- **Key Focus**: Alignment validation with deterministic tool verification
+- **Output**: Comprehensive validation report with tool integration and runtime testing results
+- **Key Focus**: Alignment validation, builder testing, and script runtime validation with deterministic tool verification
 
 ### Step 5b: [Two-Level Standardization Validation Agent Prompt Template](step5b_two_level_standardization_validation_agent_prompt_template.md)
 - **Agent**: Validator
@@ -283,7 +283,7 @@ A typical workflow might proceed as:
 2. **Plan Validation Cycle**: Implementation plan validated iteratively until convergence
 3. **Plan Revision**: Any issues addressed through revision cycles
 4. **Code Implementation**: Approved plan implemented by Programmer Agent
-5. **Code Validation**: Implementation validated using two-level validation approach
+5. **Code Validation**: Implementation validated using three-level validation approach
 6. **Code Refinement**: Any validation issues fixed through refinement cycles
 7. **Validation Convergence**: Final validation ensures production readiness
 

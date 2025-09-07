@@ -94,6 +94,9 @@ To add a new step to the main workspace:
    # Run comprehensive builder tests
    cursus validate-builder --step YourStepType --workspace main
    
+   # Run script runtime testing (3-mode validation)
+   cursus runtime test-script your_script_name --workspace-dir ./test_workspace --verbose
+   
    # Validate registry integration
    cursus validate-registry --workspace main
    ```

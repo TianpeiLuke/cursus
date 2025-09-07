@@ -4,19 +4,21 @@ This guide provides comprehensive instructions for using the validation framewor
 
 ## Overview
 
-The Cursus validation system consists of two complementary frameworks with both legacy and workspace-aware implementations:
+The Cursus validation system consists of three complementary frameworks with both legacy and workspace-aware implementations:
 
 ### Legacy Validation (Single Workspace)
 1. **Unified Alignment Tester** (`cursus/validation/alignment`) - Validates 4-tier alignment between components
 2. **Universal Step Builder Test** (`cursus/validation/builders`) - Performs 4-level builder testing
+3. **Script Runtime Tester** (`cursus/validation/runtime`) - Validates actual script execution and data flow
 
 ### Workspace-Aware Validation (Multi-Developer Support)
 1. **Workspace Unified Alignment Tester** (`cursus/workspace/validation`) - Workspace-aware 4-tier alignment validation
 2. **Workspace Universal Step Builder Test** (`cursus/workspace/validation`) - Workspace-aware 4-level builder testing
+3. **Workspace Script Runtime Tester** (`cursus/workspace/validation`) - Workspace-aware script execution validation
 
 **Recommendation**: Use the workspace-aware validation frameworks for all new development, as they support both isolated developer workspaces and shared workspace fallback.
 
-Both frameworks must pass before integrating new steps into the pipeline system.
+All three frameworks must pass before integrating new steps into the pipeline system.
 
 ## Workspace-Aware Validation (Recommended)
 
@@ -620,11 +622,298 @@ The validation frameworks automatically apply step type-specific validation vari
 - Model package and registry validation
 - Custom registration step validation (e.g., MimsModelRegistrationProcessingStep)
 
+## Script Runtime Testing
+
+The Script Runtime Tester validates actual script execution and data flow between pipeline steps. This is the third essential validation framework that ensures your scripts can execute successfully and transfer data correctly along the pipeline DAG.
+
+### Key Features
+
+- **Script Functionality Validation**: Verifies that individual scripts can execute without import/syntax errors
+- **Data Transfer Consistency**: Ensures data output by one script is compatible with the input expectations of the next script
+- **End-to-End Pipeline Flow**: Tests that the entire pipeline can execute successfully with data flowing correctly between steps
+- **Dependency-Agnostic Testing**: Focuses on script execution and data compatibility, not step-to-step dependency resolution
+
+### 3-Mode Runtime Validation
+
+The runtime testing system provides three complementary validation modes:
+
+1. **Individual Script Testing** (`test_script`) - Test each script can execute independently
+2. **Data Compatibility Testing** (`test_data_compatibility`) - Test data flow between connected scripts  
+3. **Pipeline Flow Testing** (`test_pipeline_flow`) - Test complete end-to-end pipeline execution
+
+### Usage Options
+
+#### Option A: CLI Commands (Recommended)
+
+```bash
+# Test single script functionality
+cursus runtime test-script your_script_name --workspace-dir ./test_workspace --verbose
+
+# Test data compatibility between two scripts
+cursus runtime test-compatibility script_a script_b --workspace-dir ./test_workspace --verbose
+
+# Test complete pipeline flow
+cursus runtime test-pipeline pipeline_config.json --workspace-dir ./test_workspace --verbose
+
+# Test with JSON output for CI/CD integration
+cursus runtime test-script your_script_name --output-format json --workspace-dir ./test_workspace
+```
+
+**CLI Command Options:**
+- `--workspace-dir`: Specify test workspace directory
+- `--verbose`: Show detailed execution information
+- `--output-format json`: Generate JSON output for automation
+- `--timeout`: Set script execution timeout (default: 300 seconds)
+
+#### Option B: Direct Python Usage
+
+Create a runtime testing script following this pattern:
+
+```python
+#!/usr/bin/env python3
+"""
+Runtime testing for your step.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.validation.runtime.runtime_testing import RuntimeTester
+from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
+
+def main():
+    """Run runtime testing for your step."""
+    print("🚀 Script Runtime Testing")
+    print("=" * 60)
+    
+    # Configure runtime testing
+    config = RuntimeTestingConfiguration(
+        workspace_dir="./test_workspace",
+        timeout_seconds=300,
+        enable_logging=True,
+        log_level="INFO",
+        cleanup_after_test=True,
+        preserve_outputs=False
+    )
+    
+    tester = RuntimeTester(config)
+    
+    # Test individual script
+    script_name = "your_script_name"  # Replace with your actual script name
+    
+    try:
+        print(f"\n1️⃣ Testing Script: {script_name}")
+        result = tester.test_script(script_name)
+        
+        if result.success:
+            print(f"  ✅ PASS ({result.execution_time:.3f}s)")
+            print(f"  Has main function: {'Yes' if result.has_main_function else 'No'}")
+        else:
+            print(f"  ❌ FAIL: {result.error_message}")
+            if not result.has_main_function:
+                print("    💡 Add main(input_paths, output_paths, environ_vars, job_args) function")
+        
+        return 0 if result.success else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during runtime testing: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+#### Option C: Pipeline Flow Testing with DAG
+
+For testing complete pipeline flows:
+
+```python
+#!/usr/bin/env python3
+"""
+Pipeline flow runtime testing.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.validation.runtime.runtime_testing import RuntimeTester
+from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
+from cursus.api.dag.base_dag import PipelineDAG
+
+def main():
+    """Run pipeline flow runtime testing."""
+    print("🚀 Pipeline Flow Runtime Testing")
+    print("=" * 60)
+    
+    # Configure runtime testing
+    config = RuntimeTestingConfiguration(
+        workspace_dir="./test_workspace",
+        timeout_seconds=600,  # Longer timeout for pipeline testing
+        enable_logging=True,
+        log_level="INFO"
+    )
+    
+    tester = RuntimeTester(config)
+    
+    # Define test pipeline
+    pipeline_config = {
+        "steps": {
+            "data_preprocessing": {"script": "tabular_preprocessing.py"},
+            "model_training": {"script": "xgboost_training.py"},
+            "model_evaluation": {"script": "model_evaluation.py"}
+        }
+    }
+    
+    try:
+        print(f"\n🔄 Testing Pipeline Flow...")
+        results = tester.test_pipeline_flow(pipeline_config)
+        
+        if results["pipeline_success"]:
+            print("  ✅ PIPELINE FLOW PASSED")
+        else:
+            print("  ❌ PIPELINE FLOW FAILED")
+            for error in results["errors"]:
+                print(f"    - {error}")
+        
+        # Print individual script results
+        print(f"\n📝 Individual Script Results:")
+        for script_name, result in results["script_results"].items():
+            status = "✅" if result.success else "❌"
+            print(f"  {status} {script_name}: {'PASS' if result.success else 'FAIL'}")
+            if not result.success:
+                print(f"    Error: {result.error_message}")
+        
+        # Print data flow results
+        print(f"\n🔗 Data Flow Results:")
+        for flow_name, result in results["data_flow_results"].items():
+            status = "✅" if result.compatible else "❌"
+            print(f"  {status} {flow_name}: {'PASS' if result.compatible else 'FAIL'}")
+            if result.compatibility_issues:
+                for issue in result.compatibility_issues:
+                    print(f"    Issue: {issue}")
+        
+        return 0 if results["pipeline_success"] else 1
+        
+    except Exception as e:
+        print(f"❌ ERROR during pipeline flow testing: {e}")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+### Runtime Testing Results
+
+The runtime tester provides results in these formats:
+
+#### Script Test Results
+```
+🚀 Script Runtime Testing
+1️⃣ Testing Script: tabular_preprocessing
+  ✅ PASS (2.345s)
+  Has main function: Yes
+```
+
+#### Data Compatibility Results
+```
+🔗 Data Compatibility Testing
+Testing: tabular_preprocessing -> xgboost_training
+  ✅ COMPATIBLE
+  Data formats: CSV -> CSV
+```
+
+#### Pipeline Flow Results
+```
+🚀 Pipeline Flow Runtime Testing
+🔄 Testing Pipeline Flow...
+  ✅ PIPELINE FLOW PASSED
+
+📝 Individual Script Results:
+  ✅ data_preprocessing: PASS
+  ✅ model_training: PASS
+  ✅ model_evaluation: PASS
+
+🔗 Data Flow Results:
+  ✅ data_preprocessing->model_training: PASS
+  ✅ model_training->model_evaluation: PASS
+```
+
+### Common Runtime Testing Issues
+
+**Issue**: Script missing main function
+```
+❌ FAIL: Script missing main() function
+💡 Add main(input_paths, output_paths, environ_vars, job_args) function
+```
+**Solution**: Ensure your script implements the standardized main function interface from the script development guide.
+
+**Issue**: Script execution timeout
+```
+❌ FAIL: Script execution timed out after 300 seconds
+```
+**Solution**: Check for infinite loops or increase timeout in RuntimeTestingConfiguration.
+
+**Issue**: Data compatibility failure
+```
+❌ INCOMPATIBLE: Script B failed with script A output: KeyError: 'required_column'
+```
+**Solution**: Ensure output data from script A contains all columns expected by script B.
+
+**Issue**: Import errors
+```
+❌ FAIL: ModuleNotFoundError: No module named 'custom_module'
+```
+**Solution**: Check that all required dependencies are installed and importable.
+
+### Integration with Existing Validation
+
+Runtime testing integrates seamlessly with the existing validation frameworks:
+
+```python
+def run_comprehensive_validation(step_name: str, builder_class, pipeline_dag=None):
+    """Run all three validation frameworks for complete coverage."""
+    
+    # 1. Alignment validation (existing)
+    alignment_results = run_alignment_validation(step_name)
+    
+    # 2. Builder validation (existing)  
+    builder_results = run_builder_validation(step_name, builder_class)
+    
+    # 3. Runtime validation (NEW)
+    runtime_results = run_runtime_validation(step_name, pipeline_dag)
+    
+    # Overall validation status
+    overall_passed = all([
+        alignment_results.get('overall_status') == 'PASSING',
+        builder_results.get('overall_passed', False),
+        runtime_results.get('success', False)
+    ])
+    
+    print(f"\n🎯 Comprehensive Validation Summary:")
+    print(f"✅ Alignment Validation: {'PASS' if alignment_results.get('overall_status') == 'PASSING' else 'FAIL'}")
+    print(f"✅ Builder Validation: {'PASS' if builder_results.get('overall_passed', False) else 'FAIL'}")
+    print(f"✅ Runtime Validation: {'PASS' if runtime_results.get('success', False) else 'FAIL'}")
+    print(f"\n🏆 Overall Result: {'✅ READY FOR INTEGRATION' if overall_passed else '❌ NEEDS FIXES'}")
+    
+    return {
+        'alignment': alignment_results,
+        'builder': builder_results, 
+        'runtime': runtime_results,
+        'overall_passed': overall_passed
+    }
+```
+
 ## Recommended Validation Workflow
 
 ### 1. Initial Validation Run
 
-Start with CLI commands for quick feedback:
+Start with CLI commands for quick feedback across all three validation frameworks:
 
 ```bash
 # Quick alignment check
@@ -632,6 +921,9 @@ python -m cursus.cli.alignment_cli validate your_step_name --verbose
 
 # Quick builder test
 python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_your_step.YourStepBuilder --verbose
+
+# Quick runtime test
+cursus runtime test-script your_script_name --workspace-dir ./test_workspace --verbose
 ```
 
 ### 2. Detailed Analysis
@@ -644,11 +936,14 @@ python -m cursus.cli.alignment_cli validate your_step_name --verbose --show-scor
 
 # Detailed builder analysis with scoring and exports
 python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_your_step.YourStepBuilder --scoring --verbose --export-json ./reports/results.json
+
+# Detailed runtime testing with JSON output
+cursus runtime test-script your_script_name --output-format json --workspace-dir ./test_workspace
 ```
 
 ### 3. Comprehensive Validation
 
-Before final integration, run comprehensive tests:
+Before final integration, run comprehensive tests across all frameworks:
 
 ```bash
 # Full alignment validation with visualization
@@ -656,6 +951,9 @@ python -m cursus.cli.alignment_cli visualize your_step_name --output-dir ./valid
 
 # Full builder validation with charts
 python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_your_step.YourStepBuilder --export-chart --output-dir ./reports --scoring
+
+# Full runtime validation with pipeline flow testing
+cursus runtime test-pipeline pipeline_config.json --workspace-dir ./test_workspace --verbose
 ```
 
 ### 4. Step Type-Specific Testing
@@ -677,6 +975,146 @@ python test/steps/builders/run_createmodel_tests.py
 
 # For RegisterModel steps
 python test/steps/builders/run_registermodel_tests.py
+```
+
+### 5. Data Flow Validation (NEW)
+
+Test data compatibility between connected scripts:
+
+```bash
+# Test data compatibility between adjacent pipeline steps
+cursus runtime test-compatibility script_a script_b --workspace-dir ./test_workspace --verbose
+
+# Test complete pipeline data flow
+cursus runtime test-pipeline pipeline_config.json --workspace-dir ./test_workspace --verbose
+```
+
+### 6. Complete Validation Workflow
+
+For comprehensive validation, run all three frameworks in sequence:
+
+```python
+#!/usr/bin/env python3
+"""
+Complete validation workflow for pipeline steps.
+"""
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+from cursus.validation.runtime.runtime_testing import RuntimeTester
+from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
+
+def run_complete_validation_workflow(step_name: str, builder_class, script_name: str):
+    """Run complete validation workflow with all three frameworks."""
+    
+    print("🎯 Complete Validation Workflow")
+    print("=" * 80)
+    
+    validation_results = {
+        'alignment': None,
+        'builder': None,
+        'runtime': None,
+        'overall_passed': False
+    }
+    
+    # 1. Alignment Validation
+    print("\n1️⃣ Running Alignment Validation...")
+    try:
+        alignment_tester = UnifiedAlignmentTester(
+            scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
+            contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
+            specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
+            builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
+            configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
+        )
+        
+        alignment_results = alignment_tester.validate_specific_script(step_name)
+        alignment_passed = alignment_results.get('overall_status') == 'PASSING'
+        validation_results['alignment'] = alignment_results
+        
+        print(f"   {'✅' if alignment_passed else '❌'} Alignment Validation: {'PASS' if alignment_passed else 'FAIL'}")
+        
+    except Exception as e:
+        print(f"   ❌ Alignment Validation: ERROR - {e}")
+        alignment_passed = False
+    
+    # 2. Builder Validation
+    print("\n2️⃣ Running Builder Validation...")
+    try:
+        builder_tester = UniversalStepBuilderTest(
+            builder_class,
+            verbose=False,
+            enable_scoring=True
+        )
+        
+        builder_results = builder_tester.run_all_tests()
+        test_results = builder_results.get('test_results', builder_results)
+        passed_tests = sum(1 for result in test_results.values() 
+                          if isinstance(result, dict) and result.get("passed", False))
+        total_tests = len([r for r in test_results.values() if isinstance(r, dict)])
+        builder_passed = passed_tests == total_tests
+        validation_results['builder'] = builder_results
+        
+        print(f"   {'✅' if builder_passed else '❌'} Builder Validation: {'PASS' if builder_passed else 'FAIL'} ({passed_tests}/{total_tests})")
+        
+    except Exception as e:
+        print(f"   ❌ Builder Validation: ERROR - {e}")
+        builder_passed = False
+    
+    # 3. Runtime Validation
+    print("\n3️⃣ Running Runtime Validation...")
+    try:
+        config = RuntimeTestingConfiguration(
+            workspace_dir="./test_workspace",
+            timeout_seconds=300,
+            enable_logging=False,  # Quiet for workflow
+            cleanup_after_test=True
+        )
+        
+        runtime_tester = RuntimeTester(config)
+        runtime_result = runtime_tester.test_script(script_name)
+        runtime_passed = runtime_result.success
+        validation_results['runtime'] = runtime_result
+        
+        print(f"   {'✅' if runtime_passed else '❌'} Runtime Validation: {'PASS' if runtime_passed else 'FAIL'}")
+        if not runtime_passed:
+            print(f"      Error: {runtime_result.error_message}")
+        
+    except Exception as e:
+        print(f"   ❌ Runtime Validation: ERROR - {e}")
+        runtime_passed = False
+    
+    # Overall Results
+    overall_passed = alignment_passed and builder_passed and runtime_passed
+    validation_results['overall_passed'] = overall_passed
+    
+    print(f"\n🏆 Complete Validation Summary:")
+    print("=" * 80)
+    print(f"✅ Alignment Validation: {'PASS' if alignment_passed else 'FAIL'}")
+    print(f"✅ Builder Validation: {'PASS' if builder_passed else 'FAIL'}")
+    print(f"✅ Runtime Validation: {'PASS' if runtime_passed else 'FAIL'}")
+    print(f"\n🎯 Overall Result: {'✅ READY FOR INTEGRATION' if overall_passed else '❌ NEEDS FIXES'}")
+    
+    if not overall_passed:
+        print(f"\n💡 Next Steps:")
+        if not alignment_passed:
+            print(f"   • Fix alignment issues between script, contract, specification, and builder")
+        if not builder_passed:
+            print(f"   • Fix builder implementation and integration issues")
+        if not runtime_passed:
+            print(f"   • Fix script execution issues and ensure main function compliance")
+    
+    return validation_results
+
+# Usage example:
+# from cursus.steps.builders.builder_your_step import YourStepBuilder
+# results = run_complete_validation_workflow("your_step", YourStepBuilder, "your_script")
 ```
 
 ## Understanding Validation Results
