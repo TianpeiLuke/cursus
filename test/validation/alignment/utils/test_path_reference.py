@@ -85,7 +85,7 @@ class TestPathReference(unittest.TestCase):
             construction_method="literal"
         )
         
-        path_dict = path_ref.dict()
+        path_dict = path_ref.model_dump()
         
         self.assertEqual(path_dict["path"], "/opt/ml/processing/input/data.csv")
         self.assertEqual(path_dict["line_number"], 42)

@@ -118,7 +118,7 @@ class PipelineCatalogManager:
         report = self.validator.generate_validation_report()
         return {
             'is_valid': len(report.issues) == 0,
-            'issues': [issue.dict() for issue in report.issues],
+            'issues': [issue.model_dump() for issue in report.issues],
             'statistics': report.statistics
         }
     

@@ -101,7 +101,7 @@ class TestAlignmentIssue(unittest.TestCase):
             alignment_level=AlignmentLevel.SCRIPT_CONTRACT
         )
         
-        issue_dict = issue.dict()
+        issue_dict = issue.model_dump()
         
         self.assertEqual(issue_dict["level"], SeverityLevel.WARNING)
         self.assertEqual(issue_dict["category"], "test_category")
@@ -118,7 +118,7 @@ class TestAlignmentIssue(unittest.TestCase):
             message="Test message"
         )
         
-        json_str = issue.json()
+        json_str = issue.model_dump_json()
         self.assertIsInstance(json_str, str)
         self.assertIn("ERROR", json_str)
         self.assertIn("test", json_str)
