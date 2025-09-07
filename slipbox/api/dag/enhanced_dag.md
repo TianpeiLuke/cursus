@@ -1,370 +1,537 @@
+---
+tags:
+  - code
+  - api
+  - dag
+  - enhanced
+  - port-based
+keywords:
+  - EnhancedPipelineDAG
+  - port-based dependencies
+  - intelligent resolution
+  - typed edges
+  - step specifications
+  - property references
+  - dependency resolver
+topics:
+  - enhanced pipeline DAG
+  - port-based dependency management
+  - intelligent dependency resolution
+  - typed pipeline edges
+language: python
+date of note: 2024-12-07
+---
+
 # Enhanced Pipeline DAG
+
+Enhanced version of PipelineDAG with port-based dependency management, intelligent dependency resolution, typed edges, and declarative step specifications.
 
 ## Overview
 
-The Enhanced Pipeline DAG extends the base Pipeline DAG with port-based dependency management, intelligent dependency resolution, and declarative step specifications. It provides a comprehensive system for defining, validating, and resolving dependencies between pipeline steps at the level of individual input and output ports.
+The Enhanced Pipeline DAG extends the base PipelineDAG with sophisticated dependency management capabilities. It provides port-based dependency resolution through step specifications, intelligent auto-resolution with confidence scoring, and comprehensive validation and error reporting.
 
-## Class Definition
+The module integrates with the dependency resolution system for semantic matching, supports property reference management for SageMaker integration, and provides enhanced validation including port compatibility checking. It maintains backward compatibility with the base PipelineDAG while adding advanced features for complex pipeline construction.
 
-```python
-class EnhancedPipelineDAG(PipelineDAG):
-    """
-    Enhanced version of PipelineDAG with port-based dependency management.
-    
-    Extends the existing PipelineDAG from pipeline_builder to add:
-    - Typed input/output ports via step specifications
-    - Intelligent dependency resolution
-    - Property reference management
-    - Semantic matching capabilities
-    - Enhanced validation and error reporting
-    """
-```
+## Classes and Methods
 
-## Key Features
+### Classes
+- [`EnhancedPipelineDAG`](#enhancedpipelinedag) - Enhanced DAG with port-based dependency management
 
-### Step Specifications
+## API Reference
 
-The Enhanced Pipeline DAG uses step specifications to define the input and output ports of each step:
+### EnhancedPipelineDAG
+
+_class_ cursus.api.dag.enhanced_dag.EnhancedPipelineDAG(_nodes=None_, _edges=None_)
+
+Enhanced version of PipelineDAG with port-based dependency management and intelligent dependency resolution.
+
+**Parameters:**
+- **nodes** (_Optional[List[str]]_) – Optional list of initial node names
+- **edges** (_Optional[List[tuple]]_) – Optional list of initial edges for compatibility
 
 ```python
-def register_step_specification(self, step_name: str, specification: StepSpecification):
-    """
-    Register a step specification defining its input/output ports.
-    
-    Args:
-        step_name: Name of the step
-        specification: Step specification with dependencies and outputs
-    """
-```
+from cursus.api.dag.enhanced_dag import EnhancedPipelineDAG
 
-Each specification defines:
-- Input dependencies (ports) with their types, requirements, and compatibility information
-- Output ports with their types, property paths, and aliases
-- Node type and step type information
-
-### Automatic Dependency Resolution
-
-One of the most powerful features of the Enhanced Pipeline DAG is automatic dependency resolution based on port compatibility:
-
-```python
-def auto_resolve_dependencies(self, confidence_threshold: float = 0.6) -> List[DependencyEdge]:
-    """
-    Automatically resolve dependencies based on port compatibility.
-    
-    Args:
-        confidence_threshold: Minimum confidence threshold for auto-resolution
-            
-    Returns:
-        List of resolved dependency edges
-    """
-```
-
-This method:
-1. Uses the registered step specifications to identify compatible inputs and outputs
-2. Calculates compatibility scores based on type matching, name similarity, and semantic matching
-3. Creates dependency edges for connections with confidence above the threshold
-4. Updates both the enhanced edges and the base DAG structure
-
-### Manual Dependency Definition
-
-In addition to automatic resolution, the Enhanced Pipeline DAG allows for manual definition of dependencies:
-
-```python
-def add_manual_dependency(self, source_step: str, source_output: str,
-                         target_step: str, target_input: str) -> DependencyEdge:
-    """
-    Manually add a dependency edge between steps.
-    """
-```
-
-This method:
-1. Validates that the specified steps and ports exist
-2. Creates a dependency edge with full confidence (1.0)
-3. Updates both the enhanced edges and the base DAG structure
-4. Creates the appropriate property reference
-
-### Property Reference Management
-
-The Enhanced Pipeline DAG manages property references that bridge between definition-time specifications and runtime properties:
-
-```python
-def get_step_dependencies(self, step_name: str) -> Dict[str, PropertyReference]:
-    """
-    Get resolved dependencies for a step.
-    """
-    
-def get_step_inputs_for_sagemaker(self, step_name: str) -> Dict[str, Any]:
-    """
-    Get step inputs formatted for SageMaker pipeline construction.
-    """
-```
-
-These methods provide access to resolved dependencies in formats suitable for different use cases:
-- Raw property references for intermediate processing
-- SageMaker-formatted inputs for pipeline construction
-
-### Enhanced Validation
-
-The Enhanced Pipeline DAG includes comprehensive validation that goes beyond the base DAG validation:
-
-```python
-def validate_enhanced_dag(self) -> List[str]:
-    """
-    Enhanced validation including port compatibility and dependency resolution.
-    
-    Returns:
-        List of validation errors
-    """
-```
-
-This validation includes:
-1. Structure validation (cycle detection via topological sorting)
-2. Step specification validation
-3. Edge validation
-4. Required dependency resolution check
-5. Port compatibility validation
-
-### Comprehensive Reporting
-
-The Enhanced Pipeline DAG provides detailed statistics and reports:
-
-```python
-def get_dag_statistics(self) -> Dict[str, Any]:
-    """Get comprehensive statistics about the DAG."""
-    
-def get_resolution_report(self) -> Dict[str, Any]:
-    """Get detailed resolution report for debugging."""
-    
-def export_for_visualization(self) -> Dict[str, Any]:
-    """Export DAG data for visualization tools."""
-```
-
-These methods generate information useful for:
-- Performance monitoring
-- Debugging dependency resolution issues
-- Visualizing the DAG structure
-- Generating reports for users
-
-## Usage Examples
-
-### Creating an Enhanced Pipeline DAG
-
-```python
-# Create the enhanced DAG
+# Create enhanced DAG
 dag = EnhancedPipelineDAG()
 
-# Register step specifications
-dag.register_step_specification("data_loading", data_loading_spec)
-dag.register_step_specification("preprocessing", preprocessing_spec)
-dag.register_step_specification("training", training_spec)
-dag.register_step_specification("evaluation", evaluation_spec)
+# Create with initial structure
+nodes = ["preprocessing", "training", "evaluation"]
+edges = [("preprocessing", "training"), ("training", "evaluation")]
+dag = EnhancedPipelineDAG(nodes=nodes, edges=edges)
 ```
 
-### Auto-Resolving Dependencies
+#### register_step_specification
+
+register_step_specification(_step_name_, _specification_)
+
+Register a step specification defining its input/output ports and dependencies.
+
+**Parameters:**
+- **step_name** (_str_) – Name of the step
+- **specification** (_StepSpecification_) – Step specification with dependencies and outputs
+
+**Raises:**
+- **ValueError** – If specification is not a StepSpecification instance
 
 ```python
-# Automatically resolve dependencies
-resolved_edges = dag.auto_resolve_dependencies(confidence_threshold=0.7)
+from cursus.core.deps import StepSpecification, DependencySpecification, OutputSpecification
+from cursus.core.deps import DependencyType, OutputType
 
-# Log the resolved edges
-for edge in resolved_edges:
-    print(f"Resolved: {edge.source_step}.{edge.source_output} -> "
-          f"{edge.target_step}.{edge.target_input} "
-          f"(confidence: {edge.confidence:.2f})")
-```
-
-### Adding Manual Dependencies
-
-```python
-# Manually define a dependency
-edge = dag.add_manual_dependency(
-    source_step="preprocessing", 
-    source_output="validation_data", 
-    target_step="evaluation", 
-    target_input="evaluation_data"
+# Create step specification
+spec = StepSpecification(
+    step_type="TrainingStep",
+    dependencies={
+        "training_data": DependencySpecification(
+            logical_name="training_data",
+            dependency_type=DependencyType.DATASET,
+            required=True
+        )
+    },
+    outputs={
+        "model": OutputSpecification(
+            logical_name="model",
+            output_type=OutputType.MODEL,
+            description="Trained model artifact"
+        )
+    }
 )
 
-print(f"Manually added: {edge}")
+# Register specification
+dag.register_step_specification("training", spec)
 ```
 
-### Validating the Enhanced DAG
+#### auto_resolve_dependencies
+
+auto_resolve_dependencies(_confidence_threshold=0.6_)
+
+Automatically resolve dependencies based on port compatibility and semantic matching.
+
+**Parameters:**
+- **confidence_threshold** (_float_) – Minimum confidence threshold for auto-resolution (default=0.6)
+
+**Returns:**
+- **List[DependencyEdge]** – List of resolved dependency edges
+
+**Raises:**
+- **DependencyResolutionError** – If dependency resolution fails
 
 ```python
-# Validate the DAG
-validation_errors = dag.validate_enhanced_dag()
+# Auto-resolve dependencies with default threshold
+resolved_edges = dag.auto_resolve_dependencies()
+print(f"Resolved {len(resolved_edges)} dependencies")
 
-if validation_errors:
+# Use higher confidence threshold
+high_conf_edges = dag.auto_resolve_dependencies(confidence_threshold=0.8)
+print(f"High confidence edges: {len(high_conf_edges)}")
+```
+
+#### add_manual_dependency
+
+add_manual_dependency(_source_step_, _source_output_, _target_step_, _target_input_)
+
+Manually add a dependency edge between steps with full confidence.
+
+**Parameters:**
+- **source_step** (_str_) – Name of the source step
+- **source_output** (_str_) – Logical name of the source output
+- **target_step** (_str_) – Name of the target step
+- **target_input** (_str_) – Logical name of the target input
+
+**Returns:**
+- **DependencyEdge** – Created dependency edge
+
+**Raises:**
+- **ValueError** – If steps are not registered or ports don't exist
+
+```python
+# Add manual dependency
+edge = dag.add_manual_dependency(
+    source_step="preprocessing",
+    source_output="processed_data",
+    target_step="training",
+    target_input="training_data"
+)
+
+print(f"Added manual dependency: {edge}")
+```
+
+#### get_step_dependencies
+
+get_step_dependencies(_step_name_)
+
+Get resolved dependencies for a step as property references.
+
+**Parameters:**
+- **step_name** (_str_) – Name of the step
+
+**Returns:**
+- **Dict[str, PropertyReference]** – Dictionary mapping dependency names to property references
+
+```python
+# Get dependencies for training step
+dependencies = dag.get_step_dependencies("training")
+
+for dep_name, prop_ref in dependencies.items():
+    print(f"Dependency '{dep_name}': {prop_ref.step_name}.{prop_ref.output_spec.logical_name}")
+```
+
+#### get_step_inputs_for_sagemaker
+
+get_step_inputs_for_sagemaker(_step_name_)
+
+Get step inputs formatted for SageMaker pipeline construction.
+
+**Parameters:**
+- **step_name** (_str_) – Name of the step
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary of inputs formatted for SageMaker
+
+```python
+# Get SageMaker-formatted inputs
+sagemaker_inputs = dag.get_step_inputs_for_sagemaker("training")
+
+for input_name, sagemaker_ref in sagemaker_inputs.items():
+    print(f"Input '{input_name}': {sagemaker_ref}")
+    # Example output: {'Get': 'Steps.preprocessing.processed_data'}
+```
+
+#### validate_enhanced_dag
+
+validate_enhanced_dag()
+
+Enhanced validation including port compatibility and dependency resolution.
+
+**Returns:**
+- **List[str]** – List of validation errors
+
+```python
+# Validate enhanced DAG
+errors = dag.validate_enhanced_dag()
+
+if errors:
     print("Validation errors:")
-    for error in validation_errors:
+    for error in errors:
         print(f"  - {error}")
 else:
-    print("DAG validation successful")
+    print("DAG validation passed")
 ```
 
-### Getting Dependencies for SageMaker Pipeline
+#### get_execution_order
+
+get_execution_order()
+
+Get execution order using inherited topological sort from base DAG.
+
+**Returns:**
+- **List[str]** – List of step names in execution order
 
 ```python
-# Get dependencies for a specific step
-training_inputs = dag.get_step_inputs_for_sagemaker("training")
-
-# Use these inputs when creating the SageMaker step
-training_step = TrainingStep(
-    name="TrainingStep",
-    inputs=training_inputs,
-    # other parameters...
-)
+# Get execution order
+execution_order = dag.get_execution_order()
+print(f"Execution order: {execution_order}")
 ```
 
-### Generating Statistics and Reports
+#### get_dag_statistics
+
+get_dag_statistics()
+
+Get comprehensive statistics about the enhanced DAG.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing DAG statistics
 
 ```python
 # Get DAG statistics
 stats = dag.get_dag_statistics()
+
 print(f"Nodes: {stats['nodes']}")
+print(f"Step specifications: {stats['step_specifications']}")
 print(f"Dependency edges: {stats['dependency_edges']}")
-print(f"Resolution rate: {stats['resolution_rate']:.2f}")
+print(f"Resolution rate: {stats['resolution_rate']:.2%}")
+```
 
-# Get detailed resolution report
+#### get_resolution_report
+
+get_resolution_report()
+
+Get detailed resolution report for debugging dependency resolution.
+
+**Returns:**
+- **Dict[str, Any]** – Detailed resolution report
+
+```python
+# Get resolution report for debugging
 report = dag.get_resolution_report()
-print(f"Total dependencies: {report['resolution_summary']['total_dependencies']}")
-print(f"Resolved dependencies: {report['resolution_summary']['resolved_dependencies']}")
-print(f"Steps with errors: {report['resolution_summary']['steps_with_errors']}")
+
+print("Resolution Report:")
+print(f"Available steps: {report.get('available_steps', [])}")
+print(f"Resolution strategy: {report.get('strategy', 'unknown')}")
 ```
 
-## Internal Components
+#### clear_resolution_cache
 
-### Dependency Resolution System
+clear_resolution_cache()
 
-The Enhanced Pipeline DAG integrates with the dependency resolution system:
+Clear dependency resolution cache and reset resolution state.
 
 ```python
-# In __init__
-self.resolver = UnifiedDependencyResolver()
-self.registry = self.resolver.registry
-
-# In register_step_specification
-self.resolver.register_specification(step_name, specification)
-
-# In auto_resolve_dependencies
-resolved_deps = self.resolver.resolve_all_dependencies(available_steps)
+# Clear resolution cache
+dag.clear_resolution_cache()
+print("Resolution cache cleared")
 ```
 
-This integration provides:
-- Registration of step specifications
-- Resolution of dependencies based on compatibility scoring
-- Generation of property references for resolved dependencies
+#### export_for_visualization
 
-### Edge Collection
+export_for_visualization()
 
-The Enhanced Pipeline DAG uses an EdgeCollection to manage dependency edges:
+Export DAG data for visualization tools with comprehensive node and edge information.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing visualization data
 
 ```python
-# In __init__
-self.dependency_edges = EdgeCollection()
+# Export for visualization
+viz_data = dag.export_for_visualization()
 
-# In auto_resolve_dependencies
-edge_id = self.dependency_edges.add_edge(edge)
+print(f"Nodes for visualization: {len(viz_data['nodes'])}")
+print(f"Edges for visualization: {len(viz_data['edges'])}")
 
-# In get_step_dependencies
-edges = self.dependency_edges.get_edges_to_step(step_name)
+# Access node information
+for node in viz_data['nodes']:
+    print(f"Node {node['id']}: type={node['type']}, deps={node['dependencies']}")
+
+# Access edge information
+for edge in viz_data['edges']:
+    print(f"Edge: {edge['source']}.{edge['source_output']} -> {edge['target']}.{edge['target_input']}")
+    print(f"  Confidence: {edge['confidence']}, Auto-resolved: {edge['auto_resolved']}")
 ```
 
-The EdgeCollection provides:
-- Efficient storage and retrieval of edges
-- Validation of edge properties
-- Indexing for quick access by source or target step
-- Statistics about edge properties
+## Enhanced Features
 
-### Property Reference Management
+### Port-Based Dependency Management
 
-The Enhanced Pipeline DAG manages property references for resolved dependencies:
+The Enhanced DAG provides sophisticated port-based dependency management:
+
+- **Input/Output Ports** – Steps define typed input and output ports through specifications
+- **Semantic Matching** – Intelligent matching based on port types and names
+- **Confidence Scoring** – Auto-resolved dependencies include confidence scores
+- **Manual Override** – Support for manual dependency specification
+
+### Intelligent Dependency Resolution
 
 ```python
-# In auto_resolve_dependencies
-self.property_references = resolved_deps
-
-# In add_manual_dependency
-self.property_references[target_step][target_input] = PropertyReference(
-    step_name=source_step,
-    output_spec=source_output_spec
+# Register multiple step specifications
+preprocessing_spec = StepSpecification(
+    step_type="PreprocessingStep",
+    outputs={
+        "processed_data": OutputSpecification(
+            logical_name="processed_data",
+            output_type=OutputType.DATASET
+        )
+    }
 )
+
+training_spec = StepSpecification(
+    step_type="TrainingStep", 
+    dependencies={
+        "training_data": DependencySpecification(
+            logical_name="training_data",
+            dependency_type=DependencyType.DATASET,
+            required=True
+        )
+    },
+    outputs={
+        "model": OutputSpecification(
+            logical_name="model",
+            output_type=OutputType.MODEL
+        )
+    }
+)
+
+# Register specifications
+dag.register_step_specification("preprocessing", preprocessing_spec)
+dag.register_step_specification("training", training_spec)
+
+# Auto-resolve dependencies
+resolved = dag.auto_resolve_dependencies()
+# Automatically connects preprocessing.processed_data -> training.training_data
 ```
 
-These property references:
-- Bridge between definition-time specifications and runtime properties
-- Convert to SageMaker property references during pipeline construction
-- Support both automatic and manual dependency definition
-
-## Integration with Other Components
-
-### With Pipeline Template Base
-
-The Enhanced Pipeline DAG integrates with the [Pipeline Template Base](../pipeline_builder/pipeline_template_base.md) to provide automatic dependency resolution:
+### Enhanced Validation
 
 ```python
-# In PipelineTemplateBase._create_pipeline_dag
+# Comprehensive validation
+errors = dag.validate_enhanced_dag()
+
+# Validation checks include:
+# - Base DAG structure (cycles, connectivity)
+# - Step specification validity
+# - Dependency edge validation
+# - Unresolved required dependencies
+# - Port type compatibility
+```
+
+## Usage Examples
+
+### Complete Pipeline Construction
+
+```python
+from cursus.api.dag.enhanced_dag import EnhancedPipelineDAG
+from cursus.core.deps import StepSpecification, DependencySpecification, OutputSpecification
+from cursus.core.deps import DependencyType, OutputType
+
+# Create enhanced DAG
 dag = EnhancedPipelineDAG()
 
-# Add nodes and edges based on template configuration
-for step_name, config in self.configs.items():
-    dag.add_node(step_name)
-
-# Define dependencies based on template structure
-for src_step, dst_step in self.dependencies:
-    dag.add_edge(src_step, dst_step)
-
-# In PipelineTemplateBase._register_step_specifications
-for step_name, builder in self.step_builders.items():
-    dag.register_step_specification(step_name, builder.spec)
-
-# In PipelineTemplateBase._resolve_dependencies
-resolved_edges = dag.auto_resolve_dependencies(confidence_threshold=0.7)
-```
-
-### With Pipeline Assembler
-
-The Enhanced Pipeline DAG integrates with the [Pipeline Assembler](../pipeline_builder/pipeline_assembler.md) to provide resolved dependencies:
-
-```python
-# In PipelineAssembler._instantiate_step
-dependencies = dag.get_step_dependencies(step_name)
-
-for input_name, prop_ref in dependencies.items():
-    inputs[input_name] = prop_ref.to_runtime_property(step_instances)
-```
-
-### With Edge Types
-
-The Enhanced Pipeline DAG uses the [Edge Types](edge_types.md) system for typed dependencies:
-
-```python
-# During auto-resolution
-edge = DependencyEdge(
-    source_step=prop_ref.step_name,
-    target_step=consumer_step,
-    source_output=output_spec.logical_name,
-    target_input=dep_name,
-    confidence=confidence,
-    metadata={'auto_resolved': True}
+# Define data loading step
+data_spec = StepSpecification(
+    step_type="DataLoadingStep",
+    outputs={
+        "raw_data": OutputSpecification(
+            logical_name="raw_data",
+            output_type=OutputType.DATASET,
+            description="Raw input data"
+        )
+    }
 )
 
-edge_id = self.dependency_edges.add_edge(edge)
+# Define preprocessing step
+prep_spec = StepSpecification(
+    step_type="PreprocessingStep",
+    dependencies={
+        "input_data": DependencySpecification(
+            logical_name="input_data",
+            dependency_type=DependencyType.DATASET,
+            required=True
+        )
+    },
+    outputs={
+        "processed_data": OutputSpecification(
+            logical_name="processed_data", 
+            output_type=OutputType.DATASET,
+            description="Preprocessed training data"
+        )
+    }
+)
+
+# Define training step
+train_spec = StepSpecification(
+    step_type="TrainingStep",
+    dependencies={
+        "training_data": DependencySpecification(
+            logical_name="training_data",
+            dependency_type=DependencyType.DATASET,
+            required=True
+        )
+    },
+    outputs={
+        "model": OutputSpecification(
+            logical_name="model",
+            output_type=OutputType.MODEL,
+            description="Trained ML model"
+        )
+    }
+)
+
+# Register all specifications
+dag.register_step_specification("data_loading", data_spec)
+dag.register_step_specification("preprocessing", prep_spec)
+dag.register_step_specification("training", train_spec)
+
+# Auto-resolve dependencies
+resolved_edges = dag.auto_resolve_dependencies()
+print(f"Auto-resolved {len(resolved_edges)} dependencies")
+
+# Validate the complete DAG
+errors = dag.validate_enhanced_dag()
+if not errors:
+    print("Pipeline construction successful!")
+    
+    # Get execution order
+    order = dag.get_execution_order()
+    print(f"Execution order: {order}")
 ```
+
+### Manual Dependency Management
+
+```python
+# Add manual dependencies for specific requirements
+manual_edge = dag.add_manual_dependency(
+    source_step="preprocessing",
+    source_output="processed_data",
+    target_step="training", 
+    target_input="training_data"
+)
+
+print(f"Manual dependency: {manual_edge}")
+print(f"Confidence: {manual_edge.confidence}")  # 1.0 for manual edges
+```
+
+### SageMaker Integration
+
+```python
+# Get SageMaker-formatted inputs for pipeline construction
+for step_name in dag.step_specifications:
+    inputs = dag.get_step_inputs_for_sagemaker(step_name)
+    if inputs:
+        print(f"Step '{step_name}' inputs:")
+        for input_name, sagemaker_ref in inputs.items():
+            print(f"  {input_name}: {sagemaker_ref}")
+```
+
+### Debugging and Analysis
+
+```python
+# Get comprehensive statistics
+stats = dag.get_dag_statistics()
+print("DAG Statistics:")
+for key, value in stats.items():
+    print(f"  {key}: {value}")
+
+# Get resolution report for debugging
+report = dag.get_resolution_report()
+print("\nResolution Report:")
+print(f"Strategy used: {report.get('strategy', 'unknown')}")
+print(f"Matches found: {report.get('total_matches', 0)}")
+
+# Export for visualization
+viz_data = dag.export_for_visualization()
+# Use viz_data with visualization tools like Graphviz, D3.js, etc.
+```
+
+## Integration Points
+
+### Dependency Resolution System
+Integrates with UnifiedDependencyResolver for intelligent dependency matching and resolution.
+
+### Property Reference System
+Generates PropertyReference objects for SageMaker pipeline construction and step input management.
+
+### Step Specification Registry
+Uses SpecificationRegistry for step specification management and validation.
+
+### Base DAG Compatibility
+Maintains full compatibility with base PipelineDAG for existing pipeline code.
+
+## Performance Considerations
+
+### Resolution Caching
+- Dependency resolution results are cached for performance
+- Cache can be cleared when specifications change
+- Resolution state tracking prevents unnecessary re-resolution
+
+### Memory Management
+- Efficient storage of step specifications and dependency edges
+- Indexed edge collection for fast lookups
+- Lazy resolution only when needed
 
 ## Related Documentation
 
-### Pipeline DAG Components
-- [Pipeline DAG Overview](README.md): Introduction to the DAG-based pipeline structure
-- [Base Pipeline DAG](base_dag.md): Foundation for the enhanced DAG
-- [Edge Types](edge_types.md): Types of edges used in the enhanced DAG
-
-### Pipeline Building
-- [Pipeline Template Base](../pipeline_builder/pipeline_template_base.md): Uses the enhanced DAG for template-based pipeline creation
-- [Pipeline Assembler](../pipeline_builder/pipeline_assembler.md): Consumes the enhanced DAG for step instantiation
-- [Pipeline Examples](../pipeline_builder/pipeline_examples.md): Examples showing the enhanced DAG in action
-
-### Dependency System
-- [Dependency Resolver](../pipeline_deps/dependency_resolver.md): Core component used by the enhanced DAG for dependency resolution
-- [Base Specifications](../pipeline_deps/base_specifications.md): Defines step specifications used by the enhanced DAG
-- [Property Reference](../pipeline_deps/property_reference.md): Used by the enhanced DAG to represent resolved dependencies
-- [Semantic Matcher](../pipeline_deps/semantic_matcher.md): Used by the dependency resolver for name similarity calculation
+- [Base Pipeline DAG](base_dag.md) - Foundation DAG implementation
+- [Edge Types](edge_types.md) - Typed edge system used by Enhanced DAG
+- [Pipeline DAG Resolver](pipeline_dag_resolver.md) - Execution planning integration
+- [Dependency System](../../core/deps/README.md) - Dependency resolution framework
+- [Step Specifications](../../core/deps/base_specifications.md) - Step specification system
+- [Property Reference](../../core/deps/property_reference.md) - SageMaker property reference system
