@@ -81,15 +81,9 @@ Module Documentation
    :maxdepth: 2
 
    core
-   api
-   cli
-   steps
-   processing
    registry
+   steps
    validation
-   pipeline_catalog
-   workspace
-   mods
 
 Package Structure
 -----------------
