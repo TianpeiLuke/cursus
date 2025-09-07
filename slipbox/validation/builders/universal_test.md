@@ -4,289 +4,266 @@ tags:
   - validation
   - builders
   - universal_test
-  - scoring_integration
+  - comprehensive_testing
 keywords:
-  - universal step builder test
+  - UniversalStepBuilderTest
+  - TestUniversalStepBuilder
+  - step builder validation
+  - comprehensive testing
   - scoring integration
-  - test orchestration
-  - builder validation
-  - quality assessment
-  - alignment pattern
+  - structured reporting
 topics:
-  - builder validation framework
-  - scoring integration
+  - builder validation
+  - comprehensive testing
   - test orchestration
-  - quality assessment
 language: python
-date of note: 2025-08-15
+date of note: 2025-09-07
 ---
 
-# Universal Step Builder Test with Scoring Integration
+# Universal Step Builder Test
+
+Universal test suite for validating step builder implementation compliance across all architectural levels.
 
 ## Overview
 
-The `UniversalStepBuilderTest` class is the main orchestrator for comprehensive step builder validation with integrated scoring capabilities. This implementation follows the same architectural pattern as the alignment validation system, providing a unified approach to builder testing and quality assessment.
+The Universal Step Builder Test combines all test levels into a single comprehensive test suite that evaluates step builders against all architectural requirements with integrated scoring and reporting capabilities. It orchestrates Level 1 (Interface), Level 2 (Specification), Level 3 (Step Creation), and Level 4 (Integration) tests along with SageMaker step type-specific validation.
 
-## Architecture
+The test suite provides flexible configuration options including verbose output, quality scoring, structured reporting, and step type-specific test variants. It supports both individual builder testing and batch testing by SageMaker step type.
 
-### Integration Pattern
-The enhanced system follows the proven pattern from alignment validation:
+## Classes and Methods
 
-```
-UniversalStepBuilderTest → Raw Results → Integrated Scoring → Enhanced Results
-                                     → Structured Reporting → Comprehensive Output
-```
+### Classes
+- [`UniversalStepBuilderTest`](#universalstepbuildertest) - Universal test suite for validating step builder implementation compliance
+- [`TestUniversalStepBuilder`](#testuniversalstepbuilder) - Test cases for the UniversalStepBuilderTest class itself
 
-This mirrors the alignment validation pattern:
-```
-UnifiedAlignmentTester → Raw Results → ValidationResult → AlignmentReport → Export
-```
+## API Reference
 
-### Key Components
+### UniversalStepBuilderTest
 
-1. **Test Orchestration**: Coordinates all test levels (interface, specification, path mapping, integration)
-2. **Scoring Integration**: Automatically calculates quality scores using `StepBuilderScorer`
-3. **Structured Reporting**: Generates comprehensive reports following alignment validation patterns
-4. **Multiple Output Formats**: Supports raw, scored, structured, and JSON outputs
-5. **Backward Compatibility**: Maintains compatibility with existing code
+_class_ cursus.validation.builders.universal_test.UniversalStepBuilderTest(_builder_class_, _config=None_, _spec=None_, _contract=None_, _step_name=None_, _verbose=False_, _enable_scoring=True_, _enable_structured_reporting=False_)
 
-## Enhanced Features
+Universal test suite for validating step builder implementation compliance across all architectural levels.
 
-### 1. Integrated Scoring
-- **Automatic calculation** of weighted quality scores across test levels
-- **Level-specific scoring** with configurable weights (Interface: 1.0x, Specification: 1.5x, Path Mapping: 2.0x, Integration: 2.5x)
-- **Overall quality rating** (Excellent, Good, Satisfactory, Needs Work, Poor)
-- **Test detection** using smart pattern recognition
-
-### 2. Rich Console Output
-Enhanced console reporting with scoring information:
-
-```
-UNIVERSAL STEP BUILDER TEST RESULTS FOR TabularPreprocessingStepBuilder
-================================================================================
-
-✅ OVERALL: 18/20 tests passed (90.0%)
-📊 QUALITY SCORE: 85.3/100 - Good
-
-Level Performance:
-  Level 1 Interface: 95.0/100 (5/5 tests, 100.0%)
-  Level 2 Specification: 82.5/100 (3/4 tests, 75.0%)
-  Level 3 Path Mapping: 78.0/100 (4/5 tests, 80.0%)
-  Level 4 Integration: 88.0/100 (5/6 tests, 83.3%)
-```
-
-### 3. Structured Reporting
-Generates comprehensive reports following alignment validation patterns:
+**Parameters:**
+- **builder_class** (_Type[StepBuilderBase]_) – The step builder class to test
+- **config** (_Optional[ConfigBase]_) – Optional config to use (will create mock if not provided)
+- **spec** (_Optional[StepSpecification]_) – Optional step specification (will extract from builder if not provided)
+- **contract** (_Optional[ScriptContract]_) – Optional script contract (will extract from builder if not provided)
+- **step_name** (_Optional[Union[str, StepName]]_) – Optional step name (will extract from class name if not provided)
+- **verbose** (_bool_) – Whether to print verbose output
+- **enable_scoring** (_bool_) – Whether to calculate and include quality scores
+- **enable_structured_reporting** (_bool_) – Whether to generate structured reports
 
 ```python
-{
-  "test_results": {...},      # Raw test results
-  "scoring": {...},           # Scoring data with levels and overall
-  "structured_report": {...}  # Organized report with metadata
-}
+from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+from cursus.steps.builders.processing_step_builder import ProcessingStepBuilder
+
+tester = UniversalStepBuilderTest(ProcessingStepBuilder, verbose=True, enable_scoring=True)
 ```
 
-## Usage Patterns
+#### run_all_tests
 
-### 1. Backward Compatible Usage
-```python
-# Existing code continues to work unchanged
-tester = UniversalStepBuilderTest(BuilderClass, enable_scoring=False)
-results = tester.run_all_tests()  # Returns raw dict as before
-```
+run_all_tests(_include_scoring=None_, _include_structured_report=None_)
 
-### 2. Enhanced Usage with Scoring (Default)
+Run all tests across all levels with optional scoring and structured reporting.
+
+**Parameters:**
+- **include_scoring** (_Optional[bool]_) – Whether to calculate and include quality scores (overrides instance setting)
+- **include_structured_report** (_Optional[bool]_) – Whether to generate structured report (overrides instance setting)
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing test results and optional scoring/reporting data
+
 ```python
-# New default behavior includes scoring
-tester = UniversalStepBuilderTest(BuilderClass, verbose=True)
+# Run with default settings
 results = tester.run_all_tests()
 
-# Access components
-test_results = results['test_results']
-scoring = results['scoring']
-overall_score = scoring['overall']['score']  # 0-100 score
+# Override settings for this run
+results = tester.run_all_tests(include_scoring=True, include_structured_report=True)
 ```
 
-### 3. Full Reporting
+#### run_step_type_specific_tests
+
+run_step_type_specific_tests()
+
+Run tests specific to the SageMaker step type including step type detection, classification, and compliance validation.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing step type-specific test results
+
 ```python
-# Complete reporting with structured output
-tester = UniversalStepBuilderTest(
-    BuilderClass, 
-    enable_scoring=True,
-    enable_structured_reporting=True
+step_type_results = tester.run_step_type_specific_tests()
+```
+
+#### run_all_tests_legacy
+
+run_all_tests_legacy()
+
+Legacy method that returns raw results for backward compatibility, maintaining the original behavior before scoring and structured reporting enhancements.
+
+**Returns:**
+- **Dict[str, Dict[str, Any]]** – Raw test results dictionary
+
+```python
+legacy_results = tester.run_all_tests_legacy()
+```
+
+#### run_all_tests_with_scoring
+
+run_all_tests_with_scoring()
+
+Convenience method to run tests with scoring enabled.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing test results and scoring data
+
+```python
+scoring_results = tester.run_all_tests_with_scoring()
+overall_score = scoring_results['scoring']['overall']['score']
+```
+
+#### run_all_tests_with_full_report
+
+run_all_tests_with_full_report()
+
+Convenience method to run tests with both scoring and structured reporting enabled.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing test results, scoring, and structured report
+
+```python
+full_results = tester.run_all_tests_with_full_report()
+structured_report = full_results['structured_report']
+```
+
+#### export_results_to_json
+
+export_results_to_json(_output_path=None_)
+
+Export test results with scoring to JSON format.
+
+**Parameters:**
+- **output_path** (_Optional[str]_) – Optional path to save the JSON file
+
+**Returns:**
+- **str** – JSON string of the results
+
+```python
+# Export to string
+json_content = tester.export_results_to_json()
+
+# Export to file
+tester.export_results_to_json('test_results.json')
+```
+
+#### test_all_builders_by_type
+
+_classmethod_ test_all_builders_by_type(_sagemaker_step_type_, _verbose=False_, _enable_scoring=True_)
+
+Test all builders for a specific SageMaker step type using registry discovery.
+
+**Parameters:**
+- **sagemaker_step_type** (_str_) – The SageMaker step type to test (e.g., 'Training', 'Transform')
+- **verbose** (_bool_) – Whether to print verbose output
+- **enable_scoring** (_bool_) – Whether to calculate and include quality scores
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing test results for all builders of the specified type
+
+```python
+# Test all Training step builders
+training_results = UniversalStepBuilderTest.test_all_builders_by_type(
+    'Training', 
+    verbose=True, 
+    enable_scoring=True
 )
-results = tester.run_all_tests()
 ```
 
-### 4. Convenience Methods
+#### generate_registry_discovery_report
+
+_classmethod_ generate_registry_discovery_report()
+
+Generate a comprehensive report of step builder discovery status.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing discovery report
+
 ```python
-tester = UniversalStepBuilderTest(BuilderClass)
-
-# Different execution modes
-raw_results = tester.run_all_tests_legacy()           # Raw only
-scored_results = tester.run_all_tests_with_scoring()  # With scoring
-full_results = tester.run_all_tests_with_full_report() # Everything
-
-# Export to JSON
-json_content = tester.export_results_to_json("report.json")
+discovery_report = UniversalStepBuilderTest.generate_registry_discovery_report()
 ```
 
-## Implementation Details
+#### validate_builder_availability
 
-### Class Structure
+_classmethod_ validate_builder_availability(_step_name_)
+
+Validate that a step builder is available and can be loaded.
+
+**Parameters:**
+- **step_name** (_str_) – The step name to validate
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing validation results
+
 ```python
-class UniversalStepBuilderTest:
-    def __init__(self, builder_class, config=None, spec=None, contract=None, 
-                 step_name=None, verbose=False, enable_scoring=True, 
-                 enable_structured_reporting=False)
-    
-    def run_all_tests(self, include_scoring=None, include_structured_report=None)
-    def run_all_tests_legacy(self)  # Backward compatibility
-    def run_all_tests_with_scoring(self)  # Convenience method
-    def run_all_tests_with_full_report(self)  # Full reporting
-    def export_results_to_json(self, output_path=None)
+availability = UniversalStepBuilderTest.validate_builder_availability('tabular_preprocessing')
 ```
 
-### Key Methods
+### TestUniversalStepBuilder
 
-#### Enhanced Test Execution
-- `run_all_tests()`: Main method with optional scoring and reporting
-- `_report_consolidated_results_with_scoring()`: Enhanced console output
-- `_generate_structured_report()`: Creates alignment-style reports
+_class_ cursus.validation.builders.universal_test.TestUniversalStepBuilder()
 
-#### Helper Methods
-- `_infer_step_name()`: Automatically detects step name from builder class
-- `_extract_level_results()`: Organizes tests by validation level
-- `_extract_step_type_results()`: Identifies step type-specific tests
-
-### Test Level Integration
-The system integrates with existing test levels:
-
-1. **Level 1 (Interface)**: `InterfaceTests` - Basic interface compliance
-2. **Level 2 (Specification)**: `SpecificationTests` - Contract and specification alignment
-3. **Level 3 (Path Mapping)**: `PathMappingTests` - Input/output path validation
-4. **Level 4 (Integration)**: `IntegrationTests` - System integration testing
-5. **Step Type Specific**: `SageMakerStepTypeValidator` - Step type compliance
-
-## Data Structures
-
-### Enhanced Result Format
-```python
-{
-  "test_results": {
-    "test_inheritance": {"passed": True, "error": None, "details": {}},
-    "test_required_methods": {"passed": True, "error": None, "details": {}},
-    # ... all raw test results
-  },
-  "scoring": {
-    "overall": {
-      "score": 85.3,
-      "rating": "Good",
-      "passed": 18,
-      "total": 20,
-      "pass_rate": 90.0
-    },
-    "levels": {
-      "level1_interface": {"score": 95.0, "passed": 5, "total": 5},
-      "level2_specification": {"score": 82.5, "passed": 3, "total": 4},
-      "level3_path_mapping": {"score": 78.0, "passed": 4, "total": 5},
-      "level4_integration": {"score": 88.0, "passed": 5, "total": 6}
-    }
-  },
-  "structured_report": {
-    "builder_info": {
-      "builder_name": "TabularPreprocessing",
-      "builder_class": "TabularPreprocessingStepBuilder",
-      "sagemaker_step_type": "Processing"
-    },
-    "summary": {
-      "total_tests": 20,
-      "passed_tests": 18,
-      "pass_rate": 90.0,
-      "overall_score": 85.3,
-      "score_rating": "Good"
-    }
-  }
-}
-```
-
-## Integration Benefits
-
-### 1. Unified Architecture
-- **Single entry point** for all builder validation
-- **Consistent pattern** with alignment validation system
-- **Integrated workflow** from testing to reporting
-
-### 2. Enhanced Capabilities
-- **Quantitative assessment** through scoring
-- **Qualitative analysis** through issue tracking
-- **Structured reporting** for analysis and automation
-- **Multiple export formats** for different use cases
-
-### 3. Developer Experience
-- **Rich console output** with visual indicators
-- **Clear quality metrics** for improvement guidance
-- **Flexible usage patterns** for different needs
-- **Comprehensive documentation** and examples
-
-## Testing and Validation
-
-The enhanced system includes comprehensive unit tests:
+Test cases for the UniversalStepBuilderTest class itself, verifying that the universal test suite works correctly.
 
 ```python
+import unittest
+
 class TestUniversalStepBuilder(unittest.TestCase):
-    def test_scoring_integration(self)      # Tests scoring functionality
-    def test_structured_reporting(self)     # Tests report generation
-    def test_convenience_methods(self)      # Tests helper methods
-    def test_with_xgboost_training_builder(self)  # Integration tests
+    def test_with_xgboost_training_builder(self):
+        # Test implementation
+        pass
 ```
 
-## Future Enhancements
+#### test_with_xgboost_training_builder
 
-### 1. Chart Generation
-Integration with existing chart generation from `StepBuilderScorer`:
-```python
-def generate_score_chart(self, output_path=None):
-    results = self.run_all_tests_with_scoring()
-    scorer = StepBuilderScorer(results['test_results'])
-    return scorer.generate_chart(self.step_name, output_path)
-```
+test_with_xgboost_training_builder()
 
-### 2. Batch Processing
-Enable testing multiple builders with consolidated reporting:
-```python
-def test_multiple_builders(builder_classes):
-    consolidated_results = {}
-    for builder_class in builder_classes:
-        tester = UniversalStepBuilderTest(builder_class)
-        results = tester.run_all_tests_with_full_report()
-        consolidated_results[builder_class.__name__] = results
-    return consolidated_results
-```
+Test UniversalStepBuilderTest with XGBoostTrainingStepBuilder to verify basic functionality.
 
-### 3. Integration with BuilderTestReporter
-Update existing `BuilderTestReporter` to use enhanced system:
-```python
-def test_and_report_builder(self, builder_class, step_name=None):
-    tester = UniversalStepBuilderTest(
-        builder_class,
-        enable_scoring=True,
-        enable_structured_reporting=True
-    )
-    results = tester.run_all_tests()
-    return self._convert_enhanced_results_to_report(results)
-```
+#### test_with_tabular_preprocessing_builder
 
-## Related Components
+test_with_tabular_preprocessing_builder()
 
-- **scoring.py**: Provides the scoring calculation engine
-- **builder_reporter.py**: Original reporting system (can be integrated)
-- **interface_tests.py**: Level 1 test implementation
-- **specification_tests.py**: Level 2 test implementation
-- **path_mapping_tests.py**: Level 3 test implementation
-- **integration_tests.py**: Level 4 test implementation
-- **sagemaker_step_type_validator.py**: Step type-specific validation
+Test UniversalStepBuilderTest with TabularPreprocessingStepBuilder to verify basic functionality.
 
-## Conclusion
+#### test_with_explicit_components
 
-The enhanced `UniversalStepBuilderTest` successfully integrates scoring and structured reporting capabilities directly into the universal test system, following the proven architectural pattern from alignment validation. This provides a unified, comprehensive, and user-friendly interface for builder validation while maintaining backward compatibility and enabling advanced analysis capabilities.
+test_with_explicit_components()
+
+Test UniversalStepBuilderTest with explicitly provided components including custom config and specification.
+
+#### test_scoring_integration
+
+test_scoring_integration()
+
+Test the scoring integration functionality to verify enhanced result structure and scoring data.
+
+#### test_structured_reporting
+
+test_structured_reporting()
+
+Test the structured reporting functionality to verify comprehensive report generation.
+
+#### test_convenience_methods
+
+test_convenience_methods()
+
+Test the convenience methods for different testing modes including legacy, scoring, and full report methods.
+
+## Related Documentation
+
+- [Interface Tests](interface_tests.md) - Level 1 interface compliance tests
+- [Specification Tests](specification_tests.md) - Level 2 specification alignment tests
+- [Step Creation Tests](step_creation_tests.md) - Level 3 step creation tests
+- [Integration Tests](integration_tests.md) - Level 4 integration tests
+- [Scoring System](scoring.md) - Quality scoring and rating system
+- [SageMaker Step Type Validator](sagemaker_step_type_validator.md) - Step type-specific validation

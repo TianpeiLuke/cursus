@@ -6,526 +6,257 @@ tags:
   - builder
   - analysis
 keywords:
-  - builder code analysis
+  - BuilderCodeAnalyzer
+  - BuilderVisitor
+  - BuilderPatternAnalyzer
   - AST parsing
   - configuration usage
   - validation patterns
   - code analysis
-  - builder patterns
-  - architectural analysis
-  - static analysis
 topics:
   - validation framework
   - code analysis
   - builder validation
   - static analysis
 language: python
-date of note: 2025-08-18
+date of note: 2025-09-07
 ---
 
 # Builder Code Analyzer
+
+Comprehensive static analysis of step builder code using Abstract Syntax Tree (AST) parsing.
 
 ## Overview
 
 The Builder Code Analyzer provides comprehensive static analysis of step builder code using Abstract Syntax Tree (AST) parsing. It extracts configuration usage patterns, validation calls, and architectural information to support Level 4 alignment validation.
 
-## Core Components
+The analyzer uses AST parsing to identify configuration field accesses, validation method calls, default value assignments, class and method definitions, and import patterns. It provides both low-level AST analysis and higher-level pattern analysis for architectural compliance validation.
 
-### BuilderCodeAnalyzer Class
+## Classes and Methods
 
-The main analyzer class that orchestrates AST-based code analysis:
+### Classes
+- [`BuilderCodeAnalyzer`](#buildercodeanalyzer) - Main analyzer class for AST-based code analysis
+- [`BuilderVisitor`](#buildervisitor) - AST visitor for extracting builder-specific patterns
+- [`BuilderPatternAnalyzer`](#builderpatternanalyzer) - Higher-level pattern analysis beyond basic AST parsing
 
-```python
-class BuilderCodeAnalyzer:
-    """
-    Analyzes builder code to extract configuration usage patterns and architectural information.
-    
-    Uses AST parsing to identify:
-    - Configuration field accesses
-    - Validation method calls
-    - Default value assignments
-    - Class and method definitions
-    """
-```
+## API Reference
 
-### File Analysis Interface
+### BuilderCodeAnalyzer
+
+_class_ cursus.validation.alignment.analyzers.builder_analyzer.BuilderCodeAnalyzer()
+
+Analyzes builder code to extract configuration usage patterns and architectural information using AST parsing.
 
 ```python
-def analyze_builder_file(self, builder_path: Path) -> Dict[str, Any]:
-    """
-    Analyze builder file to extract code patterns.
-    
-    Args:
-        builder_path: Path to the builder file
-        
-    Returns:
-        Dictionary containing builder analysis results
-    """
+from cursus.validation.alignment.analyzers.builder_analyzer import BuilderCodeAnalyzer
+
+analyzer = BuilderCodeAnalyzer()
 ```
 
-**Analysis Process:**
-1. **File Reading**: Load builder source code
-2. **AST Parsing**: Parse code into Abstract Syntax Tree
-3. **Pattern Extraction**: Extract architectural patterns
-4. **Result Compilation**: Compile analysis results
+#### analyze_builder_file
 
-**Error Handling:**
-```python
-except Exception as e:
-    return {
-        'error': str(e),
-        'config_accesses': [],
-        'validation_calls': [],
-        'default_assignments': [],
-        'class_definitions': [],
-        'method_definitions': []
-    }
-```
+analyze_builder_file(_builder_path_)
 
-### AST Analysis Engine
+Analyze builder file to extract code patterns by parsing the source code into an AST and extracting architectural patterns.
+
+**Parameters:**
+- **builder_path** (_Path_) – Path to the builder file
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing builder analysis results with keys: config_accesses, validation_calls, default_assignments, class_definitions, method_definitions, import_statements
 
 ```python
-def analyze_builder_code(self, builder_ast: ast.AST, builder_content: str) -> Dict[str, Any]:
-    """Analyze builder AST to extract configuration usage patterns."""
+from pathlib import Path
+
+builder_path = Path('src/cursus/steps/builders/processing_step_builder.py')
+results = analyzer.analyze_builder_file(builder_path)
+print(f"Config accesses: {len(results['config_accesses'])}")
 ```
 
-**Analysis Categories:**
-- **Configuration Accesses**: Field access patterns
-- **Validation Calls**: Validation method invocations
-- **Default Assignments**: Default value assignments
-- **Class Definitions**: Class structure analysis
-- **Method Definitions**: Method signature analysis
-- **Import Statements**: Import pattern analysis
-- **Configuration Class Usage**: Config class utilization
+#### analyze_builder_code
 
-## AST Visitor Implementation
+analyze_builder_code(_builder_ast_, _builder_content_)
 
-### BuilderVisitor Class
+Analyze builder AST to extract configuration usage patterns using the BuilderVisitor.
 
-Specialized AST visitor for extracting builder-specific patterns:
+**Parameters:**
+- **builder_ast** (_ast.AST_) – Parsed AST of the builder code
+- **builder_content** (_str_) – Raw builder code content
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing analysis results
 
 ```python
-class BuilderVisitor(ast.NodeVisitor):
-    """AST visitor for analyzing builder code patterns."""
+import ast
+
+with open('builder.py', 'r') as f:
+    content = f.read()
+builder_ast = ast.parse(content)
+results = analyzer.analyze_builder_code(builder_ast, content)
 ```
 
-### Method Call Analysis
+### BuilderVisitor
 
-```python
-def visit_Call(self, node):
-    """Visit function/method call nodes."""
-```
+_class_ cursus.validation.alignment.analyzers.builder_analyzer.BuilderVisitor(_analysis_)
 
-**Call Pattern Detection:**
-- **Configuration Method Calls**: `config.method()` patterns
-- **Self Configuration Calls**: `self.config.method()` patterns
-- **Validation Method Calls**: Validation framework usage
-- **Method Call Tracking**: Distinguish methods from field accesses
+AST visitor for analyzing builder code patterns and extracting architectural information.
 
-**Validation Method Detection:**
-```python
-if node.func.attr in ['validate', 'require', 'check', 'assert_required']:
-    self.analysis['validation_calls'].append({
-        'method': node.func.attr,
-        'line_number': node.lineno,
-        'args': len(node.args),
-        'context': self._get_context(node)
-    })
-```
-
-### Attribute Access Analysis
-
-```python
-def visit_Attribute(self, node):
-    """Visit attribute access nodes (e.g., config.field_name or self.config.field_name)."""
-```
-
-**Access Pattern Detection:**
-- **Direct Config Access**: `config.field_name`
-- **Self Config Access**: `self.config.field_name`
-- **Method Call Exclusion**: Filter out method calls from field accesses
-- **Context Tracking**: Record access location and context
-
-**Field Access Recording:**
-```python
-if (isinstance(node.value, ast.Name) and 
-    node.value.id == 'config'):
-    # Only record as field access if it's not a method call
-    if (node.attr, node.lineno) not in self.method_calls:
-        self.analysis['config_accesses'].append({
-            'field_name': node.attr,
-            'line_number': node.lineno,
-            'context': self._get_context(node)
-        })
-```
-
-### Assignment Analysis
-
-```python
-def visit_Assign(self, node):
-    """Visit assignment nodes."""
-```
-
-**Assignment Pattern Detection:**
-- **Default Value Assignments**: Field default value setting
-- **Target Analysis**: Assignment target identification
-- **Context Recording**: Assignment location and context
-
-### Definition Analysis
-
-```python
-def visit_ClassDef(self, node):
-    """Visit class definition nodes."""
-
-def visit_FunctionDef(self, node):
-    """Visit function/method definition nodes."""
-
-def visit_AsyncFunctionDef(self, node):
-    """Visit async function/method definition nodes."""
-```
-
-**Definition Information Extraction:**
-- **Class Definitions**: Class names, base classes, decorators
-- **Method Definitions**: Method names, arguments, decorators
-- **Async Method Support**: Async function detection
-- **Inheritance Analysis**: Base class identification
-
-### Import Analysis
-
-```python
-def visit_Import(self, node):
-    """Visit import statements."""
-
-def visit_ImportFrom(self, node):
-    """Visit from...import statements."""
-```
-
-**Import Pattern Detection:**
-- **Standard Imports**: `import module` statements
-- **From Imports**: `from module import name` statements
-- **Alias Tracking**: Import alias detection
-- **Module Analysis**: Imported module identification
-
-## Pattern Analysis Engine
-
-### BuilderPatternAnalyzer Class
-
-Higher-level pattern analysis beyond basic AST parsing:
-
-```python
-class BuilderPatternAnalyzer:
-    """
-    Analyzes builder patterns and architectural compliance.
-    
-    Provides higher-level analysis of builder code patterns beyond basic AST parsing.
-    """
-```
-
-### Configuration Usage Analysis
-
-```python
-def analyze_configuration_usage(self, builder_analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """Analyze how configuration is used in the builder."""
-```
-
-**Usage Pattern Analysis:**
-- **Field Grouping**: Group accesses by field name
-- **Access Counting**: Count field access frequency
-- **Line Range Analysis**: First and last access locations
-- **Context Analysis**: Access context identification
-
-**Usage Metrics:**
-```python
-usage_patterns[field_name] = {
-    'access_count': len(accesses),
-    'first_access_line': min(access['line_number'] for access in accesses),
-    'last_access_line': max(access['line_number'] for access in accesses),
-    'contexts': [access['context'] for access in accesses]
-}
-```
-
-**Analysis Results:**
-- **Accessed Fields**: Set of all accessed configuration fields
-- **Field Usage**: Detailed usage information per field
-- **Usage Patterns**: Access pattern analysis
-- **Total Accesses**: Overall configuration access count
-
-### Validation Pattern Analysis
-
-```python
-def analyze_validation_patterns(self, builder_analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """Analyze validation patterns in the builder."""
-```
-
-**Validation Analysis:**
-- **Validation Detection**: Presence of validation logic
-- **Method Categorization**: Group validation calls by method type
-- **Call Counting**: Validation method usage frequency
-- **Location Tracking**: Validation call line numbers
-
-**Analysis Results:**
-```python
-return {
-    'has_validation': len(validation_calls) > 0,
-    'validation_methods': validation_methods,
-    'validation_call_count': len(validation_calls),
-    'validation_lines': [call['line_number'] for call in validation_calls]
-}
-```
-
-### Import Pattern Analysis
-
-```python
-def analyze_import_patterns(self, builder_analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """Analyze import patterns to detect configuration class usage."""
-```
-
-**Import Analysis:**
-- **Configuration Import Detection**: Identify config-related imports
-- **Module Analysis**: Analyze imported modules
-- **Import Counting**: Total import statement count
-- **Config Usage Detection**: Configuration class import presence
-
-**Configuration Import Detection:**
-```python
-config_imports = []
-for stmt in import_statements:
-    if 'config' in stmt.get('module', '').lower() or 'config' in stmt.get('name', '').lower():
-        config_imports.append(stmt)
-```
-
-## Analysis Results Structure
-
-### Core Analysis Output
+**Parameters:**
+- **analysis** (_Dict[str, Any]_) – Dictionary to store analysis results
 
 ```python
 analysis = {
-    'config_accesses': [
-        {
-            'field_name': 'input_path',
-            'line_number': 42,
-            'context': 'line_42'
-        }
-    ],
-    'validation_calls': [
-        {
-            'method': 'validate',
-            'line_number': 35,
-            'args': 2,
-            'context': 'line_35'
-        }
-    ],
-    'default_assignments': [
-        {
-            'field_name': 'batch_size',
-            'line_number': 28,
-            'target_type': 'Attribute',
-            'context': 'line_28'
-        }
-    ],
-    'class_definitions': [
-        {
-            'class_name': 'ProcessingStepBuilder',
-            'line_number': 15,
-            'base_classes': ['BaseStepBuilder'],
-            'decorators': []
-        }
-    ],
-    'method_definitions': [
-        {
-            'method_name': 'build_step',
-            'line_number': 45,
-            'args': ['self', 'config'],
-            'decorators': [],
-            'is_async': False
-        }
-    ],
-    'import_statements': [
-        {
-            'type': 'from_import',
-            'module': 'config.processing_config',
-            'name': 'ProcessingConfig',
-            'alias': None,
-            'line_number': 5
-        }
-    ]
+    'config_accesses': [],
+    'validation_calls': [],
+    'default_assignments': [],
+    'class_definitions': [],
+    'method_definitions': [],
+    'import_statements': []
 }
+visitor = BuilderVisitor(analysis)
 ```
 
-### Pattern Analysis Output
+#### visit_Call
+
+visit_Call(_node_)
+
+Visit function/method call nodes to detect validation method calls and track method calls on config objects.
+
+**Parameters:**
+- **node** (_ast.Call_) – AST call node
 
 ```python
-configuration_usage = {
-    'accessed_fields': {'input_path', 'output_path', 'batch_size'},
-    'field_usage': {
-        'input_path': [
-            {'field_name': 'input_path', 'line_number': 42, 'context': 'line_42'}
-        ]
-    },
-    'usage_patterns': {
-        'input_path': {
-            'access_count': 1,
-            'first_access_line': 42,
-            'last_access_line': 42,
-            'contexts': ['line_42']
-        }
-    },
-    'total_config_accesses': 3
-}
-
-validation_patterns = {
-    'has_validation': True,
-    'validation_methods': {
-        'validate': [
-            {'method': 'validate', 'line_number': 35, 'args': 2, 'context': 'line_35'}
-        ]
-    },
-    'validation_call_count': 1,
-    'validation_lines': [35]
-}
-
-import_patterns = {
-    'total_imports': 5,
-    'config_imports': [
-        {
-            'type': 'from_import',
-            'module': 'config.processing_config',
-            'name': 'ProcessingConfig',
-            'alias': None,
-            'line_number': 5
-        }
-    ],
-    'has_config_import': True,
-    'import_modules': ['pathlib', 'typing', 'config.processing_config']
-}
+# Automatically called during AST traversal
+visitor.visit(ast_tree)
 ```
 
-## Integration with Alignment Validation
+#### visit_Attribute
 
-### Builder Configuration Alignment
+visit_Attribute(_node_)
 
-The analyzer integrates with BuilderConfigurationAlignmentTester:
+Visit attribute access nodes to detect configuration field accesses (e.g., config.field_name or self.config.field_name).
+
+**Parameters:**
+- **node** (_ast.Attribute_) – AST attribute node
+
+#### visit_Assign
+
+visit_Assign(_node_)
+
+Visit assignment nodes to detect default value assignments.
+
+**Parameters:**
+- **node** (_ast.Assign_) – AST assignment node
+
+#### visit_ClassDef
+
+visit_ClassDef(_node_)
+
+Visit class definition nodes to extract class information including base classes and decorators.
+
+**Parameters:**
+- **node** (_ast.ClassDef_) – AST class definition node
+
+#### visit_FunctionDef
+
+visit_FunctionDef(_node_)
+
+Visit function/method definition nodes to extract method signatures and decorators.
+
+**Parameters:**
+- **node** (_ast.FunctionDef_) – AST function definition node
+
+#### visit_AsyncFunctionDef
+
+visit_AsyncFunctionDef(_node_)
+
+Visit async function/method definition nodes to extract async method information.
+
+**Parameters:**
+- **node** (_ast.AsyncFunctionDef_) – AST async function definition node
+
+#### visit_Import
+
+visit_Import(_node_)
+
+Visit import statements to track module imports.
+
+**Parameters:**
+- **node** (_ast.Import_) – AST import node
+
+#### visit_ImportFrom
+
+visit_ImportFrom(_node_)
+
+Visit from...import statements to track specific imports from modules.
+
+**Parameters:**
+- **node** (_ast.ImportFrom_) – AST from-import node
+
+### BuilderPatternAnalyzer
+
+_class_ cursus.validation.alignment.analyzers.builder_analyzer.BuilderPatternAnalyzer()
+
+Analyzes builder patterns and architectural compliance, providing higher-level analysis beyond basic AST parsing.
 
 ```python
-# Analyze builder code using extracted component
-builder_analysis = self.builder_analyzer.analyze_builder_file(builder_path)
-
-# Validate configuration field handling
-config_issues = self._validate_configuration_fields(builder_analysis, config_analysis, builder_name)
+pattern_analyzer = BuilderPatternAnalyzer()
 ```
 
-### Field Access Validation
+#### analyze_configuration_usage
+
+analyze_configuration_usage(_builder_analysis_)
+
+Analyze how configuration is used in the builder by grouping field accesses and analyzing usage patterns.
+
+**Parameters:**
+- **builder_analysis** (_Dict[str, Any]_) – Result from BuilderCodeAnalyzer
+
+**Returns:**
+- **Dict[str, Any]** – Configuration usage analysis with keys: accessed_fields, field_usage, usage_patterns, total_config_accesses
 
 ```python
-# Get fields accessed in builder
-accessed_fields = set()
-for access in builder_analysis.get('config_accesses', []):
-    accessed_fields.add(access['field_name'])
-
-# Check for accessed fields not in configuration
-undeclared_fields = accessed_fields - config_fields
+builder_results = analyzer.analyze_builder_file(builder_path)
+usage_analysis = pattern_analyzer.analyze_configuration_usage(builder_results)
+print(f"Accessed fields: {usage_analysis['accessed_fields']}")
 ```
 
-### Validation Logic Detection
+#### analyze_validation_patterns
+
+analyze_validation_patterns(_builder_analysis_)
+
+Analyze validation patterns in the builder by categorizing validation method calls.
+
+**Parameters:**
+- **builder_analysis** (_Dict[str, Any]_) – Result from BuilderCodeAnalyzer
+
+**Returns:**
+- **Dict[str, Any]** – Validation pattern analysis with keys: has_validation, validation_methods, validation_call_count, validation_lines
 
 ```python
-# Check if builder has validation logic
-has_validation = len(builder_analysis.get('validation_calls', [])) > 0
-
-if required_fields and not has_validation:
-    # Report missing validation for required fields
+validation_analysis = pattern_analyzer.analyze_validation_patterns(builder_results)
+print(f"Has validation: {validation_analysis['has_validation']}")
 ```
 
-## Utility Functions
+#### analyze_import_patterns
 
-### Context Extraction
+analyze_import_patterns(_builder_analysis_)
+
+Analyze import patterns to detect configuration class usage and module dependencies.
+
+**Parameters:**
+- **builder_analysis** (_Dict[str, Any]_) – Result from BuilderCodeAnalyzer
+
+**Returns:**
+- **Dict[str, Any]** – Import pattern analysis with keys: total_imports, config_imports, has_config_import, import_modules
 
 ```python
-def _get_context(self, node) -> str:
-    """Get context information for a node (e.g., which method it's in)."""
+import_analysis = pattern_analyzer.analyze_import_patterns(builder_results)
+print(f"Config imports: {len(import_analysis['config_imports'])}")
 ```
 
-**Context Information:**
-- **Line Number**: Source code line location
-- **Method Context**: Current method being analyzed
-- **Class Context**: Current class being analyzed
+## Related Documentation
 
-### Name Extraction
-
-```python
-def _get_name(self, node) -> str:
-    """Extract name from various AST node types."""
-```
-
-**Name Extraction Support:**
-- **Simple Names**: `ast.Name` nodes
-- **Attribute Names**: `ast.Attribute` nodes with dot notation
-- **Constant Values**: `ast.Constant` nodes
-- **Fallback Handling**: Node type names for unsupported types
-
-## Error Handling
-
-### Robust Analysis
-
-The analyzer includes comprehensive error handling:
-
-- **File Reading Errors**: Handle missing or unreadable files
-- **Syntax Errors**: Handle malformed Python code
-- **AST Parsing Errors**: Handle parsing failures
-- **Analysis Errors**: Handle unexpected code patterns
-
-### Graceful Degradation
-
-```python
-try:
-    with open(builder_path, 'r') as f:
-        builder_content = f.read()
-    
-    builder_ast = ast.parse(builder_content)
-    return self.analyze_builder_code(builder_ast, builder_content)
-except Exception as e:
-    return {
-        'error': str(e),
-        'config_accesses': [],
-        'validation_calls': [],
-        # ... empty results with error indication
-    }
-```
-
-## Best Practices
-
-### Builder Code Analysis
-
-**Clear Configuration Usage:**
-```python
-# Good: Direct configuration field access
-def build_step(self, config):
-    input_path = config.input_path
-    batch_size = config.batch_size
-```
-
-**Validation Implementation:**
-```python
-# Good: Explicit validation calls
-def validate_config(self, config):
-    self.validate(config.input_path, "Input path is required")
-    self.require(config.output_path, "Output path is required")
-```
-
-### Import Organization
-
-**Configuration Import:**
-```python
-# Good: Clear configuration import
-from config.processing_config import ProcessingConfig
-```
-
-**Module Organization:**
-```python
-# Good: Organized imports
-from pathlib import Path
-from typing import Dict, Any
-from config.processing_config import ProcessingConfig
-```
-
-The Builder Code Analyzer provides essential static analysis capabilities for understanding builder implementation patterns and supporting comprehensive Level 4 alignment validation through detailed AST-based code analysis.
+- [Builder Config Alignment](../builder_config_alignment.md) - Level 4 alignment validation
+- [Unified Alignment Tester](../unified_alignment_tester.md) - Main alignment validation system
+- [Config Analyzer](config_analyzer.md) - Configuration analysis utilities

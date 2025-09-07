@@ -20,77 +20,113 @@ language: python
 date of note: 2025-01-19
 ---
 
-# Training Test Orchestrator
-
-Level 4 comprehensive validation orchestrator for training step builders, integrating all four levels of testing into a unified validation framework.
+# Training Test Orchestrator API Reference
 
 ## Overview
 
-The `TrainingStepBuilderTest` class serves as the main orchestrator for training step validation, providing comprehensive testing across all four validation levels. This orchestrator integrates interface tests, specification tests, path mapping tests, and integration tests into a cohesive validation framework with specialized testing for training-specific scenarios.
+The `training_test.py` module provides the main orchestrator for Training step validation, integrating all four levels of testing into a unified validation framework. This orchestrator integrates interface tests, specification tests, path mapping tests, and integration tests into a cohesive validation framework with specialized testing for training-specific scenarios.
 
-## Core Components
+## Classes and Methods
 
-### TrainingStepBuilderTest Class
+- **TrainingStepBuilderTest**: Main orchestrator for Training step validation testing
+
+## API Reference
+
+### _class_ cursus.validation.builders.variants.training_test.TrainingStepBuilderTest
+
+Main orchestrator for Training step validation testing that integrates all four validation levels with specialized training-specific testing capabilities.
+
+**Attributes:**
+- *builder_instance*: The Training step builder instance to test
+- *config* (*Dict[str, Any]*): Configuration dictionary for testing
+- *step_type* (*str*): Step type identifier ("Training")
+- *interface_tests* (*TrainingInterfaceTests*): Level 1 interface validation
+- *specification_tests* (*TrainingSpecificationTests*): Level 2 specification validation
+- *path_mapping_tests* (*StepCreationTests*): Level 3 path mapping validation
+- *integration_tests* (*TrainingIntegrationTests*): Level 4 integration validation
+
+**Methods:**
+
+#### __init__(builder_instance, config)
+
+Initialize Training test orchestrator with all test levels.
+
+**Parameters:**
+- *builder_instance*: The Training step builder instance to test
+- *config* (*Dict[str, Any]*): Configuration dictionary for testing
 
 ```python
-class TrainingStepBuilderTest:
-    """Main orchestrator for Training step validation testing."""
+orchestrator = TrainingStepBuilderTest(training_builder, {"verbose": True})
 ```
 
-**Key Features:**
-- Four-tier validation architecture integration
-- Framework-specific testing capabilities
-- Hyperparameter optimization validation
-- Distributed training testing
-- Data channel validation
-- Performance optimization testing
-- Comprehensive reporting system
+#### run_all_tests()
 
-### Validation Levels Integration
+Run all Training validation tests across all 4 levels.
 
-#### Level 1: Interface Tests
-- **TrainingInterfaceTests**: Validates training-specific interface methods
-- **Estimator Creation Methods**: Tests framework-specific estimator creation
-- **Hyperparameter Handling**: Validates hyperparameter management interfaces
-- **Training Configuration**: Tests training job configuration methods
+**Returns:**
+- *Dict[str, Any]*: Comprehensive test results containing summary and level-specific results
 
-#### Level 2: Specification Tests
-- **TrainingSpecificationTests**: Validates training specification compliance
-- **Framework Configuration**: Tests framework-specific configuration validation
-- **Hyperparameter Specification**: Validates hyperparameter structure compliance
-- **Resource Allocation**: Tests training resource specification validation
-
-#### Level 3: Path Mapping Tests
-- **StepCreationTests**: Validates training step creation and path mapping
-- **Training Input Paths**: Tests training data input path mapping
-- **Model Artifact Paths**: Validates model output path configuration
-- **Data Channel Mapping**: Tests training data channel path strategies
-
-#### Level 4: Integration Tests
-- **TrainingIntegrationTests**: Validates complete training workflow integration
-- **Framework Training Workflows**: Tests end-to-end training workflows
-- **Hyperparameter Optimization**: Validates hyperparameter tuning integration
-- **Distributed Training**: Tests distributed training workflow integration
-
-## Specialized Testing Methods
-
-### Framework-Specific Testing
 ```python
-def run_framework_specific_tests(self, framework: str) -> Dict[str, Any]:
-    """Run Training tests specific to a particular ML framework"""
+orchestrator = TrainingStepBuilderTest(training_builder, config)
+results = orchestrator.run_all_tests()
+print(f"Overall passed: {results['test_summary']['overall_passed']}")
 ```
+
+#### run_interface_tests()
+
+Run only Level 1 Training interface tests.
+
+**Returns:**
+- *Dict[str, Any]*: Level 1 interface test results
+
+#### run_specification_tests()
+
+Run only Level 2 Training specification tests.
+
+**Returns:**
+- *Dict[str, Any]*: Level 2 specification test results
+
+#### run_path_mapping_tests()
+
+Run only Level 3 Training path mapping tests.
+
+**Returns:**
+- *Dict[str, Any]*: Level 3 path mapping test results
+
+#### run_integration_tests()
+
+Run only Level 4 Training integration tests.
+
+**Returns:**
+- *Dict[str, Any]*: Level 4 integration test results
+
+#### run_framework_specific_tests(framework)
+
+Run Training tests specific to a particular ML framework.
+
+**Parameters:**
+- *framework* (*str*): The ML framework to test ('pytorch', 'xgboost', 'tensorflow', 'sklearn')
+
+**Returns:**
+- *Dict[str, Any]*: Framework-specific test results
 
 **Supported Frameworks:**
-- **PyTorch**: PyTorch-specific training validation
-- **XGBoost**: XGBoost training configuration testing
-- **TensorFlow**: TensorFlow training workflow validation
-- **Scikit-learn**: SKLearn training compatibility testing
+- **pytorch**: PyTorch-specific training validation
+- **xgboost**: XGBoost training configuration testing
+- **tensorflow**: TensorFlow training workflow validation
+- **sklearn**: SKLearn training compatibility testing
 
-### Hyperparameter Optimization Testing
 ```python
-def run_hyperparameter_optimization_tests(self) -> Dict[str, Any]:
-    """Run Training hyperparameter optimization tests"""
+pytorch_results = orchestrator.run_framework_specific_tests('pytorch')
+xgboost_results = orchestrator.run_framework_specific_tests('xgboost')
 ```
+
+#### run_hyperparameter_optimization_tests()
+
+Run Training hyperparameter optimization tests.
+
+**Returns:**
+- *Dict[str, Any]*: Hyperparameter optimization test results
 
 **Testing Areas:**
 - Hyperparameter handling method validation
@@ -98,11 +134,16 @@ def run_hyperparameter_optimization_tests(self) -> Dict[str, Any]:
 - Hyperparameter optimization integration testing
 - Tuning configuration validation
 
-### Distributed Training Testing
 ```python
-def run_distributed_training_tests(self) -> Dict[str, Any]:
-    """Run Training distributed training tests"""
+hyperparam_results = orchestrator.run_hyperparameter_optimization_tests()
 ```
+
+#### run_distributed_training_tests()
+
+Run Training distributed training tests.
+
+**Returns:**
+- *Dict[str, Any]*: Distributed training test results
 
 **Testing Areas:**
 - Distributed training specification validation
@@ -110,11 +151,16 @@ def run_distributed_training_tests(self) -> Dict[str, Any]:
 - Distributed training workflow integration
 - Resource allocation for distributed training
 
-### Data Channel Testing
 ```python
-def run_data_channel_tests(self) -> Dict[str, Any]:
-    """Run Training data channel validation tests"""
+distributed_results = orchestrator.run_distributed_training_tests()
 ```
+
+#### run_data_channel_tests()
+
+Run Training data channel validation tests.
+
+**Returns:**
+- *Dict[str, Any]*: Data channel test results
 
 **Testing Areas:**
 - Data channel specification validation
@@ -122,11 +168,16 @@ def run_data_channel_tests(self) -> Dict[str, Any]:
 - Data channel integration testing
 - Input data configuration validation
 
-### Performance Testing
 ```python
-def run_performance_tests(self) -> Dict[str, Any]:
-    """Run Training performance optimization tests"""
+data_channel_results = orchestrator.run_data_channel_tests()
 ```
+
+#### run_performance_tests()
+
+Run Training performance optimization tests.
+
+**Returns:**
+- *Dict[str, Any]*: Performance test results
 
 **Testing Areas:**
 - Training performance optimization validation
@@ -134,12 +185,148 @@ def run_performance_tests(self) -> Dict[str, Any]:
 - Performance configuration compliance
 - Training efficiency validation
 
+```python
+performance_results = orchestrator.run_performance_tests()
+```
+
+#### generate_training_report(test_results)
+
+Generate a comprehensive Training validation report.
+
+**Parameters:**
+- *test_results* (*Dict[str, Any]*): Results from running Training tests
+
+**Returns:**
+- *Dict[str, Any]*: Formatted comprehensive report
+
+**Report Components:**
+- **Summary**: Overall test results and pass/fail statistics
+- **Detailed Results**: Complete test results across all levels
+- **Recommendations**: Actionable recommendations based on test failures
+- **Framework Analysis**: Framework compatibility analysis
+- **Training Readiness**: Assessment of training readiness status
+
+```python
+results = orchestrator.run_all_tests()
+report = orchestrator.generate_training_report(results)
+```
+
+#### get_training_test_coverage()
+
+Get Training test coverage information.
+
+**Returns:**
+- *Dict[str, Any]*: Test coverage details including level-specific coverage and framework support
+
+**Coverage Areas:**
+- Level-specific test coverage statistics
+- Framework support coverage
+- Training pattern coverage
+- Total test count analysis
+
+```python
+coverage = orchestrator.get_training_test_coverage()
+print(f"Total tests: {coverage['total_test_count']}")
+```
+
+## Validation Levels Integration
+
+### Level 1: Interface Tests
+- **TrainingInterfaceTests**: Validates training-specific interface methods
+- **Estimator Creation Methods**: Tests framework-specific estimator creation
+- **Hyperparameter Handling**: Validates hyperparameter management interfaces
+- **Training Configuration**: Tests training job configuration methods
+
+### Level 2: Specification Tests
+- **TrainingSpecificationTests**: Validates training specification compliance
+- **Framework Configuration**: Tests framework-specific configuration validation
+- **Hyperparameter Specification**: Validates hyperparameter structure compliance
+- **Resource Allocation**: Tests training resource specification validation
+
+### Level 3: Path Mapping Tests
+- **StepCreationTests**: Validates training step creation and path mapping
+- **Training Input Paths**: Tests training data input path mapping
+- **Model Artifact Paths**: Validates model output path configuration
+- **Data Channel Mapping**: Tests training data channel path strategies
+
+### Level 4: Integration Tests
+- **TrainingIntegrationTests**: Validates complete training workflow integration
+- **Framework Training Workflows**: Tests end-to-end training workflows
+- **Hyperparameter Optimization**: Validates hyperparameter tuning integration
+- **Distributed Training**: Tests distributed training workflow integration
+
+## Convenience Functions
+
+### run_training_validation(builder_instance, config=None)
+
+Convenience function to run complete Training validation.
+
+**Parameters:**
+- *builder_instance*: Training step builder instance
+- *config* (*Optional[Dict[str, Any]]*): Optional configuration dictionary
+
+**Returns:**
+- *Dict[str, Any]*: Complete validation results
+
+```python
+results = run_training_validation(training_builder, {"verbose": True})
+```
+
+### run_training_framework_tests(builder_instance, framework, config=None)
+
+Convenience function to run framework-specific Training tests.
+
+**Parameters:**
+- *builder_instance*: Training step builder instance
+- *framework* (*str*): ML framework to test
+- *config* (*Optional[Dict[str, Any]]*): Optional configuration dictionary
+
+**Returns:**
+- *Dict[str, Any]*: Framework-specific test results
+
+```python
+pytorch_results = run_training_framework_tests(training_builder, 'pytorch')
+```
+
+### generate_training_report(builder_instance, config=None)
+
+Convenience function to generate Training validation report.
+
+**Parameters:**
+- *builder_instance*: Training step builder instance
+- *config* (*Optional[Dict[str, Any]]*): Optional configuration dictionary
+
+**Returns:**
+- *Dict[str, Any]*: Comprehensive validation report
+
+```python
+report = generate_training_report(training_builder, {"detailed": True})
+```
+
+## Framework Support
+
+### Supported ML Frameworks
+- **PyTorch**: Complete PyTorch training validation
+- **XGBoost**: XGBoost-specific training testing
+- **TensorFlow**: TensorFlow training workflow validation
+- **Scikit-learn**: SKLearn training compatibility testing
+- **Custom**: Custom framework training validation
+
+### Training Patterns
+- **Single Instance Training**: Standard single-instance training validation
+- **Distributed Training**: Multi-instance distributed training testing
+- **Hyperparameter Tuning**: Hyperparameter optimization validation
+- **Multi-Framework Support**: Cross-framework compatibility testing
+
 ## Usage Examples
 
 ### Complete Training Validation
 ```python
+from cursus.validation.builders.variants.training_test import TrainingStepBuilderTest
+
 # Initialize training test orchestrator
-test_orchestrator = TrainingStepBuilderTest(builder_instance, config)
+config = {"verbose": True}
+test_orchestrator = TrainingStepBuilderTest(training_builder_instance, config)
 
 # Run all validation levels
 results = test_orchestrator.run_all_tests()
@@ -155,6 +342,12 @@ pytorch_results = test_orchestrator.run_framework_specific_tests('pytorch')
 
 # Run XGBoost-specific training tests
 xgboost_results = test_orchestrator.run_framework_specific_tests('xgboost')
+
+# Run TensorFlow-specific training tests
+tensorflow_results = test_orchestrator.run_framework_specific_tests('tensorflow')
+
+# Run SKLearn-specific training tests
+sklearn_results = test_orchestrator.run_framework_specific_tests('sklearn')
 ```
 
 ### Specialized Testing Scenarios
@@ -181,47 +374,23 @@ path_results = test_orchestrator.run_path_mapping_tests()
 integration_results = test_orchestrator.run_integration_tests()
 ```
 
-## Reporting and Analysis
-
-### Comprehensive Report Generation
+### Using Convenience Functions
 ```python
-def generate_training_report(self, test_results: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate a comprehensive Training validation report"""
+from cursus.validation.builders.variants.training_test import (
+    run_training_validation,
+    run_training_framework_tests,
+    generate_training_report
+)
+
+# Complete validation using convenience function
+results = run_training_validation(training_builder_instance, {"verbose": True})
+
+# Framework-specific testing using convenience function
+pytorch_results = run_training_framework_tests(training_builder_instance, 'pytorch')
+
+# Generate report using convenience function
+report = generate_training_report(training_builder_instance, {"detailed": True})
 ```
-
-**Report Components:**
-- **Summary**: Overall test results and pass/fail statistics
-- **Detailed Results**: Complete test results across all levels
-- **Recommendations**: Actionable recommendations based on test failures
-- **Framework Analysis**: Framework compatibility analysis
-- **Training Readiness**: Assessment of training readiness status
-
-### Test Coverage Analysis
-```python
-def get_training_test_coverage(self) -> Dict[str, Any]:
-    """Get Training test coverage information"""
-```
-
-**Coverage Areas:**
-- Level-specific test coverage statistics
-- Framework support coverage
-- Training pattern coverage
-- Total test count analysis
-
-## Framework Support
-
-### Supported ML Frameworks
-- **PyTorch**: Complete PyTorch training validation
-- **XGBoost**: XGBoost-specific training testing
-- **TensorFlow**: TensorFlow training workflow validation
-- **Scikit-learn**: SKLearn training compatibility testing
-- **Custom**: Custom framework training validation
-
-### Training Patterns
-- **Single Instance Training**: Standard single-instance training validation
-- **Distributed Training**: Multi-instance distributed training testing
-- **Hyperparameter Tuning**: Hyperparameter optimization validation
-- **Multi-Framework Support**: Cross-framework compatibility testing
 
 ## Quality Assurance
 
@@ -251,34 +420,6 @@ def get_training_test_coverage(self) -> Dict[str, Any]:
 - Minimal computational overhead for complete validation
 - Scalable testing for large training configurations
 
-## Convenience Functions
-
-### Quick Validation Functions
-```python
-# Complete training validation
-results = run_training_validation(builder_instance, config)
-
-# Framework-specific testing
-framework_results = run_training_framework_tests(builder_instance, 'pytorch', config)
-
-# Generate comprehensive report
-report = generate_training_report(builder_instance, config)
-```
-
-## Dependencies
-
-### Core Dependencies
-- **TrainingInterfaceTests**: Level 1 interface validation
-- **TrainingSpecificationTests**: Level 2 specification validation
-- **StepCreationTests**: Level 3 path mapping validation
-- **TrainingIntegrationTests**: Level 4 integration validation
-
-### Framework Dependencies
-- Framework-specific validation utilities
-- Training configuration validation libraries
-- Hyperparameter optimization testing tools
-- Distributed training validation components
-
 ## Integration Points
 
 ### Universal Step Builder Integration
@@ -300,6 +441,6 @@ report = generate_training_report(builder_instance, config)
 
 - **TrainingInterfaceTests**: Level 1 interface validation for training steps
 - **TrainingSpecificationTests**: Level 2 specification validation for training steps
-- **TrainingIntegrationTests**: Level 3 integration testing for training workflows
-- **Universal Step Builder Tester**: Framework-agnostic testing infrastructure
+- **TrainingIntegrationTests**: Level 4 integration testing for training workflows
+- **[universal_test.md](../universal_test.md)**: Framework-agnostic testing infrastructure
 - **Step Builder Registry**: Dynamic test discovery and registration system
