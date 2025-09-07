@@ -2,316 +2,677 @@
 tags:
   - code
   - cli
+  - builder
   - testing
-  - step_builders
   - validation
+  - step-builders
 keywords:
-  - step builder testing
-  - universal test system
-  - CLI testing interface
-  - builder validation
-  - test automation
-  - level testing
-  - variant testing
+  - builder-test
+  - all
+  - level
+  - variant
+  - test-by-type
+  - registry-report
+  - validate-builder
+  - list-builders
+  - UniversalStepBuilderTest
+  - StepBuilderScorer
+  - RegistryStepDiscovery
 topics:
   - step builder testing
-  - test automation
-  - validation framework
-  - CLI design
+  - builder validation
+  - CLI tools
+  - testing framework
 language: python
-date of note: 2025-08-07
+date of note: 2024-12-07
 ---
 
-# Builder Test CLI Documentation
+# Builder Test CLI
+
+Command-line interface for the Universal Step Builder Test System providing comprehensive testing and validation of step builder implementations with enhanced scoring and registry features.
 
 ## Overview
 
-The Builder Test CLI (`src/cursus/cli/builder_test_cli.py`) provides a comprehensive command-line interface for running Universal Step Builder Tests. It implements the 4-level testing architecture defined by UniversalStepBuilderTestBase and supports variant-specific testing for different step builder types.
+The Builder Test CLI provides comprehensive testing tools for cursus step builders, supporting validation across four critical levels of builder implementation: Interface Tests, Specification Tests, Step Creation Tests, and Integration Tests. The CLI offers both individual builder testing and batch testing capabilities with detailed scoring, reporting, and visualization features.
 
-## Architecture
+The module supports multiple testing modes including universal test suites, level-specific testing, variant-specific testing, and SageMaker step type testing. It features comprehensive scoring and quality rating systems, registry discovery and validation capabilities, JSON export functionality for integration with other tools, and visualization chart generation for test results analysis.
 
-### Command Structure
+## Classes and Methods
 
-The CLI supports multiple testing modes:
+### Commands
+- [`all`](#all) - Run all tests (universal test suite)
+- [`level`](#level) - Run tests for a specific level
+- [`variant`](#variant) - Run tests for a specific variant
+- [`test-by-type`](#test-by-type) - Test all builders for a specific SageMaker step type
+- [`registry-report`](#registry-report) - Generate registry discovery report
+- [`validate-builder`](#validate-builder) - Validate that a step builder is available and can be loaded
+- [`list-builders`](#list-builders) - List available step builder classes
 
-```
-builder_test_cli
-├── all <builder_class>              # Run all tests (universal suite)
-├── level <1-4> <builder_class>      # Run specific level tests
-├── variant <variant> <builder_class> # Run variant-specific tests
-└── list-builders                    # List available builders
-```
+### Functions
+- [`print_test_results`](#print_test_results) - Print test results in formatted way with optional scoring display
+- [`print_enhanced_results`](#print_enhanced_results) - Print enhanced results with scoring and structured reporting
+- [`run_all_tests_with_scoring`](#run_all_tests_with_scoring) - Run all tests with scoring enabled
+- [`run_registry_discovery_report`](#run_registry_discovery_report) - Generate and display registry discovery report
+- [`run_test_by_sagemaker_type`](#run_test_by_sagemaker_type) - Test all builders for a specific SageMaker step type
+- [`validate_builder_availability`](#validate_builder_availability) - Validate that a step builder is available and can be loaded
+- [`export_results_to_json`](#export_results_to_json) - Export test results to JSON file
+- [`generate_score_chart`](#generate_score_chart) - Generate score visualization chart
+- [`import_builder_class`](#import_builder_class) - Import a builder class from a module path
+- [`run_level_tests`](#run_level_tests) - Run tests for a specific level
+- [`run_variant_tests`](#run_variant_tests) - Run tests for a specific variant
+- [`run_all_tests`](#run_all_tests) - Run all tests (universal test suite)
+- [`list_available_builders`](#list_available_builders) - List available step builder classes by scanning the builders directory
+- [`main`](#main) - Main CLI entry point
 
-### Core Components
+## API Reference
 
-#### 1. Test Execution Engine
-- **Universal Testing**: Complete test suite execution
-- **Level-Specific Testing**: Targeted testing at specific levels
-- **Variant Testing**: Specialized tests for step types
-- **Result Aggregation**: Comprehensive result collection and reporting
+### all
 
-#### 2. Builder Discovery System
-- **Automatic Discovery**: Scans builders directory for available classes
-- **AST Parsing**: Handles modules with missing dependencies
-- **Import Validation**: Verifies builder class accessibility
-- **Comprehensive Listing**: Shows all discoverable builders
+all(_builder_class_, _--verbose_, _--scoring_, _--export-json_, _--export-chart_, _--output-dir_)
 
-#### 3. Result Reporting System
-- **Formatted Output**: Structured test result presentation
-- **Grouping Logic**: Organizes results by test categories
-- **Progress Tracking**: Shows pass/fail statistics
-- **Verbose Mode**: Detailed error information and suggestions
+Runs all tests (universal test suite) for a specified step builder class with comprehensive validation.
 
-## Key Features
+**Parameters:**
+- **builder_class** (_str_) – Full path to the step builder class (e.g., src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder).
+- **--verbose** (_Flag_) – Show detailed output including test details and logs.
+- **--scoring** (_Flag_) – Enable quality scoring and enhanced reporting.
+- **--export-json** (_str_) – Export test results to JSON file at specified path.
+- **--export-chart** (_Flag_) – Generate score visualization chart (requires matplotlib).
+- **--output-dir** (_str_) – Output directory for exports (default: test_reports).
 
-### 1. Four-Level Testing Architecture
-
-#### Level 1: Interface Tests
 ```bash
-python -m cursus.cli.builder_test_cli level 1 <builder_class>
-```
-- **Inheritance validation**: Ensures proper base class inheritance
-- **Naming conventions**: Validates class and method naming
-- **Required methods**: Checks for mandatory method implementations
-- **Registry integration**: Verifies builder registry compliance
-- **Documentation standards**: Validates docstring presence and format
-- **Type hints**: Ensures proper type annotation usage
-- **Error handling**: Validates exception handling patterns
+# Basic all tests
+python -m cursus.cli builder-test all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder
 
-#### Level 2: Specification Tests
+# All tests with scoring and exports
+python -m cursus.cli builder-test all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --scoring --export-json results.json --export-chart
+
+# Verbose testing with custom output directory
+python -m cursus.cli builder-test all src.cursus.steps.builders.builder_processing_step.ProcessingStepBuilder --verbose --output-dir ./test_reports
+```
+
+### level
+
+level(_level_number_, _builder_class_, _--verbose_, _--scoring_, _--export-json_, _--export-chart_, _--output-dir_)
+
+Runs tests for a specific validation level with focused testing on particular aspects of builder implementation.
+
+**Parameters:**
+- **level_number** (_int_) – Test level to run: 1=Interface, 2=Specification, 3=Step Creation, 4=Integration.
+- **builder_class** (_str_) – Full path to the step builder class.
+- **--verbose** (_Flag_) – Show detailed output including test details and logs.
+- **--scoring** (_Flag_) – Enable quality scoring and enhanced reporting.
+- **--export-json** (_str_) – Export test results to JSON file at specified path.
+- **--export-chart** (_Flag_) – Generate score visualization chart.
+- **--output-dir** (_str_) – Output directory for exports.
+
 ```bash
-python -m cursus.cli.builder_test_cli level 2 <builder_class>
-```
-- **Specification usage**: Validates spec integration
-- **Contract alignment**: Ensures spec-contract consistency
-- **Environment variables**: Tests environment variable handling
-- **Job arguments**: Validates job argument processing
+# Test interface level
+python -m cursus.cli builder-test level 1 src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --verbose
 
-#### Level 3: Path Mapping Tests
+# Test specification level with scoring
+python -m cursus.cli builder-test level 2 src.cursus.steps.builders.builder_processing_step.ProcessingStepBuilder --scoring
+
+# Test integration level with exports
+python -m cursus.cli builder-test level 4 src.cursus.steps.builders.builder_transform_step.TransformStepBuilder --export-json level4_results.json
+```
+
+### variant
+
+variant(_variant_name_, _builder_class_, _--verbose_, _--scoring_, _--export-json_, _--export-chart_, _--output-dir_)
+
+Runs tests for a specific variant with specialized testing for particular step types.
+
+**Parameters:**
+- **variant_name** (_str_) – Test variant to run (currently supports: processing).
+- **builder_class** (_str_) – Full path to the step builder class.
+- **--verbose** (_Flag_) – Show detailed output including test details and logs.
+- **--scoring** (_Flag_) – Enable quality scoring and enhanced reporting.
+- **--export-json** (_str_) – Export test results to JSON file.
+- **--export-chart** (_Flag_) – Generate score visualization chart.
+- **--output-dir** (_str_) – Output directory for exports.
+
 ```bash
-python -m cursus.cli.builder_test_cli level 3 <builder_class>
-```
-- **Input path mapping**: Validates input path resolution
-- **Output path mapping**: Tests output path generation
-- **Property path validity**: Ensures property paths are accessible
+# Test processing variant
+python -m cursus.cli builder-test variant processing src.cursus.steps.builders.builder_processing_step.ProcessingStepBuilder --verbose
 
-#### Level 4: Integration Tests
+# Processing variant with scoring
+python -m cursus.cli builder-test variant processing src.cursus.steps.builders.builder_tabular_preprocessing_step.TabularPreprocessingStepBuilder --scoring --export-json processing_results.json
+```
+
+### test-by-type
+
+test-by-type(_sagemaker_type_, _--verbose_, _--scoring_, _--export-json_, _--export-chart_, _--output-dir_)
+
+Tests all builders for a specific SageMaker step type with batch testing capabilities.
+
+**Parameters:**
+- **sagemaker_type** (_str_) – SageMaker step type to test (Training, Transform, Processing, CreateModel, RegisterModel).
+- **--verbose** (_Flag_) – Show detailed output for all tested builders.
+- **--scoring** (_Flag_) – Enable quality scoring for all builders.
+- **--export-json** (_str_) – Export batch test results to JSON file.
+- **--export-chart** (_Flag_) – Generate score visualization charts for all builders.
+- **--output-dir** (_str_) – Output directory for exports.
+
 ```bash
-python -m cursus.cli.builder_test_cli level 4 <builder_class>
+# Test all Training step builders
+python -m cursus.cli builder-test test-by-type Training --verbose
+
+# Test all Processing builders with scoring
+python -m cursus.cli builder-test test-by-type Processing --scoring --export-json processing_batch_results.json
+
+# Comprehensive testing of Transform builders
+python -m cursus.cli builder-test test-by-type Transform --verbose --scoring --export-chart --output-dir ./transform_reports
 ```
-- **Dependency resolution**: Tests dependency injection
-- **Step creation**: Validates actual step instantiation
-- **Step naming**: Ensures proper step name generation
 
-### 2. Variant-Specific Testing
+### registry-report
 
-#### Processing Variant
+registry-report(_--verbose_, _--export-json_, _--output-dir_)
+
+Generates registry discovery report showing available builders and their status.
+
+**Parameters:**
+- **--verbose** (_Flag_) – Show detailed output including error details.
+- **--export-json** (_str_) – Export registry report to JSON file.
+- **--output-dir** (_str_) – Output directory for exports.
+
 ```bash
-python -m cursus.cli.builder_test_cli variant processing <builder_class>
-```
-- **Step type validation**: Ensures ProcessingStep creation
-- **Processor creation**: Validates processor instantiation
-- **Processing-specific methods**: Tests processing-related functionality
+# Generate basic registry report
+python -m cursus.cli builder-test registry-report
 
-### 3. Automatic Builder Discovery
-
-#### Discovery Algorithm
-- **Filesystem scanning**: Searches `cursus/steps/builders` directory
-- **Module importing**: Attempts dynamic module imports
-- **Class extraction**: Identifies classes ending with "StepBuilder"
-- **AST fallback**: Uses AST parsing for import failures
-- **Dependency handling**: Gracefully handles missing dependencies
-
-#### Discovery Features
-- **Complete coverage**: Finds all 15+ available builders
-- **Robust error handling**: Continues despite import failures
-- **Sorted output**: Provides consistent, alphabetical listing
-- **Path normalization**: Handles both development and installed environments
-
-### 4. Comprehensive Result Reporting
-
-#### Result Grouping
-- **Level 1 (Interface)**: Interface compliance tests
-- **Level 2 (Specification)**: Specification-driven tests
-- **Level 3 (Path Mapping)**: Path resolution tests
-- **Level 4 (Integration)**: Integration and creation tests
-- **Step Type Specific**: Variant-specific functionality tests
-
-#### Output Format
-```
-📊 Test Results Summary: 25/30 tests passed (83.3%)
-============================================================
-
-📁 Level 1 (Interface): 8/10 passed (80.0%)
-  ✅ inheritance_validation
-  ✅ naming_conventions
-  ❌ required_methods
-    💬 Missing required method: validate_configuration
-  ✅ registry_integration
-  ...
-
-📁 Level 2 (Specification): 5/5 passed (100.0%)
-  ✅ specification_usage
-  ✅ contract_alignment
-  ...
+# Detailed registry report with export
+python -m cursus.cli builder-test registry-report --verbose --export-json registry_report.json
 ```
 
-## Implementation Details
+### validate-builder
 
-### Dynamic Class Import System
+validate-builder(_step_name_, _--verbose_, _--export-json_, _--output-dir_)
+
+Validates that a step builder is available and can be loaded from the registry.
+
+**Parameters:**
+- **step_name** (_str_) – Step name from registry to validate.
+- **--verbose** (_Flag_) – Show detailed validation information.
+- **--export-json** (_str_) – Export validation results to JSON file.
+- **--output-dir** (_str_) – Output directory for exports.
+
+```bash
+# Validate specific builder
+python -m cursus.cli builder-test validate-builder XGBoostTraining
+
+# Detailed validation with export
+python -m cursus.cli builder-test validate-builder ProcessingStep --verbose --export-json validation_result.json
+```
+
+### list-builders
+
+list-builders(_--verbose_, _--export-json_, _--output-dir_)
+
+Lists available step builder classes by scanning the builders directory.
+
+**Parameters:**
+- **--verbose** (_Flag_) – Show additional information about builders.
+- **--export-json** (_str_) – Export builder list to JSON file.
+- **--output-dir** (_str_) – Output directory for exports.
+
+```bash
+# List available builders
+python -m cursus.cli builder-test list-builders
+
+# List builders with export
+python -m cursus.cli builder-test list-builders --export-json builders_list.json
+```
+
+### print_test_results
+
+print_test_results(_results_, _verbose=False_, _show_scoring=False_)
+
+Prints test results in a formatted way with optional scoring display and color-coded output.
+
+**Parameters:**
+- **results** (_Dict[str, Any]_) – Test results dictionary from test execution.
+- **verbose** (_bool_) – Show detailed output including test details and recommendations.
+- **show_scoring** (_bool_) – Show scoring information and quality ratings.
+
 ```python
-def import_builder_class(class_path: str) -> Type:
-    """Import a builder class from a module path."""
-    # Handles src. prefix removal
-    # Dynamic module importing
-    # Class attribute access
-    # Comprehensive error handling
+from cursus.cli.builder_test_cli import print_test_results
+
+# Print basic results
+print_test_results(results)
+
+# Print detailed results with scoring
+print_test_results(results, verbose=True, show_scoring=True)
 ```
 
-### Test Execution Framework
+### print_enhanced_results
+
+print_enhanced_results(_results_, _verbose=False_)
+
+Prints enhanced results with scoring and structured reporting for comprehensive analysis.
+
+**Parameters:**
+- **results** (_Dict[str, Any]_) – Enhanced test results with scoring data.
+- **verbose** (_bool_) – Show detailed scoring breakdown and failed tests summary.
+
 ```python
-def run_level_tests(builder_class: Type, level: int, verbose: bool = False) -> Dict[str, Dict[str, Any]]:
-    """Run tests for a specific level."""
-    # Level-to-class mapping
-    # Test instance creation
-    # Result collection
-    # Error handling
+from cursus.cli.builder_test_cli import print_enhanced_results
+
+# Print enhanced results
+print_enhanced_results(results, verbose=True)
 ```
 
-### Builder Discovery Engine
+### run_all_tests_with_scoring
+
+run_all_tests_with_scoring(_builder_class_, _verbose=False_, _enable_structured_reporting=False_)
+
+Runs all tests with scoring enabled for comprehensive quality assessment.
+
+**Parameters:**
+- **builder_class** (_Type_) – Builder class to test.
+- **verbose** (_bool_) – Enable verbose output during testing.
+- **enable_structured_reporting** (_bool_) – Enable structured reporting for exports.
+
+**Returns:**
+- **Dict[str, Any]** – Test results with scoring data and structured reports.
+
 ```python
-def list_available_builders() -> List[str]:
-    """List available step builder classes by scanning the builders directory."""
-    # Filesystem scanning
-    # Dynamic importing with fallback
-    # AST parsing for failed imports
-    # Result aggregation and sorting
+from cursus.cli.builder_test_cli import run_all_tests_with_scoring, import_builder_class
+
+# Import and test builder with scoring
+builder_class = import_builder_class("src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder")
+results = run_all_tests_with_scoring(builder_class, verbose=True, enable_structured_reporting=True)
 ```
+
+### run_registry_discovery_report
+
+run_registry_discovery_report()
+
+Generates and displays registry discovery report with comprehensive builder analysis.
+
+**Returns:**
+- **Dict[str, Any]** – Registry discovery report with availability statistics.
+
+```python
+from cursus.cli.builder_test_cli import run_registry_discovery_report
+
+# Generate registry report
+report = run_registry_discovery_report()
+print(f"Total steps: {report['total_steps']}")
+```
+
+### run_test_by_sagemaker_type
+
+run_test_by_sagemaker_type(_sagemaker_step_type_, _verbose=False_, _enable_scoring=True_)
+
+Tests all builders for a specific SageMaker step type with batch processing capabilities.
+
+**Parameters:**
+- **sagemaker_step_type** (_str_) – SageMaker step type to test.
+- **verbose** (_bool_) – Enable verbose output for all builders.
+- **enable_scoring** (_bool_) – Enable scoring for all tested builders.
+
+**Returns:**
+- **Dict[str, Any]** – Batch test results for all builders of the specified type.
+
+```python
+from cursus.cli.builder_test_cli import run_test_by_sagemaker_type
+
+# Test all Training builders
+results = run_test_by_sagemaker_type("Training", verbose=True, enable_scoring=True)
+```
+
+### validate_builder_availability
+
+validate_builder_availability(_step_name_)
+
+Validates that a step builder is available and can be loaded from the registry.
+
+**Parameters:**
+- **step_name** (_str_) – Step name from registry to validate.
+
+**Returns:**
+- **Dict[str, Any]** – Validation results with availability status and error information.
+
+```python
+from cursus.cli.builder_test_cli import validate_builder_availability
+
+# Validate builder availability
+validation = validate_builder_availability("XGBoostTraining")
+print(f"Loadable: {validation['loadable']}")
+```
+
+### export_results_to_json
+
+export_results_to_json(_results_, _output_path_)
+
+Exports test results to JSON file with proper directory creation and error handling.
+
+**Parameters:**
+- **results** (_Dict[str, Any]_) – Test results to export.
+- **output_path** (_str_) – Path for the output JSON file.
+
+```python
+from cursus.cli.builder_test_cli import export_results_to_json
+
+# Export results to JSON
+export_results_to_json(results, "test_results.json")
+```
+
+### generate_score_chart
+
+generate_score_chart(_results_, _builder_name_, _output_dir_)
+
+Generates score visualization chart for test results analysis.
+
+**Parameters:**
+- **results** (_Dict[str, Any]_) – Test results with scoring data.
+- **builder_name** (_str_) – Name of the builder for chart title.
+- **output_dir** (_str_) – Output directory for chart file.
+
+**Returns:**
+- **Optional[str]** – Path to generated chart file, or None if generation failed.
+
+```python
+from cursus.cli.builder_test_cli import generate_score_chart
+
+# Generate score chart
+chart_path = generate_score_chart(results, "XGBoostTrainingStepBuilder", "./charts")
+if chart_path:
+    print(f"Chart saved: {chart_path}")
+```
+
+### import_builder_class
+
+import_builder_class(_class_path_)
+
+Imports a builder class from a module path with proper error handling and path resolution.
+
+**Parameters:**
+- **class_path** (_str_) – Full path to the builder class.
+
+**Returns:**
+- **Type** – Imported builder class.
+
+**Raises:**
+- **ImportError** – If module cannot be imported.
+- **AttributeError** – If class cannot be found in module.
+
+```python
+from cursus.cli.builder_test_cli import import_builder_class
+
+# Import builder class
+builder_class = import_builder_class("src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder")
+print(f"Imported: {builder_class.__name__}")
+```
+
+### run_level_tests
+
+run_level_tests(_builder_class_, _level_, _verbose=False_)
+
+Runs tests for a specific level with focused validation on particular aspects.
+
+**Parameters:**
+- **builder_class** (_Type_) – Builder class to test.
+- **level** (_int_) – Test level (1-4).
+- **verbose** (_bool_) – Enable verbose output.
+
+**Returns:**
+- **Dict[str, Dict[str, Any]]** – Level-specific test results.
+
+**Raises:**
+- **ValueError** – If invalid test level is specified.
+
+```python
+from cursus.cli.builder_test_cli import run_level_tests, import_builder_class
+
+# Run Level 1 tests
+builder_class = import_builder_class("src.cursus.steps.builders.builder_processing_step.ProcessingStepBuilder")
+results = run_level_tests(builder_class, 1, verbose=True)
+```
+
+### run_variant_tests
+
+run_variant_tests(_builder_class_, _variant_, _verbose=False_)
+
+Runs tests for a specific variant with specialized testing for particular step types.
+
+**Parameters:**
+- **builder_class** (_Type_) – Builder class to test.
+- **variant** (_str_) – Test variant name.
+- **verbose** (_bool_) – Enable verbose output.
+
+**Returns:**
+- **Dict[str, Dict[str, Any]]** – Variant-specific test results.
+
+**Raises:**
+- **ValueError** – If invalid variant is specified.
+
+```python
+from cursus.cli.builder_test_cli import run_variant_tests, import_builder_class
+
+# Run processing variant tests
+builder_class = import_builder_class("src.cursus.steps.builders.builder_processing_step.ProcessingStepBuilder")
+results = run_variant_tests(builder_class, "processing", verbose=True)
+```
+
+### run_all_tests
+
+run_all_tests(_builder_class_, _verbose=False_, _enable_scoring=False_)
+
+Runs all tests (universal test suite) with optional scoring capabilities.
+
+**Parameters:**
+- **builder_class** (_Type_) – Builder class to test.
+- **verbose** (_bool_) – Enable verbose output.
+- **enable_scoring** (_bool_) – Enable quality scoring.
+
+**Returns:**
+- **Dict[str, Any]** – Complete test results.
+
+```python
+from cursus.cli.builder_test_cli import run_all_tests, import_builder_class
+
+# Run all tests with scoring
+builder_class = import_builder_class("src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder")
+results = run_all_tests(builder_class, verbose=True, enable_scoring=True)
+```
+
+### list_available_builders
+
+list_available_builders()
+
+Lists available step builder classes by scanning the builders directory with dependency checking.
+
+**Returns:**
+- **List[str]** – List of available builder class paths.
+
+```python
+from cursus.cli.builder_test_cli import list_available_builders
+
+# Get available builders
+builders = list_available_builders()
+for builder in builders:
+    print(f"Available: {builder}")
+```
+
+### main
+
+main()
+
+Main CLI entry point with comprehensive argument parsing and command routing.
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error).
+
+```python
+from cursus.cli.builder_test_cli import main
+
+# Run CLI
+exit_code = main()
+```
+
+## Testing Levels
+
+The builder test CLI validates four critical levels of builder implementation:
+
+### Level 1: Interface Tests
+- **Inheritance**: Validates proper inheritance from base classes
+- **Naming Conventions**: Checks class and method naming standards
+- **Required Methods**: Ensures all required methods are implemented
+- **Registry Integration**: Validates integration with step registry
+- **Documentation Standards**: Checks docstring and documentation quality
+- **Type Hints**: Validates proper type annotation usage
+- **Error Handling**: Tests exception handling and error reporting
+- **Method Return Types**: Validates return type consistency
+- **Configuration Validation**: Tests configuration parameter validation
+- **Generic Step Creation**: Tests generic step creation capabilities
+
+### Level 2: Specification Tests
+- **Specification Usage**: Validates proper specification implementation
+- **Contract Alignment**: Checks alignment with step contracts
+- **Environment Variable Handling**: Tests environment variable processing
+- **Job Arguments**: Validates job argument handling
+- **Environment Variables Processing**: Tests environment setup
+- **Property Files Configuration**: Validates property file handling
+
+### Level 3: Step Creation Tests
+- **Step Instantiation**: Tests step object creation
+- **Step Configuration Validity**: Validates configuration parameter usage
+- **Step Dependencies Attachment**: Tests dependency injection
+- **Step Name Generation**: Validates step naming logic
+- **Input Path Mapping**: Tests input path configuration
+- **Output Path Mapping**: Tests output path configuration
+- **Property Path Validity**: Validates property path generation
+- **Processing Inputs Outputs**: Tests processing step I/O handling
+- **Processing Code Handling**: Validates code injection and execution
+
+### Level 4: Integration Tests
+- **Dependency Resolution**: Tests dependency resolution logic
+- **Step Creation**: Validates end-to-end step creation
+- **Step Name**: Tests step name generation in context
+- **Generic Dependency Handling**: Tests generic dependency patterns
+- **Processing Step Dependencies**: Validates processing-specific dependencies
+
+## Variant Testing
+
+### Processing Variant
+- **Processor Creation**: Tests processing step creation
+- **Estimator Methods**: Validates estimator interface implementation
+- **Transformer Methods**: Tests transformer interface implementation
+- **Step Type Validation**: Ensures proper step type classification
+
+## Scoring System
+
+The builder test CLI includes a comprehensive scoring system:
+
+### Overall Score
+- Calculated from all test levels and variants
+- Weighted scoring based on test importance and failure severity
+- Range: 0-100 with quality rating categories
+
+### Quality Ratings
+- **Excellent** (90-100): Outstanding implementation with minimal issues
+- **Good** (80-89): Strong implementation with minor issues
+- **Satisfactory** (70-79): Acceptable implementation with some issues
+- **Needs Work** (60-69): Significant issues requiring attention
+- **Poor** (0-59): Major implementation problems requiring immediate attention
+
+### Level Scores
+- Individual scores for each test level
+- Detailed breakdown of test failures and issues
+- Recommendations for improvement at each level
+
+## Registry Integration
+
+### Discovery Features
+- **Automatic Discovery**: Scans registry for available builders
+- **Availability Validation**: Checks if builders can be loaded
+- **Dependency Analysis**: Identifies missing dependencies
+- **Error Reporting**: Provides detailed error information for failed imports
+
+### Batch Testing
+- **Type-based Testing**: Test all builders of a specific SageMaker step type
+- **Comprehensive Coverage**: Ensures all registered builders are testable
+- **Performance Analysis**: Tracks testing performance across builders
+
+## Export Capabilities
+
+### JSON Export
+- **Complete Results**: Exports all test results and scoring data
+- **Structured Format**: Machine-readable format for integration
+- **Metadata Inclusion**: Includes timestamps and test configuration
+- **Error Handling**: Robust serialization with fallback options
+
+### Chart Generation
+- **Score Visualization**: High-resolution charts showing score breakdowns
+- **Level Analysis**: Visual representation of level-specific scores
+- **Trend Analysis**: Historical comparison capabilities
+- **Export Formats**: PNG charts with customizable styling
 
 ## Usage Patterns
 
-### Development Testing Workflow
-1. **Discovery**: `cursus test list-builders`
-2. **Interface Validation**: `cursus test level 1 <builder>`
-3. **Specification Testing**: `cursus test level 2 <builder>`
-4. **Path Mapping**: `cursus test level 3 <builder>`
-5. **Integration Testing**: `cursus test level 4 <builder>`
-6. **Full Validation**: `cursus test all <builder>`
-
-### Continuous Integration
+### Development Workflow
 ```bash
-# Test all builders at all levels
-for builder in $(cursus test list-builders); do
-    cursus test all "$builder" || exit 1
-done
+# 1. List available builders
+python -m cursus.cli builder-test list-builders
+
+# 2. Validate specific builder availability
+python -m cursus.cli builder-test validate-builder XGBoostTraining
+
+# 3. Run comprehensive tests with scoring
+python -m cursus.cli builder-test all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --scoring --verbose
+
+# 4. Focus on specific level if issues found
+python -m cursus.cli builder-test level 2 src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --verbose
+
+# 5. Generate reports and charts
+python -m cursus.cli builder-test all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --scoring --export-json results.json --export-chart
 ```
 
-### Debugging Workflow
+### Quality Assurance
 ```bash
-# Verbose mode for detailed error information
-cursus test level 1 <builder> --verbose
+# Test all builders of specific type
+python -m cursus.cli builder-test test-by-type Training --scoring --export-json training_builders_report.json
+
+# Generate registry discovery report
+python -m cursus.cli builder-test registry-report --verbose --export-json registry_status.json
+
+# Comprehensive testing with exports
+python -m cursus.cli builder-test all MyBuilder --scoring --export-json --export-chart --output-dir ./qa-reports
+```
+
+### CI/CD Integration
+```bash
+# Automated testing in CI pipeline
+python -m cursus.cli builder-test all $BUILDER_CLASS --export-json ci-test-results.json
+
+# Batch testing for release validation
+python -m cursus.cli builder-test test-by-type Processing --scoring --export-json processing-validation.json
 ```
 
 ## Error Handling
 
-### Import Error Management
-- **Graceful degradation**: Continues operation despite import failures
-- **AST parsing fallback**: Extracts class names without importing
-- **Clear error messages**: Provides actionable error information
-- **Dependency guidance**: Suggests missing dependency installation
+The builder test CLI provides comprehensive error handling:
 
-### Test Failure Reporting
-- **Detailed messages**: Specific failure reasons
-- **Suggestions**: Actionable improvement recommendations
-- **Context information**: Relevant test context and expectations
-- **Exit codes**: Proper exit codes for automation
+- **Import Errors**: Graceful handling of missing modules or classes
+- **Test Execution Errors**: Detailed error reporting for test failures
+- **Registry Errors**: Comprehensive validation of registry availability
+- **Export Errors**: Robust file handling with proper error messages
+- **Dependency Errors**: Clear reporting of missing dependencies
 
 ## Integration Points
 
-### 1. Universal Test Framework
-- **Direct integration**: Uses UniversalStepBuilderTest classes
-- **Result formatting**: Consistent with framework expectations
-- **Test discovery**: Automatic test method discovery
-- **Configuration passing**: Proper test configuration
+- **UniversalStepBuilderTest**: Core testing engine for comprehensive validation
+- **StepBuilderScorer**: Scoring system for quantitative quality assessment
+- **RegistryStepDiscovery**: Registry integration for builder discovery
+- **Validation Framework**: Integration with cursus validation infrastructure
+- **Export Systems**: Multiple output formats for different use cases
 
-### 2. Step Builder Registry
-- **Builder enumeration**: Accesses registered builders
-- **Class resolution**: Resolves builder classes from registry
-- **Validation integration**: Uses registry for validation
+## Related Documentation
 
-### 3. CLI Framework Integration
-- **Argument parsing**: Comprehensive argument validation
-- **Help generation**: Automatic help text generation
-- **Error handling**: Consistent error handling patterns
-- **Output formatting**: Standardized output formatting
-
-## Extension Points
-
-### Adding New Test Levels
-```python
-# Add to test_classes mapping
-test_classes = {
-    1: InterfaceTests,
-    2: SpecificationTests,
-    3: PathMappingTests,
-    4: IntegrationTests,
-    5: NewTestLevel,  # New level
-}
-```
-
-### Adding New Variants
-```python
-# Add to variant_classes mapping
-variant_classes = {
-    "processing": ProcessingStepBuilderTest,
-    "training": TrainingStepBuilderTest,  # New variant
-    "transform": TransformStepBuilderTest,  # New variant
-}
-```
-
-### Custom Result Formatters
-- **Pluggable formatters**: Support for custom output formats
-- **Export options**: JSON, XML, or other structured formats
-- **Integration hooks**: Hooks for CI/CD integration
-
-## Performance Considerations
-
-### Lazy Loading
-- **Module imports**: Only import when needed
-- **Test instantiation**: Create test instances on demand
-- **Result caching**: Cache results for repeated operations
-
-### Memory Management
-- **Class cleanup**: Proper cleanup of imported classes
-- **Result streaming**: Stream results for large test suites
-- **Memory monitoring**: Track memory usage during testing
-
-## Best Practices
-
-### Test Organization
-- **Logical grouping**: Group related tests together
-- **Clear naming**: Use descriptive test names
-- **Proper isolation**: Ensure test independence
-- **Resource cleanup**: Clean up test resources
-
-### Error Reporting
-- **Actionable messages**: Provide clear, actionable error messages
-- **Context preservation**: Maintain error context
-- **Suggestion provision**: Offer improvement suggestions
-- **Documentation links**: Link to relevant documentation
-
-## Future Enhancements
-
-### Planned Features
-- **Parallel testing**: Run tests in parallel for speed
-- **Test filtering**: Filter tests by tags or patterns
-- **Custom test suites**: User-defined test combinations
-- **Report generation**: Generate detailed test reports
-
-### Integration Improvements
-- **IDE integration**: Support for IDE test runners
-- **CI/CD plugins**: Specialized CI/CD integrations
-- **Monitoring integration**: Integration with monitoring systems
-- **Notification systems**: Test result notifications
-
-This CLI provides a comprehensive, user-friendly interface for validating step builders according to the Universal Step Builder Test architecture, ensuring consistent quality and compliance across all step builder implementations.
+- [CLI Module](__init__.md) - Main CLI dispatcher and command routing
+- [Alignment CLI](alignment_cli.md) - Comprehensive alignment validation tools
+- [Validation CLI](validation_cli.md) - Naming and interface validation tools
+- [Universal Step Builder Test](../../validation/builders/universal_test.md) - Core testing engine
+- [Step Builder Scorer](../../validation/builders/scoring.md) - Quality scoring system
+- [Registry Step Discovery](../../validation/builders/registry_discovery.md) - Builder discovery system

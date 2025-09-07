@@ -3,8 +3,8 @@ tags:
   - code
   - cli
   - pipeline_catalog
-  - documentation
-  - user_guide
+  - dual-compiler
+  - mods-integration
 keywords:
   - catalog CLI
   - pipeline catalog
@@ -14,46 +14,38 @@ keywords:
   - pipeline management
   - registry integration
 topics:
-  - CLI documentation
   - pipeline catalog management
   - MODS functionality
-  - command reference
+  - dual-compiler architecture
+  - CLI tools
 language: python
-date of note: 2025-08-20
+date of note: 2024-12-07
 ---
 
-# Pipeline Catalog CLI Documentation
+# Pipeline Catalog CLI
+
+Command-line interface for managing, browsing, and working with the pipeline catalog, supporting both standard pipelines and MODS-enhanced pipelines through a dual-compiler architecture.
 
 ## Overview
 
-The Pipeline Catalog CLI provides a comprehensive command-line interface for managing, browsing, and working with the pipeline catalog. It supports both standard pipelines and MODS-enhanced pipelines through a dual-compiler architecture, offering powerful search, filtering, and registry integration capabilities.
+The Pipeline Catalog CLI provides a comprehensive command-line interface for pipeline catalog management with dual-compiler architecture support. It enables powerful search, filtering, and registry integration capabilities for both standard pipelines using PipelineDAGCompiler and MODS-enhanced pipelines using MODSPipelineDAGCompiler with registry integration.
 
-## Architecture
+The CLI features shared DAG definitions for consistent pipeline definitions across both compiler types, graceful fallback for seamless operation when MODS is unavailable, and comprehensive MODS integration with template registration and operational integration capabilities.
 
-The catalog CLI is built on a dual-compiler architecture that supports:
+## Commands and Functions
 
-- **Standard Pipelines**: Traditional DAG compilation using `PipelineDAGCompiler`
-- **MODS Pipelines**: Enhanced compilation using `MODSPipelineDAGCompiler` with registry integration
-- **Shared DAG Definitions**: Consistent pipeline definitions across both compiler types
-- **Graceful Fallback**: Seamless operation when MODS is unavailable
+### list
 
-## Installation and Setup
+cursus catalog list [_options_]
 
-The catalog CLI is available through the main cursus CLI interface:
+List all available pipelines in the catalog with sorting and formatting options.
 
-```bash
-# Basic usage
-cursus catalog <command> [options]
+**Options:**
+- **--format** (_str_) – Output format (table, json)
+- **--sort** (_Optional[str]_) – Sort by field (name, framework, complexity)
 
-# Get help
-cursus catalog --help
-```
-
-## Core Commands
-
-### 1. List Pipelines
-
-List all available pipelines in the catalog.
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Basic listing
@@ -68,20 +60,21 @@ cursus catalog list --sort framework
 cursus catalog list --sort complexity
 ```
 
-**Output Example:**
-```
-ID                   NAME                           FRAMEWORK    COMPLEXITY
-------------------------------------------------------------------------
-xgboost-simple       Simple XGBoost Pipeline        xgboost      simple
-xgboost-standard     Standard XGBoost Pipeline      xgboost      standard
-pytorch-simple       Simple PyTorch Pipeline        pytorch      simple
+### search
 
-Total: 14 pipelines
-```
+cursus catalog search [_options_]
 
-### 2. Search Pipelines
+Search pipelines using various criteria with multiple filter support.
 
-Search pipelines using various criteria.
+**Options:**
+- **--framework** (_Optional[str]_) – Filter by ML framework (xgboost, pytorch, sklearn)
+- **--complexity** (_Optional[str]_) – Filter by complexity level (simple, standard, advanced)
+- **--feature** (_List[str]_) – Filter by pipeline features (can be used multiple times)
+- **--tag** (_List[str]_) – Filter by tags (can be used multiple times)
+- **--format** (_str_) – Output format (table, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Search by framework
@@ -100,7 +93,20 @@ cursus catalog search --tag ml --tag classification
 cursus catalog search --framework pytorch --complexity standard --feature training
 ```
 
-**Advanced Search with Dual-Compiler Support:**
+### search-enhanced
+
+cursus catalog search-enhanced [_options_]
+
+Advanced search with dual-compiler support and MODS-specific filtering.
+
+**Options:**
+- **--compiler-type** (_Optional[str]_) – Filter by compiler type (standard, mods)
+- **--mods-feature** (_List[str]_) – Filter by MODS-specific features (can be used multiple times)
+- **--framework** (_Optional[str]_) – Filter by ML framework
+- **--format** (_str_) – Output format (table, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Enhanced search with compiler type filtering
@@ -113,9 +119,20 @@ cursus catalog search-enhanced --mods-feature template_registration
 cursus catalog search-enhanced --framework xgboost --compiler-type mods --mods-feature operational_integration
 ```
 
-### 3. Show Pipeline Details
+### show
+
+cursus catalog show _pipeline_id_ [_options_]
 
 Display detailed information about a specific pipeline.
+
+**Parameters:**
+- **pipeline_id** (_str_) – ID of the pipeline to display
+
+**Options:**
+- **--format** (_str_) – Output format (text, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Show pipeline details
@@ -125,29 +142,21 @@ cursus catalog show xgboost-simple
 cursus catalog show xgboost-simple --format json
 ```
 
-**Output Example:**
-```
-Simple XGBoost Pipeline
-=======================
-ID: xgboost-simple
-Framework: xgboost
-Complexity: simple
-Features: training, evaluation
-Tags: ml, classification, tabular
-Path: pipelines/xgboost/simple.py
+### generate
 
-Description:
-A simple XGBoost pipeline for binary classification tasks. Includes data
-preprocessing, model training, and evaluation steps.
-
-Usage Example:
-from cursus.pipeline_catalog import get_pipeline
-pipeline = get_pipeline('xgboost-simple')
-```
-
-### 4. Generate Pipeline
+cursus catalog generate _pipeline_id_ [_options_]
 
 Generate a pipeline file from a template.
+
+**Parameters:**
+- **pipeline_id** (_str_) – ID of the pipeline template to generate
+
+**Options:**
+- **--output** (_str_) – Output file path for generated pipeline
+- **--rename** (_Optional[str]_) – Custom name for the generated pipeline
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Generate pipeline to specific location
@@ -157,9 +166,18 @@ cursus catalog generate xgboost-simple --output my_pipeline.py
 cursus catalog generate xgboost-simple --output my_pipeline.py --rename "My Custom Pipeline"
 ```
 
-### 5. Index Management
+### update-index
 
-Manage the pipeline catalog index.
+cursus catalog update-index [_options_]
+
+Manage the pipeline catalog index with update and validation options.
+
+**Options:**
+- **--force** (_bool_) – Force full regeneration of index
+- **--validate-only** (_bool_) – Validate only without making changes
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Update the index
@@ -170,16 +188,42 @@ cursus catalog update-index --force
 
 # Validate only (no changes)
 cursus catalog update-index --validate-only
-
-# Validate the index
-cursus catalog validate
 ```
 
-## MODS-Specific Commands
+### validate
 
-The CLI provides specialized commands for MODS (Model Operations Data Science) functionality.
+cursus catalog validate [_options_]
 
-### 1. List MODS Pipelines
+Validate the pipeline catalog index for consistency and integrity.
+
+**Options:**
+- **--format** (_str_) – Output format (text, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
+
+```bash
+# Validate the index
+cursus catalog validate
+
+# JSON validation output
+cursus catalog validate --format json
+```
+
+## MODS Commands
+
+### mods list
+
+cursus catalog mods list [_options_]
+
+List all MODS-enhanced pipelines with sorting and formatting options.
+
+**Options:**
+- **--format** (_str_) – Output format (table, json)
+- **--sort** (_Optional[str]_) – Sort by field (framework, name, complexity)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # List all MODS pipelines
@@ -192,21 +236,17 @@ cursus catalog mods list --format json
 cursus catalog mods list --sort framework
 ```
 
-**Output Example:**
-```
-MODS Pipelines:
-ID                        NAME                                FRAMEWORK    COMPLEXITY
-----------------------------------------------------------------------------------
-xgboost-simple-mods       Simple XGBoost Pipeline (MODS)     xgboost      simple
-pytorch-standard-mods     Standard PyTorch Pipeline (MODS)   pytorch      standard
+### mods registry-status
 
-Total: 6 MODS pipelines
-MODS features available: metadata_extraction, operational_integration, template_registration
-```
-
-### 2. MODS Registry Status
+cursus catalog mods registry-status [_options_]
 
 Check the status of the MODS registry integration.
+
+**Options:**
+- **--format** (_str_) – Output format (text, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Show registry status
@@ -216,20 +256,18 @@ cursus catalog mods registry-status
 cursus catalog mods registry-status --format json
 ```
 
-**Output Example:**
-```
-MODS Registry Status:
-====================
-Available: Yes
-Connection Status: connected
-Last Sync: 2025-08-20T09:30:00Z
-Template Count: 42
-Registry Version: 2.1.0
-```
+### mods list-registry
 
-### 3. List Registry Templates
+cursus catalog mods list-registry [_options_]
 
 List templates available in the MODS registry.
+
+**Options:**
+- **--framework** (_Optional[str]_) – Filter by framework
+- **--format** (_str_) – Output format (table, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # List all registry templates
@@ -242,9 +280,17 @@ cursus catalog mods list-registry --framework pytorch
 cursus catalog mods list-registry --format json
 ```
 
-### 4. Check MODS Integration
+### mods check-registry
+
+cursus catalog mods check-registry [_options_]
 
 Comprehensive check of MODS integration status.
+
+**Options:**
+- **--format** (_str_) – Output format (text, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Check integration status
@@ -254,22 +300,17 @@ cursus catalog mods check-registry
 cursus catalog mods check-registry --format json
 ```
 
-**Output Example:**
-```
-MODS Integration Status:
-========================
-MODS Available: Yes
-Integration Status: fully_operational
-Registry Available: Yes
-Registry Connection: connected
-Registry Templates: 42
-Cache Entries: 15
-Valid Cache Entries: 15
-```
+### mods pairs
 
-### 5. Show Pipeline Pairs
+cursus catalog mods pairs [_options_]
 
 Display standard/MODS pipeline pairs to understand relationships.
+
+**Options:**
+- **--format** (_str_) – Output format (table, json)
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for error)
 
 ```bash
 # Show all pipeline pairs
@@ -279,26 +320,33 @@ cursus catalog mods pairs
 cursus catalog mods pairs --format json
 ```
 
-**Output Example:**
-```
-Standard/MODS Pipeline Pairs:
-STANDARD ID              MODS ID                      FRAMEWORK    SHARED DAG
-----------------------------------------------------------------------------------------
-xgboost-simple           xgboost-simple-mods          xgboost      xgboost_simple_dag
-pytorch-standard         pytorch-standard-mods        pytorch      pytorch_standard_dag
+## Architecture
 
-Total: 8 pipeline pairs
-With MODS variant: 6
-Without MODS variant: 2
-```
+### Dual-Compiler Support
+
+The catalog CLI is built on a dual-compiler architecture:
+
+- **Standard Pipelines** – Traditional DAG compilation using PipelineDAGCompiler
+- **MODS Pipelines** – Enhanced compilation using MODSPipelineDAGCompiler with registry integration
+- **Shared DAG Definitions** – Consistent pipeline definitions across both compiler types
+- **Graceful Fallback** – Seamless operation when MODS is unavailable
+
+### MODS Integration Features
+
+- **Template Registration** – Integration with MODS template registry
+- **Operational Integration** – Enhanced operational capabilities
+- **Metadata Extraction** – Automatic metadata extraction from pipelines
+- **Registry Caching** – 5-minute cache timeout for improved performance
 
 ## Output Formats
 
-Most commands support multiple output formats:
+### Supported Formats
 
-- **table** (default): Human-readable tabular format
-- **json**: Machine-readable JSON format
-- **text**: Plain text format (for show commands)
+- **table** (_default_) – Human-readable tabular format
+- **json** – Machine-readable JSON format
+- **text** – Plain text format (for show commands)
+
+### Format Examples
 
 ```bash
 # Examples of different formats
@@ -308,101 +356,58 @@ cursus catalog show pipeline-id --format text
 cursus catalog show pipeline-id --format json
 ```
 
-## Filtering and Search Options
+## Filtering Options
 
 ### Standard Filters
 
-- `--framework`: Filter by ML framework (xgboost, pytorch, sklearn, etc.)
-- `--complexity`: Filter by complexity level (simple, standard, advanced)
-- `--feature`: Filter by pipeline features (can be used multiple times)
-- `--tag`: Filter by tags (can be used multiple times)
+- **--framework** – Filter by ML framework (xgboost, pytorch, sklearn, etc.)
+- **--complexity** – Filter by complexity level (simple, standard, advanced)
+- **--feature** – Filter by pipeline features (can be used multiple times)
+- **--tag** – Filter by tags (can be used multiple times)
 
 ### MODS-Specific Filters
 
-- `--compiler-type`: Filter by compiler type (standard, mods)
-- `--mods-feature`: Filter by MODS-specific features (can be used multiple times)
+- **--compiler-type** – Filter by compiler type (standard, mods)
+- **--mods-feature** – Filter by MODS-specific features (can be used multiple times)
 
-### Example Complex Searches
+## Error Handling
 
-```bash
-# Find all simple XGBoost pipelines with training capability
-cursus catalog search --framework xgboost --complexity simple --feature training
+### Exit Codes
 
-# Find all MODS pipelines with template registration
-cursus catalog search-enhanced --compiler-type mods --mods-feature template_registration
-
-# Find PyTorch pipelines with both standard and MODS variants
-cursus catalog search-enhanced --framework pytorch
-```
-
-## Error Handling and Troubleshooting
+- **0** – Success
+- **1** – General error or command failure
+- **2** – Index not found or invalid
+- **3** – MODS integration error
+- **4** – Registry connection error
 
 ### Common Issues
 
-1. **Index Not Found**
-   ```bash
-   # Solution: Generate the index
-   cursus catalog update-index
-   ```
+- **Index Not Found** – Solution: Generate the index with `cursus catalog update-index`
+- **MODS Not Available** – MODS commands gracefully fall back to standard functionality
+- **Registry Connection Issues** – System uses cached data when registry is unavailable
 
-2. **MODS Not Available**
-   ```bash
-   # Check MODS integration status
-   cursus catalog mods check-registry
-   
-   # MODS commands will gracefully fall back to standard functionality
-   ```
+## Integration Points
 
-3. **Registry Connection Issues**
-   ```bash
-   # Check registry status
-   cursus catalog mods registry-status
-   
-   # The system will use cached data when registry is unavailable
-   ```
+### Python API Integration
 
-### Validation
+The CLI commands correspond to Python API functions from `cursus.pipeline_catalog.utils`:
 
-```bash
-# Validate the catalog index
-cursus catalog validate
+- **load_index()** – Load pipeline catalog index
+- **get_pipeline_by_id()** – Get specific pipeline by ID
+- **filter_pipelines()** – Search and filter pipelines
+- **get_mods_pipelines()** – Get MODS-enhanced pipelines
+- **get_pipeline_pairs()** – Get standard/MODS pipeline pairs
 
-# Update and validate in one step
-cursus catalog update-index --validate-only
-```
+### Configuration Integration
 
-## Integration with Python Code
-
-The CLI commands correspond to Python API functions:
-
-```python
-# Equivalent Python code for CLI commands
-from cursus.pipeline_catalog.utils import (
-    load_index,
-    get_pipeline_by_id,
-    filter_pipelines,
-    get_mods_pipelines,
-    get_pipeline_pairs
-)
-
-# List all pipelines
-index = load_index()
-pipelines = index['pipelines']
-
-# Get specific pipeline
-pipeline = get_pipeline_by_id('xgboost-simple')
-
-# Search pipelines
-results = filter_pipelines(framework='xgboost', complexity='simple')
-
-# MODS-specific operations
-mods_pipelines = get_mods_pipelines()
-pairs = get_pipeline_pairs()
-```
+- **Index Location** – `src/cursus/pipeline_catalog/index.json`
+- **Pipeline Directory** – `src/cursus/pipeline_catalog/pipelines/`
+- **MODS Registry** – Configured through MODS package settings
+- **Cache Settings** – 5-minute timeout for registry data
 
 ## Performance Considerations
 
-### Caching
+### Caching Strategy
 
 - MODS registry data is cached for 5 minutes to improve performance
 - Index validation results are cached during CLI session
@@ -410,82 +415,14 @@ pairs = get_pipeline_pairs()
 
 ### Best Practices
 
-1. **Use specific filters** to reduce search time
-2. **Cache registry status** for batch operations
-3. **Use JSON output** for programmatic processing
-4. **Validate index periodically** to ensure consistency
+1. Use specific filters to reduce search time
+2. Cache registry status for batch operations
+3. Use JSON output for programmatic processing
+4. Validate index periodically to ensure consistency
 
-## Advanced Usage
+## Related Documentation
 
-### Batch Operations
-
-```bash
-# Generate multiple pipelines
-for pipeline in xgboost-simple pytorch-simple; do
-    cursus catalog generate $pipeline --output "${pipeline}.py"
-done
-
-# Search and process results
-cursus catalog search --framework xgboost --format json | jq '.[] | .id'
-```
-
-### Integration with CI/CD
-
-```bash
-# Validate catalog in CI pipeline
-cursus catalog validate || exit 1
-
-# Check MODS integration in deployment
-cursus catalog mods check-registry --format json | jq '.integration_status'
-```
-
-### Custom Workflows
-
-```bash
-# Find pipelines without MODS variants
-cursus catalog mods pairs --format json | jq '.[] | select(.mods == null) | .standard.id'
-
-# List all available frameworks
-cursus catalog list --format json | jq -r '.[].framework' | sort -u
-```
-
-## Configuration
-
-The catalog CLI respects the following configuration:
-
-- **Index Location**: `src/cursus/pipeline_catalog/index.json`
-- **Pipeline Directory**: `src/cursus/pipeline_catalog/pipelines/`
-- **MODS Registry**: Configured through MODS package settings
-- **Cache Settings**: 5-minute timeout for registry data
-
-## Development and Extension
-
-### Adding New Commands
-
-To add new CLI commands:
-
-1. Add parser configuration in `setup_parser()`
-2. Implement the command function
-3. Add routing in `main()`
-4. Update this documentation
-
-### Custom Filters
-
-New filter types can be added by:
-
-1. Extending the utility functions in `utils.py`
-2. Adding parser arguments
-3. Updating the search functions
-
-## Conclusion
-
-The Pipeline Catalog CLI provides a comprehensive interface for managing both standard and MODS-enhanced pipelines. Its dual-compiler architecture ensures compatibility while providing advanced functionality for MODS-enabled environments.
-
-The CLI is designed for both interactive use and automation, with consistent output formats and robust error handling. Whether you're exploring available pipelines, managing the catalog, or integrating with MODS registry, the CLI provides the tools needed for effective pipeline management.
-
-For additional help with specific commands, use the `--help` flag:
-
-```bash
-cursus catalog --help
-cursus catalog <command> --help
-cursus catalog mods --help
+- [Pipeline Catalog Utils](../pipeline_catalog/utils.md) - Utility functions for catalog operations
+- [MODS Integration](../mods/integration.md) - MODS integration documentation
+- [Registry CLI](registry_cli.md) - Registry management tools
+- [Dual Compiler Design](../../1_design/dual_compiler_architecture.md) - Dual-compiler architecture design

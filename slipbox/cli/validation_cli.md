@@ -18,187 +18,285 @@ topics:
   - validation automation
   - standardization enforcement
 language: python
-date of note: 2025-08-07
+date of note: 2024-12-07
 ---
 
-# Validation CLI Documentation
+# Validation CLI
+
+Command-line tools for validating naming conventions and interface compliance according to standardization rules, serving as an automated enforcement mechanism for coding standards across the codebase.
 
 ## Overview
 
-The Validation CLI (`src/cursus/cli/validation_cli.py`) provides command-line tools for validating naming conventions and interface compliance according to the standardization rules defined in the developer guide. It serves as an automated enforcement mechanism for coding standards across the codebase.
+The Validation CLI provides command-line tools for validating naming conventions and interface compliance according to the standardization rules defined in the developer guide. It serves as an automated enforcement mechanism for coding standards across the codebase with comprehensive registry validation, file naming validation, step naming validation, logical naming validation, and interface compliance validation.
 
-## Architecture
+The CLI integrates with NamingStandardValidator for rule enforcement and violation detection, InterfaceStandardValidator for compliance checking and method validation, and the registry system for cross-reference validation and bulk operations.
 
-### Command Structure
+## Commands and Functions
 
-The CLI supports multiple validation modes:
+### registry
 
-```
-validation_cli
-├── registry                         # Validate all registry entries
-├── file <filename> <type>          # Validate specific file names
-├── step <step_name>                # Validate canonical step names
-├── logical <logical_name>          # Validate logical names
-└── interface <class_path>          # Validate interface compliance
-```
+cursus validation registry [_options_]
 
-### Core Components
+Validate all registry entries for naming consistency and compliance.
 
-#### 1. Naming Standard Validation
-- **Registry validation**: Comprehensive registry entry validation
-- **File naming**: Validates file naming conventions
-- **Step naming**: Ensures canonical step name compliance
-- **Logical naming**: Validates logical name standards
+**Options:**
+- **--verbose** (_bool_) – Enable detailed violation reporting and diagnostic information
 
-#### 2. Interface Standard Validation
-- **Class compliance**: Validates step builder interface compliance
-- **Method validation**: Ensures required method implementations
-- **Type checking**: Validates type annotations and signatures
-- **Documentation standards**: Checks docstring compliance
+**Returns:**
+- **int** – Exit code (0 for success, 1 for validation failures)
 
-#### 3. Result Reporting System
-- **Violation grouping**: Organizes violations by component
-- **Detailed reporting**: Provides specific violation details
-- **Suggestion system**: Offers improvement recommendations
-- **Verbose mode**: Extended diagnostic information
-
-## Key Features
-
-### 1. Registry Validation
 ```bash
-cursus validate registry
+# Validate all registry entries
+cursus validation registry
+
+# Verbose output with detailed diagnostics
+cursus validation registry --verbose
 ```
-- **Complete registry scan**: Validates all registered builders
-- **Naming consistency**: Ensures consistent naming across registry
-- **Cross-reference validation**: Validates registry-to-implementation alignment
-- **Bulk validation**: Processes all entries in single operation
 
-#### Validation Scope
-- **Builder names**: Canonical step names in registry
-- **Class mappings**: Registry-to-class name consistency
-- **File naming**: Builder file naming conventions
-- **Documentation**: Registry entry documentation standards
+### file
 
-### 2. File Name Validation
+cursus validation file _filename_ _file_type_ [_options_]
+
+Validate specific file names against established naming conventions.
+
+**Parameters:**
+- **filename** (_str_) – Name of the file to validate
+- **file_type** (_str_) – Type of file (builder, config, spec, contract)
+
+**Options:**
+- **--verbose** (_bool_) – Enable detailed violation reporting
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for validation failures)
+
 ```bash
-cursus validate file builder_xgboost_training_step.py builder
-cursus validate file training_config.py config
-cursus validate file training_spec.py spec
-cursus validate file training_contract.py contract
+# Validate builder file naming
+cursus validation file builder_xgboost_training_step.py builder
+
+# Validate config file naming
+cursus validation file training_config.py config
+
+# Validate spec file naming
+cursus validation file training_spec.py spec
+
+# Validate contract file naming
+cursus validation file training_contract.py contract --verbose
 ```
-- **Type-specific rules**: Different rules for different file types
-- **Pattern matching**: Validates against established patterns
-- **Convention enforcement**: Ensures consistent naming conventions
-- **Extension validation**: Validates file extensions
 
-#### Supported File Types
-- **`builder`**: Step builder implementation files
-- **`config`**: Configuration class files
-- **`spec`**: Specification definition files
-- **`contract`**: Script contract files
+### step
 
-### 3. Step Name Validation
+cursus validation step _step_name_ [_options_]
+
+Validate canonical step names for PascalCase format and naming patterns.
+
+**Parameters:**
+- **step_name** (_str_) – Canonical step name to validate
+
+**Options:**
+- **--verbose** (_bool_) – Enable detailed violation reporting
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for validation failures)
+
 ```bash
-cursus validate step XGBoostTraining
-cursus validate step TabularPreprocessing
+# Validate canonical step names
+cursus validation step XGBoostTraining
+
+# Validate with detailed output
+cursus validation step TabularPreprocessing --verbose
 ```
-- **Canonical format**: Validates PascalCase canonical names
-- **Naming patterns**: Ensures consistent naming patterns
-- **Reserved words**: Checks against reserved word usage
-- **Length validation**: Validates appropriate name length
 
-#### Validation Rules
-- **PascalCase format**: Must use PascalCase convention
-- **Descriptive naming**: Must be descriptive and clear
-- **No abbreviations**: Avoids unclear abbreviations
-- **Consistent terminology**: Uses established terminology
+### logical
 
-### 4. Logical Name Validation
+cursus validation logical _logical_name_ [_options_]
+
+Validate logical names for snake_case format and descriptive clarity.
+
+**Parameters:**
+- **logical_name** (_str_) – Logical name to validate
+
+**Options:**
+- **--verbose** (_bool_) – Enable detailed violation reporting
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for validation failures)
+
 ```bash
-cursus validate logical input_data
-cursus validate logical processed_output
-```
-- **snake_case format**: Validates snake_case convention
-- **Descriptive clarity**: Ensures clear, descriptive names
-- **Consistency checking**: Validates against established patterns
-- **Reserved name checking**: Avoids system reserved names
+# Validate logical names
+cursus validation logical input_data
 
-### 5. Interface Compliance Validation
+# Validate with detailed diagnostics
+cursus validation logical processed_output --verbose
+```
+
+### interface
+
+cursus validation interface _class_path_ [_options_]
+
+Validate step builder interface compliance including method presence and signatures.
+
+**Parameters:**
+- **class_path** (_str_) – Full class path to validate (e.g., src.cursus.steps.builders.MyBuilder)
+
+**Options:**
+- **--verbose** (_bool_) – Enable detailed violation reporting and method analysis
+
+**Returns:**
+- **int** – Exit code (0 for success, 1 for validation failures)
+
 ```bash
-cursus validate interface src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder
+# Validate interface compliance
+cursus validation interface src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder
+
+# Verbose interface validation
+cursus validation interface src.cursus.steps.builders.MyBuilder --verbose
 ```
-- **Method presence**: Validates required method implementations
-- **Signature compliance**: Checks method signatures
-- **Type annotations**: Validates type hint usage
-- **Documentation standards**: Ensures proper docstring format
-- **Inheritance validation**: Validates proper base class usage
 
-#### Interface Requirements
-- **Required methods**: `validate_configuration`, `create_step`, etc.
-- **Method signatures**: Proper parameter types and return types
-- **Type hints**: Complete type annotation coverage
-- **Documentation**: Comprehensive docstring documentation
-- **Error handling**: Proper exception handling patterns
+## Validation Scope
 
-## Implementation Details
+### Registry Validation
 
-### Validation Engine Integration
-```python
-def validate_registry(verbose: bool = False) -> int:
-    """Validate all registry entries."""
-    validator = NamingStandardValidator()
-    violations = validator.validate_all_registry_entries()
-    # Process and report violations
-```
+Registry validation performs comprehensive validation of all registered builders:
+
+- **Builder Names** – Validates canonical step names in registry
+- **Class Mappings** – Ensures registry-to-class name consistency
+- **File Naming** – Validates builder file naming conventions
+- **Documentation** – Checks registry entry documentation standards
+- **Cross-Reference Validation** – Validates registry-to-implementation alignment
+- **Bulk Validation** – Processes all entries in single operation
+
+### File Name Validation
+
+File name validation applies type-specific rules for different file types:
+
+- **builder** – Step builder implementation files with pattern validation
+- **config** – Configuration class files with convention enforcement
+- **spec** – Specification definition files with extension validation
+- **contract** – Script contract files with pattern matching
+
+### Step Name Validation
+
+Step name validation ensures canonical format compliance:
+
+- **PascalCase Format** – Must use PascalCase convention
+- **Descriptive Naming** – Must be descriptive and clear
+- **No Abbreviations** – Avoids unclear abbreviations
+- **Consistent Terminology** – Uses established terminology
+- **Length Validation** – Validates appropriate name length
+- **Reserved Words** – Checks against reserved word usage
+
+### Logical Name Validation
+
+Logical name validation ensures snake_case format compliance:
+
+- **snake_case Format** – Validates snake_case convention
+- **Descriptive Clarity** – Ensures clear, descriptive names
+- **Consistency Checking** – Validates against established patterns
+- **Reserved Name Checking** – Avoids system reserved names
+
+### Interface Compliance Validation
+
+Interface compliance validation checks step builder implementations:
+
+- **Required Methods** – Validates presence of required methods (validate_configuration, create_step, etc.)
+- **Method Signatures** – Checks method signatures and parameter types
+- **Type Annotations** – Validates complete type hint usage
+- **Documentation Standards** – Ensures proper docstring format and coverage
+- **Inheritance Validation** – Validates proper base class usage
+- **Error Handling** – Checks proper exception handling patterns
+
+## Validation Engine Integration
+
+### NamingStandardValidator Integration
+
+The CLI integrates with NamingStandardValidator for:
+
+- **Rule Enforcement** – Applies standardization rules consistently
+- **Violation Detection** – Identifies naming violations with context
+- **Suggestion Generation** – Provides improvement suggestions
+- **Registry Access** – Accesses builder registry for validation
+
+### InterfaceStandardValidator Integration
+
+The CLI integrates with InterfaceStandardValidator for:
+
+- **Compliance Checking** – Uses InterfaceStandardValidator class
+- **Method Validation** – Validates required method presence
+- **Signature Checking** – Validates method signatures and types
+- **Documentation Validation** – Checks docstring compliance
 
 ### Dynamic Class Loading
-```python
-def validate_interface(class_path: str, verbose: bool = False) -> int:
-    """Validate step builder interface compliance."""
-    # Dynamic module importing
-    # Class attribute access
-    # Interface validation execution
-    # Result processing and reporting
+
+The CLI supports dynamic class loading for interface validation:
+
+- **Module Importing** – Dynamic module importing with error handling
+- **Class Attribute Access** – Safe class attribute access and inspection
+- **Interface Validation Execution** – Comprehensive interface validation
+- **Result Processing** – Detailed result processing and reporting
+
+## Output Format
+
+### Standard Output Format
+
+The CLI provides formatted violation reporting:
+
+```
+🔍 Validating registry entries...
+❌ Found 3 naming violations:
+
+📁 XGBoostTraining:
+  • File name should follow pattern: builder_<canonical_name>_step.py
+    💡 Suggestions: builder_xgboost_training_step.py
+
+📁 TabularPreprocessing:
+  • Logical name 'inputData' should use snake_case
+    💡 Suggestions: input_data
+
+✅ All interface compliance checks passed!
 ```
 
-### Violation Reporting System
-```python
-def print_violations(violations: List, verbose: bool = False) -> None:
-    """Print violations in a formatted way."""
-    # Violation type detection
-    # Component-based grouping
-    # Formatted output generation
-    # Suggestion inclusion
+### Verbose Output Format
+
+Verbose mode provides detailed diagnostic information:
+
+```
+🔍 Validating interface compliance for: XGBoostTrainingStepBuilder
+❌ Found 2 interface violations:
+
+📁 XGBoostTrainingStepBuilder:
+  • [missing_method] Missing required method: validate_configuration
+    📋 Expected: Method with signature validate_configuration(self) -> None
+    📋 Actual: Method not found
+    💡 Suggestions: Implement validate_configuration method
+
+  • [type_hints] Method create_step missing return type annotation
+    📋 Expected: -> Step
+    📋 Actual: No return type annotation
+    💡 Suggestions: Add return type annotation: -> Step
 ```
 
-## Usage Patterns
+## Error Handling
 
-### Development Workflow
-1. **Pre-commit validation**: Validate changes before committing
-2. **File creation**: Validate new file names before creation
-3. **Interface implementation**: Validate interface compliance during development
-4. **Registry updates**: Validate registry entries after modifications
+### Exit Codes
 
-### Continuous Integration
-```bash
-# Validate all naming standards
-python -m src.cursus.cli.validation_cli registry || exit 1
+- **0** – Success, all validations passed
+- **1** – Validation failures detected
+- **2** – Invalid arguments or usage
+- **3** – Import or class loading error
+- **4** – File or resource not found
 
-# Validate specific components
-python -m src.cursus.cli.validation_cli interface <builder_class> || exit 1
-```
+### Error Categories
 
-### Code Review Process
-```bash
-# Validate new builder implementation
-python -m src.cursus.cli.validation_cli interface <new_builder> --verbose
-python -m src.cursus.cli.validation_cli file <new_file> builder
-```
+- **Import Error Management** – Graceful handling of missing imports with clear error messages
+- **Module Resolution** – Clear error messages for import failures and path resolution
+- **Class Loading** – Detailed error reporting for class loading issues
+- **Validation Error Reporting** – Specific violations with context information and improvement suggestions
 
-## Alignment Validation System Integration
+## Integration Points
 
-### Comprehensive Script Alignment Validation
-The validation CLI works in conjunction with the comprehensive alignment validation system located in `test/steps/scripts/alignment_validation/`. This system provides 4-level validation:
+### Alignment Validation System Integration
+
+The validation CLI works in conjunction with the comprehensive alignment validation system:
 
 #### Level 1: Script ↔ Contract Alignment
 - Validates script arguments match contract specifications
@@ -220,156 +318,61 @@ The validation CLI works in conjunction with the comprehensive alignment validat
 - Ensures proper field mapping and resolution
 - Checks for configuration consistency
 
-### Running Comprehensive Alignment Validation
+### Registry System Integration
+
+The CLI integrates with the registry system for:
+
+- **Registry Access** – Accesses builder registry for validation
+- **Cross-Reference Validation** – Validates registry-implementation alignment
+- **Bulk Operations** – Processes all registry entries efficiently
+
+## Usage Patterns
+
+### Development Workflow
+
+1. **Pre-commit Validation** – Validate changes before committing
+2. **File Creation** – Validate new file names before creation
+3. **Interface Implementation** – Validate interface compliance during development
+4. **Registry Updates** – Validate registry entries after modifications
+
+### Continuous Integration
+
 ```bash
-# Run comprehensive validation for all scripts
-cd test/steps/scripts/alignment_validation
-python run_alignment_validation.py
+# Validate all naming standards
+cursus validation registry || exit 1
 
-# Run validation for individual scripts
-python validate_currency_conversion.py
-python validate_dummy_training.py
-python validate_xgboost_training.py
+# Validate specific components
+cursus validation interface <builder_class> || exit 1
 ```
 
-### Generated Reports
-The alignment validation system generates comprehensive reports:
-- **JSON Reports**: Machine-readable format in `reports/json/`
-- **HTML Reports**: Human-readable format in `reports/html/`
-- **Summary Report**: Overall validation summary in `reports/validation_summary.json`
+### Code Review Process
 
-## Error Handling
-
-### Import Error Management
-- **Missing dependencies**: Graceful handling of missing imports
-- **Module resolution**: Clear error messages for import failures
-- **Class loading**: Detailed error reporting for class loading issues
-- **Path resolution**: Helpful guidance for path-related errors
-
-### Validation Error Reporting
-- **Specific violations**: Detailed violation descriptions
-- **Context information**: Relevant context for each violation
-- **Improvement suggestions**: Actionable recommendations
-- **Severity levels**: Different levels of violation severity
-
-## Output Format
-
-### Standard Output
+```bash
+# Validate new builder implementation
+cursus validation interface <new_builder> --verbose
+cursus validation file <new_file> builder
 ```
-🔍 Validating registry entries...
-❌ Found 3 naming violations:
-
-📁 XGBoostTraining:
-  • File name should follow pattern: builder_<canonical_name>_step.py
-    💡 Suggestions: builder_xgboost_training_step.py
-
-📁 TabularPreprocessing:
-  • Logical name 'inputData' should use snake_case
-    💡 Suggestions: input_data
-
-✅ All interface compliance checks passed!
-```
-
-### Verbose Output
-```
-🔍 Validating interface compliance for: XGBoostTrainingStepBuilder
-❌ Found 2 interface violations:
-
-📁 XGBoostTrainingStepBuilder:
-  • [missing_method] Missing required method: validate_configuration
-    📋 Expected: Method with signature validate_configuration(self) -> None
-    📋 Actual: Method not found
-    💡 Suggestions: Implement validate_configuration method
-
-  • [type_hints] Method create_step missing return type annotation
-    📋 Expected: -> Step
-    📋 Actual: No return type annotation
-    💡 Suggestions: Add return type annotation: -> Step
-```
-
-## Integration Points
-
-### 1. Naming Standard Validator
-- **Direct integration**: Uses NamingStandardValidator class
-- **Rule enforcement**: Applies standardization rules
-- **Violation detection**: Identifies naming violations
-- **Suggestion generation**: Provides improvement suggestions
-
-### 2. Interface Standard Validator
-- **Compliance checking**: Uses InterfaceStandardValidator class
-- **Method validation**: Validates required method presence
-- **Signature checking**: Validates method signatures
-- **Documentation validation**: Checks docstring compliance
-
-### 3. Registry System
-- **Registry access**: Accesses builder registry for validation
-- **Cross-reference validation**: Validates registry-implementation alignment
-- **Bulk operations**: Processes all registry entries efficiently
-
-## Extension Points
-
-### Adding New File Types
-```python
-# Extend file type choices
-file_parser.add_argument(
-    "file_type",
-    choices=["builder", "config", "spec", "contract", "new_type"],
-    help="Type of file"
-)
-```
-
-### Custom Validation Rules
-- **Rule plugins**: Support for custom validation rules
-- **Configuration-driven**: Rules defined in configuration files
-- **Domain-specific**: Rules specific to particular domains
-- **Extensible framework**: Easy addition of new validation types
-
-### Output Formatters
-- **JSON output**: Machine-readable output format
-- **XML reports**: Structured report generation
-- **Integration hooks**: Hooks for CI/CD integration
-- **Custom formatters**: User-defined output formats
 
 ## Performance Considerations
 
 ### Validation Optimization
-- **Lazy loading**: Load validators only when needed
-- **Caching**: Cache validation results for repeated operations
-- **Parallel processing**: Process multiple validations concurrently
-- **Incremental validation**: Validate only changed components
+
+- **Lazy Loading** – Load validators only when needed
+- **Caching** – Cache validation results for repeated operations
+- **Parallel Processing** – Process multiple validations concurrently
+- **Incremental Validation** – Validate only changed components
 
 ### Memory Management
-- **Resource cleanup**: Proper cleanup of loaded classes
-- **Memory monitoring**: Track memory usage during validation
-- **Batch processing**: Process large sets in batches
-- **Garbage collection**: Explicit garbage collection for large operations
 
-## Best Practices
+- **Resource Cleanup** – Proper cleanup of loaded classes
+- **Memory Monitoring** – Track memory usage during validation
+- **Batch Processing** – Process large sets in batches
+- **Garbage Collection** – Explicit garbage collection for large operations
 
-### Validation Strategy
-- **Early validation**: Validate early in development process
-- **Comprehensive coverage**: Validate all relevant components
-- **Consistent application**: Apply validation consistently
-- **Automated enforcement**: Integrate into automated workflows
+## Related Documentation
 
-### Error Handling
-- **Clear messages**: Provide clear, actionable error messages
-- **Context preservation**: Maintain error context
-- **Recovery guidance**: Offer recovery suggestions
-- **Documentation links**: Link to relevant documentation
-
-## Future Enhancements
-
-### Planned Features
-- **Configuration validation**: Validate configuration file formats
-- **Cross-component validation**: Validate relationships between components
-- **Custom rule definition**: User-defined validation rules
-- **Integration testing**: Validate component integration
-
-### Automation Improvements
-- **Auto-fixing**: Automatic fixing of simple violations
-- **Batch operations**: Bulk validation and fixing operations
-- **Watch mode**: Continuous validation during development
-- **IDE integration**: Integration with development environments
-
-This validation CLI provides comprehensive automated enforcement of naming conventions and interface compliance standards, ensuring consistent code quality and adherence to established patterns across the entire codebase.
+- [Naming Standard Validator](../validation/naming_standard_validator.md) - Core naming validation logic
+- [Interface Standard Validator](../validation/interface_standard_validator.md) - Interface compliance validation
+- [Registry System](../registry/README.md) - Registry management and validation
+- [Alignment Validation](../validation/alignment_validation.md) - Comprehensive alignment validation system
+- [Standardization Rules](../../0_developer_guide/standardization_rules.md) - Coding standards and rules

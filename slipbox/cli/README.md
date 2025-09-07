@@ -1,396 +1,267 @@
 ---
 tags:
   - entry_point
-  - code
   - cli
-  - overview
+  - command-line
+  - interface
   - documentation
 keywords:
-  - CLI overview
-  - command line interface
+  - CLI tools
+  - command-line interface
   - cursus CLI
-  - testing tools
+  - alignment validation
+  - builder testing
+  - catalog management
+  - registry management
+  - runtime testing
   - validation tools
-  - pipeline compilation
+  - workspace management
 topics:
-  - CLI architecture
-  - command overview
-  - usage guide
-  - tool integration
+  - command-line interface
+  - CLI documentation
+  - pipeline development
+  - validation tools
+  - developer tools
 language: python
-date of note: 2025-08-07
+date of note: 2024-12-07
 ---
 
-# Cursus CLI Documentation Overview
+# CLI Documentation
 
-## Introduction
+Comprehensive documentation for all Cursus command-line interface tools, providing unified access to pipeline development, validation, and management capabilities.
 
-The Cursus CLI provides a comprehensive command-line interface for the Cursus system, offering tools for pipeline compilation, validation, testing, and project management. Built with modern CLI best practices, it serves as the primary user interaction point for developers working with step builders and pipeline automation.
+## Overview
 
-## Architecture Overview
+The CLI documentation directory contains complete reference documentation for all Cursus command-line tools. These tools provide a comprehensive interface for pipeline development, validation, and management tasks, featuring a unified dispatcher architecture, consistent argument parsing, and robust error handling across all CLI modules.
 
-### Module Structure
+The CLI system supports multiple command categories including alignment validation, step builder testing, pipeline catalog management, registry management, runtime testing, naming and interface validation, and workspace management. All documentation follows the API reference documentation style guide with function-like command documentation, proper parameter formatting, and comprehensive code examples.
 
-```
-src/cursus/cli/
-├── __init__.py          # Main CLI with Click framework integration
-├── __main__.py          # Entry point for python -m execution
-├── builder_test_cli.py  # Universal Step Builder Testing CLI
-└── validation_cli.py    # Naming and interface validation CLI
-```
+## Documentation Files
 
-### Command Hierarchy
+### Core CLI Components
 
-```
-cursus (main CLI)
-├── compile              # DAG to SageMaker pipeline compilation
-├── validate             # DAG structure and compatibility validation
-├── preview              # Compilation preview without full generation
-├── list-steps           # Available step types listing
-├── init                 # Project template generation
-└── test (subgroup)      # Universal Step Builder Testing
-    ├── all              # Complete test suite execution
-    ├── level <1-4>      # Level-specific testing (Interface/Spec/Path/Integration)
-    ├── variant <type>   # Variant-specific testing (Processing/Training/etc.)
-    └── list-builders    # Available builder discovery
-```
+- **[CLI Module](__init__.md)** - Main CLI dispatcher and command routing system
+- **[CLI Main Entry Point](__main__.md)** - Entry point for module execution (`python -m cursus.cli`)
 
-## Core Components
+### Command-Specific Documentation
 
-### 1. Main CLI Interface (`__init__.py`)
-**Purpose**: Primary command-line interface with pipeline operations
-**Framework**: Click-based hierarchical command structure
-**Key Features**:
-- DAG compilation to SageMaker pipelines
-- Pre-compilation validation and preview
-- Project template generation
-- Integration with testing framework
+- **[Alignment CLI](alignment_cli.md)** - Comprehensive alignment validation across four levels
+- **[Builder Test CLI](builder_test_cli.md)** - Step builder testing and validation tools
+- **[Catalog CLI](catalog_cli.md)** - Pipeline catalog management with dual-compiler support
+- **[Registry CLI](registry_cli.md)** - Registry management and workspace tools
+- **[Runtime Testing CLI](runtime_testing_cli.md)** - Script runtime testing and benchmarking
+- **[Validation CLI](validation_cli.md)** - Naming and interface validation tools
+- **[Workspace CLI](workspace_cli.md)** - Comprehensive workspace lifecycle management
 
-**Documentation**: [CLI Main Interface](cli_main_interface.md)
+## Quick Start
 
-### 2. Entry Point Module (`__main__.py`)
-**Purpose**: Standard Python module execution entry point
-**Pattern**: Follows Python `-m` execution pattern
-**Key Features**:
-- Clean module invocation via `python -m cursus.cli`
-- Proper error propagation and exit codes
-- Cross-platform compatibility
+### Installation and Basic Usage
 
-**Documentation**: [CLI Entry Point](cli_entry_point.md)
-
-### 3. Builder Test CLI (`builder_test_cli.py`)
-**Purpose**: Universal Step Builder Testing interface
-**Architecture**: 4-level testing hierarchy with variant support
-**Key Features**:
-- Automatic builder discovery with AST parsing fallback
-- Level-specific testing (Interface/Specification/Path Mapping/Integration)
-- Variant-specific testing (Processing/Training/Transform)
-- Comprehensive result reporting with suggestions
-
-**Documentation**: [Builder Test CLI](builder_test_cli.md)
-
-### 4. Validation CLI (`validation_cli.py`)
-**Purpose**: Naming standards and interface compliance validation
-**Scope**: Registry, file naming, step naming, logical naming, interface compliance
-**Key Features**:
-- Automated naming convention enforcement
-- Interface compliance validation
-- Registry-wide validation capabilities
-- Detailed violation reporting with suggestions
-
-**Documentation**: [Validation CLI](validation_cli.md)
-
-## Key Features
-
-### 1. Pipeline Operations
 ```bash
-# Compile DAG to SageMaker pipeline
-cursus compile my_dag.py --name fraud-detection --output pipeline.json
+# Access main CLI help
+cursus --help
 
-# Validate DAG before compilation
-cursus validate my_dag.py --config config.yaml
-
-# Preview compilation results
-cursus preview my_dag.py
+# Or use module execution
+python -m cursus.cli --help
 ```
 
-### 2. Universal Step Builder Testing
+### Common Command Patterns
+
 ```bash
-# Discover available builders
-cursus test list-builders
+# Alignment validation
+cursus alignment validate my_script --verbose
+cursus alignment validate-all --output-dir ./reports
 
-# Run complete test suite
-cursus test all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder
+# Builder testing
+cursus builder-test validate MyStepBuilder
+cursus builder-test validate-all --scoring
 
-# Run specific test levels
-cursus test level 1 <builder_class>  # Interface tests
-cursus test level 2 <builder_class>  # Specification tests
-cursus test level 3 <builder_class>  # Path mapping tests
-cursus test level 4 <builder_class>  # Integration tests
+# Catalog management
+cursus catalog list --format json
+cursus catalog search --framework xgboost
 
-# Run variant-specific tests
-cursus test variant processing <builder_class>
+# Registry operations
+cursus registry list-steps --workspace my_project
+cursus registry validate-registry --check-conflicts
+
+# Runtime testing
+cursus runtime-testing test_script my_script.py
+cursus runtime-testing benchmark my_script.py --iterations 10
+
+# Validation tools
+cursus validation registry --verbose
+cursus validation interface src.cursus.steps.builders.MyBuilder
+
+# Workspace management
+cursus workspace create alice --template ml_pipeline
+cursus workspace list --show-components
 ```
 
-### 3. Standards Validation
+## Documentation Standards
+
+### API Reference Format
+
+All CLI documentation follows the API reference documentation style guide:
+
+- **YAML Frontmatter** - Proper tags, keywords, topics, language, and date fields
+- **Overview Sections** - Comprehensive module descriptions with context
+- **Function-like Commands** - CLI commands documented as functions with signatures
+- **Parameter Documentation** - Consistent `**--option** (_Type_) – Description` format
+- **Code Examples** - Practical bash usage examples for all commands
+- **Integration Points** - Clear documentation of system integrations
+- **Error Handling** - Standardized exit codes and error categories
+
+### Command Documentation Structure
+
+Each CLI command is documented with:
+
+1. **Command Signature** - `cursus command subcommand _parameter_ [_options_]`
+2. **Parameters Section** - Required parameters with types and descriptions
+3. **Options Section** - Optional flags and parameters with defaults
+4. **Returns Section** - Exit codes and their meanings
+5. **Code Examples** - Practical usage scenarios
+6. **Integration Notes** - How the command integrates with the framework
+
+## CLI Architecture
+
+### Dispatcher Pattern
+
+The CLI system uses a dispatcher pattern for command routing:
+
+1. **Main Dispatcher** - Routes commands to appropriate CLI modules
+2. **Argument Parsing** - Comprehensive argument validation with help
+3. **Command Forwarding** - Forwards arguments to selected CLI modules
+4. **Exit Code Handling** - Preserves exit codes from sub-commands
+5. **Error Management** - Consistent error handling across all commands
+
+### Integration Points
+
+- **Validation Framework** - Comprehensive validation capabilities
+- **Registry System** - Step management and workspace operations
+- **Pipeline Catalog** - Template management and discovery
+- **Workspace System** - Developer environment setup and management
+- **Builder Framework** - Step builder testing and validation
+
+## Error Handling
+
+### Standardized Exit Codes
+
+- **0** - Success
+- **1** - General error or validation failure
+- **2** - Invalid arguments or usage
+- **3** - File or resource not found
+- **4** - Permission or access error
+
+### Error Categories
+
+- **Command Routing** - Invalid command names with suggestions
+- **Argument Parsing** - Comprehensive argument validation
+- **Exception Handling** - Graceful handling with debugging information
+- **Help Integration** - Automatic help display for invalid usage
+
+## Development Workflow Integration
+
+### Pre-commit Validation
+
 ```bash
-# Validate all registry entries
-cursus validate registry
+# Validate alignment before commit
+cursus alignment validate-all --continue-on-error
 
-# Validate specific file names
-cursus validate file builder_xgboost_training_step.py builder
+# Validate naming standards
+cursus validation registry
 
-# Validate step names
-cursus validate step XGBoostTraining
-
-# Validate interface compliance
-cursus validate interface <builder_class>
-```
-
-### 4. Project Management
-```bash
-# Generate new project from template
-cursus init --template xgboost --name fraud-detection
-
-# List available step types
-cursus list-steps
-```
-
-## Usage Patterns
-
-### Development Workflow
-
-#### 1. Project Setup
-```bash
-# Create new project
-cursus init --template xgboost --name my-project
-cd my-project
-
-# Validate project structure
-cursus validate registry
-```
-
-#### 2. Builder Development
-```bash
-# Discover available builders
-cursus test list-builders
-
-# Test new builder implementation
-cursus test level 1 <new_builder>  # Interface compliance
-cursus test level 2 <new_builder>  # Specification integration
-cursus test all <new_builder>      # Complete validation
-```
-
-#### 3. Pipeline Development
-```bash
-# Validate DAG structure
-cursus validate dags/main.py
-
-# Preview compilation
-cursus preview dags/main.py --config config/config.yaml
-
-# Compile to SageMaker pipeline
-cursus compile dags/main.py --name my-project --output pipeline.json
+# Test builders
+cursus builder-test validate-all
 ```
 
 ### Continuous Integration
 
-#### Pre-commit Validation
 ```bash
-#!/bin/bash
-# Validate naming standards
-cursus validate registry || exit 1
-
-# Test all builders
-for builder in $(cursus test list-builders); do
-    cursus test all "$builder" || exit 1
-done
+# CI pipeline validation
+cursus alignment validate-all --format json --output-dir ./ci-reports
+cursus validation registry || exit 1
+cursus builder-test validate-all --scoring || exit 1
 ```
 
-#### Pipeline Validation
+### Development Environment Setup
+
 ```bash
-#!/bin/bash
-# Validate all DAG files
-for dag in dags/*.py; do
-    cursus validate "$dag" || exit 1
-done
+# Setup workspace
+cursus workspace create developer_name --template ml_pipeline
+
+# Validate workspace
+cursus workspace validate --strict
+
+# List available tools
+cursus workspace discover components
 ```
 
-### Quality Assurance
+## Advanced Usage
 
-#### Code Review Process
+### Batch Operations
+
 ```bash
-# Validate new builder
-cursus validate interface <new_builder> --verbose
-cursus test all <new_builder> --verbose
+# Generate multiple pipeline reports
+cursus alignment validate-all --output-dir ./reports --format both
 
-# Validate naming conventions
-cursus validate file <new_file> builder
-cursus validate step <new_step_name>
+# Test all builders with custom configurations
+cursus builder-test validate-all --config-dir ./custom_configs
+
+# Comprehensive workspace health check
+cursus workspace health-check --fix-issues
 ```
 
-## Integration Points
+### Automation and Scripting
 
-### 1. Universal Test Framework
-- **Direct integration**: Seamless integration with UniversalStepBuilderTestBase
-- **4-level architecture**: Complete support for hierarchical testing
-- **Variant testing**: Specialized testing for different step types
-- **Result aggregation**: Comprehensive result collection and reporting
+```bash
+# JSON output for programmatic processing
+cursus catalog list --format json | jq '.[] | .id'
+cursus workspace list --format json | jq '.[] | select(.status == "healthy")'
 
-### 2. Validation Framework
-- **Naming standards**: Automated enforcement of naming conventions
-- **Interface compliance**: Validation of step builder interfaces
-- **Registry validation**: Cross-reference validation of registry entries
-- **Standards enforcement**: Consistent application of coding standards
-
-### 3. Pipeline Compilation
-- **DAG processing**: Integration with DAG compilation engine
-- **Configuration management**: Support for configuration-driven compilation
-- **Template system**: Project template generation and management
-- **Output formatting**: Multiple output format support
-
-### 4. Development Tools
-- **Builder discovery**: Automatic detection of available builders
-- **Error reporting**: Comprehensive error reporting with suggestions
-- **Verbose modes**: Detailed diagnostic information
-- **Exit codes**: Proper exit codes for automation
-
-## Best Practices
-
-### Command Design
-- **Consistent naming**: Follow established CLI naming conventions
-- **Clear help text**: Provide comprehensive help and usage examples
-- **Proper validation**: Validate inputs before processing
-- **Meaningful errors**: Provide actionable error messages
-
-### User Experience
-- **Progress indication**: Show progress for long-running operations
-- **Verbose modes**: Provide detailed output when requested
-- **Exit codes**: Use appropriate exit codes for scripting
-- **Documentation**: Include usage examples in help text
-
-### Error Handling
-- **Graceful degradation**: Handle missing dependencies gracefully
-- **Clear messaging**: Provide clear, actionable error messages
-- **Context preservation**: Maintain error context for debugging
-- **Recovery guidance**: Offer suggestions for error resolution
-
-## Extension Points
-
-### Adding New Commands
-```python
-@main.command()
-@click.argument('input_file')
-@click.option('--output', '-o', help='Output file')
-def new_command(input_file, output):
-    """New command description."""
-    # Implementation
-```
-
-### Adding New Test Types
-```python
-# In builder_test_cli.py
-test_classes = {
-    1: InterfaceTests,
-    2: SpecificationTests,
-    3: PathMappingTests,
-    4: IntegrationTests,
-    5: NewTestType,  # New test level
-}
-```
-
-### Adding New Validation Types
-```python
-# In validation_cli.py
-validation_parser = subparsers.add_parser(
-    "new_validation",
-    help="New validation type"
-)
+# Automated validation workflows
+cursus alignment validate-all --continue-on-error --output-dir ./validation
+cursus validation registry --verbose > validation_report.txt
 ```
 
 ## Performance Considerations
 
 ### Optimization Strategies
-- **Lazy loading**: Import modules only when needed
-- **Caching**: Cache results for repeated operations
-- **Parallel processing**: Process multiple operations concurrently
-- **Memory management**: Efficient memory usage for large operations
 
-### Scalability
-- **Batch operations**: Support for bulk operations
-- **Streaming**: Stream results for large datasets
-- **Resource monitoring**: Monitor resource usage
-- **Optimization hooks**: Hooks for performance optimization
+- **Lazy Loading** - CLI modules loaded only when needed
+- **Caching** - Validation results cached for repeated operations
+- **Parallel Processing** - Multiple validations processed concurrently
+- **Incremental Operations** - Only changed components validated when possible
 
-## Future Enhancements
+### Best Practices
 
-### Planned Features
-- **Interactive mode**: Interactive CLI for guided operations
-- **Configuration management**: Enhanced configuration handling
-- **Plugin system**: Support for third-party extensions
-- **Shell completion**: Auto-completion for commands and arguments
+1. **Use specific filters** to reduce processing time
+2. **Cache results** for batch operations
+3. **Use JSON output** for programmatic processing
+4. **Validate incrementally** during development
+5. **Generate reports** for comprehensive analysis
 
-### Integration Improvements
-- **IDE integration**: Better integration with development environments
-- **CI/CD plugins**: Specialized integrations for CI/CD systems
-- **Monitoring**: Integration with monitoring and telemetry
-- **Notification systems**: Result notification capabilities
+## Contributing
 
-## Getting Started
+### Adding New CLI Commands
 
-### Installation
-```bash
-# Install from source
-pip install -e .
+1. Create new CLI module in `src/cursus/cli/`
+2. Add command routing in main dispatcher
+3. Create documentation following API reference style guide
+4. Add integration tests and examples
+5. Update this README with new command information
 
-# Or install from PyPI (when available)
-pip install cursus
-```
+### Documentation Standards
 
-### Basic Usage
-```bash
-# Get help
-cursus --help
+- Follow API reference documentation style guide
+- Include comprehensive code examples
+- Document all parameters and options
+- Provide integration points and error handling
+- Maintain consistent formatting and structure
 
-# List available builders
-cursus test list-builders
+## Related Documentation
 
-# Test a builder
-cursus test all <builder_class>
-
-# Validate naming standards
-cursus validate registry
-```
-
-### Advanced Usage
-```bash
-# Compile a pipeline
-cursus compile my_dag.py --name my-pipeline --config config.yaml
-
-# Generate a new project
-cursus init --template xgboost --name fraud-detection
-
-# Run comprehensive validation
-cursus validate registry --verbose
-cursus test all <builder_class> --verbose
-```
-
-## Troubleshooting
-
-### Common Issues
-- **Module not found**: Ensure proper installation or PYTHONPATH
-- **Import errors**: Check dependencies and package structure
-- **Permission issues**: Verify file permissions and execution rights
-- **Configuration errors**: Validate configuration file format and content
-
-### Debug Mode
-```bash
-# Enable verbose output
-cursus --verbose <command>
-
-# Debug specific operations
-cursus test all <builder_class> --verbose
-cursus validate interface <builder_class> --verbose
-```
-
-This CLI system provides a comprehensive, user-friendly interface for all aspects of the Cursus development workflow, from initial project creation through testing, validation, and pipeline compilation.
+- [API Reference Documentation Style Guide](../../1_design/api_reference_documentation_style_guide.md) - Documentation standards and formatting
+- [Developer Guide](../../0_developer_guide/README.md) - Development guidelines and best practices
+- [Validation Framework](../validation/README.md) - Validation system documentation
+- [Registry System](../registry/README.md) - Registry management documentation
+- [Workspace Management](../workspace/README.md) - Workspace system documentation
