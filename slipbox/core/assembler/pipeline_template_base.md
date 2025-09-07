@@ -1,339 +1,239 @@
 ---
 tags:
   - code
-  - core
   - assembler
   - pipeline_template_base
-  - abstract_base_class
+  - template_pattern
+  - component_lifecycle
 keywords:
-  - pipeline template base
-  - abstract base class
+  - PipelineTemplateBase
   - template pattern
-  - configuration loading
   - component lifecycle
+  - configuration loading
+  - dependency injection
+  - pipeline generation
+  - abstract base class
 topics:
-  - pipeline template architecture
-  - template pattern implementation
-  - configuration management
+  - pipeline templates
+  - template pattern
+  - component management
 language: python
-date of note: 2025-09-07
+date of note: 2024-12-07
 ---
 
 # Pipeline Template Base
 
+Abstract base class for all pipeline templates, providing consistent structure, component lifecycle management, and standardized pipeline generation patterns.
+
 ## Overview
 
-The `PipelineTemplateBase` is an abstract base class that provides a consistent structure and common functionality for all pipeline templates. It handles configuration loading, component lifecycle management, and pipeline generation, enforcing best practices across different pipeline implementations.
+The `PipelineTemplateBase` class serves as the foundation for all pipeline templates in the system, implementing the template method pattern to ensure consistent pipeline generation workflows. This abstract base class enforces best practices, manages component lifecycles, and provides a standardized approach for creating pipeline templates.
 
-## Class Definition
+The template follows a structured pipeline generation process: load configurations from file, initialize component dependencies (registry manager and dependency resolver), create the DAG structure along with config and step builder mappings, and use the PipelineAssembler to assemble the final pipeline. This approach reduces code duplication across different pipeline templates while enforcing architectural consistency.
 
-```python
-class PipelineTemplateBase(ABC):
-    """Base class for all pipeline templates."""
-    
-    # This should be overridden by subclasses to specify the config classes
-    # that are expected in the configuration file
-    CONFIG_CLASSES: Dict[str, Type[BasePipelineConfig]] = {}
-    
-    def __init__(
-        self,
-        config_path: str,
-        sagemaker_session: Optional[PipelineSession] = None,
-        role: Optional[str] = None,
-        notebook_root: Optional[Path] = None,
-        registry_manager: Optional[RegistryManager] = None,
-        dependency_resolver: Optional[UnifiedDependencyResolver] = None
-    ):
-        """Initialize base template."""
-```
+The class supports advanced features including dependency injection for component management, thread-local component instances for multi-threaded environments, scoped dependency resolution contexts with automatic cleanup, execution document integration for pipeline metadata, and comprehensive configuration validation with detailed error reporting.
 
-## Pipeline Template Workflow
+## Classes and Methods
 
-The template follows these steps to build a pipeline:
+### Classes
+- [`PipelineTemplateBase`](#pipelinetemplatebase) - Abstract base class for pipeline templates with lifecycle management
 
-1. Load configurations from file
-2. Initialize component dependencies (registry_manager, dependency_resolver)
-3. Create the DAG, config_map, and step_builder_map
-4. Use PipelineAssembler to assemble the pipeline
+### Class Methods
+- [`create_with_components`](#create_with_components) - Factory method for creating template with managed components
+- [`build_with_context`](#build_with_context) - Build pipeline with scoped dependency resolution context
+- [`build_in_thread`](#build_in_thread) - Build pipeline using thread-local component instances
 
-## Key Methods
+## API Reference
 
-### Configuration Loading
+### PipelineTemplateBase
+
+_class_ cursus.core.assembler.pipeline_template_base.PipelineTemplateBase(_config_path_, _sagemaker_session=None_, _role=None_, _notebook_root=None_, _registry_manager=None_, _dependency_resolver=None_)
+
+Abstract base class for all pipeline templates. This class provides a consistent structure and common functionality for all pipeline templates, enforcing best practices and ensuring proper component lifecycle management.
+
+**Parameters:**
+- **config_path** (_str_) – Path to configuration file containing pipeline step configurations.
+- **sagemaker_session** (_Optional[PipelineSession]_) – SageMaker session for pipeline execution. Defaults to None.
+- **role** (_Optional[str]_) – IAM role for pipeline execution permissions. Defaults to None.
+- **notebook_root** (_Optional[Path]_) – Root directory of notebook environment. Defaults to current working directory.
+- **registry_manager** (_Optional[RegistryManager]_) – Optional registry manager for dependency injection and component management.
+- **dependency_resolver** (_Optional[UnifiedDependencyResolver]_) – Optional dependency resolver for specification-based matching.
 
 ```python
-def _load_configs(self, config_path: str) -> Dict[str, BasePipelineConfig]:
-    """
-    Load configurations from file.
+from cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
+
+class MyPipelineTemplate(PipelineTemplateBase):
+    CONFIG_CLASSES = {
+        'PreprocessingConfig': PreprocessingConfig,
+        'TrainingConfig': TrainingConfig
+    }
     
-    Args:
-        config_path: Path to configuration file
-        
-    Returns:
-        Dictionary of configurations
-    """
+    def _validate_configuration(self):
+        # Implement validation logic
+        pass
     
-def _get_base_config(self) -> BasePipelineConfig:
-    """
-    Get base configuration.
-    
-    Returns:
-        Base configuration
-        
-    Raises:
-        ValueError: If base configuration not found
-    """
+    def _create_pipeline_dag(self):
+        # Implement DAG creation
+        pass
+
+# Create template instance
+template = MyPipelineTemplate(
+    config_path="config.json",
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
+)
 ```
 
-The template uses a configuration-driven approach where pipeline parameters are loaded from JSON files. The `CONFIG_CLASSES` class attribute defines which configuration classes are expected in the config file, and the `_load_configs` method loads these configurations accordingly.
+#### generate_pipeline
 
-### Component Management
+generate_pipeline()
+
+Generate the SageMaker Pipeline. This method coordinates the pipeline generation process by creating the DAG, config map, and step builder map, then using PipelineAssembler to generate the final pipeline.
+
+**Returns:**
+- **Pipeline** – SageMaker Pipeline object with all steps properly configured and connected.
 
 ```python
-def _initialize_components(self) -> None:
-    """
-    Initialize dependency resolution components.
-    
-    This method creates registry manager and dependency resolver if they
-    were not provided during initialization.
-    """
+pipeline = template.generate_pipeline()
+print(f"Generated pipeline: {pipeline.name}")
 ```
 
-This method handles the initialization of dependency resolution components, using the factory module to create properly configured instances if they weren't provided during initialization.
+#### fill_execution_document
+
+fill_execution_document(_execution_document_)
+
+Fill in the execution document with pipeline metadata. This method can be overridden by subclasses to fill in execution documents with step-specific metadata from the pipeline.
+
+**Parameters:**
+- **execution_document** (_Dict[str, Any]_) – Execution document to fill with pipeline metadata.
+
+**Returns:**
+- **Dict[str, Any]** – Updated execution document with pipeline-specific metadata.
+
+```python
+execution_doc = {"pipeline_id": "12345"}
+updated_doc = template.fill_execution_document(execution_doc)
+```
+
+#### create_with_components
+
+_classmethod_ create_with_components(_config_path_, _context_name=None_, _**kwargs_)
+
+Create template with managed dependency components. This factory method creates a template with properly configured dependency resolution components from the factory module.
+
+**Parameters:**
+- **config_path** (_str_) – Path to configuration file containing pipeline configurations.
+- **context_name** (_Optional[str]_) – Optional context name for registry isolation and component management.
+- ****kwargs** – Additional arguments to pass to constructor including session, role, and notebook_root.
+
+**Returns:**
+- **PipelineTemplateBase** – Template instance with managed dependency components.
+
+```python
+template = MyPipelineTemplate.create_with_components(
+    config_path="config.json",
+    context_name="experiment-1",
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
+)
+```
+
+#### build_with_context
+
+_classmethod_ build_with_context(_config_path_, _**kwargs_)
+
+Build pipeline with scoped dependency resolution context. This method creates a template with a dependency resolution context that ensures proper cleanup of resources after pipeline generation.
+
+**Parameters:**
+- **config_path** (_str_) – Path to configuration file containing pipeline configurations.
+- ****kwargs** – Additional arguments to pass to constructor including session, role, and notebook_root.
+
+**Returns:**
+- **Pipeline** – Generated pipeline with automatic resource cleanup.
+
+```python
+pipeline = MyPipelineTemplate.build_with_context(
+    config_path="config.json",
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
+)
+```
+
+#### build_in_thread
+
+_classmethod_ build_in_thread(_config_path_, _**kwargs_)
+
+Build pipeline using thread-local component instances. This method creates a template with thread-local component instances, ensuring thread safety in multi-threaded environments.
+
+**Parameters:**
+- **config_path** (_str_) – Path to configuration file containing pipeline configurations.
+- ****kwargs** – Additional arguments to pass to constructor including session, role, and notebook_root.
+
+**Returns:**
+- **Pipeline** – Generated pipeline with thread-local component isolation.
+
+```python
+import threading
+
+def build_pipeline_in_thread():
+    pipeline = MyPipelineTemplate.build_in_thread(
+        config_path="config.json",
+        role="arn:aws:iam::123456789012:role/SageMakerRole"
+    )
+    return pipeline
+
+thread = threading.Thread(target=build_pipeline_in_thread)
+thread.start()
+```
 
 ### Abstract Methods
 
-These methods must be implemented by subclasses:
+The following methods must be implemented by subclasses:
+
+#### _validate_configuration
+
+_validate_configuration()
+
+Perform lightweight validation of configuration structure and essential parameters. This method focuses on validating presence/absence of required configurations, basic parameter validation, and non-dependency related concerns.
 
 ```python
-@abstractmethod
-def _validate_configuration(self) -> None:
-    """Perform lightweight validation of configuration structure and essential parameters."""
+def _validate_configuration(self):
+    # Find preprocessing configs
+    tp_configs = [cfg for name, cfg in self.configs.items() 
+                 if isinstance(cfg, PreprocessingConfig)]
     
-@abstractmethod
-def _create_pipeline_dag(self) -> PipelineDAG:
-    """Create the DAG structure for the pipeline."""
-    
-@abstractmethod
-def _create_config_map(self) -> Dict[str, BasePipelineConfig]:
-    """Create a mapping from step names to config instances."""
-    
-@abstractmethod
-def _create_step_builder_map(self) -> Dict[str, Type[StepBuilderBase]]:
-    """Create a mapping from step types to builder classes."""
+    if len(tp_configs) < 2:
+        raise ValueError("Expected at least two PreprocessingConfig instances")
 ```
 
-These abstract methods define the contract that subclasses must fulfill to create a valid pipeline template:
+#### _create_pipeline_dag
 
-- **_validate_configuration**: Validates the structure and essential parameters of loaded configurations
-- **_create_pipeline_dag**: Defines the pipeline's DAG structure
-- **_create_config_map**: Maps step names to their respective configurations
-- **_create_step_builder_map**: Maps step types to builder classes
+_create_pipeline_dag()
 
-### Pipeline Generation
+Create the DAG structure for the pipeline. This method should be implemented by subclasses to define the pipeline's DAG structure.
 
-```python
-def generate_pipeline(self) -> Pipeline:
-    """
-    Generate the SageMaker Pipeline.
-    
-    This method coordinates the pipeline generation process:
-    1. Create the DAG, config_map, and step_builder_map
-    2. Create the PipelineAssembler
-    3. Generate the pipeline
-    4. Store pipeline metadata
-    
-    Returns:
-        SageMaker Pipeline
-    """
-```
+**Returns:**
+- **PipelineDAG** – PipelineDAG instance defining the pipeline structure.
 
-This method orchestrates the pipeline generation process by:
-1. Creating the DAG, config_map, and step_builder_map using the abstract methods
-2. Creating a PipelineAssembler with these components
-3. Generating the pipeline using the assembler
-4. Storing pipeline metadata for later use
+#### _create_config_map
 
-### Factory Methods
+_create_config_map()
 
-```python
-@classmethod
-def create_with_components(cls, config_path: str, context_name: Optional[str] = None, **kwargs):
-    """Create template with managed dependency components."""
-    
-@classmethod
-def build_with_context(cls, config_path: str, **kwargs) -> Pipeline:
-    """Build pipeline with scoped dependency resolution context."""
-    
-@classmethod
-def build_in_thread(cls, config_path: str, **kwargs) -> Pipeline:
-    """Build pipeline using thread-local component instances."""
-```
+Create a mapping from step names to config instances. This method should be implemented by subclasses to map step names to their respective configurations.
 
-These factory methods provide different ways to create pipeline templates:
+**Returns:**
+- **Dict[str, BasePipelineConfig]** – Dictionary mapping step names to configurations.
 
-- **create_with_components**: Creates a template with managed dependency components
-- **build_with_context**: Builds a pipeline with a scoped dependency resolution context
-- **build_in_thread**: Builds a pipeline using thread-local component instances
+#### _create_step_builder_map
 
-### Execution Document Support
+_create_step_builder_map()
 
-```python
-def fill_execution_document(self, execution_document: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Fill in the execution document with pipeline metadata.
-    
-    This method is a placeholder that subclasses can override to fill in
-    execution documents with step-specific metadata from the pipeline.
-    
-    Args:
-        execution_document: Execution document to fill
-        
-    Returns:
-        Updated execution document
-    """
-```
+Create a mapping from step types to builder classes. This method should be implemented by subclasses to map step types to their builder classes.
 
-This method allows subclasses to fill execution documents with step-specific metadata from the pipeline, such as Cradle requests or execution configurations.
-
-## Creating Custom Pipeline Templates
-
-To create a custom pipeline template, extend the `PipelineTemplateBase` class:
-
-```python
-from src.pipeline_builder.pipeline_template_base import PipelineTemplateBase
-from src.pipeline_dag.base_dag import PipelineDAG
-from src.pipeline_steps.config_base import BasePipelineConfig
-
-class MyCustomTemplate(PipelineTemplateBase):
-    # Define the configuration classes expected in the config file
-    CONFIG_CLASSES = {
-        'Base': BasePipelineConfig,
-        'DataLoading': CradleDataLoadingConfig,
-        'Preprocessing': TabularPreprocessingConfig,
-        'Training': XGBoostTrainingConfig,
-    }
-    
-    def _validate_configuration(self) -> None:
-        # Validate that required configs are present
-        if 'DataLoading' not in self.configs:
-            raise ValueError("DataLoading configuration is required")
-        
-        if 'Training' not in self.configs:
-            raise ValueError("Training configuration is required")
-        
-        # Validate specific parameters
-        data_config = self.configs['DataLoading']
-        if not hasattr(data_config, 'source_type') or not data_config.source_type:
-            raise ValueError("DataLoading configuration must specify source_type")
-    
-    def _create_pipeline_dag(self) -> PipelineDAG:
-        # Create the DAG structure
-        dag = PipelineDAG()
-        
-        # Define nodes and edges
-        dag.add_node("data_loading")
-        dag.add_node("preprocessing")
-        dag.add_node("training")
-        
-        dag.add_edge("data_loading", "preprocessing")
-        dag.add_edge("preprocessing", "training")
-        
-        return dag
-    
-    def _create_config_map(self) -> Dict[str, BasePipelineConfig]:
-        # Map step names to configurations
-        return {
-            "data_loading": self.configs['DataLoading'],
-            "preprocessing": self.configs['Preprocessing'],
-            "training": self.configs['Training'],
-        }
-    
-    def _create_step_builder_map(self) -> Dict[str, Type[StepBuilderBase]]:
-        # Map step types to builder classes
-        return {
-            "CradleDataLoading": CradleDataLoadingStepBuilder,
-            "TabularPreprocessingStep": TabularPreprocessingStepBuilder,
-            "XGBoostTrainingStep": XGBoostTrainingStepBuilder,
-        }
-        
-    def fill_execution_document(self, execution_document: Dict[str, Any]) -> Dict[str, Any]:
-        # Fill execution document with Cradle requests
-        cradle_requests = self.pipeline_metadata.get('cradle_loading_requests', {})
-        
-        if 'execution' not in execution_document:
-            execution_document['execution'] = {}
-            
-        execution_document['execution']['cradle_requests'] = cradle_requests
-        
-        return execution_document
-```
-
-## Usage Examples
-
-### Using a Custom Template
-
-```python
-# Create the template
-template = MyCustomTemplate(
-    config_path="configs/xgboost_config.json",
-    sagemaker_session=sagemaker_session,
-    role="arn:aws:iam::123456789012:role/SageMakerRole",
-)
-
-# Generate the pipeline
-pipeline = template.generate_pipeline()
-
-# Execute the pipeline
-pipeline.upsert()
-execution = pipeline.start()
-```
-
-### Using Factory Methods
-
-```python
-# Create with managed components
-template = MyCustomTemplate.create_with_components(
-    config_path="configs/xgboost_config.json",
-    context_name="my_pipeline",
-    sagemaker_session=sagemaker_session,
-    role="arn:aws:iam::123456789012:role/SageMakerRole",
-)
-
-# Build with context
-pipeline = MyCustomTemplate.build_with_context(
-    config_path="configs/xgboost_config.json",
-    sagemaker_session=sagemaker_session,
-    role="arn:aws:iam::123456789012:role/SageMakerRole",
-)
-
-# Build in thread
-pipeline = MyCustomTemplate.build_in_thread(
-    config_path="configs/xgboost_config.json",
-    sagemaker_session=sagemaker_session,
-    role="arn:aws:iam::123456789012:role/SageMakerRole",
-)
-```
-
-### Working with Execution Documents
-
-```python
-# Create execution document template
-execution_doc = {
-    "execution": {
-        "name": "XGBoost Training Pipeline",
-        "steps": []
-    }
-}
-
-# Fill execution document with pipeline metadata
-filled_doc = template.fill_execution_document(execution_doc)
-
-print(f"Execution document with Cradle requests: {filled_doc}")
-```
+**Returns:**
+- **Dict[str, Type[StepBuilderBase]]** – Dictionary mapping step types to builder classes.
 
 ## Related Documentation
 
-- [Pipeline Assembler](pipeline_assembler.md)
-- [Pipeline DAG](../pipeline_dag/pipeline_dag.md)
-- [Template Implementation](template_implementation.md)
-- [Pipeline Examples](pipeline_examples.md)
+- [Pipeline Assembler](pipeline_assembler.md) - Component-based pipeline assembly system used by templates
+- [Config Field Manager](../config_fields/README.md) - Configuration management system for pipeline steps
+- [Dependency Resolver](../deps/dependency_resolver.md) - Specification-based dependency resolution system
+- [Step Builder Base](../base/step_builder_base.md) - Base class for step builders used in templates
+- [Pipeline DAG](../../api/dag/base_dag.md) - DAG structure definition for pipeline templates

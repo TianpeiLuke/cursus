@@ -1,386 +1,141 @@
 ---
 tags:
   - code
-  - core
   - assembler
   - pipeline_assembler
-  - step_assembly
+  - dag_compilation
+  - step_building
 keywords:
-  - pipeline assembler
-  - step assembly
+  - PipelineAssembler
+  - DAG compilation
+  - step builders
   - dependency resolution
-  - specification driven
-  - DAG structure
+  - specification matching
+  - SageMaker Pipeline
+  - pipeline assembly
 topics:
   - pipeline assembly
-  - step connection
-  - dependency matching
+  - DAG compilation
+  - dependency resolution
 language: python
-date of note: 2025-09-07
+date of note: 2024-12-07
 ---
 
 # Pipeline Assembler
 
+Component-based pipeline assembly system that builds SageMaker Pipelines from DAG structures and step builders using specification-based dependency resolution.
+
 ## Overview
 
-The `PipelineAssembler` is responsible for assembling pipeline steps using a DAG structure and specification-based dependency resolution. It connects steps based on their specifications, instantiates them in topological order, and combines them into a SageMaker pipeline.
+The `PipelineAssembler` class implements a sophisticated pipeline assembly system that leverages specification-based dependency resolution to intelligently connect pipeline steps. This approach simplifies pipeline construction by automatically matching step inputs to outputs based on their specifications, reducing the need for manual wiring.
 
-## Class Definition
+The assembler follows a structured process: initialize step builders for all DAG nodes, determine build order through topological sorting, propagate messages between steps using the dependency resolver, instantiate steps in topological order with proper input/output handling, and create the final SageMaker Pipeline. This component-based architecture allows for flexible and modular pipeline definitions where each step manages its own configuration and dependencies.
 
-```python
-class PipelineAssembler:
-    """
-    Assembles pipeline steps using a DAG and step builders with specification-based dependency resolution.
-    """
-    def __init__(
-        self,
-        dag: PipelineDAG,
-        config_map: Dict[str, BasePipelineConfig],
-        step_builder_map: Dict[str, Type[StepBuilderBase]],
-        sagemaker_session: Optional[PipelineSession] = None,
-        role: Optional[str] = None,
-        pipeline_parameters: Optional[List[ParameterString]] = None,
-        notebook_root: Optional[Path] = None,
-        registry_manager: Optional[RegistryManager] = None,
-        dependency_resolver: Optional[UnifiedDependencyResolver] = None
-    ):
-        """Initialize the pipeline assembler."""
-```
+The system supports advanced features including Cradle data loading integration, specification-based output generation, runtime property reference creation, and comprehensive error handling with detailed logging throughout the assembly process.
 
-## Pipeline Assembly Process
+## Classes and Methods
 
-The pipeline assembly process follows these steps:
+### Classes
+- [`PipelineAssembler`](#pipelineassembler) - Main pipeline assembly orchestrator with specification-based dependency resolution
 
-1. Initialize step builders for all steps in the DAG
-2. Propagate messages between steps using specification-based dependency resolution
-3. Generate output paths for each step
-4. Instantiate steps in topological order, connecting inputs to outputs
-5. Create the SageMaker pipeline with the instantiated steps
+### Class Methods
+- [`create_with_components`](#create_with_components) - Factory method for creating assembler with managed components
 
-## Key Methods
+## API Reference
 
-### Step Builder Initialization
+### PipelineAssembler
+
+_class_ cursus.core.assembler.pipeline_assembler.PipelineAssembler(_dag_, _config_map_, _step_builder_map_, _sagemaker_session=None_, _role=None_, _pipeline_parameters=None_, _notebook_root=None_, _registry_manager=None_, _dependency_resolver=None_)
+
+Assembles pipeline steps using a DAG and step builders with specification-based dependency resolution. This class implements a component-based approach to building SageMaker Pipelines, leveraging the specification-based dependency resolution system to simplify the code and improve maintainability.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance defining the pipeline structure with nodes and edges.
+- **config_map** (_Dict[str, BasePipelineConfig]_) – Mapping from step name to config instance for each pipeline step.
+- **step_builder_map** (_Dict[str, Type[StepBuilderBase]]_) – Mapping from step type to StepBuilderBase subclass for step creation.
+- **sagemaker_session** (_Optional[PipelineSession]_) – SageMaker session to use for creating the pipeline. Defaults to None.
+- **role** (_Optional[str]_) – IAM role to use for the pipeline execution. Defaults to None.
+- **pipeline_parameters** (_Optional[List[ParameterString]]_) – List of pipeline parameters for parameterized execution. Defaults to empty list.
+- **notebook_root** (_Optional[Path]_) – Root directory of the notebook environment. Defaults to current working directory.
+- **registry_manager** (_Optional[RegistryManager]_) – Optional registry manager for dependency injection and component management.
+- **dependency_resolver** (_Optional[UnifiedDependencyResolver]_) – Optional dependency resolver for specification-based matching.
 
 ```python
-def _initialize_step_builders(self) -> None:
-    """
-    Initialize step builders for all steps in the DAG.
-    
-    This method creates a step builder instance for each step in the DAG,
-    using the corresponding config from config_map and the appropriate
-    builder class from step_builder_map.
-    """
-```
+from cursus.core.assembler.pipeline_assembler import PipelineAssembler
+from cursus.api.dag.base_dag import PipelineDAG
 
-This method initializes step builders for all steps in the DAG, setting up the necessary components for each step:
-
-1. Gets the configuration for the step
-2. Determines the step type based on the configuration class name
-3. Gets the appropriate builder class from the step_builder_map
-4. Creates an instance of the builder with the configuration and dependency components
-
-### Specification-Based Message Propagation
-
-```python
-def _propagate_messages(self) -> None:
-    """
-    Initialize step connections using the dependency resolver.
-    
-    This method analyzes the DAG structure and uses the dependency resolver
-    to intelligently match inputs to outputs based on specifications.
-    """
-```
-
-This method implements the core of the specification-driven dependency resolution:
-
-1. For each edge in the DAG, it gets the source and destination step builders
-2. For each dependency in the destination step, it checks if the source step can provide it
-3. It calculates compatibility scores between dependencies and outputs
-4. It selects the best match for each dependency based on compatibility score
-5. It compares with existing matches (from previous edges) and only updates if the new match has a higher compatibility score
-6. It stores the highest-scoring match in the step_messages dictionary for later use
-
-The comparison with existing matches is a key feature that ensures the highest-quality connections are preserved, even when multiple source steps could provide a dependency:
-
-```python
-# Check if there's already a better match
-existing_match = self.step_messages.get(dst_step, {}).get(dep_name)
-should_update = True
-
-if existing_match:
-    existing_score = existing_match.get('compatibility', 0)
-    if existing_score >= best_match[2]:
-        should_update = False
-        logger.debug(f"Skipping lower-scoring match for {dst_step}.{dep_name}")
-
-if should_update:
-    # Store in step_messages
-    self.step_messages[dst_step][dep_name] = {
-        'source_step': src_step,
-        'source_output': best_match[0],
-        'match_type': 'specification_match',
-        'compatibility': best_match[2]
-    }
-```
-
-This approach prevents lower-scoring matches from overriding higher-scoring ones when multiple connections to a step are possible, ensuring optimal input selection.
-
-### Output Generation
-
-```python
-def _generate_outputs(self, step_name: str) -> Dict[str, Any]:
-    """
-    Generate outputs dictionary using step builder's specification.
-    
-    This implementation leverages the step builder's specification
-    to generate appropriate outputs.
-    
-    Args:
-        step_name: Name of the step to generate outputs for
-        
-    Returns:
-        Dictionary with output paths based on specification
-    """
-```
-
-This method generates output paths for a step based on its specification:
-
-1. Gets the step builder and configuration
-2. Retrieves the base S3 location from the configuration
-3. Generates output paths for each output in the step's specification
-4. Returns a dictionary mapping output names to S3 paths
-
-### Step Instantiation
-
-```python
-def _instantiate_step(self, step_name: str) -> Step:
-    """
-    Instantiate a pipeline step with appropriate inputs from dependencies.
-    
-    This method creates a step using the step builder's create_step method,
-    delegating input extraction and output generation to the builder.
-    
-    Args:
-        step_name: Name of the step to instantiate
-        
-    Returns:
-        Instantiated SageMaker Pipeline Step
-    """
-```
-
-This method creates a SageMaker pipeline step with the appropriate inputs:
-
-1. Gets the step builder for the step
-2. Retrieves dependencies from the DAG
-3. Extracts inputs from the step_messages dictionary
-4. Creates PropertyReference objects for runtime property references
-5. Generates outputs using the _generate_outputs method
-6. Creates the step using the builder's create_step method
-7. Stores special metadata for certain step types (e.g., Cradle data loading requests)
-
-### Pipeline Generation
-
-```python
-def generate_pipeline(self, pipeline_name: str) -> Pipeline:
-    """
-    Build and return a SageMaker Pipeline object.
-    
-    This method builds the pipeline by:
-    1. Propagating messages between steps using specification-based matching
-    2. Instantiating steps in topological order
-    3. Creating the pipeline with the instantiated steps
-    
-    Args:
-        pipeline_name: Name of the pipeline
-        
-    Returns:
-        SageMaker Pipeline object
-    """
-```
-
-This method orchestrates the pipeline generation process:
-
-1. Propagates messages between steps using _propagate_messages
-2. Determines build order using topological sort
-3. Instantiates steps in topological order
-4. Creates a SageMaker pipeline with the instantiated steps
-
-### Factory Method
-
-```python
-@classmethod
-def create_with_components(cls, 
-                         dag: PipelineDAG,
-                         config_map: Dict[str, BasePipelineConfig],
-                         step_builder_map: Dict[str, Type[StepBuilderBase]],
-                         context_name: Optional[str] = None,
-                         **kwargs) -> "PipelineAssembler":
-    """
-    Create pipeline assembler with managed components.
-    
-    This factory method creates a pipeline assembler with properly configured
-    dependency components from the factory module.
-    
-    Args:
-        dag: PipelineDAG instance defining the pipeline structure
-        config_map: Mapping from step name to config instance
-        step_builder_map: Mapping from step type to StepBuilderBase subclass
-        context_name: Optional context name for registry
-        **kwargs: Additional arguments to pass to the constructor
-        
-    Returns:
-        Configured PipelineAssembler instance
-    """
-```
-
-This factory method creates a pipeline assembler with properly configured dependency components using the factory module.
-
-## Property Reference Resolution
-
-The `PipelineAssembler` uses `PropertyReference` objects to bridge definition-time and runtime property references:
-
-```python
-# In _instantiate_step:
-prop_ref = PropertyReference(
-    step_name=src_step,
-    output_spec=output_spec
-)
-
-# Use the enhanced to_runtime_property method to get a SageMaker Properties object
-runtime_prop = prop_ref.to_runtime_property(self.step_instances)
-inputs[input_name] = runtime_prop
-```
-
-This approach allows for robust handling of SageMaker property references, with fallbacks for error cases.
-
-## Input Validation
-
-The `PipelineAssembler` performs extensive input validation during initialization:
-
-1. Checks that all nodes in the DAG have a corresponding config
-2. Checks that all configs have a corresponding step builder
-3. Checks that all edges in the DAG connect nodes that exist in the DAG
-
-This ensures that the pipeline definition is consistent and valid before proceeding with assembly.
-
-## Usage Examples
-
-### Direct Instantiation
-
-```python
-from src.pipeline_builder.pipeline_assembler import PipelineAssembler
-from src.pipeline_dag.base_dag import PipelineDAG
-
-# Create DAG
+# Create DAG and configuration
 dag = PipelineDAG()
-dag.add_node("data_loading")
 dag.add_node("preprocessing")
-dag.add_edge("data_loading", "preprocessing")
+dag.add_node("training")
+dag.add_edge("preprocessing", "training")
 
-# Create config map
 config_map = {
-    "data_loading": data_loading_config,
     "preprocessing": preprocessing_config,
+    "training": training_config
 }
 
-# Create step builder map
 step_builder_map = {
-    "CradleDataLoading": CradleDataLoadingStepBuilder,
-    "TabularPreprocessingStep": TabularPreprocessingStepBuilder,
+    "Processing": ProcessingStepBuilder,
+    "Training": TrainingStepBuilder
 }
 
-# Create the assembler
+# Create assembler
 assembler = PipelineAssembler(
     dag=dag,
     config_map=config_map,
     step_builder_map=step_builder_map,
-    sagemaker_session=sagemaker_session,
-    role=execution_role,
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
 )
-
-# Generate the pipeline
-pipeline = assembler.generate_pipeline("my-pipeline")
 ```
 
-### Using Factory Method
+#### generate_pipeline
+
+generate_pipeline(_pipeline_name_)
+
+Build and return a SageMaker Pipeline object. This method builds the pipeline by propagating messages between steps using specification-based matching, instantiating steps in topological order, and creating the pipeline with the instantiated steps.
+
+**Parameters:**
+- **pipeline_name** (_str_) – Name of the pipeline to be created.
+
+**Returns:**
+- **Pipeline** – SageMaker Pipeline object with all steps properly connected and configured.
 
 ```python
-from src.pipeline_builder.pipeline_assembler import PipelineAssembler
+pipeline = assembler.generate_pipeline("my-ml-pipeline")
+print(f"Created pipeline with {len(pipeline.steps)} steps")
+```
 
-# Create the assembler with managed components
+#### create_with_components
+
+_classmethod_ create_with_components(_dag_, _config_map_, _step_builder_map_, _context_name=None_, _**kwargs_)
+
+Create pipeline assembler with managed components. This factory method creates a pipeline assembler with properly configured dependency components from the factory module.
+
+**Parameters:**
+- **dag** (_PipelineDAG_) – PipelineDAG instance defining the pipeline structure.
+- **config_map** (_Dict[str, BasePipelineConfig]_) – Mapping from step name to config instance.
+- **step_builder_map** (_Dict[str, Type[StepBuilderBase]]_) – Mapping from step type to StepBuilderBase subclass.
+- **context_name** (_Optional[str]_) – Optional context name for registry isolation and component management.
+- ****kwargs** – Additional arguments to pass to the constructor.
+
+**Returns:**
+- **PipelineAssembler** – Configured PipelineAssembler instance with managed dependency components.
+
+```python
 assembler = PipelineAssembler.create_with_components(
     dag=dag,
     config_map=config_map,
     step_builder_map=step_builder_map,
-    context_name="my_pipeline",
-    sagemaker_session=sagemaker_session,
-    role=execution_role,
+    context_name="ml-experiment-1",
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
 )
-
-# Generate the pipeline
-pipeline = assembler.generate_pipeline("my-pipeline")
 ```
-
-### Integration with PipelineTemplateBase
-
-```python
-from src.pipeline_builder.pipeline_template_base import PipelineTemplateBase
-
-class MyPipelineTemplate(PipelineTemplateBase):
-    # ...implementation...
-    
-    def generate_pipeline(self) -> Pipeline:
-        # Create the DAG, config_map, and step builder map
-        dag = self._create_pipeline_dag()
-        config_map = self._create_config_map()
-        step_builder_map = self._create_step_builder_map()
-        
-        # Create the assembler
-        assembler = PipelineAssembler(
-            dag=dag,
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            sagemaker_session=self.session,
-            role=self.role,
-            notebook_root=self.notebook_root,
-            registry_manager=self._registry_manager,
-            dependency_resolver=self._dependency_resolver
-        )
-        
-        # Generate the pipeline
-        pipeline = assembler.generate_pipeline(self._get_pipeline_name())
-        
-        return pipeline
-```
-
-## Advantages of the Assembler-Based Approach
-
-1. **Clear Separation of Concerns**: The assembler is responsible only for pipeline assembly, while the template handles configuration loading and DAG definition.
-2. **Reusable Components**: The assembler can be used independently of the template for more complex pipeline generation scenarios.
-3. **Specification-Driven Connections**: Step connections are determined automatically based on specifications, reducing the risk of errors.
-4. **Modular Design**: The assembler can be extended or modified without changing the template base class.
-5. **Consistent Pipeline Structure**: The assembly process ensures that all pipelines follow the same structure and conventions.
 
 ## Related Documentation
 
-### Core Dependencies
-- [Pipeline Template Base](pipeline_template_base.md): Base class for pipeline templates that use the assembler
-- [Step Builder Base](../base/builder_base.md): Base class for all step builders used by the assembler
-- [Configuration Base](../base/config_base.md): Base configuration class with three-tier field organization
-
-### Specification System
-- [Specification Base](../base/specification_base.md): Base classes for step specifications and dependency management
-- [Base Enums](../base/enums.md): Core enumerations for dependency types and node classifications
-
-### Compiler Integration
-- [DAG Compiler](../compiler/dag_compiler.md): Compiles DAG structures into executable pipelines
-- [Dynamic Template](../compiler/dynamic_template.md): Dynamic pipeline template implementation
-- [Config Resolver](../compiler/config_resolver.md): Intelligent matching engine for DAG nodes to configurations
-
-### Configuration Management
-- [Configuration Field Categorizer](../config_field/config_field_categorizer.md): Analyzes and categorizes configuration fields
-- [Configuration Merger](../config_field/config_merger.md): Combines multiple configuration objects
-
-### System Overview
-- [Assembler Overview](README.md): Pipeline assembly system documentation
-- [Base Classes Overview](../base/README.md): Core base classes documentation
+- [Pipeline Template Base](pipeline_template_base.md) - Base class for pipeline templates using the assembler
+- [DAG Compiler](../compiler/dag_compiler.md) - DAG compilation and pipeline generation utilities
+- [Config Resolver](../compiler/config_resolver.md) - Configuration resolution for DAG nodes
+- [Dependency Resolver](../deps/dependency_resolver.md) - Specification-based dependency resolution system
+- [Step Builder Base](../base/step_builder_base.md) - Base class for step builders

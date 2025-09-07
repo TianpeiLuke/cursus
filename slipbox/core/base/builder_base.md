@@ -1,637 +1,511 @@
 ---
 tags:
   - code
-  - core
   - base
-  - builders
+  - builder_base
   - step_builders
+  - abstract_base_class
 keywords:
-  - step builder base class
-  - pipeline variables
-  - safe logging
+  - StepBuilderBase
+  - step builders
+  - abstract base class
+  - pipeline steps
   - dependency resolution
+  - specification-driven
   - SageMaker integration
 topics:
-  - builder pattern
+  - step builders
   - pipeline construction
-  - step creation
+  - abstract base classes
 language: python
-date of note: 2025-08-07
+date of note: 2024-12-07
 ---
 
-# Step Builder Base Class
+# Builder Base
+
+Abstract base class for all step builders that provides the foundational framework for creating SageMaker pipeline steps with specification-driven dependency resolution and comprehensive validation capabilities.
 
 ## Overview
 
-The `builder_base.py` module implements the foundational base class for all step builders in the cursus framework. This class provides a comprehensive foundation for creating SageMaker pipeline steps with safe logging, dependency resolution, and specification-driven architecture support.
+The `StepBuilderBase` class serves as the abstract foundation for all step builders in the cursus pipeline framework. This class implements sophisticated patterns for step construction including specification-driven development, intelligent dependency resolution, safe logging for SageMaker Pipeline variables, and standardized input/output handling patterns.
 
-## Purpose
+The builder base supports advanced features including workspace-aware step registry integration, automatic dependency extraction using UnifiedDependencyResolver, script contract integration for environment variables and arguments, comprehensive validation and error handling, and standardized naming conventions for SageMaker resources.
 
-This module provides:
-- **Safe Pipeline Variable Handling**: Logging methods that handle SageMaker Pipeline variables safely
-- **Dependency Resolution**: Integration with the UnifiedDependencyResolver for automatic dependency extraction
-- **Specification-Driven Architecture**: Support for step specifications and contract validation
-- **Standard Patterns**: Consistent patterns for input/output handling across all step types
-- **Property Path Management**: Registry for runtime property path resolution
+## Classes and Methods
 
-## Core Architecture
+### Classes
+- [`StepBuilderBase`](#stepbuilderbase) - Abstract base class for all step builders with specification-driven capabilities
 
-### Safe Logging System
+## API Reference
 
-The base class provides safe logging methods that handle SageMaker Pipeline variables without causing TypeErrors:
+### StepBuilderBase
 
-```python
-def safe_value_for_logging(value):
-    """
-    Safely format a value for logging, handling Pipeline variables appropriately.
-    
-    Args:
-        value: Any value that might be a Pipeline variable
-        
-    Returns:
-        A string representation safe for logging
-    """
-    # Check if it's a Pipeline variable or has the expr attribute
-    if hasattr(value, 'expr'):
-        return f"[Pipeline Variable: {value.__class__.__name__}]"
-    
-    # Handle collections containing Pipeline variables
-    if isinstance(value, dict):
-        return "{...}"  # Avoid iterating through dict values
-    if isinstance(value, (list, tuple, set)):
-        return f"[{type(value).__name__} with {len(value)} items]" 
-    
-    # For simple values, return the string representation
-    try:
-        return str(value)
-    except Exception:
-        return f"[Object of type: {type(value).__name__}]"
-```
+_class_ cursus.core.base.builder_base.StepBuilderBase(_config_, _spec=None_, _sagemaker_session=None_, _role=None_, _notebook_root=None_, _registry_manager=None_, _dependency_resolver=None_)
 
-#### Safe Logging Methods
+Abstract base class for all step builders. This class provides the foundational framework for creating SageMaker pipeline steps with specification-driven dependency resolution and comprehensive validation capabilities.
+
+**Parameters:**
+- **config** (_BasePipelineConfig_) – Model configuration containing step-specific parameters and settings.
+- **spec** (_Optional[StepSpecification]_) – Optional step specification for specification-driven implementation.
+- **sagemaker_session** (_Optional[PipelineSession]_) – SageMaker session for pipeline execution. Defaults to None.
+- **role** (_Optional[str]_) – IAM role for step execution permissions. Defaults to None.
+- **notebook_root** (_Optional[Path]_) – Root directory of notebook environment. Defaults to current working directory.
+- **registry_manager** (_Optional[RegistryManager]_) – Optional registry manager for dependency injection.
+- **dependency_resolver** (_Optional[UnifiedDependencyResolver]_) – Optional dependency resolver for specification-based matching.
 
 ```python
-def log_info(self, message, *args, **kwargs):
-    """Safely log info messages, handling Pipeline variables."""
-    try:
-        safe_args = [safe_value_for_logging(arg) for arg in args]
-        safe_kwargs = {k: safe_value_for_logging(v) for k, v in kwargs.items()}
-        logger.info(message, *safe_args, **safe_kwargs)
-    except Exception as e:
-        logger.info(f"Original logging failed ({e}), logging raw message: {message}")
+from cursus.core.base.builder_base import StepBuilderBase
+from cursus.core.base.specification_base import StepSpecification
 
-# Similar methods: log_debug, log_warning, log_error
-```
-
-### Standard Input/Output Patterns
-
-The base class defines standard patterns for handling inputs and outputs:
-
-#### Configuration Pattern
-
-```python
-# In config classes:
-output_names = {"logical_name": "DescriptiveValue"}  # VALUE used as key in outputs dict
-input_names = {"logical_name": "ScriptInputName"}    # KEY used as key in inputs dict
-
-# In pipeline code:
-# Get output using VALUE from output_names
-output_value = step_a.config.output_names["logical_name"]
-output_uri = step_a.properties.ProcessingOutputConfig.Outputs[output_value].S3Output.S3Uri
-
-# Set input using KEY from input_names
-inputs = {"logical_name": output_uri}
-```
-
-#### Helper Methods
-
-The base class provides helper methods to enforce these patterns:
-
-- `_validate_inputs()`: Validates inputs using KEYS from input_names
-- `_validate_outputs()`: Validates outputs using VALUES from output_names
-- `_get_script_input_name()`: Maps logical name to script input name
-- `_get_output_destination_name()`: Maps logical name to output destination name
-
-## Initialization and Configuration
-
-### Constructor
-
-```python
-def __init__(
-    self,
-    config: BasePipelineConfig,
-    spec: Optional[StepSpecification] = None,
-    sagemaker_session: Optional[PipelineSession] = None,
-    role: Optional[str] = None,
-    notebook_root: Optional[Path] = None,
-    registry_manager: Optional[RegistryManager] = None,
-    dependency_resolver: Optional[UnifiedDependencyResolver] = None
-):
-```
-
-#### Key Features
-
-- **Configuration Management**: Stores pipeline configuration
-- **Specification Support**: Optional step specification for specification-driven implementation
-- **Dependency Injection**: Optional registry manager and dependency resolver
-- **Contract Integration**: Automatic contract extraction from specification or config
-- **Region Validation**: AWS region mapping and validation
-
-### Region Mapping
-
-```python
-REGION_MAPPING: Dict[str, str] = {
-    "NA": "us-east-1",
-    "EU": "eu-west-1", 
-    "FE": "us-west-2"
-}
-```
-
-The base class automatically maps region codes to AWS regions and validates the configuration.
-
-## Specification-Driven Architecture
-
-### Specification Integration
-
-When a specification is provided, the base class:
-
-1. **Stores the Specification**: Available as `self.spec`
-2. **Extracts Contract**: Gets script contract from specification
-3. **Validates Alignment**: Ensures specification and contract align
-4. **Provides Access Methods**: Methods to query dependencies and outputs
-
-### Contract Validation
-
-```python
-# Validate specification-contract alignment if both are provided
-if self.spec and self.contract and hasattr(self.spec, 'validate_contract_alignment'):
-    result = self.spec.validate_contract_alignment()
-    if not result.is_valid:
-        raise ValueError(f"Spec-Contract alignment errors: {result.errors}")
-```
-
-### Specification Query Methods
-
-```python
-def get_required_dependencies(self) -> List[str]:
-    """Get list of required dependency logical names from specification."""
-    if not self.spec or not hasattr(self.spec, 'dependencies'):
-        raise ValueError("Step specification is required for dependency information")
-        
-    return [d.logical_name for _, d in self.spec.dependencies.items() if d.required]
-
-def get_optional_dependencies(self) -> List[str]:
-    """Get list of optional dependency logical names from specification."""
-    if not self.spec or not hasattr(self.spec, 'dependencies'):
-        raise ValueError("Step specification is required for dependency information")
-        
-    return [d.logical_name for _, d in self.spec.dependencies.items() if not d.required]
-
-def get_outputs(self) -> Dict[str, Any]:
-    """Get output specifications directly from the step specification."""
-    if not self.spec or not hasattr(self.spec, 'outputs'):
-        raise ValueError("Step specification is required for output information")
-        
-    return {o.logical_name: o for _, o in self.spec.outputs.items()}
-```
-
-## Dependency Resolution
-
-### Automatic Dependency Extraction
-
-The base class provides automatic dependency extraction using the UnifiedDependencyResolver:
-
-```python
-def extract_inputs_from_dependencies(self, dependency_steps: List[Step]) -> Dict[str, Any]:
-    """
-    Extract inputs from dependency steps using the UnifiedDependencyResolver.
+class ProcessingStepBuilder(StepBuilderBase):
+    """Example processing step builder."""
     
-    Args:
-        dependency_steps: List of dependency steps
-        
-    Returns:
-        Dictionary of inputs extracted from dependency steps
-    """
-    if not DEPENDENCY_RESOLVER_AVAILABLE:
-        raise ValueError("UnifiedDependencyResolver not available.")
-        
-    if not self.spec:
-        raise ValueError("Step specification is required for dependency extraction.")
-        
-    # Get step name
-    step_name = self.__class__.__name__.replace("Builder", "Step")
+    def validate_configuration(self):
+        if not hasattr(self.config, 'processing_instance_type'):
+            raise ValueError("processing_instance_type is required")
     
-    # Use the injected resolver or create one
-    resolver = self._get_dependency_resolver()
-    resolver.register_specification(step_name, self.spec)
+    def _get_inputs(self, inputs):
+        # Implementation for processing inputs
+        pass
     
-    # Register dependencies and enhance them with metadata
-    available_steps = []
-    self._enhance_dependency_steps_with_specs(resolver, dependency_steps, available_steps)
+    def _get_outputs(self, outputs):
+        # Implementation for processing outputs
+        pass
     
-    # Resolve dependencies
-    resolved = resolver.resolve_step_dependencies(step_name, available_steps)
-    
-    # Convert results to SageMaker properties
-    return {name: prop_ref.to_sagemaker_property() for name, prop_ref in resolved.items()}
-```
+    def create_step(self, **kwargs):
+        # Implementation for step creation
+        pass
 
-### Dependency Enhancement
-
-The base class automatically enhances dependency steps with specifications:
-
-```python
-def _enhance_dependency_steps_with_specs(self, resolver, dependency_steps, available_steps):
-    """
-    Enhance dependency steps with specifications and additional metadata.
-    
-    This method extracts specifications from dependency steps and adds them to the resolver.
-    It also creates minimal specifications for steps without explicit specifications.
-    """
-    for i, dep_step in enumerate(dependency_steps):
-        dep_name = getattr(dep_step, 'name', f"Step_{i}")
-        available_steps.append(dep_name)
-        
-        # Try to get specification from step
-        dep_spec = None
-        if hasattr(dep_step, '_spec'):
-            dep_spec = getattr(dep_step, '_spec')
-        elif hasattr(dep_step, 'spec'):
-            dep_spec = getattr(dep_step, 'spec')
-            
-        if dep_spec:
-            resolver.register_specification(dep_name, dep_spec)
-            continue
-        
-        # Create minimal specification for steps without explicit specs
-        # ... (handles model artifacts, processing outputs, etc.)
-```
-
-## Property Path Management
-
-### Property Path Registry
-
-The base class provides property path management for bridging definition-time and runtime:
-
-```python
-def get_property_path(self, logical_name: str, format_args: Dict[str, Any] = None) -> Optional[str]:
-    """
-    Get property path for an output using the specification.
-    
-    Args:
-        logical_name: Logical name of the output
-        format_args: Optional dictionary of format arguments for template paths
-    
-    Returns:
-        Property path from specification, formatted with args if provided
-    """
-    property_path = None
-    
-    # Get property path from specification outputs
-    if self.spec and hasattr(self.spec, 'outputs'):
-        for _, output_spec in self.spec.outputs.items():
-            if output_spec.logical_name == logical_name and output_spec.property_path:
-                property_path = output_spec.property_path
-                break
-    
-    if not property_path:
-        return None
-        
-    # Format the path if format args are provided
-    if format_args:
-        try:
-            property_path = property_path.format(**format_args)
-        except KeyError as e:
-            logger.warning(f"Missing format key {e} for property path template: {property_path}")
-        except Exception as e:
-            logger.warning(f"Error formatting property path: {e}")
-    
-    return property_path
-
-def get_all_property_paths(self) -> Dict[str, str]:
-    """Get all property paths defined in the specification."""
-    paths = {}
-    if self.spec and hasattr(self.spec, 'outputs'):
-        for _, output_spec in self.spec.outputs.items():
-            if output_spec.property_path:
-                paths[output_spec.logical_name] = output_spec.property_path
-    
-    return paths
-```
-
-## Utility Methods
-
-### Step Naming
-
-```python
-def _get_step_name(self, include_job_type: bool = True) -> str:
-    """
-    Get standard step name from builder class name, optionally including job_type.
-    
-    Builder class names follow the pattern: RegistryKey + "StepBuilder"
-    (e.g., XGBoostTrainingStepBuilder)
-    """
-    class_name = self.__class__.__name__
-    
-    # Extract the registry key by removing the "StepBuilder" suffix
-    if class_name.endswith("StepBuilder"):
-        canonical_name = class_name[:-11]  # Remove "StepBuilder" suffix
-    else:
-        canonical_name = class_name
-    
-    # Add job_type suffix if requested and available
-    if include_job_type and hasattr(self.config, 'job_type') and self.config.job_type:
-        return f"{canonical_name}-{self.config.job_type.capitalize()}"
-    
-    return canonical_name
-```
-
-### Job Name Generation
-
-```python
-def _generate_job_name(self, step_type: str = None) -> str:
-    """
-    Generate a standardized job name for SageMaker processing/training jobs.
-    
-    Args:
-        step_type: Optional type of step. If not provided, determined automatically.
-        
-    Returns:
-        Sanitized job name suitable for SageMaker
-    """
-    import time
-    
-    if step_type is None:
-        step_type = self._get_step_name()
-    
-    timestamp = int(time.time())
-    
-    if hasattr(self.config, 'job_type') and self.config.job_type:
-        job_name = f"{step_type}-{self.config.job_type.capitalize()}-{timestamp}"
-    else:
-        job_name = f"{step_type}-{timestamp}"
-        
-    return self._sanitize_name_for_sagemaker(job_name)
-```
-
-### Name Sanitization
-
-```python
-def _sanitize_name_for_sagemaker(self, name: str, max_length: int = 63) -> str:
-    """
-    Sanitize a string to be a valid SageMaker resource name component.
-    
-    Args:
-        name: Name to sanitize
-        max_length: Maximum length of sanitized name
-        
-    Returns:
-        Sanitized name
-    """
-    if not name:
-        return "default-name"
-    sanitized = "".join(c if c.isalnum() else '-' for c in str(name))
-    sanitized = '-'.join(filter(None, sanitized.split('-')))
-    return sanitized[:max_length].rstrip('-')
-```
-
-## Environment and Arguments
-
-### Environment Variable Generation
-
-```python
-def _get_environment_variables(self) -> Dict[str, str]:
-    """
-    Create environment variables for the processing job based on the script contract.
-    
-    Returns:
-        Dict[str, str]: Environment variables for the processing job
-    """
-    env_vars = {}
-    
-    if not hasattr(self, 'contract') or self.contract is None:
-        self.log_warning("No script contract available for environment variable definition")
-        return env_vars
-    
-    # Process required environment variables
-    for env_var in self.contract.required_env_vars:
-        config_attr = env_var.lower()
-        
-        # Try to get from config (direct attribute)
-        if hasattr(self.config, config_attr):
-            env_vars[env_var] = str(getattr(self.config, config_attr))
-        # Try to get from config.hyperparameters
-        elif hasattr(self.config, 'hyperparameters') and hasattr(self.config.hyperparameters, config_attr):
-            env_vars[env_var] = str(getattr(self.config.hyperparameters, config_attr))
-        else:
-            self.log_warning(f"Required environment variable '{env_var}' not found in config")
-    
-    # Add optional environment variables with defaults
-    for env_var, default_value in self.contract.optional_env_vars.items():
-        config_attr = env_var.lower()
-        
-        if hasattr(self.config, config_attr):
-            env_vars[env_var] = str(getattr(self.config, config_attr))
-        elif hasattr(self.config, 'hyperparameters') and hasattr(self.config.hyperparameters, config_attr):
-            env_vars[env_var] = str(getattr(self.config.hyperparameters, config_attr))
-        else:
-            env_vars[env_var] = default_value
-    
-    return env_vars
-```
-
-### Job Arguments Generation
-
-```python
-def _get_job_arguments(self) -> Optional[List[str]]:
-    """
-    Constructs command-line arguments for the script based on script contract.
-    
-    Returns:
-        List of string arguments to pass to the script, or None if no arguments
-    """
-    if not hasattr(self, 'contract') or not self.contract:
-        self.log_warning("No contract available for argument generation")
-        return None
-        
-    if not hasattr(self.contract, 'expected_arguments') or not self.contract.expected_arguments:
-        return None
-        
-    args = []
-    
-    # Add each expected argument with its value
-    for arg_name, arg_value in self.contract.expected_arguments.items():
-        args.extend([f"--{arg_name}", arg_value])
-    
-    if args:
-        self.log_info("Generated job arguments from contract: %s", args)
-        return args
-    
-    return None
-```
-
-## Abstract Methods
-
-### Required Implementation
-
-All derived classes must implement these abstract methods:
-
-```python
-@abstractmethod
-def validate_configuration(self) -> None:
-    """
-    Validate configuration requirements.
-    
-    Raises:
-        ValueError: If configuration is invalid
-    """
-    pass
-
-@abstractmethod
-def _get_inputs(self, inputs: Dict[str, Any]) -> Any:
-    """
-    Get inputs for the step.
-    
-    Each derived class returns the appropriate input type for its step:
-    - ProcessingInput list for ProcessingStep
-    - Training channels dict for TrainingStep
-    - Model location for ModelStep
-    """
-    pass
-    
-@abstractmethod
-def _get_outputs(self, outputs: Dict[str, Any]) -> Any:
-    """
-    Get outputs for the step.
-    
-    Each derived class returns the appropriate output type for its step:
-    - ProcessingOutput list for ProcessingStep
-    - Output path for TrainingStep
-    - Model output info for ModelStep
-    """
-    pass
-
-@abstractmethod
-def create_step(self, **kwargs) -> Step:
-    """
-    Create pipeline step.
-    
-    Common parameters that all step builders should handle:
-    - dependencies: Optional list of steps that this step depends on
-    - enable_caching: Whether to enable caching for this step (default: True)
-    """
-    pass
-```
-
-## Usage Patterns
-
-### Basic Usage
-
-```python
-class MyStepBuilder(StepBuilderBase):
-    def validate_configuration(self) -> None:
-        if not self.config.required_field:
-            raise ValueError("required_field is missing")
-    
-    def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
-        # Convert logical inputs to ProcessingInput objects
-        processing_inputs = []
-        for logical_name, input_uri in inputs.items():
-            processing_inputs.append(ProcessingInput(
-                source=input_uri,
-                destination=f"/opt/ml/processing/input/{logical_name}"
-            ))
-        return processing_inputs
-    
-    def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
-        # Convert logical outputs to ProcessingOutput objects
-        processing_outputs = []
-        for logical_name, output_uri in outputs.items():
-            processing_outputs.append(ProcessingOutput(
-                source=f"/opt/ml/processing/output/{logical_name}",
-                destination=output_uri
-            ))
-        return processing_outputs
-    
-    def create_step(self, **kwargs) -> ProcessingStep:
-        dependencies = kwargs.get('dependencies', [])
-        enable_caching = kwargs.get('enable_caching', True)
-        
-        # Extract inputs from dependencies if specification is available
-        if self.spec and dependencies:
-            inputs = self.extract_inputs_from_dependencies(dependencies)
-        else:
-            inputs = kwargs.get('inputs', {})
-        
-        outputs = kwargs.get('outputs', {})
-        
-        return ProcessingStep(
-            name=self._get_step_name(),
-            processor=self._create_processor(),
-            inputs=self._get_inputs(inputs),
-            outputs=self._get_outputs(outputs),
-            job_arguments=self._get_job_arguments(),
-            cache_config=self._get_cache_config(enable_caching),
-            depends_on=dependencies
-        )
-```
-
-### Specification-Driven Usage
-
-```python
 # Create builder with specification
-spec = StepSpecification(...)
-builder = MyStepBuilder(config, spec=spec)
-
-# Create step with automatic dependency resolution
-step = builder.create_step(
-    dependencies=[data_step, model_step],
-    outputs={"result": "s3://bucket/result/"}
+builder = ProcessingStepBuilder(
+    config=processing_config,
+    spec=processing_spec,
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
 )
 ```
 
-## Integration Points
+### Properties
 
-### With Configuration Classes
+#### STEP_NAMES
 
-Step builders integrate with configuration classes that provide:
-- Pipeline parameters
-- Hyperparameters
-- Script contracts
-- Input/output mappings
+_property_ STEP_NAMES
 
-### With Dependency Resolution
+Lazy load step names with workspace context awareness. This property supports workspace-aware step name resolution using hybrid registry manager with fallback to traditional registry.
 
-Step builders integrate with the dependency resolution system for:
-- Automatic input extraction
-- Specification-based matching
-- Type-safe dependency resolution
+**Returns:**
+- **Dict[str, str]** – Step names mapping for the current workspace context.
 
-### With Pipeline Assembly
+```python
+# Access step names registry
+step_names = builder.STEP_NAMES
+print(f"Available step types: {list(step_names.keys())}")
+```
 
-Step builders are used by pipeline assemblers for:
-- Step creation
-- Dependency management
-- Validation and error handling
+### Methods
 
-## Best Practices
+#### get_property_path
 
-### Logging
+get_property_path(_logical_name_, _format_args=None_)
 
-1. **Use Safe Logging**: Always use the provided safe logging methods
-2. **Meaningful Messages**: Provide clear, actionable log messages
-3. **Appropriate Levels**: Use correct log levels (debug, info, warning, error)
+Get property path for an output using the specification. This method retrieves the property path for an output from the specification with optional template formatting.
 
-### Error Handling
+**Parameters:**
+- **logical_name** (_str_) – Logical name of the output to get property path for.
+- **format_args** (_Optional[Dict[str, Any]]_) – Optional dictionary of format arguments for template paths.
 
-1. **Validation**: Implement thorough configuration validation
-2. **Clear Messages**: Provide specific error messages with context
-3. **Early Failure**: Fail fast with clear error descriptions
+**Returns:**
+- **Optional[str]** – Property path from specification, formatted with args if provided, or None if not found.
 
-### Specification Usage
+```python
+# Get property path for model artifacts
+model_path = builder.get_property_path("model_artifacts")
+print(f"Model path: {model_path}")
 
-1. **Contract Alignment**: Always validate specification-contract alignment
-2. **Property Paths**: Use specification property paths for output access
-3. **Dependency Resolution**: Leverage automatic dependency resolution when available
+# Get property path with formatting
+data_path = builder.get_property_path(
+    "processed_data", 
+    format_args={"output_descriptor": "train"}
+)
+```
 
-This comprehensive base class provides a robust foundation for implementing type-safe, specification-driven step builders with automatic dependency resolution and safe pipeline variable handling.
+#### get_all_property_paths
+
+get_all_property_paths()
+
+Get all property paths defined in the specification. This method returns a complete mapping of logical output names to their runtime property paths.
+
+**Returns:**
+- **Dict[str, str]** – Mapping from logical output names to runtime property paths.
+
+```python
+# Get all property paths
+all_paths = builder.get_all_property_paths()
+for logical_name, path in all_paths.items():
+    print(f"{logical_name}: {path}")
+```
+
+#### get_required_dependencies
+
+get_required_dependencies()
+
+Get list of required dependency logical names from specification. This method provides direct access to the required dependencies defined in the step specification.
+
+**Returns:**
+- **List[str]** – List of logical names for required dependencies.
+
+```python
+# Get required dependencies
+required_deps = builder.get_required_dependencies()
+print(f"Required dependencies: {required_deps}")
+```
+
+#### get_optional_dependencies
+
+get_optional_dependencies()
+
+Get list of optional dependency logical names from specification. This method provides direct access to the optional dependencies defined in the step specification.
+
+**Returns:**
+- **List[str]** – List of logical names for optional dependencies.
+
+```python
+# Get optional dependencies
+optional_deps = builder.get_optional_dependencies()
+print(f"Optional dependencies: {optional_deps}")
+```
+
+#### get_outputs
+
+get_outputs()
+
+Get output specifications directly from the step specification. This method provides direct access to the outputs defined in the step specification.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary mapping output names to their OutputSpec objects.
+
+```python
+# Get output specifications
+outputs = builder.get_outputs()
+for name, output_spec in outputs.items():
+    print(f"Output {name}: {output_spec.property_path}")
+```
+
+#### extract_inputs_from_dependencies
+
+extract_inputs_from_dependencies(_dependency_steps_)
+
+Extract inputs from dependency steps using the UnifiedDependencyResolver. This method automatically resolves dependencies and creates appropriate input references.
+
+**Parameters:**
+- **dependency_steps** (_List[Step]_) – List of dependency steps to extract inputs from.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary of inputs extracted from dependency steps.
+
+```python
+# Extract inputs from dependency steps
+dependency_steps = [preprocessing_step, data_loading_step]
+inputs = builder.extract_inputs_from_dependencies(dependency_steps)
+
+# Use extracted inputs in step creation
+step = builder.create_step(inputs=inputs)
+```
+
+### Safe Logging Methods
+
+The builder base provides safe logging methods that handle SageMaker Pipeline variables properly:
+
+#### log_info
+
+log_info(_message_, _*args_, _**kwargs_)
+
+Safely log info messages, handling Pipeline variables. This method converts Pipeline variables to safe string representations before logging.
+
+**Parameters:**
+- **message** (_str_) – The log message with format placeholders.
+- ***args** – Values to format into the message.
+- ****kwargs** – Keyword values to format into the message.
+
+```python
+# Safe logging with Pipeline variables
+builder.log_info("Processing input: %s", pipeline_variable)
+builder.log_info("Step configuration: %s", step_config)
+```
+
+#### log_debug, log_warning, log_error
+
+Similar safe logging methods for different log levels:
+- `log_debug(message, *args, **kwargs)` - Debug level logging
+- `log_warning(message, *args, **kwargs)` - Warning level logging  
+- `log_error(message, *args, **kwargs)` - Error level logging
+
+### Utility Methods
+
+#### _generate_job_name
+
+_generate_job_name(_step_type=None_)
+
+Generate a standardized job name for SageMaker processing/training jobs. This method creates unique job names with timestamps and proper sanitization.
+
+**Parameters:**
+- **step_type** (_Optional[str]_) – Optional type of step. If not provided, determined automatically.
+
+**Returns:**
+- **str** – Sanitized job name suitable for SageMaker.
+
+```python
+# Generate job name
+job_name = builder._generate_job_name()
+print(f"Generated job name: {job_name}")
+
+# Generate with specific step type
+custom_job_name = builder._generate_job_name("CustomProcessing")
+```
+
+#### _get_environment_variables
+
+_get_environment_variables()
+
+Create environment variables for the processing job based on the script contract. This method extracts required and optional environment variables from the contract and config.
+
+**Returns:**
+- **Dict[str, str]** – Environment variables for the processing job.
+
+```python
+# Get environment variables from contract
+env_vars = builder._get_environment_variables()
+print(f"Environment variables: {env_vars}")
+```
+
+#### _get_job_arguments
+
+_get_job_arguments()
+
+Constructs command-line arguments for the script based on script contract. This method creates argument lists from contract specifications.
+
+**Returns:**
+- **Optional[List[str]]** – List of string arguments to pass to the script, or None if no arguments.
+
+```python
+# Get job arguments from contract
+args = builder._get_job_arguments()
+if args:
+    print(f"Job arguments: {args}")
+```
+
+### Abstract Methods
+
+The following methods must be implemented by subclasses:
+
+#### validate_configuration
+
+_abstractmethod_ validate_configuration()
+
+Validate configuration requirements. This method should check that all required configuration parameters are present and valid.
+
+```python
+def validate_configuration(self):
+    """Validate processing configuration."""
+    if not hasattr(self.config, 'instance_type'):
+        raise ValueError("instance_type is required")
+    if not hasattr(self.config, 'instance_count'):
+        raise ValueError("instance_count is required")
+```
+
+#### _get_inputs
+
+_abstractmethod_ _get_inputs(_inputs_)
+
+Get inputs for the step. This method should return the appropriate input type for the specific step type.
+
+**Parameters:**
+- **inputs** (_Dict[str, Any]_) – Dictionary mapping logical names to input sources.
+
+**Returns:**
+- **Any** – Appropriate inputs object for the step type.
+
+#### _get_outputs
+
+_abstractmethod_ _get_outputs(_outputs_)
+
+Get outputs for the step. This method should return the appropriate output type for the specific step type.
+
+**Parameters:**
+- **outputs** (_Dict[str, Any]_) – Dictionary mapping logical names to output destinations.
+
+**Returns:**
+- **Any** – Appropriate outputs object for the step type.
+
+#### create_step
+
+_abstractmethod_ create_step(_**kwargs_)
+
+Create pipeline step. This method should create and return a SageMaker pipeline step instance.
+
+**Parameters:**
+- ****kwargs** – Keyword arguments for configuring the step.
+
+**Returns:**
+- **Step** – SageMaker pipeline step instance.
+
+## Usage Examples
+
+### Basic Step Builder Implementation
+```python
+from cursus.core.base.builder_base import StepBuilderBase
+from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.workflow.steps import ProcessingStep
+
+class DataProcessingStepBuilder(StepBuilderBase):
+    """Data processing step builder example."""
+    
+    def validate_configuration(self):
+        """Validate processing configuration."""
+        required_fields = ['instance_type', 'instance_count', 'script_path']
+        for field in required_fields:
+            if not hasattr(self.config, field):
+                raise ValueError(f"{field} is required in configuration")
+    
+    def _get_inputs(self, inputs):
+        """Convert input dictionary to ProcessingInput list."""
+        processing_inputs = []
+        for logical_name, input_source in inputs.items():
+            processing_inputs.append(
+                ProcessingInput(
+                    source=input_source,
+                    destination=f"/opt/ml/processing/input/{logical_name}",
+                    input_name=logical_name
+                )
+            )
+        return processing_inputs
+    
+    def _get_outputs(self, outputs):
+        """Convert output dictionary to ProcessingOutput list."""
+        processing_outputs = []
+        for logical_name, output_dest in outputs.items():
+            processing_outputs.append(
+                ProcessingOutput(
+                    source=f"/opt/ml/processing/output/{logical_name}",
+                    destination=output_dest,
+                    output_name=logical_name
+                )
+            )
+        return processing_outputs
+    
+    def create_step(self, **kwargs):
+        """Create processing step."""
+        # Extract parameters
+        inputs = kwargs.get('inputs', {})
+        outputs = kwargs.get('outputs', {})
+        dependencies = kwargs.get('dependencies', [])
+        enable_caching = kwargs.get('enable_caching', True)
+        
+        # Create processor
+        processor = SKLearnProcessor(
+            framework_version=self.config.framework_version,
+            instance_type=self.config.instance_type,
+            instance_count=self.config.instance_count,
+            role=self.role,
+            sagemaker_session=self.session
+        )
+        
+        # Generate job name
+        job_name = self._generate_job_name("DataProcessing")
+        
+        # Get environment variables and arguments
+        env_vars = self._get_environment_variables()
+        job_args = self._get_job_arguments()
+        
+        # Create step
+        step = ProcessingStep(
+            name=job_name,
+            processor=processor,
+            inputs=self._get_inputs(inputs),
+            outputs=self._get_outputs(outputs),
+            code=self.config.script_path,
+            job_arguments=job_args,
+            env=env_vars,
+            cache_config=self._get_cache_config(enable_caching),
+            depends_on=dependencies
+        )
+        
+        # Store specification for dependency resolution
+        if self.spec:
+            step._spec = self.spec
+        
+        return step
+```
+
+### Specification-Driven Builder
+```python
+# Create builder with specification
+from cursus.core.base.specification_base import StepSpecification, DependencySpec, OutputSpec
+from cursus.core.base.enums import NodeType, DependencyType
+
+# Define specification
+processing_spec = StepSpecification(
+    step_type="DataProcessing",
+    node_type=NodeType.INTERNAL,
+    dependencies={
+        "raw_data": DependencySpec(
+            logical_name="raw_data",
+            dependency_type=DependencyType.TRAINING_DATA,
+            required=True
+        )
+    },
+    outputs={
+        "processed_data": OutputSpec(
+            logical_name="processed_data",
+            output_type=DependencyType.PROCESSING_OUTPUT,
+            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri"
+        )
+    }
+)
+
+# Create builder with specification
+builder = DataProcessingStepBuilder(
+    config=processing_config,
+    spec=processing_spec,
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
+)
+
+# Use specification-driven features
+required_deps = builder.get_required_dependencies()
+output_paths = builder.get_all_property_paths()
+
+print(f"Required dependencies: {required_deps}")
+print(f"Output paths: {output_paths}")
+```
+
+### Dependency Resolution Integration
+```python
+# Extract inputs from dependency steps automatically
+dependency_steps = [data_loading_step, preprocessing_step]
+
+# Automatic dependency resolution
+try:
+    resolved_inputs = builder.extract_inputs_from_dependencies(dependency_steps)
+    builder.log_info("Resolved %d inputs automatically", len(resolved_inputs))
+    
+    # Create step with resolved inputs
+    step = builder.create_step(
+        inputs=resolved_inputs,
+        outputs={"processed_data": "s3://bucket/processed/"},
+        enable_caching=True
+    )
+    
+except ValueError as e:
+    builder.log_error("Dependency resolution failed: %s", str(e))
+    # Fallback to manual input specification
+    manual_inputs = {"raw_data": "s3://bucket/raw/data.csv"}
+    step = builder.create_step(inputs=manual_inputs)
+```
+
+## Related Documentation
+
+- [Config Base](config_base.md) - Configuration classes used by step builders
+- [Specification Base](specification_base.md) - Step specifications for specification-driven builders
+- [Contract Base](contract_base.md) - Script contracts for environment variables and arguments
+- [Dependency Resolver](../deps/dependency_resolver.md) - Automatic dependency resolution system
+- [Registry Manager](../deps/registry_manager.md) - Registry management for workspace-aware operations

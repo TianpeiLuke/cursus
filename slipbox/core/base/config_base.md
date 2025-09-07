@@ -1,593 +1,520 @@
 ---
 tags:
   - code
-  - core
   - base
-  - configuration
-  - three-tier
+  - config_base
+  - pipeline_configuration
+  - self_contained_derivation
 keywords:
-  - base configuration
-  - pipeline config
-  - pydantic model
-  - three-tier architecture
-  - field derivation
-  - self-contained design
-  - essential inputs
-  - system inputs
-  - derived fields
-topics:
-  - base configuration class
-  - three-tier configuration
+  - BasePipelineConfig
+  - pipeline configuration
+  - self-contained derivation
+  - three-tier design
   - field categorization
-  - configuration inheritance
+  - Pydantic models
+  - configuration management
+topics:
+  - pipeline configuration
+  - configuration management
+  - three-tier design
 language: python
-date of note: 2025-08-08
+date of note: 2024-12-07
 ---
 
-# Base Pipeline Configuration Documentation
+# Config Base
+
+Base Pipeline Configuration with Self-Contained Derivation Logic that implements the base configuration class for pipeline steps using a self-contained design where each configuration class is responsible for its own field derivations.
 
 ## Overview
 
-The `config_base.py` module implements the foundational configuration class for all pipeline steps using the **Three-Tier Configuration Architecture**. This self-contained design pattern ensures each configuration class is responsible for its own field derivations through private fields and read-only properties, following the established three-tier classification system.
+The `BasePipelineConfig` class provides the foundational configuration system for pipeline steps, implementing a sophisticated three-tier design pattern that categorizes fields by their purpose and derivation logic. This self-contained approach ensures that each configuration class manages its own field derivations through private fields and read-only properties.
 
-## Three-Tier Configuration Architecture
+The three-tier design includes Essential User Inputs (Tier 1) that are required fields users must explicitly provide, System Inputs with Defaults (Tier 2) that have reasonable defaults but can be overridden, and Derived Fields (Tier 3) that are calculated from other fields and stored in private attributes with public read-only properties for access.
 
-The system categorizes all configuration fields into three distinct tiers based on their purpose and lifecycle:
+The system supports advanced features including automatic field categorization and validation, workspace-aware step registry integration, script contract integration for implementation validation, comprehensive configuration serialization with derived fields, and flexible configuration inheritance patterns for derived classes.
 
-### Tier 1: Essential User Inputs
-- **Purpose**: Required fields that users must explicitly provide
-- **Characteristics**: No default values, public access, required for object instantiation
-- **Examples**: `author`, `bucket`, `role`, `region`, `service_name`, `pipeline_version`
-- **Implementation**: `Field(description="...")` with no default value
+## Classes and Methods
 
-### Tier 2: System Inputs with Defaults  
-- **Purpose**: Fields with reasonable defaults that can be overridden by users
-- **Characteristics**: Have default values, public access, optional for object instantiation
-- **Examples**: `model_class`, `current_date`, `framework_version`, `py_version`, `source_dir`
-- **Implementation**: `Field(default=value, description="...")` or `Field(default_factory=func, description="...")`
+### Classes
+- [`BasePipelineConfig`](#basepipelineconfig) - Base configuration class with three-tier design and self-contained derivation logic
 
-### Tier 3: Derived Fields
-- **Purpose**: Fields calculated from Tier 1 and Tier 2 fields
-- **Characteristics**: Private attributes with public read-only properties, not directly settable
-- **Examples**: `aws_region`, `pipeline_name`, `pipeline_description`, `pipeline_s3_loc`
-- **Implementation**: `PrivateAttr(default=None)` with `@property` accessors
+## API Reference
 
-## Core Implementation
+### BasePipelineConfig
 
-### BasePipelineConfig Class
+_class_ cursus.core.base.config_base.BasePipelineConfig(_author_, _bucket_, _role_, _region_, _service_name_, _pipeline_version_, _model_class="xgboost"_, _current_date=None_, _framework_version="2.1.0"_, _py_version="py310"_, _source_dir=None_)
 
-The main class that serves as the foundation for all pipeline step configurations:
+Base configuration with shared pipeline attributes and self-contained derivation logic. This class implements the three-tier design pattern for organizing configuration fields and provides comprehensive validation and derivation capabilities.
+
+**Parameters:**
+- **author** (_str_) – Author or owner of the pipeline. Required essential user input.
+- **bucket** (_str_) – S3 bucket name for pipeline artifacts and data. Required essential user input.
+- **role** (_str_) – IAM role for pipeline execution. Required essential user input.
+- **region** (_str_) – Custom region code (NA, EU, FE) for internal logic. Required essential user input.
+- **service_name** (_str_) – Service name for the pipeline. Required essential user input.
+- **pipeline_version** (_str_) – Version string for the SageMaker Pipeline. Required essential user input.
+- **model_class** (_str_) – Model class (e.g., XGBoost, PyTorch). Defaults to "xgboost".
+- **current_date** (_Optional[str]_) – Current date for versioning or pathing. Defaults to current date.
+- **framework_version** (_str_) – Framework version (e.g., PyTorch). Defaults to "2.1.0".
+- **py_version** (_str_) – Python version. Defaults to "py310".
+- **source_dir** (_Optional[str]_) – Common source directory for scripts. Defaults to None.
 
 ```python
-class BasePipelineConfig(BaseModel):
-    """Base configuration with shared pipeline attributes and self-contained derivation logic."""
-    
-    # Class variables using ClassVar for Pydantic
-    _REGION_MAPPING: ClassVar[Dict[str, str]] = {
-        "NA": "us-east-1",
-        "EU": "eu-west-1", 
-        "FE": "us-west-2"
-    }
-    
-    _STEP_NAMES: ClassVar[Dict[str, str]] = {}  # Lazy loaded
-    
-    # Internal caching (completely private)
-    _cache: Dict[str, Any] = PrivateAttr(default_factory=dict)
-```
+from cursus.core.base.config_base import BasePipelineConfig
 
-### Field Implementation Patterns
-
-#### Tier 1: Essential User Inputs
-```python
-# ===== Essential User Inputs (Tier 1) =====
-# These are fields that users must explicitly provide
-
-author: str = Field(description="Author or owner of the pipeline.")
-bucket: str = Field(description="S3 bucket name for pipeline artifacts and data.")
-role: str = Field(description="IAM role for pipeline execution.")
-region: str = Field(description="Custom region code (NA, EU, FE) for internal logic.")
-service_name: str = Field(description="Service name for the pipeline.")
-pipeline_version: str = Field(description="Version string for the SageMaker Pipeline.")
-```
-
-#### Tier 2: System Inputs with Defaults
-```python
-# ===== System Inputs with Defaults (Tier 2) =====
-# These are fields with reasonable defaults that users can override
-
-model_class: str = Field(default='xgboost', description="Model class (e.g., XGBoost, PyTorch).")
-current_date: str = Field(
-    default_factory=lambda: datetime.now().strftime("%Y-%m-%d"),
-    description="Current date, typically used for versioning or pathing."
+# Create base configuration with essential inputs
+base_config = BasePipelineConfig(
+    author="data-scientist",
+    bucket="ml-pipeline-artifacts",
+    role="arn:aws:iam::123456789012:role/SageMakerRole",
+    region="NA",
+    service_name="fraud-detection",
+    pipeline_version="1.0.0",
+    model_class="xgboost",
+    source_dir="src/scripts"
 )
-framework_version: str = Field(default='2.1.0', description="Default framework version (e.g., PyTorch).")
-py_version: str = Field(default='py310', description="Default Python version.")
-source_dir: Optional[str] = Field(default=None, description="Common source directory for scripts if applicable.")
+
+print(f"Pipeline name: {base_config.pipeline_name}")
+print(f"AWS region: {base_config.aws_region}")
+print(f"S3 location: {base_config.pipeline_s3_loc}")
 ```
 
-#### Tier 3: Derived Fields
+### Properties (Derived Fields - Tier 3)
+
+#### aws_region
+
+_property_ aws_region
+
+Get AWS region based on region code. This derived property maps the custom region code to the corresponding AWS region.
+
+**Returns:**
+- **str** – AWS region string (e.g., "us-east-1", "eu-west-1", "us-west-2").
+
 ```python
-# ===== Derived Fields (Tier 3) =====
-# These are fields calculated from other fields, stored in private attributes
-# with public read-only properties for access
+# Region mapping examples
+config_na = BasePipelineConfig(region="NA", ...)  # -> "us-east-1"
+config_eu = BasePipelineConfig(region="EU", ...)  # -> "eu-west-1"
+config_fe = BasePipelineConfig(region="FE", ...)  # -> "us-west-2"
 
-_aws_region: Optional[str] = PrivateAttr(default=None)
-_pipeline_name: Optional[str] = PrivateAttr(default=None)
-_pipeline_description: Optional[str] = PrivateAttr(default=None)
-_pipeline_s3_loc: Optional[str] = PrivateAttr(default=None)
-
-# Public read-only properties for derived fields
-@property
-def aws_region(self) -> str:
-    """Get AWS region based on region code."""
-    if self._aws_region is None:
-        self._aws_region = self._REGION_MAPPING.get(self.region, "us-east-1")
-    return self._aws_region
-
-@property
-def pipeline_name(self) -> str:
-    """Get pipeline name derived from author, service_name, model_class, and region."""
-    if self._pipeline_name is None:
-        self._pipeline_name = f"{self.author}-{self.service_name}-{self.model_class}-{self.region}"
-    return self._pipeline_name
+print(f"NA maps to: {config_na.aws_region}")
 ```
 
-## Key Features
+#### pipeline_name
 
-### Self-Contained Design Pattern
-- **Encapsulation**: Each configuration class manages its own field derivations
-- **Private Attributes**: Calculated values stored using `PrivateAttr(default=None)`
-- **Public Properties**: Read-only access through properties with lazy evaluation
-- **No External Dependencies**: Eliminates need for external field derivation engines
+_property_ pipeline_name
 
-### Region Mapping System
-Built-in mapping from custom region codes to AWS regions:
+Get pipeline name derived from author, service_name, model_class, and region. This property creates a standardized pipeline naming convention.
+
+**Returns:**
+- **str** – Pipeline name in format "{author}-{service_name}-{model_class}-{region}".
+
 ```python
-_REGION_MAPPING: ClassVar[Dict[str, str]] = {
-    "NA": "us-east-1",
-    "EU": "eu-west-1",
-    "FE": "us-west-2"
-}
+# Pipeline name derivation
+config = BasePipelineConfig(
+    author="john-doe",
+    service_name="recommendation",
+    model_class="pytorch",
+    region="NA",
+    ...
+)
+print(config.pipeline_name)  # Output: "john-doe-recommendation-pytorch-NA"
 ```
 
-### Lazy Evaluation Pattern
-Properties use lazy initialization with caching:
+#### pipeline_description
+
+_property_ pipeline_description
+
+Get pipeline description derived from service_name, model_class, and region. This property creates a human-readable description for the pipeline.
+
+**Returns:**
+- **str** – Pipeline description in format "{service_name} {model_class} Model {region}".
+
 ```python
-@property
-def pipeline_s3_loc(self) -> str:
-    """Get S3 location for pipeline artifacts."""
-    if self._pipeline_s3_loc is None:
-        pipeline_subdirectory = "MODS"
-        pipeline_subsubdirectory = f"{self.pipeline_name}_{self.pipeline_version}"
-        self._pipeline_s3_loc = f"s3://{self.bucket}/{pipeline_subdirectory}/{pipeline_subsubdirectory}"
-    return self._pipeline_s3_loc
+print(config.pipeline_description)  # Output: "recommendation pytorch Model NA"
 ```
 
-## Validation and Initialization
+#### pipeline_s3_loc
 
-### Field Validators
+_property_ pipeline_s3_loc
+
+Get S3 location for pipeline artifacts. This property constructs the complete S3 path for storing pipeline artifacts and outputs.
+
+**Returns:**
+- **str** – S3 URI in format "s3://{bucket}/MODS/{pipeline_name}_{pipeline_version}".
+
 ```python
-@field_validator('region')
-@classmethod
-def _validate_custom_region(cls, v: str) -> str:
-    """Validate region code."""
-    valid_regions = ['NA', 'EU', 'FE']
-    if v not in valid_regions:
-        raise ValueError(f"Invalid custom region code: {v}. Must be one of {valid_regions}")
-    return v
-
-@field_validator('source_dir', check_fields=False)
-@classmethod
-def _validate_source_dir_exists(cls, v: Optional[str]) -> Optional[str]:
-    """Validate that source_dir exists if it's a local path."""
-    if v is not None and not v.startswith('s3://'):  # Only validate local paths
-        if not Path(v).exists():
-            logger.warning(f"Local source directory does not exist: {v}")
-            raise ValueError(f"Local source directory does not exist: {v}")
-        if not Path(v).is_dir():
-            logger.warning(f"Local source_dir is not a directory: {v}")
-            raise ValueError(f"Local source_dir is not a directory: {v}")
-    return v
+print(config.pipeline_s3_loc)  
+# Output: "s3://ml-pipeline-artifacts/MODS/john-doe-recommendation-pytorch-NA_1.0.0"
 ```
 
-### Model Validator for One-Time Initialization
+#### script_contract
+
+_property_ script_contract
+
+Property accessor for script contract. This property provides access to the script contract associated with this configuration, if available.
+
+**Returns:**
+- **Optional[ScriptContract]** – Script contract instance or None if not available.
+
 ```python
-@model_validator(mode='after')
-def initialize_derived_fields(self) -> 'BasePipelineConfig':
-    """Initialize all derived fields once after validation."""
-    # Direct assignment to private fields avoids triggering validation
-    self._aws_region = self._REGION_MAPPING.get(self.region, "us-east-1")
-    self._pipeline_name = f"{self.author}-{self.service_name}-{self.model_class}-{self.region}"
-    self._pipeline_description = f"{self.service_name} {self.model_class} Model {self.region}"
-    
-    pipeline_subdirectory = "MODS"
-    pipeline_subsubdirectory = f"{self._pipeline_name}_{self.pipeline_version}"
-    self._pipeline_s3_loc = f"s3://{self.bucket}/{pipeline_subdirectory}/{pipeline_subsubdirectory}"
-    
-    return self
+# Access script contract
+contract = config.script_contract
+if contract:
+    print(f"Contract available: {contract.script_path}")
+else:
+    print("No script contract defined")
 ```
 
-## Utility Methods
+### Methods
 
-### Field Categorization
+#### categorize_fields
+
+categorize_fields()
+
+Categorize all fields into three tiers based on their characteristics and purpose. This method provides insight into the configuration structure and field organization.
+
+**Returns:**
+- **Dict[str, List[str]]** – Dictionary with keys 'essential', 'system', and 'derived' mapping to lists of field names.
+
 ```python
-def categorize_fields(self) -> Dict[str, List[str]]:
-    """
-    Categorize all fields into three tiers:
-    1. Tier 1: Essential User Inputs - public fields with no defaults (required)
-    2. Tier 2: System Inputs - public fields with defaults (optional)
-    3. Tier 3: Derived Fields - properties that access private attributes
-    
-    Returns:
-        Dict with keys 'essential', 'system', and 'derived' mapping to lists of field names
-    """
-    categories = {
-        'essential': [],  # Tier 1: Required, public
-        'system': [],     # Tier 2: Optional (has default), public
-        'derived': []     # Tier 3: Public properties
-    }
-    
-    # Get model fields from the class (not instance) to avoid deprecation warnings
-    model_fields = self.__class__.model_fields
-    
-    # Categorize public fields into essential (required) or system (with defaults)
-    for field_name, field_info in model_fields.items():
-        # Skip private fields
-        if field_name.startswith('_'):
-            continue
-            
-        # Use is_required() to determine if a field is essential
-        if field_info.is_required():
-            categories['essential'].append(field_name)
-        else:
-            categories['system'].append(field_name)
-    
-    # Find derived properties (public properties that aren't in model_fields)
-    for attr_name in dir(self):
-        if (not attr_name.startswith('_') and 
-            attr_name not in model_fields and
-            isinstance(getattr(type(self), attr_name, None), property)):
-            categories['derived'].append(attr_name)
-    
-    return categories
+# Analyze field categorization
+categories = config.categorize_fields()
+
+print("Essential fields:", categories['essential'])
+print("System fields:", categories['system'])
+print("Derived fields:", categories['derived'])
+
+# Output:
+# Essential fields: ['author', 'bucket', 'role', 'region', 'service_name', 'pipeline_version']
+# System fields: ['model_class', 'current_date', 'framework_version', 'py_version', 'source_dir']
+# Derived fields: ['aws_region', 'pipeline_name', 'pipeline_description', 'pipeline_s3_loc']
 ```
 
-### Display and Debugging
+#### print_config
+
+print_config()
+
+Print complete configuration information organized by tiers. This method provides a comprehensive view of the configuration with fields organized by their tier classification.
+
 ```python
-def print_config(self) -> None:
-    """
-    Print complete configuration information organized by tiers.
-    This method automatically categorizes fields by examining their characteristics:
-    - Tier 1: Essential User Inputs (public fields without defaults)
-    - Tier 2: System Inputs (public fields with defaults)
-    - Tier 3: Derived Fields (properties that provide access to private fields)
-    """
-    print("\n===== CONFIGURATION =====")
-    print(f"Class: {self.__class__.__name__}")
-    
-    # Get fields categorized by tier
-    categories = self.categorize_fields()
-    
-    # Print Tier 1 fields (essential user inputs)
-    print("\n----- Essential User Inputs (Tier 1) -----")
-    for field_name in sorted(categories['essential']):
-        print(f"{field_name.title()}: {getattr(self, field_name)}")
-    
-    # Print Tier 2 fields (system inputs with defaults)
-    print("\n----- System Inputs with Defaults (Tier 2) -----")
-    for field_name in sorted(categories['system']):
-        value = getattr(self, field_name)
-        if value is not None:  # Skip None values for cleaner output
-            print(f"{field_name.title()}: {value}")
-    
-    # Print Tier 3 fields (derived properties)
-    print("\n----- Derived Fields (Tier 3) -----")
-    for field_name in sorted(categories['derived']):
-        try:
-            value = getattr(self, field_name)
-            if not callable(value):  # Skip methods
-                print(f"{field_name.title()}: {value}")
-        except Exception as e:
-            print(f"{field_name.title()}: <Error: {e}>")
-    
-    print("\n===================================\n")
+# Print organized configuration
+config.print_config()
+
+# Output:
+# ===== CONFIGURATION =====
+# Class: BasePipelineConfig
+# 
+# ----- Essential User Inputs (Tier 1) -----
+# Author: data-scientist
+# Bucket: ml-pipeline-artifacts
+# ...
+# 
+# ----- System Inputs with Defaults (Tier 2) -----
+# Model_Class: xgboost
+# Framework_Version: 2.1.0
+# ...
+# 
+# ----- Derived Fields (Tier 3) -----
+# Aws_Region: us-east-1
+# Pipeline_Name: data-scientist-fraud-detection-xgboost-NA
+# ...
 ```
 
-### Enhanced Serialization
+#### get_public_init_fields
+
+get_public_init_fields()
+
+Get a dictionary of public fields suitable for initializing a child config. This method extracts all user-provided and system fields that should be propagated to derived configuration classes.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary of field names to values for child initialization.
+
 ```python
-def model_dump(self, **kwargs) -> Dict[str, Any]:
-    """Override model_dump to include derived properties."""
-    data = super().model_dump(**kwargs)
-    # Add derived properties to output
-    data["aws_region"] = self.aws_region
-    data["pipeline_name"] = self.pipeline_name
-    data["pipeline_description"] = self.pipeline_description
-    data["pipeline_s3_loc"] = self.pipeline_s3_loc
-    return data
+# Get fields for child configuration
+init_fields = config.get_public_init_fields()
+print("Fields for child config:", list(init_fields.keys()))
+
+# Use for creating derived configuration
+child_config = DerivedConfig(**init_fields, additional_param="value")
 ```
 
-### Custom String Representation
+#### get_script_contract
+
+get_script_contract()
+
+Get script contract for this configuration. This method attempts to load the appropriate script contract based on the configuration class and job type.
+
+**Returns:**
+- **Optional[ScriptContract]** – Script contract instance or None if not available.
+
 ```python
-def __str__(self) -> str:
-    """
-    Custom string representation that shows fields by category.
-    This overrides the default __str__ method so that print(config) shows
-    a nicely formatted representation with fields organized by tier.
-    """
-    from io import StringIO
-    output = StringIO()
-    
-    # Get class name
-    print(f"=== {self.__class__.__name__} ===", file=output)
-    
-    # Get fields categorized by tier
-    categories = self.categorize_fields()
-    
-    # Print Tier 1 fields (essential user inputs)
-    if categories['essential']:
-        print("\n- Essential User Inputs -", file=output)
-        for field_name in sorted(categories['essential']):
-            print(f"{field_name}: {getattr(self, field_name)}", file=output)
-    
-    # Print Tier 2 fields (system inputs with defaults)
-    if categories['system']:
-        print("\n- System Inputs -", file=output)
-        for field_name in sorted(categories['system']):
-            value = getattr(self, field_name)
-            if value is not None:  # Skip None values for cleaner output
-                print(f"{field_name}: {value}", file=output)
-    
-    # Print Tier 3 fields (derived properties)
-    if categories['derived']:
-        print("\n- Derived Fields -", file=output)
-        for field_name in sorted(categories['derived']):
-            try:
-                value = getattr(self, field_name)
-                if not callable(value):  # Skip methods
-                    print(f"{field_name}: {value}", file=output)
-            except Exception:
-                # Skip properties that cause errors
-                pass
-    
-    return output.getvalue()
+# Get script contract
+contract = config.get_script_contract()
+if contract:
+    print(f"Script path: {contract.script_path}")
+    print(f"Expected inputs: {list(contract.expected_input_paths.keys())}")
+    print(f"Expected outputs: {list(contract.expected_output_paths.keys())}")
 ```
 
-## Script Contract Integration
+#### get_script_path
 
-### Dynamic Contract Loading
+get_script_path(_default_path=None_)
+
+Get script path, preferring contract-defined path if available. This method provides a unified way to access script paths with fallback logic.
+
+**Parameters:**
+- **default_path** (_Optional[str]_) – Default script path to use if not found in contract.
+
+**Returns:**
+- **str** – Script path from contract, configuration, or default.
+
 ```python
-def get_script_contract(self) -> Optional['ScriptContract']:
-    """
-    Get script contract for this configuration.
-    
-    This base implementation returns None. Derived classes should override
-    this method to return their specific script contract.
-    """
-    # Check for hardcoded script_contract first (for backward compatibility)
-    if hasattr(self, '_script_contract'):
-        return self._script_contract
-        
-    # Otherwise attempt to load based on class and job_type
-    try:
-        class_name = self.__class__.__name__.replace('Config', '')
-        
-        # Try with job_type if available
-        if hasattr(self, 'job_type') and self.job_type:
-            module_name = f"...steps.contracts.{class_name.lower()}_{self.job_type.lower()}_contract"
-            contract_name = f"{class_name.upper()}_{self.job_type.upper()}_CONTRACT"
-            
-            try:
-                contract_module = __import__(module_name, fromlist=[''])
-                if hasattr(contract_module, contract_name):
-                    return getattr(contract_module, contract_name)
-            except (ImportError, AttributeError):
-                pass
-        
-        # Try without job_type
-        module_name = f"...steps.contracts.{class_name.lower()}_contract"
-        contract_name = f"{class_name.upper()}_CONTRACT"
-        
-        try:
-            contract_module = __import__(module_name, fromlist=[''])
-            if hasattr(contract_module, contract_name):
-                return getattr(contract_module, contract_name)
-        except (ImportError, AttributeError):
-            pass
-            
-    except Exception as e:
-        logger.debug(f"Error loading script contract: {e}")
-        
-    return None
-
-@property
-def script_contract(self) -> Optional['ScriptContract']:
-    """Property accessor for script contract."""
-    return self.get_script_contract()
-
-def get_script_path(self, default_path: str = None) -> str:
-    """Get script path, preferring contract-defined path if available."""
-    # Try to get from contract
-    contract = self.get_script_contract()
-    if contract and hasattr(contract, 'script_path'):
-        return contract.script_path
-        
-    # Fall back to default or hardcoded path
-    if hasattr(self, 'script_path'):
-        return self.script_path
-        
-    return default_path
+# Get script path with fallback
+script_path = config.get_script_path("default_script.py")
+print(f"Script path: {script_path}")
 ```
 
-## Configuration Inheritance
+#### model_dump
 
-### Base Configuration Creation
+model_dump(_**kwargs_)
+
+Override model_dump to include derived properties. This method ensures that derived fields are included in serialization output.
+
+**Parameters:**
+- ****kwargs** – Additional arguments passed to the parent model_dump method.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary representation including derived properties.
+
 ```python
-@classmethod
-def from_base_config(cls, base_config: 'BasePipelineConfig', **kwargs) -> 'BasePipelineConfig':
-    """
-    Create a new configuration instance from a base configuration.
-    This is a virtual method that all derived classes can use to inherit from a parent config.
-    
-    Args:
-        base_config: Parent BasePipelineConfig instance
-        **kwargs: Additional arguments specific to the derived class
-        
-    Returns:
-        A new instance of the derived class initialized with parent fields and additional kwargs
-    """
-    # Get public fields from parent
-    parent_fields = base_config.get_public_init_fields()
-    
-    # Combine with additional fields (kwargs take precedence)
-    config_dict = {**parent_fields, **kwargs}
-    
-    # Create new instance of the derived class (cls refers to the actual derived class)
-    return cls(**config_dict)
-
-def get_public_init_fields(self) -> Dict[str, Any]:
-    """
-    Get a dictionary of public fields suitable for initializing a child config.
-    Only includes fields that should be passed to child class constructors.
-    Both essential user inputs and system inputs with defaults or user-overridden values
-    are included to ensure all user customizations are properly propagated to derived classes.
-    
-    Returns:
-        Dict[str, Any]: Dictionary of field names to values for child initialization
-    """
-    # Use categorize_fields to get essential and system fields
-    categories = self.categorize_fields()
-    
-    # Initialize result dict
-    init_fields = {}
-    
-    # Add all essential fields (Tier 1)
-    for field_name in categories['essential']:
-        init_fields[field_name] = getattr(self, field_name)
-    
-    # Add all system fields (Tier 2) that aren't None
-    for field_name in categories['system']:
-        value = getattr(self, field_name)
-        if value is not None:  # Only include non-None values
-            init_fields[field_name] = value
-    
-    return init_fields
+# Serialize configuration including derived fields
+config_dict = config.model_dump()
+print("Serialized config keys:", list(config_dict.keys()))
+# Includes both input fields and derived properties
 ```
 
-## Step Registry Integration
+### Class Methods
 
-### Lazy Loading Pattern
+#### from_base_config
+
+_classmethod_ from_base_config(_base_config_, _**kwargs_)
+
+Create a new configuration instance from a base configuration. This method enables configuration inheritance and specialization patterns.
+
+**Parameters:**
+- **base_config** (_BasePipelineConfig_) – Parent BasePipelineConfig instance.
+- ****kwargs** – Additional arguments specific to the derived class.
+
+**Returns:**
+- **BasePipelineConfig** – New instance of the derived class initialized with parent fields and additional kwargs.
+
 ```python
-@classmethod
-def get_step_name(cls, config_class_name: str) -> str:
-    """Get the step name for a configuration class."""
-    step_names = cls._get_step_registry()
-    return step_names.get(config_class_name, config_class_name)
+# Create derived configuration from base
+class ProcessingConfig(BasePipelineConfig):
+    processing_instance_type: str = "ml.m5.large"
+    processing_instance_count: int = 1
 
-@classmethod
-def get_config_class_name(cls, step_name: str) -> str:
-    """Get the configuration class name from a step name."""
-    step_names = cls._get_step_registry()
-    reverse_mapping = {v: k for k, v in step_names.items()}
-    return reverse_mapping.get(step_name, step_name)
+# Inherit from base configuration
+processing_config = ProcessingConfig.from_base_config(
+    base_config,
+    processing_instance_type="ml.m5.xlarge",
+    processing_instance_count=2
+)
 
-@classmethod
-def _get_step_registry(cls) -> Dict[str, str]:
-    """Lazy load step registry to avoid circular imports."""
-    if not cls._STEP_NAMES:
-        try:
-            from ...steps.registry.step_names import CONFIG_STEP_REGISTRY
-            cls._STEP_NAMES = CONFIG_STEP_REGISTRY
-        except ImportError:
-            logger.warning("Could not import step registry, using empty registry")
-            cls._STEP_NAMES = {}
-    return cls._STEP_NAMES
+print(f"Inherited pipeline name: {processing_config.pipeline_name}")
+print(f"Processing instance type: {processing_config.processing_instance_type}")
 ```
 
-## Usage Patterns
+#### get_step_name
+
+_classmethod_ get_step_name(_config_class_name_)
+
+Get the step name for a configuration class. This method provides mapping from configuration class names to step names using the step registry.
+
+**Parameters:**
+- **config_class_name** (_str_) – Name of the configuration class.
+
+**Returns:**
+- **str** – Corresponding step name from the registry.
+
+```python
+# Get step name from config class
+step_name = BasePipelineConfig.get_step_name("ProcessingConfig")
+print(f"Step name: {step_name}")  # Output: "Processing"
+```
+
+#### get_config_class_name
+
+_classmethod_ get_config_class_name(_step_name_)
+
+Get the configuration class name from a step name. This method provides reverse mapping from step names to configuration class names.
+
+**Parameters:**
+- **step_name** (_str_) – Name of the step.
+
+**Returns:**
+- **str** – Corresponding configuration class name.
+
+```python
+# Get config class name from step name
+config_class = BasePipelineConfig.get_config_class_name("Processing")
+print(f"Config class: {config_class}")  # Output: "ProcessingConfig"
+```
+
+## Usage Examples
 
 ### Basic Configuration Creation
 ```python
-# Create configuration with essential fields (Tier 1) and some system overrides (Tier 2)
+from cursus.core.base.config_base import BasePipelineConfig
+
+# Create configuration with essential inputs
 config = BasePipelineConfig(
-    # Tier 1: Essential fields (required)
-    author="user",
-    bucket="my-bucket", 
-    role="arn:aws:iam::123456789012:role/MyRole",
+    author="ml-engineer",
+    bucket="company-ml-artifacts",
+    role="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
     region="NA",
-    service_name="my-service",
-    pipeline_version="1.0.0",
-    
-    # Tier 2: Override some system defaults
+    service_name="customer-churn",
+    pipeline_version="2.1.0",
     model_class="pytorch",
-    framework_version="1.8.0"
+    framework_version="1.12.0",
+    py_version="py39"
 )
 
-# Derived fields (Tier 3) are automatically available
-print(config.aws_region)        # "us-east-1"
-print(config.pipeline_name)     # "user-my-service-pytorch-NA"
-print(config.pipeline_s3_loc)   # "s3://my-bucket/MODS/user-my-service-pytorch-NA_1.0.0"
+# Access derived properties
+print(f"Pipeline: {config.pipeline_name}")
+print(f"Description: {config.pipeline_description}")
+print(f"S3 Location: {config.pipeline_s3_loc}")
+print(f"AWS Region: {config.aws_region}")
 ```
 
-### Configuration Inheritance
+### Configuration Analysis and Debugging
 ```python
-# Create derived configuration from base
-child_config = ChildConfig.from_base_config(
-    base_config,
-    additional_field="value",
-    override_field="new_value"
-)
+# Analyze configuration structure
+def analyze_config(config):
+    """Analyze configuration field organization."""
+    categories = config.categorize_fields()
+    
+    print(f"Configuration Analysis for {config.__class__.__name__}:")
+    print(f"  Essential fields: {len(categories['essential'])}")
+    print(f"  System fields: {len(categories['system'])}")
+    print(f"  Derived fields: {len(categories['derived'])}")
+    
+    # Show field details
+    for category, fields in categories.items():
+        print(f"\n{category.title()} Fields:")
+        for field in sorted(fields):
+            try:
+                value = getattr(config, field)
+                print(f"  {field}: {value}")
+            except Exception as e:
+                print(f"  {field}: <Error: {e}>")
 
-# Inspect field categorization
-categories = config.categorize_fields()
-print(f"Essential fields: {categories['essential']}")
-print(f"System fields: {categories['system']}")
-print(f"Derived fields: {categories['derived']}")
-```
+# Analyze the configuration
+analyze_config(config)
 
-### Configuration Display and Debugging
-```python
-# Organized display by tiers
+# Print organized view
 config.print_config()
-
-# Custom string representation
-print(config)  # Shows fields organized by tier
-
-# Export with derived fields included
-config_dict = config.model_dump()
 ```
 
-## Design Benefits
+### Configuration Inheritance Pattern
+```python
+# Create specialized configuration class
+class TrainingConfig(BasePipelineConfig):
+    """Training-specific configuration."""
+    
+    # Additional training-specific fields
+    instance_type: str = Field(default="ml.m5.large", description="Training instance type")
+    instance_count: int = Field(default=1, description="Number of training instances")
+    max_runtime_seconds: int = Field(default=3600, description="Maximum training runtime")
+    
+    # Override derived field if needed
+    @property
+    def training_job_name(self) -> str:
+        """Get training job name."""
+        return f"{self.pipeline_name}-training-{self.current_date}"
 
-### Encapsulation and Maintainability
-- **Self-Contained Logic**: Each configuration class manages its own derivations
-- **Clear Separation**: Three-tier system provides clear boundaries between field types
-- **Type Safety**: Pydantic ensures comprehensive type validation
-- **Consistent API**: Uniform interface across all configuration classes
+# Create training config from base config
+training_config = TrainingConfig.from_base_config(
+    config,
+    instance_type="ml.m5.xlarge",
+    instance_count=2,
+    max_runtime_seconds=7200
+)
 
-### Performance and Efficiency
-- **Lazy Evaluation**: Derived fields calculated only when accessed
-- **Caching**: Results cached to prevent repeated calculations
-- **Memory Efficiency**: Minimal overhead for unused derived fields
-- **Fast Initialization**: One-time initialization with model validator
+print(f"Training job name: {training_config.training_job_name}")
+print(f"Instance configuration: {training_config.instance_count}x {training_config.instance_type}")
 
-### Extensibility and Flexibility
-- **Easy Extension**: Simple pattern for adding new derived fields
-- **Inheritance Support**: Clean inheritance with field propagation
-- **Contract Integration**: Dynamic script contract loading
-- **Registry Integration**: Seamless step name resolution
+# Verify inheritance
+assert training_config.pipeline_name == config.pipeline_name
+assert training_config.aws_region == config.aws_region
+```
 
-## Dependencies and Requirements
+### Script Contract Integration
+```python
+# Configuration with script contract
+class ProcessingConfig(BasePipelineConfig):
+    """Processing configuration with script contract."""
+    
+    processing_instance_type: str = "ml.m5.large"
+    
+    def get_script_contract(self):
+        """Override to provide specific contract."""
+        from cursus.steps.contracts.processing_contract import PROCESSING_CONTRACT
+        return PROCESSING_CONTRACT
 
-### Core Dependencies
-- **pydantic**: Model definition, validation, and serialization
-- **pathlib**: Path handling for source directory validation
-- **json**: Configuration serialization support
-- **datetime**: Date field defaults and timestamps
-- **logging**: Error reporting and debug information
+# Create processing config
+processing_config = ProcessingConfig(
+    author="data-engineer",
+    bucket="processing-artifacts",
+    role="arn:aws:iam::123456789012:role/ProcessingRole",
+    region="EU",
+    service_name="data-pipeline",
+    pipeline_version="1.0.0"
+)
 
-### Optional Dependencies
-- **Script Contract Classes**: TYPE_CHECKING imports for type hints
-- **Step Registry Module**: Lazy-loaded for step name resolution
-- **Child Configuration Classes**: Extended configurations inheriting from base
+# Access script contract
+contract = processing_config.script_contract
+if contract:
+    print(f"Script path: {contract.script_path}")
+    print(f"Expected inputs: {list(contract.expected_input_paths.keys())}")
+    
+# Get script path with fallback
+script_path = processing_config.get_script_path("fallback_script.py")
+print(f"Final script path: {script_path}")
+```
 
-This base configuration class provides a robust, scalable foundation for all pipeline configurations, ensuring consistency, type safety, and maintainability across the entire system while following the proven three-tier architecture pattern established in the developer guide.
+### Configuration Serialization
+```python
+# Serialize configuration including derived fields
+config_dict = config.model_dump()
+
+print("Serialized configuration:")
+for key, value in sorted(config_dict.items()):
+    print(f"  {key}: {value}")
+
+# Save to JSON
+import json
+with open("pipeline_config.json", "w") as f:
+    json.dump(config_dict, f, indent=2)
+
+# Load and recreate configuration
+with open("pipeline_config.json", "r") as f:
+    loaded_dict = json.load(f)
+
+# Remove derived fields before recreating (they'll be recalculated)
+derived_fields = ["aws_region", "pipeline_name", "pipeline_description", "pipeline_s3_loc"]
+for field in derived_fields:
+    loaded_dict.pop(field, None)
+
+# Recreate configuration
+recreated_config = BasePipelineConfig(**loaded_dict)
+assert recreated_config.pipeline_name == config.pipeline_name
+```
+
+## Related Documentation
+
+- [Specification Base](specification_base.md) - Step specifications that work with configuration classes
+- [Builder Base](builder_base.md) - Step builders that use configuration classes
+- [Contract Base](contract_base.md) - Script contracts integrated with configurations
+- [Hyperparameters Base](hyperparameters_base.md) - Hyperparameter configurations extending base config
+- [Base Enums](enums.md) - Enumerations used in configuration validation

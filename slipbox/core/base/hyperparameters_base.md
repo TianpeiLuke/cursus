@@ -1,445 +1,466 @@
 ---
 tags:
   - code
-  - core
   - base
-  - hyperparameters
+  - hyperparameters_base
+  - model_hyperparameters
   - three_tier_design
 keywords:
-  - model hyperparameters
-  - three-tier configuration
+  - ModelHyperparameters
+  - hyperparameter management
+  - three-tier design
   - field categorization
+  - model configuration
+  - classification parameters
   - derived fields
-  - pydantic model
 topics:
   - hyperparameter management
-  - configuration design
-  - model training
+  - model configuration
+  - three-tier design
 language: python
-date of note: 2025-08-07
+date of note: 2024-12-07
 ---
 
-# Model Hyperparameters Base Class
+# Hyperparameters Base
+
+Base model hyperparameters for training tasks that implements a three-tier design pattern for organizing hyperparameter fields with automatic derivation and comprehensive validation capabilities.
 
 ## Overview
 
-The `hyperparameters_base.py` module implements the base model hyperparameters class for training tasks using a sophisticated three-tier design pattern. This class organizes hyperparameter fields into logical categories and provides self-contained derivation logic through private fields and read-only properties.
+The `ModelHyperparameters` class provides the foundational hyperparameter management system for machine learning training tasks, implementing the same sophisticated three-tier design pattern used in the configuration system. This class organizes hyperparameters by their purpose and derivation logic, ensuring clear separation between user inputs, system defaults, and computed values.
 
-## Purpose
+The three-tier design includes Essential User Inputs (Tier 1) that are required fields users must explicitly provide such as field lists and classification parameters, System Inputs with Defaults (Tier 2) that have reasonable defaults but can be overridden including model parameters and training settings, and Derived Fields (Tier 3) that are calculated from other fields such as input dimensions and classification type detection.
 
-This module provides:
-- **Three-Tier Field Organization**: Essential user inputs, system inputs with defaults, and derived fields
-- **Self-Contained Derivation**: Private attributes with public properties for computed values
-- **Field Categorization**: Automatic categorization of fields by their characteristics
-- **Inheritance Support**: Virtual methods for creating derived hyperparameter classes
-- **Serialization Support**: SageMaker-compatible serialization methods
+The system supports advanced features including automatic field categorization and validation, comprehensive model dimension validation, flexible hyperparameter inheritance patterns, SageMaker-compatible serialization, and detailed hyperparameter analysis and debugging capabilities.
 
-## Three-Tier Design Architecture
+## Classes and Methods
 
-### Tier 1: Essential User Inputs
-Fields that users must explicitly provide - no defaults available.
+### Classes
+- [`ModelHyperparameters`](#modelhyperparameters) - Base model hyperparameters with three-tier design and automatic derivation
 
-```python
-# Field lists
-full_field_list: List[str] = Field(description="Full list of original field names.")
-cat_field_list: List[str] = Field(description="Categorical fields using original names.")
-tab_field_list: List[str] = Field(description="Tabular/numeric fields using original names.")
+## API Reference
 
-# Identifier and label fields
-id_name: str = Field(description="ID field name.")
-label_name: str = Field(description="Label field name.")
+### ModelHyperparameters
 
-# Classification parameters
-multiclass_categories: List[Union[int, str]] = Field(description="List of unique category labels.")
-```
+_class_ cursus.core.base.hyperparameters_base.ModelHyperparameters(_full_field_list_, _cat_field_list_, _tab_field_list_, _id_name_, _label_name_, _multiclass_categories_, _categorical_features_to_encode=[]_, _model_class="base_model"_, _device=-1_, _header=0_, _lr=3e-05_, _batch_size=2_, _max_epochs=3_, _metric_choices=["f1_score", "auroc"]_, _optimizer="SGD"_, _class_weights=None_)
 
-### Tier 2: System Inputs with Defaults
-Fields with reasonable defaults that users can override.
+Base model hyperparameters for training tasks. This class implements the three-tier design pattern for organizing hyperparameter fields and provides comprehensive validation and derivation capabilities for machine learning models.
 
-```python
-# Model and Training Parameters
-model_class: str = Field(default='base_model', description="Model class name.")
-device: int = Field(default=-1, description="Device ID for training (-1 for CPU).")
-lr: float = Field(default=3e-05, description="Learning rate.")
-batch_size: int = Field(default=2, gt=0, le=256, description="Batch size for training.")
-max_epochs: int = Field(default=3, gt=0, le=10, description="Maximum epochs for training.")
-
-# Optional overrides
-class_weights: Optional[List[float]] = Field(default=None, description="Class weights for loss function.")
-```
-
-### Tier 3: Derived Fields
-Fields calculated from other fields, stored as private attributes with public properties.
+**Parameters:**
+- **full_field_list** (_List[str]_) – Full list of original field names. Required essential user input.
+- **cat_field_list** (_List[str]_) – Categorical fields using original names. Required essential user input.
+- **tab_field_list** (_List[str]_) – Tabular/numeric fields using original names. Required essential user input.
+- **id_name** (_str_) – ID field name. Required essential user input.
+- **label_name** (_str_) – Label field name. Required essential user input.
+- **multiclass_categories** (_List[Union[int, str]]_) – List of unique category labels. Required essential user input.
+- **categorical_features_to_encode** (_List[str]_) – List of categorical fields requiring specific encoding. Defaults to empty list.
+- **model_class** (_str_) – Model class name. Defaults to "base_model".
+- **device** (_int_) – Device ID for training (-1 for CPU). Defaults to -1.
+- **header** (_int_) – Header row for CSV files. Defaults to 0.
+- **lr** (_float_) – Learning rate. Defaults to 3e-05.
+- **batch_size** (_int_) – Batch size for training (1-256). Defaults to 2.
+- **max_epochs** (_int_) – Maximum epochs for training (1-10). Defaults to 3.
+- **metric_choices** (_List[str]_) – Metric choices for evaluation. Defaults to ["f1_score", "auroc"].
+- **optimizer** (_str_) – Optimizer type. Defaults to "SGD".
+- **class_weights** (_Optional[List[float]]_) – Class weights for loss function. Defaults to [1.0] * num_classes.
 
 ```python
-# Private attributes for derived values
-_input_tab_dim: Optional[int] = PrivateAttr(default=None)
-_is_binary: Optional[bool] = PrivateAttr(default=None)
-_num_classes: Optional[int] = PrivateAttr(default=None)
+from cursus.core.base.hyperparameters_base import ModelHyperparameters
 
-# Public read-only properties
-@property
-def input_tab_dim(self) -> int:
-    """Get input tabular dimension derived from tab_field_list."""
-    if self._input_tab_dim is None:
-        self._input_tab_dim = len(self.tab_field_list)
-    return self._input_tab_dim
-
-@property
-def num_classes(self) -> int:
-    """Get number of classes derived from multiclass_categories."""
-    if self._num_classes is None:
-        self._num_classes = len(self.multiclass_categories)
-    return self._num_classes
-
-@property
-def is_binary(self) -> bool:
-    """Determine if this is a binary classification task based on num_classes."""
-    if self._is_binary is None:
-        self._is_binary = (self.num_classes == 2)
-    return self._is_binary
-```
-
-## Key Features
-
-### Field Categorization
-
-The `categorize_fields()` method automatically categorizes all fields:
-
-```python
-def categorize_fields(self) -> Dict[str, List[str]]:
-    """
-    Categorize all fields into three tiers:
-    1. Tier 1: Essential User Inputs - fields with no defaults (required)
-    2. Tier 2: System Inputs - fields with defaults (optional)
-    3. Tier 3: Derived Fields - properties that access private attributes
-    """
-    categories = {
-        'essential': [],  # Tier 1: Required, public
-        'system': [],     # Tier 2: Optional (has default), public
-        'derived': []     # Tier 3: Public properties
-    }
-    
-    model_fields = self.__class__.model_fields
-    
-    # Categorize public fields
-    for field_name, field_info in model_fields.items():
-        if field_name.startswith('_'):
-            continue
-            
-        if field_info.is_required():
-            categories['essential'].append(field_name)
-        else:
-            categories['system'].append(field_name)
-    
-    # Find derived properties
-    for attr_name in dir(self):
-        if (not attr_name.startswith('_') and 
-            attr_name not in model_fields and
-            isinstance(getattr(type(self), attr_name, None), property)):
-            categories['derived'].append(attr_name)
-    
-    return categories
-```
-
-### Custom String Representation
-
-The class provides a custom `__str__` method that organizes output by tier:
-
-```python
-def __str__(self) -> str:
-    """Custom string representation that shows fields by category."""
-    output = StringIO()
-    
-    print(f"=== {self.__class__.__name__} ===", file=output)
-    
-    categories = self.categorize_fields()
-    
-    # Print Tier 1 fields (essential user inputs)
-    if categories['essential']:
-        print("\n- Essential User Inputs -", file=output)
-        for field_name in sorted(categories['essential']):
-            print(f"{field_name}: {getattr(self, field_name)}", file=output)
-    
-    # Print Tier 2 fields (system inputs with defaults)
-    if categories['system']:
-        print("\n- System Inputs -", file=output)
-        for field_name in sorted(categories['system']):
-            value = getattr(self, field_name)
-            if value is not None:
-                print(f"{field_name}: {value}", file=output)
-    
-    # Print Tier 3 fields (derived properties)
-    if categories['derived']:
-        print("\n- Derived Fields -", file=output)
-        for field_name in sorted(categories['derived']):
-            try:
-                value = getattr(self, field_name)
-                if not callable(value):
-                    print(f"{field_name}: {value}", file=output)
-            except Exception:
-                pass
-    
-    return output.getvalue()
-```
-
-### Validation and Initialization
-
-The class includes comprehensive validation:
-
-```python
-@model_validator(mode='after')
-def validate_dimensions(self) -> 'ModelHyperparameters':
-    """Validate model dimensions and configurations"""
-    # Initialize derived fields
-    self._input_tab_dim = len(self.tab_field_list)
-    self._num_classes = len(self.multiclass_categories)
-    self._is_binary = (self._num_classes == 2)
-    
-    # Set default class_weights if not provided
-    if self.class_weights is None:
-        self.class_weights = [1.0] * self._num_classes
-    
-    # Validate class weights length
-    if len(self.class_weights) != self._num_classes:
-        raise ValueError(f"class_weights length ({len(self.class_weights)}) must match multiclass_categories length ({self._num_classes}).")
-    
-    # Validate binary classification consistency
-    if self._is_binary and self._num_classes != 2:
-        raise ValueError("For binary classification, multiclass_categories length must be 2.")
-        
-    return self
-```
-
-## Inheritance and Composition
-
-### Virtual Constructor Pattern
-
-The class provides a virtual constructor for creating derived classes:
-
-```python
-@classmethod
-def from_base_hyperparam(cls, base_hyperparam: 'ModelHyperparameters', **kwargs) -> 'ModelHyperparameters':
-    """
-    Create a new hyperparameter instance from a base hyperparameter.
-    This is a virtual method that all derived classes can use to inherit from a parent config.
-    """
-    # Get public fields from parent
-    parent_fields = base_hyperparam.get_public_init_fields()
-    
-    # Combine with additional fields (kwargs take precedence)
-    config_dict = {**parent_fields, **kwargs}
-    
-    # Create new instance of the derived class
-    return cls(**config_dict)
-```
-
-### Public Field Extraction
-
-The `get_public_init_fields()` method extracts fields suitable for child initialization:
-
-```python
-def get_public_init_fields(self) -> Dict[str, Any]:
-    """
-    Get a dictionary of public fields suitable for initializing a child hyperparameter.
-    Only includes fields that should be passed to child class constructors.
-    """
-    categories = self.categorize_fields()
-    init_fields = {}
-    
-    # Add all essential fields (Tier 1)
-    for field_name in categories['essential']:
-        init_fields[field_name] = getattr(self, field_name)
-    
-    # Add all system fields (Tier 2) that aren't None
-    for field_name in categories['system']:
-        value = getattr(self, field_name)
-        if value is not None:
-            init_fields[field_name] = value
-    
-    return init_fields
-```
-
-## Serialization Support
-
-### SageMaker Serialization
-
-The class provides SageMaker-compatible serialization:
-
-```python
-def serialize_config(self) -> Dict[str, str]:
-    """Serialize configuration for SageMaker."""
-    # Start with the full model configuration
-    config = self.get_config()
-    
-    # Add derived fields (these won't be in model_dump)
-    config["input_tab_dim"] = self.input_tab_dim
-    config["is_binary"] = self.is_binary
-    config["num_classes"] = self.num_classes
-    
-    # Serialize all values to strings for SageMaker
-    return {
-        k: json.dumps(v) if isinstance(v, (list, dict, bool)) else str(v)
-        for k, v in config.items()
-    }
-```
-
-### Configuration Access
-
-```python
-def get_config(self) -> Dict[str, Any]:
-    """Get the complete configuration dictionary."""
-    return self.model_dump()
-```
-
-## Usage Patterns
-
-### Basic Usage
-
-```python
-# Create hyperparameters with essential inputs
+# Create hyperparameters for binary classification
 hyperparams = ModelHyperparameters(
-    full_field_list=["feature1", "feature2", "feature3", "target"],
+    full_field_list=["feature1", "feature2", "feature3", "id", "label"],
     cat_field_list=["feature1"],
     tab_field_list=["feature2", "feature3"],
     id_name="id",
-    label_name="target",
-    multiclass_categories=["class_a", "class_b"]
+    label_name="label",
+    multiclass_categories=["positive", "negative"],
+    model_class="xgboost",
+    lr=0.01,
+    batch_size=32,
+    max_epochs=10,
+    optimizer="Adam"
 )
 
-# Access derived fields
-print(f"Input dimension: {hyperparams.input_tab_dim}")  # 2
-print(f"Number of classes: {hyperparams.num_classes}")  # 2
-print(f"Is binary: {hyperparams.is_binary}")  # True
+print(f"Input dimension: {hyperparams.input_tab_dim}")
+print(f"Number of classes: {hyperparams.num_classes}")
+print(f"Is binary classification: {hyperparams.is_binary}")
 ```
 
-### Inheritance Pattern
+### Properties (Derived Fields - Tier 3)
+
+#### input_tab_dim
+
+_property_ input_tab_dim
+
+Get input tabular dimension derived from tab_field_list. This derived property calculates the number of tabular/numeric features for model input layer sizing.
+
+**Returns:**
+- **int** – Number of tabular fields, calculated as len(tab_field_list).
 
 ```python
-class XGBoostHyperparameters(ModelHyperparameters):
-    # Additional XGBoost-specific fields
-    n_estimators: int = Field(default=100, description="Number of boosting rounds")
-    max_depth: int = Field(default=6, description="Maximum tree depth")
-    
-    @classmethod
-    def from_base_hyperparam(cls, base_hyperparam: ModelHyperparameters, **kwargs):
-        """Create XGBoost hyperparameters from base hyperparameters."""
-        return super().from_base_hyperparam(base_hyperparam, **kwargs)
-
-# Usage
-base_params = ModelHyperparameters(...)
-xgb_params = XGBoostHyperparameters.from_base_hyperparam(
-    base_params,
-    n_estimators=200,
-    max_depth=8
-)
+# Access derived input dimension
+print(f"Model input dimension: {hyperparams.input_tab_dim}")
+# Automatically calculated from tab_field_list length
 ```
 
-### Field Categorization Usage
+#### num_classes
+
+_property_ num_classes
+
+Get number of classes derived from multiclass_categories. This derived property determines the output layer size for classification models.
+
+**Returns:**
+- **int** – Number of classes, calculated as len(multiclass_categories).
 
 ```python
-# Examine field organization
+# Access derived number of classes
+print(f"Output classes: {hyperparams.num_classes}")
+# Automatically calculated from multiclass_categories length
+```
+
+#### is_binary
+
+_property_ is_binary
+
+Determine if this is a binary classification task based on num_classes. This derived property enables conditional logic for binary vs multiclass scenarios.
+
+**Returns:**
+- **bool** – True if num_classes == 2, False otherwise.
+
+```python
+# Check classification type
+if hyperparams.is_binary:
+    print("Using binary classification metrics")
+else:
+    print("Using multiclass classification metrics")
+```
+
+### Methods
+
+#### categorize_fields
+
+categorize_fields()
+
+Categorize all fields into three tiers based on their characteristics and purpose. This method provides insight into the hyperparameter structure and field organization.
+
+**Returns:**
+- **Dict[str, List[str]]** – Dictionary with keys 'essential', 'system', and 'derived' mapping to lists of field names.
+
+```python
+# Analyze field categorization
 categories = hyperparams.categorize_fields()
 
 print("Essential fields:", categories['essential'])
-print("System fields:", categories['system'])  
+print("System fields:", categories['system'])
 print("Derived fields:", categories['derived'])
+
+# Output:
+# Essential fields: ['full_field_list', 'cat_field_list', 'tab_field_list', 'id_name', 'label_name', 'multiclass_categories']
+# System fields: ['categorical_features_to_encode', 'model_class', 'device', 'header', 'lr', 'batch_size', 'max_epochs', 'metric_choices', 'optimizer', 'class_weights']
+# Derived fields: ['input_tab_dim', 'num_classes', 'is_binary']
+```
+
+#### print_hyperparam
+
+print_hyperparam()
+
+Print complete hyperparameter information organized by tiers. This method provides a comprehensive view of the hyperparameters with fields organized by their tier classification.
+
+```python
+# Print organized hyperparameters
+hyperparams.print_hyperparam()
+
+# Output:
+# ===== HYPERPARAMETERS =====
+# Class: ModelHyperparameters
+# 
+# ----- Essential User Inputs (Tier 1) -----
+# Full_Field_List: ['feature1', 'feature2', 'feature3', 'id', 'label']
+# Cat_Field_List: ['feature1']
+# ...
+# 
+# ----- System Inputs with Defaults (Tier 2) -----
+# Model_Class: xgboost
+# Lr: 0.01
+# ...
+# 
+# ----- Derived Fields (Tier 3) -----
+# Input_Tab_Dim: 2
+# Num_Classes: 2
+# Is_Binary: True
+```
+
+#### get_public_init_fields
+
+get_public_init_fields()
+
+Get a dictionary of public fields suitable for initializing a child hyperparameter. This method extracts all user-provided and system fields that should be propagated to derived hyperparameter classes.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary of field names to values for child initialization.
+
+```python
+# Get fields for child hyperparameter
+init_fields = hyperparams.get_public_init_fields()
+print("Fields for child hyperparams:", list(init_fields.keys()))
+
+# Use for creating derived hyperparameter
+child_hyperparams = DerivedHyperparameters(**init_fields, additional_param="value")
+```
+
+#### get_config
+
+get_config()
+
+Get the complete configuration dictionary. This method returns the full hyperparameter configuration as a dictionary suitable for serialization and storage.
+
+**Returns:**
+- **Dict[str, Any]** – Complete configuration dictionary with all hyperparameter values.
+
+```python
+# Get complete configuration
+config = hyperparams.get_config()
+print("Configuration keys:", list(config.keys()))
+```
+
+#### serialize_config
+
+serialize_config()
+
+Serialize configuration for SageMaker. This method converts all hyperparameter values to string format suitable for SageMaker training job parameters.
+
+**Returns:**
+- **Dict[str, str]** – Serialized configuration with all values as strings, including derived fields.
+
+```python
+# Serialize for SageMaker
+serialized = hyperparams.serialize_config()
+print("Serialized config:")
+for key, value in serialized.items():
+    print(f"  {key}: {value} (type: {type(value).__name__})")
+
+# All values are strings suitable for SageMaker
+```
+
+### Class Methods
+
+#### from_base_hyperparam
+
+_classmethod_ from_base_hyperparam(_base_hyperparam_, _**kwargs_)
+
+Create a new hyperparameter instance from a base hyperparameter. This method enables hyperparameter inheritance and specialization patterns.
+
+**Parameters:**
+- **base_hyperparam** (_ModelHyperparameters_) – Parent ModelHyperparameters instance.
+- ****kwargs** – Additional arguments specific to the derived class.
+
+**Returns:**
+- **ModelHyperparameters** – New instance of the derived class initialized with parent fields and additional kwargs.
+
+```python
+# Create derived hyperparameters from base
+class XGBoostHyperparameters(ModelHyperparameters):
+    n_estimators: int = Field(default=100, description="Number of trees")
+    max_depth: int = Field(default=6, description="Maximum tree depth")
+
+# Inherit from base hyperparameters
+xgb_hyperparams = XGBoostHyperparameters.from_base_hyperparam(
+    hyperparams,
+    n_estimators=200,
+    max_depth=8
+)
+
+print(f"Inherited field lists: {xgb_hyperparams.full_field_list}")
+print(f"XGBoost n_estimators: {xgb_hyperparams.n_estimators}")
+print(f"Derived input_tab_dim: {xgb_hyperparams.input_tab_dim}")
+```
+
+## Usage Examples
+
+### Basic Hyperparameter Creation
+```python
+from cursus.core.base.hyperparameters_base import ModelHyperparameters
+
+# Create hyperparameters for multiclass classification
+hyperparams = ModelHyperparameters(
+    full_field_list=["age", "income", "education", "category", "id", "target"],
+    cat_field_list=["education", "category"],
+    tab_field_list=["age", "income"],
+    id_name="id",
+    label_name="target",
+    multiclass_categories=["low", "medium", "high"],
+    categorical_features_to_encode=["education"],
+    model_class="neural_network",
+    lr=0.001,
+    batch_size=64,
+    max_epochs=20,
+    optimizer="Adam",
+    class_weights=[1.0, 2.0, 1.5]  # Handle class imbalance
+)
+
+# Access derived properties
+print(f"Input dimension: {hyperparams.input_tab_dim}")  # 2 (age, income)
+print(f"Number of classes: {hyperparams.num_classes}")  # 3 (low, medium, high)
+print(f"Is binary: {hyperparams.is_binary}")  # False
+```
+
+### Hyperparameter Analysis and Debugging
+```python
+# Analyze hyperparameter structure
+def analyze_hyperparams(hyperparams):
+    """Analyze hyperparameter field organization."""
+    categories = hyperparams.categorize_fields()
+    
+    print(f"Hyperparameter Analysis for {hyperparams.__class__.__name__}:")
+    print(f"  Essential fields: {len(categories['essential'])}")
+    print(f"  System fields: {len(categories['system'])}")
+    print(f"  Derived fields: {len(categories['derived'])}")
+    
+    # Show field details
+    for category, fields in categories.items():
+        print(f"\n{category.title()} Fields:")
+        for field in sorted(fields):
+            try:
+                value = getattr(hyperparams, field)
+                if isinstance(value, list) and len(value) > 3:
+                    print(f"  {field}: [{len(value)} items]")
+                else:
+                    print(f"  {field}: {value}")
+            except Exception as e:
+                print(f"  {field}: <Error: {e}>")
+
+# Analyze the hyperparameters
+analyze_hyperparams(hyperparams)
 
 # Print organized view
 hyperparams.print_hyperparam()
 ```
 
-## Design Benefits
-
-### 1. Clear Separation of Concerns
-- **Essential fields**: User must provide
-- **System fields**: Reasonable defaults available
-- **Derived fields**: Computed automatically
-
-### 2. Self-Contained Logic
-- No external dependencies for field derivation
-- Private attributes prevent external modification
-- Public properties provide controlled access
-
-### 3. Inheritance-Friendly
-- Virtual constructor pattern enables easy inheritance
-- Field categorization works across inheritance hierarchy
-- Public field extraction supports composition
-
-### 4. Validation and Type Safety
-- Pydantic validation ensures data integrity
-- Custom validators enforce business rules
-- Type hints provide IDE support
-
-### 5. Serialization Support
-- SageMaker-compatible string serialization
-- Complete configuration export
-- Derived fields included in serialization
-
-## Best Practices
-
-### Field Definition
-
-1. **Essential Fields**: Only include truly required fields
-2. **System Fields**: Provide sensible defaults
-3. **Derived Fields**: Use private attributes with properties
-4. **Validation**: Add custom validators for business rules
-
-### Inheritance
-
-1. **Virtual Constructor**: Always call parent's `from_base_hyperparam`
-2. **Field Categories**: Ensure new fields fit the three-tier model
-3. **Validation**: Add class-specific validation as needed
-
-### Usage
-
-1. **Field Access**: Use properties for derived fields
-2. **Serialization**: Use `serialize_config()` for SageMaker
-3. **Debugging**: Use `print_hyperparam()` for inspection
-4. **Composition**: Use `get_public_init_fields()` for child creation
-
-## Integration Points
-
-### With Configuration Classes
-
-Hyperparameters are typically embedded in configuration classes:
-
+### Hyperparameter Inheritance Pattern
 ```python
-class TrainingConfig(BasePipelineConfig):
-    hyperparameters: ModelHyperparameters = Field(...)
+# Create specialized hyperparameter class
+class DeepLearningHyperparameters(ModelHyperparameters):
+    """Deep learning specific hyperparameters."""
     
-    def get_training_args(self) -> Dict[str, str]:
-        return self.hyperparameters.serialize_config()
+    # Additional deep learning fields
+    hidden_layers: List[int] = Field(default=[128, 64], description="Hidden layer sizes")
+    dropout_rate: float = Field(default=0.2, description="Dropout rate")
+    activation: str = Field(default="relu", description="Activation function")
+    
+    # Override derived field if needed
+    @property
+    def total_parameters(self) -> int:
+        """Estimate total model parameters."""
+        params = self.input_tab_dim * self.hidden_layers[0]
+        for i in range(1, len(self.hidden_layers)):
+            params += self.hidden_layers[i-1] * self.hidden_layers[i]
+        params += self.hidden_layers[-1] * self.num_classes
+        return params
+
+# Create deep learning hyperparams from base
+dl_hyperparams = DeepLearningHyperparameters.from_base_hyperparam(
+    hyperparams,
+    hidden_layers=[256, 128, 64],
+    dropout_rate=0.3,
+    activation="gelu"
+)
+
+print(f"Hidden layers: {dl_hyperparams.hidden_layers}")
+print(f"Estimated parameters: {dl_hyperparams.total_parameters}")
+
+# Verify inheritance
+assert dl_hyperparams.full_field_list == hyperparams.full_field_list
+assert dl_hyperparams.input_tab_dim == hyperparams.input_tab_dim
 ```
 
-### With Step Builders
+### SageMaker Integration
+```python
+# Serialize hyperparameters for SageMaker training job
+serialized_config = hyperparams.serialize_config()
 
-Step builders use hyperparameters for:
-- Environment variable generation
-- Training job configuration
-- Model parameter validation
+print("SageMaker hyperparameters:")
+for key, value in sorted(serialized_config.items()):
+    print(f"  '{key}': '{value}'")
 
-### With Training Scripts
+# Use in SageMaker estimator
+from sagemaker.pytorch import PyTorch
 
-Training scripts receive hyperparameters as:
-- Environment variables (serialized)
-- Command-line arguments
-- Configuration files
+estimator = PyTorch(
+    entry_point="train.py",
+    role="arn:aws:iam::123456789012:role/SageMakerRole",
+    instance_type="ml.m5.large",
+    instance_count=1,
+    framework_version="1.12.0",
+    py_version="py39",
+    hyperparameters=serialized_config
+)
 
-## Error Handling
+# In training script, deserialize hyperparameters
+import json
+import argparse
 
-The class provides comprehensive error handling:
+def parse_hyperparameters():
+    parser = argparse.ArgumentParser()
+    
+    # Add all hyperparameter arguments
+    for key, value in serialized_config.items():
+        parser.add_argument(f"--{key}", type=str, default=value)
+    
+    args = parser.parse_args()
+    
+    # Deserialize complex types
+    hyperparams_dict = {}
+    for key, value in vars(args).items():
+        try:
+            # Try to parse as JSON for lists/dicts/bools
+            hyperparams_dict[key] = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            # Keep as string for simple types
+            hyperparams_dict[key] = value
+    
+    return hyperparams_dict
 
-1. **Validation Errors**: Clear messages for invalid field combinations
-2. **Type Errors**: Pydantic handles type validation
-3. **Business Logic Errors**: Custom validators enforce constraints
-4. **Serialization Errors**: Graceful handling of non-serializable values
+# Recreate hyperparameters in training script
+training_hyperparams = parse_hyperparameters()
+```
 
-## Performance Considerations
+### Validation and Error Handling
+```python
+# Test hyperparameter validation
+try:
+    # Invalid batch size (too large)
+    invalid_hyperparams = ModelHyperparameters(
+        full_field_list=["f1", "f2", "id", "label"],
+        cat_field_list=["f1"],
+        tab_field_list=["f2"],
+        id_name="id",
+        label_name="label",
+        multiclass_categories=["a", "b"],
+        batch_size=500  # Exceeds maximum of 256
+    )
+except ValueError as e:
+    print(f"Validation error: {e}")
 
-1. **Lazy Evaluation**: Derived fields computed on first access
-2. **Caching**: Private attributes cache computed values
-3. **Memory Efficiency**: Only stores essential data
-4. **Serialization**: Efficient string conversion for SageMaker
+try:
+    # Mismatched class weights
+    invalid_hyperparams = ModelHyperparameters(
+        full_field_list=["f1", "f2", "id", "label"],
+        cat_field_list=["f1"],
+        tab_field_list=["f2"],
+        id_name="id",
+        label_name="label",
+        multiclass_categories=["a", "b", "c"],  # 3 classes
+        class_weights=[1.0, 2.0]  # Only 2 weights
+    )
+except ValueError as e:
+    print(f"Class weights validation error: {e}")
+```
 
-This three-tier hyperparameter design provides a robust, extensible foundation for managing model training parameters across the entire cursus framework.
+## Related Documentation
+
+- [Config Base](config_base.md) - Base configuration system with similar three-tier design
+- [Specification Base](specification_base.md) - Step specifications that may reference hyperparameters
+- [Builder Base](builder_base.md) - Step builders that use hyperparameter configurations
+- [Base Enums](enums.md) - Enumerations used in hyperparameter validation
+- [Contract Base](contract_base.md) - Script contracts that may specify hyperparameter requirements

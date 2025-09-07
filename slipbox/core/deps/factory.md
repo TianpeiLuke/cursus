@@ -1,138 +1,98 @@
 ---
 tags:
   - code
-  - core
+  - deps
   - factory
   - component_creation
-  - dependency_management
+  - dependency_injection
 keywords:
-  - factory module
-  - component creation
-  - thread management
-  - context management
-  - pipeline components
-  - dependency resolution
-  - thread safety
+  - create_pipeline_components
+  - dependency_resolution_context
+  - get_thread_components
+  - factory functions
   - component wiring
+  - thread safety
+  - context management
 topics:
-  - component factory
-  - thread management
-  - dependency resolution
-  - pipeline architecture
+  - factory pattern
+  - dependency injection
+  - component management
 language: python
-date of note: 2025-08-12
+date of note: 2024-12-07
 ---
 
-# Factory Module
+# Factory
+
+Factory functions for creating pipeline dependency components with proper wiring and lifecycle management.
 
 ## Overview
-The Factory module provides convenience functions for creating and managing pipeline dependency components. It simplifies the creation and wiring of the core components of the dependency resolution system, ensuring they are properly connected and configured.
 
-## Core Functionality
+The factory module provides convenience functions for instantiating the core components of the dependency resolution system with proper dependency wiring. This module implements the factory pattern to ensure consistent component creation and configuration across the pipeline system.
 
-### Key Features
-- **Component Creation**: Centralized creation of all dependency resolution components
-- **Thread Management**: Thread-local storage for component isolation in multi-threaded environments
-- **Context Management**: Context managers for scoped dependency resolution
-- **Proper Wiring**: Ensures all components are correctly connected to each other
+The factory functions handle the complex wiring between components including semantic matchers, specification registries, registry managers, and dependency resolvers. This approach ensures that all components are properly initialized with their required dependencies and configured for optimal performance.
 
-## Key Functions
+The module supports advanced features including thread-local component instances for multi-threaded environments, scoped dependency resolution contexts with automatic cleanup, centralized component creation with consistent configuration, and proper lifecycle management for resource cleanup.
+
+## Classes and Methods
+
+### Functions
+- [`create_pipeline_components`](#create_pipeline_components) - Create all necessary pipeline components with proper dependencies
+- [`get_thread_components`](#get_thread_components) - Get thread-specific component instances for thread safety
+- [`dependency_resolution_context`](#dependency_resolution_context) - Create scoped dependency resolution context with cleanup
+
+## API Reference
 
 ### create_pipeline_components
-Creates all necessary pipeline components with proper dependencies.
+
+create_pipeline_components(_context_name=None_)
+
+Create all necessary pipeline components with proper dependencies. This function instantiates and wires together all core components of the dependency resolution system including semantic matcher, registry manager, specification registry, and dependency resolver.
+
+**Parameters:**
+- **context_name** (_Optional[str]_) – Optional context name for registry isolation. If None, uses "default" context.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing all created components with keys: "semantic_matcher", "registry_manager", "registry", "resolver".
 
 ```python
-def create_pipeline_components(context_name=None):
-    """
-    Create all necessary pipeline components with proper dependencies.
-    
-    Args:
-        context_name: Optional name for the registry context
-        
-    Returns:
-        Dictionary of components: semantic_matcher, registry_manager, registry, resolver
-    """
+from cursus.core.deps.factory import create_pipeline_components
+
+# Create components with default context
+components = create_pipeline_components()
+resolver = components["resolver"]
+registry = components["registry"]
+
+# Create components with specific context
+components = create_pipeline_components(context_name="experiment-1")
+resolver = components["resolver"]
 ```
 
 ### get_thread_components
-Gets thread-specific component instances, creating them if they don't exist.
+
+get_thread_components()
+
+Get thread-specific component instances. This function returns component instances that are isolated per thread, ensuring thread safety in multi-threaded environments. Components are created lazily on first access per thread.
+
+**Returns:**
+- **Dict[str, Any]** – Dictionary containing thread-local component instances with same structure as create_pipeline_components.
 
 ```python
-def get_thread_components():
-    """
-    Get thread-specific component instances.
-    
-    Returns:
-        Dictionary of thread-local components
-    """
-```
-
-### dependency_resolution_context
-Context manager for creating a scoped dependency resolution context.
-
-```python
-@contextmanager
-def dependency_resolution_context(clear_on_exit=True):
-    """
-    Create a scoped dependency resolution context.
-    
-    Args:
-        clear_on_exit: Whether to clear caches when exiting the context
-        
-    Yields:
-        Dictionary of components
-    """
-```
-
-## Usage Examples
-
-### Basic Component Creation
-```python
-from src.pipeline_deps.factory import create_pipeline_components
-
-# Create all components with default context
-components = create_pipeline_components()
-
-# Access individual components
-semantic_matcher = components["semantic_matcher"]
-registry_manager = components["registry_manager"]
-registry = components["registry"]
-resolver = components["resolver"]
-
-# Use components
-registry.register("data_loading", data_loading_spec)
-dependencies = resolver.resolve_step_dependencies("training", ["data_loading", "training"])
-```
-
-### Named Context Creation
-```python
-from src.pipeline_deps.factory import create_pipeline_components
-
-# Create components with named context
-components = create_pipeline_components("my_pipeline")
-
-# The registry will be scoped to "my_pipeline" context
-registry = components["registry"]
-registry.register("data_loading", data_loading_spec)
-```
-
-### Thread-Local Components
-```python
-from src.pipeline_deps.factory import get_thread_components
 import threading
+from cursus.core.deps.factory import get_thread_components
 
-def worker_function():
-    # Each thread gets its own isolated components
+def process_pipeline_in_thread():
+    # Each thread gets its own component instances
     components = get_thread_components()
-    registry = components["registry"]
+    resolver = components["resolver"]
     
-    # Operations in this thread won't affect other threads
-    registry.register("thread_specific_step", step_spec)
+    # Use resolver safely in this thread
+    resolved = resolver.resolve_all_dependencies(available_steps)
+    return resolved
 
-# Create worker threads
+# Create multiple threads
 threads = []
 for i in range(3):
-    thread = threading.Thread(target=worker_function)
+    thread = threading.Thread(target=process_pipeline_in_thread)
     threads.append(thread)
     thread.start()
 
@@ -140,131 +100,122 @@ for thread in threads:
     thread.join()
 ```
 
-### Using Context Manager
-```python
-from src.pipeline_deps.factory import dependency_resolution_context
+### dependency_resolution_context
 
-def process_pipeline():
-    # Create scoped context with automatic cleanup
-    with dependency_resolution_context() as components:
-        registry = components["registry"]
-        resolver = components["resolver"]
-        
-        # Register specifications
-        registry.register("data_loading", data_loading_spec)
-        registry.register("training", training_spec)
-        
-        # Resolve dependencies
-        dependencies = resolver.resolve_step_dependencies("training", ["data_loading", "training"])
-        
-        # Use dependencies
-        # ...
+dependency_resolution_context(_clear_on_exit=True_)
+
+Create a scoped dependency resolution context. This context manager creates a fresh set of components and ensures proper cleanup when the context exits, preventing resource leaks and ensuring clean state.
+
+**Parameters:**
+- **clear_on_exit** (_bool_) – Whether to clear caches and contexts on exit. Defaults to True.
+
+**Returns:**
+- **ContextManager[Dict[str, Any]]** – Context manager yielding dictionary of components with automatic cleanup.
+
+```python
+from cursus.core.deps.factory import dependency_resolution_context
+
+# Use with automatic cleanup
+with dependency_resolution_context() as components:
+    resolver = components["resolver"]
+    registry = components["registry"]
     
-    # When exiting the context:
-    # - Resolver cache is cleared
-    # - Registry contexts are cleared
-```
+    # Register specifications and resolve dependencies
+    resolver.register_specification("step1", spec1)
+    resolved = resolver.resolve_all_dependencies(["step1", "step2"])
+    
+    # Components are automatically cleaned up on exit
 
-### Context Manager with Cache Preservation
-```python
-from src.pipeline_deps.factory import dependency_resolution_context
-
-# Keep caches when exiting context (useful for reusing results)
+# Use without cleanup (for debugging)
 with dependency_resolution_context(clear_on_exit=False) as components:
-    registry = components["registry"]
     resolver = components["resolver"]
-    
-    # Register and resolve
-    # ...
-
-# Caches are preserved after context exit
+    # Caches and contexts persist after exit
 ```
 
-## Component Relationships
+## Usage Patterns
 
-The factory creates and wires together these components:
-
-1. **SemanticMatcher**: Provides semantic similarity calculation for dependency matching
-2. **RegistryManager**: Manages multiple isolated specification registries
-3. **SpecificationRegistry**: Stores and retrieves step specifications
-4. **UnifiedDependencyResolver**: Resolves dependencies between steps
-
-```
-┌─────────────────┐
-│ RegistryManager │
-└────────┬────────┘
-         │ creates
-         ▼
-┌─────────────────┐     uses     ┌─────────────────┐
-│SpecificationReg.│◄────────────►│DependencyResolver│
-└─────────────────┘              └────────┬─────────┘
-                                         │ uses
-                                         ▼
-                                  ┌─────────────────┐
-                                  │ SemanticMatcher │
-                                  └─────────────────┘
-```
-
-## Thread Safety
-
-The factory provides several features to ensure thread safety:
-
-1. **Thread-local storage**: Component instances are stored in thread-local variables
-2. **Context isolation**: Each thread gets its own isolated set of components
-3. **Explicit context management**: Context managers control component lifecycle
-
-This allows for safe concurrent use in multi-threaded environments like web servers or asynchronous processing systems.
-
-## Integration with Pipeline Builder
-
-The factory is typically used during pipeline initialization:
+### Basic Component Creation
 
 ```python
-from src.pipeline_builder.template import PipelineBuilderTemplate
-from src.pipeline_deps.factory import create_pipeline_components
+from cursus.core.deps.factory import create_pipeline_components
 
-def create_pipeline(pipeline_name: str):
-    # Create dependency resolution components
-    components = create_pipeline_components(pipeline_name)
-    registry = components["registry"]
-    resolver = components["resolver"]
-    
-    # Configure registry
-    registry.register("data_loading", data_loading_spec)
-    registry.register("preprocessing", preprocessing_spec)
-    registry.register("training", training_spec)
-    
-    # Create pipeline template with resolver
-    template = PipelineBuilderTemplate(
-        dag=dag,
-        config_map=config_map,
-        step_builder_map=step_builder_map,
-        registry=registry,
-        dependency_resolver=resolver
-    )
-    
-    # Generate pipeline
-    return template.generate_pipeline(pipeline_name)
+# Create components for single-threaded use
+components = create_pipeline_components()
+resolver = components["resolver"]
+registry_manager = components["registry_manager"]
+
+# Register specifications
+resolver.register_specification("preprocessing", preprocessing_spec)
+resolver.register_specification("training", training_spec)
+
+# Resolve dependencies
+resolved = resolver.resolve_all_dependencies(["preprocessing", "training"])
 ```
 
-## Best Practices
+### Thread-Safe Multi-Threading
 
-### 1. Component Creation
-- Use `create_pipeline_components` for consistent component creation
-- Specify context names for better isolation and debugging
-- Create fresh components for each pipeline to avoid cross-contamination
+```python
+import threading
+from cursus.core.deps.factory import get_thread_components
 
-### 2. Thread Management
-- Use `get_thread_components` in multi-threaded environments
-- Avoid sharing components across threads without proper synchronization
-- Clear thread-local storage when threads are recycled
+def worker_function(step_specs, available_steps):
+    # Each thread gets isolated components
+    components = get_thread_components()
+    resolver = components["resolver"]
+    
+    # Register specifications for this thread
+    for step_name, spec in step_specs.items():
+        resolver.register_specification(step_name, spec)
+    
+    # Resolve dependencies safely
+    return resolver.resolve_all_dependencies(available_steps)
 
-### 3. Context Management
-- Use `dependency_resolution_context` for automatic cleanup
-- Set `clear_on_exit=False` when you need to preserve caches
-- Create short-lived contexts for better resource management
+# Create worker threads
+threads = []
+for i in range(5):
+    thread = threading.Thread(
+        target=worker_function,
+        args=(thread_specs[i], available_steps[i])
+    )
+    threads.append(thread)
+    thread.start()
 
-### 4. Performance Considerations
-- Component creation is lightweight but not free
-- Reuse components when processing multiple related pipelines
-- Clear caches when memory usage becomes a concern
+# Wait for completion
+results = []
+for thread in threads:
+    thread.join()
+```
+
+### Scoped Context Management
+
+```python
+from cursus.core.deps.factory import dependency_resolution_context
+
+def process_pipeline_batch(pipeline_configs):
+    results = []
+    
+    for config in pipeline_configs:
+        # Each pipeline gets fresh components
+        with dependency_resolution_context() as components:
+            resolver = components["resolver"]
+            
+            # Load specifications from config
+            for step_name, spec in config.specifications.items():
+                resolver.register_specification(step_name, spec)
+            
+            # Resolve and store results
+            resolved = resolver.resolve_all_dependencies(config.available_steps)
+            results.append(resolved)
+            
+            # Automatic cleanup ensures no interference between pipelines
+    
+    return results
+```
+
+## Related Documentation
+
+- [Dependency Resolver](dependency_resolver.md) - Core dependency resolution engine created by factory
+- [Registry Manager](registry_manager.md) - Registry management component created by factory
+- [Specification Registry](specification_registry.md) - Specification storage component created by factory
+- [Semantic Matcher](semantic_matcher.md) - Semantic matching component created by factory
+- [Pipeline Assembler](../assembler/pipeline_assembler.md) - Uses factory-created components for pipeline assembly

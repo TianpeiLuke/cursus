@@ -1,460 +1,513 @@
 ---
 tags:
   - code
-  - core
   - base
-  - specifications
-  - dependencies
+  - specification_base
+  - dependency_specs
+  - output_specs
 keywords:
+  - StepSpecification
+  - DependencySpec
+  - OutputSpec
+  - declarative specifications
+  - type-safe dependencies
+  - Pydantic models
+  - specification validation
+topics:
   - step specifications
   - dependency management
-  - output specifications
-  - declarative design
-  - pydantic validation
-topics:
-  - specification-driven architecture
-  - dependency resolution
-  - pipeline validation
+  - declarative configuration
 language: python
-date of note: 2025-08-07
+date of note: 2024-12-07
 ---
 
-# Base Specification Classes
+# Specification Base
+
+Base specifications for declarative dependency management that provide core classes for defining step dependencies and outputs in a declarative, type-safe manner using Pydantic V2 BaseModel.
 
 ## Overview
 
-The `specification_base.py` module provides the core classes for defining step dependencies and outputs in a declarative, type-safe manner using Pydantic V2 BaseModel. This module forms the foundation of the specification-driven architecture for pipeline definition and validation.
+This module provides the foundational specification system for the cursus pipeline framework, enabling declarative definition of step dependencies and outputs with comprehensive validation and type safety. The specification system uses Pydantic V2 models to ensure data integrity and provide rich validation capabilities throughout the pipeline lifecycle.
 
-## Purpose
+The system supports advanced features including type-safe dependency and output specifications with enum validation, comprehensive validation with custom validators and model validators, alias support for flexible output referencing, semantic keyword matching for intelligent dependency resolution, and script contract integration for implementation validation.
 
-This module provides:
-- **Declarative Dependency Management**: Type-safe specification of step dependencies
-- **Output Specifications**: Formal definition of step outputs with property paths
-- **Step Specifications**: Complete specification combining dependencies and outputs
-- **Contract Alignment**: Validation between specifications and script contracts
-- **Node Type Validation**: Enforcement of pipeline structure constraints
+The specification classes provide the foundation for the entire dependency resolution system, enabling intelligent pipeline assembly through declarative configuration rather than imperative wiring.
 
-## Core Classes
+## Classes and Methods
+
+### Classes
+- [`DependencySpec`](#dependencyspec) - Declarative specification for step dependency requirements
+- [`OutputSpec`](#outputspec) - Declarative specification for step outputs
+- [`StepSpecification`](#stepspecification) - Complete specification for step dependencies and outputs
+
+## API Reference
 
 ### DependencySpec
 
-Declarative specification for a step's dependency requirement.
+_class_ cursus.core.base.specification_base.DependencySpec(_logical_name_, _dependency_type_, _required=True_, _compatible_sources=[]_, _semantic_keywords=[]_, _data_type="S3Uri"_, _description=""_)
+
+Declarative specification for a step's dependency requirement. This class defines what a step needs as input, including type information, compatibility constraints, and semantic hints for intelligent resolution.
+
+**Parameters:**
+- **logical_name** (_str_) – How this dependency is referenced within the step. Must be non-empty and follow naming conventions.
+- **dependency_type** (_DependencyType_) – Type of dependency using the standard dependency type enumeration.
+- **required** (_bool_) – Whether this dependency is required for step execution. Defaults to True.
+- **compatible_sources** (_List[str]_) – Compatible step types that can provide this dependency. Defaults to empty list.
+- **semantic_keywords** (_List[str]_) – Keywords for semantic matching during dependency resolution. Defaults to empty list.
+- **data_type** (_str_) – Expected data type of the dependency. Defaults to "S3Uri".
+- **description** (_str_) – Human-readable description of the dependency. Defaults to empty string.
 
 ```python
-class DependencySpec(BaseModel):
-    logical_name: str
-    dependency_type: DependencyType
-    required: bool = True
-    compatible_sources: List[str] = Field(default_factory=list)
-    semantic_keywords: List[str] = Field(default_factory=list)
-    data_type: str = "S3Uri"
-    description: str = ""
-```
+from cursus.core.base.specification_base import DependencySpec
+from cursus.core.base.enums import DependencyType
 
-#### Key Features
-
-- **Logical Naming**: Human-readable names for dependencies
-- **Type Classification**: Uses `DependencyType` enum for categorization
-- **Source Compatibility**: Lists compatible step types that can provide the dependency
-- **Semantic Matching**: Keywords for intelligent dependency resolution
-- **Validation**: Comprehensive field validation with custom validators
-
-#### Usage Examples
-
-```python
-# Training data dependency
-training_dep = DependencySpec(
+# Create training data dependency
+training_data_dep = DependencySpec(
     logical_name="training_data",
     dependency_type=DependencyType.TRAINING_DATA,
     required=True,
-    compatible_sources=["DataLoadingStep", "PreprocessingStep"],
-    semantic_keywords=["data", "dataset", "training"],
+    compatible_sources=["TabularPreprocessing", "DataLoading"],
+    semantic_keywords=["processed", "clean", "transformed"],
     data_type="S3Uri",
-    description="Training dataset for model training"
+    description="Processed training dataset for model training"
 )
 
-# Optional model dependency
-model_dep = DependencySpec(
-    logical_name="pretrained_model",
-    dependency_type=DependencyType.MODEL_ARTIFACTS,
+# Create optional hyperparameter dependency
+hyperparams_dep = DependencySpec(
+    logical_name="hyperparameters",
+    dependency_type=DependencyType.HYPERPARAMETERS,
     required=False,
-    compatible_sources=["TrainingStep", "ModelStep"],
-    semantic_keywords=["model", "artifacts", "pretrained"],
-    description="Optional pretrained model for transfer learning"
+    compatible_sources=["HyperparameterTuning"],
+    semantic_keywords=["config", "params", "tuning"],
+    data_type="String",
+    description="Optional hyperparameter configuration"
 )
+```
+
+#### matches_name_or_alias
+
+matches_name_or_alias(_name_)
+
+Check if the given name matches the logical name or any alias. This method provides consistent interface for name matching across specification types.
+
+**Parameters:**
+- **name** (_str_) – The name to check against the dependency specification.
+
+**Returns:**
+- **bool** – True if the name matches the logical name or any alias.
+
+```python
+# Check name matching
+if training_data_dep.matches_name_or_alias("training_data"):
+    print("Name matches dependency specification")
 ```
 
 ### OutputSpec
 
-Declarative specification for a step's output.
+_class_ cursus.core.base.specification_base.OutputSpec(_logical_name_, _output_type_, _property_path_, _aliases=[]_, _data_type="S3Uri"_, _description=""_)
+
+Declarative specification for a step's output. This class defines what a step produces as output, including property paths for runtime access and aliases for flexible referencing.
+
+**Parameters:**
+- **logical_name** (_str_) – Primary name for this output. Must be non-empty and follow naming conventions.
+- **output_type** (_DependencyType_) – Type of output using the standard dependency type enumeration.
+- **property_path** (_str_) – Runtime SageMaker property path to access this output. Must start with "properties.".
+- **aliases** (_List[str]_) – Alternative names that can be used to reference this output. Defaults to empty list.
+- **data_type** (_str_) – Output data type. Defaults to "S3Uri".
+- **description** (_str_) – Human-readable description of the output. Defaults to empty string.
 
 ```python
-class OutputSpec(BaseModel):
-    logical_name: str
-    aliases: List[str] = Field(default_factory=list)
-    output_type: DependencyType
-    property_path: str
-    data_type: str = "S3Uri"
-    description: str = ""
-```
+from cursus.core.base.specification_base import OutputSpec
+from cursus.core.base.enums import DependencyType
 
-#### Key Features
-
-- **Logical Naming**: Primary name for the output
-- **Alias Support**: Alternative names for flexible referencing
-- **Property Paths**: Runtime SageMaker property paths for accessing outputs
-- **Type Classification**: Uses `DependencyType` enum for output categorization
-- **Validation**: Ensures property paths follow SageMaker conventions
-
-#### Usage Examples
-
-```python
-# Processing output with aliases
-processing_output = OutputSpec(
-    logical_name="processed_data",
-    aliases=["ProcessedData", "DATA"],
-    output_type=DependencyType.PROCESSING_OUTPUT,
-    property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
-    data_type="S3Uri",
-    description="Processed training data output"
-)
-
-# Model artifacts output
+# Create model artifacts output
 model_output = OutputSpec(
     logical_name="model_artifacts",
-    aliases=["ModelArtifacts", "MODEL"],
     output_type=DependencyType.MODEL_ARTIFACTS,
     property_path="properties.ModelArtifacts.S3ModelArtifacts",
+    aliases=["trained_model", "model", "artifacts"],
     data_type="S3Uri",
-    description="Trained model artifacts"
+    description="Trained model artifacts and metadata"
 )
+
+# Create processing output with complex property path
+processed_data_output = OutputSpec(
+    logical_name="processed_data",
+    output_type=DependencyType.PROCESSING_OUTPUT,
+    property_path="properties.ProcessingOutputConfig.Outputs['ProcessedData'].S3Output.S3Uri",
+    aliases=["ProcessedData", "DATA"],
+    data_type="S3Uri",
+    description="Processed training data ready for model training"
+)
+```
+
+#### matches_name_or_alias
+
+matches_name_or_alias(_name_)
+
+Check if the given name matches the logical name or any alias. This method enables flexible output referencing using either the primary name or any defined alias.
+
+**Parameters:**
+- **name** (_str_) – The name to check against the output specification.
+
+**Returns:**
+- **bool** – True if the name matches the logical name or any alias.
+
+```python
+# Check various name matches
+if model_output.matches_name_or_alias("model_artifacts"):
+    print("Matches logical name")
+
+if model_output.matches_name_or_alias("trained_model"):
+    print("Matches alias")
+
+if model_output.matches_name_or_alias("artifacts"):
+    print("Matches another alias")
 ```
 
 ### StepSpecification
 
-Complete specification for a step's dependencies and outputs.
+_class_ cursus.core.base.specification_base.StepSpecification(_step_type_, _node_type_, _dependencies={}_, _outputs={}_, _script_contract=None_)
+
+Complete specification for a step's dependencies and outputs. This class combines dependency and output specifications with step metadata to provide a complete declarative definition of a pipeline step.
+
+**Parameters:**
+- **step_type** (_str_) – Type identifier for this step. Must be non-empty.
+- **node_type** (_NodeType_) – Node type classification for validation using the NodeType enumeration.
+- **dependencies** (_Dict[str, DependencySpec]_) – Dictionary of dependency specifications keyed by logical name. Defaults to empty dict.
+- **outputs** (_Dict[str, OutputSpec]_) – Dictionary of output specifications keyed by logical name. Defaults to empty dict.
+- **script_contract** (_Optional[ScriptContract]_) – Optional script contract for implementation validation. Defaults to None.
 
 ```python
-class StepSpecification(BaseModel):
-    step_type: str
-    node_type: NodeType
-    dependencies: Dict[str, DependencySpec]
-    outputs: Dict[str, OutputSpec]
-    script_contract: Optional[ScriptContract] = None
-```
+from cursus.core.base.specification_base import StepSpecification
+from cursus.core.base.enums import NodeType, DependencyType
 
-#### Key Features
-
-- **Step Classification**: Identifies the step type and node classification
-- **Dependency Management**: Dictionary of all step dependencies
-- **Output Management**: Dictionary of all step outputs
-- **Contract Integration**: Optional script contract for validation
-- **Node Type Validation**: Enforces structural constraints based on node type
-
-#### Node Type Constraints
-
-The specification enforces these constraints based on `NodeType`:
-
-- **SOURCE**: Must have outputs, cannot have dependencies
-- **INTERNAL**: Must have both dependencies and outputs
-- **SINK**: Must have dependencies, cannot have outputs
-- **SINGULAR**: Cannot have dependencies or outputs
-
-#### Usage Examples
-
-```python
-# Data loading step (SOURCE node)
-data_load_spec = StepSpecification(
-    step_type="DataLoadingStep",
-    node_type=NodeType.SOURCE,
-    dependencies={},  # SOURCE nodes have no dependencies
-    outputs={
-        "raw_data": OutputSpec(
+# Create complete step specification
+preprocessing_spec = StepSpecification(
+    step_type="TabularPreprocessing",
+    node_type=NodeType.INTERNAL,
+    dependencies={
+        "raw_data": DependencySpec(
             logical_name="raw_data",
-            output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['raw_data'].S3Output.S3Uri"
-        )
-    }
-)
-
-# Training step (INTERNAL node)
-training_spec = StepSpecification(
-    step_type="TrainingStep",
-    node_type=NodeType.INTERNAL,
-    dependencies={
-        "training_data": DependencySpec(
-            logical_name="training_data",
             dependency_type=DependencyType.TRAINING_DATA,
-            required=True
-        )
-    },
-    outputs={
-        "model_artifacts": OutputSpec(
-            logical_name="model_artifacts",
-            output_type=DependencyType.MODEL_ARTIFACTS,
-            property_path="properties.ModelArtifacts.S3ModelArtifacts"
-        )
-    }
-)
-```
-
-## Validation Framework
-
-### Field Validation
-
-Each class includes comprehensive field validation:
-
-#### DependencySpec Validation
-
-```python
-@field_validator('logical_name')
-@classmethod
-def validate_logical_name(cls, v: str) -> str:
-    """Validate logical name follows naming conventions."""
-    if not v or not v.strip():
-        raise ValueError("logical_name cannot be empty or whitespace")
-    
-    if not v.replace('_', '').replace('-', '').isalnum():
-        raise ValueError("logical_name should contain only alphanumeric characters, underscores, and hyphens")
-    
-    return v.strip()
-```
-
-#### OutputSpec Validation
-
-```python
-@field_validator('property_path')
-@classmethod
-def validate_property_path(cls, v: str) -> str:
-    """Validate property path follows SageMaker conventions."""
-    if not v or not v.strip():
-        raise ValueError("property_path cannot be empty or whitespace")
-    
-    v = v.strip()
-    if not v.startswith('properties.'):
-        raise ValueError("property_path should start with 'properties.'")
-    
-    return v
-```
-
-### Model Validation
-
-#### StepSpecification Validation
-
-```python
-@model_validator(mode='after')
-def validate_node_type_constraints(self) -> 'StepSpecification':
-    """Validate that dependencies and outputs match the node type."""
-    has_deps = len(self.dependencies) > 0
-    has_outputs = len(self.outputs) > 0
-    
-    if self.node_type == NodeType.SOURCE:
-        if has_deps:
-            raise ValueError(f"SOURCE node '{self.step_type}' cannot have dependencies")
-        if not has_outputs:
-            raise ValueError(f"SOURCE node '{self.step_type}' must have outputs")
-    # ... additional node type validations
-    
-    return self
-```
-
-## Contract Alignment
-
-### Alignment Validation
-
-The `validate_contract_alignment()` method ensures specifications align with script contracts:
-
-```python
-def validate_contract_alignment(self) -> ValidationResult:
-    """
-    Validate that script contract aligns with step specification.
-    
-    Validation logic:
-    - Specs can provide more inputs than contracts require (extra dependencies allowed)
-    - Contracts can have fewer outputs than specs provide (aliases allowed)
-    - For every contract input, there must be a matching spec dependency
-    - For every contract output, there must be a matching spec output
-    """
-    if not self.script_contract:
-        return ValidationResult.success("No contract to validate")
-    
-    errors = []
-    
-    # Validate input alignment
-    contract_inputs = set(self.script_contract.expected_input_paths.keys())
-    spec_dependency_names = set(dep.logical_name for dep in self.dependencies.values())
-    
-    missing_spec_dependencies = contract_inputs - spec_dependency_names
-    if missing_spec_dependencies:
-        errors.append(f"Contract inputs missing from specification dependencies: {missing_spec_dependencies}")
-    
-    # Validate output alignment
-    contract_outputs = set(self.script_contract.expected_output_paths.keys())
-    spec_output_names = set(output.logical_name for output in self.outputs.values())
-    
-    missing_spec_outputs = contract_outputs - spec_output_names
-    if missing_spec_outputs:
-        errors.append(f"Contract outputs missing from specification outputs: {missing_spec_outputs}")
-    
-    return ValidationResult(is_valid=len(errors) == 0, errors=errors)
-```
-
-## Query and Access Methods
-
-### Dependency Queries
-
-```python
-def get_dependency(self, logical_name: str) -> Optional[DependencySpec]:
-    """Get dependency specification by logical name."""
-    return self.dependencies.get(logical_name)
-
-def list_required_dependencies(self) -> List[DependencySpec]:
-    """Get list of required dependencies."""
-    return [dep for dep in self.dependencies.values() if dep.required]
-
-def list_dependencies_by_type(self, dependency_type: DependencyType) -> List[DependencySpec]:
-    """Get list of dependencies of a specific type."""
-    return [dep for dep in self.dependencies.values() if dep.dependency_type == dependency_type]
-```
-
-### Output Queries
-
-```python
-def get_output(self, logical_name: str) -> Optional[OutputSpec]:
-    """Get output specification by logical name."""
-    return self.outputs.get(logical_name)
-
-def get_output_by_name_or_alias(self, name: str) -> Optional[OutputSpec]:
-    """Get output specification by logical name or alias."""
-    # First try exact logical name match
-    if name in self.outputs:
-        return self.outputs[name]
-    
-    # Then search through aliases
-    name_lower = name.lower()
-    for output_spec in self.outputs.values():
-        for alias in output_spec.aliases:
-            if alias.lower() == name_lower:
-                return output_spec
-    
-    return None
-
-def list_all_output_names(self) -> List[str]:
-    """Get list of all possible output names (logical names + aliases)."""
-    all_names = []
-    for output_spec in self.outputs.values():
-        all_names.append(output_spec.logical_name)
-        all_names.extend(output_spec.aliases)
-    return all_names
-```
-
-## Design Patterns
-
-### Specification-Driven Development
-
-```python
-# 1. Define the specification
-spec = StepSpecification(
-    step_type="ProcessingStep",
-    node_type=NodeType.INTERNAL,
-    dependencies={
-        "input_data": DependencySpec(
-            logical_name="input_data",
-            dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=True
+            required=True,
+            compatible_sources=["DataLoading"],
+            semantic_keywords=["raw", "input", "source"]
         )
     },
     outputs={
         "processed_data": OutputSpec(
             logical_name="processed_data",
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri"
+            property_path="properties.Outputs['ProcessedData']",
+            aliases=["ProcessedData", "DATA"]
+        )
+    }
+)
+```
+
+#### get_dependency
+
+get_dependency(_logical_name_)
+
+Get dependency specification by logical name. This method retrieves a specific dependency specification from the step.
+
+**Parameters:**
+- **logical_name** (_str_) – Logical name of the dependency to retrieve.
+
+**Returns:**
+- **Optional[DependencySpec]** – Dependency specification if found, None otherwise.
+
+```python
+# Retrieve specific dependency
+raw_data_dep = preprocessing_spec.get_dependency("raw_data")
+if raw_data_dep:
+    print(f"Found dependency: {raw_data_dep.logical_name}")
+```
+
+#### get_output
+
+get_output(_logical_name_)
+
+Get output specification by logical name. This method retrieves a specific output specification from the step.
+
+**Parameters:**
+- **logical_name** (_str_) – Logical name of the output to retrieve.
+
+**Returns:**
+- **Optional[OutputSpec]** – Output specification if found, None otherwise.
+
+```python
+# Retrieve specific output
+processed_output = preprocessing_spec.get_output("processed_data")
+if processed_output:
+    print(f"Found output: {processed_output.logical_name}")
+```
+
+#### get_output_by_name_or_alias
+
+get_output_by_name_or_alias(_name_)
+
+Get output specification by logical name or alias. This method provides flexible output retrieval using either the primary name or any defined alias.
+
+**Parameters:**
+- **name** (_str_) – The logical name or alias to search for.
+
+**Returns:**
+- **Optional[OutputSpec]** – Output specification if found, None otherwise.
+
+```python
+# Retrieve output by various names
+output1 = preprocessing_spec.get_output_by_name_or_alias("processed_data")  # logical name
+output2 = preprocessing_spec.get_output_by_name_or_alias("ProcessedData")   # alias
+output3 = preprocessing_spec.get_output_by_name_or_alias("DATA")            # another alias
+
+assert output1 == output2 == output3  # All return the same output spec
+```
+
+#### list_required_dependencies
+
+list_required_dependencies()
+
+Get list of required dependencies. This method filters dependencies to return only those marked as required.
+
+**Returns:**
+- **List[DependencySpec]** – List of required dependency specifications.
+
+```python
+# Get required dependencies
+required_deps = preprocessing_spec.list_required_dependencies()
+print(f"Required dependencies: {[dep.logical_name for dep in required_deps]}")
+```
+
+#### list_optional_dependencies
+
+list_optional_dependencies()
+
+Get list of optional dependencies. This method filters dependencies to return only those marked as optional.
+
+**Returns:**
+- **List[DependencySpec]** – List of optional dependency specifications.
+
+```python
+# Get optional dependencies
+optional_deps = preprocessing_spec.list_optional_dependencies()
+print(f"Optional dependencies: {[dep.logical_name for dep in optional_deps]}")
+```
+
+#### list_dependencies_by_type
+
+list_dependencies_by_type(_dependency_type_)
+
+Get list of dependencies of a specific type. This method filters dependencies by their dependency type.
+
+**Parameters:**
+- **dependency_type** (_DependencyType_) – Dependency type to filter by.
+
+**Returns:**
+- **List[DependencySpec]** – List of dependency specifications matching the type.
+
+```python
+# Get training data dependencies
+training_deps = preprocessing_spec.list_dependencies_by_type(DependencyType.TRAINING_DATA)
+print(f"Training data dependencies: {[dep.logical_name for dep in training_deps]}")
+```
+
+#### list_outputs_by_type
+
+list_outputs_by_type(_output_type_)
+
+Get list of outputs of a specific type. This method filters outputs by their output type.
+
+**Parameters:**
+- **output_type** (_DependencyType_) – Output type to filter by.
+
+**Returns:**
+- **List[OutputSpec]** – List of output specifications matching the type.
+
+```python
+# Get processing outputs
+processing_outputs = preprocessing_spec.list_outputs_by_type(DependencyType.PROCESSING_OUTPUT)
+print(f"Processing outputs: {[out.logical_name for out in processing_outputs]}")
+```
+
+#### validate_contract_alignment
+
+validate_contract_alignment()
+
+Validate that script contract aligns with step specification. This method checks that the script contract's inputs and outputs are compatible with the step specification.
+
+**Returns:**
+- **ValidationResult** – Result indicating whether the contract aligns with the specification.
+
+```python
+# Validate contract alignment
+validation_result = preprocessing_spec.validate_contract_alignment()
+if validation_result.is_valid:
+    print("Contract aligns with specification")
+else:
+    print(f"Contract validation errors: {validation_result.errors}")
+```
+
+#### validate_script_compliance
+
+validate_script_compliance(_script_path_)
+
+Validate script implementation against contract. This method checks that the actual script implementation complies with the defined contract.
+
+**Parameters:**
+- **script_path** (_str_) – Path to the script file to validate.
+
+**Returns:**
+- **ValidationResult** – Result indicating whether the script complies with the contract.
+
+```python
+# Validate script implementation
+script_validation = preprocessing_spec.validate_script_compliance("preprocessing_script.py")
+if script_validation.is_valid:
+    print("Script complies with contract")
+else:
+    print(f"Script validation errors: {script_validation.errors}")
+```
+
+## Usage Examples
+
+### Complete Step Specification Creation
+```python
+from cursus.core.base.specification_base import StepSpecification, DependencySpec, OutputSpec
+from cursus.core.base.enums import NodeType, DependencyType
+
+# Create training step specification
+training_spec = StepSpecification(
+    step_type="XGBoostTraining",
+    node_type=NodeType.INTERNAL,
+    dependencies={
+        "training_data": DependencySpec(
+            logical_name="training_data",
+            dependency_type=DependencyType.TRAINING_DATA,
+            required=True,
+            compatible_sources=["TabularPreprocessing"],
+            semantic_keywords=["processed", "clean", "features"],
+            data_type="S3Uri",
+            description="Processed training dataset with features"
+        ),
+        "hyperparameters": DependencySpec(
+            logical_name="hyperparameters",
+            dependency_type=DependencyType.HYPERPARAMETERS,
+            required=False,
+            compatible_sources=["HyperparameterTuning"],
+            semantic_keywords=["config", "params", "tuning"],
+            data_type="String",
+            description="XGBoost hyperparameter configuration"
+        )
+    },
+    outputs={
+        "model_artifacts": OutputSpec(
+            logical_name="model_artifacts",
+            output_type=DependencyType.MODEL_ARTIFACTS,
+            property_path="properties.ModelArtifacts.S3ModelArtifacts",
+            aliases=["trained_model", "model", "xgboost_model"],
+            data_type="S3Uri",
+            description="Trained XGBoost model artifacts"
+        ),
+        "training_metrics": OutputSpec(
+            logical_name="training_metrics",
+            output_type=DependencyType.CUSTOM_PROPERTY,
+            property_path="properties.FinalMetricDataList[0].Value",
+            aliases=["metrics", "performance"],
+            data_type="String",
+            description="Training performance metrics"
         )
     }
 )
 
-# 2. Use specification in step builder
-builder = ProcessingStepBuilder(config, spec=spec)
-
-# 3. Validate contract alignment
-if spec.script_contract:
-    result = spec.validate_contract_alignment()
-    if not result.is_valid:
-        raise ValueError(f"Contract alignment errors: {result.errors}")
+print(f"Created specification for {training_spec.step_type}")
+print(f"Dependencies: {len(training_spec.dependencies)}")
+print(f"Outputs: {len(training_spec.outputs)}")
 ```
 
-### Flexible Output Referencing
-
+### Specification Analysis and Validation
 ```python
-# Define output with aliases
-output_spec = OutputSpec(
-    logical_name="model_artifacts",
-    aliases=["ModelArtifacts", "MODEL", "artifacts"],
-    output_type=DependencyType.MODEL_ARTIFACTS,
-    property_path="properties.ModelArtifacts.S3ModelArtifacts"
-)
+# Analyze specification structure
+def analyze_specification(spec):
+    """Analyze a step specification structure."""
+    print(f"Step Type: {spec.step_type}")
+    print(f"Node Type: {spec.node_type.value}")
+    
+    # Analyze dependencies
+    required_deps = spec.list_required_dependencies()
+    optional_deps = spec.list_optional_dependencies()
+    
+    print(f"\nDependencies ({len(spec.dependencies)} total):")
+    print(f"  Required: {[dep.logical_name for dep in required_deps]}")
+    print(f"  Optional: {[dep.logical_name for dep in optional_deps]}")
+    
+    # Analyze outputs
+    print(f"\nOutputs ({len(spec.outputs)} total):")
+    for output in spec.outputs.values():
+        aliases_str = f" (aliases: {output.aliases})" if output.aliases else ""
+        print(f"  {output.logical_name}: {output.output_type.value}{aliases_str}")
+    
+    # Validate node type constraints
+    has_deps = len(spec.dependencies) > 0
+    has_outputs = len(spec.outputs) > 0
+    
+    print(f"\nNode Type Validation:")
+    print(f"  Has dependencies: {has_deps}")
+    print(f"  Has outputs: {has_outputs}")
+    print(f"  Node type constraints satisfied: {validate_node_constraints(spec.node_type, has_deps, has_outputs)}")
 
-# Reference by any name or alias
-spec.get_output_by_name_or_alias("model_artifacts")  # Primary name
-spec.get_output_by_name_or_alias("ModelArtifacts")   # Alias
-spec.get_output_by_name_or_alias("MODEL")            # Alias
+def validate_node_constraints(node_type, has_deps, has_outputs):
+    """Validate node type constraints."""
+    if node_type == NodeType.SOURCE:
+        return not has_deps and has_outputs
+    elif node_type == NodeType.INTERNAL:
+        return has_deps and has_outputs
+    elif node_type == NodeType.SINK:
+        return has_deps and not has_outputs
+    elif node_type == NodeType.SINGULAR:
+        return not has_deps and not has_outputs
+    return False
+
+# Analyze the training specification
+analyze_specification(training_spec)
 ```
 
-## Integration Points
+### Flexible Output Access
+```python
+# Demonstrate flexible output access
+def test_output_access(spec):
+    """Test various ways to access outputs."""
+    
+    # Access by logical name
+    model_output = spec.get_output("model_artifacts")
+    print(f"By logical name: {model_output.logical_name if model_output else 'Not found'}")
+    
+    # Access by alias
+    model_by_alias = spec.get_output_by_name_or_alias("trained_model")
+    print(f"By alias: {model_by_alias.logical_name if model_by_alias else 'Not found'}")
+    
+    # List all possible names
+    all_names = []
+    for output in spec.outputs.values():
+        all_names.append(output.logical_name)
+        all_names.extend(output.aliases)
+    
+    print(f"All possible output names: {all_names}")
+    
+    # Test name matching
+    test_names = ["model_artifacts", "trained_model", "xgboost_model", "nonexistent"]
+    for name in test_names:
+        found = spec.get_output_by_name_or_alias(name) is not None
+        print(f"  '{name}': {'Found' if found else 'Not found'}")
 
-### With Step Builders
+test_output_access(training_spec)
+```
 
-Step builders use specifications for:
-- Dependency validation
-- Output property path resolution
-- Contract alignment verification
-- Type-safe step construction
+## Related Documentation
 
-### With Dependency Resolution
-
-Dependency resolvers use specifications for:
-- Semantic matching via keywords
-- Type compatibility checking
-- Source compatibility validation
-- Automatic dependency resolution
-
-### With Pipeline Validation
-
-Pipeline validators use specifications for:
-- Node type constraint enforcement
-- Dependency graph validation
-- Output-input compatibility checking
-- Contract compliance verification
-
-## Best Practices
-
-### Specification Design
-
-1. **Logical Names**: Use descriptive, consistent naming
-2. **Type Classification**: Choose appropriate `DependencyType` values
-3. **Property Paths**: Use correct SageMaker property path syntax
-4. **Documentation**: Provide clear descriptions for all specifications
-
-### Dependency Management
-
-1. **Required vs Optional**: Carefully consider which dependencies are required
-2. **Semantic Keywords**: Use relevant keywords for automatic resolution
-3. **Compatible Sources**: List all step types that can provide the dependency
-4. **Type Safety**: Use appropriate data types
-
-### Output Management
-
-1. **Aliases**: Provide useful aliases for flexible referencing
-2. **Property Paths**: Ensure paths match actual SageMaker step properties
-3. **Type Consistency**: Use consistent output types across related steps
-
-## Error Handling
-
-The module provides comprehensive error handling:
-
-1. **Validation Errors**: Clear messages for invalid specifications
-2. **Node Type Violations**: Specific errors for node type constraint violations
-3. **Contract Misalignment**: Detailed errors for contract-specification mismatches
-4. **Property Path Errors**: Validation of SageMaker property path syntax
-
-This specification system provides a robust foundation for declarative, type-safe pipeline definition with comprehensive validation and flexible dependency management.
+- [Base Enums](enums.md) - Dependency and node type enumerations used by specifications
+- [Config Base](config_base.md) - Configuration classes that work with specifications
+- [Builder Base](builder_base.md) - Step builders that implement specifications
+- [Contract Base](contract_base.md) - Script contracts for implementation validation
+- [Dependency Resolver](../deps/dependency_resolver.md) - Uses specifications for intelligent dependency resolution

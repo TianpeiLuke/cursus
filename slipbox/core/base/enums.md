@@ -1,240 +1,213 @@
 ---
 tags:
   - code
-  - core
   - base
   - enums
-  - type_definitions
+  - dependency_types
+  - node_types
 keywords:
-  - enumeration
+  - DependencyType
+  - NodeType
+  - pipeline enums
+  - dependency classification
+  - node classification
+  - enum types
+topics:
+  - base enums
   - dependency types
   - node types
-  - pipeline classification
-  - type safety
-topics:
-  - type system
-  - pipeline architecture
-  - dependency management
 language: python
-date of note: 2025-08-07
+date of note: 2024-12-07
 ---
 
-# Core Base Enumerations
+# Base Enums
+
+Shared enums for the cursus core base classes that provide standardized type definitions for dependencies and nodes across the pipeline system.
 
 ## Overview
 
-The `enums.py` module defines shared enumeration types used across multiple base classes in the cursus framework. These enums provide type safety and avoid circular imports by serving as a single source of truth for common type definitions.
+This module contains enums that are used across multiple base classes to avoid circular imports and provide a single source of truth for type definitions. These enums establish the fundamental classification systems for pipeline components, enabling consistent type checking and dependency resolution throughout the system.
 
-## Purpose
+The enums support advanced features including value-based equality comparison for consistent behavior across different instances, hash functionality for use as dictionary keys and set members, comprehensive type coverage for all pipeline dependency patterns, and integration with the dependency resolution system for intelligent matching.
 
-This module contains enums that are used across multiple base classes to:
-- Classify different types of dependencies in the pipeline
-- Categorize nodes based on their input/output characteristics
-- Provide consistent type definitions without circular dependencies
-- Enable type-safe operations and comparisons
+## Classes and Methods
 
-## Enumerations
+### Enums
+- [`DependencyType`](#dependencytype) - Types of dependencies in the pipeline system
+- [`NodeType`](#nodetype) - Types of nodes based on dependency/output characteristics
+
+## API Reference
 
 ### DependencyType
 
-Defines the types of dependencies that can exist in the pipeline.
+_enum_ cursus.core.base.enums.DependencyType
 
-```python
-class DependencyType(Enum):
-    MODEL_ARTIFACTS = "model_artifacts"
-    PROCESSING_OUTPUT = "processing_output"
-    TRAINING_DATA = "training_data"
-    HYPERPARAMETERS = "hyperparameters"
-    PAYLOAD_SAMPLES = "payload_samples"
-    CUSTOM_PROPERTY = "custom_property"
-```
+Types of dependencies in the pipeline. This enum defines the standard dependency types used throughout the pipeline system for classification and compatibility checking.
 
-#### Values
-
-- **MODEL_ARTIFACTS**: Model artifacts produced by training steps
-- **PROCESSING_OUTPUT**: Output from data processing steps
-- **TRAINING_DATA**: Training datasets for model training
-- **HYPERPARAMETERS**: Model hyperparameters and configuration
-- **PAYLOAD_SAMPLES**: Sample payloads for testing and validation
-- **CUSTOM_PROPERTY**: Custom properties defined by specific steps
-
-#### Usage Examples
+**Values:**
+- **MODEL_ARTIFACTS** – Model artifacts produced by training steps, typically containing trained model files and metadata.
+- **PROCESSING_OUTPUT** – Output from processing steps, including transformed data, feature engineering results, and preprocessed datasets.
+- **TRAINING_DATA** – Training datasets used by training steps, including processed and raw training data.
+- **HYPERPARAMETERS** – Hyperparameter configurations and tuning results used for model training and optimization.
+- **PAYLOAD_SAMPLES** – Sample payloads used for testing, validation, and inference endpoint configuration.
+- **CUSTOM_PROPERTY** – Custom properties and metadata that don't fit standard categories.
 
 ```python
 from cursus.core.base.enums import DependencyType
 
-# Creating dependency specifications
-training_dep = DependencySpec(
-    logical_name="training_data",
-    dependency_type=DependencyType.TRAINING_DATA,
-    required=True
-)
+# Use dependency types in specifications
+model_dep_type = DependencyType.MODEL_ARTIFACTS
+data_dep_type = DependencyType.TRAINING_DATA
+config_dep_type = DependencyType.HYPERPARAMETERS
 
-# Type checking
-if dep.dependency_type == DependencyType.MODEL_ARTIFACTS:
-    handle_model_artifacts(dep)
+# Compare dependency types
+if dep_type == DependencyType.MODEL_ARTIFACTS:
+    print("This is a model artifact dependency")
+
+# Use as dictionary keys
+dependency_handlers = {
+    DependencyType.MODEL_ARTIFACTS: handle_model_artifacts,
+    DependencyType.TRAINING_DATA: handle_training_data,
+    DependencyType.HYPERPARAMETERS: handle_hyperparameters
+}
 ```
 
 ### NodeType
 
-Classifies nodes in the pipeline based on their dependency and output characteristics.
+_enum_ cursus.core.base.enums.NodeType
 
-```python
-class NodeType(Enum):
-    SOURCE = "source"      # No dependencies, has outputs
-    INTERNAL = "internal"  # Has both dependencies and outputs
-    SINK = "sink"         # Has dependencies, no outputs
-    SINGULAR = "singular" # No dependencies, no outputs
-```
+Types of nodes in the pipeline based on their dependency/output characteristics. This enum classifies pipeline nodes according to their input/output patterns, enabling proper DAG construction and validation.
 
-#### Values
-
-- **SOURCE**: Nodes that produce outputs but have no dependencies (e.g., data loading steps)
-- **INTERNAL**: Nodes that consume inputs and produce outputs (e.g., processing, training steps)
-- **SINK**: Nodes that consume inputs but produce no outputs (e.g., model registration)
-- **SINGULAR**: Standalone nodes with no inputs or outputs (e.g., cleanup operations)
-
-#### Usage Examples
+**Values:**
+- **SOURCE** – No dependencies, has outputs. Examples include data loading steps, parameter initialization, and external data ingestion.
+- **INTERNAL** – Has both dependencies and outputs. Examples include processing steps, training steps, and transformation operations.
+- **SINK** – Has dependencies, no outputs. Examples include model registration, result publishing, and final output steps.
+- **SINGULAR** – No dependencies, no outputs. Examples include standalone operations, cleanup tasks, and independent utilities.
 
 ```python
 from cursus.core.base.enums import NodeType
 
-# Defining step specifications
-data_load_spec = StepSpecification(
-    step_type="DataLoadingStep",
-    node_type=NodeType.SOURCE,
-    outputs={"data": output_spec}
-)
+# Classify nodes by their characteristics
+data_loader_type = NodeType.SOURCE      # Loads data, no dependencies
+preprocessing_type = NodeType.INTERNAL  # Processes data, depends on loader
+training_type = NodeType.INTERNAL       # Trains model, depends on preprocessing
+registration_type = NodeType.SINK       # Registers model, depends on training
 
-training_spec = StepSpecification(
-    step_type="TrainingStep", 
-    node_type=NodeType.INTERNAL,
-    dependencies={"data": dep_spec},
-    outputs={"model": model_spec}
-)
+# Use in DAG validation
+def validate_node_connections(node_type, has_dependencies, has_outputs):
+    if node_type == NodeType.SOURCE:
+        return not has_dependencies and has_outputs
+    elif node_type == NodeType.INTERNAL:
+        return has_dependencies and has_outputs
+    elif node_type == NodeType.SINK:
+        return has_dependencies and not has_outputs
+    elif node_type == NodeType.SINGULAR:
+        return not has_dependencies and not has_outputs
 ```
 
-## Implementation Details
+## Usage Examples
 
-### Custom Equality and Hashing
-
-Both enums implement custom `__eq__` and `__hash__` methods to ensure proper behavior:
-
+### Dependency Type Classification
 ```python
-def __eq__(self, other):
-    """Compare enum instances by value."""
-    if isinstance(other, DependencyType):  # or NodeType
-        return self.value == other.value
-    return super().__eq__(other)
+from cursus.core.base.enums import DependencyType
+
+# Define dependency types for different pipeline components
+def classify_dependency(dependency_name, data_source):
+    """Classify a dependency based on its characteristics."""
+    if "model" in dependency_name.lower():
+        return DependencyType.MODEL_ARTIFACTS
+    elif "data" in dependency_name.lower() or "dataset" in dependency_name.lower():
+        return DependencyType.TRAINING_DATA
+    elif "config" in dependency_name.lower() or "param" in dependency_name.lower():
+        return DependencyType.HYPERPARAMETERS
+    elif "sample" in dependency_name.lower() or "payload" in dependency_name.lower():
+        return DependencyType.PAYLOAD_SAMPLES
+    elif "output" in dependency_name.lower() or "result" in dependency_name.lower():
+        return DependencyType.PROCESSING_OUTPUT
+    else:
+        return DependencyType.CUSTOM_PROPERTY
+
+# Example usage
+dep_type = classify_dependency("training_data_processed", "s3://bucket/data/")
+print(f"Classified as: {dep_type.value}")
+```
+
+### Node Type Analysis
+```python
+from cursus.core.base.enums import NodeType
+
+# Analyze pipeline structure using node types
+def analyze_pipeline_structure(nodes_with_types):
+    """Analyze pipeline structure based on node types."""
+    type_counts = {node_type: 0 for node_type in NodeType}
     
-def __hash__(self):
-    """Ensure hashability is maintained when used as dictionary keys."""
-    return hash(self.value)
+    for node_name, node_type in nodes_with_types.items():
+        type_counts[node_type] += 1
+    
+    print("Pipeline Structure Analysis:")
+    print(f"  Source nodes: {type_counts[NodeType.SOURCE]}")
+    print(f"  Internal nodes: {type_counts[NodeType.INTERNAL]}")
+    print(f"  Sink nodes: {type_counts[NodeType.SINK]}")
+    print(f"  Singular nodes: {type_counts[NodeType.SINGULAR]}")
+    
+    # Validate pipeline structure
+    if type_counts[NodeType.SOURCE] == 0:
+        print("Warning: No source nodes found - pipeline may lack data inputs")
+    if type_counts[NodeType.SINK] == 0:
+        print("Warning: No sink nodes found - pipeline may not produce final outputs")
+
+# Example pipeline analysis
+pipeline_nodes = {
+    "data_loader": NodeType.SOURCE,
+    "preprocessing": NodeType.INTERNAL,
+    "training": NodeType.INTERNAL,
+    "evaluation": NodeType.INTERNAL,
+    "model_registration": NodeType.SINK
+}
+
+analyze_pipeline_structure(pipeline_nodes)
 ```
 
-#### Benefits
-
-1. **Value-based Comparison**: Enums compare by their string values, not object identity
-2. **Dictionary Keys**: Can be safely used as dictionary keys
-3. **Serialization**: Consistent behavior when serializing/deserializing
-4. **Cross-instance Equality**: Enum instances from different contexts compare correctly
-
-### Design Rationale
-
-#### Why Separate Enums Module?
-
-1. **Circular Import Prevention**: Enums have no dependencies and can be imported anywhere
-2. **Single Source of Truth**: All type definitions in one place
-3. **Reusability**: Can be used across multiple modules without coupling
-4. **Type Safety**: Provides compile-time type checking
-
-#### Value Choices
-
-- **String Values**: Human-readable and serialization-friendly
-- **Snake Case**: Consistent with Python naming conventions
-- **Descriptive Names**: Clear meaning without additional documentation
-
-## Usage Patterns
-
-### In Specifications
-
+### Enum Comparison and Hashing
 ```python
-# Dependency specification
-dep_spec = DependencySpec(
-    logical_name="model_input",
-    dependency_type=DependencyType.MODEL_ARTIFACTS,
-    required=True
-)
+from cursus.core.base.enums import DependencyType, NodeType
 
-# Output specification  
-output_spec = OutputSpec(
-    logical_name="processed_data",
-    output_type=DependencyType.PROCESSING_OUTPUT,
-    property_path="properties.ProcessingOutputConfig.Outputs['data'].S3Output.S3Uri"
-)
+# Demonstrate enum equality and hashing
+def test_enum_behavior():
+    """Test enum equality and hashing behavior."""
+    
+    # Value-based equality
+    dep1 = DependencyType.MODEL_ARTIFACTS
+    dep2 = DependencyType.MODEL_ARTIFACTS
+    assert dep1 == dep2  # True - same value
+    
+    # Use as dictionary keys
+    dependency_config = {
+        DependencyType.MODEL_ARTIFACTS: {"s3_prefix": "models/"},
+        DependencyType.TRAINING_DATA: {"s3_prefix": "data/"},
+        DependencyType.HYPERPARAMETERS: {"s3_prefix": "configs/"}
+    }
+    
+    # Access using enum instances
+    model_config = dependency_config[DependencyType.MODEL_ARTIFACTS]
+    print(f"Model config: {model_config}")
+    
+    # Use in sets
+    required_types = {
+        DependencyType.TRAINING_DATA,
+        DependencyType.HYPERPARAMETERS
+    }
+    
+    if DependencyType.TRAINING_DATA in required_types:
+        print("Training data is required")
+
+test_enum_behavior()
 ```
 
-### In Step Classification
+## Related Documentation
 
-```python
-# Validate node type constraints
-if spec.node_type == NodeType.SOURCE:
-    if spec.dependencies:
-        raise ValueError("SOURCE nodes cannot have dependencies")
-    if not spec.outputs:
-        raise ValueError("SOURCE nodes must have outputs")
-```
-
-### In Dependency Resolution
-
-```python
-# Filter dependencies by type
-model_deps = [
-    dep for dep in dependencies 
-    if dep.dependency_type == DependencyType.MODEL_ARTIFACTS
-]
-
-# Route based on node type
-if step.node_type == NodeType.SINK:
-    # Final step in pipeline
-    finalize_pipeline(step)
-```
-
-## Validation and Constraints
-
-### DependencyType Validation
-
-The enum values are used to validate:
-- Compatibility between step outputs and dependencies
-- Proper data flow through the pipeline
-- Semantic matching during dependency resolution
-
-### NodeType Validation
-
-Node types enforce structural constraints:
-- **SOURCE**: Must have outputs, cannot have dependencies
-- **INTERNAL**: Must have both dependencies and outputs  
-- **SINK**: Must have dependencies, cannot have outputs
-- **SINGULAR**: Cannot have dependencies or outputs
-
-## Extension Guidelines
-
-When adding new enum values:
-
-1. **Naming**: Use descriptive, snake_case names
-2. **Values**: Use string values matching the name in snake_case
-3. **Documentation**: Add clear descriptions and usage examples
-4. **Validation**: Update validation logic in dependent classes
-5. **Backward Compatibility**: Consider impact on existing code
-
-## Integration Points
-
-These enums are used throughout the framework:
-
-- **Specifications**: Define dependency and output types
-- **Validation**: Enforce pipeline structure constraints
-- **Resolution**: Match dependencies to outputs
-- **Serialization**: Convert to/from JSON and YAML
-- **Documentation**: Generate pipeline diagrams and documentation
-
-The enums serve as the foundation for type-safe pipeline definition and validation across the entire cursus framework.
+- [Specification Base](specification_base.md) - Uses these enums for dependency and output specifications
+- [Config Base](config_base.md) - Base configuration classes that reference these enum types
+- [Builder Base](builder_base.md) - Step builders that work with these dependency types
+- [Dependency Resolver](../deps/dependency_resolver.md) - Uses these enums for compatibility checking
+- [Contract Base](contract_base.md) - Contract specifications that utilize these enum classifications
