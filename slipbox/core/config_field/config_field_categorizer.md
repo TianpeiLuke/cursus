@@ -2,25 +2,21 @@
 tags:
   - code
   - core
-  - config_field_categorizer
+  - config_fields
+  - field_categorizer
   - field_analysis
-  - rule_based_categorization
 keywords:
   - configuration field categorizer
   - field analysis
   - rule-based categorization
   - shared vs specific
   - special field detection
-  - static field analysis
-  - cross-type identification
-  - declarative rules
 topics:
   - configuration field categorization
   - field analysis algorithms
   - rule-based classification
-  - configuration management
 language: python
-date of note: 2025-08-12
+date of note: 2025-09-07
 ---
 
 # Configuration Field Categorizer
@@ -465,6 +461,6 @@ serialized = serialize_config(config)
 ## Related Documentation
 
 - [Configuration Merger](config_merger.md): Uses categorization results for merging
-- [Configuration Constants](config_constants.md): Defines categorization rules and patterns
+- [Configuration Constants](../config_fields/constants.md): Defines categorization rules and patterns
 - [Type-Aware Configuration Serializer](type_aware_config_serializer.md): Handles serialization
 - [Configuration Fields Overview](README.md): System overview and integration

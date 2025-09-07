@@ -1,19 +1,22 @@
 ---
 tags:
   - code
-  - pipeline_api
+  - core
+  - compiler
   - naming_convention
   - pipeline_generation
 keywords:
-  - name generator
-  - pipeline
-  - naming convention
-  - versioning
+  - pipeline name generator
+  - naming conventions
+  - SageMaker compliance
+  - version normalization
+  - name sanitization
 topics:
-  - pipeline API
   - pipeline naming
+  - name generation
+  - SageMaker integration
 language: python
-date of note: 2025-07-31
+date of note: 2025-08-07
 ---
 
 # Pipeline Name Generator

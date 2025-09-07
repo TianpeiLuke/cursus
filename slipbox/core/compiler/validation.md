@@ -1,19 +1,22 @@
 ---
 tags:
   - code
-  - pipeline_api
+  - core
+  - compiler
   - validation
   - quality_assurance
 keywords:
-  - validation
-  - compatibility
-  - pipeline
-  - DAG
-topics:
-  - pipeline API
   - validation engine
+  - pipeline validation
+  - compatibility checking
+  - DAG validation
+  - configuration validation
+topics:
+  - validation framework
+  - quality assurance
+  - pipeline compatibility
 language: python
-date of note: 2025-07-31
+date of note: 2025-08-07
 ---
 
 # Validation Engine

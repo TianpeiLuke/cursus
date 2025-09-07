@@ -1,19 +1,22 @@
 ---
 tags:
   - code
-  - pipeline_api
+  - core
+  - compiler
   - error_handling
   - exceptions
 keywords:
-  - exceptions
+  - custom exceptions
   - error handling
-  - pipeline API
-  - validation
+  - pipeline validation
+  - exception hierarchy
+  - error diagnostics
 topics:
-  - pipeline API
   - error handling
+  - exception management
+  - pipeline validation
 language: python
-date of note: 2025-07-31
+date of note: 2025-08-07
 ---
 
 # Pipeline API Exceptions

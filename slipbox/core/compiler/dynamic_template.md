@@ -1,20 +1,22 @@
 ---
 tags:
   - code
-  - pipeline_api
+  - core
+  - compiler
   - template
   - dynamic_generation
 keywords:
-  - template
-  - dynamic
-  - pipeline
-  - DAG
-  - adapter
+  - dynamic template
+  - pipeline template
+  - DAG adaptation
+  - template generation
+  - pipeline assembly
 topics:
-  - pipeline API
   - dynamic templates
+  - pipeline generation
+  - template adaptation
 language: python
-date of note: 2025-07-31
+date of note: 2025-08-07
 ---
 
 # Dynamic Pipeline Template

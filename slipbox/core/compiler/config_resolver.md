@@ -1,20 +1,22 @@
 ---
 tags:
   - code
-  - pipeline_api
+  - core
+  - compiler
   - config_resolution
   - matching_engine
-keywords: 
-  - configuration
-  - resolver
-  - matching
-  - DAG
-  - pipeline
-topics: 
-  - pipeline API
+keywords:
+  - configuration resolver
+  - step matching
+  - DAG resolution
+  - pipeline compilation
+  - semantic matching
+topics:
   - configuration resolution
+  - step compilation
+  - pipeline assembly
 language: python
-date of note: 2025-07-31
+date of note: 2025-08-07
 ---
 
 # Config Resolver

@@ -1,20 +1,22 @@
 ---
 tags:
   - code
-  - pipeline_api
+  - core
+  - compiler
   - dag_compiler
   - pipeline_generation
 keywords:
-  - DAG
-  - compiler
-  - pipeline
-  - SageMaker
-  - conversion
+  - DAG compiler
+  - pipeline compilation
+  - SageMaker pipeline
+  - DAG conversion
+  - pipeline generation
 topics:
-  - pipeline API
   - DAG compilation
+  - pipeline assembly
+  - SageMaker integration
 language: python
-date of note: 2025-07-31
+date of note: 2025-08-07
 ---
 
 # DAG Compiler
