@@ -67,16 +67,75 @@ src/cursus/
 ├── __init__.py              # Main API exports with examples
 ├── api/                     # Public API interfaces
 │   └── dag/                 # DAG manipulation classes
+│       ├── base_dag.py      # Core PipelineDAG implementation
+│       ├── edge_types.py    # Edge types and dependency management
+│       ├── enhanced_dag.py  # Enhanced DAG with port-based dependencies
+│       ├── pipeline_dag_resolver.py # DAG resolution and execution planning
+│       └── workspace_dag.py # Workspace-aware DAG for collaboration
 ├── core/                    # Core framework components
 │   ├── base/                # Base classes and contracts
+│   ├── assembler/           # Pipeline assembly components
 │   ├── compiler/            # Pipeline compilation logic
-│   └── config_fields/       # Configuration management
+│   ├── config_fields/       # Configuration management
+│   └── deps/                # Dependency resolution system
 ├── cli/                     # Command-line interface
+│   ├── __main__.py          # CLI entry point
+│   ├── alignment_cli.py     # Alignment validation CLI
+│   ├── builder_test_cli.py  # Builder testing CLI
+│   ├── catalog_cli.py       # Catalog management CLI
+│   ├── registry_cli.py      # Registry management CLI
+│   ├── runtime_testing_cli.py # Runtime testing CLI
+│   ├── validation_cli.py    # Validation CLI
+│   └── workspace_cli.py     # Workspace management CLI
 ├── steps/                   # Pipeline step implementations
+│   ├── builders/            # Step builder classes
+│   ├── configs/             # Step configuration classes
+│   ├── contracts/           # Step validation contracts
+│   ├── hyperparams/         # Hyperparameter definitions
+│   ├── scripts/             # Step implementation scripts
+│   └── specs/               # Step specifications
 ├── processing/              # Data processing components
 ├── registry/                # Component registries
-└── validation/              # Validation frameworks
+│   ├── builder_registry.py  # Step builder registry
+│   ├── hyperparameter_registry.py # Hyperparameter registry
+│   └── hybrid/              # Hybrid registry implementation
+├── validation/              # Validation frameworks
+│   ├── alignment/           # Contract-specification alignment
+│   ├── builders/            # Builder validation
+│   ├── interface/           # Interface validation
+│   ├── naming/              # Naming validation
+│   ├── runtime/             # Runtime validation
+│   └── shared/              # Shared validation utilities
+├── pipeline_catalog/        # Zettelkasten-inspired pipeline organization
+│   ├── utils.py             # Main PipelineCatalogManager
+│   ├── pipelines/           # Standard atomic pipelines
+│   ├── mods_pipelines/      # MODS-compatible pipelines
+│   ├── shared_dags/         # Shared DAG components
+│   └── utils/               # Specialized catalog utilities
+│       ├── catalog_registry.py
+│       ├── connection_traverser.py
+│       ├── tag_discovery.py
+│       ├── recommendation_engine.py
+│       └── registry_validator.py
+├── workspace/               # Workspace management
+│   ├── api.py               # WorkspaceAPI for unified operations
+│   ├── templates.py         # Workspace template system
+│   ├── utils.py             # Workspace utilities
+│   ├── core/                # Core workspace components
+│   ├── quality/             # Quality assurance
+│   └── validation/          # Workspace validation
+└── mods/                    # MODS-specific implementations
+    └── compiler/            # MODS compiler components
 ```
+
+**Key Discoveries from Implementation:**
+
+1. **Pipeline Catalog Structure**: Uses Zettelkasten principles with flat organization and connection-based discovery
+2. **CLI Architecture**: Comprehensive command-line interface with unified dispatcher pattern
+3. **Workspace System**: Full workspace management with templates, isolation, and collaboration features
+4. **API Module**: Rich DAG manipulation with multiple DAG types (base, enhanced, workspace-aware)
+5. **Validation Framework**: Extensive validation system with alignment testing across four levels
+6. **Registry System**: Hybrid registry implementation with builder and hyperparameter registries
 
 ## Design Goals
 
