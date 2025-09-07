@@ -363,8 +363,24 @@ class MyPipelineTemplate(PipelineTemplateBase):
 
 ## Related Documentation
 
-- [Pipeline Template Base](pipeline_template_base.md)
-- [Pipeline DAG](../pipeline_dag/pipeline_dag.md)
-- [Pipeline Deps: Dependency Resolver](../pipeline_deps/dependency_resolver.md)
-- [Pipeline Deps: Specification Registry](../pipeline_deps/specification_registry.md)
-- [Pipeline Steps: Builder Base](../pipeline_steps/README.md)
+### Core Dependencies
+- [Pipeline Template Base](pipeline_template_base.md): Base class for pipeline templates that use the assembler
+- [Step Builder Base](../base/builder_base.md): Base class for all step builders used by the assembler
+- [Configuration Base](../base/config_base.md): Base configuration class with three-tier field organization
+
+### Specification System
+- [Specification Base](../base/specification_base.md): Base classes for step specifications and dependency management
+- [Base Enums](../base/enums.md): Core enumerations for dependency types and node classifications
+
+### Compiler Integration
+- [DAG Compiler](../compiler/dag_compiler.md): Compiles DAG structures into executable pipelines
+- [Dynamic Template](../compiler/dynamic_template.md): Dynamic pipeline template implementation
+- [Config Resolver](../compiler/config_resolver.md): Intelligent matching engine for DAG nodes to configurations
+
+### Configuration Management
+- [Configuration Field Categorizer](../config_field/config_field_categorizer.md): Analyzes and categorizes configuration fields
+- [Configuration Merger](../config_field/config_merger.md): Combines multiple configuration objects
+
+### System Overview
+- [Assembler Overview](README.md): Pipeline assembly system documentation
+- [Base Classes Overview](../base/README.md): Core base classes documentation
