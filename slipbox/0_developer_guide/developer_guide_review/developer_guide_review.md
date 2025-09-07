@@ -34,6 +34,7 @@ The guide is organized into the following primary sections:
    - [`best_practices.md`](../developer_guide/best_practices.md)  
    - [`common_pitfalls.md`](../developer_guide/common_pitfalls.md)  
    - [`validation_checklist.md`](../developer_guide/validation_checklist.md)  
+   - [`validation_framework_guide.md`](../developer_guide/validation_framework_guide.md)  
 
 5. **Examples**  
    - [`example.md`](../developer_guide/example.md)  
@@ -79,6 +80,9 @@ The guide is organized into the following primary sections:
 6. **Incorporate Standardization Rules**  
    - ✅ *Done - Created standardization_rules.md to enforce universal patterns*
 
+7. **Enhanced Validation Framework**  
+   - ✅ *Done - Added comprehensive validation_framework_guide.md covering three-level validation: Unified Alignment Tester, Universal Step Builder Test, and Script Runtime Testing*
+
 ---
 
 ## Links to Developer Guide Documents
@@ -96,5 +100,6 @@ The guide is organized into the following primary sections:
 - [Standardization Rules](../developer_guide/standardization_rules.md)  
 - [Common Pitfalls](../developer_guide/common_pitfalls.md)  
 - [Validation Checklist](../developer_guide/validation_checklist.md)  
+- [Validation Framework Guide](../developer_guide/validation_framework_guide.md)  
 - [Alignment Rules](../developer_guide/alignment_rules.md)  
 - [Example Implementation](../developer_guide/example.md)

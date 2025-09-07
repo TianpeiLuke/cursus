@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def get_script_contract():
     """Get the contract for this script."""
-    from ..pipeline_script_contracts.your_script_contract import YOUR_SCRIPT_CONTRACT
+    from ..contracts.your_script_contract import YOUR_SCRIPT_CONTRACT
     return YOUR_SCRIPT_CONTRACT
 
 def read_input_data(input_path: str) -> pd.DataFrame:
@@ -276,58 +276,79 @@ Example of a well-specified output:
 4. **Parameter Documentation**: Document all parameters
 5. **Consistent Parameter Names**: Use consistent parameter naming patterns
 
-Example of good configuration handling:
+Example of good configuration handling using Pydantic BaseModel:
 
 ```python
-def __init__(
-    self,
-    region: str,
-    pipeline_s3_loc: str,
-    instance_type: str = "ml.m5.xlarge",  # Sensible default
-    instance_count: int = 1,  # Sensible default
-    volume_size_gb: int = 30,  # Sensible default
-    max_runtime_seconds: int = 3600,  # Sensible default
-    # Step-specific parameters
-    feature_columns: List[str] = None,  # Optional parameter
-    label_column: str = None,  # Optional parameter
-):
-    """Initialize configuration with validation.
-    
-    Args:
-        region: AWS region
-        pipeline_s3_loc: S3 location for pipeline artifacts
-        instance_type: SageMaker instance type
-        instance_count: Number of instances
-        volume_size_gb: EBS volume size in GB
-        max_runtime_seconds: Maximum runtime in seconds
-        feature_columns: List of feature column names (optional)
-        label_column: Name of the label column (optional)
+from pydantic import BaseModel, Field, field_validator, PrivateAttr
+from typing import Dict, Any, Optional, List
+from ...core.base.config_base import BasePipelineConfig
+
+class YourStepConfig(BasePipelineConfig):
     """
-    super().__init__(region, pipeline_s3_loc)
+    Configuration for Your Step using three-tier field classification.
     
-    # Validate required parameters
-    if not region:
-        raise ValueError("Region must be provided")
-    if not pipeline_s3_loc:
-        raise ValueError("Pipeline S3 location must be provided")
+    Tier 1: Essential fields (required user inputs)
+    Tier 2: System fields (with defaults, can be overridden)
+    Tier 3: Derived fields (private with property access)
+    """
     
-    # Store parameters
-    self.instance_type = instance_type
-    self.instance_count = instance_count
-    self.volume_size_gb = volume_size_gb
-    self.max_runtime_seconds = max_runtime_seconds
-    self.feature_columns = feature_columns or []
-    self.label_column = label_column
+    # Tier 1: Essential user inputs (required, no defaults)
+    model_type: str = Field(..., description="Type of model to train (classification, regression)")
+    num_epochs: int = Field(..., ge=1, description="Number of training epochs")
+    learning_rate: float = Field(..., gt=0.0, description="Learning rate for optimizer")
     
-    # Validate parameter types
-    if not isinstance(self.instance_count, int):
-        raise TypeError("instance_count must be an integer")
-    if not isinstance(self.volume_size_gb, int):
-        raise TypeError("volume_size_gb must be an integer")
-    if not isinstance(self.max_runtime_seconds, int):
-        raise TypeError("max_runtime_seconds must be an integer")
-    if not isinstance(self.feature_columns, list):
-        raise TypeError("feature_columns must be a list")
+    # Tier 2: System inputs with defaults (can be overridden)
+    instance_type: str = Field(default="ml.m5.xlarge", description="SageMaker instance type")
+    instance_count: int = Field(default=1, ge=1, description="Number of instances")
+    volume_size_gb: int = Field(default=30, ge=1, description="EBS volume size in GB")
+    max_runtime_seconds: int = Field(default=3600, ge=1, description="Maximum runtime in seconds")
+    debug_mode: bool = Field(default=False, description="Enable debug mode")
+    random_seed: int = Field(default=42, description="Random seed for reproducibility")
+    
+    # Tier 3: Derived fields (private with property access)
+    _script_path: Optional[str] = PrivateAttr(default=None)
+    _output_path: Optional[str] = PrivateAttr(default=None)
+    
+    @field_validator('model_type')
+    @classmethod
+    def validate_model_type(cls, v: str) -> str:
+        """Validate model type is supported."""
+        valid_types = ["classification", "regression"]
+        if v not in valid_types:
+            raise ValueError(f"Model type must be one of: {valid_types}")
+        return v
+    
+    @field_validator('instance_type')
+    @classmethod
+    def validate_instance_type(cls, v: str) -> str:
+        """Validate SageMaker instance type."""
+        valid_instances = [
+            "ml.m5.large", "ml.m5.xlarge", "ml.m5.2xlarge", "ml.m5.4xlarge",
+            "ml.c5.large", "ml.c5.xlarge", "ml.c5.2xlarge", "ml.c5.4xlarge"
+        ]
+        if v not in valid_instances:
+            raise ValueError(f"Invalid instance type: {v}. Must be one of: {valid_instances}")
+        return v
+    
+    # Public properties for derived fields
+    @property
+    def script_path(self) -> str:
+        """Get script path."""
+        if self._script_path is None:
+            self._script_path = "your_script.py"
+        return self._script_path
+    
+    @property
+    def output_path(self) -> str:
+        """Get output path."""
+        if self._output_path is None:
+            self._output_path = f"{self.pipeline_s3_loc}/your_step/{self.region}"
+        return self._output_path
+    
+    def get_script_contract(self):
+        """Return the script contract for this step."""
+        from ..contracts.your_script_contract import YOUR_SCRIPT_CONTRACT
+        return YOUR_SCRIPT_CONTRACT
 ```
 
 ### Environment Variable Setting
@@ -341,46 +362,181 @@ def __init__(
 Example of good environment variable setting:
 
 ```python
-def _get_processor_env_vars(self) -> Dict[str, str]:
-    """Get environment variables for the processor based on contract."""
-    # Get contract
-    contract = self.spec.script_contract
+def _get_environment_variables(self) -> Dict[str, str]:
+    """Get environment variables for the processor."""
+    # Get base environment variables from contract
+    env_vars = super()._get_environment_variables()
     
-    # Initialize environment variables
-    env_vars = {}
+    # Add step-specific environment variables
+    step_env_vars = {
+        "MODEL_TYPE": self.config.model_type,
+        "NUM_EPOCHS": str(self.config.num_epochs),  # Convert to string
+        "LEARNING_RATE": str(self.config.learning_rate),  # Convert to string
+        "MIN_IMPORTANCE": str(self.config.min_importance),
+        "RANDOM_SEED": str(self.config.random_seed),
+        "DEBUG_MODE": str(self.config.debug_mode).lower()
+    }
     
-    # Set required variables from contract
-    if "MODEL_TYPE" in contract.required_env_vars:
-        env_vars["MODEL_TYPE"] = self.config.model_type
-    
-    if "NUM_EPOCHS" in contract.required_env_vars:
-        env_vars["NUM_EPOCHS"] = str(self.config.num_epochs)  # Convert to string
-    
-    if "LEARNING_RATE" in contract.required_env_vars:
-        env_vars["LEARNING_RATE"] = str(self.config.learning_rate)  # Convert to string
-    
-    # Set feature columns if available
-    if "FEATURE_COLUMNS" in contract.required_env_vars and self.config.feature_columns:
-        # Serialize list to comma-separated string
-        env_vars["FEATURE_COLUMNS"] = ",".join(self.config.feature_columns)
-    
-    # Set optional variables with defaults from contract
-    for var_name, default_value in contract.optional_env_vars.items():
-        # Use config value if available, otherwise use contract default
-        config_value = getattr(self.config, var_name.lower(), None)
-        if config_value is not None:
-            # Convert to string
-            if isinstance(config_value, bool):
-                env_vars[var_name] = str(config_value).lower()
-            else:
-                env_vars[var_name] = str(config_value)
-        else:
-            env_vars[var_name] = default_value
-    
+    env_vars.update(step_env_vars)
     return env_vars
 ```
 
 ## Testing and Validation
+
+### Three-Level Validation Framework
+
+The Cursus pipeline system employs a comprehensive three-level validation framework to ensure robust, reliable pipeline steps. See [Validation Framework Guide](validation_framework_guide.md) for complete details.
+
+#### Level 1: Alignment Testing
+Validates component relationships and contracts using the Unified Alignment Tester.
+
+```python
+def test_alignment_validation(self):
+    """Test Level 1: Alignment validation using Unified Alignment Tester."""
+    from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+    
+    # Initialize tester
+    tester = UnifiedAlignmentTester()
+    
+    # Run full validation for specific script
+    report = tester.run_full_validation(target_scripts=["your_script"])
+    
+    # Check results
+    self.assertTrue(report.is_passing(), f"Alignment validation failed: {report.get_critical_issues()}")
+    
+    # Verify specific alignment levels
+    if "your_script" in report.level1_results:
+        level1_result = report.level1_results["your_script"]
+        self.assertTrue(level1_result.passed, "Level 1 (Script↔Contract) alignment failed")
+    
+    if "your_script" in report.level2_results:
+        level2_result = report.level2_results["your_script"]
+        self.assertTrue(level2_result.passed, "Level 2 (Contract↔Spec) alignment failed")
+```
+
+#### Level 2: Builder Testing
+Tests step builder configuration and assembly using the Universal Step Builder Test.
+
+```python
+def test_builder_validation(self):
+    """Test Level 2: Builder validation using Universal Step Builder Test."""
+    from cursus.validation.builder.universal_step_builder_tester import UniversalStepBuilderTester
+    
+    # Initialize tester
+    tester = UniversalStepBuilderTester()
+    
+    # Test builder functionality
+    result = tester.test_builder(
+        builder_class=YourStepBuilder,
+        config=self.test_config,
+        test_inputs=self.test_inputs
+    )
+    
+    self.assertTrue(result.is_valid, f"Builder validation failed: {result.errors}")
+    
+    # Verify specific builder aspects
+    self.assertTrue(result.input_generation.is_valid, "Input generation failed")
+    self.assertTrue(result.output_generation.is_valid, "Output generation failed")
+    self.assertTrue(result.environment_variables.is_valid, "Environment variable setting failed")
+    self.assertTrue(result.step_creation.is_valid, "Step creation failed")
+```
+
+#### Level 3: Script Runtime Testing
+Validates actual script execution and data flow using Script Runtime Testing.
+
+```python
+def test_script_runtime_validation(self):
+    """Test Level 3: Script runtime validation with all three modes."""
+    from cursus.validation.runtime.runtime_testing import RuntimeTester
+    
+    # Initialize runtime tester
+    tester = RuntimeTester("./test_workspace")
+    
+    # Mode 1: Individual Script Testing
+    result = tester.test_script("your_script")
+    self.assertTrue(result.success, f"Individual script test failed: {result.error_message}")
+    
+    # Mode 2: Data Compatibility Testing
+    sample_data = tester._generate_sample_data()
+    compat_result = tester.test_data_compatibility(
+        "your_script", "downstream_script", sample_data
+    )
+    self.assertTrue(compat_result.compatible, f"Data compatibility test failed: {compat_result.compatibility_issues}")
+    
+    # Mode 3: Pipeline Flow Testing
+    pipeline_config = {
+        "steps": {
+            "your_step": {"script": "your_script.py"},
+            "downstream_step": {"script": "downstream_script.py"}
+        }
+    }
+    pipeline_result = tester.test_pipeline_flow(pipeline_config)
+    self.assertTrue(pipeline_result["pipeline_success"], f"Pipeline flow test failed: {pipeline_result['errors']}")
+```
+
+### Comprehensive Validation Test Suite
+
+Implement a complete validation test suite covering all three levels:
+
+```python
+class YourStepValidationTest(unittest.TestCase):
+    """Comprehensive three-level validation test suite."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.test_config = YourStepConfig(
+            region="us-west-2",
+            pipeline_s3_loc="s3://test-bucket/prefix",
+            model_type="classification",
+            num_epochs=10,
+            learning_rate=0.01
+        )
+        self.test_inputs = {"input_data": "s3://test-bucket/input/data.csv"}
+        self.mock_input_data = self._create_mock_data()
+        
+    def test_complete_three_level_validation(self):
+        """Test complete three-level validation workflow."""
+        
+        # Level 1: Alignment Testing
+        alignment_result = self._test_alignment_validation()
+        self.assertTrue(alignment_result.is_valid)
+        
+        # Level 2: Builder Testing
+        builder_result = self._test_builder_validation()
+        self.assertTrue(builder_result.is_valid)
+        
+        # Level 3: Script Runtime Testing
+        runtime_result = self._test_script_runtime_validation()
+        self.assertTrue(runtime_result.is_valid)
+        
+        # Integration validation
+        self._test_integration_validation()
+        
+    def _test_alignment_validation(self):
+        """Execute Level 1 alignment validation."""
+        return unified_alignment_tester.test_alignment(
+            contract=YOUR_SCRIPT_CONTRACT,
+            spec=YOUR_STEP_SPEC,
+            builder_class=YourStepBuilder,
+            config_class=YourStepConfig
+        )
+        
+    def _test_builder_validation(self):
+        """Execute Level 2 builder validation."""
+        return universal_step_builder_tester.test_builder(
+            builder_class=YourStepBuilder,
+            config=self.test_config,
+            test_inputs=self.test_inputs
+        )
+        
+    def _test_script_runtime_validation(self):
+        """Execute Level 3 script runtime validation."""
+        return script_runtime_tester.test_script_execution(
+            script_name="your_script",
+            contract=YOUR_SCRIPT_CONTRACT,
+            test_data=self.mock_input_data
+        )
+```
 
 ### Unit Testing Strategy
 
@@ -389,6 +545,7 @@ def _get_processor_env_vars(self) -> Dict[str, str]:
 3. **Test Builders**: Test input/output generation and environment variables
 4. **Mock Dependencies**: Use mocks for SageMaker and AWS dependencies
 5. **Test Edge Cases**: Test with various configuration scenarios
+6. **Three-Level Validation**: Implement comprehensive three-level validation tests
 
 Example of a good specification test:
 
@@ -421,7 +578,7 @@ def test_environment_variable_generation(self):
     builder = YourStepBuilder(config)
     
     # Act
-    env_vars = builder._get_processor_env_vars()
+    env_vars = builder._get_environment_variables()
     
     # Assert
     self.assertEqual(env_vars["MODEL_TYPE"], "classification")
@@ -431,15 +588,27 @@ def test_environment_variable_generation(self):
 
 ### Manual Validation Checklist
 
-Before integration, validate your step implementation:
+Before integration, validate your step implementation using the three-level validation framework:
 
-1. **Script Contract Alignment**: Ensure script uses paths from contract
-2. **Specification-Contract Alignment**: Ensure logical names match
-3. **Property Path Consistency**: Validate property paths follow standard format
-4. **Environment Variable Setting**: Ensure all required variables are set
-5. **Edge Case Handling**: Test with missing optional dependencies
+1. **Level 1 - Alignment Validation**: 
+   - Script Contract Alignment: Ensure script uses paths from contract
+   - Specification-Contract Alignment: Ensure logical names match
+   - Property Path Consistency: Validate property paths follow standard format
+   - Builder-Configuration Alignment: Ensure builder uses config correctly
 
-Use the [validation checklist](validation_checklist.md) for a comprehensive validation process.
+2. **Level 2 - Builder Validation**:
+   - Input Generation: Test input creation from dependencies
+   - Output Generation: Test output specification compliance
+   - Environment Variable Setting: Ensure all required variables are set
+   - Step Creation: Validate SageMaker step creation
+
+3. **Level 3 - Script Runtime Validation**:
+   - Individual Script Testing: Test script execution with mock data
+   - Data Compatibility Testing: Test data flow between pipeline steps
+   - Pipeline Flow Testing: Test complete pipeline execution
+   - Edge Case Handling: Test with missing optional dependencies
+
+Use the [validation checklist](validation_checklist.md) and [validation framework guide](validation_framework_guide.md) for comprehensive validation processes.
 
 ## Integration and Deployment
 

@@ -14,10 +14,14 @@ input_path = "/opt/ml/processing/input/data"  # Hardcoded path
 output_path = "/opt/ml/processing/output/results"  # Hardcoded path
 ```
 
-**Solution**: Use the script contract to get paths. See [Script Contract Development](script_contract.md) for details and [Path Handling Best Practices](best_practices.md#path-handling) for examples.
+**Solution**: Use the script contract to get paths. See [Script Contract Development](script_contract.md) for details, [Path Handling Best Practices](best_practices.md#path-handling) for examples, and [Script Development Guide](script_development_guide.md) for comprehensive script implementation patterns.
 
 ```python
 # CORRECT ✅
+def get_script_contract():
+    from ..contracts.your_script_contract import YOUR_SCRIPT_CONTRACT
+    return YOUR_SCRIPT_CONTRACT
+
 contract = get_script_contract()
 input_path = contract.expected_input_paths["input_data"]
 output_path = contract.expected_output_paths["output_data"]
@@ -149,7 +153,7 @@ dependencies={
 }
 ```
 
-**Solution**: Use consistent logical names across contract and specification. See [Alignment Rules](alignment_rules.md) for detailed guidance and [Logical Name Clarity](best_practices.md#logical-name-clarity) for best practices.
+**Solution**: Use consistent logical names across contract and specification. See [Alignment Rules](alignment_rules.md) for detailed guidance, [Logical Name Clarity](best_practices.md#logical-name-clarity) for best practices, and [Level 1: Script Contract Alignment Design](../1_design/level1_script_contract_alignment_design.md) for alignment validation patterns.
 
 ```python
 # CORRECT ✅
@@ -506,22 +510,19 @@ def _get_processor_env_vars(self):
 
 ```python
 # CORRECT ✅
-def _get_processor_env_vars(self):
-    env_vars = {}
+def _get_environment_variables(self) -> Dict[str, str]:
+    """Get environment variables for the processor."""
+    # Get base environment variables from contract
+    env_vars = super()._get_environment_variables()
     
-    # Add all required variables from contract
-    for var_name in self.spec.script_contract.required_env_vars:
-        if var_name == "LEARNING_RATE":
-            env_vars[var_name] = str(self.config.learning_rate)
-        elif var_name == "NUM_EPOCHS":
-            env_vars[var_name] = str(self.config.num_epochs)
-        # ... other required variables
+    # Add step-specific environment variables
+    step_env_vars = {
+        "LEARNING_RATE": str(self.config.learning_rate),
+        "NUM_EPOCHS": str(self.config.num_epochs),
+        "DEBUG_MODE": str(self.config.debug_mode).lower()
+    }
     
-    # Add optional variables
-    for var_name, default in self.spec.script_contract.optional_env_vars.items():
-        config_value = getattr(self.config, var_name.lower(), None)
-        env_vars[var_name] = str(config_value) if config_value is not None else default
-    
+    env_vars.update(step_env_vars)
     return env_vars
 ```
 
@@ -542,7 +543,7 @@ def _get_inputs(self, inputs):
     ]
 ```
 
-**Solution**: Use specification-driven methods. See [Step Builder Implementation](step_builder.md) for details and follow [Standardization Rules](standardization_rules.md) for consistency.
+**Solution**: Use specification-driven methods. See [Step Builder Implementation](step_builder.md) for details, follow [Standardization Rules](standardization_rules.md) for consistency, and refer to [Specification-Driven Design](../1_design/specification_driven_design.md) for architectural patterns.
 
 ```python
 # CORRECT ✅
@@ -766,23 +767,98 @@ dag.add_edge("step_a", "step_b")  # Incompatible connection
 
 ## Testing Pitfalls
 
-### 1. Missing Contract Alignment Tests
+### 1. Missing Three-Level Validation Tests
 
-**Problem**: Not testing if the specification aligns with the contract.
+**Problem**: Not implementing comprehensive validation tests covering all three validation levels.
 
 ```python
 # WRONG ❌
-# No tests for contract alignment
+# Only testing basic functionality, missing validation framework tests
+def test_step_creation(self):
+    builder = YourStepBuilder(config)
+    step = builder.create_step()
+    self.assertIsNotNone(step)
 ```
 
-**Solution**: Add contract alignment tests. See [Unit Testing Strategy](best_practices.md#unit-testing-strategy) for recommended test patterns and [Standardization Rules](standardization_rules.md#testing-standards) for testing standards.
+**Solution**: Implement three-level validation tests. See [Validation Framework Guide](validation_framework_guide.md) for comprehensive testing approach and [Unit Testing Strategy](best_practices.md#unit-testing-strategy) for recommended test patterns.
 
 ```python
 # CORRECT ✅
+def test_three_level_validation(self):
+    """Test comprehensive three-level validation."""
+    
+    # Level 1: Alignment Testing
+    alignment_result = unified_alignment_tester.test_alignment(
+        contract=YOUR_SCRIPT_CONTRACT,
+        spec=YOUR_STEP_SPEC,
+        builder_class=YourStepBuilder,
+        config_class=YourStepConfig
+    )
+    self.assertTrue(alignment_result.is_valid, f"Alignment validation failed: {alignment_result.errors}")
+    
+    # Level 2: Builder Testing
+    builder_result = universal_step_builder_tester.test_builder(
+        builder_class=YourStepBuilder,
+        config=self.test_config,
+        test_inputs=self.test_inputs
+    )
+    self.assertTrue(builder_result.is_valid, f"Builder validation failed: {builder_result.errors}")
+    
+    # Level 3: Script Runtime Testing
+    runtime_result = script_runtime_tester.test_script_execution(
+        script_name="your_script",
+        contract=YOUR_SCRIPT_CONTRACT,
+        test_data=self.test_data
+    )
+    self.assertTrue(runtime_result.is_valid, f"Runtime validation failed: {runtime_result.errors}")
+
 def test_contract_alignment(self):
     """Test that specification aligns with contract."""
     result = YOUR_STEP_SPEC.validate_contract_alignment()
     self.assertTrue(result.is_valid, f"Contract alignment failed: {result.errors}")
+```
+
+### 2. Missing Script Runtime Testing
+
+**Problem**: Not testing actual script execution and data flow validation.
+
+```python
+# WRONG ❌
+# No tests for script runtime behavior
+```
+
+**Solution**: Add comprehensive script runtime tests covering all three modes. See [Validation Framework Guide](validation_framework_guide.md#script-runtime-testing) for detailed implementation.
+
+```python
+# CORRECT ✅
+def test_script_runtime_individual_mode(self):
+    """Test individual script execution with mock data."""
+    result = script_runtime_tester.test_individual_script(
+        script_name="your_script",
+        contract=YOUR_SCRIPT_CONTRACT,
+        mock_data=self.mock_input_data,
+        workspace_dir="./test_workspace"
+    )
+    self.assertTrue(result.is_valid, f"Individual script test failed: {result.errors}")
+
+def test_script_runtime_compatibility_mode(self):
+    """Test data compatibility between pipeline steps."""
+    result = script_runtime_tester.test_data_compatibility(
+        upstream_contract=UPSTREAM_CONTRACT,
+        downstream_contract=YOUR_SCRIPT_CONTRACT,
+        test_data=self.compatibility_test_data
+    )
+    self.assertTrue(result.is_valid, f"Data compatibility test failed: {result.errors}")
+
+def test_script_runtime_pipeline_flow_mode(self):
+    """Test complete pipeline flow with realistic data."""
+    pipeline_dag = self.create_test_pipeline_dag()
+    result = script_runtime_tester.test_pipeline_flow(
+        pipeline_dag=pipeline_dag,
+        test_data=self.realistic_test_data,
+        workspace_dir="./test_workspace"
+    )
+    self.assertTrue(result.is_valid, f"Pipeline flow test failed: {result.errors}")
 ```
 
 ### 2. Missing Property Path Tests
@@ -913,6 +989,238 @@ def test_empty_dependency_handling(self):
     self.assertEqual(extracted_inputs, {})
 ```
 
+## 8. SageMaker Step Type Issues
+
+### Issue: Wrong Property Path for Step Type
+**Problem**: Using property paths that don't match the SageMaker step type being created.
+
+```python
+# WRONG ❌ - Using Training step property path in Processing step
+"model_output": OutputSpec(
+    logical_name="model_output",
+    property_path="properties.ModelArtifacts.S3ModelArtifacts"  # Training step pattern
+    # ...
+)
+```
+
+**Solution**: Use correct property paths based on the SageMaker step type your builder creates.
+
+```python
+# CORRECT ✅ - Processing step property path
+"processed_data": OutputSpec(
+    logical_name="processed_data",
+    property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri"  # Processing step pattern
+    # ...
+)
+
+# CORRECT ✅ - Training step property path  
+"model_artifacts": OutputSpec(
+    logical_name="model_artifacts",
+    property_path="properties.ModelArtifacts.S3ModelArtifacts"  # Training step pattern
+    # ...
+)
+```
+
+### Issue: Mismatched Step Type Classification
+**Problem**: Step builder creates a different SageMaker step type than expected based on its classification.
+
+```python
+# WRONG ❌ - Builder classified as Processing but creates Training step
+class YourStepBuilder(StepBuilderBase):
+    def create_step(self):
+        # Creates TrainingStep but registry shows "Processing" type
+        return TrainingStep(...)
+```
+
+**Solution**: Ensure step type classification matches actual SageMaker step creation. Check the [SageMaker Step Type Classification](../1_design/sagemaker_step_type_classification_design.md) for proper mapping.
+
+```python
+# CORRECT ✅ - Consistent classification and implementation
+# In step_names.py registry:
+"YourStep": {
+    "sagemaker_step_type": "Training",  # Matches actual step creation
+    # ...
+}
+
+# In builder:
+class YourStepBuilder(StepBuilderBase):
+    def create_step(self):
+        return TrainingStep(...)  # Matches registry classification
+```
+
+### Issue: Invalid Property Path Syntax
+**Problem**: Using incorrect syntax for property path references.
+
+```python
+# WRONG ❌ - Invalid syntax patterns
+"output_data": OutputSpec(
+    property_path="properties.ProcessingOutputConfig.Outputs.data.S3Output.S3Uri"  # Missing brackets
+)
+
+"metrics": OutputSpec(
+    property_path="FinalMetricDataList['accuracy'].Value"  # Missing 'properties.' prefix
+)
+```
+
+**Solution**: Follow correct property path syntax patterns from the [SageMaker Property Path Reference Database](sagemaker_property_path_reference_database.md).
+
+```python
+# CORRECT ✅ - Valid syntax patterns
+"output_data": OutputSpec(
+    property_path="properties.ProcessingOutputConfig.Outputs['data'].S3Output.S3Uri"  # Correct bracket notation
+)
+
+"metrics": OutputSpec(
+    property_path="properties.FinalMetricDataList['accuracy'].Value"  # Correct prefix
+)
+```
+
+## 9. Job Type Variant Issues
+
+### Issue: Inconsistent Job Type Step Names
+**Problem**: Job type variants create different step names that don't match pipeline DAG node names.
+
+```python
+# WRONG ❌ - Mismatch between config job_type and DAG node name
+# Config with job_type creates step name: "CradleDataLoading_training"
+config = CradleDataLoadConfig(job_type="training", ...)
+
+# But DAG uses different node name
+dag.add_node("train_data_load")  # Doesn't match generated step name
+```
+
+**Solution**: Ensure DAG node names align with job type variant step names or use consistent naming patterns.
+
+```python
+# CORRECT ✅ - Consistent naming approach
+# Option 1: Use job type suffix in DAG node names
+dag.add_node("CradleDataLoading_training")  # Matches generated step name
+
+# Option 2: Use semantic node names and map appropriately
+dag.add_node("train_data_load")
+config_map["train_data_load"] = CradleDataLoadConfig(job_type="training", ...)
+```
+
+### Issue: Job Type Specification Mismatch
+**Problem**: Using wrong specification for job type variant.
+
+```python
+# WRONG ❌ - Always using same spec regardless of job_type
+class CradleDataLoadingStepBuilder(StepBuilderBase):
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, spec=DATA_LOADING_SPEC, **kwargs)  # Wrong - ignores job_type
+```
+
+**Solution**: Select appropriate specification based on job type. See [Job Type Variant Handling](../1_design/job_type_variant_handling.md) for complete implementation patterns.
+
+```python
+# CORRECT ✅ - Dynamic specification selection
+class CradleDataLoadingStepBuilder(StepBuilderBase):
+    def __init__(self, config, **kwargs):
+        job_type = getattr(config, 'job_type', 'training').lower()
+        
+        if job_type == 'calibration':
+            spec = DATA_LOADING_CALIBRATION_SPEC
+        elif job_type == 'validation':
+            spec = DATA_LOADING_VALIDATION_SPEC
+        elif job_type == 'testing':
+            spec = DATA_LOADING_TESTING_SPEC
+        else:
+            spec = DATA_LOADING_TRAINING_SPEC
+            
+        super().__init__(config=config, spec=spec, **kwargs)
+```
+
+### Issue: Missing Job Type in Environment Variables
+**Problem**: Not passing job type to processing scripts via environment variables.
+
+```python
+# WRONG ❌ - Missing JOB_TYPE environment variable
+def _get_environment_variables(self):
+    return {
+        "REGION": self.config.region,
+        "DATA_SOURCE_TYPE": self.config.data_source_type
+        # Missing JOB_TYPE
+    }
+```
+
+**Solution**: Include job type in environment variables as required by script contracts.
+
+```python
+# CORRECT ✅ - Include job type
+def _get_environment_variables(self):
+    return {
+        "REGION": self.config.region,
+        "JOB_TYPE": getattr(self.config, 'job_type', 'training'),
+        "DATA_SOURCE_TYPE": self.config.data_source_type
+    }
+```
+
+### Issue: Semantic Keyword Conflicts
+**Problem**: Different job type variants using conflicting semantic keywords causing wrong dependency resolution.
+
+```python
+# WRONG ❌ - Same semantic keywords for different job types
+DATA_LOADING_TRAINING_SPEC = StepSpecification(
+    outputs=[
+        OutputSpec(
+            semantic_keywords=["data", "input", "raw"]  # Generic keywords
+        )
+    ]
+)
+
+DATA_LOADING_CALIBRATION_SPEC = StepSpecification(
+    outputs=[
+        OutputSpec(
+            semantic_keywords=["data", "input", "raw"]  # Same keywords - causes conflicts
+        )
+    ]
+)
+```
+
+**Solution**: Use job-type-specific semantic keywords to ensure proper dependency resolution.
+
+```python
+# CORRECT ✅ - Job-type-specific semantic keywords
+DATA_LOADING_TRAINING_SPEC = StepSpecification(
+    outputs=[
+        OutputSpec(
+            semantic_keywords=["training", "train", "data", "input", "raw", "dataset"]
+        )
+    ]
+)
+
+DATA_LOADING_CALIBRATION_SPEC = StepSpecification(
+    outputs=[
+        OutputSpec(
+            semantic_keywords=["calibration", "calib", "eval", "data", "input"]
+        )
+    ]
+)
+```
+
+### Issue: Config Types Metadata Missing Job Type Variants
+**Problem**: Not including job type variant step names in config_types metadata.
+
+```python
+# WRONG ❌ - Missing job type variants in metadata
+"config_types": {
+    "CradleDataLoading": "CradleDataLoadConfig"  # Only base name
+}
+```
+
+**Solution**: Include all job type variant step names in config_types metadata.
+
+```python
+# CORRECT ✅ - Include all variants
+"config_types": {
+    "CradleDataLoading_training": "CradleDataLoadConfig",
+    "CradleDataLoading_calibration": "CradleDataLoadConfig", 
+    "CradleDataLoading_validation": "CradleDataLoadConfig",
+    "CradleDataLoading_testing": "CradleDataLoadConfig"
+}
+```
+
 ## Conclusion
 
 By being aware of these common pitfalls, you can avoid many of the issues that often arise when implementing new pipeline steps. Remember to:
@@ -922,6 +1230,43 @@ By being aware of these common pitfalls, you can avoid many of the issues that o
 3. **Handle Edge Cases**: Consider and test for edge cases and error conditions
 4. **Complete Registration**: Register your step in all required places
 5. **Provide Rich Documentation**: Document your step comprehensively
-6. **Follow Standardization Rules**: Apply [standardization rules](standardization_rules.md) for consistent implementation
+6. **Follow Standardization Rules**: Apply [standardization rules](standardization_rules.md) for universal patterns
+7. **Validate SageMaker Step Types**: Ensure property paths match the actual SageMaker step type being created
+8. **Handle Job Type Variants**: Properly implement job type variant handling with consistent naming and specification selection
 
-When in doubt, refer to the [validation checklist](validation_checklist.md) to verify your implementation, follow the [standardization rules](standardization_rules.md) for universal patterns, and consult the [best practices](best_practices.md) for guidance on recommended approaches.
+When in doubt, refer to the [validation checklist](validation_checklist.md) to verify your implementation, follow the [standardization rules](standardization_rules.md) for universal patterns, consult the [best practices](best_practices.md) for guidance on recommended approaches, and check the [SageMaker Property Path Reference Database](sagemaker_property_path_reference_database.md) for correct property path patterns.
+
+## Related Documentation
+
+### Developer Guide References
+- [Adding New Pipeline Step](adding_new_pipeline_step.md) - Quick start guide for new step implementation
+- [Creation Process](creation_process.md) - Complete step-by-step creation workflow
+- [Validation Framework Guide](validation_framework_guide.md) - Comprehensive three-level validation approach
+- [Best Practices](best_practices.md) - Recommended patterns and approaches
+- [Standardization Rules](standardization_rules.md) - Universal implementation standards
+- [Alignment Rules](alignment_rules.md) - Contract-specification alignment requirements
+- [Script Contract](script_contract.md) - Script contract development guide
+- [Script Development Guide](script_development_guide.md) - Comprehensive script implementation patterns
+- [Step Builder](step_builder.md) - Step builder implementation guide
+- [Step Specification](step_specification.md) - Step specification development guide
+- [Three Tier Config Design](three_tier_config_design.md) - Configuration class design patterns
+- [Component Guide](component_guide.md) - System component overview
+- [Step Builder Registry Guide](step_builder_registry_guide.md) - Registry integration patterns
+- [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - Pipeline catalog usage
+
+### Design References
+- [SageMaker Step Type Classification Design](../1_design/sagemaker_step_type_classification_design.md) - Step type mapping and validation
+- [Job Type Variant Handling](../1_design/job_type_variant_handling.md) - Job type variant implementation patterns
+- [Level 1: Script Contract Alignment Design](../1_design/level1_script_contract_alignment_design.md) - Contract alignment validation
+- [Level 2: Contract Specification Alignment Design](../1_design/level2_contract_specification_alignment_design.md) - Specification alignment validation
+- [Specification-Driven Design](../1_design/specification_driven_design.md) - Architectural patterns for specification-driven development
+- [Universal Step Builder Test](../1_design/universal_step_builder_test.md) - Builder testing framework
+- [Unified Alignment Tester Design](../1_design/unified_alignment_tester_design.md) - Alignment testing architecture
+- [Pipeline Runtime Testing Simplified Design](../1_design/pipeline_runtime_testing_simplified_design.md) - Script runtime testing framework
+- [Step Builder Registry Design](../1_design/step_builder_registry_design.md) - Registry architecture and patterns
+- [Dependency Resolution System](../1_design/dependency_resolution_system.md) - Dependency matching and resolution
+- [Config Types Format](../1_design/config_types_format.md) - Configuration metadata format
+- [Registry Based Step Name Generation](../1_design/registry_based_step_name_generation.md) - Step name generation patterns
+- [Processing Step Builder Patterns](../1_design/processing_step_builder_patterns.md) - Processing step implementation patterns
+- [Training Step Builder Patterns](../1_design/training_step_builder_patterns.md) - Training step implementation patterns
+- [Environment Variable Contract Enforcement](../1_design/environment_variable_contract_enforcement.md) - Environment variable validation
