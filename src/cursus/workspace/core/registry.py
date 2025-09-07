@@ -2,7 +2,7 @@
 Workspace component registry for discovering and managing workspace components.
 
 This module provides registry functionality for workspace component discovery,
-caching, and management, integrating with the existing validation infrastructure.
+caching, and management, integrating with the unified registry system to eliminate redundancy.
 """
 
 from typing import Dict, List, Any, Optional, Type, Set
@@ -19,19 +19,35 @@ logger = logging.getLogger(__name__)
 
 
 class WorkspaceComponentRegistry:
-    """Registry for workspace component discovery and management."""
+    """
+    Registry for workspace component discovery and management.
+    
+    Refactored to use UnifiedRegistryManager internally to eliminate redundancy
+    and provide a consistent workspace-aware registry experience.
+    """
     
     def __init__(self, workspace_root: str, discovery_manager: Optional['WorkspaceDiscoveryManager'] = None):
         """
-        Initialize workspace component registry with Phase 1 consolidated manager integration.
+        Initialize workspace component registry using UnifiedRegistryManager.
         
         Args:
             workspace_root: Root path of the workspace
-            discovery_manager: Optional consolidated WorkspaceDiscoveryManager instance (Phase 1 integration)
+            discovery_manager: Optional consolidated WorkspaceDiscoveryManager instance
         """
         self.workspace_root = workspace_root
         
-        # PHASE 2 OPTIMIZATION: Use provided discovery manager or create with consolidated manager
+        # Initialize unified registry manager for consistent workspace handling
+        try:
+            from ...registry.hybrid.manager import UnifiedRegistryManager
+            self.unified_manager = UnifiedRegistryManager(workspaces_root=workspace_root)
+            self._unified_available = True
+            logger.info(f"Initialized workspace component registry with UnifiedRegistryManager for: {workspace_root}")
+        except ImportError:
+            logger.warning("UnifiedRegistryManager not available, using fallback implementation")
+            self.unified_manager = None
+            self._unified_available = False
+        
+        # Legacy discovery manager support for backward compatibility
         if discovery_manager:
             self.discovery_manager = discovery_manager
             self.workspace_manager = discovery_manager.workspace_manager
@@ -40,23 +56,19 @@ class WorkspaceComponentRegistry:
             self.workspace_manager = None
             self.discovery_manager = None
         
-        # Enhanced caching using discovery manager
+        # Initialize cache attributes for backward compatibility (always present)
         self._component_cache = self.discovery_manager._component_cache if self.discovery_manager else {}
         self._builder_cache: Dict[str, Type[StepBuilderBase]] = {}
         self._config_cache: Dict[str, Type[BasePipelineConfig]] = {}
         self._cache_timestamp: Dict[str, float] = {}
-        
-        # Cache expiration time (5 minutes)
         self.cache_expiry = 300
         
         # Core registry for fallback
         self.core_registry = StepBuilderRegistry()
-        
-        logger.info(f"Initialized enhanced workspace component registry with Phase 1 integration for: {workspace_root}")
     
     def discover_components(self, developer_id: str = None) -> Dict[str, Any]:
         """
-        Discover components in workspace(s).
+        Discover components in workspace(s) using unified caching when available.
         
         Args:
             developer_id: Optional specific developer ID to discover components for
@@ -66,8 +78,13 @@ class WorkspaceComponentRegistry:
         """
         cache_key = f"components_{developer_id or 'all'}"
         
-        # Check cache first
-        if self._is_cache_valid(cache_key):
+        # Use unified caching when available
+        if self._unified_available:
+            cached_components = self.unified_manager.get_component_cache(cache_key)
+            if cached_components:
+                logger.debug(f"Returning cached components from UnifiedRegistryManager for {cache_key}")
+                return cached_components
+        elif self._is_cache_valid(cache_key):
             logger.debug(f"Returning cached components for {cache_key}")
             return self._component_cache[cache_key]
         
@@ -89,21 +106,27 @@ class WorkspaceComponentRegistry:
         
         try:
             # Get workspace info
-            workspace_info = self.workspace_manager.discover_workspaces()
-            
-            if developer_id:
-                # Discover components for specific developer
-                if developer_id in workspace_info.developers:
-                    self._discover_developer_components(developer_id, components)
+            if self.workspace_manager:
+                workspace_info = self.workspace_manager.discover_workspaces()
+                
+                if developer_id:
+                    # Discover components for specific developer
+                    if developer_id in workspace_info.developers:
+                        self._discover_developer_components(developer_id, components)
+                    else:
+                        logger.warning(f"Developer {developer_id} not found in workspace")
                 else:
-                    logger.warning(f"Developer {developer_id} not found in workspace")
+                    # Discover components for all developers
+                    for dev_id in workspace_info.developers:
+                        self._discover_developer_components(dev_id, components)
+                
+                # Update summary
+                components['summary']['developers'] = list(workspace_info.developers)
             else:
-                # Discover components for all developers
-                for dev_id in workspace_info.developers:
-                    self._discover_developer_components(dev_id, components)
+                # Fallback when workspace_manager is not available
+                logger.warning("Workspace manager not available, using fallback component discovery")
+                components['summary']['developers'] = []
             
-            # Update summary
-            components['summary']['developers'] = list(workspace_info.developers)
             components['summary']['step_types'] = list(components['summary']['step_types'])
             components['summary']['total_components'] = (
                 len(components['builders']) + 
@@ -113,9 +136,12 @@ class WorkspaceComponentRegistry:
                 len(components['scripts'])
             )
             
-            # Cache the results
-            self._component_cache[cache_key] = components
-            self._cache_timestamp[cache_key] = time.time()
+            # Cache the results using unified caching when available
+            if self._unified_available:
+                self.unified_manager.set_component_cache(cache_key, components)
+            else:
+                self._component_cache[cache_key] = components
+                self._cache_timestamp[cache_key] = time.time()
             
             elapsed_time = time.time() - start_time
             logger.info(f"Discovered {components['summary']['total_components']} components in {elapsed_time:.2f}s")
@@ -254,7 +280,7 @@ class WorkspaceComponentRegistry:
     
     def find_builder_class(self, step_name: str, developer_id: str = None) -> Optional[Type[StepBuilderBase]]:
         """
-        Find builder class for a step.
+        Find builder class for a step using UnifiedRegistryManager when available.
         
         Args:
             step_name: Name of the step
@@ -263,6 +289,30 @@ class WorkspaceComponentRegistry:
         Returns:
             Builder class if found, None otherwise
         """
+        # Use UnifiedRegistryManager for step resolution when available
+        if self._unified_available:
+            try:
+                # Get step definition from unified manager
+                step_def = self.unified_manager.get_step_definition(step_name, developer_id)
+                if step_def:
+                    # Use the builder_step_name to find the actual builder class
+                    builder_name = step_def.builder_step_name
+                    # Try to load builder class using workspace manager or core registry
+                    if self.workspace_manager and developer_id:
+                        module_loader = self.workspace_manager.get_module_loader(developer_id)
+                        builder_class = module_loader.load_builder_class(step_name)
+                        if builder_class:
+                            return builder_class
+                    
+                    # Fallback to core registry
+                    builder_class = self.core_registry.get_builder_for_step_type(step_name)
+                    if builder_class:
+                        return builder_class
+                        
+            except Exception as e:
+                logger.debug(f"UnifiedRegistryManager lookup failed for {step_name}: {e}")
+        
+        # Fallback to legacy implementation
         cache_key = f"builder_{developer_id or 'any'}_{step_name}"
         
         # Check cache first
@@ -270,39 +320,31 @@ class WorkspaceComponentRegistry:
             return self._builder_cache[cache_key]
         
         try:
-            if developer_id:
-                # Search in specific developer workspace
-                module_loader = self.workspace_manager.get_module_loader(developer_id)
-                builder_class = module_loader.load_builder_class(step_name)
-                if builder_class:
-                    self._builder_cache[cache_key] = builder_class
-                    return builder_class
-            else:
-                # Search in all developer workspaces
-                workspace_info = self.workspace_manager.discover_workspaces()
-                for dev_id in workspace_info.developers:
-                    module_loader = self.workspace_manager.get_module_loader(dev_id)
+            if self.workspace_manager:
+                if developer_id:
+                    # Search in specific developer workspace
+                    module_loader = self.workspace_manager.get_module_loader(developer_id)
                     builder_class = module_loader.load_builder_class(step_name)
                     if builder_class:
                         self._builder_cache[cache_key] = builder_class
                         return builder_class
+                else:
+                    # Search in all developer workspaces
+                    workspace_info = self.workspace_manager.discover_workspaces()
+                    for dev_id in workspace_info.developers:
+                        module_loader = self.workspace_manager.get_module_loader(dev_id)
+                        builder_class = module_loader.load_builder_class(step_name)
+                        if builder_class:
+                            if not self._unified_available:
+                                self._builder_cache[cache_key] = builder_class
+                            return builder_class
             
-            # Fallback to core registry
-            try:
-                # Map step name to step type using STEP_NAMES
-                step_type = None
-                for config_class, step_info in STEP_NAMES.items():
-                    if step_info.get('step_name') == step_name:
-                        step_type = step_info.get('step_type')
-                        break
-                
-                if step_type:
-                    builder_class = self.core_registry.get_builder_for_step_type(step_type)
-                    if builder_class:
-                        self._builder_cache[cache_key] = builder_class
-                        return builder_class
-            except Exception as e:
-                logger.debug(f"Core registry fallback failed for {step_name}: {e}")
+            # Final fallback to core registry
+            builder_class = self.core_registry.get_builder_for_step_type(step_name)
+            if builder_class:
+                if not self._unified_available:
+                    self._builder_cache[cache_key] = builder_class
+                return builder_class
             
         except Exception as e:
             logger.error(f"Error finding builder class for {step_name}: {e}")

@@ -370,7 +370,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         result = registry.find_builder_class('test_step')
         
         self.assertEqual(result, mock_core_builder)
-        registry.core_registry.get_builder_for_step_type.assert_called_with('TestType')
+        registry.core_registry.get_builder_for_step_type.assert_called_with('test_step')
     
     @patch('src.cursus.workspace.core.manager.WorkspaceManager')
     @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')

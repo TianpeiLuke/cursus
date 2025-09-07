@@ -8,7 +8,7 @@ into one unified manager that handles all registry operations efficiently.
 
 import os
 import logging
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any, Type
 from pathlib import Path
 import threading
 from contextlib import contextmanager
@@ -462,6 +462,52 @@ class UnifiedRegistryManager:
         """Context manager for step resolution."""
         context = ResolutionContext(workspace_id=workspace_id)
         yield context
+    
+    # Component discovery caching methods for WorkspaceComponentRegistry integration
+    def get_component_cache(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        """Get cached component discovery results."""
+        return self._component_cache.get(cache_key) if hasattr(self, '_component_cache') else None
+    
+    def set_component_cache(self, cache_key: str, components: Dict[str, Any]) -> None:
+        """Cache component discovery results."""
+        if not hasattr(self, '_component_cache'):
+            self._component_cache = {}
+        self._component_cache[cache_key] = components
+    
+    def clear_component_cache(self) -> None:
+        """Clear component discovery cache."""
+        if hasattr(self, '_component_cache'):
+            self._component_cache.clear()
+    
+    def get_builder_class_cache(self, cache_key: str) -> Optional[Type]:
+        """Get cached builder class."""
+        return self._builder_class_cache.get(cache_key) if hasattr(self, '_builder_class_cache') else None
+    
+    def set_builder_class_cache(self, cache_key: str, builder_class: Type) -> None:
+        """Cache builder class."""
+        if not hasattr(self, '_builder_class_cache'):
+            self._builder_class_cache = {}
+        self._builder_class_cache[cache_key] = builder_class
+    
+    def clear_builder_class_cache(self) -> None:
+        """Clear builder class cache."""
+        if hasattr(self, '_builder_class_cache'):
+            self._builder_class_cache.clear()
+    
+    # Workspace context management methods
+    def set_workspace_context(self, workspace_id: str) -> None:
+        """Set current workspace context."""
+        self._current_workspace_context = workspace_id
+        self._invalidate_all_caches()  # Invalidate caches when context changes
+    
+    def get_workspace_context(self) -> Optional[str]:
+        """Get current workspace context."""
+        return getattr(self, '_current_workspace_context', None)
+    
+    def clear_workspace_context(self) -> None:
+        """Clear current workspace context."""
+        self._current_workspace_context = None
+        self._invalidate_all_caches()  # Invalidate caches when context changes
 
 
 # Backward compatibility aliases

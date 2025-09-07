@@ -31,9 +31,7 @@ except ImportError as e:
     logger.warning(f"Validation utilities not available: {e}")
     _VALIDATION_AVAILABLE = False
 
-# Global workspace context management
-_current_workspace_context: Optional[str] = None
-
+# Workspace context management - delegated to UnifiedRegistryManager
 def set_workspace_context(workspace_id: str) -> None:
     """
     Set current workspace context for registry resolution.
@@ -41,8 +39,12 @@ def set_workspace_context(workspace_id: str) -> None:
     Args:
         workspace_id: Workspace identifier to set as current context
     """
-    global _current_workspace_context
-    _current_workspace_context = workspace_id
+    manager = _get_registry_manager()
+    if hasattr(manager, 'set_workspace_context'):
+        manager.set_workspace_context(workspace_id)
+    else:
+        # Fallback for legacy manager
+        os.environ['CURSUS_WORKSPACE_ID'] = workspace_id
     logger.debug(f"Set workspace context to: {workspace_id}")
 
 def get_workspace_context() -> Optional[str]:
@@ -52,21 +54,25 @@ def get_workspace_context() -> Optional[str]:
     Returns:
         Current workspace identifier or None if no context set
     """
-    # Check explicit context first
-    if _current_workspace_context:
-        return _current_workspace_context
-    
-    # Check environment variable
-    env_context = os.environ.get('CURSUS_WORKSPACE_ID')
-    if env_context:
-        return env_context
-    
-    return None
+    manager = _get_registry_manager()
+    if hasattr(manager, 'get_workspace_context'):
+        context = manager.get_workspace_context()
+        # If no explicit context set, check environment variable
+        if context is None:
+            context = os.environ.get('CURSUS_WORKSPACE_ID')
+        return context
+    else:
+        # Fallback to environment variable
+        return os.environ.get('CURSUS_WORKSPACE_ID')
 
 def clear_workspace_context() -> None:
     """Clear current workspace context."""
-    global _current_workspace_context
-    _current_workspace_context = None
+    manager = _get_registry_manager()
+    if hasattr(manager, 'clear_workspace_context'):
+        manager.clear_workspace_context()
+    else:
+        # Fallback for legacy manager
+        os.environ.pop('CURSUS_WORKSPACE_ID', None)
     logger.debug("Cleared workspace context")
 
 @contextmanager
@@ -81,6 +87,7 @@ def workspace_context(workspace_id: str) -> ContextManager[None]:
         with workspace_context("developer_1"):
             step_names = get_step_names()  # Uses developer_1 context
     """
+    # Always use fallback implementation for proper context management
     old_context = get_workspace_context()
     try:
         set_workspace_context(workspace_id)
