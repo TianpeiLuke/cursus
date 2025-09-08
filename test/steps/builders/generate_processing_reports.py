@@ -9,11 +9,9 @@ in the same format as alignment validation reports.
 import sys
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+)
 
 from cursus.validation.builders.builder_reporter import BuilderTestReporter
-
 
 def main():
     """Generate reports for all Processing step builders."""
@@ -50,7 +48,6 @@ def main():
         status = report.summary.overall_status if report.summary else "UNKNOWN"
         pass_rate = f"{report.summary.pass_rate:.1f}%" if report.summary else "N/A"
         print(f"  {status_icon} {name}: {status} ({pass_rate})")
-
 
 if __name__ == "__main__":
     main()

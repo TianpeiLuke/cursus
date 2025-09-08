@@ -10,11 +10,9 @@ import sys
 from pathlib import Path
 
 # Add the project root to the Python path
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
+)
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-
 
 def main():
     """Run alignment validation for model_evaluation_xgb script."""
@@ -115,7 +113,6 @@ def main():
         import traceback
         traceback.print_exc()
         return 2
-
 
 def generate_html_report(script_name: str, results: dict) -> str:
     """Generate HTML report for the validation results."""
@@ -257,7 +254,6 @@ def generate_html_report(script_name: str, results: dict) -> str:
 </html>"""
     
     return html_template
-
 
 if __name__ == "__main__":
     sys.exit(main())

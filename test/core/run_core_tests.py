@@ -26,9 +26,7 @@ import re
 
 # Add the project root to the Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
-
+)
 
 @dataclass
 class TestResult:
@@ -45,7 +43,6 @@ class TestResult:
     error_details: List[Tuple[str, str]]
     skipped_details: List[Tuple[str, str]]
 
-
 @dataclass
 class CoverageAnalysis:
     """Data class to store coverage analysis results."""
@@ -57,7 +54,6 @@ class CoverageAnalysis:
     coverage_percentage: float
     redundant_tests: List[str]
     missing_edge_cases: List[str]
-
 
 class CoreTestRunner:
     """Comprehensive test runner for cursus core package."""
@@ -685,7 +681,6 @@ class CoreTestRunner:
         except Exception as e:
             print(f"⚠️  Could not save detailed report: {e}")
 
-
 def main():
     """Main entry point for the core test runner."""
     print("Cursus Core Package Comprehensive Test Runner")
@@ -698,7 +693,6 @@ def main():
     # Exit with appropriate code
     success = runner.total_failures == 0 and runner.total_errors == 0
     sys.exit(0 if success else 1)
-
 
 if __name__ == "__main__":
     main()

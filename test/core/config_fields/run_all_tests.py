@@ -14,9 +14,7 @@ from typing import Dict, List, Tuple, Optional
 import importlib.util
 
 # Add the project root to the Python path
-project_root = str(Path(__file__).resolve().parent.parent.parent.parent)
 sys.path.insert(0, project_root)
-
 
 class ConfigFieldTestRunner:
     """Comprehensive test runner for config_field tests."""
@@ -263,7 +261,6 @@ class ConfigFieldTestRunner:
         # Return overall success
         return self.total_failures == 0 and self.total_errors == 0
 
-
 def main():
     """Main entry point for the test runner."""
     print("Config Fields Comprehensive Test Runner")
@@ -275,7 +272,6 @@ def main():
     
     # Exit with appropriate code
     sys.exit(0 if success else 1)
-
 
 if __name__ == "__main__":
     main()

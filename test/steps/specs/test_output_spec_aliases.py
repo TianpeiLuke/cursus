@@ -10,8 +10,7 @@ import unittest
 import sys
 import os
 
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+)
 
 from cursus.core.base.specification_base import (
     OutputSpec, StepSpecification, DependencySpec, DependencyType, NodeType

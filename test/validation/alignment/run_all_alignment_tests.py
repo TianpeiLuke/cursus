@@ -12,11 +12,9 @@ from pathlib import Path
 from io import StringIO
 
 # Add the project root to the Python path
-project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Test modules will be loaded dynamically
-
 
 class AlignmentTestRunner:
     """Custom test runner for alignment validation tests."""
@@ -294,7 +292,6 @@ class AlignmentTestRunner:
         total_components = sum(len(components) for components in coverage_areas.values())
         print(f"📊 Total Components Tested: {total_components}")
 
-
 def main():
     """Main entry point for the test runner."""
     import argparse
@@ -387,7 +384,6 @@ Examples:
     
     # Exit with appropriate code
     sys.exit(0 if success else 1)
-
 
 if __name__ == '__main__':
     main()

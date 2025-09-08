@@ -16,8 +16,7 @@ import re
 from pathlib import Path
 from typing import List, Dict, Set
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+)
 
 try:
     from cursus.registry.step_names import (

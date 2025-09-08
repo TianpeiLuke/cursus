@@ -11,8 +11,7 @@ import tempfile
 import json
 from pathlib import Path
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+)
 
 from cursus.validation.alignment import UnifiedAlignmentTester
 

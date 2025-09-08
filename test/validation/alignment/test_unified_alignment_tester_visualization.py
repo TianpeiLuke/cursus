@@ -15,8 +15,7 @@ import json
 from unittest.mock import patch, MagicMock, call
 from pathlib import Path
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
+)
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 from cursus.validation.alignment.alignment_reporter import (

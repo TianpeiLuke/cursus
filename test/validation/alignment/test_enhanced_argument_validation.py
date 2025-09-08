@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 
 # Add src to path for imports
-project_root = os.path.join(os.path.dirname(__file__), '..', '..', '..')
 src_path = os.path.join(project_root, 'src')
 sys.path.insert(0, project_root)
 

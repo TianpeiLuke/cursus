@@ -10,8 +10,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
+)
 
 # Import the fixed AlignmentScorer directly from its module file to avoid pydantic dependency
 import importlib.util
@@ -113,7 +112,6 @@ def regenerate_visualizations():
     else:
         print(f"⚠️  {total_count - success_count} reports had issues during processing")
 
-
 def main():
     """Main function to run the visualization regeneration."""
     print("Alignment Validation Visualization Regeneration")
@@ -123,7 +121,6 @@ def main():
     print("=" * 80)
     
     regenerate_visualizations()
-
 
 if __name__ == "__main__":
     main()

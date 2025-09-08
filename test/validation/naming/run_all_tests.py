@@ -7,13 +7,11 @@ This script runs all the individual test files and provides a summary.
 # Add the project root to the Python path to allow for absolute imports
 import sys
 import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import unittest
 import importlib
-
 
 def run_all_validation_tests():
     """Run all validation test modules."""
@@ -77,7 +75,6 @@ def run_all_validation_tests():
         print(f"\n❌ Some tests failed!")
     
     return success
-
 
 if __name__ == '__main__':
     success = run_all_validation_tests()

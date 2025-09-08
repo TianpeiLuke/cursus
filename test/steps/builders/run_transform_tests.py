@@ -14,12 +14,10 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+)
 
 from .test_transform_step_builders import TransformStepBuilderTestSuite
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
-
 
 def generate_transform_reports():
     """Generate comprehensive reports for Transform step builders."""
@@ -125,7 +123,6 @@ def generate_transform_reports():
     print(f"\n✅ Transform step builders testing completed!")
     print(f"📁 Reports saved in: {reports_dir}")
 
-
 def generate_summary(all_results):
     """Generate summary statistics."""
     total_builders = len(all_results)
@@ -155,7 +152,6 @@ def generate_summary(all_results):
         "overall_pass_rate": (total_passed / total_tests) * 100 if total_tests > 0 else 0,
         "builder_success_rate": (successful_builders / total_builders) * 100 if total_builders > 0 else 0
     }
-
 
 def generate_score_chart(step_name, results, scoring_data, builder_class_name):
     """Generate score chart for a specific step builder."""
@@ -234,7 +230,6 @@ def generate_score_chart(step_name, results, scoring_data, builder_class_name):
     
     print(f"📊 Score chart and report saved for {step_name}")
 
-
 def generate_overall_chart(all_results, test_type):
     """Generate overall summary chart."""
     # Calculate overall statistics
@@ -291,7 +286,6 @@ def generate_overall_chart(all_results, test_type):
     plt.close()
     
     print(f"📊 Overall summary chart saved: {chart_file}")
-
 
 if __name__ == '__main__':
     generate_transform_reports()

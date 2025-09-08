@@ -6,10 +6,6 @@ import tempfile
 import sys
 from typing import Any, Dict, List, Optional, Union, Set
 
-# Add the repository root directory to the path
-repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.insert(0, repo_root)
-
 import pytest
 from unittest.mock import patch, MagicMock, Mock
 

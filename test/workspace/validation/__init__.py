@@ -55,10 +55,7 @@ import unittest
 import sys
 from pathlib import Path
 
-# Add src to path for imports
-src_path = Path(__file__).parent.parent.parent.parent / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
+)
 
 # Import test modules
 from .test_workspace_file_resolver import TestDeveloperWorkspaceFileResolver
@@ -94,7 +91,6 @@ TEST_CATEGORIES = {
     ]
 }
 
-
 def create_test_suite():
     """
     Create a comprehensive test suite for workspace functionality.
@@ -120,7 +116,6 @@ def create_test_suite():
     
     return suite
 
-
 def run_all_tests(verbosity=2):
     """
     Run all workspace tests with specified verbosity.
@@ -134,7 +129,6 @@ def run_all_tests(verbosity=2):
     suite = create_test_suite()
     runner = unittest.TextTestRunner(verbosity=verbosity)
     return runner.run(suite)
-
 
 def run_category_tests(category, verbosity=2):
     """
@@ -172,7 +166,6 @@ def run_category_tests(category, verbosity=2):
     
     runner = unittest.TextTestRunner(verbosity=verbosity)
     return runner.run(suite)
-
 
 def get_test_info():
     """
@@ -228,27 +221,22 @@ def get_test_info():
     
     return info
 
-
 # Convenience functions for common test scenarios
 def test_file_resolution_only():
     """Run only file resolution tests."""
     return run_category_tests("file_resolution")
 
-
 def test_module_loading_only():
     """Run only module loading tests."""
     return run_category_tests("module_loading")
-
 
 def test_workspace_management_only():
     """Run only workspace management tests."""
     return run_category_tests("workspace_management")
 
-
 def test_validation_extensions_only():
     """Run only validation extensions tests."""
     return run_category_tests("validation_extensions")
-
 
 # Test execution entry point
 if __name__ == "__main__":

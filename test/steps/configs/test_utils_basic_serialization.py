@@ -5,9 +5,7 @@ import tempfile
 import sys
 from pathlib import Path
 
-# Add the repository root directory to the path - more reliable method
-repo_root = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(repo_root))
+)
 
 from unittest.mock import patch, MagicMock
 

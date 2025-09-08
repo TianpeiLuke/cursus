@@ -9,10 +9,6 @@ import json
 import tempfile
 from pathlib import Path
 
-# Add the repository root directory to the path
-repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-sys.path.insert(0, repo_root)
-
 from cursus.steps.configs.utils import get_field_sources, merge_and_save_configs
 from cursus.core.base.config_base import BasePipelineConfig
 from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase

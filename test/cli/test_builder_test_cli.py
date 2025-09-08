@@ -17,7 +17,7 @@ from io import StringIO
 # Import the CLI module
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+)
 
 from cursus.cli.builder_test_cli import (
     print_test_results,

@@ -23,9 +23,7 @@ import re
 
 # Add the project root to the Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
-
+)
 
 class TestCoverageAnalyzer:
     """Comprehensive test coverage analyzer for cursus core package."""
@@ -560,7 +558,6 @@ class TestCoverageAnalyzer:
         except Exception as e:
             print(f"⚠️  Could not save analysis report: {e}")
 
-
 def main():
     """Main entry point for the coverage analyzer."""
     print("Cursus Core Package - Test Coverage Analysis")
@@ -574,7 +571,6 @@ def main():
     
     # Generate comprehensive analysis
     analyzer.generate_comprehensive_report()
-
 
 if __name__ == "__main__":
     main()

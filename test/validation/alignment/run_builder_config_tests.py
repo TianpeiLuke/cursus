@@ -12,14 +12,12 @@ import unittest
 import sys
 from pathlib import Path
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'src'))
+)
 
 # Import test modules
 from analyzers.test_config_analyzer import TestConfigurationAnalyzer
 from analyzers.test_builder_analyzer import TestBuilderCodeAnalyzer
 from .test_builder_config_alignment import TestBuilderConfigurationAlignmentTester
-
 
 def create_test_suite():
     """Create a test suite with all builder-config alignment tests"""
@@ -35,7 +33,6 @@ def create_test_suite():
     suite.addTest(unittest.makeSuite(TestBuilderConfigurationAlignmentTester))
     
     return suite
-
 
 def run_tests():
     """Run all builder-configuration alignment tests"""
@@ -77,7 +74,6 @@ def run_tests():
     
     # Return success status
     return len(result.failures) == 0 and len(result.errors) == 0
-
 
 if __name__ == '__main__':
     success = run_tests()

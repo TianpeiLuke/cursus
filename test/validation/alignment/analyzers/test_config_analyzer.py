@@ -14,8 +14,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import sys
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'src'))
+)
 
 from cursus.validation.alignment.analyzers.config_analyzer import ConfigurationAnalyzer
 

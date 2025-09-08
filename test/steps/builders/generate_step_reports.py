@@ -16,8 +16,7 @@ import matplotlib.patches as mpatches
 from datetime import datetime
 import importlib
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+)
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 from cursus.validation.builders.registry_discovery import (
@@ -34,7 +33,6 @@ try:
 except ImportError:
     ProcessingStepBuilderTest = None
     print("Warning: ProcessingStepBuilderTest not available, using UniversalStepBuilderTest")
-
 
 class StepBuilderReportGenerator:
     """
@@ -439,7 +437,6 @@ python test/steps/builders/generate_step_reports.py --step-type {step_type}
         
         return overall_summary
 
-
 def main():
     """Main function to run report generation."""
     import argparse
@@ -470,7 +467,6 @@ def main():
     except Exception as e:
         print(f"❌ Error during report generation: {e}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

@@ -5,10 +5,6 @@ from pathlib import Path
 import tempfile
 import sys
 
-# Add the repository root directory to the path
-repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.insert(0, repo_root)
-
 from unittest.mock import patch, MagicMock, Mock, PropertyMock
 
 # Import utilities for config serialization

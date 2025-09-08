@@ -13,8 +13,7 @@ import importlib
 import sys
 from unittest.mock import MagicMock, patch
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
+)
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 from cursus.validation.builders.registry_discovery import (

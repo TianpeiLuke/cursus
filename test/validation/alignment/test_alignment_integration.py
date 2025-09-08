@@ -11,8 +11,7 @@ import os
 import unittest
 from datetime import datetime
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
+)
 
 from cursus.validation.alignment.alignment_reporter import (
     AlignmentReport, ValidationResult, AlignmentIssue, SeverityLevel

@@ -10,8 +10,7 @@ import unittest
 from pathlib import Path
 from typing import Dict, Any
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
+)
 
 from cursus.validation.builders.scoring import StepBuilderScorer, score_builder_results
 

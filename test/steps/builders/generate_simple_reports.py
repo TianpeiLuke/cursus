@@ -12,12 +12,10 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+)
 
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 from cursus.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
-
 
 def get_canonical_step_name(step_name: str) -> str:
     """
@@ -32,7 +30,6 @@ def get_canonical_step_name(step_name: str) -> str:
     if step_name in STEP_NAMES:
         return STEP_NAMES[step_name].get("builder_step_name", f"{step_name}StepBuilder")
     return f"{step_name}StepBuilder"
-
 
 def load_builder_class(step_name: str):
     """
@@ -69,7 +66,6 @@ def load_builder_class(step_name: str):
         print(f"Failed to load {step_name} builder: {e}")
         return None
 
-
 def create_step_subfolder(base_path: Path, step_type: str, step_name: str) -> Path:
     """
     Create subfolder structure for a specific step.
@@ -98,7 +94,6 @@ def create_step_subfolder(base_path: Path, step_type: str, step_name: str) -> Pa
         create_step_readme(readme_path, step_name, canonical_name, step_type)
     
     return scoring_dir
-
 
 def create_step_readme(readme_path: Path, step_name: str, canonical_name: str, step_type: str):
     """Create README file for a step directory."""
@@ -133,7 +128,6 @@ python test/steps/builders/generate_simple_reports.py --step-type {step_type}
 ```
 """
     readme_path.write_text(content)
-
 
 def run_step_tests(step_name: str, step_type: str) -> Dict[str, Any]:
     """
@@ -184,7 +178,6 @@ def run_step_tests(step_name: str, step_type: str) -> Dict[str, Any]:
             "step_type": step_type,
             "timestamp": datetime.now().isoformat()
         }
-
 
 def generate_reports_for_step_type(base_path: Path, step_type: str) -> Dict[str, Any]:
     """
@@ -272,7 +265,6 @@ def generate_reports_for_step_type(base_path: Path, step_type: str) -> Dict[str,
     
     return summary
 
-
 def generate_all_reports(base_path: Path) -> Dict[str, Any]:
     """
     Generate reports for all step types.
@@ -335,7 +327,6 @@ def generate_all_reports(base_path: Path) -> Dict[str, Any]:
     
     return overall_summary
 
-
 def main():
     """Main function to run report generation."""
     import argparse
@@ -369,7 +360,6 @@ def main():
     except Exception as e:
         print(f"❌ Error during report generation: {e}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

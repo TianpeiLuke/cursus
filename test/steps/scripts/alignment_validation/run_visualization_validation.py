@@ -15,26 +15,7 @@ from datetime import datetime
 from typing import Dict, List, Any
 
 # Add the project root to the Python path
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-
-
-class VisualizedAlignmentValidator:
-    """Enhanced validator with visualization and scoring capabilities."""
-    
-    def __init__(self):
-        """Initialize the validator with proper directory paths."""
-        self.project_root = Path(__file__).parent.parent.parent.parent.parent
-        self.scripts_dir = self.project_root / "src" / "cursus" / "steps" / "scripts"
-        self.contracts_dir = self.project_root / "src" / "cursus" / "steps" / "contracts"
-        self.specs_dir = self.project_root / "src" / "cursus" / "steps" / "specs"
-        self.builders_dir = self.project_root / "src" / "cursus" / "steps" / "builders"
-        self.configs_dir = self.project_root / "src" / "cursus" / "steps" / "configs"
-        
-        # Output directories
-        self.output_dir = Path(__file__).parent / "reports"
+.parent / "reports"
         self.json_reports_dir = self.output_dir / "json"
         self.html_reports_dir = self.output_dir / "html"
         self.charts_dir = self.output_dir / "charts"
@@ -330,7 +311,6 @@ class VisualizedAlignmentValidator:
         
         print(f"\n{'='*80}")
 
-
 def main():
     """Main entry point for the enhanced alignment validation program."""
     try:
@@ -346,7 +326,6 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

@@ -10,46 +10,9 @@ import sys
 from pathlib import Path
 from typing import List
 
-# Add the project root to the Python path
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
-
-
-def discover_scripts() -> List[str]:
-    """Discover all Python scripts in the scripts directory."""
-    scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
-    scripts = []
-    
-    if scripts_dir.exists():
-        for script_file in scripts_dir.glob("*.py"):
-            if not script_file.name.startswith('__'):
-                script_name = script_file.stem
-                scripts.append(script_name)
-    
-    return sorted(scripts)
-
-
-def generate_validation_script(script_name: str) -> str:
-    """Generate validation script content for a specific script."""
-    script_title = script_name.replace('_', ' ').title()
-    
-    template = f'''#!/usr/bin/env python3
-"""
-Alignment Validation for {script_title} Script
-
-This program runs comprehensive alignment validation for the {script_name}.py script
-across all four alignment levels and generates detailed reports.
-"""
-
-import sys
-from pathlib import Path
-
-# Add the project root to the Python path
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
+)
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-
 
 def main():
     """Run alignment validation for {script_name} script."""
@@ -150,7 +113,6 @@ def main():
         import traceback
         traceback.print_exc()
         return 2
-
 
 def generate_html_report(script_name: str, results: dict) -> str:
     """Generate HTML report for the validation results."""
@@ -293,13 +255,11 @@ def generate_html_report(script_name: str, results: dict) -> str:
     
     return html_template
 
-
 if __name__ == "__main__":
     sys.exit(main())
 '''
     
     return template
-
 
 def main():
     """Generate validation scripts for all discovered scripts."""
@@ -335,7 +295,6 @@ def main():
     
     print(f"\n🎯 Successfully generated {generated_count}/{len(scripts)} validation scripts")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

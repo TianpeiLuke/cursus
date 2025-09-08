@@ -12,10 +12,8 @@ import unittest
 from io import StringIO
 
 # Add the project root to the Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
 
 def run_specific_test_module(module_name, description):
     """Run tests for a specific module with detailed reporting."""
@@ -53,7 +51,6 @@ def run_specific_test_module(module_name, description):
     except Exception as e:
         print(f"  ❌ Error loading {module_name}: {str(e)}")
         return False, 0, 0, 1, 0
-
 
 def main():
     """Run all CLI tests with enhanced output and detailed reporting."""
@@ -146,7 +143,6 @@ def main():
         if total_errors > 0:
             print(f"   - {total_errors} test(s) had errors")
         return 1
-
 
 if __name__ == '__main__':
     sys.exit(main())

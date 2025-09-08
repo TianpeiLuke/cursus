@@ -13,8 +13,7 @@ import tempfile
 import shutil
 from datetime import datetime, timedelta
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
+)
 
 from cursus.validation.alignment.workflow_integration import (
     AlignmentValidationWorkflow, run_alignment_validation_workflow
