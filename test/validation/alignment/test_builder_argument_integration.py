@@ -99,7 +99,7 @@ class TabularPreprocessingStepBuilder:
         )
         
         # Mock the script analyzer
-        with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:
+        with patch('cursus.validation.alignment.script_contract_alignment.ScriptAnalyzer') as mock_analyzer:
             mock_instance = MagicMock()
             mock_analyzer.return_value = mock_instance
             

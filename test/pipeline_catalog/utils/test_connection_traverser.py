@@ -353,7 +353,7 @@ class TestConnectionTraverser:
         assert traverser._connection_cache == {}
         assert not traverser._cache_valid
     
-    @patch('src.cursus.pipeline_catalog.utils.connection_traverser.logger')
+    @patch('cursus.pipeline_catalog.utils.connection_traverser.logger')
     def test_error_handling(self, mock_logger, traverser):
         """Test error handling and logging."""
         # Mock registry to raise exception

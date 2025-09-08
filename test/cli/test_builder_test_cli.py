@@ -141,7 +141,7 @@ class TestPrintEnhancedResults(unittest.TestCase):
         breakdown_found = any("Detailed Scoring Breakdown" in call for call in calls)
         self.assertTrue(breakdown_found)
     
-    @patch('src.cursus.cli.builder_test_cli.print_test_results')
+    @patch('cursus.cli.builder_test_cli.print_test_results')
     def test_print_enhanced_results_fallback(self, mock_print_test_results):
         """Test fallback to print_test_results for raw results."""
         raw_results = {"test_inheritance": {"passed": True, "error": None}}
@@ -154,7 +154,7 @@ class TestPrintEnhancedResults(unittest.TestCase):
 class TestHelperFunctions(unittest.TestCase):
     """Test helper functions."""
     
-    @patch('src.cursus.cli.builder_test_cli.UniversalStepBuilderTest')
+    @patch('cursus.cli.builder_test_cli.UniversalStepBuilderTest')
     def test_run_all_tests_with_scoring(self, mock_universal_test):
         """Test run_all_tests_with_scoring function."""
         mock_tester = Mock()
@@ -176,7 +176,7 @@ class TestHelperFunctions(unittest.TestCase):
         # Check that run_all_tests was called
         mock_tester.run_all_tests.assert_called_once()
     
-    @patch('src.cursus.cli.builder_test_cli.RegistryStepDiscovery')
+    @patch('cursus.cli.builder_test_cli.RegistryStepDiscovery')
     def test_run_registry_discovery_report(self, mock_registry):
         """Test run_registry_discovery_report function."""
         expected_report = {"total_steps": 10, "sagemaker_step_types": ["Training"]}
@@ -187,7 +187,7 @@ class TestHelperFunctions(unittest.TestCase):
         self.assertEqual(result, expected_report)
         mock_registry.generate_discovery_report.assert_called_once()
     
-    @patch('src.cursus.cli.builder_test_cli.UniversalStepBuilderTest')
+    @patch('cursus.cli.builder_test_cli.UniversalStepBuilderTest')
     def test_run_test_by_sagemaker_type(self, mock_universal_test):
         """Test run_test_by_sagemaker_type function."""
         expected_results = {"XGBoostTraining": {"test_results": {}, "scoring": {}}}
@@ -202,7 +202,7 @@ class TestHelperFunctions(unittest.TestCase):
             enable_scoring=True
         )
     
-    @patch('src.cursus.cli.builder_test_cli.RegistryStepDiscovery')
+    @patch('cursus.cli.builder_test_cli.RegistryStepDiscovery')
     def test_validate_builder_availability(self, mock_registry):
         """Test validate_builder_availability function."""
         expected_validation = {
@@ -246,7 +246,7 @@ class TestExportFunctions(unittest.TestCase):
             # Check that success message was printed
             mock_print.assert_called_with(f"✅ Results exported to: {output_path}")
     
-    @patch('src.cursus.cli.builder_test_cli.StepBuilderScorer')
+    @patch('cursus.cli.builder_test_cli.StepBuilderScorer')
     def test_generate_score_chart(self, mock_scorer_class):
         """Test generating score chart."""
         mock_scorer = Mock()
@@ -279,7 +279,7 @@ class TestExportFunctions(unittest.TestCase):
 class TestImportBuilderClass(unittest.TestCase):
     """Test the import_builder_class function."""
     
-    @patch('src.cursus.cli.builder_test_cli.importlib')
+    @patch('cursus.cli.builder_test_cli.importlib')
     def test_import_with_full_path(self, mock_importlib):
         """Test importing with full module path."""
         mock_module = Mock()
@@ -287,12 +287,12 @@ class TestImportBuilderClass(unittest.TestCase):
         mock_module.TestBuilder = mock_builder_class
         mock_importlib.import_module.return_value = mock_module
         
-        result = import_builder_class("src.cursus.steps.builders.test_module.TestBuilder")
+        result = import_builder_class("cursus.steps.builders.test_module.TestBuilder")
         
         self.assertEqual(result, mock_builder_class)
         mock_importlib.import_module.assert_called_once_with("cursus.steps.builders.test_module")
     
-    @patch('src.cursus.cli.builder_test_cli.importlib')
+    @patch('cursus.cli.builder_test_cli.importlib')
     def test_import_with_class_name_only(self, mock_importlib):
         """Test importing with class name only."""
         mock_module = Mock()
@@ -305,7 +305,7 @@ class TestImportBuilderClass(unittest.TestCase):
         self.assertEqual(result, mock_builder_class)
         mock_importlib.import_module.assert_called_once_with("cursus.steps.builders")
     
-    @patch('src.cursus.cli.builder_test_cli.importlib')
+    @patch('cursus.cli.builder_test_cli.importlib')
     def test_import_error_handling(self, mock_importlib):
         """Test error handling in import_builder_class."""
         mock_importlib.import_module.side_effect = ImportError("Module not found")
@@ -318,7 +318,7 @@ class TestImportBuilderClass(unittest.TestCase):
 class TestRunFunctions(unittest.TestCase):
     """Test the run_* functions."""
     
-    @patch('src.cursus.cli.builder_test_cli.InterfaceTests')
+    @patch('cursus.cli.builder_test_cli.InterfaceTests')
     def test_run_level_tests(self, mock_interface_tests):
         """Test run_level_tests function."""
         mock_tester = Mock()
@@ -345,7 +345,7 @@ class TestRunFunctions(unittest.TestCase):
         
         self.assertIn("Invalid test level: 5", str(context.exception))
     
-    @patch('src.cursus.cli.builder_test_cli.ProcessingStepBuilderTest')
+    @patch('cursus.cli.builder_test_cli.ProcessingStepBuilderTest')
     def test_run_variant_tests(self, mock_processing_test):
         """Test run_variant_tests function."""
         mock_tester = Mock()
@@ -372,7 +372,7 @@ class TestRunFunctions(unittest.TestCase):
         
         self.assertIn("Invalid variant: invalid", str(context.exception))
     
-    @patch('src.cursus.cli.builder_test_cli.UniversalStepBuilderTest')
+    @patch('cursus.cli.builder_test_cli.UniversalStepBuilderTest')
     def test_run_all_tests(self, mock_universal_test):
         """Test run_all_tests function."""
         mock_tester = Mock()
@@ -394,9 +394,9 @@ class TestRunFunctions(unittest.TestCase):
 class TestListAvailableBuilders(unittest.TestCase):
     """Test the list_available_builders function."""
     
-    @patch('src.cursus.cli.builder_test_cli.Path')
-    @patch('src.cursus.cli.builder_test_cli.importlib')
-    @patch('src.cursus.cli.builder_test_cli.inspect')
+    @patch('cursus.cli.builder_test_cli.Path')
+    @patch('cursus.cli.builder_test_cli.importlib')
+    @patch('cursus.cli.builder_test_cli.inspect')
     def test_list_available_builders_success(self, mock_inspect, mock_importlib, mock_path):
         """Test successful listing of available builders."""
         # Mock file system
@@ -423,7 +423,7 @@ class TestListAvailableBuilders(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertTrue(len(result) > 0)
         # Check that at least one result looks like a builder path
-        builder_found = any("src.cursus.steps.builders." in item and "StepBuilder" in item for item in result)
+        builder_found = any("cursus.steps.builders." in item and "StepBuilder" in item for item in result)
         self.assertTrue(builder_found)
     
     def test_list_available_builders_directory_not_found(self):
@@ -437,7 +437,7 @@ class TestListAvailableBuilders(unittest.TestCase):
         self.assertTrue(len(result) > 0)
         # All results should be builder paths
         for builder in result:
-            self.assertTrue(builder.startswith("src.cursus.steps.builders."))
+            self.assertTrue(builder.startswith("cursus.steps.builders."))
             self.assertTrue(builder.endswith("StepBuilder"))
 
 class TestMainFunction(unittest.TestCase):
@@ -448,12 +448,12 @@ class TestMainFunction(unittest.TestCase):
         self.sample_args = [
             "builder_test_cli.py",
             "all",
-            "src.cursus.steps.builders.test_module.TestBuilder"
+            "cursus.steps.builders.test_module.TestBuilder"
         ]
     
-    @patch('src.cursus.cli.builder_test_cli.import_builder_class')
-    @patch('src.cursus.cli.builder_test_cli.run_all_tests')
-    @patch('src.cursus.cli.builder_test_cli.print_test_results')
+    @patch('cursus.cli.builder_test_cli.import_builder_class')
+    @patch('cursus.cli.builder_test_cli.run_all_tests')
+    @patch('cursus.cli.builder_test_cli.print_test_results')
     @patch('builtins.print')
     def test_main_all_command_success(self, mock_print, mock_print_results, mock_run_tests, mock_import):
         """Test main function with 'all' command - successful case."""
@@ -472,9 +472,9 @@ class TestMainFunction(unittest.TestCase):
         mock_run_tests.assert_called_once()
         mock_print_results.assert_called_once()
     
-    @patch('src.cursus.cli.builder_test_cli.import_builder_class')
-    @patch('src.cursus.cli.builder_test_cli.run_all_tests')
-    @patch('src.cursus.cli.builder_test_cli.print_test_results')
+    @patch('cursus.cli.builder_test_cli.import_builder_class')
+    @patch('cursus.cli.builder_test_cli.run_all_tests')
+    @patch('cursus.cli.builder_test_cli.print_test_results')
     @patch('builtins.print')
     def test_main_all_command_with_failures(self, mock_print, mock_print_results, mock_run_tests, mock_import):
         """Test main function with 'all' command - with test failures."""
@@ -493,12 +493,12 @@ class TestMainFunction(unittest.TestCase):
         
         self.assertEqual(result, 1)  # Should return 1 for failures
     
-    @patch('src.cursus.cli.builder_test_cli.list_available_builders')
+    @patch('cursus.cli.builder_test_cli.list_available_builders')
     @patch('builtins.print')
     def test_main_list_builders_command(self, mock_print, mock_list_builders):
         """Test main function with 'list-builders' command."""
         mock_list_builders.return_value = [
-            "src.cursus.steps.builders.builder_test_step.TestBuilder"
+            "cursus.steps.builders.builder_test_step.TestBuilder"
         ]
         
         with patch.object(sys, 'argv', ["builder_test_cli.py", "list-builders"]):
@@ -507,7 +507,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_list_builders.assert_called_once()
     
-    @patch('src.cursus.cli.builder_test_cli.run_registry_discovery_report')
+    @patch('cursus.cli.builder_test_cli.run_registry_discovery_report')
     @patch('builtins.print')
     def test_main_registry_report_command(self, mock_print, mock_registry_report):
         """Test main function with 'registry-report' command."""
@@ -525,7 +525,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_registry_report.assert_called_once()
     
-    @patch('src.cursus.cli.builder_test_cli.validate_builder_availability')
+    @patch('cursus.cli.builder_test_cli.validate_builder_availability')
     @patch('builtins.print')
     def test_main_validate_builder_command(self, mock_print, mock_validate):
         """Test main function with 'validate-builder' command."""
@@ -545,7 +545,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_validate.assert_called_once_with("XGBoostTraining")
     
-    @patch('src.cursus.cli.builder_test_cli.run_test_by_sagemaker_type')
+    @patch('cursus.cli.builder_test_cli.run_test_by_sagemaker_type')
     @patch('builtins.print')
     def test_main_test_by_type_command(self, mock_print, mock_test_by_type):
         """Test main function with 'test-by-type' command."""
@@ -567,13 +567,13 @@ class TestMainFunction(unittest.TestCase):
     def test_main_no_command(self, mock_print):
         """Test main function with no command provided."""
         with patch.object(sys, 'argv', ["builder_test_cli.py"]):
-            with patch('src.cursus.cli.builder_test_cli.argparse.ArgumentParser.print_help') as mock_help:
+            with patch('cursus.cli.builder_test_cli.argparse.ArgumentParser.print_help') as mock_help:
                 result = main()
         
         self.assertEqual(result, 1)
         mock_help.assert_called_once()
     
-    @patch('src.cursus.cli.builder_test_cli.import_builder_class')
+    @patch('cursus.cli.builder_test_cli.import_builder_class')
     @patch('builtins.print')
     def test_main_import_error(self, mock_print, mock_import):
         """Test main function with import error."""
@@ -584,11 +584,11 @@ class TestMainFunction(unittest.TestCase):
         
         self.assertEqual(result, 1)
     
-    @patch('src.cursus.cli.builder_test_cli.import_builder_class')
-    @patch('src.cursus.cli.builder_test_cli.run_all_tests_with_scoring')
-    @patch('src.cursus.cli.builder_test_cli.export_results_to_json')
-    @patch('src.cursus.cli.builder_test_cli.generate_score_chart')
-    @patch('src.cursus.cli.builder_test_cli.print_enhanced_results')
+    @patch('cursus.cli.builder_test_cli.import_builder_class')
+    @patch('cursus.cli.builder_test_cli.run_all_tests_with_scoring')
+    @patch('cursus.cli.builder_test_cli.export_results_to_json')
+    @patch('cursus.cli.builder_test_cli.generate_score_chart')
+    @patch('cursus.cli.builder_test_cli.print_enhanced_results')
     @patch('builtins.print')
     def test_main_with_exports(self, mock_print, mock_print_enhanced, mock_chart, mock_export, mock_run_scoring, mock_import):
         """Test main function with export options."""
@@ -610,7 +610,7 @@ class TestMainFunction(unittest.TestCase):
             "--export-chart",
             "--output-dir", "custom_output",
             "all",
-            "src.cursus.steps.builders.test_module.TestBuilder"
+            "cursus.steps.builders.test_module.TestBuilder"
         ]
         
         with patch.object(sys, 'argv', test_args):
@@ -623,9 +623,9 @@ class TestMainFunction(unittest.TestCase):
 class TestCLIIntegration(unittest.TestCase):
     """Integration tests for CLI functionality."""
     
-    @patch('src.cursus.cli.builder_test_cli.sys.argv')
-    @patch('src.cursus.cli.builder_test_cli.import_builder_class')
-    @patch('src.cursus.cli.builder_test_cli.run_all_tests')
+    @patch('cursus.cli.builder_test_cli.sys.argv')
+    @patch('cursus.cli.builder_test_cli.import_builder_class')
+    @patch('cursus.cli.builder_test_cli.run_all_tests')
     @patch('builtins.print')
     def test_cli_integration_basic_flow(self, mock_print, mock_run_tests, mock_import, mock_argv):
         """Test basic CLI integration flow."""
@@ -643,7 +643,7 @@ class TestCLIIntegration(unittest.TestCase):
         mock_run_tests.return_value = mock_test_results
         
         # Mock argparse to use our test arguments
-        with patch('src.cursus.cli.builder_test_cli.argparse.ArgumentParser.parse_args') as mock_parse:
+        with patch('cursus.cli.builder_test_cli.argparse.ArgumentParser.parse_args') as mock_parse:
             mock_args = Mock()
             mock_args.command = "all"
             mock_args.builder_class = "test.module.TestBuilder"
@@ -666,7 +666,7 @@ class TestCLIErrorHandling(unittest.TestCase):
     def test_main_with_exception(self, mock_print):
         """Test main function exception handling."""
         # Mock the entire main function flow to raise an exception after argument parsing
-        with patch('src.cursus.cli.builder_test_cli.argparse.ArgumentParser') as mock_parser_class:
+        with patch('cursus.cli.builder_test_cli.argparse.ArgumentParser') as mock_parser_class:
             mock_parser = Mock()
             mock_args = Mock()
             mock_args.command = "all"
@@ -676,7 +676,7 @@ class TestCLIErrorHandling(unittest.TestCase):
             mock_parser_class.return_value = mock_parser
             
             # Make import_builder_class raise an exception
-            with patch('src.cursus.cli.builder_test_cli.import_builder_class', side_effect=Exception("Test error")):
+            with patch('cursus.cli.builder_test_cli.import_builder_class', side_effect=Exception("Test error")):
                 result = main()
         
         self.assertEqual(result, 1)
@@ -686,7 +686,7 @@ class TestCLIErrorHandling(unittest.TestCase):
         error_found = any("Error during test execution" in call for call in calls)
         self.assertTrue(error_found)
     
-    @patch('src.cursus.cli.builder_test_cli.import_builder_class')
+    @patch('cursus.cli.builder_test_cli.import_builder_class')
     @patch('builtins.print')
     def test_main_verbose_exception_handling(self, mock_print, mock_import):
         """Test main function verbose exception handling."""
@@ -705,9 +705,9 @@ class TestCLIErrorHandling(unittest.TestCase):
 class TestCLIScoringIntegration(unittest.TestCase):
     """Test CLI integration with scoring features."""
     
-    @patch('src.cursus.cli.builder_test_cli.import_builder_class')
-    @patch('src.cursus.cli.builder_test_cli.run_all_tests_with_scoring')
-    @patch('src.cursus.cli.builder_test_cli.print_enhanced_results')
+    @patch('cursus.cli.builder_test_cli.import_builder_class')
+    @patch('cursus.cli.builder_test_cli.run_all_tests_with_scoring')
+    @patch('cursus.cli.builder_test_cli.print_enhanced_results')
     @patch('builtins.print')
     def test_main_with_scoring_flag(self, mock_print, mock_print_enhanced, mock_run_scoring, mock_import):
         """Test main function with scoring flag enabled."""
@@ -725,7 +725,7 @@ class TestCLIScoringIntegration(unittest.TestCase):
             "builder_test_cli.py",
             "--scoring",
             "all",
-            "src.cursus.steps.builders.test_module.TestBuilder"
+            "cursus.steps.builders.test_module.TestBuilder"
         ]
         
         with patch.object(sys, 'argv', test_args):
@@ -735,8 +735,8 @@ class TestCLIScoringIntegration(unittest.TestCase):
         mock_run_scoring.assert_called_once()
         mock_print_enhanced.assert_called_once_with(mock_results, False)
     
-    @patch('src.cursus.cli.builder_test_cli.run_test_by_sagemaker_type')
-    @patch('src.cursus.cli.builder_test_cli.export_results_to_json')
+    @patch('cursus.cli.builder_test_cli.run_test_by_sagemaker_type')
+    @patch('cursus.cli.builder_test_cli.export_results_to_json')
     @patch('builtins.print')
     def test_main_test_by_type_with_export(self, mock_print, mock_export, mock_test_by_type):
         """Test test-by-type command with JSON export."""
@@ -769,17 +769,17 @@ class TestCLIArgumentParsing(unittest.TestCase):
     def test_argument_parser_creation(self):
         """Test that argument parser is created correctly."""
         # This test ensures the main function can create the parser without errors
-        with patch('src.cursus.cli.builder_test_cli.argparse.ArgumentParser.parse_args') as mock_parse:
+        with patch('cursus.cli.builder_test_cli.argparse.ArgumentParser.parse_args') as mock_parse:
             mock_args = Mock()
             mock_args.command = None
             mock_parse.return_value = mock_args
             
-            with patch('src.cursus.cli.builder_test_cli.argparse.ArgumentParser.print_help'):
+            with patch('cursus.cli.builder_test_cli.argparse.ArgumentParser.print_help'):
                 result = main()
         
         self.assertEqual(result, 1)  # Should return 1 when no command is provided
     
-    @patch('src.cursus.cli.builder_test_cli.validate_builder_availability')
+    @patch('cursus.cli.builder_test_cli.validate_builder_availability')
     @patch('builtins.print')
     def test_validate_builder_with_error(self, mock_print, mock_validate):
         """Test validate-builder command when builder has errors."""
@@ -799,7 +799,7 @@ class TestCLIArgumentParsing(unittest.TestCase):
         self.assertEqual(result, 1)  # Should return 1 for validation errors
         mock_validate.assert_called_once_with("InvalidBuilder")
     
-    @patch('src.cursus.cli.builder_test_cli.run_test_by_sagemaker_type')
+    @patch('cursus.cli.builder_test_cli.run_test_by_sagemaker_type')
     @patch('builtins.print')
     def test_test_by_type_with_error(self, mock_print, mock_test_by_type):
         """Test test-by-type command when there's an error."""

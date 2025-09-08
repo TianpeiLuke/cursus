@@ -306,7 +306,7 @@ if __name__ == '__main__':
         """)
         
         # Mock the unified alignment tester
-        with patch('src.cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester') as MockTester:
+        with patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester') as MockTester:
             mock_tester = MockTester.return_value
             mock_tester.step_type_enhancement_router = StepTypeEnhancementRouter()
             

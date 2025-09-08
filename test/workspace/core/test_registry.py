@@ -70,7 +70,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_registry_initialization_with_discovery_manager(self, mock_discovery_class):
         """Test registry initialization with discovery manager (Phase 2 optimization)."""
         mock_discovery = Mock()
@@ -90,8 +90,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertEqual(registry._config_cache, {})
         self.assertEqual(registry._cache_timestamp, {})
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_registry_initialization_without_discovery_manager(self, mock_discovery_class, mock_manager_class):
         """Test registry initialization without discovery manager."""
         mock_discovery = Mock()
@@ -109,8 +109,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertIsNone(registry.discovery_manager)  # Should be None when not provided
         self.assertIsNone(registry.workspace_manager)  # Should be None when not provided
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_discover_components_all_developers(self, mock_discovery_class, mock_manager_class):
         """Test discovering components for all developers."""
         # Setup mock discovery manager
@@ -154,8 +154,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         # Should call workspace manager methods
         mock_manager.discover_workspaces.assert_called_once()
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_discover_components_specific_developer(self, mock_discovery_class, mock_manager_class):
         """Test discovering components for a specific developer."""
         mock_discovery = Mock()
@@ -194,8 +194,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_file_resolver.assert_called_with('dev1')
         mock_manager.get_module_loader.assert_called_with('dev1')
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_discover_components_caching(self, mock_discovery_class, mock_manager_class):
         """Test component discovery caching."""
         mock_discovery = Mock()
@@ -241,7 +241,7 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
     
     def test_cache_expiry(self):
         """Test cache expiry functionality."""
-        with patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager'):
+        with patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager'):
             registry = WorkspaceComponentRegistry(self.temp_workspace)
             registry.cache_expiry = 0.1  # 100ms for testing
             
@@ -258,8 +258,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             # Should be expired
             self.assertFalse(registry._is_cache_valid(cache_key))
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_find_builder_class_specific_developer(self, mock_discovery_class, mock_manager_class):
         """Test finding builder class for specific developer."""
         mock_discovery = Mock()
@@ -290,8 +290,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.assert_called_with('dev1')
         mock_module_loader.load_builder_class.assert_called_with('test_step')
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_find_builder_class_any_developer(self, mock_discovery_class, mock_manager_class):
         """Test finding builder class from any developer."""
         mock_discovery = Mock()
@@ -326,9 +326,9 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.discover_workspaces.assert_called_once()
         mock_manager.get_module_loader.assert_called_with('dev1')
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
-    @patch('src.cursus.workspace.core.registry.STEP_NAMES')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.registry.STEP_NAMES')
     def test_find_builder_class_core_fallback(self, mock_step_names, mock_discovery_class, mock_manager_class):
         """Test fallback to core registry for builder class."""
         # Setup discovery manager mock
@@ -371,8 +371,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertEqual(result, mock_core_builder)
         registry.core_registry.get_builder_for_step_type.assert_called_with('test_step')
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_find_config_class(self, mock_discovery_class, mock_manager_class):
         """Test finding config class."""
         mock_discovery = Mock()
@@ -403,8 +403,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.assert_called_with('dev1')
         mock_module_loader.load_contract_class.assert_called_with('test_step')
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_get_workspace_summary(self, mock_discovery_class, mock_manager_class):
         """Test getting workspace summary."""
         mock_discovery = Mock()
@@ -441,8 +441,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             self.assertEqual(summary['component_counts']['builders'], 2)
             self.assertEqual(summary['component_counts']['configs'], 1)
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_validate_component_availability_valid(self, mock_discovery_class, mock_manager_class):
         """Test component availability validation with valid components."""
         mock_discovery = Mock()
@@ -487,8 +487,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             self.assertEqual(len(result['available_components']), 2)  # builder + config
             self.assertEqual(len(result['missing_components']), 0)
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_validate_component_availability_missing(self, mock_discovery_class, mock_manager_class):
         """Test component availability validation with missing components."""
         mock_discovery = Mock()
@@ -529,8 +529,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
             self.assertEqual(result['missing_components'][0]['step_name'], 'missing_step')
             self.assertEqual(result['missing_components'][0]['component_type'], 'builder')
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_clear_cache(self, mock_discovery_class, mock_manager_class):
         """Test clearing all caches."""
         mock_discovery = Mock()
@@ -557,8 +557,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertEqual(registry._config_cache, {})
         self.assertEqual(registry._cache_timestamp, {})
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_discover_developer_components_error_handling(self, mock_discovery_class, mock_manager_class):
         """Test error handling in developer component discovery."""
         mock_discovery = Mock()
@@ -583,8 +583,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         self.assertIn('scripts', components)
         self.assertIn('summary', components)
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_builder_class_caching(self, mock_discovery_class, mock_manager_class):
         """Test builder class caching functionality."""
         mock_discovery = Mock()
@@ -622,8 +622,8 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         mock_manager.get_module_loader.assert_called_once_with('dev1')
         mock_module_loader.load_builder_class.assert_called_once_with('test_step')
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
-    @patch('src.cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.discovery.WorkspaceDiscoveryManager')
     def test_optimized_component_discovery_with_caching(self, mock_discovery_class, mock_manager_class):
         """Test optimized component discovery using consolidated discovery manager (Phase 2)."""
         mock_discovery = Mock()

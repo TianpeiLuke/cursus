@@ -218,7 +218,7 @@ class TestScriptContract(unittest.TestCase):
         self.assertFalse(result.is_valid)
         self.assertIn("Script file not found", result.errors[0])
     
-    @patch('src.cursus.core.base.contract_base.ScriptAnalyzer')
+    @patch('cursus.core.base.contract_base.ScriptAnalyzer')
     def test_validate_implementation_success(self, mock_analyzer_class):
         """Test successful implementation validation."""
         # Mock analyzer
@@ -237,7 +237,7 @@ class TestScriptContract(unittest.TestCase):
         self.assertTrue(result.is_valid)
         self.assertEqual(result.errors, [])
     
-    @patch('src.cursus.core.base.contract_base.ScriptAnalyzer')
+    @patch('cursus.core.base.contract_base.ScriptAnalyzer')
     def test_validate_implementation_missing_paths(self, mock_analyzer_class):
         """Test implementation validation with missing paths."""
         # Mock analyzer with missing paths
@@ -258,7 +258,7 @@ class TestScriptContract(unittest.TestCase):
         self.assertTrue(any("metrics" in error for error in result.errors))
         self.assertTrue(any("LEARNING_RATE" in error for error in result.errors))
     
-    @patch('src.cursus.core.base.contract_base.ScriptAnalyzer')
+    @patch('cursus.core.base.contract_base.ScriptAnalyzer')
     def test_validate_implementation_with_warnings(self, mock_analyzer_class):
         """Test implementation validation with warnings."""
         # Mock analyzer with extra paths

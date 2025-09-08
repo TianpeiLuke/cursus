@@ -65,7 +65,7 @@ class TestModelEvaluationHelpers(unittest.TestCase):
         with open(model_dir / "hyperparameters.json", "w") as f:
             json.dump(hyperparams, f)
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.xgb.Booster')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.xgb.Booster')
     def test_load_model_artifacts(self, mock_booster):
         """Test loading model artifacts."""
         model_dir = self.temp_dir / "model"
@@ -84,8 +84,8 @@ class TestModelEvaluationHelpers(unittest.TestCase):
         self.assertEqual(feature_columns, ["feature1", "feature2"])
         self.assertEqual(hyperparams, {"is_binary": True, "learning_rate": 0.1})
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.RiskTableMappingProcessor')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.NumericalVariableImputationProcessor')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.RiskTableMappingProcessor')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.NumericalVariableImputationProcessor')
     def test_preprocess_eval_data(self, mock_imputer_class, mock_risk_processor_class):
         """Test preprocessing evaluation data."""
         # Create test dataframe
@@ -117,7 +117,7 @@ class TestModelEvaluationHelpers(unittest.TestCase):
         # Verify result contains only feature columns
         self.assertEqual(list(result.columns), feature_columns)
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.logger')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.logger')
     def test_log_metrics_summary_binary(self, mock_logger):
         """Test logging metrics summary for binary classification."""
         metrics = {
@@ -137,7 +137,7 @@ class TestModelEvaluationHelpers(unittest.TestCase):
         self.assertTrue(any("Average Precision" in arg for arg in call_args))
         self.assertTrue(any("F1 Score" in arg for arg in call_args))
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.logger')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.logger')
     def test_log_metrics_summary_multiclass(self, mock_logger):
         """Test logging metrics summary for multiclass classification."""
         metrics = {
@@ -311,7 +311,7 @@ class TestModelEvaluationHelpers(unittest.TestCase):
         summary_file = output_dir / "metrics_summary.txt"
         self.assertTrue(summary_file.exists())
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.plt')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.plt')
     def test_plot_and_save_roc_curve(self, mock_plt):
         """Test plotting and saving ROC curve."""
         output_dir = self.temp_dir / "output"
@@ -328,7 +328,7 @@ class TestModelEvaluationHelpers(unittest.TestCase):
         mock_plt.savefig.assert_called_once()
         mock_plt.close.assert_called_once()
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.plt')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.plt')
     def test_plot_and_save_pr_curve(self, mock_plt):
         """Test plotting and saving PR curve."""
         output_dir = self.temp_dir / "output"
@@ -356,9 +356,9 @@ class TestModelEvaluationIntegration(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir)
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.xgb.DMatrix')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_roc_curve')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_pr_curve')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.xgb.DMatrix')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_roc_curve')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_pr_curve')
     def test_evaluate_model_binary(self, mock_pr_curve, mock_roc_curve, mock_dmatrix):
         """Test evaluating binary classification model."""
         # Create test data
@@ -402,9 +402,9 @@ class TestModelEvaluationIntegration(unittest.TestCase):
         mock_roc_curve.assert_called_once()
         mock_pr_curve.assert_called_once()
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.xgb.DMatrix')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_roc_curve')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_pr_curve')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.xgb.DMatrix')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_roc_curve')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.plot_and_save_pr_curve')
     def test_evaluate_model_multiclass(self, mock_pr_curve, mock_roc_curve, mock_dmatrix):
         """Test evaluating multiclass classification model."""
         # Create test data
@@ -483,10 +483,10 @@ class TestModelEvaluationMain(unittest.TestCase):
         with open(model_dir / "hyperparameters.json", "w") as f:
             json.dump({"is_binary": True}, f)
 
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.evaluate_model')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.preprocess_eval_data')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.load_eval_data')
-    @patch('src.cursus.steps.scripts.xgboost_model_evaluation.load_model_artifacts')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.evaluate_model')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.preprocess_eval_data')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.load_eval_data')
+    @patch('cursus.steps.scripts.xgboost_model_evaluation.load_model_artifacts')
     def test_main_function(self, mock_load_artifacts, mock_load_data, 
                           mock_preprocess, mock_evaluate):
         """Test main function execution."""
@@ -525,7 +525,7 @@ class TestModelEvaluationMain(unittest.TestCase):
         mock_preprocess.return_value = mock_df[['feature1', 'feature2']]
         
         # Mock os.makedirs to avoid actual directory creation
-        with patch('src.cursus.steps.scripts.xgboost_model_evaluation.os.makedirs'):
+        with patch('cursus.steps.scripts.xgboost_model_evaluation.os.makedirs'):
             # Run main function
             main(input_paths, output_paths, environ_vars, job_args)
         

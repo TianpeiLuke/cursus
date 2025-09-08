@@ -197,7 +197,7 @@ class TestPipelineAssembler(unittest.TestCase):
                 edges=[('step1', 'step2'), ('step2', 'step3')]  # step3 doesn't exist
             )
 
-    @patch('src.cursus.core.assembler.pipeline_assembler.CONFIG_STEP_REGISTRY')
+    @patch('cursus.core.assembler.pipeline_assembler.CONFIG_STEP_REGISTRY')
     def test_initialize_step_builders(self, mock_registry):
         """Test step builder initialization."""
         # Mock the registry to return step type
@@ -285,7 +285,7 @@ class TestPipelineAssembler(unittest.TestCase):
         step2 = assembler._instantiate_step('step2')
         self.assertIsNotNone(step2)
 
-    @patch('src.cursus.core.assembler.pipeline_assembler.Pipeline')
+    @patch('cursus.core.assembler.pipeline_assembler.Pipeline')
     def test_generate_pipeline(self, mock_pipeline_class):
         """Test pipeline generation."""
         # Mock Pipeline constructor
@@ -334,7 +334,7 @@ class TestPipelineAssembler(unittest.TestCase):
         
         self.assertIn("Failed to determine build order", str(context.exception))
 
-    @patch('src.cursus.core.assembler.pipeline_assembler.create_pipeline_components')
+    @patch('cursus.core.assembler.pipeline_assembler.create_pipeline_components')
     def test_create_with_components(self, mock_create_components):
         """Test factory method for creating assembler with components."""
         # Mock component creation
@@ -405,7 +405,7 @@ class TestPipelineAssembler(unittest.TestCase):
         }
         cradle_dag = PipelineDAG(nodes=['step1'], edges=[])
         
-        with patch('src.cursus.core.assembler.pipeline_assembler.BasePipelineConfig.get_step_name') as mock_get_step_name:
+        with patch('cursus.core.assembler.pipeline_assembler.BasePipelineConfig.get_step_name') as mock_get_step_name:
             mock_get_step_name.return_value = "CradleDataLoading"
             
             assembler = PipelineAssembler(
@@ -436,7 +436,7 @@ class TestPipelineAssembler(unittest.TestCase):
         # Add some mock step instances
         assembler.step_instances = {'step1': Mock(), 'step2': Mock()}
         
-        with patch('src.cursus.core.assembler.pipeline_assembler.Pipeline') as mock_pipeline_class:
+        with patch('cursus.core.assembler.pipeline_assembler.Pipeline') as mock_pipeline_class:
             mock_pipeline_class.return_value = Mock()
             
             # Generate pipeline (should clear existing instances)
@@ -447,7 +447,7 @@ class TestPipelineAssembler(unittest.TestCase):
 
     def test_logging_integration(self):
         """Test that logging is properly integrated."""
-        with patch('src.cursus.core.assembler.pipeline_assembler.logger') as mock_logger:
+        with patch('cursus.core.assembler.pipeline_assembler.logger') as mock_logger:
             assembler = PipelineAssembler(
                 dag=self.dag,
                 config_map=self.config_map,

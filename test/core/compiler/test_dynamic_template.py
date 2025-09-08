@@ -85,8 +85,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
             os.rmdir(self.temp_dir)
 
     @patch.object(PipelineTemplateBase, '_get_base_config')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_init_stores_config_path(self, mock_load_configs, mock_detect_classes, mock_get_base_config):
         """Test that __init__ correctly stores the config_path attribute."""
         # Setup mocks
@@ -120,8 +120,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         mock_detect_classes.assert_called_with(self.config_path)
 
     @patch.object(PipelineTemplateBase, '_load_configs')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_detect_config_classes(self, mock_load_configs, mock_detect_classes, mock_template_load_configs):
         """Test that _detect_config_classes works correctly with the stored config_path."""
         # Setup mocks
@@ -145,8 +145,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         self.assertEqual(template.CONFIG_CLASSES, expected_classes)
 
     @patch.object(PipelineTemplateBase, '_load_configs')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_create_pipeline_dag(self, mock_load_configs, mock_detect_classes, mock_template_load_configs):
         """Test that _create_pipeline_dag returns the provided DAG."""
         # Setup mocks
@@ -172,8 +172,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         self.assertEqual(result_dag, self.dag)
 
     @patch.object(PipelineTemplateBase, '_load_configs')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_create_config_map(self, mock_load_configs, mock_detect_classes, mock_template_load_configs):
         """Test that _create_config_map correctly maps DAG nodes to configs."""
         # Setup mocks
@@ -229,8 +229,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         self.mock_config_resolver.resolve_config_map.assert_not_called()
 
     @patch.object(PipelineTemplateBase, '_get_base_config')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_create_step_builder_map(self, mock_load_configs, mock_detect_classes, mock_get_base_config):
         """Test that _create_step_builder_map correctly maps step types to builder classes."""
         # Setup mocks
@@ -300,8 +300,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         self.mock_config_resolver.resolve_config_map.assert_called_once()
 
     @patch.object(PipelineTemplateBase, '_load_configs')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_get_resolution_preview(self, mock_load_configs, mock_detect_classes, mock_template_load_configs):
         """Test get_resolution_preview returns expected preview format."""
         # Setup mocks
@@ -376,8 +376,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
             self.assertEqual(node_preview["alternatives"], 0)  # Each node has only one candidate
 
     @patch.object(PipelineTemplateBase, '_load_configs')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_get_step_dependencies(self, mock_load_configs, mock_detect_classes, mock_template_load_configs):
         """Test get_step_dependencies returns correct dependencies from DAG."""
         # Setup mocks
@@ -405,8 +405,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         self.assertEqual(dependencies["training"], ["preprocessing"])
         
     @patch.object(PipelineTemplateBase, '_load_configs')
-    @patch('src.cursus.steps.configs.utils.detect_config_classes_from_json')
-    @patch('src.cursus.steps.configs.utils.load_configs')
+    @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
+    @patch('cursus.steps.configs.utils.load_configs')
     def test_get_pipeline_parameters(self, mock_load_configs, mock_detect_classes, mock_template_load_configs):
         """Test _get_pipeline_parameters returns the standard pipeline parameters."""
         # Setup mocks

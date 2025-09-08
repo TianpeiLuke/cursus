@@ -427,7 +427,7 @@ class TestValidateEnhancedDAGMetadata:
         zm.manual_connections["alternatives"] = ["target_pipeline"]
         # Don't add to curated_connections (missing annotation)
         
-        with patch('src.cursus.pipeline_catalog.shared_dags.enhanced_metadata.logger') as mock_logger:
+        with patch('cursus.pipeline_catalog.shared_dags.enhanced_metadata.logger') as mock_logger:
             result = validate_enhanced_dag_metadata(valid_enhanced_metadata)
             assert result is True
             mock_logger.warning.assert_called_once()
@@ -440,7 +440,7 @@ class TestValidateEnhancedDAGMetadata:
         with pytest.raises(ValueError, match="Features list cannot be empty"):
             validate_enhanced_dag_metadata(valid_enhanced_metadata)
     
-    @patch('src.cursus.pipeline_catalog.shared_dags.enhanced_metadata.logger')
+    @patch('cursus.pipeline_catalog.shared_dags.enhanced_metadata.logger')
     def test_validate_enhanced_dag_metadata_exception(self, mock_logger, valid_enhanced_metadata):
         """Test validation with unexpected exception."""
         # Mock _validate to raise exception

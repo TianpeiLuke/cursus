@@ -14,7 +14,7 @@ class TestRegistryValidation(unittest.TestCase):
         """Set up test fixtures."""
         self.validator = NamingStandardValidator()
     
-    @patch('src.cursus.validation.naming.naming_standard_validator.STEP_NAMES')
+    @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
     def test_validate_all_registry_entries_valid(self, mock_step_names):
         """Test validation of valid registry entries."""
         # Mock a valid registry - spec_type should match step name
@@ -32,7 +32,7 @@ class TestRegistryValidation(unittest.TestCase):
         violations = self.validator.validate_all_registry_entries()
         self.assertEqual(len(violations), 0)
     
-    @patch('src.cursus.validation.naming.naming_standard_validator.STEP_NAMES')
+    @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
     def test_validate_all_registry_entries_invalid_step_name(self, mock_step_names):
         """Test validation with invalid step names in registry."""
         # Mock registry with invalid step name
@@ -48,7 +48,7 @@ class TestRegistryValidation(unittest.TestCase):
         violation_types = [v.violation_type for v in violations]
         self.assertIn("pascal_case", violation_types)
     
-    @patch('src.cursus.validation.naming.naming_standard_validator.STEP_NAMES')
+    @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
     def test_validate_all_registry_entries_invalid_sagemaker_type(self, mock_step_names):
         """Test validation with invalid SageMaker step type."""
         # Mock registry with invalid SageMaker step type
@@ -64,7 +64,7 @@ class TestRegistryValidation(unittest.TestCase):
         violation_types = [v.violation_type for v in violations]
         self.assertIn("invalid_sagemaker_type", violation_types)
     
-    @patch('src.cursus.validation.naming.naming_standard_validator.STEP_NAMES')
+    @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
     def test_validate_all_registry_entries_spec_type_mismatch(self, mock_step_names):
         """Test validation with spec type mismatch."""
         # Mock registry with spec type that doesn't match step name

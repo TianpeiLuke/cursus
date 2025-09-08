@@ -10,9 +10,6 @@ import unittest
 import sys
 import os
 
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
-
 from cursus.core.deps.specification_registry import SpecificationRegistry
 from cursus.steps.specs import (
     # Job type-specific data loading specifications
@@ -22,11 +19,17 @@ from cursus.steps.specs import (
     DATA_LOADING_CALIBRATION_SPEC,
     
     # Job type-specific preprocessing specifications
-    PREPROCESSING_TRAINING_SPEC,
-    PREPROCESSING_VALIDATION_SPEC,
-    PREPROCESSING_TESTING_SPEC,
-    PREPROCESSING_CALIBRATION_SPEC
+    TABULAR_PREPROCESSING_TRAINING_SPEC,
+    TABULAR_PREPROCESSING_VALIDATION_SPEC,
+    TABULAR_PREPROCESSING_TESTING_SPEC,
+    TABULAR_PREPROCESSING_CALIBRATION_SPEC
 )
+
+# Create aliases for backward compatibility
+PREPROCESSING_TRAINING_SPEC = TABULAR_PREPROCESSING_TRAINING_SPEC
+PREPROCESSING_VALIDATION_SPEC = TABULAR_PREPROCESSING_VALIDATION_SPEC
+PREPROCESSING_TESTING_SPEC = TABULAR_PREPROCESSING_TESTING_SPEC
+PREPROCESSING_CALIBRATION_SPEC = TABULAR_PREPROCESSING_CALIBRATION_SPEC
 
 class TestJobTypeIntegration(unittest.TestCase):
     """Integration tests for job type-specific specifications."""

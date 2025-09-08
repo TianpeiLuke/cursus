@@ -231,7 +231,7 @@ class TestPerformanceMetrics:
         assert metrics["target_met"] is True
         assert metrics["average_time_ms"] < 1.0
     
-    @patch('src.cursus.registry.validation_utils.logger')
+    @patch('cursus.registry.validation_utils.logger')
     def test_performance_warning_logging(self, mock_logger):
         """Test performance warning is logged for slow validation."""
         # Mock time.perf_counter to simulate slow validation

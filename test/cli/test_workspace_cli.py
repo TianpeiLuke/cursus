@@ -81,7 +81,7 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
+    @patch('cursus.cli.workspace_cli.WorkspaceAPI')
     def test_create_workspace_basic(self, mock_workspace_api):
         """Test basic workspace creation."""
         # Mock the WorkspaceAPI
@@ -95,8 +95,8 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
         mock_workspace_api.return_value = mock_api
         
         # Mock template application
-        with patch('src.cursus.cli.workspace_cli._apply_workspace_template') as mock_template, \
-             patch('src.cursus.cli.workspace_cli._show_workspace_structure') as mock_show:
+        with patch('cursus.cli.workspace_cli._apply_workspace_template') as mock_template, \
+             patch('cursus.cli.workspace_cli._show_workspace_structure') as mock_show:
             
             result = self.runner.invoke(create_workspace, [
                 'test_dev',
@@ -108,7 +108,7 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
             self.assertIn('✅', result.output)
             mock_api.setup_developer_workspace.assert_called_once()
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
+    @patch('cursus.cli.workspace_cli.WorkspaceAPI')
     def test_create_workspace_with_template(self, mock_workspace_api):
         """Test workspace creation with template."""
         # Mock the WorkspaceAPI
@@ -121,8 +121,8 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
         mock_api.setup_developer_workspace.return_value = mock_result
         mock_workspace_api.return_value = mock_api
         
-        with patch('src.cursus.cli.workspace_cli._apply_workspace_template') as mock_template, \
-             patch('src.cursus.cli.workspace_cli._show_workspace_structure') as mock_show:
+        with patch('cursus.cli.workspace_cli._apply_workspace_template') as mock_template, \
+             patch('cursus.cli.workspace_cli._show_workspace_structure') as mock_show:
             
             result = self.runner.invoke(create_workspace, [
                 'test_dev',
@@ -149,7 +149,7 @@ class TestWorkspaceListingCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
+    @patch('cursus.cli.workspace_cli.WorkspaceAPI')
     def test_list_workspaces_empty(self, mock_workspace_api):
         """Test listing workspaces when none exist."""
         # Mock empty workspace list
@@ -164,8 +164,8 @@ class TestWorkspaceListingCommands(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn('No workspaces found', result.output)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
-    @patch('src.cursus.cli.workspace_cli.WorkspaceComponentRegistry')
+    @patch('cursus.cli.workspace_cli.WorkspaceAPI')
+    @patch('cursus.cli.workspace_cli.WorkspaceComponentRegistry')
     def test_list_workspaces_json_format(self, mock_registry, mock_workspace_api):
         """Test listing workspaces in JSON format."""
         from datetime import datetime
@@ -217,9 +217,9 @@ class TestWorkspaceValidationCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceAPI')
-    @patch('src.cursus.cli.workspace_cli._display_health_result_v4')
-    @patch('src.cursus.cli.workspace_cli.WorkspaceStatus')
+    @patch('cursus.cli.workspace_cli.WorkspaceAPI')
+    @patch('cursus.cli.workspace_cli._display_health_result_v4')
+    @patch('cursus.cli.workspace_cli.WorkspaceStatus')
     def test_validate_workspace_basic(self, mock_workspace_status, mock_display, mock_workspace_api):
         """Test basic workspace validation."""
         # Mock WorkspaceStatus enum
@@ -264,8 +264,8 @@ class TestWorkspaceInfoCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceManager')
-    @patch('src.cursus.cli.workspace_cli.WorkspaceComponentRegistry')
+    @patch('cursus.cli.workspace_cli.WorkspaceManager')
+    @patch('cursus.cli.workspace_cli.WorkspaceComponentRegistry')
     def test_workspace_info_basic(self, mock_registry, mock_workspace_manager):
         """Test basic workspace info command."""
         from datetime import datetime
@@ -304,8 +304,8 @@ class TestWorkspaceInfoCommands(unittest.TestCase):
         self.assertIn('Workspace Information: test_dev', result.output)
         self.assertIn('Status:', result.output)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceManager')
-    @patch('src.cursus.cli.workspace_cli.WorkspaceComponentRegistry')
+    @patch('cursus.cli.workspace_cli.WorkspaceManager')
+    @patch('cursus.cli.workspace_cli.WorkspaceComponentRegistry')
     def test_workspace_info_not_found(self, mock_registry, mock_workspace_manager):
         """Test workspace info for non-existent workspace."""
         mock_workspace_info = Mock()
@@ -338,7 +338,7 @@ class TestCrossWorkspaceCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceComponentRegistry')
+    @patch('cursus.cli.workspace_cli.WorkspaceComponentRegistry')
     def test_discover_components_basic(self, mock_registry):
         """Test basic component discovery."""
         # Mock component discovery
@@ -361,7 +361,7 @@ class TestCrossWorkspaceCommands(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn('Discovering components...', result.output)
     
-    @patch('src.cursus.cli.workspace_cli.WorkspaceAwareDAG')
+    @patch('cursus.cli.workspace_cli.WorkspaceAwareDAG')
     def test_build_pipeline_basic(self, mock_dag):
         """Test basic pipeline building."""
         # Mock DAG operations
@@ -385,9 +385,9 @@ class TestCrossWorkspaceCommands(unittest.TestCase):
         self.assertIn('Building pipeline: test_pipeline', result.output)
         self.assertIn('DRY RUN MODE', result.output)
     
-    @patch('src.cursus.cli.workspace_cli._display_compatibility_result')
-    @patch('src.cursus.cli.workspace_cli.WorkspaceComponentRegistry')
-    @patch('src.cursus.cli.workspace_cli.UnifiedValidationCore')
+    @patch('cursus.cli.workspace_cli._display_compatibility_result')
+    @patch('cursus.cli.workspace_cli.WorkspaceComponentRegistry')
+    @patch('cursus.cli.workspace_cli.UnifiedValidationCore')
     def test_test_compatibility_basic(self, mock_validation_core, mock_registry, mock_display):
         """Test basic compatibility testing."""
         # Mock compatibility result
@@ -454,7 +454,7 @@ class TestValidationAlignmentCommands(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
     
-    @patch('src.cursus.cli.workspace_cli.UnifiedValidationCore')
+    @patch('cursus.cli.workspace_cli.UnifiedValidationCore')
     def test_validate_alignment_basic(self, mock_validation_core):
         """Test basic alignment validation."""
         # Mock validation result

@@ -57,8 +57,8 @@ class TestPipelineDAGResolverEnhanced:
         assert plan.data_flow_map["XGBoostTraining"] == {"input_0": "TabularPreprocessing:output"}
         assert plan.data_flow_map["XGBoostModelEval"] == {"input_0": "XGBoostTraining:output"}
     
-    @patch('src.cursus.api.dag.pipeline_dag_resolver.get_canonical_name_from_file_name')
-    @patch('src.cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
+    @patch('cursus.api.dag.pipeline_dag_resolver.get_canonical_name_from_file_name')
+    @patch('cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
     def test_contract_discovery_success(self, mock_get_spec_type, mock_get_canonical):
         """Test successful contract discovery."""
         # Mock the registry helper functions
@@ -83,7 +83,7 @@ class TestPipelineDAGResolverEnhanced:
             assert contract.expected_input_paths == {"input_path": "/opt/ml/processing/input/data"}
             assert contract.expected_output_paths == {"model_path": "/opt/ml/processing/output/model"}
     
-    @patch('src.cursus.api.dag.pipeline_dag_resolver.get_canonical_name_from_file_name')
+    @patch('cursus.api.dag.pipeline_dag_resolver.get_canonical_name_from_file_name')
     def test_contract_discovery_failure(self, mock_get_canonical):
         """Test contract discovery failure fallback."""
         # Mock failure in canonical name resolution
@@ -153,8 +153,8 @@ class TestPipelineDAGResolverEnhanced:
             "/opt/ml/code/script.py"
         )
     
-    @patch('src.cursus.api.dag.pipeline_dag_resolver.importlib.import_module')
-    @patch('src.cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
+    @patch('cursus.api.dag.pipeline_dag_resolver.importlib.import_module')
+    @patch('cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
     def test_get_step_specification_with_getter_function(self, mock_get_spec_type, mock_import):
         """Test specification retrieval with getter function."""
         # Mock the spec type lookup
@@ -174,8 +174,8 @@ class TestPipelineDAGResolverEnhanced:
         mock_import.assert_called_once_with("cursus.steps.specs.xgboost_training_spec")
         mock_module.get_xgboost_training_spec.assert_called_once()
     
-    @patch('src.cursus.api.dag.pipeline_dag_resolver.importlib.import_module')
-    @patch('src.cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
+    @patch('cursus.api.dag.pipeline_dag_resolver.importlib.import_module')
+    @patch('cursus.api.dag.pipeline_dag_resolver.get_spec_step_type')
     def test_get_step_specification_with_constant(self, mock_get_spec_type, mock_import):
         """Test specification retrieval with spec constant (actual pattern used in codebase)."""
         # Mock the spec type lookup

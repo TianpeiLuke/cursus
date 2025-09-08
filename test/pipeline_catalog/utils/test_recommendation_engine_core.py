@@ -435,7 +435,7 @@ class TestPipelineRecommendationEngineCore:
         assert engine._recommendation_cache == {}
         assert not engine._cache_valid
     
-    @patch('src.cursus.pipeline_catalog.utils.recommendation_engine.logger')
+    @patch('cursus.pipeline_catalog.utils.recommendation_engine.logger')
     def test_error_handling(self, mock_logger, engine):
         """Test error handling and logging."""
         # Mock discovery to raise exception

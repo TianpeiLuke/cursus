@@ -19,7 +19,7 @@ class TestUnifiedRegistryManager(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         # Mock the core registry loading to avoid circular imports
-        with patch('src.cursus.registry.hybrid.manager.load_registry_module') as mock_load:
+        with patch('cursus.registry.hybrid.manager.load_registry_module') as mock_load:
             mock_module = MagicMock()
             mock_module.STEP_NAMES = {
                 "XGBoostTraining": {

@@ -473,7 +473,7 @@ class TestRegistryValidatorCore:
         assert validator._validation_cache == {}
         assert not validator._cache_valid
     
-    @patch('src.cursus.pipeline_catalog.utils.registry_validator.logger')
+    @patch('cursus.pipeline_catalog.utils.registry_validator.logger')
     def test_error_handling(self, mock_logger, validator):
         """Test error handling and logging."""
         # Mock registry to raise exception

@@ -356,7 +356,7 @@ class TestDummyTrainingMain(unittest.TestCase):
         # Verify failure with appropriate exit code
         self.assertEqual(result, 2)  # ValueError
 
-    @patch('src.cursus.steps.scripts.dummy_training.process_model_with_hyperparameters')
+    @patch('cursus.steps.scripts.dummy_training.process_model_with_hyperparameters')
     def test_main_unexpected_error(self, mock_process):
         """Test main function with unexpected error."""
         # Create input files

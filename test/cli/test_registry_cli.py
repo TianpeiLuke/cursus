@@ -352,7 +352,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "✅ Step definition is valid" in result.output
     
-    @patch('src.cursus.registry.validation_utils.validate_new_step_definition')
+    @patch('cursus.registry.validation_utils.validate_new_step_definition')
     def test_cli_with_validation_exception(self, mock_validate):
         """Test CLI handling of validation exceptions."""
         mock_validate.side_effect = Exception("Test validation error")
@@ -366,7 +366,7 @@ class TestCLIErrorHandling:
         assert "❌ Validation failed:" in result.output
         assert "Test validation error" in result.output
     
-    @patch('src.cursus.registry.validation_utils.get_validation_status')
+    @patch('cursus.registry.validation_utils.get_validation_status')
     def test_cli_status_with_exception(self, mock_status):
         """Test CLI status command with exception."""
         mock_status.side_effect = Exception("Test status error")
@@ -377,7 +377,7 @@ class TestCLIErrorHandling:
         assert "❌ Failed to get validation status:" in result.output
         assert "Test status error" in result.output
     
-    @patch('src.cursus.registry.validation_utils.reset_performance_metrics')
+    @patch('cursus.registry.validation_utils.reset_performance_metrics')
     def test_cli_reset_with_exception(self, mock_reset):
         """Test CLI reset command with exception."""
         mock_reset.side_effect = Exception("Test reset error")

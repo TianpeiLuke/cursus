@@ -261,7 +261,7 @@ class TestSpecificationRegistry(unittest.TestCase):
         
         self.assertIn("Invalid specification", str(context.exception))
     
-    @patch('src.cursus.core.base.specification_base.logger')
+    @patch('cursus.core.base.specification_base.logger')
     def test_registration_logging(self, mock_logger):
         """Test that registration logs appropriate messages."""
         self.registry.register("test_step", self.source_spec)

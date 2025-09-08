@@ -494,7 +494,7 @@ class TestCatalogRegistry:
         assert node_data["zettelkasten_metadata"]["framework"] == sample_zettelkasten_metadata.framework
         assert node_data["multi_dimensional_tags"]["framework_tags"] == sample_zettelkasten_metadata.framework_tags
     
-    @patch('src.cursus.pipeline_catalog.utils.catalog_registry.logger')
+    @patch('cursus.pipeline_catalog.utils.catalog_registry.logger')
     def test_error_handling(self, mock_logger, registry):
         """Test error handling and logging."""
         # Test with invalid registry path

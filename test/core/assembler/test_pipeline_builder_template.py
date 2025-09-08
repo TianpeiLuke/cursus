@@ -94,7 +94,7 @@ class TestPipelineTemplateBase(unittest.TestCase):
         self.mock_file.return_value.__enter__.return_value.read.return_value = json.dumps(self.config_data)
         
         # Mock load_configs function from the correct import path
-        self.load_configs_patch = patch('src.cursus.steps.configs.utils.load_configs')
+        self.load_configs_patch = patch('cursus.steps.configs.utils.load_configs')
         self.mock_load_configs = self.load_configs_patch.start()
         
         # Create mock configs
@@ -111,12 +111,12 @@ class TestPipelineTemplateBase(unittest.TestCase):
         self.mock_load_configs.return_value = self.mock_configs
         
         # Mock build_complete_config_classes
-        self.build_complete_patch = patch('src.cursus.steps.configs.utils.build_complete_config_classes')
+        self.build_complete_patch = patch('cursus.steps.configs.utils.build_complete_config_classes')
         self.mock_build_complete = self.build_complete_patch.start()
         self.mock_build_complete.return_value = {}
         
         # Mock create_pipeline_components
-        self.components_patch = patch('src.cursus.core.assembler.pipeline_template_base.create_pipeline_components')
+        self.components_patch = patch('cursus.core.assembler.pipeline_template_base.create_pipeline_components')
         self.mock_create_components = self.components_patch.start()
         
         self.mock_registry_manager = MagicMock(spec=MockRegistryManager)
@@ -128,7 +128,7 @@ class TestPipelineTemplateBase(unittest.TestCase):
         }
         
         # Mock PipelineAssembler
-        self.assembler_patch = patch('src.cursus.core.assembler.pipeline_template_base.PipelineAssembler')
+        self.assembler_patch = patch('cursus.core.assembler.pipeline_template_base.PipelineAssembler')
         self.mock_assembler_cls = self.assembler_patch.start()
         self.mock_assembler = MagicMock()
         self.mock_pipeline = MagicMock()
@@ -136,7 +136,7 @@ class TestPipelineTemplateBase(unittest.TestCase):
         self.mock_assembler_cls.return_value = self.mock_assembler
         
         # Mock generate_pipeline_name
-        self.name_gen_patch = patch('src.cursus.core.assembler.pipeline_template_base.generate_pipeline_name')
+        self.name_gen_patch = patch('cursus.core.assembler.pipeline_template_base.generate_pipeline_name')
         self.mock_generate_name = self.name_gen_patch.start()
         self.mock_generate_name.return_value = 'test-pipeline-v1-0'
 
@@ -308,7 +308,7 @@ class TestPipelineTemplateBase(unittest.TestCase):
     def test_build_with_context_class_method(self):
         """Test build_with_context class method."""
         # Mock dependency_resolution_context
-        with patch('src.cursus.core.assembler.pipeline_template_base.dependency_resolution_context') as mock_context:
+        with patch('cursus.core.assembler.pipeline_template_base.dependency_resolution_context') as mock_context:
             mock_context.return_value.__enter__.return_value = {
                 'registry_manager': self.mock_registry_manager,
                 'resolver': self.mock_dependency_resolver
@@ -328,7 +328,7 @@ class TestPipelineTemplateBase(unittest.TestCase):
     def test_build_in_thread_class_method(self):
         """Test build_in_thread class method."""
         # Mock get_thread_components
-        with patch('src.cursus.core.assembler.pipeline_template_base.get_thread_components') as mock_thread:
+        with patch('cursus.core.assembler.pipeline_template_base.get_thread_components') as mock_thread:
             mock_thread.return_value = {
                 'registry_manager': self.mock_registry_manager,
                 'resolver': self.mock_dependency_resolver
@@ -503,7 +503,7 @@ class TestPipelineAssembler(unittest.TestCase):
         self.mock_dependency_resolver = MagicMock(spec=MockUnifiedDependencyResolver)
         
         # Mock CONFIG_STEP_REGISTRY
-        self.registry_patch = patch('src.cursus.core.assembler.pipeline_assembler.CONFIG_STEP_REGISTRY')
+        self.registry_patch = patch('cursus.core.assembler.pipeline_assembler.CONFIG_STEP_REGISTRY')
         self.mock_step_registry = self.registry_patch.start()
         self.mock_step_registry.get.side_effect = lambda x: {
             'MockConfig': 'TestStep1',
@@ -511,12 +511,12 @@ class TestPipelineAssembler(unittest.TestCase):
         }.get(x, 'TestStep3')
         
         # Mock create_dependency_resolver
-        self.resolver_patch = patch('src.cursus.core.assembler.pipeline_assembler.create_dependency_resolver')
+        self.resolver_patch = patch('cursus.core.assembler.pipeline_assembler.create_dependency_resolver')
         self.mock_create_resolver = self.resolver_patch.start()
         self.mock_create_resolver.return_value = self.mock_dependency_resolver
         
         # Mock Pipeline
-        self.pipeline_patch = patch('src.cursus.core.assembler.pipeline_assembler.Pipeline')
+        self.pipeline_patch = patch('cursus.core.assembler.pipeline_assembler.Pipeline')
         self.mock_pipeline_cls = self.pipeline_patch.start()
         self.mock_pipeline = MagicMock()
         self.mock_pipeline_cls.return_value = self.mock_pipeline
@@ -611,7 +611,7 @@ class TestPipelineAssembler(unittest.TestCase):
     def test_create_with_components_class_method(self):
         """Test create_with_components class method."""
         # Mock create_pipeline_components
-        with patch('src.cursus.core.assembler.pipeline_assembler.create_pipeline_components') as mock_create:
+        with patch('cursus.core.assembler.pipeline_assembler.create_pipeline_components') as mock_create:
             mock_create.return_value = {
                 'registry_manager': self.mock_registry_manager,
                 'resolver': self.mock_dependency_resolver

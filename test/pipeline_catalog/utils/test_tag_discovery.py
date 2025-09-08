@@ -457,7 +457,7 @@ class TestTagBasedDiscovery:
         assert discovery._tag_cache == {}
         assert not discovery._cache_valid
     
-    @patch('src.cursus.pipeline_catalog.utils.tag_discovery.logger')
+    @patch('cursus.pipeline_catalog.utils.tag_discovery.logger')
     def test_error_handling(self, mock_logger, discovery):
         """Test error handling and logging."""
         # Mock registry to raise exception

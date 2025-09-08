@@ -1,7 +1,7 @@
 """
 Test suite for hybrid registry utilities.
 
-Tests the utility functions in src.cursus.registry.hybrid.utils.
+Tests the utility functions in cursus.registry.hybrid.utils.
 """
 
 import unittest

@@ -104,7 +104,7 @@ class TestZettelkastenMetadata:
         """Test single_responsibility validation for verbose descriptions."""
         verbose_responsibility = "This is a very long and verbose single responsibility description that exceeds the recommended fifteen word limit for concise descriptions"
         
-        with patch('src.cursus.pipeline_catalog.shared_dags.enhanced_metadata.logger') as mock_logger:
+        with patch('cursus.pipeline_catalog.shared_dags.enhanced_metadata.logger') as mock_logger:
             zm = ZettelkastenMetadata(
                 atomic_id="test_pipeline",
                 single_responsibility=verbose_responsibility

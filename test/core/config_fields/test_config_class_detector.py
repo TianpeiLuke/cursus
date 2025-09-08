@@ -176,7 +176,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertIn("ValidConfig", result)
         self.assertEqual(len(result), 1)
 
-    @patch('src.cursus.core.config_fields.config_class_detector.build_complete_config_classes')
+    @patch('cursus.core.config_fields.config_class_detector.build_complete_config_classes')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.is_file')
     def test_detect_from_json_success(self, mock_is_file, mock_file, mock_build_classes):
@@ -198,7 +198,7 @@ class TestConfigClassDetector(unittest.TestCase):
         mock_is_file.assert_called_once()
         mock_file.assert_called_once_with("test_config.json", 'r')
 
-    @patch('src.cursus.core.config_fields.config_class_detector.build_complete_config_classes')
+    @patch('cursus.core.config_fields.config_class_detector.build_complete_config_classes')
     @patch('pathlib.Path.is_file')
     def test_detect_from_json_file_not_found(self, mock_is_file, mock_build_classes):
         """Test detection when JSON file is not found."""
@@ -212,7 +212,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertEqual(result, self.mock_complete_classes)
         self.assertTrue(any("Configuration file not found" in message for message in log.output))
 
-    @patch('src.cursus.core.config_fields.config_class_detector.build_complete_config_classes')
+    @patch('cursus.core.config_fields.config_class_detector.build_complete_config_classes')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.is_file')
     def test_detect_from_json_invalid_json(self, mock_is_file, mock_file, mock_build_classes):
@@ -228,7 +228,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertEqual(result, self.mock_complete_classes)
         self.assertTrue(any("Error reading or parsing configuration file" in message for message in log.output))
 
-    @patch('src.cursus.core.config_fields.config_class_detector.build_complete_config_classes')
+    @patch('cursus.core.config_fields.config_class_detector.build_complete_config_classes')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.is_file')
     def test_detect_from_json_no_class_names_found(self, mock_is_file, mock_file, mock_build_classes):
@@ -244,7 +244,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertEqual(result, self.mock_complete_classes)
         self.assertTrue(any("No config class names found" in message for message in log.output))
 
-    @patch('src.cursus.core.config_fields.config_class_detector.build_complete_config_classes')
+    @patch('cursus.core.config_fields.config_class_detector.build_complete_config_classes')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.is_file')
     def test_detect_from_json_missing_classes(self, mock_is_file, mock_file, mock_build_classes):
@@ -273,7 +273,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertTrue(any("Could not load" in message and "required classes" in message 
                           for message in log.output))
 
-    @patch('src.cursus.core.config_fields.config_class_detector.ConfigClassStore')
+    @patch('cursus.core.config_fields.config_class_detector.ConfigClassStore')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.is_file')
     def test_from_config_store_success(self, mock_is_file, mock_file, mock_store):
@@ -292,7 +292,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertIn("MockConfigB", result)
         self.assertIn("BasePipelineConfig", result)
 
-    @patch('src.cursus.core.config_fields.config_class_detector.ConfigClassStore')
+    @patch('cursus.core.config_fields.config_class_detector.ConfigClassStore')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.is_file')
     def test_from_config_store_io_error(self, mock_is_file, mock_file, mock_store):
@@ -312,7 +312,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertTrue(any("Error reading or parsing configuration file" in message 
                           for message in log.output))
 
-    @patch('src.cursus.core.config_fields.config_class_detector.ConfigClassStore')
+    @patch('cursus.core.config_fields.config_class_detector.ConfigClassStore')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.is_file')
     def test_from_config_store_no_class_names(self, mock_is_file, mock_file, mock_store):
@@ -347,7 +347,7 @@ class TestConfigClassDetector(unittest.TestCase):
         self.assertEqual(ConfigClassDetector.CONFIGURATION_FIELD, "configuration")
         self.assertEqual(ConfigClassDetector.SPECIFIC_FIELD, "specific")
 
-    @patch('src.cursus.core.config_fields.config_class_detector.ConfigClassDetector.detect_from_json')
+    @patch('cursus.core.config_fields.config_class_detector.ConfigClassDetector.detect_from_json')
     def test_detect_config_classes_from_json_function(self, mock_detect):
         """Test the standalone detect_config_classes_from_json function."""
         mock_detect.return_value = self.mock_complete_classes
@@ -366,7 +366,7 @@ class TestConfigClassDetector(unittest.TestCase):
         
         try:
             # Mock the build_complete_config_classes function
-            with patch('src.cursus.core.config_fields.config_class_detector.build_complete_config_classes') as mock_build:
+            with patch('cursus.core.config_fields.config_class_detector.build_complete_config_classes') as mock_build:
                 mock_build.return_value = self.mock_complete_classes
                 
                 # Test the actual file reading

@@ -153,8 +153,8 @@ class TestCalibrationHelpers(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             find_first_data_file(config=self.config)
 
-    @patch('src.cursus.steps.scripts.model_calibration.pd.read_csv')
-    @patch('src.cursus.steps.scripts.model_calibration.find_first_data_file')
+    @patch('cursus.steps.scripts.model_calibration.pd.read_csv')
+    @patch('cursus.steps.scripts.model_calibration.find_first_data_file')
     def test_load_data_csv(self, mock_find_file, mock_read_csv):
         """Test loading CSV data."""
         mock_find_file.return_value = "/path/to/data.csv"
@@ -170,8 +170,8 @@ class TestCalibrationHelpers(unittest.TestCase):
         mock_read_csv.assert_called_once_with("/path/to/data.csv")
         pd.testing.assert_frame_equal(result, mock_df)
 
-    @patch('src.cursus.steps.scripts.model_calibration.pd.read_parquet')
-    @patch('src.cursus.steps.scripts.model_calibration.find_first_data_file')
+    @patch('cursus.steps.scripts.model_calibration.pd.read_parquet')
+    @patch('cursus.steps.scripts.model_calibration.find_first_data_file')
     def test_load_data_parquet(self, mock_find_file, mock_read_parquet):
         """Test loading Parquet data."""
         mock_find_file.return_value = "/path/to/data.parquet"
@@ -187,7 +187,7 @@ class TestCalibrationHelpers(unittest.TestCase):
         mock_read_parquet.assert_called_once_with("/path/to/data.parquet")
         pd.testing.assert_frame_equal(result, mock_df)
 
-    @patch('src.cursus.steps.scripts.model_calibration.find_first_data_file')
+    @patch('cursus.steps.scripts.model_calibration.find_first_data_file')
     def test_load_data_missing_label_field(self, mock_find_file):
         """Test loading data with missing label field."""
         input_dir = Path(self.config.input_data_path)
@@ -205,7 +205,7 @@ class TestCalibrationHelpers(unittest.TestCase):
         
         self.assertIn("Label field 'label' not found", str(context.exception))
 
-    @patch('src.cursus.steps.scripts.model_calibration.find_first_data_file')
+    @patch('cursus.steps.scripts.model_calibration.find_first_data_file')
     def test_load_data_missing_score_field_binary(self, mock_find_file):
         """Test loading binary data with missing score field."""
         input_dir = Path(self.config.input_data_path)
@@ -260,7 +260,7 @@ class TestCalibrationMethods(unittest.TestCase):
         self.assertTrue(np.all(calibrated_scores >= 0))
         self.assertTrue(np.all(calibrated_scores <= 1))
 
-    @patch('src.cursus.steps.scripts.model_calibration.HAS_PYGAM', True)
+    @patch('cursus.steps.scripts.model_calibration.HAS_PYGAM', True)
     def test_train_gam_calibration_with_pygam(self):
         """Test training GAM calibration when pygam is available."""
         mock_gam = MagicMock()
@@ -268,15 +268,15 @@ class TestCalibrationMethods(unittest.TestCase):
         mock_s = MagicMock()
         
         # Mock both LogisticGAM and s function from pygam
-        with patch('src.cursus.steps.scripts.model_calibration.LogisticGAM', return_value=mock_gam, create=True) as mock_gam_class, \
-             patch('src.cursus.steps.scripts.model_calibration.s', return_value=mock_s, create=True):
+        with patch('cursus.steps.scripts.model_calibration.LogisticGAM', return_value=mock_gam, create=True) as mock_gam_class, \
+             patch('cursus.steps.scripts.model_calibration.s', return_value=mock_s, create=True):
             result = train_gam_calibration(self.scores, self.labels, self.config)
             
             self.assertEqual(result, mock_gam)
             mock_gam.fit.assert_called_once()
             mock_gam_class.assert_called_once()
 
-    @patch('src.cursus.steps.scripts.model_calibration.HAS_PYGAM', False)
+    @patch('cursus.steps.scripts.model_calibration.HAS_PYGAM', False)
     def test_train_gam_calibration_without_pygam(self):
         """Test training GAM calibration when pygam is not available."""
         with self.assertRaises(ImportError):
@@ -445,7 +445,7 @@ class TestCalibrationVisualization(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir)
 
-    @patch('src.cursus.steps.scripts.model_calibration.plt')
+    @patch('cursus.steps.scripts.model_calibration.plt')
     def test_plot_reliability_diagram(self, mock_plt):
         """Test plotting reliability diagram."""
         mock_fig = MagicMock()
@@ -464,7 +464,7 @@ class TestCalibrationVisualization(unittest.TestCase):
         mock_plt.savefig.assert_called_once_with(expected_path)
         mock_plt.close.assert_called_once_with(mock_fig)
 
-    @patch('src.cursus.steps.scripts.model_calibration.plt')
+    @patch('cursus.steps.scripts.model_calibration.plt')
     def test_plot_multiclass_reliability_diagram(self, mock_plt):
         """Test plotting multiclass reliability diagram."""
         n_classes = 3
@@ -527,8 +527,8 @@ class TestCalibrationMain(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir)
 
-    @patch('src.cursus.steps.scripts.model_calibration.plot_reliability_diagram')
-    @patch('src.cursus.steps.scripts.model_calibration.joblib.dump')
+    @patch('cursus.steps.scripts.model_calibration.plot_reliability_diagram')
+    @patch('cursus.steps.scripts.model_calibration.joblib.dump')
     def test_main_binary_calibration(self, mock_joblib_dump, mock_plot):
         """Test main function for binary calibration."""
         mock_plot.return_value = str(self.temp_dir / "plot.png")
@@ -578,8 +578,8 @@ class TestCalibrationMain(unittest.TestCase):
         # Verify plot function was called
         mock_plot.assert_called_once()
 
-    @patch('src.cursus.steps.scripts.model_calibration.plot_multiclass_reliability_diagram')
-    @patch('src.cursus.steps.scripts.model_calibration.joblib.dump')
+    @patch('cursus.steps.scripts.model_calibration.plot_multiclass_reliability_diagram')
+    @patch('cursus.steps.scripts.model_calibration.joblib.dump')
     def test_main_multiclass_calibration(self, mock_joblib_dump, mock_plot):
         """Test main function for multiclass calibration."""
         # Create multiclass test data

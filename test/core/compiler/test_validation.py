@@ -230,8 +230,8 @@ class TestValidationEngine(unittest.TestCase):
             "XGBoostModelEval": MagicMock()
         }
 
-    @patch('src.cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
-    @patch('src.cursus.core.compiler.validation.StepBuilderRegistry')
+    @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
+    @patch('cursus.core.compiler.validation.StepBuilderRegistry')
     def test_validate_dag_compatibility_success(self, mock_step_builder_registry, mock_config_step_registry):
         """Test successful DAG compatibility validation."""
         # Setup mocks
@@ -273,8 +273,8 @@ class TestValidationEngine(unittest.TestCase):
         self.assertFalse(result.is_valid)
         self.assertIn("missing_node", result.missing_configs)
 
-    @patch('src.cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
-    @patch('src.cursus.core.compiler.validation.StepBuilderRegistry')
+    @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
+    @patch('cursus.core.compiler.validation.StepBuilderRegistry')
     def test_validate_dag_compatibility_unresolvable_builders(self, mock_step_builder_registry, mock_config_step_registry):
         """Test validation with unresolvable step builders."""
         # Setup mocks to simulate missing builders
@@ -319,8 +319,8 @@ class TestValidationEngine(unittest.TestCase):
         self.assertIn("training", result.config_errors)
         self.assertIn("Invalid parameter", result.config_errors["training"][0])
 
-    @patch('src.cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
-    @patch('src.cursus.core.compiler.validation.StepBuilderRegistry')
+    @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
+    @patch('cursus.core.compiler.validation.StepBuilderRegistry')
     def test_validate_dag_compatibility_with_job_type_variants(self, mock_step_builder_registry, mock_config_step_registry):
         """Test validation with job type variants."""
         # Setup mocks
@@ -348,8 +348,8 @@ class TestValidationEngine(unittest.TestCase):
         
         self.assertTrue(result.is_valid)
 
-    @patch('src.cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
-    @patch('src.cursus.core.compiler.validation.StepBuilderRegistry')
+    @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
+    @patch('cursus.core.compiler.validation.StepBuilderRegistry')
     def test_validate_dag_compatibility_with_legacy_aliases(self, mock_step_builder_registry, mock_config_step_registry):
         """Test validation with legacy aliases."""
         # Setup mocks

@@ -143,7 +143,7 @@ class TestValidationFunctions(unittest.TestCase):
         self.stdout_patcher = patch('sys.stdout', new_callable=StringIO)
         self.mock_stdout = self.stdout_patcher.start()
         
-        self.validator_patcher = patch('src.cursus.cli.validation_cli.NamingStandardValidator')
+        self.validator_patcher = patch('cursus.cli.validation_cli.NamingStandardValidator')
         self.mock_validator_class = self.validator_patcher.start()
         self.mock_validator = MagicMock()
         self.mock_validator_class.return_value = self.mock_validator
@@ -252,16 +252,16 @@ class TestMainFunction(unittest.TestCase):
         self.mock_stdout = self.stdout_patcher.start()
         
         # Mock the validation functions
-        self.validate_registry_patcher = patch('src.cursus.cli.validation_cli.validate_registry')
+        self.validate_registry_patcher = patch('cursus.cli.validation_cli.validate_registry')
         self.mock_validate_registry = self.validate_registry_patcher.start()
         
-        self.validate_file_name_patcher = patch('src.cursus.cli.validation_cli.validate_file_name')
+        self.validate_file_name_patcher = patch('cursus.cli.validation_cli.validate_file_name')
         self.mock_validate_file_name = self.validate_file_name_patcher.start()
         
-        self.validate_step_name_patcher = patch('src.cursus.cli.validation_cli.validate_step_name')
+        self.validate_step_name_patcher = patch('cursus.cli.validation_cli.validate_step_name')
         self.mock_validate_step_name = self.validate_step_name_patcher.start()
         
-        self.validate_logical_name_patcher = patch('src.cursus.cli.validation_cli.validate_logical_name')
+        self.validate_logical_name_patcher = patch('cursus.cli.validation_cli.validate_logical_name')
         self.mock_validate_logical_name = self.validate_logical_name_patcher.start()
     
     def tearDown(self):
@@ -436,7 +436,7 @@ class TestArgumentParsing(unittest.TestCase):
         
         for file_type in valid_types:
             with patch('sys.argv', ['validation_cli.py', 'file', 'test.py', file_type]):
-                with patch('src.cursus.cli.validation_cli.validate_file_name', return_value=0):
+                with patch('cursus.cli.validation_cli.validate_file_name', return_value=0):
                     try:
                         result = main()
                         self.assertEqual(result, 0)

@@ -57,9 +57,9 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
         self.mock_workspace_manager.get_module_loader.return_value = self.mock_module_loader
         
         # Create tester instance with mocked dependencies
-        with patch('src.cursus.workspace.validation.workspace_builder_test.WorkspaceManager') as mock_wm_class, \
-             patch('src.cursus.workspace.validation.workspace_builder_test.DeveloperWorkspaceFileResolver') as mock_fr_class, \
-             patch('src.cursus.workspace.validation.workspace_builder_test.WorkspaceModuleLoader') as mock_ml_class:
+        with patch('cursus.workspace.validation.workspace_builder_test.WorkspaceManager') as mock_wm_class, \
+             patch('cursus.workspace.validation.workspace_builder_test.DeveloperWorkspaceFileResolver') as mock_fr_class, \
+             patch('cursus.workspace.validation.workspace_builder_test.WorkspaceModuleLoader') as mock_ml_class:
             
             mock_wm_class.return_value = self.mock_workspace_manager
             mock_fr_class.return_value = Mock()
@@ -220,7 +220,7 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
         self.assertFalse(results.get("success", True))
         self.assertIn("error", results)
     
-    @patch('src.cursus.workspace.validation.workspace_builder_test.WorkspaceUniversalStepBuilderTest.test_all_workspace_builders')
+    @patch('cursus.workspace.validation.workspace_builder_test.WorkspaceUniversalStepBuilderTest.test_all_workspace_builders')
     def test_test_all_workspace_builders_class_method(self, mock_static_method):
         """Test the class method for testing all workspace builders."""
         mock_static_method.return_value = {
@@ -261,15 +261,15 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
         # Verify context switching worked
         self.assertNotEqual(self.tester.developer_id, original_developer_id)
     
-    @patch('src.cursus.workspace.validation.workspace_builder_test.UniversalStepBuilderTest.__init__')
+    @patch('cursus.workspace.validation.workspace_builder_test.UniversalStepBuilderTest.__init__')
     def test_inheritance_from_universal_step_builder_test(self, mock_init):
         """Test that WorkspaceUniversalStepBuilderTest properly inherits from UniversalStepBuilderTest."""
         mock_init.return_value = None
         
         # Create instance to test inheritance
-        with patch('src.cursus.workspace.validation.workspace_builder_test.WorkspaceManager'), \
-             patch('src.cursus.workspace.validation.workspace_builder_test.DeveloperWorkspaceFileResolver'), \
-             patch('src.cursus.workspace.validation.workspace_builder_test.WorkspaceModuleLoader'):
+        with patch('cursus.workspace.validation.workspace_builder_test.WorkspaceManager'), \
+             patch('cursus.workspace.validation.workspace_builder_test.DeveloperWorkspaceFileResolver'), \
+             patch('cursus.workspace.validation.workspace_builder_test.WorkspaceModuleLoader'):
             
             tester = WorkspaceUniversalStepBuilderTest(
                 workspace_root=self.workspace_root,

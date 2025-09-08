@@ -33,7 +33,7 @@ Usage:
     python -c "from test.validation.workspace import test_validation_extensions_only; test_validation_extensions_only()"
     
     # Run with coverage
-    python -m pytest test/validation/workspace/ --cov=src.cursus.validation.workspace
+    python -m pytest test/validation/workspace/ --cov=cursus.validation.workspace
 
 Test Coverage:
 The test suite provides comprehensive coverage of:

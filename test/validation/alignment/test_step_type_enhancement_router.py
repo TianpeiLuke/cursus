@@ -54,7 +54,7 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
             self.assertIn(step_type, self.router._enhancer_classes)
             self.assertIsNotNone(self.router._enhancer_classes[step_type])
 
-    @patch('src.cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
+    @patch('cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
     def test_enhance_validation_training_step(self, mock_detect_step_type):
         """Test validation enhancement for training step."""
         # Setup
@@ -76,7 +76,7 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
         )
         self.assertEqual(result, self.mock_validation_result)
 
-    @patch('src.cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
+    @patch('cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
     def test_enhance_validation_processing_step(self, mock_detect_step_type):
         """Test validation enhancement for processing step."""
         # Setup
@@ -98,7 +98,7 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
         )
         self.assertEqual(result, self.mock_validation_result)
 
-    @patch('src.cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
+    @patch('cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
     def test_enhance_validation_unknown_step_type(self, mock_detect_step_type):
         """Test validation enhancement for unknown step type."""
         # Setup
@@ -112,7 +112,7 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
         mock_detect_step_type.assert_called_once_with(script_name)
         self.assertEqual(result, self.mock_validation_result)
 
-    @patch('src.cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
+    @patch('cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
     def test_enhance_validation_none_step_type(self, mock_detect_step_type):
         """Test validation enhancement when step type detection returns None."""
         # Setup
@@ -238,7 +238,7 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
         # Should return empty dict for unknown step type
         self.assertEqual(requirements, {})
 
-    @patch('src.cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
+    @patch('cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
     def test_enhance_validation_with_exception(self, mock_detect_step_type):
         """Test validation enhancement when enhancer raises exception."""
         # Setup
@@ -269,7 +269,7 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
                     for key in expected_keys:
                         self.assertIn(key, requirements)
 
-    @patch('src.cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
+    @patch('cursus.validation.alignment.step_type_enhancement_router.detect_step_type_from_registry')
     def test_enhance_validation_preserves_original_issues(self, mock_detect_step_type):
         """Test that enhancement preserves original validation issues."""
         # Setup

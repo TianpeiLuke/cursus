@@ -24,7 +24,7 @@ from typing import Dict, List, Any
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
 
 class ScriptAlignmentValidator:

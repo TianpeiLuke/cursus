@@ -55,7 +55,7 @@ class TestAlignmentCLI(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result
@@ -78,7 +78,7 @@ class TestAlignmentCLI(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result
@@ -101,7 +101,7 @@ class TestAlignmentCLI(unittest.TestCase):
         
         output_file = os.path.join(self.temp_dir, 'payload_alignment_report.json')
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result
@@ -127,7 +127,7 @@ class TestAlignmentCLI(unittest.TestCase):
     def test_validate_all_scripts_success(self):
         """Test validating all scripts successfully."""
         # Mock the script discovery and validation results
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             
@@ -159,7 +159,7 @@ class TestAlignmentCLI(unittest.TestCase):
     
     def test_validate_all_scripts_with_failures(self):
         """Test validating all scripts with some failures."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             
@@ -190,7 +190,7 @@ class TestAlignmentCLI(unittest.TestCase):
     
     def test_validate_all_scripts_json_output_with_summary(self):
         """Test validating all scripts with JSON output and summary file."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             
@@ -261,7 +261,7 @@ class TestAlignmentCLI(unittest.TestCase):
         
         output_file = os.path.join(self.temp_dir, 'payload_alignment_report.json')
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result
@@ -298,7 +298,7 @@ class TestAlignmentCLI(unittest.TestCase):
             ]}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result
@@ -310,7 +310,7 @@ class TestAlignmentCLI(unittest.TestCase):
     
     def test_invalid_script_name(self):
         """Test validation with invalid script name."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.side_effect = Exception("Script not found")
@@ -333,7 +333,7 @@ class TestAlignmentCLI(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result
@@ -376,7 +376,7 @@ class TestAlignmentCLI(unittest.TestCase):
     
     def test_error_handling_in_comprehensive_validation(self):
         """Test error handling during comprehensive validation."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             
@@ -419,7 +419,7 @@ class TestAlignmentCLI(unittest.TestCase):
         
         output_file = os.path.join(self.temp_dir, 'test_alignment_report.json')
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result
@@ -468,8 +468,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -504,8 +504,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -529,8 +529,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
     
     def test_visualize_all_scripts_success(self):
         """Test visualizing all scripts successfully."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -575,8 +575,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
     
     def test_visualize_all_scripts_with_errors(self):
         """Test visualizing all scripts with some errors."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -629,8 +629,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -662,8 +662,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -693,7 +693,7 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
 
     def test_visualize_invalid_script(self):
         """Test visualization with invalid script name."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.side_effect = Exception("Script not found")
@@ -719,8 +719,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -760,8 +760,8 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
     
     def test_visualize_all_continue_on_error_disabled(self):
         """Test visualize-all without continue-on-error flag."""
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -816,8 +816,8 @@ class TestAlignmentCLIScoring(unittest.TestCase):
             'level4': {'passed': True, 'issues': []}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -852,8 +852,8 @@ class TestAlignmentCLIScoring(unittest.TestCase):
             'level4': {'passed': False, 'issues': [{'severity': 'WARNING', 'message': 'Level 4 warning'}]}
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
-             patch('src.cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class, \
+             patch('cursus.cli.alignment_cli.AlignmentScorer') as mock_scorer_class:
             
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
@@ -894,10 +894,10 @@ class TestAlignmentCLIIntegration(unittest.TestCase):
     def test_cli_with_real_unified_tester(self):
         """Test CLI integration with real UnifiedAlignmentTester (mocked dependencies)."""
         # Mock the individual level testers to avoid file system dependencies
-        with patch('src.cursus.validation.alignment.script_contract_alignment.ScriptContractAlignmentTester'), \
-             patch('src.cursus.validation.alignment.contract_spec_alignment.ContractSpecificationAlignmentTester'), \
-             patch('src.cursus.validation.alignment.spec_dependency_alignment.SpecificationDependencyAlignmentTester'), \
-             patch('src.cursus.validation.alignment.builder_config_alignment.BuilderConfigurationAlignmentTester'):
+        with patch('cursus.validation.alignment.script_contract_alignment.ScriptContractAlignmentTester'), \
+             patch('cursus.validation.alignment.contract_spec_alignment.ContractSpecificationAlignmentTester'), \
+             patch('cursus.validation.alignment.spec_dependency_alignment.SpecificationDependencyAlignmentTester'), \
+             patch('cursus.validation.alignment.builder_config_alignment.BuilderConfigurationAlignmentTester'):
             
             # Create a real UnifiedAlignmentTester but with mocked dependencies
             tester = UnifiedAlignmentTester()
@@ -913,7 +913,7 @@ class TestAlignmentCLIIntegration(unittest.TestCase):
                     'level4': {'passed': True, 'issues': []}
                 }
                 
-                with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester', return_value=tester):
+                with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester', return_value=tester):
                     runner = CliRunner()
                     result = runner.invoke(alignment, ['validate', 'payload'])
                     
@@ -935,7 +935,7 @@ class TestAlignmentCLIIntegration(unittest.TestCase):
             }
         }
         
-        with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
+        with patch('cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
             mock_tester = MagicMock()
             mock_tester_class.return_value = mock_tester
             mock_tester.validate_specific_script.return_value = mock_result

@@ -437,7 +437,7 @@ WORKSPACE_METADATA = {"developer_id": "source_dev", "version": "1.0.0"}
         
         self.assertIn("has no registry file", str(exc_info.exception))
     
-    @patch('src.cursus.registry.hybrid.setup.Path')
+    @patch('cursus.registry.hybrid.setup.Path')
     def test_copy_registry_from_developer_read_error(self, mock_path):
         """Test registry copying with read error."""
         # Mock source exists but reading fails

@@ -36,9 +36,9 @@ class TestDagCompiler(unittest.TestCase):
         self.mock_session = MagicMock()
         self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dynamic_template.DynamicPipelineTemplate')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dynamic_template.DynamicPipelineTemplate')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
     def test_compile_with_custom_pipeline_name(self, mock_registry_class, mock_template_class, mock_path):
         """Test that custom pipeline names are used directly."""
         # Setup mocks
@@ -115,8 +115,8 @@ class TestCompileDagToPipeline(unittest.TestCase):
             )
         self.assertIn("Configuration file not found", str(context.exception))
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.PipelineDAGCompiler')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.PipelineDAGCompiler')
     def test_compile_dag_to_pipeline_success(self, mock_compiler_class, mock_path):
         """Test successful compile_dag_to_pipeline execution."""
         # Setup mocks
@@ -152,8 +152,8 @@ class TestCompileDagToPipeline(unittest.TestCase):
         # Verify result
         self.assertEqual(result, mock_pipeline)
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.PipelineDAGCompiler')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.PipelineDAGCompiler')
     def test_compile_dag_to_pipeline_exception_handling(self, mock_compiler_class, mock_path):
         """Test exception handling in compile_dag_to_pipeline."""
         # Setup mocks
@@ -185,10 +185,10 @@ class TestPipelineDAGCompilerInit(unittest.TestCase):
         self.mock_session = MagicMock()
         self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
-    @patch('src.cursus.core.compiler.dag_compiler.ValidationEngine')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.ValidationEngine')
     def test_compiler_init_success(self, mock_validation_engine, mock_resolver, mock_registry, mock_path):
         """Test successful PipelineDAGCompiler initialization."""
         # Setup mocks
@@ -222,7 +222,7 @@ class TestPipelineDAGCompilerInit(unittest.TestCase):
             )
         self.assertIn("Configuration file not found", str(context.exception))
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.Path')
     def test_compiler_init_with_custom_components(self, mock_path):
         """Test PipelineDAGCompiler initialization with custom components."""
         # Setup mocks
@@ -256,10 +256,10 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         
         self.config_path = "test_config.json"
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
-    @patch('src.cursus.core.compiler.dag_compiler.ValidationEngine')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.ValidationEngine')
     def test_validate_dag_compatibility_success(self, mock_validation_engine, mock_resolver, mock_registry, mock_path):
         """Test successful DAG compatibility validation."""
         # Setup mocks
@@ -296,9 +296,9 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         self.assertIsInstance(result, ValidationResult)
         self.assertTrue(result.is_valid)
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_validate_dag_compatibility_config_resolution_failure(self, mock_resolver, mock_registry, mock_path):
         """Test validation with config resolution failure."""
         # Setup mocks
@@ -322,9 +322,9 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         self.assertFalse(result.is_valid)
         self.assertIn("Config resolution failed", str(result.config_errors))
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_preview_resolution_success(self, mock_resolver, mock_registry, mock_path):
         """Test successful resolution preview."""
         # Setup mocks
@@ -375,9 +375,9 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         self.assertEqual(result.node_config_map["data_loading"], "CradleDataLoadConfig")
         self.assertEqual(result.resolution_confidence["data_loading"], 1.0)
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_preview_resolution_exception_handling(self, mock_resolver, mock_registry, mock_path):
         """Test preview resolution exception handling."""
         # Setup mocks
@@ -411,9 +411,9 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         
         self.config_path = "test_config.json"
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_compile_success(self, mock_resolver, mock_registry, mock_path):
         """Test successful compilation."""
         # Setup mocks
@@ -435,7 +435,7 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         compiler.create_template = MagicMock(return_value=mock_template)
         
         # Test compilation
-        with patch('src.cursus.core.compiler.name_generator.generate_pipeline_name') as mock_gen_name:
+        with patch('cursus.core.compiler.name_generator.generate_pipeline_name') as mock_gen_name:
             mock_gen_name.return_value = "generated-pipeline-name"
             result = compiler.compile(self.dag)
         
@@ -444,9 +444,9 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         self.assertEqual(result.name, "generated-pipeline-name")
         self.assertEqual(compiler._last_template, mock_template)
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_compile_with_custom_pipeline_name(self, mock_resolver, mock_registry, mock_path):
         """Test compilation with custom pipeline name."""
         # Setup mocks
@@ -469,9 +469,9 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         # Verify custom name is used
         self.assertEqual(result.name, "custom-pipeline-name")
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_compile_exception_handling(self, mock_resolver, mock_registry, mock_path):
         """Test compilation exception handling."""
         # Setup mocks
@@ -491,9 +491,9 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         
         self.assertIn("DAG compilation failed", str(context.exception))
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_compile_with_report(self, mock_resolver, mock_registry, mock_path):
         """Test compilation with detailed report."""
         # Setup mocks
@@ -540,9 +540,9 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         """Set up test fixtures."""
         self.config_path = "test_config.json"
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_get_supported_step_types(self, mock_resolver, mock_registry, mock_path):
         """Test get_supported_step_types method."""
         # Setup mocks
@@ -563,9 +563,9 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         # Verify result
         self.assertEqual(result, ["DataLoading", "Training", "Evaluation"])
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_validate_config_file_success(self, mock_resolver, mock_registry, mock_path):
         """Test successful config file validation."""
         # Setup mocks
@@ -592,9 +592,9 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         self.assertEqual(result['config_count'], 2)
         self.assertEqual(result['config_names'], ["config1", "config2"])
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_validate_config_file_failure(self, mock_resolver, mock_registry, mock_path):
         """Test config file validation failure."""
         # Setup mocks
@@ -616,9 +616,9 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         self.assertIn("Config loading failed", result['error'])
         self.assertEqual(result['config_count'], 0)
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_get_last_template(self, mock_resolver, mock_registry, mock_path):
         """Test get_last_template method."""
         # Setup mocks
@@ -639,9 +639,9 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         # Should return the template
         self.assertEqual(compiler.get_last_template(), mock_template)
 
-    @patch('src.cursus.core.compiler.dag_compiler.Path')
-    @patch('src.cursus.core.compiler.dag_compiler.StepBuilderRegistry')
-    @patch('src.cursus.core.compiler.dag_compiler.StepConfigResolver')
+    @patch('cursus.core.compiler.dag_compiler.Path')
+    @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
+    @patch('cursus.core.compiler.dag_compiler.StepConfigResolver')
     def test_compile_and_fill_execution_doc(self, mock_resolver, mock_registry, mock_path):
         """Test compile_and_fill_execution_doc method."""
         # Setup mocks

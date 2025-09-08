@@ -117,7 +117,7 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         # The registry is created internally
         self.assertIsNotNone(assembler.workspace_registry)
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_assembler_initialization_without_workspace_manager(self, mock_manager_class):
         """Test assembler initialization without workspace manager."""
         mock_manager = Mock()
@@ -131,8 +131,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertIsNotNone(assembler.workspace_registry)
         mock_manager_class.assert_called_once_with(self.temp_workspace)
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_resolve_workspace_configs(self, mock_manager_class, mock_registry_class):
         """Test resolving workspace configurations."""
         # Mock config classes that can be instantiated
@@ -183,8 +183,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
             model_params={'max_depth': 6}
         )
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_resolve_workspace_configs_fallback(self, mock_manager_class, mock_registry_class):
         """Test resolving workspace configs with fallback to raw data."""
         mock_registry = Mock()
@@ -199,8 +199,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertEqual(config_map['preprocessing'], {'input_path': '/data/input', 'output_path': '/data/processed'})
         self.assertEqual(config_map['training'], {'model_params': {'max_depth': 6}})
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_resolve_workspace_builders(self, mock_manager_class, mock_registry_class):
         """Test resolving workspace builders."""
         mock_preprocessing_builder = Mock()
@@ -236,8 +236,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertEqual(builder_map['DataPreprocessing'], mock_preprocessing_builder)
         self.assertEqual(builder_map['XGBoostTraining'], mock_training_builder)
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_validate_workspace_components(self, mock_manager_class, mock_registry_class):
         """Test workspace component validation."""
         # Mock builder and config classes with __name__ attributes
@@ -280,8 +280,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
             self.assertTrue(result['overall_valid'])
             self.assertIn('workspace_validation', result)
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_validate_developer_consistency(self, mock_manager_class, mock_registry_class):
         """Test developer consistency validation."""
         mock_registry_class.return_value = Mock()
@@ -297,8 +297,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertEqual(result['developer_stats']['dev1']['step_count'], 1)
         self.assertEqual(result['developer_stats']['dev2']['step_count'], 1)
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_validate_step_type_consistency(self, mock_manager_class, mock_registry_class):
         """Test step type consistency validation."""
         mock_registry_class.return_value = Mock()
@@ -312,8 +312,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertIn('DataPreprocessing', result['step_type_stats'])
         self.assertIn('XGBoostTraining', result['step_type_stats'])
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_create_dag_from_workspace_config(self, mock_manager_class, mock_registry_class):
         """Test creating DAG from workspace configuration."""
         mock_registry_class.return_value = Mock()
@@ -327,8 +327,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertIn('training', dag.nodes)
         self.assertIn(('preprocessing', 'training'), dag.edges)
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_assemble_workspace_pipeline_success(self, mock_manager_class, mock_registry_class):
         """Test successful workspace pipeline assembly."""
         mock_registry = Mock()
@@ -366,8 +366,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
             mock_create_dag.assert_called_once()
             mock_generate.assert_called_once_with('test_pipeline')
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_assemble_workspace_pipeline_validation_failure(self, mock_manager_class, mock_registry_class):
         """Test workspace pipeline assembly with validation failure."""
         mock_registry_class.return_value = Mock()
@@ -383,8 +383,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
             
             self.assertIn("Workspace component validation failed", str(context.exception))
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_from_workspace_config(self, mock_manager_class, mock_registry_class):
         """Test creating assembler from workspace configuration."""
         mock_registry_class.return_value = Mock()
@@ -398,8 +398,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertIsInstance(assembler, WorkspacePipelineAssembler)
         self.assertEqual(assembler.workspace_root, self.temp_workspace)
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_from_workspace_config_file_json(self, mock_manager_class, mock_registry_class):
         """Test creating assembler from JSON configuration file."""
         mock_registry_class.return_value = Mock()
@@ -409,7 +409,7 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         json_file = Path(self.temp_workspace) / 'config.json'
         self.sample_workspace_config.to_json_file(str(json_file))
         
-        with patch('src.cursus.workspace.core.config.WorkspacePipelineDefinition.from_json_file') as mock_load:
+        with patch('cursus.workspace.core.config.WorkspacePipelineDefinition.from_json_file') as mock_load:
             mock_load.return_value = self.sample_workspace_config
             
             assembler = WorkspacePipelineAssembler.from_workspace_config_file(
@@ -420,8 +420,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
             self.assertIsInstance(assembler, WorkspacePipelineAssembler)
             mock_load.assert_called_once_with(str(json_file))
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_from_workspace_config_file_yaml(self, mock_manager_class, mock_registry_class):
         """Test creating assembler from YAML configuration file."""
         mock_registry_class.return_value = Mock()
@@ -429,7 +429,7 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         
         yaml_file = Path(self.temp_workspace) / 'config.yaml'
         
-        with patch('src.cursus.workspace.core.config.WorkspacePipelineDefinition.from_yaml_file') as mock_load:
+        with patch('cursus.workspace.core.config.WorkspacePipelineDefinition.from_yaml_file') as mock_load:
             mock_load.return_value = self.sample_workspace_config
             
             assembler = WorkspacePipelineAssembler.from_workspace_config_file(
@@ -440,8 +440,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
             self.assertIsInstance(assembler, WorkspacePipelineAssembler)
             mock_load.assert_called_once_with(str(yaml_file))
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_from_workspace_config_file_unsupported(self, mock_manager_class, mock_registry_class):
         """Test creating assembler from unsupported file format."""
         mock_registry_class.return_value = Mock()
@@ -454,8 +454,8 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         
         self.assertIn("Unsupported config file format", str(context.exception))
     
-    @patch('src.cursus.workspace.core.registry.WorkspaceComponentRegistry')
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.registry.WorkspaceComponentRegistry')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_get_workspace_summary(self, mock_manager_class, mock_registry_class):
         """Test getting workspace summary."""
         mock_registry = Mock()
@@ -485,7 +485,7 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
         self.assertEqual(summary['assembly_status']['builder_count'], 1)
         self.assertEqual(summary['assembly_status']['step_instances'], 1)
     
-    @patch('src.cursus.workspace.core.manager.WorkspaceManager')
+    @patch('cursus.workspace.core.manager.WorkspaceManager')
     def test_preview_workspace_assembly(self, mock_manager_class):
         """Test previewing workspace assembly."""
         mock_registry = Mock()

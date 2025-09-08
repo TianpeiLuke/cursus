@@ -296,7 +296,7 @@ class TestDAGMetadataRegistrySync:
         assert node["description"] == "Updated description"
         assert node["file"] == "updated/pipeline.py"
     
-    @patch('src.cursus.pipeline_catalog.shared_dags.registry_sync.logger')
+    @patch('cursus.pipeline_catalog.shared_dags.registry_sync.logger')
     def test_sync_metadata_to_registry_error(self, mock_logger, temp_registry_path, sample_enhanced_metadata):
         """Test error handling in sync_metadata_to_registry."""
         sync = DAGMetadataRegistrySync(temp_registry_path)
@@ -337,7 +337,7 @@ class TestDAGMetadataRegistrySync:
         
         assert enhanced_metadata is None
     
-    @patch('src.cursus.pipeline_catalog.shared_dags.registry_sync.logger')
+    @patch('cursus.pipeline_catalog.shared_dags.registry_sync.logger')
     def test_sync_registry_to_metadata_error(self, mock_logger, temp_registry_path):
         """Test error handling in sync_registry_to_metadata."""
         sync = DAGMetadataRegistrySync(temp_registry_path)
@@ -494,7 +494,7 @@ class TestDAGMetadataRegistrySync:
         
         assert result is False
     
-    @patch('src.cursus.pipeline_catalog.shared_dags.registry_sync.logger')
+    @patch('cursus.pipeline_catalog.shared_dags.registry_sync.logger')
     def test_remove_pipeline_from_registry_error(self, mock_logger, temp_registry_path):
         """Test error handling in remove_pipeline_from_registry."""
         sync = DAGMetadataRegistrySync(temp_registry_path)
@@ -550,7 +550,7 @@ class TestDAGMetadataRegistrySync:
         assert most_common[0][0] == "xgboost"
         assert most_common[0][1] == 1
     
-    @patch('src.cursus.pipeline_catalog.shared_dags.registry_sync.logger')
+    @patch('cursus.pipeline_catalog.shared_dags.registry_sync.logger')
     def test_get_registry_statistics_error(self, mock_logger, temp_registry_path):
         """Test error handling in get_registry_statistics."""
         sync = DAGMetadataRegistrySync(temp_registry_path)

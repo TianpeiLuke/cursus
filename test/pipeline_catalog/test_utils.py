@@ -38,7 +38,7 @@ class TestPipelineCatalogUtils(unittest.TestCase):
             ]
         }
     
-    @mock.patch("src.cursus.pipeline_catalog.utils.load_index")
+    @mock.patch("cursus.pipeline_catalog.utils.load_index")
     def test_get_pipeline_by_id(self, mock_load_index):
         """Test getting a pipeline by ID."""
         mock_load_index.return_value = self.mock_index
@@ -52,7 +52,7 @@ class TestPipelineCatalogUtils(unittest.TestCase):
         pipeline = utils.get_pipeline_by_id("non-existent")
         self.assertIsNone(pipeline)
     
-    @mock.patch("src.cursus.pipeline_catalog.utils.load_index")
+    @mock.patch("cursus.pipeline_catalog.utils.load_index")
     def test_filter_pipelines_by_framework(self, mock_load_index):
         """Test filtering pipelines by framework."""
         mock_load_index.return_value = self.mock_index
@@ -71,7 +71,7 @@ class TestPipelineCatalogUtils(unittest.TestCase):
         pipelines = utils.filter_pipelines(framework="non-existent")
         self.assertEqual(len(pipelines), 0)
     
-    @mock.patch("src.cursus.pipeline_catalog.utils.load_index")
+    @mock.patch("cursus.pipeline_catalog.utils.load_index")
     def test_filter_pipelines_by_complexity(self, mock_load_index):
         """Test filtering pipelines by complexity."""
         mock_load_index.return_value = self.mock_index
@@ -86,7 +86,7 @@ class TestPipelineCatalogUtils(unittest.TestCase):
         self.assertEqual(len(pipelines), 1)
         self.assertEqual(pipelines[0]["id"], "test-pytorch-e2e")
     
-    @mock.patch("src.cursus.pipeline_catalog.utils.load_index")
+    @mock.patch("cursus.pipeline_catalog.utils.load_index")
     def test_filter_pipelines_by_features(self, mock_load_index):
         """Test filtering pipelines by features."""
         mock_load_index.return_value = self.mock_index
@@ -105,7 +105,7 @@ class TestPipelineCatalogUtils(unittest.TestCase):
         self.assertEqual(len(pipelines), 1)
         self.assertEqual(pipelines[0]["id"], "test-pytorch-e2e")
     
-    @mock.patch("src.cursus.pipeline_catalog.utils.load_index")
+    @mock.patch("cursus.pipeline_catalog.utils.load_index")
     def test_filter_pipelines_by_tags(self, mock_load_index):
         """Test filtering pipelines by tags."""
         mock_load_index.return_value = self.mock_index
@@ -120,7 +120,7 @@ class TestPipelineCatalogUtils(unittest.TestCase):
         self.assertEqual(len(pipelines), 1)
         self.assertEqual(pipelines[0]["id"], "test-pytorch-e2e")
     
-    @mock.patch("src.cursus.pipeline_catalog.utils.load_index")
+    @mock.patch("cursus.pipeline_catalog.utils.load_index")
     def test_get_all_frameworks(self, mock_load_index):
         """Test getting all frameworks."""
         mock_load_index.return_value = self.mock_index
@@ -128,7 +128,7 @@ class TestPipelineCatalogUtils(unittest.TestCase):
         frameworks = utils.get_all_frameworks()
         self.assertEqual(set(frameworks), {"xgboost", "pytorch"})
     
-    @mock.patch("src.cursus.pipeline_catalog.utils.load_index")
+    @mock.patch("cursus.pipeline_catalog.utils.load_index")
     def test_get_all_features(self, mock_load_index):
         """Test getting all features."""
         mock_load_index.return_value = self.mock_index

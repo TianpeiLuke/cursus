@@ -684,7 +684,7 @@ class TestCurrencyConversionErrorHandling(unittest.TestCase):
         
         self.assertGreater(len(result), 0)
 
-    @patch('src.cursus.steps.scripts.currency_conversion.logger')
+    @patch('cursus.steps.scripts.currency_conversion.logger')
     def test_logging_behavior(self, mock_logger):
         """Test that appropriate logging occurs during processing."""
         df_test = pd.DataFrame({

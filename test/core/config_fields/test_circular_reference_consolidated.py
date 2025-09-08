@@ -96,7 +96,7 @@ class TestCircularReferenceConsolidated(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.log_handler = TestLogHandler()
-        self.logger = logging.getLogger('src.cursus.core.config_fields')
+        self.logger = logging.getLogger('cursus.core.config_fields')
         self.logger.addHandler(self.log_handler)
         self.logger.setLevel(logging.DEBUG)
         

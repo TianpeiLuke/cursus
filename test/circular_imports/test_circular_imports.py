@@ -177,6 +177,9 @@ class TestCircularImports(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up the test class."""
+        # Get the project root directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
         cls.cursus_root = os.path.join(project_root, 'src', 'cursus')
         cls.detector = CircularImportDetector(cls.cursus_root)
         
@@ -242,12 +245,12 @@ class TestCircularImports(unittest.TestCase):
     def test_core_modules_import_successfully(self):
         """Test that core modules can be imported without circular dependencies."""
         core_modules = [
-            'src.cursus.core.base.config_base',
-            'src.cursus.core.base.builder_base', 
-            'src.cursus.core.base.specification_base',
-            'src.cursus.core.base.contract_base',
-            'src.cursus.core.base.hyperparameters_base',
-            'src.cursus.core.base.enums',
+            'cursus.core.base.config_base',
+            'cursus.core.base.builder_base', 
+            'cursus.core.base.specification_base',
+            'cursus.core.base.contract_base',
+            'cursus.core.base.hyperparameters_base',
+            'cursus.core.base.enums',
         ]
         
         print(f"\nTesting core modules for circular imports...")
@@ -269,9 +272,9 @@ class TestCircularImports(unittest.TestCase):
     def test_api_modules_import_successfully(self):
         """Test that API modules can be imported without circular dependencies."""
         api_modules = [
-            'src.cursus.api.dag.base_dag',
-            'src.cursus.api.dag.edge_types',
-            'src.cursus.api.dag.enhanced_dag',
+            'cursus.api.dag.base_dag',
+            'cursus.api.dag.edge_types',
+            'cursus.api.dag.enhanced_dag',
         ]
         
         print(f"\nTesting API modules for circular imports...")
@@ -293,9 +296,9 @@ class TestCircularImports(unittest.TestCase):
     def test_step_modules_import_successfully(self):
         """Test that step-related modules can be imported without circular dependencies."""
         step_modules = [
-            'src.cursus.steps.registry.builder_registry',
-            'src.cursus.steps.registry.hyperparameter_registry',
-            'src.cursus.steps.registry.step_names',
+            'cursus.steps.registry.builder_registry',
+            'cursus.steps.registry.hyperparameter_registry',
+            'cursus.steps.registry.step_names',
         ]
         
         print(f"\nTesting step modules for circular imports...")
@@ -325,9 +328,9 @@ class TestCircularImports(unittest.TestCase):
         """Test that modules can be imported in different orders without issues."""
         # Test a few key modules in different orders
         test_modules = [
-            'src.cursus.core.base.config_base',
-            'src.cursus.core.base.builder_base',
-            'src.cursus.core.base.specification_base',
+            'cursus.core.base.config_base',
+            'cursus.core.base.builder_base',
+            'cursus.core.base.specification_base',
         ]
         
         print(f"\nTesting import order independence...")
@@ -440,6 +443,10 @@ def run_circular_import_tests():
     
     # Save output to file in slipbox/test folder
     try:
+        # Get the project root directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
+        
         # Ensure slipbox/test directory exists
         slipbox_test_dir = os.path.join(project_root, 'slipbox', 'test')
         os.makedirs(slipbox_test_dir, exist_ok=True)

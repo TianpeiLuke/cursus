@@ -153,8 +153,8 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         
         self.assertIsNone(result)
 
-    @patch('src.cursus.steps.scripts.xgboost_training.pd.read_csv')
-    @patch('src.cursus.steps.scripts.xgboost_training.find_first_data_file')
+    @patch('cursus.steps.scripts.xgboost_training.pd.read_csv')
+    @patch('cursus.steps.scripts.xgboost_training.find_first_data_file')
     def test_load_datasets_success(self, mock_find_file, mock_read_csv):
         """Test successful dataset loading."""
         # Mock file finding
@@ -182,7 +182,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         self.assertEqual(mock_find_file.call_count, 3)
         self.assertEqual(mock_read_csv.call_count, 3)
 
-    @patch('src.cursus.steps.scripts.xgboost_training.find_first_data_file')
+    @patch('cursus.steps.scripts.xgboost_training.find_first_data_file')
     def test_load_datasets_missing_files(self, mock_find_file):
         """Test error handling when dataset files are missing."""
         # Mock missing validation file
@@ -197,7 +197,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         
         self.assertIn("Training, validation, or test data file not found", str(context.exception))
 
-    @patch('src.cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor')
+    @patch('cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor')
     def test_apply_numerical_imputation(self, mock_imputer_class):
         """Test numerical imputation application."""
         # Create mock imputer
@@ -230,7 +230,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         # Verify imputation dictionary
         self.assertEqual(impute_dict, {"feature1": 0.5})
 
-    @patch('src.cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor')
+    @patch('cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor')
     def test_fit_and_apply_risk_tables(self, mock_processor_class):
         """Test risk table fitting and application."""
         # Create mock processor
@@ -259,7 +259,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         self.assertIn("category1", risk_tables)
         self.assertIn("category2", risk_tables)
 
-    @patch('src.cursus.steps.scripts.xgboost_training.xgb.DMatrix')
+    @patch('cursus.steps.scripts.xgboost_training.xgb.DMatrix')
     def test_prepare_dmatrices(self, mock_dmatrix):
         """Test DMatrix preparation."""
         # Create mock DMatrix instances
@@ -312,7 +312,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         
         self.assertIn("Training data contains NaN or inf values", str(context.exception))
 
-    @patch('src.cursus.steps.scripts.xgboost_training.xgb.train')
+    @patch('cursus.steps.scripts.xgboost_training.xgb.train')
     def test_train_model_binary(self, mock_xgb_train):
         """Test binary classification model training."""
         # Create mock DMatrix objects
@@ -340,7 +340,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         # Verify result
         self.assertEqual(result, mock_model)
 
-    @patch('src.cursus.steps.scripts.xgboost_training.xgb.train')
+    @patch('cursus.steps.scripts.xgboost_training.xgb.train')
     def test_train_model_multiclass(self, mock_xgb_train):
         """Test multiclass model training."""
         # Update config for multiclass
@@ -366,8 +366,8 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         self.assertEqual(params['objective'], 'multi:softprob')
         self.assertEqual(params['num_class'], 3)
 
-    @patch('src.cursus.steps.scripts.xgboost_training.json.dump')
-    @patch('src.cursus.steps.scripts.xgboost_training.pkl.dump')
+    @patch('cursus.steps.scripts.xgboost_training.json.dump')
+    @patch('cursus.steps.scripts.xgboost_training.pkl.dump')
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.makedirs')
     def test_save_artifacts(self, mock_makedirs, mock_file_open, mock_pkl_dump, mock_json_dump):
@@ -453,9 +453,9 @@ class TestXGBoostTrainMain(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir)
 
-    @patch('src.cursus.steps.scripts.xgboost_training.xgb.train')
-    @patch('src.cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor')
-    @patch('src.cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor')
+    @patch('cursus.steps.scripts.xgboost_training.xgb.train')
+    @patch('cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor')
+    @patch('cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor')
     def test_main_success(self, mock_imputer_class, mock_processor_class, mock_xgb_train):
         """Test successful main function execution."""
         # Setup mocks

@@ -280,8 +280,8 @@ class TestModuleIntegrity(unittest.TestCase):
         try:
             import cursus.registry.hybrid
             # Try to access all exported items
-            for export_name in src.cursus.registry.hybrid.__all__:
-                item = getattr(src.cursus.registry.hybrid, export_name)
+            for export_name in cursus.registry.hybrid.__all__:
+                item = getattr(cursus.registry.hybrid, export_name)
                 self.assertIsNotNone(item)
         except Exception as e:
             self.fail(f"Module should not have circular import issues: {e}")
