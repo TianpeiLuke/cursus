@@ -7,8 +7,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
-from src.cursus.workspace.quality.quality_monitor import WorkspaceQualityMonitor
-
+from cursus.workspace.quality.quality_monitor import WorkspaceQualityMonitor
 
 class TestQualityMonitor(unittest.TestCase):
     """Test cases for QualityMonitor."""
@@ -64,7 +63,6 @@ class TestQualityMonitor(unittest.TestCase):
         # Test dashboard generation
         dashboard = self.quality_monitor.get_quality_dashboard()
         self.assertIsInstance(dashboard, dict)
-
 
 if __name__ == '__main__':
     unittest.main()

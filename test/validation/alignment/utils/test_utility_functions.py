@@ -4,12 +4,11 @@ Test suite for alignment utility functions.
 
 import unittest
 
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.alignment_utils import (
     normalize_path, is_sagemaker_path, extract_logical_name_from_path,
     format_alignment_issue, group_issues_by_severity, get_highest_severity,
     create_alignment_issue, SeverityLevel, AlignmentLevel, AlignmentIssue
 )
-
 
 class TestUtilityFunctions(unittest.TestCase):
     """Test alignment utility functions."""
@@ -174,7 +173,6 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertEqual(issue.details, {})
         self.assertIsNone(issue.recommendation)
         self.assertIsNone(issue.alignment_level)
-
 
 if __name__ == '__main__':
     unittest.main()

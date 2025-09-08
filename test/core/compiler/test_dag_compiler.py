@@ -9,13 +9,12 @@ import unittest
 from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dag_compiler import PipelineDAGCompiler, compile_dag_to_pipeline
-from src.cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
-from src.cursus.core.compiler.name_generator import validate_pipeline_name
-from src.cursus.core.compiler.exceptions import PipelineAPIError, ConfigurationError
-from src.cursus.core.compiler.validation import ValidationResult, ResolutionPreview, ConversionReport
-
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.core.compiler.dag_compiler import PipelineDAGCompiler, compile_dag_to_pipeline
+from cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
+from cursus.core.compiler.name_generator import validate_pipeline_name
+from cursus.core.compiler.exceptions import PipelineAPIError, ConfigurationError
+from cursus.core.compiler.validation import ValidationResult, ResolutionPreview, ConversionReport
 
 class TestDagCompiler(unittest.TestCase):
     """Tests for the dag_compiler module."""
@@ -66,7 +65,6 @@ class TestDagCompiler(unittest.TestCase):
         
         # Verify custom name is used directly
         self.assertEqual(result.name, "custom-pipeline-name")
-
 
 class TestCompileDagToPipeline(unittest.TestCase):
     """Tests for the compile_dag_to_pipeline function."""
@@ -178,7 +176,6 @@ class TestCompileDagToPipeline(unittest.TestCase):
         
         self.assertIn("DAG compilation failed", str(context.exception))
 
-
 class TestPipelineDAGCompilerInit(unittest.TestCase):
     """Tests for PipelineDAGCompiler initialization."""
 
@@ -246,7 +243,6 @@ class TestPipelineDAGCompilerInit(unittest.TestCase):
         # Verify custom components are used
         self.assertEqual(compiler.config_resolver, custom_resolver)
         self.assertEqual(compiler.builder_registry, custom_registry)
-
 
 class TestPipelineDAGCompilerValidation(unittest.TestCase):
     """Tests for PipelineDAGCompiler validation methods."""
@@ -403,7 +399,6 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         self.assertEqual(result.node_config_map, {})
         self.assertIn("Preview failed", result.recommendations[0])
 
-
 class TestPipelineDAGCompilerCompilation(unittest.TestCase):
     """Tests for PipelineDAGCompiler compilation methods."""
 
@@ -537,7 +532,6 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         self.assertEqual(len(report.steps), 2)
         self.assertIn("data_loading", report.resolution_details)
         self.assertIn("training", report.resolution_details)
-
 
 class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
     """Tests for PipelineDAGCompiler utility methods."""
@@ -679,7 +673,6 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         self.assertEqual(pipeline, mock_pipeline)
         self.assertEqual(result_doc, filled_doc)
         mock_template.fill_execution_document.assert_called_once_with(execution_doc)
-
 
 if __name__ == '__main__':
     unittest.main()

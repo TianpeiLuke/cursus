@@ -1,12 +1,12 @@
 import unittest
-from src.cursus.core.deps import (
+from cursus.core.deps import (
     UnifiedDependencyResolver,
     SpecificationRegistry,
     SemanticMatcher,
     DependencyResolutionError,
     PropertyReference,
 )
-from src.cursus.core.base import (
+from cursus.core.base import (
     StepSpecification,
     OutputSpec,
     DependencySpec,
@@ -751,7 +751,6 @@ class TestDependencyResolver(unittest.TestCase):
             normalized = resolver._normalize_step_type_for_compatibility(input_type)
             self.assertEqual(normalized, expected_output, 
                            f"Failed to normalize {input_type} to {expected_output}, got {normalized}")
-
 
 if __name__ == '__main__':
     unittest.main()

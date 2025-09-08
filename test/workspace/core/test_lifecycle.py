@@ -13,9 +13,8 @@ from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
-from src.cursus.workspace.core.lifecycle import WorkspaceLifecycleManager
-from src.cursus.workspace.core.manager import WorkspaceContext
-
+from cursus.workspace.core.lifecycle import WorkspaceLifecycleManager
+from cursus.workspace.core.manager import WorkspaceContext
 
 class TestWorkspaceLifecycleManager(unittest.TestCase):
     """Test suite for WorkspaceLifecycleManager."""
@@ -348,7 +347,6 @@ class TestWorkspaceLifecycleManager(unittest.TestCase):
         
         self.assertIn("No workspace root configured", str(context.exception))
 
-
 def mock_open_multiple_files():
     """Helper function to mock multiple file operations."""
     mock_files = {}
@@ -359,7 +357,6 @@ def mock_open_multiple_files():
         return mock_files[filename]
     
     return mock_open_func
-
 
 if __name__ == "__main__":
     unittest.main()

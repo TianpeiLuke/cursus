@@ -15,13 +15,12 @@ from typing import Dict, Any, List, Optional
 
 from pydantic import BaseModel, Field
 
-from src.cursus.core.config_fields.type_aware_config_serializer import (
+from cursus.core.config_fields.type_aware_config_serializer import (
     TypeAwareConfigSerializer,
     serialize_config,
     deserialize_config
 )
-from src.cursus.core.config_fields.constants import SerializationMode
-
+from cursus.core.config_fields.constants import SerializationMode
 
 # Test model classes
 class TestEnum(Enum):
@@ -43,7 +42,6 @@ class JobTypeConfig(TestConfig):
     job_type: Optional[str] = None
     data_type: Optional[str] = None
     mode: Optional[str] = None
-
 
 class TestTypeAwareSerialization(unittest.TestCase):
     """Test cases for TypeAwareConfigSerializer."""
@@ -170,7 +168,6 @@ class TestTypeAwareSerialization(unittest.TestCase):
         self.assertEqual(deserialized.job_type, "training")
         self.assertEqual(deserialized.data_type, "tabular")
         self.assertEqual(deserialized.mode, "incremental")
-
 
 if __name__ == '__main__':
     unittest.main()

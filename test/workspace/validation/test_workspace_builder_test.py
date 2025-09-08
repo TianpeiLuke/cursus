@@ -11,13 +11,10 @@ Tests workspace-aware step builder validation functionality including:
 import unittest
 from unittest.mock import Mock, patch, MagicMock, call
 import tempfile
-import os
 from pathlib import Path
-import sys
 
-from src.cursus.workspace.validation.workspace_builder_test import WorkspaceUniversalStepBuilderTest
-from src.cursus.workspace.validation.workspace_manager import WorkspaceManager
-
+from cursus.workspace.validation.workspace_builder_test import WorkspaceUniversalStepBuilderTest
+from cursus.workspace.validation.workspace_manager import WorkspaceManager
 
 class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
     """Test cases for WorkspaceUniversalStepBuilderTest."""
@@ -302,7 +299,6 @@ class TestWorkspaceUniversalStepBuilderTest(unittest.TestCase):
         self.assertIsNotNone(results)
         self.assertIn("workspace_metadata", results)
         self.assertEqual(results["total_builders"], 0)  # No actual builders in test workspace
-
 
 if __name__ == '__main__':
     unittest.main()

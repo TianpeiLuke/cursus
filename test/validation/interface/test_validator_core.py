@@ -9,12 +9,11 @@ import unittest
 from unittest.mock import Mock
 from typing import List, Dict, Any
 
-from src.cursus.validation.interface.interface_standard_validator import (
+from cursus.validation.interface.interface_standard_validator import (
     InterfaceStandardValidator,
     InterfaceViolation
 )
-from src.cursus.core.base.builder_base import StepBuilderBase
-
+from cursus.core.base.builder_base import StepBuilderBase
 
 class MockGoodStepBuilder(StepBuilderBase):
     """Mock step builder that follows all interface standards."""
@@ -77,7 +76,6 @@ class MockGoodStepBuilder(StepBuilderBase):
         """
         return Mock()
 
-
 class MockBadStepBuilder:
     """Mock step builder that violates interface standards."""
     
@@ -96,7 +94,6 @@ class MockBadStepBuilder:
     
     def create_step(self):  # Missing **kwargs
         return Mock()
-
 
 class MockUndocumentedStepBuilder(StepBuilderBase):
     """Mock step builder with missing documentation."""
@@ -119,7 +116,6 @@ class MockUndocumentedStepBuilder(StepBuilderBase):
     def create_step(self, **kwargs):
         # No docstring
         return Mock()
-
 
 class TestInterfaceStandardValidator(unittest.TestCase):
     """Tests for InterfaceStandardValidator class."""
@@ -282,7 +278,6 @@ class TestInterfaceStandardValidator(unittest.TestCase):
         
         self.validator.clear_violations()
         self.assertEqual(len(self.validator.violations), 0)
-
 
 if __name__ == '__main__':
     unittest.main()

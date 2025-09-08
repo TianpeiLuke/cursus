@@ -19,17 +19,16 @@ import json
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 
-from src.cursus.validation.runtime.runtime_testing import RuntimeTester
-from src.cursus.validation.runtime.runtime_models import (
+from cursus.validation.runtime.runtime_testing import RuntimeTester
+from cursus.validation.runtime.runtime_models import (
     ScriptTestResult,
     DataCompatibilityResult,
     ScriptExecutionSpec,
     PipelineTestingSpec,
     RuntimeTestingConfiguration
 )
-from src.cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
-from src.cursus.api.dag.base_dag import PipelineDAG
-
+from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from cursus.api.dag.base_dag import PipelineDAG
 
 class TestRuntimeTester(unittest.TestCase):
     """Test RuntimeTester class"""
@@ -417,7 +416,6 @@ class TestRuntimeTester(unittest.TestCase):
                             # Should complete very quickly (much less than 100ms)
                             self.assertLess(result.execution_time, 0.1)
 
-
 class TestRuntimeTesterIntegration(unittest.TestCase):
     """Integration tests for RuntimeTester"""
     
@@ -491,7 +489,6 @@ class TestRuntimeTesterIntegration(unittest.TestCase):
                                 # Test complete pipeline
                                 pipeline_result = self.tester.test_pipeline_flow_with_spec(self.pipeline_spec)
                                 self.assertTrue(pipeline_result["pipeline_success"])
-
 
 if __name__ == '__main__':
     unittest.main()

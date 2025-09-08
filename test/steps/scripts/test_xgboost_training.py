@@ -11,7 +11,7 @@ import numpy as np
 import pickle as pkl
 
 # Import the functions to be tested
-from src.cursus.steps.scripts.xgboost_training import (
+from cursus.steps.scripts.xgboost_training import (
     load_and_validate_config,
     find_first_data_file,
     load_datasets,
@@ -22,7 +22,6 @@ from src.cursus.steps.scripts.xgboost_training import (
     save_artifacts,
     main
 )
-
 
 class TestXGBoostTrainHelpers(unittest.TestCase):
     """Unit tests for helper functions in the XGBoost training script."""
@@ -400,7 +399,6 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         # Verify JSON dumps (feature importance and hyperparameters)
         self.assertEqual(mock_json_dump.call_count, 2)
 
-
 class TestXGBoostTrainMain(unittest.TestCase):
     """Tests for the main function of the XGBoost training script."""
 
@@ -566,7 +564,6 @@ class TestXGBoostTrainMain(unittest.TestCase):
         with self.assertRaises(ValueError):
             main(input_paths, output_paths, environ_vars, args)
 
-
 class TestXGBoostTrainIntegration(unittest.TestCase):
     """Integration tests for the XGBoost training script."""
 
@@ -590,14 +587,13 @@ class TestXGBoostTrainIntegration(unittest.TestCase):
     def test_script_imports_successfully(self):
         """Test that the script can be imported without errors."""
         try:
-            import src.cursus.steps.scripts.xgboost_training
+            import cursus.steps.scripts.xgboost_training
             success = True
         except Exception as e:
             success = False
             error = str(e)
         
         self.assertTrue(success, f"Script import failed: {error if not success else 'None'}")
-
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

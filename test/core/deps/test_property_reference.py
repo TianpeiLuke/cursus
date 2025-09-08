@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, MagicMock
 import re
 
-from src.cursus.core.deps import (
+from cursus.core.deps import (
     PropertyReference,
     OutputSpec,
     DependencyType,
@@ -13,7 +13,6 @@ from src.cursus.core.deps import (
 # - Processing: properties.ProcessingOutputConfig.Outputs['output_name'].S3Output.S3Uri
 # - Transform: properties.TransformOutput.S3OutputPath
 # - Evaluation: properties.DescribeEvaluationJobResponse.Statistics['metric_name']
-
 
 class TestPropertyReference(unittest.TestCase):
     def setUp(self):
@@ -370,7 +369,6 @@ class TestPropertyReference(unittest.TestCase):
         mock_step.properties.TransformOutput.Outputs[0].S3OutputPath = "s3://test-bucket/predictions"
         
         return mock_step
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -6,14 +6,13 @@ to ensure they provide clear, actionable error messages for users.
 """
 
 import unittest
-from src.cursus.core.compiler.exceptions import (
+from cursus.core.compiler.exceptions import (
     PipelineAPIError,
     ConfigurationError,
     AmbiguityError,
     ValidationError,
     ResolutionError
 )
-
 
 class TestPipelineAPIExceptions(unittest.TestCase):
     """Tests for the Pipeline API exception classes."""
@@ -196,7 +195,6 @@ class TestPipelineAPIExceptions(unittest.TestCase):
         for exc in exceptions:
             self.assertIsInstance(exc, PipelineAPIError)
             self.assertIsInstance(exc, Exception)
-
 
 if __name__ == '__main__':
     unittest.main()

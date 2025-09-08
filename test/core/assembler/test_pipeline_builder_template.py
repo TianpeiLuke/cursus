@@ -4,19 +4,12 @@ from pathlib import Path
 from collections import defaultdict
 import json
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 # Note: Removed global module mocks to prevent interference with other tests
 # These were causing mock interference in test/core/base/test_specification_base.py
 
-from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
-from src.cursus.core.assembler.pipeline_assembler import PipelineAssembler
-from src.cursus.api.dag.base_dag import PipelineDAG
+from cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
+from cursus.core.assembler.pipeline_assembler import PipelineAssembler
+from cursus.api.dag.base_dag import PipelineDAG
 
 # Create mock classes for testing
 class MockBasePipelineConfig:
@@ -36,7 +29,6 @@ class MockRegistryManager:
 class MockUnifiedDependencyResolver:
     """Mock UnifiedDependencyResolver for testing."""
     pass
-
 
 class ConcretePipelineTemplate(PipelineTemplateBase):
     """Concrete implementation of PipelineTemplateBase for testing."""
@@ -77,7 +69,6 @@ class ConcretePipelineTemplate(PipelineTemplateBase):
             'TestStep2': MagicMock(spec=type),
             'TestStep3': MagicMock(spec=type),
         }
-
 
 class TestPipelineTemplateBase(unittest.TestCase):
     def setUp(self):
@@ -468,7 +459,6 @@ class TestPipelineTemplateBase(unittest.TestCase):
         # Verify create_pipeline_components was called to get missing component
         self.mock_create_components.assert_called_once_with('test-pipeline')
 
-
 class TestPipelineAssembler(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures for PipelineAssembler tests."""
@@ -640,7 +630,6 @@ class TestPipelineAssembler(unittest.TestCase):
             # Verify assembler was created with components
             self.assertEqual(assembler._registry_manager, self.mock_registry_manager)
             self.assertEqual(assembler._dependency_resolver, self.mock_dependency_resolver)
-
 
 if __name__ == '__main__':
     unittest.main()

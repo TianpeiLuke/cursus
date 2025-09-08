@@ -18,15 +18,14 @@ import tempfile
 import json
 from datetime import datetime
 
-from src.cursus.validation.runtime.runtime_models import (
+from cursus.validation.runtime.runtime_models import (
     ScriptTestResult,
     DataCompatibilityResult,
     ScriptExecutionSpec,
     PipelineTestingSpec,
     RuntimeTestingConfiguration
 )
-from src.cursus.api.dag.base_dag import PipelineDAG
-
+from cursus.api.dag.base_dag import PipelineDAG
 
 class TestScriptTestResult(unittest.TestCase):
     """Test ScriptTestResult model"""
@@ -62,7 +61,6 @@ class TestScriptTestResult(unittest.TestCase):
         self.assertEqual(result.execution_time, 0.1)
         self.assertFalse(result.has_main_function)
 
-
 class TestDataCompatibilityResult(unittest.TestCase):
     """Test DataCompatibilityResult model"""
     
@@ -97,7 +95,6 @@ class TestDataCompatibilityResult(unittest.TestCase):
         self.assertEqual(result.script_b, "script_b")
         self.assertFalse(result.compatible)
         self.assertEqual(result.compatibility_issues, issues)
-
 
 class TestScriptExecutionSpec(unittest.TestCase):
     """Test ScriptExecutionSpec model"""
@@ -181,7 +178,6 @@ class TestScriptExecutionSpec(unittest.TestCase):
         expected_filename = "test_script_runtime_test_spec.json"
         self.assertTrue(saved_path.endswith(expected_filename))
 
-
 class TestPipelineTestingSpec(unittest.TestCase):
     """Test PipelineTestingSpec model"""
     
@@ -207,7 +203,6 @@ class TestPipelineTestingSpec(unittest.TestCase):
         self.assertIn("script_a", pipeline_spec.script_specs)
         self.assertIn("script_b", pipeline_spec.script_specs)
         self.assertEqual(pipeline_spec.test_workspace_root, "test/workspace")
-
 
 class TestRuntimeTestingConfiguration(unittest.TestCase):
     """Test RuntimeTestingConfiguration model"""
@@ -251,7 +246,6 @@ class TestRuntimeTestingConfiguration(unittest.TestCase):
         self.assertTrue(config.test_data_compatibility)
         self.assertTrue(config.test_pipeline_flow)
         self.assertFalse(config.use_workspace_aware)
-
 
 if __name__ == '__main__':
     unittest.main()

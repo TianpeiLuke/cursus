@@ -12,22 +12,21 @@ import unittest
 import threading
 import time
 from contextlib import contextmanager
-from src.cursus.core.deps.factory import (
+from cursus.core.deps.factory import (
     create_pipeline_components, 
     get_thread_components, 
     dependency_resolution_context
 )
-from src.cursus.core.deps import (
+from cursus.core.deps import (
     SemanticMatcher, 
     SpecificationRegistry, 
     RegistryManager, 
     UnifiedDependencyResolver
 )
-from src.cursus.core.base.specification_base import (
+from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
 from .test_helpers import IsolatedTestCase
-
 
 class TestFactoryFunctions(IsolatedTestCase):
     """Test factory function functionality."""
@@ -117,7 +116,6 @@ class TestFactoryFunctions(IsolatedTestCase):
         # Verify isolation
         self.assertIn("step1", components1["registry"].list_step_names())
         self.assertNotIn("step1", components2["registry"].list_step_names())
-
 
 class TestThreadLocalComponents(IsolatedTestCase):
     """Test thread-local component management."""
@@ -226,7 +224,6 @@ class TestThreadLocalComponents(IsolatedTestCase):
         
         # Should maintain state
         self.assertIn("persistent_step", components2["registry"].list_step_names())
-
 
 class TestDependencyResolutionContext(IsolatedTestCase):
     """Test dependency resolution context management."""
@@ -345,7 +342,6 @@ class TestDependencyResolutionContext(IsolatedTestCase):
                 self.assertNotIn("inner_step", outer_components["registry"].list_step_names())
                 self.assertNotIn("outer_step", inner_components["registry"].list_step_names())
 
-
 class TestFactoryIntegration(IsolatedTestCase):
     """Test integration scenarios with factory components."""
     
@@ -437,7 +433,6 @@ class TestFactoryIntegration(IsolatedTestCase):
         self.assertNotIn("infer_data", training_steps)
         self.assertNotIn("train_data", inference_steps)
         self.assertNotIn("train_model", inference_steps)
-
 
 if __name__ == '__main__':
     unittest.main()

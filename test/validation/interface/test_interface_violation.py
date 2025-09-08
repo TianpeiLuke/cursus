@@ -7,8 +7,7 @@ validation violations in the interface standard validator.
 
 import unittest
 
-from src.cursus.validation.interface.interface_standard_validator import InterfaceViolation
-
+from cursus.validation.interface.interface_standard_validator import InterfaceViolation
 
 class TestInterfaceViolation(unittest.TestCase):
     """Tests for InterfaceViolation class."""
@@ -68,7 +67,6 @@ class TestInterfaceViolation(unittest.TestCase):
         )
         
         self.assertEqual(violation.suggestions, [])
-
 
 if __name__ == '__main__':
     unittest.main()

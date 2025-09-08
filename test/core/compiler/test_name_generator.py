@@ -6,7 +6,7 @@ functionality to ensure conformance with SageMaker constraints.
 """
 
 import unittest
-from src.cursus.core.compiler.name_generator import (
+from cursus.core.compiler.name_generator import (
     generate_random_word,
     generate_pipeline_name,
     validate_pipeline_name,

@@ -7,13 +7,7 @@ Note: This file is renamed to avoid pytest auto-discovery to prevent duplicate t
 
 import unittest
 import sys
-import os
 from io import StringIO
-
-# Add the project root to the Python path to allow for absolute imports
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 
 # Import test modules dynamically to avoid pytest auto-discovery conflicts
 def import_test_modules():
@@ -51,7 +45,6 @@ def import_test_modules():
         'TestEnumEdgeCases': TestEnumEdgeCases,
     }
 
-
 def create_test_suite():
     """Create a comprehensive test suite for all base classes."""
     suite = unittest.TestSuite()
@@ -87,7 +80,6 @@ def create_test_suite():
     suite.addTest(unittest.makeSuite(test_classes['TestEnumEdgeCases']))
     
     return suite
-
 
 def run_tests_with_summary():
     """Run all tests and provide a detailed summary."""
@@ -153,7 +145,6 @@ def run_tests_with_summary():
     
     return success, result
 
-
 def run_individual_test_modules():
     """Run each test module individually and report results."""
     print("=" * 80)
@@ -214,7 +205,6 @@ def run_individual_test_modules():
     print("=" * 80)
     
     return results
-
 
 if __name__ == '__main__':
     import argparse

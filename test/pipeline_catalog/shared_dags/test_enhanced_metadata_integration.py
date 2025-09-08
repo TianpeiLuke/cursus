@@ -10,12 +10,11 @@ from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 from datetime import datetime
 
-from src.cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
+from cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
     EnhancedDAGMetadata, ZettelkastenMetadata, ComplexityLevel, PipelineFramework,
     DAGMetadataAdapter, validate_enhanced_dag_metadata
 )
-from src.cursus.pipeline_catalog.shared_dags import DAGMetadata
-
+from cursus.pipeline_catalog.shared_dags import DAGMetadata
 
 class TestEnhancedDAGMetadataIntegration:
     """Integration tests for EnhancedDAGMetadata with realistic scenarios."""

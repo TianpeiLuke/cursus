@@ -3,8 +3,6 @@
 Test script to verify that the config loading issues have been fixed.
 """
 
-import sys
-import os
 import logging
 import json
 import tempfile
@@ -20,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 # Import the necessary modules
-from src.cursus.steps.configs.utils import load_configs, build_complete_config_classes
+from cursus.steps.configs.utils import load_configs, build_complete_config_classes
 
 class TestConfigLoading(unittest.TestCase):
     """Tests for the configuration loading functionality."""
@@ -175,7 +173,6 @@ class TestConfigLoading(unittest.TestCase):
         # Check that expected configs are there
         for expected in expected_configs:
             self.assertIn(expected, loaded_configs, f"{expected} config should be loaded")
-        
 
 if __name__ == "__main__":
     unittest.main()

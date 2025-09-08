@@ -11,7 +11,7 @@ import unittest
 from typing import List, Dict
 from ..core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
-from src.cursus.core.base.specification_base import (
+from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
@@ -46,7 +46,6 @@ class ScriptArgumentMapping:
 
 # Flag to indicate if the real contract implementation is available
 CONTRACTS_AVAILABLE = True
-
 
 class TestScriptContractIntegration(IsolatedTestCase):
     """Test integration with script contracts."""
@@ -173,7 +172,6 @@ class TestScriptContractIntegration(IsolatedTestCase):
         
         for output_name in contract_outputs:
             self.assertIn(output_name, spec_outputs)
-
 
 if __name__ == '__main__':
     unittest.main()

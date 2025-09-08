@@ -10,21 +10,13 @@ import logging
 from unittest.mock import patch
 from pydantic import ValidationError
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.api.dag.edge_types import (
+from cursus.api.dag.edge_types import (
     EdgeType,
     DependencyEdge,
     ConditionalEdge,
     ParallelEdge,
     EdgeCollection
 )
-
 
 class TestEdgeType(unittest.TestCase):
     """Test EdgeType enum."""
@@ -35,7 +27,6 @@ class TestEdgeType(unittest.TestCase):
         self.assertEqual(EdgeType.CONDITIONAL.value, "conditional")
         self.assertEqual(EdgeType.PARALLEL.value, "parallel")
         self.assertEqual(EdgeType.SEQUENTIAL.value, "sequential")
-
 
 class TestDependencyEdge(unittest.TestCase):
     """Test DependencyEdge Pydantic model."""
@@ -179,7 +170,6 @@ class TestDependencyEdge(unittest.TestCase):
         self.assertEqual(edge.edge_type, 'sequential')  # Pydantic stores enum values as strings
         self.assertEqual(edge.metadata, {'test': 'value'})
 
-
 class TestConditionalEdge(unittest.TestCase):
     """Test ConditionalEdge Pydantic model."""
     
@@ -228,7 +218,6 @@ class TestConditionalEdge(unittest.TestCase):
         # Check that no warning was logged
         mock_logger.warning.assert_not_called()
 
-
 class TestParallelEdge(unittest.TestCase):
     """Test ParallelEdge Pydantic model."""
     
@@ -274,7 +263,6 @@ class TestParallelEdge(unittest.TestCase):
                 data = {**self.valid_edge_data, 'max_parallel': value}
                 with self.assertRaises(ValidationError):
                     ParallelEdge(**data)
-
 
 class TestEdgeCollection(unittest.TestCase):
     """Test EdgeCollection functionality."""
@@ -539,7 +527,6 @@ class TestEdgeCollection(unittest.TestCase):
         self.assertEqual(stats['edge_types'], expected_edge_types)
         self.assertEqual(stats['unique_source_steps'], 3)  # step1, step3, and step4
         self.assertEqual(stats['unique_target_steps'], 3)  # step2, step4, and step5
-
 
 if __name__ == '__main__':
     unittest.main()

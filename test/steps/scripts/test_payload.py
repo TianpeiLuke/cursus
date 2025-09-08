@@ -9,14 +9,8 @@ import json
 from pathlib import Path
 import logging
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 # Import the functions and main entrypoint from the script to be tested
-from src.cursus.steps.scripts.payload import (
+from cursus.steps.scripts.payload import (
     VariableType,
     create_model_variable_list,
     extract_hyperparameters_from_tarball,
@@ -327,7 +321,6 @@ class TestMimsPayloadHelpers(unittest.TestCase):
             self.assertEqual(payload_dict["feature1"], "42.0")
             self.assertEqual(payload_dict["category1"], "DEFAULT_TEXT")
 
-
 class TestMimsPayloadMainFlow(unittest.TestCase):
     """Integration-style tests for the main() function of the payload script."""
 
@@ -462,7 +455,6 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
         # Run the main function and expect an exception
         with self.assertRaises(FileNotFoundError):
             payload_main(input_paths, output_paths, environ_vars)
-
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

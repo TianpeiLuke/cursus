@@ -5,7 +5,7 @@ Test suite for core alignment models including StepTypeAwareAlignmentIssue.
 import unittest
 from unittest.mock import Mock
 
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.alignment_utils import (
     SeverityLevel,
     AlignmentLevel,
     AlignmentIssue,
@@ -13,7 +13,6 @@ from src.cursus.validation.alignment.alignment_utils import (
     create_alignment_issue,
     create_step_type_aware_alignment_issue
 )
-
 
 class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
     """Test StepTypeAwareAlignmentIssue model."""
@@ -124,7 +123,6 @@ class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
         self.assertIn("pytorch", json_str)
         self.assertIn("training_validation", json_str)
 
-
 class TestCreateAlignmentIssueFunctions(unittest.TestCase):
     """Test alignment issue creation helper functions."""
     
@@ -204,7 +202,6 @@ class TestCreateAlignmentIssueFunctions(unittest.TestCase):
         self.assertEqual(issue.reference_examples, reference_examples)
         self.assertIn("xgboost_training.py", issue.reference_examples)
 
-
 class TestSeverityLevelEnum(unittest.TestCase):
     """Test SeverityLevel enum."""
     
@@ -231,7 +228,6 @@ class TestSeverityLevelEnum(unittest.TestCase):
         self.assertEqual(SeverityLevel.ERROR.value, "ERROR")
         self.assertEqual(SeverityLevel.CRITICAL.value, "CRITICAL")
 
-
 class TestAlignmentLevelEnum(unittest.TestCase):
     """Test AlignmentLevel enum."""
     
@@ -241,7 +237,6 @@ class TestAlignmentLevelEnum(unittest.TestCase):
         self.assertEqual(AlignmentLevel.CONTRACT_SPECIFICATION.value, 2)
         self.assertEqual(AlignmentLevel.SPECIFICATION_DEPENDENCY.value, 3)
         self.assertEqual(AlignmentLevel.BUILDER_CONFIGURATION.value, 4)
-
 
 if __name__ == '__main__':
     unittest.main()

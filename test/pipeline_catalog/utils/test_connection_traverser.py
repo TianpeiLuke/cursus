@@ -9,11 +9,10 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.pipeline_catalog.utils.connection_traverser import (
+from cursus.pipeline_catalog.utils.connection_traverser import (
     ConnectionTraverser, PipelineConnection
 )
-from src.cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
-
+from cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
 
 class TestPipelineConnection:
     """Test suite for PipelineConnection model."""
@@ -44,7 +43,6 @@ class TestPipelineConnection:
         assert connection.connection_type == "alternatives"
         assert connection.annotation == "Alternative approach"
         assert connection.source_id is None
-
 
 class TestConnectionTraverser:
     """Test suite for ConnectionTraverser class."""
@@ -393,7 +391,6 @@ class TestConnectionTraverser:
         # Total should equal number of pipelines
         total_categorized = sum(distribution.values())
         assert total_categorized == analysis["total_pipelines"]
-
 
 class TestConnectionTraverserIntegration:
     """Integration tests for ConnectionTraverser with realistic scenarios."""

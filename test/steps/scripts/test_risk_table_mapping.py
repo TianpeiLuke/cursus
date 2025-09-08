@@ -9,9 +9,8 @@ import json
 import pickle as pkl
 from pathlib import Path
 
-
 # Import the components to be tested
-from src.cursus.steps.scripts.risk_table_mapping import (
+from cursus.steps.scripts.risk_table_mapping import (
     OfflineBinning,
     main as risk_mapping_main,
     internal_main
@@ -58,7 +57,6 @@ class TestOfflineBinning(unittest.TestCase):
         transformed_unseen = self.binner.transform(test_df_unseen)
         default_risk = self.binner.risk_tables['cat_var1']['default_bin']
         self.assertAlmostEqual(transformed_unseen['cat_var1'].iloc[0], default_risk)
-
 
 class TestMainRiskTableFlow(unittest.TestCase):
     """Tests the main execution flow of the risk table mapping script."""

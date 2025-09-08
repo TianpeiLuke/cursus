@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
-import os
 import tempfile
 import shutil
 import tarfile
@@ -8,7 +7,7 @@ from pathlib import Path
 import json
 
 # Import the functions to be tested
-from src.cursus.steps.scripts.dummy_training import (
+from cursus.steps.scripts.dummy_training import (
     validate_model,
     ensure_directory,
     extract_tarfile,
@@ -17,7 +16,6 @@ from src.cursus.steps.scripts.dummy_training import (
     process_model_with_hyperparameters,
     main
 )
-
 
 class TestDummyTrainingHelpers(unittest.TestCase):
     """Unit tests for helper functions in the dummy training script."""
@@ -228,7 +226,6 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             process_model_with_hyperparameters(model_path, hyperparams_path, output_dir)
 
-
 class TestDummyTrainingMain(unittest.TestCase):
     """Tests for the main function of the dummy training script."""
 
@@ -384,7 +381,6 @@ class TestDummyTrainingMain(unittest.TestCase):
         
         # Verify failure with appropriate exit code
         self.assertEqual(result, 3)  # RuntimeError
-
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

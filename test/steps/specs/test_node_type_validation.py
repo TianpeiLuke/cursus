@@ -14,12 +14,11 @@ import os
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from src.cursus.core.base.specification_base import (
+from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
-from src.cursus.core.deps.specification_registry import SpecificationRegistry
-
+from cursus.core.deps.specification_registry import SpecificationRegistry
 
 class TestNodeTypeSystem(unittest.TestCase):
     """Test cases for the node type system and validation logic."""
@@ -210,7 +209,6 @@ class TestNodeTypeSystem(unittest.TestCase):
         
         self.assertIn("Input should be 'source', 'internal', 'sink' or 'singular'", str(context.exception))
 
-
 class TestSpecificationRegistry(unittest.TestCase):
     """Test cases for the specification registry with node types."""
     
@@ -274,7 +272,6 @@ class TestSpecificationRegistry(unittest.TestCase):
         self.assertIn("test_step", call_args)
         self.assertIn("TestSource", call_args)
 
-
 class TestRealSpecifications(unittest.TestCase):
     """Test cases for actual step specifications."""
     
@@ -331,7 +328,6 @@ class TestRealSpecifications(unittest.TestCase):
                     0,
                     f"{spec_name} validation failed with errors: {errors}"
                 )
-
 
 if __name__ == "__main__":
     # Run tests with high verbosity

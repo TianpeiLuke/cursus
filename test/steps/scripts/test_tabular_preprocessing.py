@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 # Import the functions to be tested from the updated script
-from src.cursus.steps.scripts.tabular_preprocessing import (
+from cursus.steps.scripts.tabular_preprocessing import (
     combine_shards,
     _read_file_to_df,
     peek_json_format,
@@ -88,7 +88,6 @@ class TestTabularPreprocessHelpers(unittest.TestCase):
         empty_path.touch()
         with self.assertRaisesRegex(RuntimeError, "Empty file"):
             peek_json_format(empty_path)
-
 
 class TestMainFunction(unittest.TestCase):
     """Tests for the main preprocessing logic."""

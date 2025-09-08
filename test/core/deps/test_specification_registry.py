@@ -11,11 +11,10 @@ Tests the complete functionality of specification registry including:
 
 import unittest
 from .test_helpers import IsolatedTestCase, reset_all_global_state
-from src.cursus.core.deps.specification_registry import SpecificationRegistry
-from src.cursus.core.base.specification_base import (
+from cursus.core.deps.specification_registry import SpecificationRegistry
+from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-
 
 class TestSpecificationRegistry(IsolatedTestCase):
     """Test cases for SpecificationRegistry."""
@@ -661,7 +660,6 @@ class TestSpecificationRegistry(IsolatedTestCase):
         self.assertEqual(len(compatible), 1)
         self.assertEqual(compatible[0][0], "source")  # Step name
         self.assertEqual(compatible[0][1], "source_output")  # Output name
-
 
 if __name__ == '__main__':
     unittest.main()

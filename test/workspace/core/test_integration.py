@@ -12,14 +12,13 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.workspace.core.integration import (
+from cursus.workspace.core.integration import (
     WorkspaceIntegrationManager, 
     StagedComponent, 
     IntegrationPipeline,
     ComponentStatus,
     IntegrationStage
 )
-
 
 class TestWorkspaceIntegrationManager(unittest.TestCase):
     """Test suite for WorkspaceIntegrationManager."""
@@ -372,7 +371,6 @@ class TestWorkspaceIntegrationManager(unittest.TestCase):
         self.assertFalse(result["success"])
         # The error should be about staging root, but it might come after component type determination
         self.assertGreater(len(result["issues"]), 0)
-
 
 if __name__ == "__main__":
     unittest.main()

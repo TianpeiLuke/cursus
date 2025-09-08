@@ -2,18 +2,10 @@
 Unit tests for class validation functionality.
 """
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import unittest
 from unittest.mock import Mock, MagicMock
 
-from src.cursus.validation.naming.naming_standard_validator import NamingStandardValidator
-
+from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
 class TestClassValidation(unittest.TestCase):
     """Test class validation functionality."""
@@ -123,7 +115,6 @@ class TestClassValidation(unittest.TestCase):
         # Should have violations for the invalid method names
         method_violations = [v for v in violations if v.violation_type == "method_snake_case"]
         self.assertGreater(len(method_violations), 0)
-
 
 if __name__ == '__main__':
     unittest.main()

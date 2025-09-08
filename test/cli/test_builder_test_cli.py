@@ -19,7 +19,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from src.cursus.cli.builder_test_cli import (
+from cursus.cli.builder_test_cli import (
     print_test_results,
     print_enhanced_results,
     run_all_tests_with_scoring,
@@ -35,7 +35,6 @@ from src.cursus.cli.builder_test_cli import (
     list_available_builders,
     main
 )
-
 
 class TestPrintTestResults(unittest.TestCase):
     """Test the print_test_results function."""
@@ -111,7 +110,6 @@ class TestPrintTestResults(unittest.TestCase):
         details_found = any("Details" in call for call in calls)
         self.assertTrue(details_found)
 
-
 class TestPrintEnhancedResults(unittest.TestCase):
     """Test the print_enhanced_results function."""
     
@@ -152,7 +150,6 @@ class TestPrintEnhancedResults(unittest.TestCase):
         
         # Check that print_test_results was called
         mock_print_test_results.assert_called_once_with(raw_results, False)
-
 
 class TestHelperFunctions(unittest.TestCase):
     """Test helper functions."""
@@ -221,7 +218,6 @@ class TestHelperFunctions(unittest.TestCase):
         self.assertEqual(result, expected_validation)
         mock_registry.validate_step_builder_availability.assert_called_once_with("XGBoostTraining")
 
-
 class TestExportFunctions(unittest.TestCase):
     """Test export functionality."""
     
@@ -280,7 +276,6 @@ class TestExportFunctions(unittest.TestCase):
         mock_scorer_class.assert_called_once_with(raw_results)
         mock_scorer.generate_chart.assert_called_once_with("TestBuilder", "output_dir")
 
-
 class TestImportBuilderClass(unittest.TestCase):
     """Test the import_builder_class function."""
     
@@ -319,7 +314,6 @@ class TestImportBuilderClass(unittest.TestCase):
             import_builder_class("nonexistent.module.Class")
         
         self.assertIn("Could not import module", str(context.exception))
-
 
 class TestRunFunctions(unittest.TestCase):
     """Test the run_* functions."""
@@ -397,7 +391,6 @@ class TestRunFunctions(unittest.TestCase):
         mock_tester.run_all_tests.assert_called_once()
         self.assertEqual(result, {"test_inheritance": {"passed": True}})
 
-
 class TestListAvailableBuilders(unittest.TestCase):
     """Test the list_available_builders function."""
     
@@ -446,7 +439,6 @@ class TestListAvailableBuilders(unittest.TestCase):
         for builder in result:
             self.assertTrue(builder.startswith("src.cursus.steps.builders."))
             self.assertTrue(builder.endswith("StepBuilder"))
-
 
 class TestMainFunction(unittest.TestCase):
     """Test the main CLI function."""
@@ -628,7 +620,6 @@ class TestMainFunction(unittest.TestCase):
         mock_export.assert_called_once_with(mock_results, "results.json")
         mock_chart.assert_called_once_with(mock_results, "TestBuilder", "custom_output")
 
-
 class TestCLIIntegration(unittest.TestCase):
     """Integration tests for CLI functionality."""
     
@@ -667,7 +658,6 @@ class TestCLIIntegration(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_import.assert_called_once_with("test.module.TestBuilder")
         mock_run_tests.assert_called_once()
-
 
 class TestCLIErrorHandling(unittest.TestCase):
     """Test CLI error handling scenarios."""
@@ -711,7 +701,6 @@ class TestCLIErrorHandling(unittest.TestCase):
         self.assertEqual(result, 1)
         # Check that traceback was printed in verbose mode
         mock_traceback.assert_called_once()
-
 
 class TestCLIScoringIntegration(unittest.TestCase):
     """Test CLI integration with scoring features."""
@@ -774,7 +763,6 @@ class TestCLIScoringIntegration(unittest.TestCase):
         mock_test_by_type.assert_called_once()
         mock_export.assert_called_once_with(mock_results, "batch_results.json")
 
-
 class TestCLIArgumentParsing(unittest.TestCase):
     """Test CLI argument parsing."""
     
@@ -822,7 +810,6 @@ class TestCLIArgumentParsing(unittest.TestCase):
         
         self.assertEqual(result, 1)  # Should return 1 for errors
         mock_test_by_type.assert_called_once()
-
 
 if __name__ == '__main__':
     unittest.main()

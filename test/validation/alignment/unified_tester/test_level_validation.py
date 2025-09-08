@@ -10,12 +10,11 @@ from unittest.mock import patch, MagicMock
 # Add the project root to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
-from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-from src.cursus.validation.alignment.alignment_reporter import ValidationResult
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.alignment.alignment_reporter import ValidationResult
+from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
-
 
 class TestLevelValidation(unittest.TestCase):
     """Test individual level validation in UnifiedAlignmentTester."""
@@ -340,7 +339,6 @@ class TestLevelValidation(unittest.TestCase):
             self.assertEqual(len(scripts), 2)
             self.assertIn("script1", scripts)
             self.assertIn("script2", scripts)
-
 
 if __name__ == '__main__':
     unittest.main()

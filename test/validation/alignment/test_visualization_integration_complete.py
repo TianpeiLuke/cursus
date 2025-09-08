@@ -23,7 +23,6 @@ from cursus.validation.alignment.alignment_reporter import (
 )
 from cursus.validation.alignment.alignment_scorer import AlignmentScorer
 
-
 class TestVisualizationIntegrationComplete(unittest.TestCase):
     """Test complete visualization integration across all components."""
     
@@ -485,7 +484,6 @@ class TestVisualizationIntegrationComplete(unittest.TestCase):
         
         print("✅ Complete end-to-end workflow - PASSED")
 
-
 def run_comprehensive_demo():
     """Run a comprehensive demonstration of all visualization integration features."""
     print("=" * 80)
@@ -547,7 +545,6 @@ def run_comprehensive_demo():
         
     finally:
         test_instance.tearDown()
-
 
 if __name__ == "__main__":
     # Run comprehensive demo first

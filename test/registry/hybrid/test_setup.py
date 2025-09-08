@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch, mock_open
 
-from src.cursus.registry.hybrid.setup import (
+from cursus.registry.hybrid.setup import (
     create_workspace_registry,
     create_workspace_structure,
     create_workspace_documentation,
@@ -21,7 +21,6 @@ from src.cursus.registry.hybrid.setup import (
     _get_standard_template,
     _get_minimal_template
 )
-
 
 class TestWorkspaceRegistryCreation(unittest.TestCase):
     """Test workspace registry creation functions."""
@@ -127,7 +126,6 @@ class TestWorkspaceRegistryCreation(unittest.TestCase):
                 content = f.read()
             self.assertIn(dev_id, content)
 
-
 class TestRegistryTemplates(unittest.TestCase):
     """Test registry template generation functions."""
     
@@ -172,7 +170,6 @@ class TestRegistryTemplates(unittest.TestCase):
         self.assertIn("WORKSPACE_METADATA", template)
         # Should not have detailed examples
         self.assertNotIn("MyCustomProcessingStep", template)
-
 
 class TestWorkspaceStructure(unittest.TestCase):
     """Test workspace structure creation."""
@@ -224,7 +221,6 @@ class TestWorkspaceStructure(unittest.TestCase):
             init_file = self.workspace_path / dir_path / "__init__.py"
             self.assertTrue(init_file.exists(), f"__init__.py should exist in {dir_path}")
 
-
 class TestWorkspaceDocumentation(unittest.TestCase):
     """Test workspace documentation creation."""
     
@@ -260,7 +256,6 @@ class TestWorkspaceDocumentation(unittest.TestCase):
         self.assertIn("CLI Commands", content)
         self.assertIn("Best Practices", content)
         self.assertIn(registry_file, content)
-
 
 class TestExampleImplementations(unittest.TestCase):
     """Test example implementation creation."""
@@ -300,7 +295,6 @@ class TestExampleImplementations(unittest.TestCase):
         self.assertIn("example_dev", builder_content)
         self.assertIn("ExampleCustomStepBuilder", builder_content)
         self.assertIn("StepBuilderBase", builder_content)
-
 
 class TestWorkspaceValidation(unittest.TestCase):
     """Test workspace validation functions."""
@@ -355,7 +349,6 @@ class TestWorkspaceValidation(unittest.TestCase):
             validate_workspace_setup(str(self.workspace_path), "invalid_registry_dev")
         
         self.assertIn("Registry file missing required sections", str(exc_info.exception))
-
 
 class TestRegistryCopying(unittest.TestCase):
     """Test registry copying functionality."""
@@ -460,7 +453,6 @@ WORKSPACE_METADATA = {"developer_id": "source_dev", "version": "1.0.0"}
                 )
             
             self.assertIn("Failed to read source registry", str(exc_info.exception))
-
 
 if __name__ == "__main__":
     unittest.main()

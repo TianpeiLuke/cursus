@@ -6,13 +6,12 @@ Tests training step-specific validation enhancement functionality.
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock, mock_open
-from src.cursus.validation.alignment.step_type_enhancers.training_enhancer import TrainingStepEnhancer
-from src.cursus.validation.alignment.core_models import (
+from cursus.validation.alignment.step_type_enhancers.training_enhancer import TrainingStepEnhancer
+from cursus.validation.alignment.core_models import (
     ValidationResult,
     StepTypeAwareAlignmentIssue,
     SeverityLevel
 )
-
 
 class TestTrainingStepEnhancer(unittest.TestCase):
     """Test training step enhancer functionality."""
@@ -342,7 +341,7 @@ class TestTrainingStepEnhancer(unittest.TestCase):
 
     def test_enhancer_inheritance(self):
         """Test that TrainingStepEnhancer properly inherits from BaseStepEnhancer."""
-        from src.cursus.validation.alignment.step_type_enhancers.base_enhancer import BaseStepEnhancer
+        from cursus.validation.alignment.step_type_enhancers.base_enhancer import BaseStepEnhancer
         
         self.assertIsInstance(self.enhancer, BaseStepEnhancer)
         self.assertTrue(hasattr(self.enhancer, 'enhance_validation'))
@@ -366,7 +365,6 @@ class TestTrainingStepEnhancer(unittest.TestCase):
         for framework in expected_frameworks:
             self.assertIn(framework, self.enhancer.framework_validators)
             self.assertIsNotNone(self.enhancer.framework_validators[framework])
-
 
 if __name__ == '__main__':
     unittest.main()

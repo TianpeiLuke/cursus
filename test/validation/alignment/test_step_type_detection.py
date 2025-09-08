@@ -6,12 +6,11 @@ Tests step type detection functionality.
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from src.cursus.validation.alignment.step_type_detection import (
+from cursus.validation.alignment.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
     get_step_type_context
 )
-
 
 class TestStepTypeDetection(unittest.TestCase):
     """Test step type detection functionality."""
@@ -209,7 +208,6 @@ def main():
         
         # Should return one of the frameworks based on priority
         self.assertIn(result, ['xgboost', 'torch', 'pandas'])
-
 
 if __name__ == '__main__':
     unittest.main()

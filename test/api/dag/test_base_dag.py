@@ -2,15 +2,7 @@ import unittest
 from collections import deque
 from unittest.mock import patch, MagicMock
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.api.dag.base_dag import PipelineDAG
-
+from cursus.api.dag.base_dag import PipelineDAG
 
 class TestPipelineDAG(unittest.TestCase):
     def setUp(self):
@@ -143,7 +135,6 @@ class TestPipelineDAG(unittest.TestCase):
         # Check that dependencies come before dependents
         self.assertLess(order.index('A'), order.index('B'))
         self.assertLess(order.index('B'), order.index('C'))
-
 
 if __name__ == '__main__':
     unittest.main()

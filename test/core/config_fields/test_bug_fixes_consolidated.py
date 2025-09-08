@@ -18,10 +18,9 @@ from unittest import mock
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
-from src.cursus.core.config_fields.config_merger import ConfigMerger
+from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
+from cursus.core.config_fields.config_merger import ConfigMerger
 from pydantic import BaseModel
-
 
 class MdsDataSourceConfig(BaseModel):
     """Test model for MDS data source configuration."""
@@ -32,7 +31,6 @@ class MdsDataSourceConfig(BaseModel):
     class Config:
         extra = "allow"
 
-
 class DataSourceConfig(BaseModel):
     """Test model for data source configuration."""
     mds_data_source: MdsDataSourceConfig
@@ -40,7 +38,6 @@ class DataSourceConfig(BaseModel):
     
     class Config:
         extra = "allow"
-
 
 class DataSourcesSpecificationConfig(BaseModel):
     """Test model for data sources specification."""
@@ -50,7 +47,6 @@ class DataSourcesSpecificationConfig(BaseModel):
     class Config:
         extra = "allow"
 
-
 class CradleDataLoadConfig(BaseModel):
     """Test model for cradle data load configuration."""
     data_sources_specification: DataSourcesSpecificationConfig
@@ -58,7 +54,6 @@ class CradleDataLoadConfig(BaseModel):
     
     class Config:
         extra = "allow"
-
 
 class XGBoostModelHyperparameters(BaseModel):
     """Test model for XGBoost hyperparameters."""
@@ -71,7 +66,6 @@ class XGBoostModelHyperparameters(BaseModel):
     class Config:
         extra = "allow"
 
-
 class XGBoostTrainingConfig(BaseModel):
     """Test model for XGBoost training configuration."""
     hyperparameters: XGBoostModelHyperparameters
@@ -81,7 +75,6 @@ class XGBoostTrainingConfig(BaseModel):
     class Config:
         extra = "allow"
 
-
 class PayloadConfig(BaseModel):
     """Test model for payload configuration with potential recursion issues."""
     name: str
@@ -90,7 +83,6 @@ class PayloadConfig(BaseModel):
     
     class Config:
         extra = "allow"
-
 
 class TestBugFixesConsolidated(unittest.TestCase):
     """Consolidated test cases for various bug fixes."""
@@ -544,7 +536,6 @@ class TestBugFixesConsolidated(unittest.TestCase):
                     
                     # Should not be a generic error
                     self.assertNotIn("object has no attribute", error_msg.lower())
-
 
 if __name__ == '__main__':
     unittest.main()

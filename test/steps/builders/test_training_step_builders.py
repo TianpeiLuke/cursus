@@ -26,7 +26,6 @@ from cursus.validation.builders.registry_discovery import (
 from cursus.core.base.builder_base import StepBuilderBase
 from cursus.registry.step_names import STEP_NAMES
 
-
 class TrainingStepBuilderTestSuite:
     """
     Comprehensive test suite for all Training step builders.
@@ -365,7 +364,6 @@ class TrainingStepBuilderTestSuite:
                 "details": {"exception": str(e)}
             }
 
-
 class TestTrainingStepBuilders(unittest.TestCase):
     """
     Test cases for all Training step builders using pytest parametrization.
@@ -516,19 +514,16 @@ class TestTrainingStepBuilders(unittest.TestCase):
         if failed_critical:
             self.fail(f"Critical tests failed:\n" + "\n".join(failed_critical))
 
-
 # Pytest parametrized tests for individual builder testing
 @pytest.fixture
 def training_test_suite():
     """Fixture to provide the test suite."""
     return TrainingStepBuilderTestSuite()
 
-
 @pytest.fixture
 def available_training_builders(training_test_suite):
     """Fixture to provide available Training builders."""
     return training_test_suite.get_available_training_builders()
-
 
 @pytest.mark.parametrize("step_name,builder_class", 
                         TrainingStepBuilderTestSuite().get_available_training_builders())
@@ -547,7 +542,6 @@ def test_individual_training_builder_universal_compliance(step_name, builder_cla
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
 
-
 @pytest.mark.parametrize("step_name,builder_class", 
                         TrainingStepBuilderTestSuite().get_available_training_builders())
 def test_individual_training_builder_training_specific(step_name, builder_class):
@@ -563,7 +557,6 @@ def test_individual_training_builder_training_specific(step_name, builder_class)
         if test_name in results:
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
-
 
 if __name__ == '__main__':
     # Run with unittest

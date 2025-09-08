@@ -6,14 +6,12 @@ import unittest
 from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
-import os
 
-from src.cursus.workspace.quality.documentation_validator import (
+from cursus.workspace.quality.documentation_validator import (
     DocumentationQualityValidator, 
     DocumentationType,
     DocumentationValidationResult
 )
-
 
 class TestDocumentationQualityValidator(unittest.TestCase):
     """Test cases for DocumentationQualityValidator."""
@@ -233,7 +231,6 @@ package.example2()
         # Test Phase 3 requirements method
         phase3_compliant = result.meets_phase3_requirements()
         self.assertIsInstance(phase3_compliant, bool)
-
 
 if __name__ == '__main__':
     unittest.main()

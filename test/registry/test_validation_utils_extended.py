@@ -18,7 +18,7 @@ import time
 from typing import Dict, List, Any
 from unittest.mock import patch, MagicMock
 
-from src.cursus.registry.validation_utils import (
+from cursus.registry.validation_utils import (
     create_validation_report,
     get_performance_metrics,
     reset_performance_metrics,
@@ -29,7 +29,6 @@ from src.cursus.registry.validation_utils import (
     get_validation_errors_with_suggestions,
     _validation_stats
 )
-
 
 class TestCreateValidationReport:
     """Test comprehensive validation reporting functionality."""
@@ -121,7 +120,6 @@ class TestCreateValidationReport:
             assert report["validation_mode"] == mode
             assert report["is_valid"] is False  # Should be invalid regardless of mode
             assert report["error_count"] > 0
-
 
 class TestPerformanceMetrics:
     """Test performance tracking and metrics functionality."""
@@ -249,7 +247,6 @@ class TestPerformanceMetrics:
             assert "Validation took" in warning_call
             assert "target: <1ms" in warning_call
 
-
 class TestGetValidationStatus:
     """Test validation system status functionality."""
     
@@ -321,7 +318,6 @@ class TestGetValidationStatus:
         assert status["implementation_approach"] == "simplified_regex_based"
         assert status["performance_target"] == "< 1ms per validation"
         assert status["redundancy_level"] == "15-20% (optimal)"
-
 
 class TestEdgeCasesAndErrorHandling:
     """Test edge cases and error handling scenarios."""
@@ -451,7 +447,6 @@ class TestEdgeCasesAndErrorHandling:
         for step_name, validation_errors in results:
             assert validation_errors == []
 
-
 class TestIntegrationScenarios:
     """Test integration scenarios and real-world usage patterns."""
     
@@ -542,7 +537,6 @@ class TestIntegrationScenarios:
         except Exception as e:
             # If it does raise an exception, it should be a reasonable one
             assert isinstance(e, (TypeError, ValueError, AttributeError))
-
 
 if __name__ == "__main__":
     pytest.main([__file__])

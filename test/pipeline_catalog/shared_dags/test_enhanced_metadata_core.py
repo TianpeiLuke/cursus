@@ -10,12 +10,11 @@ from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 from datetime import datetime
 
-from src.cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
+from cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
     EnhancedDAGMetadata, ZettelkastenMetadata, ComplexityLevel, PipelineFramework,
     DAGMetadataAdapter, validate_enhanced_dag_metadata
 )
-from src.cursus.pipeline_catalog.shared_dags import DAGMetadata
-
+from cursus.pipeline_catalog.shared_dags import DAGMetadata
 
 class TestEnhancedDAGMetadata:
     """Test suite for EnhancedDAGMetadata class."""
@@ -319,7 +318,6 @@ class TestEnhancedDAGMetadata:
         assert "sagemaker" in deps
         assert "sklearn" in deps  # From calibration feature
 
-
 class TestDAGMetadataAdapter:
     """Test suite for DAGMetadataAdapter class."""
     
@@ -393,7 +391,6 @@ class TestDAGMetadataAdapter:
         assert converted_back.framework == legacy_metadata.framework
         assert converted_back.node_count == legacy_metadata.node_count
         assert converted_back.edge_count == legacy_metadata.edge_count
-
 
 class TestValidateEnhancedDAGMetadata:
     """Test suite for validate_enhanced_dag_metadata function."""

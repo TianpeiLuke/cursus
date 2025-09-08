@@ -12,12 +12,11 @@ from pathlib import Path
 from typing import Dict, Any, List
 from unittest.mock import Mock, patch
 
-from src.cursus.workspace.core.manager import WorkspaceManager
-from src.cursus.workspace.core.assembler import WorkspacePipelineAssembler
-from src.cursus.workspace.core.registry import WorkspaceComponentRegistry
-from src.cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
-from src.cursus.workspace.core.compiler import WorkspaceDAGCompiler
-
+from cursus.workspace.core.manager import WorkspaceManager
+from cursus.workspace.core.assembler import WorkspacePipelineAssembler
+from cursus.workspace.core.registry import WorkspaceComponentRegistry
+from cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
+from cursus.workspace.core.compiler import WorkspaceDAGCompiler
 
 class TestPhase2PipelineAssemblyIntegration:
     """Test suite for Phase 2 pipeline assembly layer optimization."""
@@ -71,7 +70,6 @@ class TestPhase2PipelineAssemblyIntegration:
             steps=steps,
             global_config={"region": "us-west-2", "role": "test-role"}
         )
-
 
 class TestWorkspacePipelineAssemblerIntegration:
     """Test WorkspacePipelineAssembler integration with Phase 1 managers."""
@@ -158,7 +156,6 @@ class TestWorkspacePipelineAssemblerIntegration:
             # For now, we test the integration point exists
             assert hasattr(assembler.workspace_manager.discovery_manager, 'resolve_pipeline_dependencies')
 
-
 class TestWorkspaceComponentRegistryIntegration:
     """Test WorkspaceComponentRegistry integration with Phase 1 managers."""
     
@@ -219,7 +216,6 @@ class TestWorkspaceComponentRegistryIntegration:
             # Test that registry delegates to discovery manager
             # This would be called internally by discover_components
             assert hasattr(registry.discovery_manager, 'discover_all_workspace_components')
-
 
 class TestConfigurationModelsIntegration:
     """Test configuration models integration with Phase 1 managers."""
@@ -325,7 +321,6 @@ class TestConfigurationModelsIntegration:
             mock_prepare.assert_called_once_with(sample_workspace_config)
             assert result['ready'] is True
 
-
 class TestWorkspaceDAGCompilerIntegration:
     """Test WorkspaceDAGCompiler integration with Phase 1 managers."""
     
@@ -388,7 +383,6 @@ class TestWorkspaceDAGCompilerIntegration:
         assert compiler.lifecycle_manager is consolidated_workspace_manager.lifecycle_manager
         assert compiler.isolation_manager is consolidated_workspace_manager.isolation_manager
         assert compiler.integration_manager is consolidated_workspace_manager.integration_manager
-
 
 class TestEndToEndIntegration:
     """End-to-end integration tests for Phase 2 optimizations."""
@@ -487,7 +481,6 @@ class TestEndToEndIntegration:
                 steps=[],
                 global_config={}
             )
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

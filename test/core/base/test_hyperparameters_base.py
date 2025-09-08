@@ -4,15 +4,7 @@ from typing import Dict, List, Any
 import logging
 import json
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.core.base.hyperparameters_base import ModelHyperparameters
-
+from cursus.core.base.hyperparameters_base import ModelHyperparameters
 
 class TestModelHyperparameters(unittest.TestCase):
     """Test cases for ModelHyperparameters class."""
@@ -373,7 +365,6 @@ class TestModelHyperparameters(unittest.TestCase):
         # Should work but not be binary
         self.assertEqual(hyperparam.num_classes, 1)
         self.assertFalse(hyperparam.is_binary)
-
 
 if __name__ == '__main__':
     # Set up logging for tests

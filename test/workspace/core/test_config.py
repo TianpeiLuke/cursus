@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Dict, Any
 from unittest.mock import Mock, patch
 
-from src.cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
-
+from cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
 
 class TestWorkspaceStepDefinition(unittest.TestCase):
     """Test cases for WorkspaceStepDefinition model."""
@@ -151,7 +150,6 @@ class TestWorkspaceStepDefinition(unittest.TestCase):
         step2 = WorkspaceStepDefinition(**dumped)
         self.assertEqual(step2.step_name, step.step_name)
         self.assertEqual(step2.developer_id, step.developer_id)
-
 
 class TestWorkspacePipelineDefinition(unittest.TestCase):
     """Test cases for WorkspacePipelineDefinition model."""
@@ -516,7 +514,6 @@ class TestWorkspacePipelineDefinition(unittest.TestCase):
         self.assertEqual(loaded_pipeline.workspace_root, pipeline.workspace_root)
         self.assertEqual(len(loaded_pipeline.steps), len(pipeline.steps))
         self.assertEqual(loaded_pipeline.global_config, pipeline.global_config)
-
 
 if __name__ == '__main__':
     unittest.main()

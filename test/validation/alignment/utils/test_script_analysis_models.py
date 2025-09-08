@@ -4,7 +4,7 @@ Test suite for script analysis models.
 
 import unittest
 
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.alignment_utils import (
     PathReference,
     EnvVarAccess,
     ImportStatement,
@@ -12,7 +12,6 @@ from src.cursus.validation.alignment.alignment_utils import (
     PathConstruction,
     FileOperation
 )
-
 
 class TestPathReference(unittest.TestCase):
     """Test PathReference model."""
@@ -55,7 +54,6 @@ class TestPathReference(unittest.TestCase):
         self.assertEqual(path_dict["path"], "/opt/ml/processing/output")
         self.assertEqual(path_dict["line_number"], 25)
         self.assertEqual(path_dict["context"], "output saving")
-
 
 class TestEnvVarAccess(unittest.TestCase):
     """Test EnvVarAccess model."""
@@ -101,7 +99,6 @@ class TestEnvVarAccess(unittest.TestCase):
         self.assertEqual(env_dict["variable_name"], "SM_CHANNEL_VALIDATION")
         self.assertEqual(env_dict["line_number"], 20)
         self.assertEqual(env_dict["access_method"], "os.getenv")
-
 
 class TestImportStatement(unittest.TestCase):
     """Test ImportStatement model."""
@@ -156,7 +153,6 @@ class TestImportStatement(unittest.TestCase):
         self.assertEqual(import_dict["module_name"], "sklearn.ensemble")
         self.assertIsNone(import_dict["import_alias"])
         self.assertEqual(import_dict["line_number"], 5)
-
 
 class TestArgumentDefinition(unittest.TestCase):
     """Test ArgumentDefinition model."""
@@ -216,7 +212,6 @@ class TestArgumentDefinition(unittest.TestCase):
         self.assertEqual(arg_dict["argument_type"], "int")
         self.assertEqual(arg_dict["default_value"], "100")
         self.assertEqual(arg_dict["line_number"], 8)
-
 
 class TestPathConstruction(unittest.TestCase):
     """Test PathConstruction model."""
@@ -278,7 +273,6 @@ class TestPathConstruction(unittest.TestCase):
         self.assertEqual(path_dict["method"], "pathlib.Path")
         self.assertEqual(path_dict["construction_parts"], ["artifacts"])
         self.assertEqual(path_dict["line_number"], 30)
-
 
 class TestFileOperation(unittest.TestCase):
     """Test FileOperation model."""
@@ -344,7 +338,6 @@ class TestFileOperation(unittest.TestCase):
         self.assertEqual(file_dict["method"], "df.to_csv")
         self.assertEqual(file_dict["line_number"], 40)
 
-
 class TestScriptAnalysisModelsIntegration(unittest.TestCase):
     """Test integration of script analysis models."""
     
@@ -374,7 +367,6 @@ class TestScriptAnalysisModelsIntegration(unittest.TestCase):
             
             model_json = model.model_dump_json()
             self.assertIsInstance(model_json, str)
-
 
 if __name__ == '__main__':
     unittest.main()

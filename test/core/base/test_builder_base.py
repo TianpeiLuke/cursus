@@ -5,16 +5,8 @@ from typing import Dict, Any
 import logging
 from abc import ABC
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.core.base.builder_base import StepBuilderBase
-from src.cursus.core.base.config_base import BasePipelineConfig
-
+from cursus.core.base.builder_base import StepBuilderBase
+from cursus.core.base.config_base import BasePipelineConfig
 
 class MockConfig(BasePipelineConfig):
     """Mock configuration for testing."""
@@ -28,7 +20,6 @@ class MockConfig(BasePipelineConfig):
             service_name='test_service',
             pipeline_version='1.0.0'
         )
-
 
 class ConcreteStepBuilder(StepBuilderBase):
     """Concrete implementation of StepBuilderBase for testing."""
@@ -50,7 +41,6 @@ class ConcreteStepBuilder(StepBuilderBase):
         mock_step = Mock()
         mock_step.name = "test_step"
         return mock_step
-
 
 class TestStepBuilderBase(unittest.TestCase):
     """Test cases for StepBuilderBase class."""
@@ -421,7 +411,6 @@ class TestStepBuilderBase(unittest.TestCase):
         # Should contain expected common properties
         self.assertIn('dependencies', builder.COMMON_PROPERTIES)
         self.assertIn('enable_caching', builder.COMMON_PROPERTIES)
-
 
 if __name__ == '__main__':
     # Set up logging for tests

@@ -2,7 +2,6 @@
 Tests for the pipeline catalog indexer.
 """
 
-import os
 import json
 import tempfile
 import shutil
@@ -12,8 +11,7 @@ from typing import Dict, Any
 
 import pytest
 
-from src.cursus.pipeline_catalog.indexer import CatalogIndexer
-
+from cursus.pipeline_catalog.indexer import CatalogIndexer
 
 class TestCatalogIndexer:
     """Tests for the CatalogIndexer class."""
@@ -52,8 +50,7 @@ This is a test pipeline that includes training and evaluation.
 """
 
 from typing import Dict, Any, Tuple
-from src.cursus.api.dag.base_dag import PipelineDAG
-
+from cursus.api.dag.base_dag import PipelineDAG
 
 def create_dag() -> PipelineDAG:
     """Create a test DAG."""
@@ -61,11 +58,9 @@ def create_dag() -> PipelineDAG:
     dag.add_node("TestNode")
     return dag
 
-
 def create_pipeline(config_path, session, role) -> Tuple[Any, Dict[str, Any]]:
     """Create a test pipeline."""
     return {}, {}
-
 
 def fill_execution_document(pipeline, document, compiler):
     """Fill execution document."""

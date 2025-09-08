@@ -7,10 +7,9 @@ metadata system.
 
 import pytest
 from unittest.mock import patch
-from src.cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
+from cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
     ComplexityLevel, PipelineFramework, ZettelkastenMetadata
 )
-
 
 class TestComplexityLevel:
     """Test suite for ComplexityLevel enum."""
@@ -22,7 +21,6 @@ class TestComplexityLevel:
         assert ComplexityLevel.ADVANCED.value == "advanced"
         assert ComplexityLevel.COMPREHENSIVE.value == "comprehensive"
 
-
 class TestPipelineFramework:
     """Test suite for PipelineFramework enum."""
     
@@ -33,7 +31,6 @@ class TestPipelineFramework:
         assert PipelineFramework.SKLEARN.value == "sklearn"
         assert PipelineFramework.GENERIC.value == "generic"
         assert PipelineFramework.FRAMEWORK_AGNOSTIC.value == "framework_agnostic"
-
 
 class TestZettelkastenMetadata:
     """Test suite for ZettelkastenMetadata class."""

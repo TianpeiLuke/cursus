@@ -11,12 +11,10 @@ Tests workspace-aware alignment validation functionality including:
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 import tempfile
-import os
 from pathlib import Path
 
-from src.cursus.workspace.validation.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
-from src.cursus.workspace.validation.workspace_manager import WorkspaceManager
-
+from cursus.workspace.validation.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
+from cursus.workspace.validation.workspace_manager import WorkspaceManager
 
 class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
     """Test cases for WorkspaceUnifiedAlignmentTester."""
@@ -245,7 +243,6 @@ class TestWorkspaceUnifiedAlignmentTester(unittest.TestCase):
         
         # Verify context switching worked
         self.assertNotEqual(self.tester.developer_id, original_developer)
-
 
 if __name__ == '__main__':
     unittest.main()

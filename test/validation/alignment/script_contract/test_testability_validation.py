@@ -18,9 +18,8 @@ src_path = project_root / "src"
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from src.cursus.validation.alignment.testability_validator import TestabilityPatternValidator
-from src.cursus.validation.alignment.alignment_utils import SeverityLevel
-
+from cursus.validation.alignment.testability_validator import TestabilityPatternValidator
+from cursus.validation.alignment.alignment_utils import SeverityLevel
 
 class TestTestabilityPatternValidator(unittest.TestCase):
     """Test the TestabilityPatternValidator class."""
@@ -275,7 +274,6 @@ if __name__ == "__main__":
         main_call_errors = [issue for issue in error_issues if "does not call main function" in issue.message.lower()]
         self.assertGreater(len(main_call_errors), 0, "Should error when main block doesn't call main function")
 
-
 class TestTestabilityIntegration(unittest.TestCase):
     """Test integration of testability validation with ScriptContractAlignmentTester."""
     
@@ -286,7 +284,7 @@ class TestTestabilityIntegration(unittest.TestCase):
     
     def test_testability_validator_import(self):
         """Test that TestabilityPatternValidator can be imported."""
-        from src.cursus.validation.alignment import TestabilityPatternValidator
+        from cursus.validation.alignment import TestabilityPatternValidator
         validator = TestabilityPatternValidator()
         self.assertIsNotNone(validator)
         self.assertTrue(hasattr(validator, 'validate_script_testability'))
@@ -314,7 +312,6 @@ def main():
         for issue in issues:
             self.assertIsInstance(issue.level, SeverityLevel)
             self.assertIn(issue.level, [SeverityLevel.INFO, SeverityLevel.WARNING, SeverityLevel.ERROR, SeverityLevel.CRITICAL])
-
 
 class TestTestabilityValidationCategories(unittest.TestCase):
     """Test specific testability validation categories."""
@@ -364,7 +361,6 @@ if __name__ == "__main__":
         # Should have at least some of the expected categories
         overlap = found_categories.intersection(expected_categories)
         self.assertGreater(len(overlap), 0, f"Should find testability categories, found: {found_categories}")
-
 
 if __name__ == '__main__':
     # Run the tests

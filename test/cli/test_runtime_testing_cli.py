@@ -24,7 +24,6 @@ from cursus.validation.runtime.runtime_models import (
     DataCompatibilityResult
 )
 
-
 class TestRuntimeTestingCLI(unittest.TestCase):
     """Test runtime testing CLI commands"""
     
@@ -215,7 +214,6 @@ class TestRuntimeTestingCLI(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Error", result.output)
 
-
 class TestRuntimeTestingCLIIntegration(unittest.TestCase):
     """Integration tests for runtime testing CLI"""
     
@@ -279,7 +277,6 @@ class TestRuntimeTestingCLIIntegration(unittest.TestCase):
             '--workspace-dir', self.temp_dir
         ])
         self.assertEqual(result3.exit_code, 0)
-
 
 if __name__ == '__main__':
     unittest.main()

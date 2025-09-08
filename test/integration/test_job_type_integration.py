@@ -13,8 +13,8 @@ import os
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from src.cursus.core.deps.specification_registry import SpecificationRegistry
-from src.cursus.steps.specs import (
+from cursus.core.deps.specification_registry import SpecificationRegistry
+from cursus.steps.specs import (
     # Job type-specific data loading specifications
     DATA_LOADING_TRAINING_SPEC,
     DATA_LOADING_VALIDATION_SPEC,
@@ -27,7 +27,6 @@ from src.cursus.steps.specs import (
     PREPROCESSING_TESTING_SPEC,
     PREPROCESSING_CALIBRATION_SPEC
 )
-
 
 class TestJobTypeIntegration(unittest.TestCase):
     """Integration tests for job type-specific specifications."""
@@ -258,7 +257,6 @@ class TestJobTypeIntegration(unittest.TestCase):
         print("✅ 8 new job type-specific specifications created")
         print("✅ Training and calibration flows properly isolated")
         print("✅ Semantic keywords enable intelligent dependency resolution")
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -7,13 +7,12 @@ next steps, alternatives, and compositions.
 
 import pytest
 from unittest.mock import Mock, patch
-from src.cursus.pipeline_catalog.utils.recommendation_engine import (
+from cursus.pipeline_catalog.utils.recommendation_engine import (
     PipelineRecommendationEngine, RecommendationResult, CompositionRecommendation
 )
-from src.cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
-from src.cursus.pipeline_catalog.utils.connection_traverser import ConnectionTraverser, PipelineConnection
-from src.cursus.pipeline_catalog.utils.tag_discovery import TagBasedDiscovery
-
+from cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
+from cursus.pipeline_catalog.utils.connection_traverser import ConnectionTraverser, PipelineConnection
+from cursus.pipeline_catalog.utils.tag_discovery import TagBasedDiscovery
 
 class TestPipelineRecommendationEngineCore:
     """Test suite for PipelineRecommendationEngine core functionality."""

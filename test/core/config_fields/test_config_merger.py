@@ -19,9 +19,8 @@ from datetime import datetime
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.config_merger import ConfigMerger
-from src.cursus.core.config_fields.constants import CategoryType, MergeDirection, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
-
+from cursus.core.config_fields.config_merger import ConfigMerger
+from cursus.core.config_fields.constants import CategoryType, MergeDirection, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
 
 class TestConfig:
     """Base test config class for testing merger."""
@@ -32,31 +31,25 @@ class TestConfig:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-
 class SharedFieldsConfig(TestConfig):
     """Config with shared fields for testing."""
     pass
-
 
 class SpecificFieldsConfig(TestConfig):
     """Config with specific fields for testing."""
     pass
 
-
 class SpecialFieldsConfig(TestConfig):
     """Config with special fields for testing."""
     pass
-
 
 class MockProcessingBase:
     """Mock base class for processing configs."""
     pass
 
-
 class ProcessingConfig(MockProcessingBase, TestConfig):
     """Mock processing config for testing."""
     pass
-
 
 class TestConfigMerger(unittest.TestCase):
     """Test cases for ConfigMerger with the simplified structure."""
@@ -502,7 +495,6 @@ class TestConfigMerger(unittest.TestCase):
         # Test with ERROR_ON_CONFLICT
         with self.assertRaises(ValueError):
             ConfigMerger.merge_with_direction(source, target, MergeDirection.ERROR_ON_CONFLICT)
-
 
 if __name__ == '__main__':
     unittest.main()

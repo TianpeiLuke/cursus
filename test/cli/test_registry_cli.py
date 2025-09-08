@@ -20,7 +20,7 @@ import json
 
 # Import the CLI functions we want to test
 try:
-    from src.cursus.cli.registry_cli import (
+    from cursus.cli.registry_cli import (
         registry_cli,
         validate_step_definition,
         validation_status,
@@ -31,7 +31,7 @@ except ImportError:
     CLI_AVAILABLE = False
 
 # Import validation utilities for testing integration
-from src.cursus.registry.validation_utils import (
+from cursus.registry.validation_utils import (
     validate_new_step_definition,
     auto_correct_step_definition,
     create_validation_report,
@@ -39,7 +39,6 @@ from src.cursus.registry.validation_utils import (
     reset_performance_metrics as reset_utils_metrics,
     get_validation_status as get_utils_status
 )
-
 
 @pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
 class TestRegistryCLICommands:
@@ -196,7 +195,6 @@ class TestRegistryCLICommands:
         assert "validation-status" in result.output
         assert "reset-validation-metrics" in result.output
 
-
 @pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
 class TestCLIIntegrationWithValidationUtils:
     """Test CLI integration with validation utilities."""
@@ -297,7 +295,6 @@ class TestCLIIntegrationWithValidationUtils:
         metrics_after = get_performance_metrics()
         assert metrics_after["total_validations"] == 0
 
-
 @pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
 class TestCLIErrorHandling:
     """Test CLI error handling and edge cases."""
@@ -392,7 +389,6 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to reset validation metrics:" in result.output
         assert "Test reset error" in result.output
-
 
 @pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
 class TestCLIUsageScenarios:
@@ -528,7 +524,6 @@ class TestCLIUsageScenarios:
         result3 = self.runner.invoke(registry_cli, ['validation-status'])
         assert result3.exit_code == 0
         assert "🟢 Active" in result3.output
-
 
 if __name__ == "__main__":
     pytest.main([__file__])

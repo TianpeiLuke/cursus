@@ -4,20 +4,12 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Type
 import logging
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.core.assembler.pipeline_assembler import PipelineAssembler
-from src.cursus.core.base import BasePipelineConfig, StepBuilderBase, OutputSpec, DependencySpec, StepSpecification
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.deps.registry_manager import RegistryManager
-from src.cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
-from src.cursus.core.base.enums import DependencyType, NodeType
-
+from cursus.core.assembler.pipeline_assembler import PipelineAssembler
+from cursus.core.base import BasePipelineConfig, StepBuilderBase, OutputSpec, DependencySpec, StepSpecification
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.core.deps.registry_manager import RegistryManager
+from cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
+from cursus.core.base.enums import DependencyType, NodeType
 
 class MockConfig(BasePipelineConfig):
     """Mock configuration class for testing."""
@@ -32,7 +24,6 @@ class MockConfig(BasePipelineConfig):
             service_name=service_name,
             pipeline_version=pipeline_version
         )
-
 
 class MockStepBuilder(StepBuilderBase):
     """Mock step builder class for testing."""
@@ -103,7 +94,6 @@ class MockStepBuilder(StepBuilderBase):
         mock_step.outputs = outputs or {}
         mock_step.dependencies = dependencies or []
         return mock_step
-
 
 class TestPipelineAssembler(unittest.TestCase):
     """Test cases for PipelineAssembler class."""
@@ -468,7 +458,6 @@ class TestPipelineAssembler(unittest.TestCase):
             
             # Verify logging calls were made during initialization
             mock_logger.info.assert_called()
-
 
 if __name__ == '__main__':
     # Set up logging for tests

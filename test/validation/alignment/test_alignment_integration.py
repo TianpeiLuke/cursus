@@ -18,7 +18,6 @@ from cursus.validation.alignment.alignment_reporter import (
     AlignmentReport, ValidationResult, AlignmentIssue, SeverityLevel
 )
 
-
 class TestAlignmentIntegration(unittest.TestCase):
     """Test the integration between AlignmentReport and AlignmentScorer."""
     
@@ -233,7 +232,6 @@ class TestAlignmentIntegration(unittest.TestCase):
         self.assertTrue(self.report.has_critical_issues())
         self.assertTrue(self.report.has_errors())
 
-
 def run_integration_demo():
     """Run a demonstration of the integration features."""
     print("=" * 80)
@@ -287,7 +285,6 @@ def run_integration_demo():
     print("✅ Chart generation for alignment scores")
     print("✅ Comprehensive scoring reports")
     print("\nPhase 1 Task 4: Integration with AlignmentReport class - COMPLETED")
-
 
 if __name__ == "__main__":
     # Run demo first

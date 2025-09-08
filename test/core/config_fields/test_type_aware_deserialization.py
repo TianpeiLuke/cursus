@@ -14,9 +14,9 @@ import pytest
 from unittest.mock import patch, MagicMock, Mock
 
 # Import utilities for config serialization
-from src.cursus.core.config_fields.config_merger import merge_and_save_configs, load_configs
-from src.cursus.core.config_fields.type_aware_config_serializer import serialize_config
-from src.cursus.core.config_fields.config_class_store import ConfigClassStore
+from cursus.core.config_fields.config_merger import merge_and_save_configs, load_configs
+from cursus.core.config_fields.type_aware_config_serializer import serialize_config
+from cursus.core.config_fields.config_class_store import ConfigClassStore
 
 from pydantic import BaseModel
 
@@ -57,8 +57,8 @@ def build_complete_config_classes():
     }
         
 # Import config_merger for saving configs
-from src.cursus.core.config_fields.config_merger import ConfigMerger
-from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
+from cursus.core.config_fields.config_merger import ConfigMerger
+from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
 
 # Define simple test config classes for serialization testing
 class TestBaseConfig(BasePipelineConfig):
@@ -131,7 +131,6 @@ class TestTrainingConfig(TestBaseConfig):
                 errors[field] = f"Field {field} is required for training"
                 
         return errors
-
 
 class TestTypeAwareDeserialization(unittest.TestCase):
     """
@@ -245,7 +244,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
     def test_type_preservation(self):
         """Test that derived class types are preserved during serialization and deserialization."""
         # Use the serializer directly to test round-trip serialization
-        from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer, deserialize_config
+        from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer, deserialize_config
         
         # Create serializer with complete config classes
         config_classes = build_complete_config_classes()
@@ -276,7 +275,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
     def test_type_metadata_in_serialized_output(self):
         """Test that type metadata is included in the serialized output."""
         # Create a serializer and use it directly
-        from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
+        from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
         serializer = TypeAwareConfigSerializer()
         
         # Serialize a BSM hyperparameters object
@@ -372,7 +371,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
     def test_custom_config_with_hyperparameters(self):
         """Test serialization of custom config classes with different hyperparameters types."""
         # Create a serializer with our test classes
-        from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
+        from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
         
         # Add our custom classes to the registry
         config_classes = build_complete_config_classes()
@@ -490,7 +489,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                 })
                 
                 # Save configs to temporary file
-                from src.cursus.core.config_fields.config_merger import ConfigMerger
+                from cursus.core.config_fields.config_merger import ConfigMerger
                 merger = ConfigMerger([processing_config, training_config, override_config])
                 merger.save(tmp.name)
                 
@@ -633,7 +632,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
     def test_fallback_behavior(self):
         """Test the fallback behavior when a derived class is not available."""
         # Use the serializer directly to test fallback behavior
-        from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
+        from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
         
         # Create serializer with limited config classes (no BSMModelHyperparameters)
         limited_config_classes = {
@@ -664,7 +663,6 @@ class TestTypeAwareDeserialization(unittest.TestCase):
         # Verify BSM-specific fields are also present (since the class was found)
         self.assertTrue(hasattr(deserialized_bsm, 'lr_decay'))
         self.assertEqual(deserialized_bsm.lr_decay, 0.05)
-                
 
 if __name__ == "__main__":
     unittest.main()

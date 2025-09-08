@@ -6,10 +6,9 @@ recommendation engine.
 """
 
 import pytest
-from src.cursus.pipeline_catalog.utils.recommendation_engine import (
+from cursus.pipeline_catalog.utils.recommendation_engine import (
     RecommendationResult, CompositionRecommendation
 )
-
 
 class TestRecommendationResult:
     """Test suite for RecommendationResult model."""
@@ -53,7 +52,6 @@ class TestRecommendationResult:
         assert result.tag_overlap is None
         assert result.framework is None
         assert result.complexity is None
-
 
 class TestCompositionRecommendation:
     """Test suite for CompositionRecommendation model."""

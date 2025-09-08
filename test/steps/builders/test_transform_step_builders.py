@@ -26,7 +26,6 @@ from cursus.validation.builders.registry_discovery import (
 from cursus.core.base.builder_base import StepBuilderBase
 from cursus.registry.step_names import STEP_NAMES
 
-
 class TransformStepBuilderTestSuite:
     """
     Comprehensive test suite for all Transform step builders.
@@ -312,7 +311,6 @@ class TransformStepBuilderTestSuite:
                 "details": {"exception": str(e)}
             }
 
-
 class TestTransformStepBuilders(unittest.TestCase):
     """
     Test cases for all Transform step builders using pytest parametrization.
@@ -463,19 +461,16 @@ class TestTransformStepBuilders(unittest.TestCase):
         if failed_critical:
             self.fail(f"Critical tests failed:\n" + "\n".join(failed_critical))
 
-
 # Pytest parametrized tests for individual builder testing
 @pytest.fixture
 def transform_test_suite():
     """Fixture to provide the test suite."""
     return TransformStepBuilderTestSuite()
 
-
 @pytest.fixture
 def available_transform_builders(transform_test_suite):
     """Fixture to provide available Transform builders."""
     return transform_test_suite.get_available_transform_builders()
-
 
 @pytest.mark.parametrize("step_name,builder_class", 
                         TransformStepBuilderTestSuite().get_available_transform_builders())
@@ -494,7 +489,6 @@ def test_individual_transform_builder_universal_compliance(step_name, builder_cl
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
 
-
 @pytest.mark.parametrize("step_name,builder_class", 
                         TransformStepBuilderTestSuite().get_available_transform_builders())
 def test_individual_transform_builder_transform_specific(step_name, builder_class):
@@ -510,7 +504,6 @@ def test_individual_transform_builder_transform_specific(step_name, builder_clas
         if test_name in results:
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
-
 
 if __name__ == '__main__':
     # Run with unittest

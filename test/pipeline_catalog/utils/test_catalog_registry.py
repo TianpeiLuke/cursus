@@ -12,11 +12,10 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
-from src.cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
-from src.cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
+from cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
+from cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
     EnhancedDAGMetadata, ZettelkastenMetadata, ComplexityLevel, PipelineFramework
 )
-
 
 class TestCatalogRegistry:
     """Test suite for CatalogRegistry class."""
@@ -541,7 +540,6 @@ class TestCatalogRegistry:
         # Should not contain connection to pytorch_training_simple
         target_ids = [conn["id"] for conn in related_connections]
         assert "pytorch_training_simple" not in target_ids
-
 
 class TestCatalogRegistryIntegration:
     """Integration tests for CatalogRegistry with real file operations."""

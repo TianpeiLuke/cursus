@@ -7,9 +7,8 @@ field values.
 """
 
 import unittest
-from src.cursus.core.base.config_base import BasePipelineConfig
-from src.cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
-
+from cursus.core.base.config_base import BasePipelineConfig
+from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 class TestConfigInheritance(unittest.TestCase):
     def test_field_categorization(self):
@@ -129,7 +128,6 @@ class TestConfigInheritance(unittest.TestCase):
         # Verify the field was overridden
         self.assertEqual(processing_config.region, "FE")
         self.assertEqual(processing_config.aws_region, "us-west-2")  # FE region maps to us-west-2
-
 
 if __name__ == "__main__":
     unittest.main()

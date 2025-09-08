@@ -9,7 +9,7 @@ from unittest.mock import Mock
 from pydantic import ValidationError
 from typing import Dict, Any
 
-from src.cursus.registry.hybrid.models import (
+from cursus.registry.hybrid.models import (
     StepDefinition,
     ResolutionContext,
     StepResolutionResult,
@@ -20,7 +20,6 @@ from src.cursus.registry.hybrid.models import (
     ResolutionStrategy,
     ConflictType
 )
-
 
 class TestStepDefinition(unittest.TestCase):
     """Test StepDefinition data model."""
@@ -152,7 +151,6 @@ class TestStepDefinition(unittest.TestCase):
         self.assertEqual(definition.sagemaker_step_type, "Processing")
         self.assertEqual(definition.description, "Test step description")
 
-
 class TestRegistryType(unittest.TestCase):
     """Test RegistryType enum."""
     
@@ -162,7 +160,6 @@ class TestRegistryType(unittest.TestCase):
         self.assertEqual(RegistryType.WORKSPACE, "workspace")
         self.assertEqual(RegistryType.OVERRIDE, "override")
 
-
 class TestResolutionMode(unittest.TestCase):
     """Test ResolutionMode enum."""
     
@@ -171,7 +168,6 @@ class TestResolutionMode(unittest.TestCase):
         self.assertEqual(ResolutionMode.AUTOMATIC, "automatic")
         self.assertEqual(ResolutionMode.INTERACTIVE, "interactive")
         self.assertEqual(ResolutionMode.STRICT, "strict")
-
 
 class TestResolutionStrategy(unittest.TestCase):
     """Test ResolutionStrategy enum."""
@@ -183,7 +179,6 @@ class TestResolutionStrategy(unittest.TestCase):
         self.assertEqual(ResolutionStrategy.ENVIRONMENT_MATCH, "environment_match")
         self.assertEqual(ResolutionStrategy.MANUAL, "manual")
 
-
 class TestConflictType(unittest.TestCase):
     """Test ConflictType enum."""
     
@@ -193,7 +188,6 @@ class TestConflictType(unittest.TestCase):
         self.assertEqual(ConflictType.FRAMEWORK_CONFLICT, "framework_conflict")
         self.assertEqual(ConflictType.VERSION_CONFLICT, "version_conflict")
         self.assertEqual(ConflictType.WORKSPACE_CONFLICT, "workspace_conflict")
-
 
 class TestResolutionContext(unittest.TestCase):
     """Test ResolutionContext data model."""
@@ -237,7 +231,6 @@ class TestResolutionContext(unittest.TestCase):
         for mode in valid_modes:
             context = ResolutionContext(resolution_mode=mode)
             self.assertEqual(context.resolution_mode, mode)
-
 
 class TestStepResolutionResult(unittest.TestCase):
     """Test StepResolutionResult data model."""
@@ -326,7 +319,6 @@ class TestStepResolutionResult(unittest.TestCase):
         self.assertEqual(result.conflicting_definitions, conflicting_definitions)
         self.assertEqual(len(result.conflicting_definitions), 2)
 
-
 class TestRegistryValidationResult(unittest.TestCase):
     """Test RegistryValidationResult data model."""
     
@@ -364,7 +356,6 @@ class TestRegistryValidationResult(unittest.TestCase):
         self.assertEqual(result.step_count, 5)
         self.assertEqual(result.issues, issues)
         self.assertEqual(result.warnings, warnings)
-
 
 class TestConflictAnalysis(unittest.TestCase):
     """Test ConflictAnalysis data model."""
@@ -407,7 +398,6 @@ class TestConflictAnalysis(unittest.TestCase):
         self.assertEqual(analysis.resolution_strategies, ["workspace_priority", "framework_match"])
         self.assertEqual(analysis.recommended_strategy, "workspace_priority")
         self.assertEqual(analysis.impact_assessment, "Low impact - isolated to development")
-
 
 class TestModelValidation(unittest.TestCase):
     """Test Pydantic validation features across all models."""
@@ -461,7 +451,6 @@ class TestModelValidation(unittest.TestCase):
             )
         
         self.assertIn("Input should be greater than or equal to 0", str(exc_info.exception))
-
 
 class TestModelSerialization(unittest.TestCase):
     """Test model serialization and deserialization."""
@@ -543,7 +532,6 @@ class TestModelSerialization(unittest.TestCase):
         self.assertEqual(result.resolution_strategy, "workspace_priority")
         self.assertEqual(result.reason, "Found in workspace")
 
-
 class TestModelEquality(unittest.TestCase):
     """Test model equality and comparison."""
     
@@ -608,7 +596,6 @@ class TestModelEquality(unittest.TestCase):
         )
         
         self.assertEqual(context1, context2)
-
 
 if __name__ == "__main__":
     unittest.main()

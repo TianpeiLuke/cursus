@@ -16,9 +16,8 @@ from pathlib import Path
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.config_field_categorizer import ConfigFieldCategorizer
-from src.cursus.core.config_fields.constants import CategoryType, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
-
+from cursus.core.config_fields.config_field_categorizer import ConfigFieldCategorizer
+from cursus.core.config_fields.constants import CategoryType, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
 
 class BaseTestConfig:
     """Base test config class for testing categorization."""
@@ -27,31 +26,25 @@ class BaseTestConfig:
             setattr(self, key, value)
         self.step_name_override = self.__class__.__name__
 
-
 class SharedFieldsConfig(BaseTestConfig):
     """Config with shared fields for testing."""
     pass
-
 
 class SpecificFieldsConfig(BaseTestConfig):
     """Config with specific fields for testing."""
     pass
 
-
 class SpecialFieldsConfig(BaseTestConfig):
     """Config with special fields for testing."""
     pass
-
 
 class MockProcessingBase:
     """Mock base class for processing configs."""
     pass
 
-
 class ProcessingConfig(MockProcessingBase, BaseTestConfig):
     """Mock processing config for testing."""
     pass
-
 
 class TestConfigFieldCategorizer(unittest.TestCase):
     """Test cases for ConfigFieldCategorizer with the simplified structure."""
@@ -363,7 +356,6 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         # Verify field with different values is in specific
         self.assertIn("different_value_field", result["specific"]["SpecificFieldsConfig"])
         self.assertIn("common_field", result["specific"]["SpecificFieldsConfig"])
-
 
 if __name__ == '__main__':
     unittest.main()

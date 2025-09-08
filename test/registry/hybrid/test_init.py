@@ -7,13 +7,12 @@ Tests module imports, exports, and __all__ definitions.
 import unittest
 from unittest.mock import patch, MagicMock
 
-
 class TestHybridRegistryImports(unittest.TestCase):
     """Test hybrid registry module imports and exports."""
     
     def test_data_model_imports(self):
         """Test that data models can be imported from the hybrid module."""
-        from src.cursus.registry.hybrid import (
+        from cursus.registry.hybrid import (
             StepDefinition,
             ResolutionContext,
             StepResolutionResult,
@@ -37,7 +36,7 @@ class TestHybridRegistryImports(unittest.TestCase):
     
     def test_registry_management_imports(self):
         """Test that registry management classes can be imported."""
-        from src.cursus.registry.hybrid import (
+        from cursus.registry.hybrid import (
             UnifiedRegistryManager,
             CoreStepRegistry,
             LocalStepRegistry,
@@ -64,7 +63,7 @@ class TestHybridRegistryImports(unittest.TestCase):
     
     def test_utility_function_imports(self):
         """Test that utility functions can be imported."""
-        from src.cursus.registry.hybrid import (
+        from cursus.registry.hybrid import (
             load_registry_module,
             from_legacy_format,
             to_legacy_format,
@@ -94,7 +93,7 @@ class TestHybridRegistryImports(unittest.TestCase):
     
     def test_all_exports(self):
         """Test that __all__ contains all expected exports."""
-        import src.cursus.registry.hybrid as hybrid_module
+        import cursus.registry.hybrid as hybrid_module
         
         expected_exports = [
             # Data Models
@@ -126,7 +125,7 @@ class TestHybridRegistryImports(unittest.TestCase):
     
     def test_all_exports_are_importable(self):
         """Test that all items in __all__ can actually be imported."""
-        import src.cursus.registry.hybrid as hybrid_module
+        import cursus.registry.hybrid as hybrid_module
         
         for export_name in hybrid_module.__all__:
             # Should be able to get the attribute
@@ -138,7 +137,7 @@ class TestHybridRegistryImports(unittest.TestCase):
     
     def test_module_docstring(self):
         """Test that the module has proper documentation."""
-        import src.cursus.registry.hybrid as hybrid_module
+        import cursus.registry.hybrid as hybrid_module
         
         # Check that module has docstring
         self.assertIsNotNone(hybrid_module.__doc__)
@@ -148,8 +147,8 @@ class TestHybridRegistryImports(unittest.TestCase):
     
     def test_star_import(self):
         """Test that star import works correctly."""
-        # This tests that 'from src.cursus.registry.hybrid import *' works
-        import src.cursus.registry.hybrid as hybrid_module
+        # This tests that 'from cursus.registry.hybrid import *' works
+        import cursus.registry.hybrid as hybrid_module
         
         # Get all items that would be imported with *
         star_imports = {name: getattr(hybrid_module, name) for name in hybrid_module.__all__}
@@ -161,13 +160,12 @@ class TestHybridRegistryImports(unittest.TestCase):
         for name, item in star_imports.items():
             self.assertIsNotNone(item, f"Star import item '{name}' should not be None")
 
-
 class TestModuleStructure(unittest.TestCase):
     """Test the overall module structure and organization."""
     
     def test_module_categories(self):
         """Test that exports are properly categorized."""
-        import src.cursus.registry.hybrid as hybrid_module
+        import cursus.registry.hybrid as hybrid_module
         
         # Data Models
         data_models = [
@@ -218,7 +216,7 @@ class TestModuleStructure(unittest.TestCase):
     
     def test_no_private_exports(self):
         """Test that no private items are exported."""
-        import src.cursus.registry.hybrid as hybrid_module
+        import cursus.registry.hybrid as hybrid_module
         
         # Check that __all__ doesn't contain private items
         for export_name in hybrid_module.__all__:
@@ -229,12 +227,11 @@ class TestModuleStructure(unittest.TestCase):
         """Test that import errors are handled gracefully."""
         # This test ensures that if there are import issues, they're caught appropriately
         try:
-            import src.cursus.registry.hybrid
+            import cursus.registry.hybrid
             # If we get here, imports worked
             self.assertTrue(True)
         except ImportError as e:
             self.fail(f"Hybrid registry module should import without errors: {e}")
-
 
 class TestBackwardCompatibility(unittest.TestCase):
     """Test backward compatibility of the module interface."""
@@ -243,16 +240,16 @@ class TestBackwardCompatibility(unittest.TestCase):
         """Test that common import patterns still work."""
         # Test individual imports
         try:
-            from src.cursus.registry.hybrid import StepDefinition
-            from src.cursus.registry.hybrid import UnifiedRegistryManager
-            from src.cursus.registry.hybrid import load_registry_module
+            from cursus.registry.hybrid import StepDefinition
+            from cursus.registry.hybrid import UnifiedRegistryManager
+            from cursus.registry.hybrid import load_registry_module
             self.assertTrue(True)  # If we get here, imports worked
         except ImportError as e:
             self.fail(f"Legacy import patterns should work: {e}")
     
     def test_module_level_access(self):
         """Test that items can be accessed at module level."""
-        import src.cursus.registry.hybrid as hybrid
+        import cursus.registry.hybrid as hybrid
         
         # Test accessing classes
         step_def_class = hybrid.StepDefinition
@@ -265,7 +262,7 @@ class TestBackwardCompatibility(unittest.TestCase):
     
     def test_attribute_access_consistency(self):
         """Test that attribute access is consistent."""
-        import src.cursus.registry.hybrid as hybrid
+        import cursus.registry.hybrid as hybrid
         
         # Test that getattr works the same as direct access
         for export_name in hybrid.__all__:
@@ -274,7 +271,6 @@ class TestBackwardCompatibility(unittest.TestCase):
             self.assertIs(direct_access, attr_access, 
                          f"Attribute access should be consistent for {export_name}")
 
-
 class TestModuleIntegrity(unittest.TestCase):
     """Test the integrity and consistency of the module."""
     
@@ -282,7 +278,7 @@ class TestModuleIntegrity(unittest.TestCase):
         """Test that there are no circular import issues."""
         # This test imports the module and checks that it doesn't cause issues
         try:
-            import src.cursus.registry.hybrid
+            import cursus.registry.hybrid
             # Try to access all exported items
             for export_name in src.cursus.registry.hybrid.__all__:
                 item = getattr(src.cursus.registry.hybrid, export_name)
@@ -292,7 +288,7 @@ class TestModuleIntegrity(unittest.TestCase):
     
     def test_module_completeness(self):
         """Test that the module exports everything it should."""
-        import src.cursus.registry.hybrid as hybrid
+        import cursus.registry.hybrid as hybrid
         
         # Check that we have exports from all expected submodules
         has_models = any(name in hybrid.__all__ for name in ["StepDefinition", "ResolutionContext"])
@@ -305,7 +301,7 @@ class TestModuleIntegrity(unittest.TestCase):
     
     def test_export_uniqueness(self):
         """Test that all exports have unique names."""
-        import src.cursus.registry.hybrid as hybrid
+        import cursus.registry.hybrid as hybrid
         
         # Check that __all__ has no duplicates
         all_exports = hybrid.__all__
@@ -313,7 +309,6 @@ class TestModuleIntegrity(unittest.TestCase):
         
         self.assertEqual(len(all_exports), len(unique_exports), 
                         "All exports should have unique names")
-
 
 if __name__ == "__main__":
     unittest.main()

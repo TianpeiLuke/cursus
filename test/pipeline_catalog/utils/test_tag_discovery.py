@@ -9,9 +9,8 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List, Tuple
 
-from src.cursus.pipeline_catalog.utils.tag_discovery import TagBasedDiscovery
-from src.cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
-
+from cursus.pipeline_catalog.utils.tag_discovery import TagBasedDiscovery
+from cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
 
 class TestTagBasedDiscovery:
     """Test suite for TagBasedDiscovery class."""
@@ -481,7 +480,6 @@ class TestTagBasedDiscovery:
         assert not discovery._are_similar_tags("training", "evaluation")
         assert not discovery._are_similar_tags("xgboost", "pytorch")
         assert not discovery._are_similar_tags("a", "xyz")
-
 
 class TestTagBasedDiscoveryIntegration:
     """Integration tests for TagBasedDiscovery with realistic scenarios."""

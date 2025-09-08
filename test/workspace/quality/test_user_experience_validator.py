@@ -7,8 +7,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
-from src.cursus.workspace.quality.user_experience_validator import UserExperienceValidator
-
+from cursus.workspace.quality.user_experience_validator import UserExperienceValidator
 
 class TestUserExperienceValidator(unittest.TestCase):
     """Test cases for UserExperienceValidator."""
@@ -83,7 +82,6 @@ class TestUserExperienceValidator(unittest.TestCase):
         # Should return a boolean
         phase3_compliance = ux_report.meets_phase3_requirements
         self.assertIsInstance(phase3_compliance, bool)
-
 
 if __name__ == '__main__':
     unittest.main()

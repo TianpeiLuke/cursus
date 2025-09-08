@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'src'))
 
 from cursus.validation.alignment.builder_config_alignment import BuilderConfigurationAlignmentTester
 
-
 class TestBuilderConfigurationAlignmentTester(unittest.TestCase):
     """Test cases for BuilderConfigurationAlignmentTester"""
     
@@ -381,7 +380,6 @@ class Test2StepBuilder:
         # Check that at least one issue is severe (CRITICAL or ERROR)
         severe_issues = [issue for issue in result['issues'] if issue['severity'] in ['CRITICAL', 'ERROR']]
         self.assertTrue(len(severe_issues) > 0)
-
 
 if __name__ == '__main__':
     unittest.main()

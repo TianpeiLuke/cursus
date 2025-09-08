@@ -12,8 +12,6 @@ This enhanced version includes:
 
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
-import os
-import sys
 import pandas as pd
 import numpy as np
 import tempfile
@@ -25,7 +23,7 @@ import argparse
 from concurrent.futures import BrokenExecutor
 
 # Import all functions from the script to be tested
-from src.cursus.steps.scripts.currency_conversion import (
+from cursus.steps.scripts.currency_conversion import (
     get_currency_code,
     combine_currency_codes,
     currency_conversion_single_variable,
@@ -33,7 +31,6 @@ from src.cursus.steps.scripts.currency_conversion import (
     process_currency_conversion,
     main,
 )
-
 
 class TestCurrencyConversionHelpers(unittest.TestCase):
     """Comprehensive unit tests for helper functions in currency conversion script."""
@@ -348,7 +345,6 @@ class TestCurrencyConversionHelpers(unittest.TestCase):
         self.assertEqual(len(result), 0)
         self.assertTrue('currency' in result.columns)
 
-
 class TestCurrencyConversionIntegration(unittest.TestCase):
     """Integration tests for currency conversion with realistic scenarios."""
 
@@ -528,7 +524,6 @@ class TestCurrencyConversionIntegration(unittest.TestCase):
         self.assertTrue("price" in df_out.columns)
         self.assertTrue("cost" in df_out.columns)
 
-
 class TestCurrencyConversionPerformance(unittest.TestCase):
     """Performance and scalability tests for currency conversion."""
 
@@ -608,7 +603,6 @@ class TestCurrencyConversionPerformance(unittest.TestCase):
         
         # Performance should be reasonable (less than 10 seconds for 50k rows)
         self.assertLess(duration, 10.0)
-
 
 class TestCurrencyConversionErrorHandling(unittest.TestCase):
     """Test error handling and edge cases in currency conversion."""
@@ -709,7 +703,6 @@ class TestCurrencyConversionErrorHandling(unittest.TestCase):
         
         # Verify that logging occurred
         self.assertTrue(mock_logger.info.called)
-
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

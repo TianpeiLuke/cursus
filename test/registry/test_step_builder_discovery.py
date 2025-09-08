@@ -7,7 +7,6 @@ import unittest
 import logging
 import unittest.mock as mock
 import importlib.util
-import sys
 
 # Create a simple test builder registry that doesn't depend on external modules
 class TestBuilderRegistry:
@@ -184,7 +183,7 @@ class TestStepBuilderDiscovery(unittest.TestCase):
         """Test importing the real registry with a more robust approach."""
         try:
             # Try to import the real builder registry
-            from src.cursus.registry.builder_registry import StepBuilderRegistry
+            from cursus.registry.builder_registry import StepBuilderRegistry
             real_registry = StepBuilderRegistry()
             
             # If we succeed, run some basic tests
@@ -197,7 +196,6 @@ class TestStepBuilderDiscovery(unittest.TestCase):
             # If import fails due to external dependencies, skip the test
             logging.warning(f"Skipping real registry test due to import error: {e}")
             self.skipTest(f"Real registry import failed: {e}")
-
 
 if __name__ == '__main__':
     unittest.main()

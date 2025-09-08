@@ -10,15 +10,13 @@ Tests workspace-aware module loading functionality including:
 - Shared workspace fallback behavior
 """
 
-import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
-from src.cursus.workspace.validation.workspace_module_loader import WorkspaceModuleLoader
-
+from cursus.workspace.validation.workspace_module_loader import WorkspaceModuleLoader
 
 class TestWorkspaceModuleLoader(unittest.TestCase):
     """Test cases for WorkspaceModuleLoader."""
@@ -496,7 +494,6 @@ class SharedBuilder:
             # Should have tried multiple patterns
             self.assertEqual(mock_import.call_count, 4)
             self.assertIsNotNone(result)
-
 
 if __name__ == '__main__':
     unittest.main()

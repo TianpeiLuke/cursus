@@ -9,9 +9,8 @@ using different resolution strategies.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.cursus.core.compiler.config_resolver import StepConfigResolver
-from src.cursus.core.base.config_base import BasePipelineConfig
-
+from cursus.core.compiler.config_resolver import StepConfigResolver
+from cursus.core.base.config_base import BasePipelineConfig
 
 class TestConfigResolver(unittest.TestCase):
     """Tests for the StepConfigResolver class."""
@@ -202,7 +201,7 @@ class TestConfigResolver(unittest.TestCase):
         
         try:
             # Attempt to resolve a node with no matches
-            from src.cursus.core.compiler.exceptions import ResolutionError
+            from cursus.core.compiler.exceptions import ResolutionError
             with self.assertRaises(ResolutionError):
                 self.resolver._resolve_single_node("unknown_node", self.configs)
         finally:
@@ -323,7 +322,6 @@ class TestConfigResolver(unittest.TestCase):
         # Check evaluation node (should be empty)
         self.assertIn("evaluation", preview)
         self.assertEqual(len(preview["evaluation"]), 0)
-
 
 if __name__ == '__main__':
     unittest.main()

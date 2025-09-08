@@ -13,12 +13,11 @@ import json
 from typing import List, Dict
 from ..core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
 
-from src.cursus.core.base.specification_base import (
+from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec,
     DependencyType, NodeType
 )
-from src.cursus.core.deps.property_reference import PropertyReference
-
+from cursus.core.deps.property_reference import PropertyReference
 
 class TestStepSpecificationIntegration(IsolatedTestCase):
     """Test integration aspects of StepSpecification."""
@@ -204,7 +203,6 @@ class TestStepSpecificationIntegration(IsolatedTestCase):
         # Verify connection details
         self.assertEqual(connection["from_output"], "source_output")
         self.assertEqual(connection["to_dependency"], "sink_input")
-
 
 if __name__ == '__main__':
     unittest.main()

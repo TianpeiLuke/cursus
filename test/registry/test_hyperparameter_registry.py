@@ -1,7 +1,7 @@
 """Unit tests for the hyperparameter registry module."""
 
 import unittest
-from src.cursus.registry.hyperparameter_registry import (
+from cursus.registry.hyperparameter_registry import (
     HYPERPARAMETER_REGISTRY,
     get_all_hyperparameter_classes,
     get_hyperparameter_class_by_model_type,
@@ -9,7 +9,6 @@ from src.cursus.registry.hyperparameter_registry import (
     get_all_hyperparameter_info,
     validate_hyperparameter_class
 )
-
 
 class TestHyperparameterRegistry(unittest.TestCase):
     """Test case for hyperparameter registry functions."""
@@ -138,7 +137,6 @@ class TestHyperparameterRegistry(unittest.TestCase):
             self.assertIsInstance(description, str)
             self.assertGreater(len(description), 0)
             self.assertNotEqual(description.strip(), "")
-
 
 if __name__ == '__main__':
     unittest.main()

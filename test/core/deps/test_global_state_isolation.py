@@ -7,12 +7,11 @@ these issues using the test_helpers module.
 """
 
 import unittest
-from src.cursus.core.deps import RegistryManager, get_registry, create_dependency_resolver
-from src.cursus.core.base.specification_base import (
+from cursus.core.deps import RegistryManager, get_registry, create_dependency_resolver
+from cursus.core.base.specification_base import (
     StepSpecification, OutputSpec, DependencyType, NodeType
 )
 from .test_helpers import IsolatedTestCase, reset_all_global_state
-
 
 class TestWithoutIsolation(unittest.TestCase):
     """
@@ -96,7 +95,6 @@ class TestWithoutIsolation(unittest.TestCase):
         self.assertIn("another_pipeline", manager.list_contexts())
         self.assertIn("test_step_2", registry.list_step_names())
 
-
 class TestWithManualIsolation(unittest.TestCase):
     """
     Tests that manually handle global state isolation.
@@ -174,7 +172,6 @@ class TestWithManualIsolation(unittest.TestCase):
         # Verify it was registered
         self.assertIn("another_pipeline", self.manager.list_contexts())
         self.assertIn("test_step_2", registry.list_step_names())
-
 
 class TestWithHelperIsolation(IsolatedTestCase):
     """
@@ -255,7 +252,6 @@ class TestWithHelperIsolation(IsolatedTestCase):
         self.assertIn("another_pipeline", self.manager.list_contexts())
         self.assertIn("test_step_2", registry.list_step_names())
 
-
 def run_tests_individually():
     """Run each test individually to demonstrate they pass in isolation."""
     print("\nRunning tests individually:")
@@ -275,7 +271,6 @@ def run_tests_individually():
     suite.addTest(TestWithoutIsolation("test_registry_state_2"))
     result = unittest.TextTestRunner().run(suite)
     print("  Passed:", result.wasSuccessful())
-
 
 def run_tests_together():
     """Run tests together to demonstrate isolation issues."""
@@ -310,7 +305,6 @@ def run_tests_together():
     suite.addTest(TestWithHelperIsolation("test_registry_state_2"))
     result = unittest.TextTestRunner().run(suite)
     print("  All passed:", result.wasSuccessful())
-
 
 if __name__ == "__main__":
     # First run tests individually to show they pass

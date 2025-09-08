@@ -8,10 +8,9 @@ circular references in object graphs during deserialization.
 import unittest
 from typing import Dict, Any, Optional, List, Type
 
-from src.cursus.core.config_fields.circular_reference_tracker import CircularReferenceTracker
-from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
+from cursus.core.config_fields.circular_reference_tracker import CircularReferenceTracker
+from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
 from pydantic import BaseModel
-
 
 class CircularReferenceTrackerTest(unittest.TestCase):
     """Test suite for the CircularReferenceTracker."""
@@ -350,7 +349,6 @@ class CircularReferenceTrackerTest(unittest.TestCase):
                 f"Original definition path: {type_name}(name={obj_data.get('name', '')})\n"
                 f"Reference path: {current_path_str}\n"
                 f"This creates a cycle in the object graph.")
-
 
 if __name__ == '__main__':
     unittest.main()

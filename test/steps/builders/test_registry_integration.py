@@ -23,7 +23,6 @@ from cursus.validation.builders import (
     UniversalStepBuilderTest
 )
 
-
 class TestRegistryIntegration(unittest.TestCase):
     """Test the integration between test files and centralized registry discovery."""
     
@@ -174,7 +173,6 @@ class TestRegistryIntegration(unittest.TestCase):
         except ImportError as e:
             print(f"⚠️  Could not import test suite: {e}")
             # Don't fail - this is expected in some environments
-
 
 if __name__ == '__main__':
     print("Testing Registry Integration...")

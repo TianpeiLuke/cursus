@@ -9,10 +9,9 @@ job types, and to use metadata from the configuration file.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.cursus.core.compiler.config_resolver import StepConfigResolver
-from src.cursus.core.compiler.exceptions import ResolutionError, AmbiguityError, ConfigurationError
-from src.cursus.core.base.config_base import BasePipelineConfig
-
+from cursus.core.compiler.config_resolver import StepConfigResolver
+from cursus.core.compiler.exceptions import ResolutionError, AmbiguityError, ConfigurationError
+from cursus.core.base.config_base import BasePipelineConfig
 
 class TestEnhancedConfigResolver(unittest.TestCase):
     """Tests for the enhanced StepConfigResolver capabilities."""
@@ -306,7 +305,6 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         self.assertEqual(type(config).__name__, "CradleDataLoadConfig")
         self.assertEqual(getattr(config, 'job_type', ''), "training")
         self.assertTrue(config in [ambiguous_configs["data_load_1"], ambiguous_configs["data_load_2"]])
-
 
 if __name__ == '__main__':
     unittest.main()

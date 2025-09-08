@@ -7,8 +7,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
-from src.cursus.workspace.templates import TemplateManager, WorkspaceTemplate
-
+from cursus.workspace.templates import TemplateManager, WorkspaceTemplate
 
 class TestTemplateManager(unittest.TestCase):
     """Test cases for TemplateManager."""
@@ -61,14 +60,13 @@ class TestTemplateManager(unittest.TestCase):
             template = self.template_manager.get_template(template_name)
             # Template can be None if not implemented yet
 
-
 class TestWorkspaceTemplate(unittest.TestCase):
     """Test cases for WorkspaceTemplate."""
 
     def test_workspace_template_creation(self):
         """Test WorkspaceTemplate creation."""
         # Test creating a basic template
-        from src.cursus.workspace.templates import TemplateType
+        from cursus.workspace.templates import TemplateType
         template = WorkspaceTemplate(
             name="test_template",
             description="Test template",
@@ -76,7 +74,6 @@ class TestWorkspaceTemplate(unittest.TestCase):
         )
         self.assertEqual(template.name, "test_template")
         self.assertEqual(template.description, "Test template")
-
 
 if __name__ == '__main__':
     unittest.main()

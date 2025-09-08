@@ -4,10 +4,9 @@ Test suite for AlignmentIssue model.
 
 import unittest
 
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
-
 
 class TestAlignmentIssue(unittest.TestCase):
     """Test AlignmentIssue model."""
@@ -123,7 +122,6 @@ class TestAlignmentIssue(unittest.TestCase):
         self.assertIn("ERROR", json_str)
         self.assertIn("test", json_str)
         self.assertIn("Test message", json_str)
-
 
 if __name__ == '__main__':
     unittest.main()

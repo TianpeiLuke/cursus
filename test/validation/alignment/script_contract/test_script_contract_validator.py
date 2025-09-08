@@ -11,8 +11,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 from typing import Dict, Any, List
 
-from src.cursus.validation.alignment.validators.script_contract_validator import ScriptContractValidator
-
+from cursus.validation.alignment.validators.script_contract_validator import ScriptContractValidator
 
 class TestScriptContractValidator(unittest.TestCase):
     """Test ScriptContractValidator with enhanced path validation logic."""
@@ -431,7 +430,6 @@ class TestScriptContractValidator(unittest.TestCase):
         # Should have recommendations for processing-specific paths
         processing_issues = [issue for issue in issues if issue['category'] == 'processing_contract_validation']
         self.assertGreater(len(processing_issues), 0, "Should have processing-specific validation issues")
-
 
 if __name__ == '__main__':
     unittest.main()

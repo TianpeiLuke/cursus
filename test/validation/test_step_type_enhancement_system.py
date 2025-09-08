@@ -14,18 +14,17 @@ from pathlib import Path
 import tempfile
 import os
 
-from src.cursus.validation.alignment.step_type_enhancement_router import StepTypeEnhancementRouter
-from src.cursus.validation.alignment.step_type_enhancers.training_enhancer import TrainingStepEnhancer
-from src.cursus.validation.alignment.step_type_enhancers.processing_enhancer import ProcessingStepEnhancer
-from src.cursus.validation.alignment.step_type_enhancers.createmodel_enhancer import CreateModelStepEnhancer
-from src.cursus.validation.alignment.step_type_enhancers.transform_enhancer import TransformStepEnhancer
-from src.cursus.validation.alignment.step_type_enhancers.registermodel_enhancer import RegisterModelStepEnhancer
-from src.cursus.validation.alignment.step_type_enhancers.utility_enhancer import UtilityStepEnhancer
-from src.cursus.validation.alignment.framework_patterns import (
+from cursus.validation.alignment.step_type_enhancement_router import StepTypeEnhancementRouter
+from cursus.validation.alignment.step_type_enhancers.training_enhancer import TrainingStepEnhancer
+from cursus.validation.alignment.step_type_enhancers.processing_enhancer import ProcessingStepEnhancer
+from cursus.validation.alignment.step_type_enhancers.createmodel_enhancer import CreateModelStepEnhancer
+from cursus.validation.alignment.step_type_enhancers.transform_enhancer import TransformStepEnhancer
+from cursus.validation.alignment.step_type_enhancers.registermodel_enhancer import RegisterModelStepEnhancer
+from cursus.validation.alignment.step_type_enhancers.utility_enhancer import UtilityStepEnhancer
+from cursus.validation.alignment.framework_patterns import (
     detect_xgboost_patterns, detect_pytorch_patterns, detect_training_patterns,
     get_framework_patterns, get_all_framework_patterns
 )
-
 
 class TestStepTypeEnhancementRouter(unittest.TestCase):
     """Test the Step Type Enhancement Router."""
@@ -87,7 +86,6 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
         self.assertIsInstance(enhanced_results, dict)
         self.assertIn('issues', enhanced_results)
 
-
 class TestTrainingStepEnhancer(unittest.TestCase):
     """Test the Training Step Enhancer."""
     
@@ -148,7 +146,6 @@ class TestTrainingStepEnhancer(unittest.TestCase):
         # Should apply PyTorch-specific validation
         self.assertIn('issues', enhanced_results)
 
-
 class TestProcessingStepEnhancer(unittest.TestCase):
     """Test the Processing Step Enhancer."""
     
@@ -191,7 +188,6 @@ class TestProcessingStepEnhancer(unittest.TestCase):
         
         # Should apply Pandas-specific validation
         self.assertIn('issues', enhanced_results)
-
 
 class TestFrameworkPatterns(unittest.TestCase):
     """Test framework pattern detection."""
@@ -261,7 +257,6 @@ class TestFrameworkPatterns(unittest.TestCase):
         self.assertIn('xgboost', all_patterns)
         self.assertIn('pytorch', all_patterns)
         self.assertIn('training', all_patterns)
-
 
 class TestStepTypeEnhancementIntegration(unittest.TestCase):
     """Test integration of step type enhancement with unified alignment tester."""
@@ -341,7 +336,6 @@ if __name__ == '__main__':
             router = StepTypeEnhancementRouter()
             self.assertIsNotNone(router)  # Should still work but may have different behavior
 
-
 class TestStepTypeEnhancementEndToEnd(unittest.TestCase):
     """End-to-end tests for step type enhancement system."""
     
@@ -401,7 +395,6 @@ class TestStepTypeEnhancementEndToEnd(unittest.TestCase):
             
             self.assertIsInstance(enhanced_results, dict)
             self.assertIn('issues', enhanced_results)
-
 
 if __name__ == '__main__':
     unittest.main()

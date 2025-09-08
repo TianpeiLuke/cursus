@@ -5,14 +5,13 @@ Test suite for step type detection functionality.
 import unittest
 from unittest.mock import Mock, patch
 
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.alignment_utils import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
     detect_step_type_from_script_patterns,
     get_step_type_context,
     ImportStatement
 )
-
 
 class TestStepTypeDetection(unittest.TestCase):
     """Test step type detection functions."""
@@ -241,7 +240,6 @@ def main():
         self.assertEqual(context["script_name"], "UnknownStepType")
         self.assertEqual(context["final_step_type"], "Processing")  # Default fallback
 
-
 class TestImportStatementHandling(unittest.TestCase):
     """Test handling of different import statement formats."""
     
@@ -283,7 +281,6 @@ class TestImportStatementHandling(unittest.TestCase):
         # This should handle None gracefully
         with self.assertRaises(TypeError):
             detect_framework_from_imports(None)
-
 
 if __name__ == '__main__':
     unittest.main()

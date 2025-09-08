@@ -4,8 +4,7 @@ Test suite for AlignmentLevel enum.
 
 import unittest
 
-from src.cursus.validation.alignment.alignment_utils import AlignmentLevel
-
+from cursus.validation.alignment.alignment_utils import AlignmentLevel
 
 class TestAlignmentLevel(unittest.TestCase):
     """Test AlignmentLevel enum."""
@@ -75,7 +74,6 @@ class TestAlignmentLevel(unittest.TestCase):
         
         with self.assertRaises(ValueError):
             AlignmentLevel("SCRIPT_CONTRACT")  # string should fail
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -24,7 +24,6 @@ from cursus.validation.alignment.alignment_reporter import (
 )
 from cursus.validation.alignment.alignment_scorer import AlignmentScorer
 
-
 class TestUnifiedAlignmentTesterVisualization(unittest.TestCase):
     """Test UnifiedAlignmentTester visualization integration."""
     
@@ -455,7 +454,6 @@ class TestUnifiedAlignmentTesterVisualization(unittest.TestCase):
             ]
             mock_scorer.generate_chart.assert_has_calls(expected_calls)
 
-
 class TestVisualizationWorkflowIntegration(unittest.TestCase):
     """Test end-to-end visualization workflow integration."""
     
@@ -550,7 +548,6 @@ class TestVisualizationWorkflowIntegration(unittest.TestCase):
             for i, script in enumerate(scripts):
                 call_args = mock_scorer.generate_chart.call_args_list[i]
                 self.assertEqual(call_args[0][0], script)  # First argument should be script name
-
 
 if __name__ == '__main__':
     # Run tests with verbose output

@@ -12,14 +12,13 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
 
-from src.cursus.pipeline_catalog.shared_dags.registry_sync import (
+from cursus.pipeline_catalog.shared_dags.registry_sync import (
     DAGMetadataRegistrySync, RegistryValidationError,
     create_empty_registry, validate_registry_file
 )
-from src.cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
+from cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
     EnhancedDAGMetadata, ZettelkastenMetadata, ComplexityLevel, PipelineFramework
 )
-
 
 class TestRegistryValidationError:
     """Test suite for RegistryValidationError exception."""
@@ -29,7 +28,6 @@ class TestRegistryValidationError:
         error = RegistryValidationError("Test error message")
         assert str(error) == "Test error message"
         assert isinstance(error, Exception)
-
 
 class TestRegistrySyncUtilityFunctions:
     """Test suite for utility functions in registry_sync module."""

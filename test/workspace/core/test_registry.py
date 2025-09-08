@@ -11,9 +11,8 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
-from src.cursus.workspace.core.registry import WorkspaceComponentRegistry
-from src.cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
-
+from cursus.workspace.core.registry import WorkspaceComponentRegistry
+from cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
 
 class TestWorkspaceComponentRegistry(unittest.TestCase):
     """Test cases for WorkspaceComponentRegistry."""
@@ -671,7 +670,6 @@ class TestWorkspaceComponentRegistry(unittest.TestCase):
         
         # Workspace manager should only be called once due to caching
         mock_manager.discover_workspaces.assert_called_once()
-
 
 if __name__ == '__main__':
     unittest.main()

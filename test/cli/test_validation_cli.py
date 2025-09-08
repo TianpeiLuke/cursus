@@ -5,19 +5,12 @@ This module tests all functionality of the validation command-line interface,
 including argument parsing, command execution, and output formatting.
 """
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import unittest
 from unittest.mock import patch, MagicMock, call
 from io import StringIO
 import argparse
 
-from src.cursus.cli.validation_cli import (
+from cursus.cli.validation_cli import (
     print_violations,
     validate_registry,
     validate_file_name,
@@ -25,8 +18,7 @@ from src.cursus.cli.validation_cli import (
     validate_logical_name,
     main
 )
-from src.cursus.validation.naming.naming_standard_validator import NamingViolation
-
+from cursus.validation.naming.naming_standard_validator import NamingViolation
 
 class TestPrintViolations(unittest.TestCase):
     """Test the print_violations function."""
@@ -143,7 +135,6 @@ class TestPrintViolations(unittest.TestCase):
         output = self.mock_stdout.getvalue()
         self.assertNotIn("💡 Suggestions:", output)
 
-
 class TestValidationFunctions(unittest.TestCase):
     """Test the individual validation functions."""
     
@@ -251,7 +242,6 @@ class TestValidationFunctions(unittest.TestCase):
         
         self.assertEqual(result, 1)
         self.mock_validator._validate_logical_name.assert_called_once_with("inputData", "CLI")
-
 
 class TestMainFunction(unittest.TestCase):
     """Test the main CLI function."""
@@ -437,7 +427,6 @@ class TestMainFunction(unittest.TestCase):
             output = self.mock_stdout.getvalue()
             self.assertIn("❌ Error during validation: Test exception", output)
 
-
 class TestArgumentParsing(unittest.TestCase):
     """Test argument parsing functionality."""
     
@@ -469,7 +458,6 @@ class TestArgumentParsing(unittest.TestCase):
                 self.assertIn("python -m cursus.cli.validation_cli file", output)
                 self.assertIn("python -m cursus.cli.validation_cli step", output)
                 self.assertIn("python -m cursus.cli.validation_cli logical", output)
-
 
 if __name__ == '__main__':
     unittest.main()

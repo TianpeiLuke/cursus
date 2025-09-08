@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 from cursus.validation.alignment import UnifiedAlignmentTester
 
-
 def create_test_files():
     """Create test files for demonstration."""
     # Create temporary directories
@@ -182,7 +181,6 @@ class SampleProcessorBuilder:
     
     return temp_dir, scripts_dir, contracts_dir, specs_dir, builders_dir
 
-
 def test_unified_alignment_tester():
     """Test the unified alignment tester with sample files."""
     print("🔍 Testing Unified Alignment Tester")
@@ -280,7 +278,6 @@ def test_unified_alignment_tester():
         except:
             pass
 
-
 def test_individual_levels():
     """Test individual alignment levels."""
     print("\n🔍 Testing Individual Alignment Levels")
@@ -322,7 +319,6 @@ def test_individual_levels():
             shutil.rmtree(temp_dir)
         except:
             pass
-
 
 if __name__ == "__main__":
     print("🧪 Unified Alignment Tester - Test Suite")

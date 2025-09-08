@@ -26,7 +26,6 @@ from cursus.validation.builders.registry_discovery import (
 from cursus.core.base.builder_base import StepBuilderBase
 from cursus.registry.step_names import STEP_NAMES
 
-
 class CreateModelStepBuilderTestSuite:
     """
     Comprehensive test suite for all CreateModel step builders.
@@ -372,7 +371,6 @@ class CreateModelStepBuilderTestSuite:
                 "details": {"exception": str(e)}
             }
 
-
 class TestCreateModelStepBuilders(unittest.TestCase):
     """
     Test cases for all CreateModel step builders using pytest parametrization.
@@ -523,19 +521,16 @@ class TestCreateModelStepBuilders(unittest.TestCase):
         if failed_critical:
             self.fail(f"Critical tests failed:\n" + "\n".join(failed_critical))
 
-
 # Pytest parametrized tests for individual builder testing
 @pytest.fixture
 def createmodel_test_suite():
     """Fixture to provide the test suite."""
     return CreateModelStepBuilderTestSuite()
 
-
 @pytest.fixture
 def available_createmodel_builders(createmodel_test_suite):
     """Fixture to provide available CreateModel builders."""
     return createmodel_test_suite.get_available_createmodel_builders()
-
 
 @pytest.mark.parametrize("step_name,builder_class", 
                         CreateModelStepBuilderTestSuite().get_available_createmodel_builders())
@@ -554,7 +549,6 @@ def test_individual_createmodel_builder_universal_compliance(step_name, builder_
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
 
-
 @pytest.mark.parametrize("step_name,builder_class", 
                         CreateModelStepBuilderTestSuite().get_available_createmodel_builders())
 def test_individual_createmodel_builder_createmodel_specific(step_name, builder_class):
@@ -570,7 +564,6 @@ def test_individual_createmodel_builder_createmodel_specific(step_name, builder_
         if test_name in results:
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
-
 
 if __name__ == '__main__':
     # Run with unittest

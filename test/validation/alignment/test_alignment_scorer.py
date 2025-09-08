@@ -4,7 +4,6 @@ Unit tests for AlignmentScorer to verify the fix works correctly.
 """
 
 import json
-import sys
 import unittest
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
@@ -39,7 +38,6 @@ ALIGNMENT_TEST_IMPORTANCE = {
     "builder_config_specification_alignment": 1.5,
     # Default weight for other tests
 }
-
 
 class AlignmentScorer:
     """
@@ -182,7 +180,6 @@ class AlignmentScorer:
         
         print("\n" + "=" * 80)
 
-
 class TestAlignmentScorer(unittest.TestCase):
     """Test cases for AlignmentScorer."""
     
@@ -322,7 +319,6 @@ class TestAlignmentScorer(unittest.TestCase):
                 score, passed, total = scorer.calculate_level_score(level)
                 print(f"  {level}: {score:.1f}/100 ({passed}/{total} tests)")
 
-
 def main():
     """Run the tests and demonstrate the scorer with real data."""
     
@@ -359,7 +355,6 @@ def main():
         scorer.print_report()
     else:
         print(f"\nReal report file not found: {report_path}")
-
 
 if __name__ == "__main__":
     main()

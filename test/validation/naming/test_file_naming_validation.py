@@ -2,17 +2,9 @@
 Unit tests for file naming validation.
 """
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import unittest
 
-from src.cursus.validation.naming.naming_standard_validator import NamingStandardValidator
-
+from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
 class TestFileNamingValidation(unittest.TestCase):
     """Test file naming validation."""
@@ -132,7 +124,6 @@ class TestFileNamingValidation(unittest.TestCase):
         violations = self.validator.validate_file_naming("test.py", "unsupported")
         # Unsupported file types return no violations (they're just ignored)
         self.assertEqual(len(violations), 0)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -20,7 +20,7 @@ from typing import List, Dict, Set
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 try:
-    from src.cursus.registry.step_names import (
+    from cursus.registry.step_names import (
         STEP_TYPE_REGISTRY,
         get_spec_step_type,
         get_builder_step_type
@@ -30,7 +30,6 @@ except ImportError:
     STEP_TYPE_REGISTRY = {}
     def get_spec_step_type(name): return name
     def get_builder_step_type(name): return name
-
 
 class TestStepNameConsistency(unittest.TestCase):
     """Test step name consistency across the pipeline system"""
@@ -270,7 +269,6 @@ class TestStepNameConsistency(unittest.TestCase):
                     self.assertIn(job_type, valid_job_types,
                                 f"{spec_file.name} uses invalid job type: '{job_type}'")
 
-
 class TestStepNameValidationTool(unittest.TestCase):
     """Test the step name validation tool itself"""
     
@@ -315,7 +313,6 @@ class TestStepNameValidationTool(unittest.TestCase):
             self.fail("Validation tool timed out - possible infinite loop")
         except Exception as e:
             self.fail(f"Error running validation tool: {e}")
-
 
 if __name__ == "__main__":
     unittest.main()

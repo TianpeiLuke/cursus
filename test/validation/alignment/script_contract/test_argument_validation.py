@@ -8,10 +8,9 @@ import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from src.cursus.validation.alignment.script_contract_alignment import (
+from cursus.validation.alignment.script_contract_alignment import (
     ScriptContractAlignmentTester
 )
-
 
 class TestArgumentValidation(unittest.TestCase):
     """Test argument validation in script contract alignment."""
@@ -57,7 +56,7 @@ num_epochs = args.epochs
         contract_content = '''
 """Contract for test_script.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class TestScriptContract(ScriptContract):
     def __init__(self):
@@ -125,7 +124,7 @@ args = parser.parse_args()
         contract_content = '''
 """Contract for test_script.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class TestScriptContract(ScriptContract):
     def __init__(self):
@@ -191,7 +190,7 @@ args = parser.parse_args()
         contract_content = '''
 """Contract for test_script.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class TestScriptContract(ScriptContract):
     def __init__(self):
@@ -261,7 +260,7 @@ args = parser.parse_args()
         contract_content = '''
 """Contract for test_script.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class TestScriptContract(ScriptContract):
     def __init__(self):
@@ -470,7 +469,6 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         self.assertIn('extra_param', issue['message'])  # Python attribute name
         
         print("✅ Extra argument detection with argparse normalization works correctly!")
-
 
 if __name__ == '__main__':
     unittest.main()

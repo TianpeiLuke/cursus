@@ -12,19 +12,18 @@ import json
 import tempfile
 from unittest.mock import patch, MagicMock, mock_open
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
-from src.cursus.core.compiler.dynamic_template import (
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
+from cursus.core.compiler.dynamic_template import (
     PIPELINE_EXECUTION_TEMP_DIR,
     KMS_ENCRYPTION_KEY_PARAM,
     SECURITY_GROUP_ID,
     VPC_SUBNET
 )
-from src.cursus.core.compiler.config_resolver import StepConfigResolver
-from src.cursus.registry.builder_registry import StepBuilderRegistry
-from src.cursus.core.base.config_base import BasePipelineConfig
-from src.cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
-
+from cursus.core.compiler.config_resolver import StepConfigResolver
+from cursus.registry.builder_registry import StepBuilderRegistry
+from cursus.core.base.config_base import BasePipelineConfig
+from cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
 
 class TestDynamicPipelineTemplate(unittest.TestCase):
     """Tests for the DynamicPipelineTemplate class."""
@@ -435,7 +434,6 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         self.assertIn(KMS_ENCRYPTION_KEY_PARAM, params)
         self.assertIn(SECURITY_GROUP_ID, params)
         self.assertIn(VPC_SUBNET, params)
-
 
 if __name__ == '__main__':
     unittest.main()

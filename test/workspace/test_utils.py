@@ -7,11 +7,10 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
-from src.cursus.workspace.utils import (
+from cursus.workspace.utils import (
     WorkspaceConfig, PathUtils, ConfigUtils, FileUtils,
     ValidationUtils, TimeUtils, LoggingUtils, WorkspaceUtils
 )
-
 
 class TestWorkspaceConfig(unittest.TestCase):
     """Test cases for WorkspaceConfig."""
@@ -28,7 +27,6 @@ class TestWorkspaceConfig(unittest.TestCase):
             base_path=Path(self.temp_dir)
         )
         self.assertIsInstance(config, WorkspaceConfig)
-
 
 class TestPathUtils(unittest.TestCase):
     """Test cases for PathUtils."""
@@ -56,7 +54,6 @@ class TestPathUtils(unittest.TestCase):
         test_dir = self.test_path / "test_subdir"
         result = PathUtils.ensure_directory(test_dir)
         self.assertIsInstance(result, bool)
-
 
 class TestConfigUtils(unittest.TestCase):
     """Test cases for ConfigUtils."""
@@ -99,7 +96,6 @@ class TestConfigUtils(unittest.TestCase):
         self.assertIn("key1", merged)
         self.assertIn("key2", merged)
 
-
 class TestFileUtils(unittest.TestCase):
     """Test cases for FileUtils."""
 
@@ -133,7 +129,6 @@ class TestFileUtils(unittest.TestCase):
         backup_path = FileUtils.backup_file(self.test_file)
         self.assertIsInstance(backup_path, (Path, type(None)))
 
-
 class TestValidationUtils(unittest.TestCase):
     """Test cases for ValidationUtils."""
 
@@ -153,7 +148,6 @@ class TestValidationUtils(unittest.TestCase):
         is_valid, size = ValidationUtils.validate_workspace_size(temp_dir, 100)  # 100MB limit
         self.assertIsInstance(is_valid, bool)
         self.assertIsInstance(size, int)
-
 
 class TestTimeUtils(unittest.TestCase):
     """Test cases for TimeUtils."""
@@ -176,7 +170,6 @@ class TestTimeUtils(unittest.TestCase):
         age_days = TimeUtils.get_path_age_days(temp_file)
         self.assertIsInstance(age_days, (int, type(None)))
 
-
 class TestLoggingUtils(unittest.TestCase):
     """Test cases for LoggingUtils."""
 
@@ -185,7 +178,6 @@ class TestLoggingUtils(unittest.TestCase):
         # Test logger setup
         logger = LoggingUtils.setup_workspace_logger("test_workspace")
         self.assertIsNotNone(logger)
-
 
 class TestWorkspaceUtils(unittest.TestCase):
     """Test cases for WorkspaceUtils."""
@@ -215,7 +207,6 @@ class TestWorkspaceUtils(unittest.TestCase):
         is_valid, errors = WorkspaceUtils.validate_workspace(self.workspace_path, config)
         self.assertIsInstance(is_valid, bool)
         self.assertIsInstance(errors, list)
-
 
 if __name__ == '__main__':
     unittest.main()

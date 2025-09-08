@@ -7,9 +7,6 @@ including argument parsing, command execution, output formatting, and JSON seria
 
 import sys
 import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 
 import unittest
 from unittest.mock import patch, MagicMock, call, mock_open
@@ -20,10 +17,9 @@ import shutil
 from pathlib import Path
 from click.testing import CliRunner
 
-from src.cursus.cli.alignment_cli import alignment
-from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-from src.cursus.validation.alignment.alignment_scorer import AlignmentScorer
-
+from cursus.cli.alignment_cli import alignment
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.alignment.alignment_scorer import AlignmentScorer
 
 class TestAlignmentCLI(unittest.TestCase):
     """Test the alignment CLI functionality."""
@@ -448,7 +444,6 @@ class TestAlignmentCLI(unittest.TestCase):
             self.assertEqual(saved_data['complex_data']['empty_list'], [])
             self.assertEqual(saved_data['complex_data']['empty_dict'], {})
 
-
 class TestAlignmentCLIVisualization(unittest.TestCase):
     """Test the alignment CLI visualization functionality."""
     
@@ -695,8 +690,7 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
             mock_scorer.get_quality_rating.assert_called_once()
             self.assertIn('95.5/100', result.output)
             self.assertIn('Excellent', result.output)
-    
-    
+
     def test_visualize_invalid_script(self):
         """Test visualization with invalid script name."""
         with patch('src.cursus.cli.alignment_cli.UnifiedAlignmentTester') as mock_tester_class:
@@ -804,7 +798,6 @@ class TestAlignmentCLIVisualization(unittest.TestCase):
                 self.assertEqual(result.exit_code, 1)  # Should exit on first error
                 self.assertIn('❌ Failed to generate visualization for package', result.output)
 
-
 class TestAlignmentCLIScoring(unittest.TestCase):
     """Test the alignment CLI scoring functionality."""
     
@@ -880,7 +873,6 @@ class TestAlignmentCLIScoring(unittest.TestCase):
             self.assertEqual(result.exit_code, 1)  # Script failed validation
             self.assertIn('42.5/100', result.output)
             self.assertIn('Needs Work', result.output)
-
 
 class TestAlignmentCLIIntegration(unittest.TestCase):
     """Integration tests for the alignment CLI with real components."""
@@ -972,7 +964,6 @@ class TestAlignmentCLIIntegration(unittest.TestCase):
             self.assertIn('level3', data)
             self.assertIn('level4', data)
             self.assertIn('metadata', data)
-
 
 if __name__ == '__main__':
     unittest.main()

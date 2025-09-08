@@ -17,11 +17,10 @@ from pathlib import Path
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.config_class_store import ConfigClassStore
-from src.cursus.core.config_fields.config_merger import merge_and_save_configs, load_configs
-from src.cursus.core.config_fields.type_aware_config_serializer import serialize_config
-from src.cursus.core.config_fields.type_aware_config_serializer import deserialize_config
-
+from cursus.core.config_fields.config_class_store import ConfigClassStore
+from cursus.core.config_fields.config_merger import merge_and_save_configs, load_configs
+from cursus.core.config_fields.type_aware_config_serializer import serialize_config
+from cursus.core.config_fields.type_aware_config_serializer import deserialize_config
 
 # Define test configuration classes
 from pydantic import BaseModel, Field
@@ -35,7 +34,6 @@ class BaseConfig(BaseModel):
     bucket: str = "test-bucket" 
     author: str = "Test Author"
 
-
 @ConfigClassStore.register
 class ProcessingConfig(BaseConfig):
     """Test processing configuration class."""
@@ -46,14 +44,12 @@ class ProcessingConfig(BaseConfig):
     output_path: str = "/path/to/output"
     processing_instance_count: int = 1
 
-
 @ConfigClassStore.register
 class NestedConfig(BaseModel):
     """Test nested configuration class."""
     nested_field: str = "nested_value"
     nested_list: List[int] = Field(default_factory=lambda: [1, 2, 3])
     nested_dict: Dict[str, str] = Field(default_factory=lambda: {"key1": "value1", "key2": "value2"})
-
 
 @ConfigClassStore.register
 class TrainingConfig(BaseConfig):
@@ -69,7 +65,6 @@ class TrainingConfig(BaseConfig):
         "batch_size": 32
     })
 
-
 @ConfigClassStore.register
 class EvaluationConfig(BaseConfig):
     """Test evaluation configuration class."""
@@ -80,7 +75,6 @@ class EvaluationConfig(BaseConfig):
     metrics: List[str] = Field(default_factory=lambda: ["accuracy", "precision", "recall"])
     nested_config: Dict[str, Any] = None
     complex_dict: Dict[str, Any] = None
-
 
 class IntegrationTest(unittest.TestCase):
     """Integration tests for the config field manager."""
@@ -376,7 +370,6 @@ class IntegrationTest(unittest.TestCase):
                 deserialized.complex_dict["level1"]["level2"]["level3"], 
                 [1, 2, 3]
             )
-
 
 if __name__ == '__main__':
     unittest.main()

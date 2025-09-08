@@ -12,13 +12,12 @@ sys.path.insert(0, repo_root)
 from unittest.mock import patch, MagicMock, Mock, PropertyMock
 
 # Import utilities for config serialization
-from src.cursus.steps.configs.utils  import merge_and_save_configs, serialize_config
-from src.cursus.core.config_fields.constants import SPECIAL_FIELDS_TO_KEEP_SPECIFIC, CategoryType
-from src.cursus.core.base.config_base import BasePipelineConfig
-from src.cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
-from src.cursus.steps.configs.config_dummy_training_step import DummyTrainingConfig
-from src.cursus.core.base.hyperparameters_base import ModelHyperparameters
-
+from cursus.steps.configs.utils  import merge_and_save_configs, serialize_config
+from cursus.core.config_fields.constants import SPECIAL_FIELDS_TO_KEEP_SPECIFIC, CategoryType
+from cursus.core.base.config_base import BasePipelineConfig
+from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from cursus.steps.configs.config_dummy_training_step import DummyTrainingConfig
+from cursus.core.base.hyperparameters_base import ModelHyperparameters
 
 class TestFlattenedConfigStructure(unittest.TestCase):
     """
@@ -490,7 +489,6 @@ class TestFlattenedConfigStructure(unittest.TestCase):
             # Clean up the temp file
             if os.path.exists(output_path):
                 os.unlink(output_path)
-
 
 if __name__ == "__main__":
     unittest.main()

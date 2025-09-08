@@ -2,17 +2,9 @@
 Unit tests for canonical step name validation.
 """
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import unittest
 
-from src.cursus.validation.naming.naming_standard_validator import NamingStandardValidator
-
+from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
 class TestCanonicalStepNameValidation(unittest.TestCase):
     """Test canonical step name validation."""
@@ -80,7 +72,6 @@ class TestCanonicalStepNameValidation(unittest.TestCase):
         violations = self.validator._validate_canonical_step_name("stepname", "Test")
         violation_types = [v.violation_type for v in violations]
         self.assertIn("lowercase_name", violation_types)
-
 
 if __name__ == '__main__':
     unittest.main()

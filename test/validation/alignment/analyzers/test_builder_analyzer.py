@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / 'src'
 
 from cursus.validation.alignment.analyzers.builder_analyzer import BuilderCodeAnalyzer
 
-
 class TestBuilderCodeAnalyzer(unittest.TestCase):
     """Test cases for BuilderCodeAnalyzer"""
     
@@ -300,7 +299,6 @@ class TestBuilder:
         # Should detect the config access
         accessed_fields = {access['field_name'] for access in result['config_accesses']}
         self.assertIn('test_field', accessed_fields)
-
 
 if __name__ == '__main__':
     unittest.main()

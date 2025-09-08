@@ -13,27 +13,23 @@ from typing import Dict, Type, Optional
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.config_class_store import ConfigClassStore
+from cursus.core.config_fields.config_class_store import ConfigClassStore
 from pydantic import BaseModel
-
 
 class TestConfigA(BaseModel):
     """Test config class A for testing."""
     name: str = "test_a"
     value: int = 1
 
-
 class TestConfigB(BaseModel):
     """Test config class B for testing."""
     name: str = "test_b"
     value: int = 2
 
-
 class TestConfigC(BaseModel):
     """Test config class C for testing."""
     name: str = "test_c"
     value: int = 3
-
 
 class TestConfigClassStore(unittest.TestCase):
     """Test cases for ConfigClassStore."""
@@ -200,7 +196,7 @@ class TestConfigClassStore(unittest.TestCase):
 
     def test_build_complete_config_classes_function(self):
         """Test the build_complete_config_classes function."""
-        from src.cursus.core.config_fields.config_class_store import build_complete_config_classes
+        from cursus.core.config_fields.config_class_store import build_complete_config_classes
         
         # Register some classes
         ConfigClassStore.register(TestConfigA)
@@ -258,7 +254,6 @@ class TestConfigClassStore(unittest.TestCase):
         # Verify registry is still functional
         ConfigClassStore.register(TestConfigA)
         self.assertIsNotNone(ConfigClassStore.get_class("TestConfigA"))
-
 
 if __name__ == '__main__':
     unittest.main()

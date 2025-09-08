@@ -3,28 +3,20 @@ from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 import logging
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.core.base.specification_base import (
+from cursus.core.base.specification_base import (
     StepSpecification, OutputSpec, DependencySpec
 )
-from src.cursus.core.base.contract_base import (
+from cursus.core.base.contract_base import (
     ValidationResult, AlignmentResult
 )
-from src.cursus.core.base.enums import DependencyType, NodeType
-
+from cursus.core.base.enums import DependencyType, NodeType
 
 class TestOutputSpec(unittest.TestCase):
     """Test cases for OutputSpec class."""
     
     def test_init_with_required_fields(self):
         """Test initialization with required fields."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         output_spec = OutputSpec(
             logical_name="test_output",
@@ -41,7 +33,7 @@ class TestOutputSpec(unittest.TestCase):
     
     def test_init_with_optional_fields(self):
         """Test initialization with optional fields."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         output_spec = OutputSpec(
             logical_name="test_output",
@@ -57,7 +49,7 @@ class TestOutputSpec(unittest.TestCase):
     
     def test_matches_name_or_alias(self):
         """Test matching by name or alias."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         output_spec = OutputSpec(
             logical_name="test_output",
@@ -77,13 +69,12 @@ class TestOutputSpec(unittest.TestCase):
         # Test non-matching name
         self.assertFalse(output_spec.matches_name_or_alias("nonexistent"))
 
-
 class TestDependencySpec(unittest.TestCase):
     """Test cases for DependencySpec class."""
     
     def test_init_with_required_fields(self):
         """Test initialization with required fields."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         dep_spec = DependencySpec(
             logical_name="test_dependency",
@@ -99,7 +90,7 @@ class TestDependencySpec(unittest.TestCase):
     
     def test_init_with_optional_fields(self):
         """Test initialization with optional fields."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         dep_spec = DependencySpec(
             logical_name="test_dependency",
@@ -115,7 +106,7 @@ class TestDependencySpec(unittest.TestCase):
     
     def test_matches_name_or_alias(self):
         """Test matching by name or alias."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         dep_spec = DependencySpec(
             logical_name="test_dependency",
@@ -131,7 +122,6 @@ class TestDependencySpec(unittest.TestCase):
         
         # Note: DependencySpec doesn't have aliases field in current implementation
         # so we can't test alias matching
-
 
 class TestValidationResult(unittest.TestCase):
     """Test cases for ValidationResult class."""
@@ -177,7 +167,6 @@ class TestValidationResult(unittest.TestCase):
         self.assertTrue(result.is_valid)  # Should remain valid
         self.assertIn("Test warning", result.warnings)
 
-
 class TestAlignmentResult(unittest.TestCase):
     """Test cases for AlignmentResult class."""
     
@@ -213,13 +202,12 @@ class TestAlignmentResult(unittest.TestCase):
         self.assertEqual(result.extra_outputs, ["extra_output"])
         self.assertEqual(result.extra_inputs, ["extra_input"])
 
-
 class TestStepSpecification(unittest.TestCase):
     """Test cases for StepSpecification class."""
     
     def setUp(self):
         """Set up test fixtures."""
-        from src.cursus.core.base.enums import DependencyType, NodeType
+        from cursus.core.base.enums import DependencyType, NodeType
         
         self.output_spec = OutputSpec(
             logical_name="test_output",
@@ -262,7 +250,7 @@ class TestStepSpecification(unittest.TestCase):
     
     def test_get_output_by_name_or_alias(self):
         """Test getting output by name or alias."""
-        from src.cursus.core.base.enums import DependencyType, NodeType
+        from cursus.core.base.enums import DependencyType, NodeType
         
         output_with_alias = OutputSpec(
             logical_name="aliased_output",
@@ -300,7 +288,7 @@ class TestStepSpecification(unittest.TestCase):
     def test_get_dependency(self):
         """Test getting dependency by logical name."""
         # Create a spec where the dictionary key matches the logical name
-        from src.cursus.core.base.enums import NodeType
+        from cursus.core.base.enums import NodeType
         
         spec_data = {
             "step_type": "TestStep",
@@ -331,7 +319,7 @@ class TestStepSpecification(unittest.TestCase):
     
     def test_validate_empty_step_type(self):
         """Test validation with empty step type."""
-        from src.cursus.core.base.enums import NodeType
+        from cursus.core.base.enums import NodeType
         
         # This should raise a ValidationError during construction, not during validate()
         with self.assertRaises(Exception):  # Pydantic ValidationError
@@ -344,7 +332,7 @@ class TestStepSpecification(unittest.TestCase):
     
     def test_validate_duplicate_output_names(self):
         """Test validation with duplicate output names."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         # This should raise a ValidationError during construction due to duplicate names
         with self.assertRaises(Exception):  # Pydantic ValidationError
@@ -375,7 +363,7 @@ class TestStepSpecification(unittest.TestCase):
         result = spec.validate_contract_alignment()
         
         # The method returns ValidationResult, not AlignmentResult
-        from src.cursus.core.base.contract_base import ValidationResult
+        from cursus.core.base.contract_base import ValidationResult
         self.assertIsInstance(result, ValidationResult)
         self.assertTrue(result.is_valid)  # No contract to validate means success
         self.assertIn("No contract to validate", result.errors[0] if result.errors else "No contract to validate")
@@ -393,7 +381,7 @@ class TestStepSpecification(unittest.TestCase):
         spec = StepSpecification(**spec_data)
         result = spec.validate_contract_alignment()
         
-        from src.cursus.core.base.contract_base import ValidationResult
+        from cursus.core.base.contract_base import ValidationResult
         self.assertIsInstance(result, ValidationResult)
         # Should be valid since we have matching inputs/outputs
         self.assertTrue(result.is_valid)
@@ -411,7 +399,7 @@ class TestStepSpecification(unittest.TestCase):
         spec = StepSpecification(**spec_data)
         result = spec.validate_contract_alignment()
         
-        from src.cursus.core.base.contract_base import ValidationResult
+        from cursus.core.base.contract_base import ValidationResult
         self.assertIsInstance(result, ValidationResult)
         self.assertFalse(result.is_valid)
         self.assertTrue(any("missing_input" in error for error in result.errors))
@@ -429,14 +417,14 @@ class TestStepSpecification(unittest.TestCase):
         spec = StepSpecification(**spec_data)
         result = spec.validate_contract_alignment()
         
-        from src.cursus.core.base.contract_base import ValidationResult
+        from cursus.core.base.contract_base import ValidationResult
         self.assertIsInstance(result, ValidationResult)
         self.assertFalse(result.is_valid)
         self.assertTrue(any("missing_output" in error for error in result.errors))
     
     def test_list_required_dependencies(self):
         """Test getting required dependencies."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         required_dep = DependencySpec(
             logical_name="required_dep",
@@ -465,7 +453,7 @@ class TestStepSpecification(unittest.TestCase):
     
     def test_list_optional_dependencies(self):
         """Test getting optional dependencies."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         required_dep = DependencySpec(
             logical_name="required_dep",
@@ -494,7 +482,7 @@ class TestStepSpecification(unittest.TestCase):
     
     def test_list_all_output_names(self):
         """Test getting all output names including aliases."""
-        from src.cursus.core.base.enums import DependencyType
+        from cursus.core.base.enums import DependencyType
         
         output_with_aliases = OutputSpec(
             logical_name="main_output",
@@ -515,8 +503,6 @@ class TestStepSpecification(unittest.TestCase):
         
         expected_names = {"test_output", "main_output", "alias1", "alias2"}
         self.assertEqual(set(all_names), expected_names)
-    
-
 
 if __name__ == '__main__':
     # Set up logging for tests

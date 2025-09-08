@@ -15,7 +15,7 @@ from typing import Set, Dict, Any
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.constants import (
+from cursus.core.config_fields.constants import (
     SPECIAL_FIELDS_TO_KEEP_SPECIFIC,
     NON_STATIC_FIELD_PATTERNS,
     NON_STATIC_FIELD_EXCEPTIONS,
@@ -24,7 +24,6 @@ from src.cursus.core.config_fields.constants import (
     SerializationMode,
     TYPE_MAPPING
 )
-
 
 class TestConstants(unittest.TestCase):
     """Test cases for constants module."""
@@ -318,7 +317,6 @@ class TestConstants(unittest.TestCase):
         
         self.assertGreater(len(found_dynamic), 0,
                           "Non-static patterns should contain dynamic field indicators")
-
 
 if __name__ == '__main__':
     unittest.main()

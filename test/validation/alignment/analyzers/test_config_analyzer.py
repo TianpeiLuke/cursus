@@ -10,7 +10,6 @@ Tests the enhanced configuration analysis capabilities including:
 
 import unittest
 import tempfile
-import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 import sys
@@ -19,7 +18,6 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'src'))
 
 from cursus.validation.alignment.analyzers.config_analyzer import ConfigurationAnalyzer
-
 
 class TestConfigurationAnalyzer(unittest.TestCase):
     """Test cases for ConfigurationAnalyzer"""
@@ -294,7 +292,6 @@ class TestConfig(BaseModel):
         # Check fields and defaults
         self.assertEqual(config_schema['fields'], config_analysis['fields'])
         self.assertEqual(config_schema['defaults'], {'field3': True, 'field4': 1.0})
-
 
 if __name__ == '__main__':
     unittest.main()

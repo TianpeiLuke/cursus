@@ -8,10 +8,9 @@ import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from src.cursus.validation.alignment.script_contract_alignment import (
+from cursus.validation.alignment.script_contract_alignment import (
     ScriptContractAlignmentTester
 )
-
 
 class TestScriptContractPathValidation(unittest.TestCase):
     """Test path validation in script contract alignment."""
@@ -39,7 +38,6 @@ class TestScriptContractPathValidation(unittest.TestCase):
         """Test successful script contract path validation."""
         # Create test script
         script_content = '''
-import os
 import pandas as pd
 
 # Read from contract-declared input
@@ -76,7 +74,7 @@ data.to_csv("/opt/ml/processing/output/processed.csv", index=False)
         contract_content = f'''
 """Contract for test_script.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class TestScriptContract(ScriptContract):
     def __init__(self):
@@ -157,7 +155,7 @@ data = pd.read_csv("/opt/ml/processing/input/undeclared/data.csv")
         contract_content = '''
 """Contract for test_script.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class TestScriptContract(ScriptContract):
     def __init__(self):
@@ -273,7 +271,7 @@ output_path.mkdir(exist_ok=True)
         contract_content = '''
 """Contract for enhanced_ops.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class EnhancedOpsContract(ScriptContract):
     def __init__(self):
@@ -334,7 +332,6 @@ ENHANCED_OPS_CONTRACT = EnhancedOpsContract()
             # Verify that enhanced methods were tracked
             # This is implicit in the successful validation - the enhanced detection
             # allows the validator to properly match file operations to contract paths
-
 
 if __name__ == '__main__':
     unittest.main()

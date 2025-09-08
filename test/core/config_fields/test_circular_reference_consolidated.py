@@ -17,14 +17,13 @@ from unittest import mock
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.circular_reference_tracker import CircularReferenceTracker
-from src.cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
+from cursus.core.config_fields.circular_reference_tracker import CircularReferenceTracker
+from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
 from pydantic import BaseModel
 
 # Use TYPE_CHECKING to avoid circular import issues
 if TYPE_CHECKING:
     from typing import ForwardRef
-
 
 class TestLogHandler(logging.Handler):
     """Custom log handler for capturing log messages in tests."""
@@ -36,7 +35,6 @@ class TestLogHandler(logging.Handler):
     def emit(self, record):
         self.messages.append(self.format(record))
 
-
 class MdsDataSourceConfig(BaseModel):
     """Test model for MDS data source configuration."""
     name: str
@@ -46,7 +44,6 @@ class MdsDataSourceConfig(BaseModel):
     class Config:
         extra = "allow"
 
-
 class DataSourceConfig(BaseModel):
     """Test model for data source configuration."""
     mds_data_source: MdsDataSourceConfig
@@ -54,7 +51,6 @@ class DataSourceConfig(BaseModel):
     
     class Config:
         extra = "allow"
-
 
 class DataSourcesSpecificationConfig(BaseModel):
     """Test model for data sources specification."""
@@ -64,7 +60,6 @@ class DataSourcesSpecificationConfig(BaseModel):
     class Config:
         extra = "allow"
 
-
 class CradleDataLoadConfig(BaseModel):
     """Test model for cradle data load configuration."""
     data_sources_specification: DataSourcesSpecificationConfig
@@ -72,7 +67,6 @@ class CradleDataLoadConfig(BaseModel):
     
     class Config:
         extra = "allow"
-
 
 class Item(BaseModel):
     """Test model for items that can reference containers."""
@@ -83,7 +77,6 @@ class Item(BaseModel):
     class Config:
         extra = "allow"
 
-
 class Container(BaseModel):
     """Test model for container with potential circular references."""
     name: str
@@ -93,11 +86,9 @@ class Container(BaseModel):
     class Config:
         extra = "allow"
 
-
 # Update forward references after both models are defined
 Container.model_rebuild()
 Item.model_rebuild()
-
 
 class TestCircularReferenceConsolidated(unittest.TestCase):
     """Consolidated test cases for circular reference handling."""
@@ -540,7 +531,6 @@ class TestCircularReferenceConsolidated(unittest.TestCase):
         self.assertEqual(serialized["name"], "performance_root")
         self.assertIn("items", serialized)
         self.assertEqual(len(serialized["items"]), 50)
-
 
 if __name__ == '__main__':
     unittest.main()

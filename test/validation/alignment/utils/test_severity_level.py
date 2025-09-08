@@ -4,8 +4,7 @@ Test suite for SeverityLevel enum.
 
 import unittest
 
-from src.cursus.validation.alignment.alignment_utils import SeverityLevel
-
+from cursus.validation.alignment.alignment_utils import SeverityLevel
 
 class TestSeverityLevel(unittest.TestCase):
     """Test SeverityLevel enum."""
@@ -78,7 +77,6 @@ class TestSeverityLevel(unittest.TestCase):
         
         with self.assertRaises(ValueError):
             SeverityLevel("")
-
 
 if __name__ == '__main__':
     unittest.main()

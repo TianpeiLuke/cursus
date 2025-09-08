@@ -10,10 +10,9 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
-from src.cursus.workspace.core.compiler import WorkspaceDAGCompiler
-from src.cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
-from src.cursus.api.dag.workspace_dag import WorkspaceAwareDAG
-
+from cursus.workspace.core.compiler import WorkspaceDAGCompiler
+from cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
+from cursus.api.dag.workspace_dag import WorkspaceAwareDAG
 
 class TestWorkspaceDAGCompiler(unittest.TestCase):
     """Test cases for WorkspaceDAGCompiler."""
@@ -515,7 +514,6 @@ class TestWorkspaceDAGCompiler(unittest.TestCase):
                 self.assertFalse(preview['compilation_feasibility']['can_compile'])
                 self.assertGreater(len(preview['compilation_feasibility']['blocking_issues']), 0)
                 self.assertGreater(len(preview['compilation_feasibility']['warnings']), 0)
-
 
 if __name__ == '__main__':
     unittest.main()

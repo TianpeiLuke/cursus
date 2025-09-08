@@ -9,12 +9,11 @@ import unittest
 from unittest.mock import Mock
 from typing import List, Dict, Any
 
-from src.cursus.validation.interface.interface_standard_validator import (
+from cursus.validation.interface.interface_standard_validator import (
     InterfaceStandardValidator,
     InterfaceViolation
 )
-from src.cursus.core.base.builder_base import StepBuilderBase
-
+from cursus.core.base.builder_base import StepBuilderBase
 
 class MockGoodStepBuilder(StepBuilderBase):
     """Mock step builder that follows all interface standards."""
@@ -77,7 +76,6 @@ class MockGoodStepBuilder(StepBuilderBase):
         """
         return Mock()
 
-
 class MockBadStepBuilder:
     """Mock step builder that violates interface standards."""
     
@@ -96,7 +94,6 @@ class MockBadStepBuilder:
     
     def create_step(self):  # Missing **kwargs
         return Mock()
-
 
 class TestInterfaceValidatorIntegration(unittest.TestCase):
     """Integration tests for Interface Standard Validator."""
@@ -143,7 +140,7 @@ class TestInterfaceValidatorIntegration(unittest.TestCase):
     def test_validation_with_real_step_builder(self):
         """Test validation with a real step builder from the codebase."""
         try:
-            from src.cursus.steps.builders.builder_dummy_training_step import DummyTrainingStepBuilder
+            from cursus.steps.builders.builder_dummy_training_step import DummyTrainingStepBuilder
             
             violations = self.validator.validate_step_builder_interface(DummyTrainingStepBuilder)
             
@@ -167,7 +164,6 @@ class TestInterfaceValidatorIntegration(unittest.TestCase):
             
         except ImportError:
             self.skipTest("DummyTrainingStepBuilder not available for testing")
-
 
 if __name__ == '__main__':
     unittest.main()

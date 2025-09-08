@@ -7,7 +7,6 @@ before and after tests, ensuring proper isolation between test cases.
 
 import unittest
 
-
 def reset_all_global_state():
     """
     Reset all global state for testing.
@@ -18,7 +17,6 @@ def reset_all_global_state():
     # Note: All components (RegistryManager, SemanticMatcher, and UnifiedDependencyResolver)
     # are now created per-test and don't require global state reset
     pass
-
 
 class IsolatedTestCase(unittest.TestCase):
     """
@@ -35,7 +33,6 @@ class IsolatedTestCase(unittest.TestCase):
     def tearDown(self):
         """Clean up after tests, resetting global state."""
         reset_all_global_state()
-
 
 # Example usage:
 """

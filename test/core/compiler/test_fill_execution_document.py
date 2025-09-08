@@ -8,9 +8,8 @@ with Cradle data loading requests and registration configurations.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.cursus.api.dag.base_dag import PipelineDAG
-from src.cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
-
+from cursus.api.dag.base_dag import PipelineDAG
+from cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
 
 class TestFillExecutionDocument(unittest.TestCase):
     """Tests for the fill_execution_document method in DynamicPipelineTemplate."""
@@ -431,7 +430,6 @@ class TestFillExecutionDocument(unittest.TestCase):
         
         # Verify result
         self.assertIn("Registration-NA", nodes)
-
 
 if __name__ == '__main__':
     unittest.main()

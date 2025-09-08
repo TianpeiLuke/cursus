@@ -9,14 +9,12 @@ Tests workspace-aware file resolution functionality including:
 - File resolution with different search patterns
 """
 
-import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from src.cursus.workspace.validation.workspace_file_resolver import DeveloperWorkspaceFileResolver
-
+from cursus.workspace.validation.workspace_file_resolver import DeveloperWorkspaceFileResolver
 
 class TestDeveloperWorkspaceFileResolver(unittest.TestCase):
     """Test cases for DeveloperWorkspaceFileResolver."""
@@ -317,7 +315,6 @@ class TestDeveloperWorkspaceFileResolver(unittest.TestCase):
         self.assertTrue(hasattr(resolver, 'shared_builders_dir'))
         self.assertTrue(hasattr(resolver, 'shared_scripts_dir'))
         self.assertTrue(hasattr(resolver, 'shared_configs_dir'))
-
 
 if __name__ == '__main__':
     unittest.main()

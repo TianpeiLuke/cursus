@@ -5,15 +5,7 @@ from typing import Dict, Any
 import logging
 from datetime import datetime
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.core.base.config_base import BasePipelineConfig
-
+from cursus.core.base.config_base import BasePipelineConfig
 
 class TestBasePipelineConfig(unittest.TestCase):
     """Test cases for BasePipelineConfig class."""
@@ -308,7 +300,6 @@ class TestBasePipelineConfig(unittest.TestCase):
         
         # Extra field should be accessible
         self.assertEqual(config.extra_field, 'extra_value')
-
 
 if __name__ == '__main__':
     # Set up logging for tests

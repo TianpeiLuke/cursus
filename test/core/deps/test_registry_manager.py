@@ -11,13 +11,12 @@ Tests the complete functionality of registry manager including:
 """
 
 import unittest
-from src.cursus.core.deps import RegistryManager, get_registry, get_pipeline_registry, get_default_registry, list_contexts, clear_context, get_context_stats
-from src.cursus.core.deps.specification_registry import SpecificationRegistry
-from src.cursus.core.base.specification_base import (
+from cursus.core.deps import RegistryManager, get_registry, get_pipeline_registry, get_default_registry, list_contexts, clear_context, get_context_stats
+from cursus.core.deps.specification_registry import SpecificationRegistry
+from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
 from .test_helpers import IsolatedTestCase, reset_all_global_state
-
 
 class TestRegistryManagerCore(IsolatedTestCase):
     """Test cases for RegistryManager."""
@@ -199,7 +198,6 @@ class TestRegistryManagerCore(IsolatedTestCase):
         repr_str = repr(self.manager)
         self.assertIn("contexts=2", repr_str)
 
-
 class TestConvenienceFunctions(IsolatedTestCase):
     """Test convenience functions for registry management."""
     
@@ -329,7 +327,6 @@ class TestConvenienceFunctions(IsolatedTestCase):
         self.assertNotIn("eval_step", registry1.list_step_names())
         self.assertNotIn("eval_step", registry2.list_step_names())
 
-
 class TestRegistryManagerErrorHandling(IsolatedTestCase):
     """Test error handling in RegistryManager."""
     
@@ -420,7 +417,6 @@ class TestRegistryManagerErrorHandling(IsolatedTestCase):
         self.assertEqual(len(results), 10)
         self.assertEqual(len(self.manager.list_contexts()), 10)
 
-
 class TestRegistryManagerMonitoring(IsolatedTestCase):
     """Test monitoring capabilities of RegistryManager."""
     
@@ -476,7 +472,6 @@ class TestRegistryManagerMonitoring(IsolatedTestCase):
     
     def test_memory_usage_monitoring(self):
         """Test memory usage patterns."""
-        import sys
         
         # Get initial memory usage
         initial_contexts = len(self.manager.list_contexts())
@@ -494,7 +489,6 @@ class TestRegistryManagerMonitoring(IsolatedTestCase):
         
         # Verify cleanup
         self.assertEqual(len(self.manager.list_contexts()), 0)
-
 
 if __name__ == '__main__':
     unittest.main()

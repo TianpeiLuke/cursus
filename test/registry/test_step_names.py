@@ -3,7 +3,7 @@
 import unittest
 import os
 from unittest.mock import patch, MagicMock
-from src.cursus.registry.step_names import (
+from cursus.registry.step_names import (
     # Core registry data structures (now dynamic)
     STEP_NAMES,
     CONFIG_STEP_REGISTRY,
@@ -45,7 +45,6 @@ from src.cursus.registry.step_names import (
     _get_registry_manager,
     _create_fallback_manager
 )
-
 
 class TestStepNames(unittest.TestCase):
     """Test case for step names registry functions."""
@@ -397,7 +396,6 @@ class TestStepNames(unittest.TestCase):
         self.assertEqual(step_info["spec_type"], "XGBoostModelEval")
         self.assertEqual(step_info["sagemaker_step_type"], "Processing")
 
-
 class TestWorkspaceContextManagement(unittest.TestCase):
     """Test case for workspace context management functionality."""
     
@@ -512,7 +510,6 @@ class TestWorkspaceContextManagement(unittest.TestCase):
         self.assertTrue(validate_step_name("XGBoostTraining", "test_workspace"))
         self.assertFalse(validate_step_name("NonExistentStep", "test_workspace"))
 
-
 class TestRegistryManagerAndFallback(unittest.TestCase):
     """Test case for registry manager and fallback functionality."""
     
@@ -588,7 +585,6 @@ class TestRegistryManagerAndFallback(unittest.TestCase):
         
         conflicts = has_workspace_conflicts()
         self.assertIsInstance(conflicts, bool)
-
 
 class TestBackwardCompatibility(unittest.TestCase):
     """Test case for backward compatibility with original implementation."""
@@ -672,7 +668,6 @@ class TestBackwardCompatibility(unittest.TestCase):
             self.assertIn(step_name, STEP_NAMES)
             self.assertEqual(STEP_NAMES[step_name]["spec_type"], spec_type)
 
-
 class TestEnhancedFunctionality(unittest.TestCase):
     """Test case for enhanced functionality added in Phase 5."""
     
@@ -727,7 +722,6 @@ class TestEnhancedFunctionality(unittest.TestCase):
             # Clean up
             if 'CURSUS_WORKSPACE_ID' in os.environ:
                 del os.environ['CURSUS_WORKSPACE_ID']
-
 
 if __name__ == '__main__':
     unittest.main()

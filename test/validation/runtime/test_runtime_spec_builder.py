@@ -18,13 +18,12 @@ import tempfile
 import json
 from unittest.mock import Mock, patch, MagicMock
 
-from src.cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
-from src.cursus.validation.runtime.runtime_models import (
+from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from cursus.validation.runtime.runtime_models import (
     ScriptExecutionSpec,
     PipelineTestingSpec
 )
-from src.cursus.api.dag.base_dag import PipelineDAG
-
+from cursus.api.dag.base_dag import PipelineDAG
 
 class TestPipelineTestingSpecBuilder(unittest.TestCase):
     """Test PipelineTestingSpecBuilder class"""
@@ -287,7 +286,6 @@ class TestPipelineTestingSpecBuilder(unittest.TestCase):
         self.assertEqual(updated_spec.environ_vars["LABEL_FIELD"], "label")
         self.assertEqual(updated_spec.job_args["job_type"], "testing")
 
-
 class TestPipelineTestingSpecBuilderIntegration(unittest.TestCase):
     """Integration tests for PipelineTestingSpecBuilder"""
     
@@ -342,7 +340,6 @@ class TestPipelineTestingSpecBuilderIntegration(unittest.TestCase):
             updated_spec.script_specs["script_a"].environ_vars["UPDATED_VAR"],
             "updated_value"
         )
-
 
 if __name__ == '__main__':
     unittest.main()

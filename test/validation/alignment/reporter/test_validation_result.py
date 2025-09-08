@@ -5,11 +5,10 @@ Test suite for ValidationResult model.
 import unittest
 from datetime import datetime
 
-from src.cursus.validation.alignment.alignment_reporter import ValidationResult
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.alignment_reporter import ValidationResult
+from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
-
 
 class TestValidationResult(unittest.TestCase):
     """Test ValidationResult model."""
@@ -133,7 +132,6 @@ class TestValidationResult(unittest.TestCase):
         self.assertEqual(len(result_dict['issues']), 1)
         self.assertEqual(result_dict['severity_level'], "ERROR")
         self.assertIn('timestamp', result_dict)
-
 
 if __name__ == '__main__':
     unittest.main()

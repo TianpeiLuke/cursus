@@ -15,8 +15,7 @@ from unittest.mock import patch, MagicMock
 # Add the project root to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-from src.cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
-
+from cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
 
 class TestBuilderArgumentIntegration(unittest.TestCase):
     """Test builder argument integration in script contract alignment."""
@@ -58,7 +57,7 @@ job_type = args.job_type
         contract_content = '''
 """Contract for tabular_preprocess.py"""
 
-from src.cursus.core.base.contract_base import ScriptContract
+from cursus.core.base.contract_base import ScriptContract
 
 class TabularPreprocessContract(ScriptContract):
     def __init__(self):
@@ -167,7 +166,7 @@ class TabularPreprocessingStepBuilder:
         )
         
         # Test builder argument extraction directly
-        from src.cursus.validation.alignment.static_analysis.builder_analyzer import extract_builder_arguments
+        from cursus.validation.alignment.static_analysis.builder_analyzer import extract_builder_arguments
         
         builder_args = extract_builder_arguments("tabular_preprocess", real_builders_dir)
         print(f"🎯 Builder arguments for tabular_preprocess: {builder_args}")
@@ -214,7 +213,6 @@ class TabularPreprocessingStepBuilder:
         info_issues = [issue for issue in job_type_issues if issue['severity'] == 'INFO']
         self.assertGreater(len(info_issues), 0, 
                          "Expected INFO message about builder-provided job_type")
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

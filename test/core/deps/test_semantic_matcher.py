@@ -1,5 +1,5 @@
 import unittest
-from src.cursus.core.deps import (
+from cursus.core.deps import (
     SemanticMatcher, OutputSpec, DependencyType,
     UnifiedDependencyResolver, SpecificationRegistry,
     StepSpecification, DependencySpec, NodeType

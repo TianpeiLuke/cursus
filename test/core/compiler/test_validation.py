@@ -9,13 +9,12 @@ import unittest
 from unittest.mock import patch, MagicMock
 from dataclasses import dataclass
 
-from src.cursus.core.compiler.validation import (
+from cursus.core.compiler.validation import (
     ValidationResult,
     ResolutionPreview,
     ConversionReport,
     ValidationEngine
 )
-
 
 class TestValidationResult(unittest.TestCase):
     """Tests for the ValidationResult dataclass."""
@@ -99,7 +98,6 @@ class TestValidationResult(unittest.TestCase):
         self.assertIn("Fix configuration validation errors", report)
         self.assertIn("Review DAG structure", report)
 
-
 class TestResolutionPreview(unittest.TestCase):
     """Tests for the ResolutionPreview dataclass."""
 
@@ -137,7 +135,6 @@ class TestResolutionPreview(unittest.TestCase):
         self.assertIn("training has 2 similar candidates", display)
         self.assertIn("💡 Recommendations:", display)
         self.assertIn("Consider renaming 'training' for better matching", display)
-
 
 class TestConversionReport(unittest.TestCase):
     """Tests for the ConversionReport dataclass."""
@@ -198,7 +195,6 @@ class TestConversionReport(unittest.TestCase):
         self.assertIn("Additional Metadata:", detailed)
         self.assertIn("dag_nodes: 2", detailed)
         self.assertIn("dag_edges: 1", detailed)
-
 
 class TestValidationEngine(unittest.TestCase):
     """Tests for the ValidationEngine class."""
@@ -379,7 +375,6 @@ class TestValidationEngine(unittest.TestCase):
         )
         
         self.assertTrue(result.is_valid)
-
 
 if __name__ == '__main__':
     unittest.main()

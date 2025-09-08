@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 # Import the functions to be tested
-from src.cursus.steps.scripts.model_calibration import (
+from cursus.steps.scripts.model_calibration import (
     CalibrationConfig,
     create_directories,
     find_first_data_file,
@@ -26,7 +26,6 @@ from src.cursus.steps.scripts.model_calibration import (
     plot_multiclass_reliability_diagram,
     main
 )
-
 
 class TestCalibrationConfig(unittest.TestCase):
     """Tests for the CalibrationConfig class."""
@@ -92,7 +91,6 @@ class TestCalibrationConfig(unittest.TestCase):
         self.assertEqual(config.error_threshold, 0.02)
         self.assertEqual(config.num_classes, 4)
         self.assertEqual(config.multiclass_categories, ["class1", "class2", "class3", "class4"])
-
 
 class TestCalibrationHelpers(unittest.TestCase):
     """Tests for calibration helper functions."""
@@ -225,7 +223,6 @@ class TestCalibrationHelpers(unittest.TestCase):
         
         self.assertIn("Score field 'prob_class_1' not found", str(context.exception))
 
-
 class TestCalibrationMethods(unittest.TestCase):
     """Tests for calibration training methods."""
 
@@ -284,7 +281,6 @@ class TestCalibrationMethods(unittest.TestCase):
         """Test training GAM calibration when pygam is not available."""
         with self.assertRaises(ImportError):
             train_gam_calibration(self.scores, self.labels, self.config)
-
 
 class TestMulticlassCalibration(unittest.TestCase):
     """Tests for multiclass calibration methods."""
@@ -352,7 +348,6 @@ class TestMulticlassCalibration(unittest.TestCase):
         # Check that all probabilities are between 0 and 1
         self.assertTrue(np.all(calibrated_probs >= 0))
         self.assertTrue(np.all(calibrated_probs <= 1))
-
 
 class TestCalibrationMetrics(unittest.TestCase):
     """Tests for calibration metrics computation."""
@@ -430,7 +425,6 @@ class TestCalibrationMetrics(unittest.TestCase):
         self.assertEqual(metrics["num_classes"], n_classes)
         self.assertEqual(metrics["num_samples"], self.n_samples)
 
-
 class TestCalibrationVisualization(unittest.TestCase):
     """Tests for calibration visualization functions."""
 
@@ -500,7 +494,6 @@ class TestCalibrationVisualization(unittest.TestCase):
         mock_plt.subplots.assert_called_once()
         mock_plt.savefig.assert_called_once_with(expected_path)
         mock_plt.close.assert_called_once_with(mock_fig)
-
 
 class TestCalibrationMain(unittest.TestCase):
     """Tests for the main calibration function."""
@@ -653,7 +646,6 @@ class TestCalibrationMain(unittest.TestCase):
         
         # Verify plot function was called
         mock_plot.assert_called_once()
-
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

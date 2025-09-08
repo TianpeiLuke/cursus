@@ -6,7 +6,7 @@ Tests framework detection and pattern recognition functionality.
 
 import unittest
 from unittest.mock import patch, mock_open
-from src.cursus.validation.alignment.framework_patterns import (
+from cursus.validation.alignment.framework_patterns import (
     detect_framework_from_script_content,
     detect_training_patterns,
     detect_xgboost_patterns,
@@ -16,7 +16,6 @@ from src.cursus.validation.alignment.framework_patterns import (
     get_framework_patterns,
     detect_framework_from_imports
 )
-
 
 class TestFrameworkPatterns(unittest.TestCase):
     """Test framework pattern detection functionality."""
@@ -282,7 +281,6 @@ import pandas as pd
         unknown_imports = ['os', 'sys']
         framework = detect_framework_from_imports(unknown_imports)
         self.assertIsNone(framework)
-
 
 if __name__ == '__main__':
     unittest.main()

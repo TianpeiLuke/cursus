@@ -7,11 +7,10 @@ metadata completeness, and tag consistency validation.
 
 import pytest
 from unittest.mock import Mock, patch
-from src.cursus.pipeline_catalog.utils.registry_validator import (
+from cursus.pipeline_catalog.utils.registry_validator import (
     RegistryValidator, ValidationSeverity, ValidationReport
 )
-from src.cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
-
+from cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
 
 class TestRegistryValidatorCore:
     """Test suite for RegistryValidator core functionality."""

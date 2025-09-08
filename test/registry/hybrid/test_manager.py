@@ -10,9 +10,8 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
-from src.cursus.registry.hybrid.models import StepDefinition, RegistryType
-from src.cursus.registry.exceptions import RegistryError
-
+from cursus.registry.hybrid.models import StepDefinition, RegistryType
+from cursus.registry.exceptions import RegistryError
 
 class TestUnifiedRegistryManager(unittest.TestCase):
     """Test UnifiedRegistryManager functionality."""
@@ -40,7 +39,7 @@ class TestUnifiedRegistryManager(unittest.TestCase):
             }
             mock_load.return_value = mock_module
             
-            from src.cursus.registry.hybrid.manager import UnifiedRegistryManager
+            from cursus.registry.hybrid.manager import UnifiedRegistryManager
             self.manager = UnifiedRegistryManager()
     
     def test_unified_registry_manager_initialization(self):
@@ -148,7 +147,6 @@ class TestUnifiedRegistryManager(unittest.TestCase):
         # Conflicts can be either a list or dict depending on implementation
         self.assertIsInstance(conflicts, (list, dict))
 
-
 class TestStepDefinition(unittest.TestCase):
     """Test StepDefinition model."""
     
@@ -185,7 +183,6 @@ class TestStepDefinition(unittest.TestCase):
         self.assertEqual(step_def.name, "WorkspaceStep")
         self.assertEqual(step_def.registry_type, RegistryType.WORKSPACE)
         self.assertEqual(step_def.workspace_id, "test_workspace")
-
 
 if __name__ == '__main__':
     unittest.main()

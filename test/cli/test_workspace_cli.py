@@ -5,13 +5,6 @@ This module tests all functionality of the workspace command-line interface,
 including workspace creation, management, validation, and cross-workspace operations.
 """
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 import json
@@ -20,7 +13,7 @@ import shutil
 from pathlib import Path
 from click.testing import CliRunner
 
-from src.cursus.cli.workspace_cli import (
+from cursus.cli.workspace_cli import (
     workspace_cli,
     create_workspace,
     list_workspaces,
@@ -37,7 +30,6 @@ from src.cursus.cli.workspace_cli import (
     _show_workspace_structure,
     _is_workspace_active
 )
-
 
 class TestWorkspaceCliBasic(unittest.TestCase):
     """Test basic CLI functionality and command structure."""
@@ -73,7 +65,6 @@ class TestWorkspaceCliBasic(unittest.TestCase):
         
         for command in expected_commands:
             self.assertIn(command, result.output)
-
 
 class TestWorkspaceCreationCommands(unittest.TestCase):
     """Test workspace creation and management commands."""
@@ -143,7 +134,6 @@ class TestWorkspaceCreationCommands(unittest.TestCase):
             self.assertIn('✓ Applied template: ml_pipeline', result.output)
             mock_template.assert_called_once_with(str(mock_result.workspace_path), 'ml_pipeline')
 
-
 class TestWorkspaceListingCommands(unittest.TestCase):
     """Test workspace listing and information commands."""
     
@@ -212,7 +202,6 @@ class TestWorkspaceListingCommands(unittest.TestCase):
         except json.JSONDecodeError:
             self.fail("Output is not valid JSON")
 
-
 class TestWorkspaceValidationCommands(unittest.TestCase):
     """Test workspace validation commands."""
     
@@ -250,7 +239,7 @@ class TestWorkspaceValidationCommands(unittest.TestCase):
         mock_workspace_api.return_value = mock_api
         
         # Import the actual validate command from workspace_cli
-        from src.cursus.cli.workspace_cli import validate_workspace
+        from cursus.cli.workspace_cli import validate_workspace
         
         result = self.runner.invoke(validate_workspace, [
             '--workspace-root', str(self.workspace_root)
@@ -259,7 +248,6 @@ class TestWorkspaceValidationCommands(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn('Validating workspace...', result.output)
         mock_display.assert_called_once_with(mock_result)
-
 
 class TestWorkspaceInfoCommands(unittest.TestCase):
     """Test workspace information commands."""
@@ -334,7 +322,6 @@ class TestWorkspaceInfoCommands(unittest.TestCase):
         
         self.assertEqual(result.exit_code, 1)
         self.assertIn('Workspace not found: nonexistent_dev', result.output)
-
 
 class TestCrossWorkspaceCommands(unittest.TestCase):
     """Test cross-workspace operation commands."""
@@ -422,7 +409,6 @@ class TestCrossWorkspaceCommands(unittest.TestCase):
         self.assertIn('Testing compatibility between workspaces:', result.output)
         mock_display.assert_called_once_with(mock_result, 'dev1', 'dev2')
 
-
 class TestRuntimeTestingCommands(unittest.TestCase):
     """Test runtime testing commands."""
     
@@ -452,7 +438,6 @@ class TestRuntimeTestingCommands(unittest.TestCase):
         self.assertIn('Running script runtime tests...', result.output)
         # We expect this to fail due to missing imports, which is acceptable for this test
         # The important thing is that the CLI command structure and argument parsing work
-
 
 class TestValidationAlignmentCommands(unittest.TestCase):
     """Test validation and alignment commands."""
@@ -487,7 +472,6 @@ class TestValidationAlignmentCommands(unittest.TestCase):
         
         self.assertEqual(result.exit_code, 0)
         self.assertIn('Validating workspace alignment...', result.output)
-
 
 class TestWorkspaceTemplateHelpers(unittest.TestCase):
     """Test workspace template helper functions."""
@@ -548,7 +532,6 @@ class TestWorkspaceTemplateHelpers(unittest.TestCase):
         self.assertIn("Data Processing Workspace", readme_content)
         self.assertIn("data processing pipeline development", readme_content)
 
-
 class TestWorkspaceHelperFunctions(unittest.TestCase):
     """Test workspace helper functions."""
     
@@ -606,7 +589,6 @@ class TestWorkspaceHelperFunctions(unittest.TestCase):
         self.assertTrue(_is_workspace_active(mock_workspace_recent))
         self.assertFalse(_is_workspace_active(mock_workspace_old))
         self.assertFalse(_is_workspace_active(mock_workspace_none))
-
 
 if __name__ == '__main__':
     unittest.main()

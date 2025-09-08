@@ -4,8 +4,7 @@ Test suite for PathReference model.
 
 import unittest
 
-from src.cursus.validation.alignment.alignment_utils import PathReference
-
+from cursus.validation.alignment.alignment_utils import PathReference
 
 class TestPathReference(unittest.TestCase):
     """Test PathReference model."""
@@ -102,7 +101,6 @@ class TestPathReference(unittest.TestCase):
                 path="/test/path"
                 # Missing required line_number and context
             )
-
 
 if __name__ == '__main__':
     unittest.main()

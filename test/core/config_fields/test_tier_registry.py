@@ -13,8 +13,7 @@ from typing import Dict, Set
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.tier_registry import ConfigFieldTierRegistry
-
+from cursus.core.config_fields.tier_registry import ConfigFieldTierRegistry
 
 class TestConfigFieldTierRegistry(unittest.TestCase):
     """Test cases for ConfigFieldTierRegistry."""
@@ -292,7 +291,6 @@ class TestConfigFieldTierRegistry(unittest.TestCase):
         for field in system_fields:
             tier = ConfigFieldTierRegistry.get_tier(field)
             self.assertEqual(tier, 2, f"System field '{field}' should be Tier 2")
-
 
 if __name__ == '__main__':
     unittest.main()

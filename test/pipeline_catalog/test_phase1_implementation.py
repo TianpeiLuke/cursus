@@ -13,23 +13,22 @@ from pathlib import Path
 from typing import Dict, Any
 
 # Import the Phase 1 components
-from src.cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
+from cursus.pipeline_catalog.shared_dags.enhanced_metadata import (
     EnhancedDAGMetadata, ZettelkastenMetadata, ComplexityLevel, PipelineFramework,
     DAGMetadataAdapter, validate_enhanced_dag_metadata
 )
-from src.cursus.pipeline_catalog.shared_dags.registry_sync import (
+from cursus.pipeline_catalog.shared_dags.registry_sync import (
     DAGMetadataRegistrySync, RegistryValidationError
 )
-from src.cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
-from src.cursus.pipeline_catalog.utils.connection_traverser import ConnectionTraverser, PipelineConnection
-from src.cursus.pipeline_catalog.utils.tag_discovery import TagBasedDiscovery
-from src.cursus.pipeline_catalog.utils.recommendation_engine import (
+from cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
+from cursus.pipeline_catalog.utils.connection_traverser import ConnectionTraverser, PipelineConnection
+from cursus.pipeline_catalog.utils.tag_discovery import TagBasedDiscovery
+from cursus.pipeline_catalog.utils.recommendation_engine import (
     PipelineRecommendationEngine, RecommendationResult, CompositionRecommendation
 )
-from src.cursus.pipeline_catalog.utils.registry_validator import (
+from cursus.pipeline_catalog.utils.registry_validator import (
     RegistryValidator, ValidationReport, ValidationSeverity
 )
-
 
 class TestEnhancedDAGMetadata:
     """Test Enhanced DAGMetadata system."""
@@ -162,7 +161,6 @@ class TestEnhancedDAGMetadata:
                 edge_count=2
             )
 
-
 class TestRegistrySync:
     """Test Registry Synchronization infrastructure."""
     
@@ -268,7 +266,6 @@ class TestRegistrySync:
         assert stats["total_pipelines"] == 1
         assert "frameworks" in stats
         assert "xgboost" in stats["frameworks"]
-
 
 class TestCatalogRegistry:
     """Test Catalog Registry management."""
@@ -380,7 +377,6 @@ class TestCatalogRegistry:
         
         connections = self.registry.get_pipeline_connections("pipeline1")
         assert len(connections.get("alternatives", [])) == 0
-
 
 class TestUtilityFunctions:
     """Test utility functions integration."""
@@ -561,7 +557,6 @@ class TestUtilityFunctions:
         assert "principle_scores" in principles
         assert principles["overall_compliance"] >= 0.0
 
-
 class TestIntegration:
     """Test integration between all Phase 1 components."""
     
@@ -625,7 +620,6 @@ class TestIntegration:
         
         print("✅ End-to-end integration test passed!")
 
-
 def test_phase1_implementation():
     """Main test function to validate Phase 1 implementation."""
     print("🚀 Starting Phase 1 Implementation Tests...")
@@ -669,7 +663,6 @@ def test_phase1_implementation():
                     instance.teardown_method()
     
     print("🎉 All Phase 1 tests passed!")
-
 
 if __name__ == "__main__":
     test_phase1_implementation()

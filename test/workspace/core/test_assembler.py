@@ -10,10 +10,9 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
-from src.cursus.workspace.core.assembler import WorkspacePipelineAssembler
-from src.cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
-from src.cursus.api.dag.base_dag import PipelineDAG
-
+from cursus.workspace.core.assembler import WorkspacePipelineAssembler
+from cursus.workspace.core.config import WorkspaceStepDefinition, WorkspacePipelineDefinition
+from cursus.api.dag.base_dag import PipelineDAG
 
 class TestWorkspacePipelineAssembler(unittest.TestCase):
     """Test cases for WorkspacePipelineAssembler."""
@@ -526,7 +525,6 @@ class TestWorkspacePipelineAssembler(unittest.TestCase):
             # Check assembly plan
             self.assertTrue(preview['assembly_plan']['dag_valid'])
             self.assertIn('build_order', preview['assembly_plan'])
-
 
 if __name__ == '__main__':
     unittest.main()

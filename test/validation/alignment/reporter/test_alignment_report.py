@@ -5,13 +5,12 @@ Test suite for AlignmentReport class.
 import unittest
 import json
 
-from src.cursus.validation.alignment.alignment_reporter import (
+from cursus.validation.alignment.alignment_reporter import (
     AlignmentReport, ValidationResult, AlignmentSummary
 )
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
-
 
 class TestAlignmentReport(unittest.TestCase):
     """Test AlignmentReport class."""
@@ -160,7 +159,6 @@ class TestAlignmentReport(unittest.TestCase):
         self.assertIn('<html>', html_output)
         self.assertIn('Alignment Validation Report', html_output)
         self.assertIn('test1', html_output)
-
 
 if __name__ == '__main__':
     unittest.main()

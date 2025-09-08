@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
-from src.cursus.registry.hybrid.utils import (
+from cursus.registry.hybrid.utils import (
     RegistryLoadError,
     load_registry_module,
     get_step_names_from_module,
@@ -26,8 +26,7 @@ from src.cursus.registry.hybrid.utils import (
     format_registry_load_error,
     format_validation_error
 )
-from src.cursus.registry.hybrid.models import StepDefinition, RegistryType
-
+from cursus.registry.hybrid.models import StepDefinition, RegistryType
 
 class TestRegistryLoading(unittest.TestCase):
     """Test registry loading functions."""
@@ -101,7 +100,6 @@ STEP_NAMES = {
         
         result = get_step_names_from_module(mock_module)
         self.assertEqual(result, {})
-
 
 class TestStepDefinitionConversion(unittest.TestCase):
     """Test step definition conversion functions."""
@@ -230,7 +228,6 @@ class TestStepDefinitionConversion(unittest.TestCase):
         self.assertEqual(step2.name, "TestStep2")
         self.assertEqual(step2.config_class, "TestStep2Config")
 
-
 class TestValidationFunctions(unittest.TestCase):
     """Test validation functions."""
     
@@ -322,7 +319,6 @@ class TestValidationFunctions(unittest.TestCase):
                 step_name="Invalid@Step!"
             )
 
-
 class TestErrorFormatting(unittest.TestCase):
     """Test error formatting functions."""
     
@@ -404,7 +400,6 @@ class TestErrorFormatting(unittest.TestCase):
         
         self.assertIn("Registry error: Something went wrong", result)
 
-
 class TestRegistryLoadError(unittest.TestCase):
     """Test RegistryLoadError exception."""
     
@@ -416,10 +411,9 @@ class TestRegistryLoadError(unittest.TestCase):
     
     def test_registry_load_error_inheritance(self):
         """Test RegistryLoadError inheritance."""
-        from src.cursus.registry.exceptions import RegistryError
+        from cursus.registry.exceptions import RegistryError
         error = RegistryLoadError("Test error")
         self.assertIsInstance(error, RegistryError)
-
 
 if __name__ == "__main__":
     unittest.main()

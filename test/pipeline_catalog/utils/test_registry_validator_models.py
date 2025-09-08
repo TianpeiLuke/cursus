@@ -5,12 +5,11 @@ Tests the validation issue models and enums used by the registry validator.
 """
 
 import pytest
-from src.cursus.pipeline_catalog.utils.registry_validator import (
+from cursus.pipeline_catalog.utils.registry_validator import (
     ValidationSeverity, ValidationIssue, AtomicityViolation,
     ConnectionError, MetadataError, TagConsistencyError, IndependenceError,
     ValidationReport
 )
-
 
 class TestValidationSeverity:
     """Test suite for ValidationSeverity enum."""
@@ -20,7 +19,6 @@ class TestValidationSeverity:
         assert ValidationSeverity.ERROR.value == "error"
         assert ValidationSeverity.WARNING.value == "warning"
         assert ValidationSeverity.INFO.value == "info"
-
 
 class TestValidationIssue:
     """Test suite for ValidationIssue model."""
@@ -55,7 +53,6 @@ class TestValidationIssue:
         assert issue.pipeline_id is None
         assert issue.message == "Minimal issue"
         assert issue.suggested_fix is None
-
 
 class TestSpecializedValidationIssues:
     """Test suite for specialized validation issue classes."""
@@ -139,7 +136,6 @@ class TestSpecializedValidationIssues:
         assert "fully_self_contained" in error.message
         assert "has many dependencies" in error.message
         assert error.suggested_fix == "Reduce dependencies"
-
 
 class TestValidationReport:
     """Test suite for ValidationReport model."""

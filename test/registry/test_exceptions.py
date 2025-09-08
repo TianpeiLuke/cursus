@@ -1,8 +1,7 @@
 """Unit tests for the registry exceptions module."""
 
 import unittest
-from src.cursus.registry.exceptions import RegistryError
-
+from cursus.registry.exceptions import RegistryError
 
 class TestRegistryExceptions(unittest.TestCase):
     """Test case for registry exception classes."""
@@ -82,7 +81,6 @@ class TestRegistryExceptions(unittest.TestCase):
         self.assertEqual(error_str, message)
         self.assertNotIn("Unresolvable step types", error_str)
         self.assertNotIn("Available builders", error_str)
-
 
 if __name__ == '__main__':
     unittest.main()

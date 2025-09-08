@@ -15,7 +15,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 # Import directly from the module to avoid any caching issues
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 
-
 def test_tabular_preprocessing_builder():
     """Test the TabularPreprocessingStepBuilder with enhanced system."""
     print("=" * 80)
@@ -55,7 +54,6 @@ def test_tabular_preprocessing_builder():
     except Exception as e:
         print(f"Error testing TabularPreprocessingStepBuilder: {e}")
         return None
-
 
 def test_xgboost_training_builder():
     """Test the XGBoostTrainingStepBuilder with enhanced system."""
@@ -97,7 +95,6 @@ def test_xgboost_training_builder():
         print(f"Error testing XGBoostTrainingStepBuilder: {e}")
         return None
 
-
 def test_model_eval_builder():
     """Test the ModelEvalStepBuilder with enhanced system."""
     print("\n" + "=" * 80)
@@ -138,7 +135,6 @@ def test_model_eval_builder():
         print(f"Error testing XGBoostModelEvalStepBuilder: {e}")
         return None
 
-
 def test_pytorch_training_builder():
     """Test the PyTorchTrainingStepBuilder with enhanced system."""
     print("\n" + "=" * 80)
@@ -178,7 +174,6 @@ def test_pytorch_training_builder():
     except Exception as e:
         print(f"Error testing PyTorchTrainingStepBuilder: {e}")
         return None
-
 
 def main():
     """Run tests on multiple real step builders with enhanced scoring and reporting."""
@@ -251,7 +246,6 @@ def main():
     print("\n" + "=" * 80)
     print("Enhanced Universal Step Builder Tester - Testing Complete")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     main()

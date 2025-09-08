@@ -3,13 +3,11 @@ Tests for the pipeline catalog utils module.
 """
 
 import json
-import os
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from src.cursus.pipeline_catalog import utils
-
+from cursus.pipeline_catalog import utils
 
 class TestPipelineCatalogUtils(unittest.TestCase):
     """Test cases for the pipeline catalog utils module."""
@@ -137,7 +135,6 @@ class TestPipelineCatalogUtils(unittest.TestCase):
         
         features = utils.get_all_features()
         self.assertEqual(set(features), {"training", "evaluation", "registration"})
-
 
 if __name__ == "__main__":
     unittest.main()

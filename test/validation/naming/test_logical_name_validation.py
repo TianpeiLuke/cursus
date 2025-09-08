@@ -2,17 +2,9 @@
 Unit tests for logical name validation.
 """
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import unittest
 
-from src.cursus.validation.naming.naming_standard_validator import NamingStandardValidator
-
+from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
 class TestLogicalNameValidation(unittest.TestCase):
     """Test logical name validation."""
@@ -94,7 +86,6 @@ class TestLogicalNameValidation(unittest.TestCase):
         # The current implementation doesn't handle None properly, so this will raise TypeError
         with self.assertRaises(TypeError):
             self.validator._validate_logical_name(None, "Test")
-
 
 if __name__ == '__main__':
     unittest.main()

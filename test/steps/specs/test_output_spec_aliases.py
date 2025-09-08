@@ -13,11 +13,10 @@ import os
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from src.cursus.core.base.specification_base import (
+from cursus.core.base.specification_base import (
     OutputSpec, StepSpecification, DependencySpec, DependencyType, NodeType
 )
 from pydantic import ValidationError
-
 
 class TestOutputSpecAliases(unittest.TestCase):
     """Test cases for OutputSpec alias functionality."""
@@ -317,7 +316,6 @@ class TestOutputSpecAliases(unittest.TestCase):
             )
         
         self.assertIn("conflicts with existing name or alias", str(context.exception))
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

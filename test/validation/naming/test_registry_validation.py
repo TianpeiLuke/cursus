@@ -2,18 +2,10 @@
 Unit tests for registry validation functionality.
 """
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import unittest
 from unittest.mock import Mock, patch
 
-from src.cursus.validation.naming.naming_standard_validator import NamingStandardValidator
-
+from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
 class TestRegistryValidation(unittest.TestCase):
     """Test registry validation functionality."""
@@ -141,7 +133,6 @@ class TestRegistryValidation(unittest.TestCase):
             with self.subTest(step_type=step_type):
                 violations = self.validator._validate_sagemaker_step_type(step_type, "Test")
                 self.assertGreater(len(violations), 0, f"Invalid SageMaker step type '{step_type}' should have violations")
-
 
 if __name__ == '__main__':
     unittest.main()

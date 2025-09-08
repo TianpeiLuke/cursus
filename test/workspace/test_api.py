@@ -7,8 +7,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
-from src.cursus.workspace.api import WorkspaceAPI, WorkspaceSetupResult, ValidationReport
-
+from cursus.workspace.api import WorkspaceAPI, WorkspaceSetupResult, ValidationReport
 
 class TestWorkspaceAPI(unittest.TestCase):
     """Test cases for WorkspaceAPI."""
@@ -60,7 +59,7 @@ class TestWorkspaceAPI(unittest.TestCase):
     def test_get_system_health(self):
         """Test system health reporting."""
         # Test system health
-        from src.cursus.workspace.api import HealthReport
+        from cursus.workspace.api import HealthReport
         health = self.api.get_system_health()
         self.assertIsInstance(health, HealthReport)
         self.assertTrue(hasattr(health, 'overall_status'))
@@ -74,7 +73,6 @@ class TestWorkspaceAPI(unittest.TestCase):
             dry_run=True
         )
         self.assertIsNotNone(cleanup_result)
-
 
 if __name__ == '__main__':
     unittest.main()

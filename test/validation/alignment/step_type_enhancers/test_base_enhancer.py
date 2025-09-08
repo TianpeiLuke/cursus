@@ -7,13 +7,12 @@ Tests the abstract base class for all step type enhancers.
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from abc import ABC
-from src.cursus.validation.alignment.step_type_enhancers.base_enhancer import BaseStepEnhancer
-from src.cursus.validation.alignment.core_models import (
+from cursus.validation.alignment.step_type_enhancers.base_enhancer import BaseStepEnhancer
+from cursus.validation.alignment.core_models import (
     ValidationResult,
     StepTypeAwareAlignmentIssue,
     SeverityLevel
 )
-
 
 class ConcreteStepEnhancer(BaseStepEnhancer):
     """Concrete implementation of BaseStepEnhancer for testing."""
@@ -33,7 +32,6 @@ class ConcreteStepEnhancer(BaseStepEnhancer):
             )
         ]
         return self._merge_results(existing_results, additional_issues)
-
 
 class TestBaseStepEnhancer(unittest.TestCase):
     """Test base step enhancer functionality."""
@@ -268,7 +266,6 @@ class TestBaseStepEnhancer(unittest.TestCase):
             self.assertEqual(issue.category, "test_enhancement")
             self.assertEqual(issue.step_type, "TestStep")
 
-
 class TestBaseStepEnhancerEdgeCases(unittest.TestCase):
     """Test edge cases for BaseStepEnhancer."""
 
@@ -287,7 +284,6 @@ class TestBaseStepEnhancerEdgeCases(unittest.TestCase):
         enhancer = ConcreteStepEnhancer("Test")
         self.assertIsInstance(enhancer, BaseStepEnhancer)
         self.assertIsInstance(enhancer, ABC)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,34 +17,29 @@ from unittest.mock import patch, mock_open, MagicMock
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.cursus.core.config_fields.config_class_detector import (
+from cursus.core.config_fields.config_class_detector import (
     ConfigClassDetector,
     detect_config_classes_from_json
 )
 from pydantic import BaseModel
-
 
 class MockConfigA(BaseModel):
     """Mock config class A for testing."""
     name: str = "mock_a"
     value: int = 1
 
-
 class MockConfigB(BaseModel):
     """Mock config class B for testing."""
     name: str = "mock_b"
     value: int = 2
 
-
 class BasePipelineConfig(BaseModel):
     """Mock base pipeline config for testing."""
     pipeline_name: str = "test_pipeline"
 
-
 class ProcessingStepConfigBase(BaseModel):
     """Mock processing step config base for testing."""
     step_name: str = "test_step"
-
 
 class TestConfigClassDetector(unittest.TestCase):
     """Test cases for ConfigClassDetector."""
@@ -427,7 +422,6 @@ class TestConfigClassDetector(unittest.TestCase):
         except Exception as e:
             # If it raises an exception, that's also acceptable behavior
             self.assertIsInstance(e, (TypeError, AttributeError))
-
 
 if __name__ == '__main__':
     unittest.main()

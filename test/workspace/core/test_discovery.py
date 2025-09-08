@@ -12,8 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from src.cursus.workspace.core.discovery import WorkspaceDiscoveryManager, ComponentInventory, DependencyGraph
-
+from cursus.workspace.core.discovery import WorkspaceDiscoveryManager, ComponentInventory, DependencyGraph
 
 class TestWorkspaceDiscoveryManager(unittest.TestCase):
     """Test suite for WorkspaceDiscoveryManager."""
@@ -412,7 +411,6 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
         # discover_components should handle this gracefully
         result = discovery_manager.discover_components()
         self.assertIn("error", result)
-
 
 if __name__ == "__main__":
     unittest.main()

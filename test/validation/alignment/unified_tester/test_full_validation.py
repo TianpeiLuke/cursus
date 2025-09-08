@@ -11,12 +11,11 @@ import json
 # Add the project root to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
-from src.cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-from src.cursus.validation.alignment.alignment_reporter import ValidationResult
-from src.cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.alignment.alignment_reporter import ValidationResult
+from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
-
 
 class TestFullValidation(unittest.TestCase):
     """Test full validation functionality in UnifiedAlignmentTester."""
@@ -589,7 +588,6 @@ class TestFullValidation(unittest.TestCase):
             # Should be PASSING since all levels pass (warnings don't fail the test)
             self.assertIn(script_result['overall_status'], ["PASSING", "FAILING"])
             self.assertEqual(script_result['script_name'], "payload")
-
 
 if __name__ == '__main__':
     unittest.main()

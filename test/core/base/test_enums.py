@@ -2,15 +2,7 @@ import unittest
 from typing import Dict, Set
 import logging
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.core.base.enums import DependencyType, NodeType
-
+from cursus.core.base.enums import DependencyType, NodeType
 
 class TestDependencyType(unittest.TestCase):
     """Test cases for DependencyType enum."""
@@ -149,7 +141,6 @@ class TestDependencyType(unittest.TestCase):
         self.assertIn(DependencyType.HYPERPARAMETERS, all_types)
         self.assertIn(DependencyType.PAYLOAD_SAMPLES, all_types)
         self.assertIn(DependencyType.CUSTOM_PROPERTY, all_types)
-
 
 class TestNodeType(unittest.TestCase):
     """Test cases for NodeType enum."""
@@ -297,7 +288,6 @@ class TestNodeType(unittest.TestCase):
         singular = NodeType.SINGULAR
         self.assertEqual(singular.value, "singular")
 
-
 class TestEnumInteraction(unittest.TestCase):
     """Test cases for interactions between different enums."""
     
@@ -348,7 +338,6 @@ class TestEnumInteraction(unittest.TestCase):
         self.assertNotIsInstance(dep, NodeType)
         self.assertNotIsInstance(node, DependencyType)
 
-
 class TestEnumEdgeCases(unittest.TestCase):
     """Test edge cases and error conditions."""
     
@@ -382,7 +371,6 @@ class TestEnumEdgeCases(unittest.TestCase):
         self.assertTrue(node)
         self.assertTrue(bool(dep))
         self.assertTrue(bool(node))
-
 
 if __name__ == '__main__':
     # Set up logging for tests

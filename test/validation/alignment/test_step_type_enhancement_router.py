@@ -6,15 +6,14 @@ Tests step type enhancement routing and orchestration functionality.
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from src.cursus.validation.alignment.step_type_enhancement_router import (
+from cursus.validation.alignment.step_type_enhancement_router import (
     StepTypeEnhancementRouter
 )
-from src.cursus.validation.alignment.core_models import (
+from cursus.validation.alignment.core_models import (
     ValidationResult,
     StepTypeAwareAlignmentIssue,
     SeverityLevel
 )
-
 
 class TestStepTypeEnhancementRouter(unittest.TestCase):
     """Test step type enhancement router functionality."""
@@ -317,7 +316,6 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
         self.assertEqual(len(result.issues), 2)
         self.assertIn(original_issue, result.issues)
         self.assertIn(additional_issue, result.issues)
-
 
 if __name__ == '__main__':
     unittest.main()

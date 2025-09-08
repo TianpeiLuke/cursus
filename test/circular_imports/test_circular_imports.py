@@ -15,12 +15,6 @@ from pathlib import Path
 import traceback
 import warnings
 
-# Add the project root to the Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-
 class CircularImportDetector:
     """
     Utility class to detect circular imports in a package.
@@ -176,7 +170,6 @@ class CircularImportDetector:
         ]
         
         return results
-
 
 class TestCircularImports(unittest.TestCase):
     """Test suite for detecting circular imports in the cursus package."""
@@ -372,7 +365,6 @@ class TestCircularImports(unittest.TestCase):
         
         print(f"  ✅ Import order independence verified")
 
-
 def run_circular_import_tests():
     """Run the circular import tests with detailed output."""
     import io
@@ -468,7 +460,6 @@ def run_circular_import_tests():
         print(f"\n⚠️  Warning: Could not save output file: {e}")
     
     return success
-
 
 if __name__ == '__main__':
     # Run the tests

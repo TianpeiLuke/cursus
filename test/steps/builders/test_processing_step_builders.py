@@ -20,7 +20,6 @@ from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 from cursus.core.base.builder_base import StepBuilderBase
 from cursus.registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
 
-
 class ProcessingStepBuilderTestSuite:
     """
     Comprehensive test suite for all Processing step builders.
@@ -388,7 +387,6 @@ class ProcessingStepBuilderTestSuite:
                 "details": {"exception": str(e)}
             }
 
-
 class TestProcessingStepBuilders(unittest.TestCase):
     """
     Test cases for all Processing step builders using pytest parametrization.
@@ -539,19 +537,16 @@ class TestProcessingStepBuilders(unittest.TestCase):
         if failed_critical:
             self.fail(f"Critical tests failed:\n" + "\n".join(failed_critical))
 
-
 # Pytest parametrized tests for individual builder testing
 @pytest.fixture
 def processing_test_suite():
     """Fixture to provide the test suite."""
     return ProcessingStepBuilderTestSuite()
 
-
 @pytest.fixture
 def available_processing_builders(processing_test_suite):
     """Fixture to provide available Processing builders."""
     return processing_test_suite.get_available_processing_builders()
-
 
 @pytest.mark.parametrize("step_name,builder_class", 
                         ProcessingStepBuilderTestSuite().get_available_processing_builders())
@@ -570,7 +565,6 @@ def test_individual_processing_builder_universal_compliance(step_name, builder_c
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
 
-
 @pytest.mark.parametrize("step_name,builder_class", 
                         ProcessingStepBuilderTestSuite().get_available_processing_builders())
 def test_individual_processing_builder_processing_specific(step_name, builder_class):
@@ -586,7 +580,6 @@ def test_individual_processing_builder_processing_specific(step_name, builder_cl
         if test_name in results:
             result = results[test_name]
             assert result["passed"], f"{test_name} failed for {step_name}: {result.get('error')}"
-
 
 if __name__ == '__main__':
     # Run with unittest

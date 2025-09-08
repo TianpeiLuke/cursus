@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 # Import the functions to be tested
-from src.cursus.steps.scripts.xgboost_model_evaluation import (
+from cursus.steps.scripts.xgboost_model_evaluation import (
     load_model_artifacts,
     preprocess_eval_data,
     log_metrics_summary,
@@ -25,7 +25,6 @@ from src.cursus.steps.scripts.xgboost_model_evaluation import (
     evaluate_model,
     main
 )
-
 
 class TestModelEvaluationHelpers(unittest.TestCase):
     """Tests for helper functions in the model evaluation script."""
@@ -346,7 +345,6 @@ class TestModelEvaluationHelpers(unittest.TestCase):
         mock_plt.savefig.assert_called_once()
         mock_plt.close.assert_called_once()
 
-
 class TestModelEvaluationIntegration(unittest.TestCase):
     """Integration tests for model evaluation functions."""
 
@@ -455,7 +453,6 @@ class TestModelEvaluationIntegration(unittest.TestCase):
         self.assertEqual(mock_roc_curve.call_count, 3)  # 3 classes
         self.assertEqual(mock_pr_curve.call_count, 3)
 
-
 class TestModelEvaluationMain(unittest.TestCase):
     """Tests for the main function of model evaluation script."""
 
@@ -537,7 +534,6 @@ class TestModelEvaluationMain(unittest.TestCase):
         mock_load_data.assert_called_once()
         mock_preprocess.assert_called_once()
         mock_evaluate.assert_called_once()
-
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

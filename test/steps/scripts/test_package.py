@@ -1,21 +1,14 @@
 # test/test_mims_package.py
 import unittest
 from unittest.mock import patch, MagicMock
-import os
 import tempfile
 import shutil
 import tarfile
 from pathlib import Path
 import logging
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 # Import the functions and main entrypoint from the script to be tested
-from src.cursus.steps.scripts.package import (
+from cursus.steps.scripts.package import (
     ensure_directory,
     check_file_exists,
     list_directory_contents,
@@ -88,7 +81,6 @@ class TestMimsPackagingHelpers(unittest.TestCase):
         # Verify the extracted contents
         self.assertTrue((extract_dir / "file1.txt").exists())
         self.assertTrue((extract_dir / "code" / "inference.py").exists())
-
 
 class TestMimsPackagingMainFlow(unittest.TestCase):
     """

@@ -5,17 +5,9 @@ import logging
 import tempfile
 import os
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from src.cursus.core.base.contract_base import (
+from cursus.core.base.contract_base import (
     ScriptContract, ValidationResult, ScriptAnalyzer
 )
-
 
 class TestValidationResult(unittest.TestCase):
     """Test cases for ValidationResult class."""
@@ -89,7 +81,6 @@ class TestValidationResult(unittest.TestCase):
         self.assertTrue(combined.is_valid)
         self.assertEqual(combined.errors, [])
         self.assertEqual(combined.warnings, ["Warning 1"])
-
 
 class TestScriptContract(unittest.TestCase):
     """Test cases for ScriptContract class."""
@@ -291,7 +282,6 @@ class TestScriptContract(unittest.TestCase):
         self.assertTrue(any("undeclared input path" in warning for warning in result.warnings))
         self.assertTrue(any("output-path" in warning for warning in result.warnings))
 
-
 class TestScriptAnalyzer(unittest.TestCase):
     """Test cases for ScriptAnalyzer class."""
     
@@ -442,7 +432,6 @@ if __name__ == "__main__":
                 self.assertEqual(env_vars1, env_vars2)
             finally:
                 os.unlink(f.name)
-
 
 if __name__ == '__main__':
     # Set up logging for tests

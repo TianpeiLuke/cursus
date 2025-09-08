@@ -8,12 +8,11 @@ Tests the integration of RegistryManager with complex pipeline scenarios includi
 """
 
 import unittest
-from src.cursus.core.deps import RegistryManager
-from src.cursus.core.base.specification_base import (
+from cursus.core.deps import RegistryManager
+from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
 from ..core.deps.test_helpers import IsolatedTestCase
-
 
 class TestRegistryManagerPipelineIntegration(IsolatedTestCase):
     """Test RegistryManager integration with pipeline scenarios."""
@@ -132,7 +131,6 @@ class TestRegistryManagerPipelineIntegration(IsolatedTestCase):
         # Clear all remaining
         self.manager.clear_all_contexts()
         self.assertEqual(len(self.manager.list_contexts()), 0)
-
 
 if __name__ == '__main__':
     unittest.main()

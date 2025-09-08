@@ -3,10 +3,9 @@
 import unittest
 import logging
 
-from src.cursus.registry.builder_registry import StepBuilderRegistry, get_global_registry
-from src.cursus.registry.step_names import STEP_NAMES, get_all_step_names
-from src.cursus.registry.exceptions import RegistryError
-
+from cursus.registry.builder_registry import StepBuilderRegistry, get_global_registry
+from cursus.registry.step_names import STEP_NAMES, get_all_step_names
+from cursus.registry.exceptions import RegistryError
 
 class TestBuilderRegistry(unittest.TestCase):
     """Test case for StepBuilderRegistry."""
@@ -96,8 +95,6 @@ class TestBuilderRegistry(unittest.TestCase):
         reg1 = get_global_registry()
         reg2 = get_global_registry()
         self.assertIs(reg1, reg2)
-    
-
 
 if __name__ == '__main__':
     unittest.main()

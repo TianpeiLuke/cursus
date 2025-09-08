@@ -16,9 +16,8 @@ project_root = os.path.join(os.path.dirname(__file__), '..', '..', '..')
 src_path = os.path.join(project_root, 'src')
 sys.path.insert(0, project_root)
 
-from src.cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
-from src.cursus.validation.alignment.static_analysis.builder_analyzer import BuilderArgumentExtractor, extract_builder_arguments
-
+from cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
+from cursus.validation.alignment.static_analysis.builder_analyzer import BuilderArgumentExtractor, extract_builder_arguments
 
 class TestEnhancedArgumentValidation(unittest.TestCase):
     """Test enhanced argument validation with builder integration."""
@@ -285,7 +284,6 @@ class {expected_script.title().replace('_', '')}Builder:
         for expected_script in builders.values():
             args = extract_builder_arguments(expected_script, str(self.builders_dir))
             self.assertEqual(args, {"job-type"})
-
 
 if __name__ == '__main__':
     unittest.main()

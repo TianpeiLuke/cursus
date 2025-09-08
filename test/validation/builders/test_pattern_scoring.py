@@ -15,7 +15,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 from cursus.validation.builders.scoring import StepBuilderScorer, score_builder_results
 
-
 class TestPatternBasedScoring(unittest.TestCase):
     """Test cases for the enhanced pattern-based scoring system."""
     
@@ -335,7 +334,6 @@ class TestPatternBasedScoring(unittest.TestCase):
         self.assertEqual(detected, len(legacy_results))
         self.assertEqual(detection_summary["summary"]["undetected"], 0)
 
-
 class TestPatternScoringIntegration(unittest.TestCase):
     """Integration tests for the pattern-based scoring system."""
     
@@ -364,7 +362,6 @@ class TestPatternScoringIntegration(unittest.TestCase):
         # Verify failed tests are captured
         self.assertEqual(len(report["failed_tests"]), 1)
         self.assertEqual(report["failed_tests"][0]["name"], "level3_test_path_mapping")
-
 
 def demonstrate_pattern_detection():
     """Demonstrate the pattern-based detection capabilities."""
@@ -421,7 +418,6 @@ def demonstrate_pattern_detection():
     
     # Print report with detection details
     scorer.print_report(show_test_detection=True)
-
 
 if __name__ == "__main__":
     # Run demonstration if called directly

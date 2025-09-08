@@ -21,7 +21,6 @@ from cursus.validation.alignment.workflow_integration import (
 )
 from cursus.validation.alignment.alignment_reporter import AlignmentIssue, SeverityLevel
 
-
 class TestWorkflowIntegration(unittest.TestCase):
     """Test the complete alignment validation workflow integration."""
     
@@ -415,7 +414,6 @@ class TestWorkflowIntegration(unittest.TestCase):
         self.assertIn('next_steps', action_plan)
         self.assertGreater(len(action_plan['next_steps']), 0)
 
-
 def run_workflow_demo():
     """Run a comprehensive demonstration of the workflow integration."""
     print("=" * 80)
@@ -470,7 +468,6 @@ def run_workflow_demo():
         
     finally:
         test_instance.tearDown()
-
 
 if __name__ == "__main__":
     # Run demo first

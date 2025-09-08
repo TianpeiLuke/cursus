@@ -15,10 +15,9 @@ from unittest.mock import patch, MagicMock
 # Add the project root to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-from src.cursus.validation.alignment.static_analysis.builder_analyzer import (
+from cursus.validation.alignment.static_analysis.builder_analyzer import (
     BuilderRegistry, BuilderArgumentExtractor, extract_builder_arguments
 )
-
 
 class TestBuilderArgumentDebug(unittest.TestCase):
     """Debug test for builder argument detection."""
@@ -48,7 +47,6 @@ from pathlib import Path
 
 from ..configs.config_tabular_preprocessing_step import TabularPreprocessingConfig
 from ...core.base.builder_base import StepBuilderBase
-
 
 class TabularPreprocessingStepBuilder(StepBuilderBase):
     """Builder for a Tabular Preprocessing ProcessingStep."""
@@ -263,7 +261,6 @@ class TabularPreprocessingStepBuilder:
         for expected in expected_names:
             self.assertIn(expected, script_names,
                          f"Expected '{expected}' in extracted names: {script_names}")
-
 
 if __name__ == '__main__':
     # Run with verbose output

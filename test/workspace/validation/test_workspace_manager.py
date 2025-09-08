@@ -9,20 +9,18 @@ Tests workspace management functionality including:
 - Workspace structure validation
 """
 
-import os
 import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
-from src.cursus.workspace.validation.workspace_manager import (
+from cursus.workspace.validation.workspace_manager import (
     WorkspaceManager,
     WorkspaceConfig,
     DeveloperInfo,
     WorkspaceInfo
 )
-
 
 class TestWorkspaceManager(unittest.TestCase):
     """Test cases for WorkspaceManager."""
@@ -504,7 +502,6 @@ class TestWorkspaceManager(unittest.TestCase):
         workspace_info = manager.discover_workspaces(self.workspace_root)
         
         self.assertEqual(workspace_info.config_file, str(config_file))
-
 
 if __name__ == '__main__':
     unittest.main()
