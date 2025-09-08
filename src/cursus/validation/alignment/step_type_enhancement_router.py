@@ -83,10 +83,10 @@ class StepTypeEnhancementRouter:
             enhancer_class_name = self._enhancer_classes.get(step_type)
             if enhancer_class_name:
                 try:
-                    # Import the enhancer class dynamically using importlib
+                    # Import the enhancer class dynamically using relative import
                     import importlib
-                    module_name = f"cursus.validation.alignment.step_type_enhancers.{step_type.lower()}_enhancer"
-                    module = importlib.import_module(module_name)
+                    relative_module_name = f".step_type_enhancers.{step_type.lower()}_enhancer"
+                    module = importlib.import_module(relative_module_name, package=__package__)
                     enhancer_class = getattr(module, enhancer_class_name)
                     self._enhancers[step_type] = enhancer_class()
                 except (ImportError, AttributeError) as e:

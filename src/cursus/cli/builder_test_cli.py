@@ -355,14 +355,14 @@ def list_available_builders() -> List[str]:
             module_name = file_path.stem  # filename without extension
             
             try:
-                # Import the module
-                module_path = f"cursus.steps.builders.{module_name}"
-                module = importlib.import_module(module_path)
+                # Import the module using relative import
+                relative_module_path = f"..steps.builders.{module_name}"
+                module = importlib.import_module(relative_module_path, package=__package__)
                 
                 # Find classes that end with "StepBuilder"
                 for name, obj in inspect.getmembers(module, inspect.isclass):
                     if (name.endswith("StepBuilder") and 
-                        obj.__module__ == module_path and  # Ensure it's defined in this module
+                        obj.__module__ == f"cursus.steps.builders.{module_name}" and  # Ensure it's defined in this module
                         name != "StepBuilder"):  # Exclude base classes
                         
                         full_path = f"cursus.steps.builders.{module_name}.{name}"
