@@ -179,8 +179,8 @@ class TestCircularImports(unittest.TestCase):
         """Set up the test class."""
         # Get the project root directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
-        cls.cursus_root = os.path.join(project_root, 'src', 'cursus')
+        # Note: project_root setup handled by conftest.py
+        cls.cursus_root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "cursus")
         cls.detector = CircularImportDetector(cls.cursus_root)
         
     def test_no_circular_imports_in_cursus_package(self):
@@ -445,10 +445,10 @@ def run_circular_import_tests():
     try:
         # Get the project root directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
+        # Note: project_root setup handled by conftest.py
         
         # Ensure slipbox/test directory exists
-        slipbox_test_dir = os.path.join(project_root, 'slipbox', 'test')
+        slipbox_test_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "slipbox", "test")
         os.makedirs(slipbox_test_dir, exist_ok=True)
         
         # Generate output file with timestamp

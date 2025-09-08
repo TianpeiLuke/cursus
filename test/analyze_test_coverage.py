@@ -22,555 +22,332 @@ import ast
 import re
 
 # Add the project root to the Python path
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-)
+# Note: project_root setup handled by conftest.py
 
 class TestCoverageAnalyzer:
     """Comprehensive test coverage analyzer for cursus core package."""
     
-    CORE_COMPONENTS = {
-        'assembler': ('core/assembler', '../src/cursus/core/assembler'),
-        'base': ('core/base', '../src/cursus/core/base'),
-        'compiler': ('core/compiler', '../src/cursus/core/compiler'),
-        'config_fields': ('core/config_fields', '../src/cursus/core/config_fields'),
-        'deps': ('core/deps', '../src/cursus/core/deps')
-    }
-    
     def __init__(self):
-        """Initialize the analyzer."""
-        self.project_root = PROJECT_ROOT
-        self.test_report = None
-        self.coverage_data = {}
-        self.redundancy_data = {}
-        self.function_coverage = {}
+        """Initialize the test coverage analyzer."""
+        self.root = Path(__file__).resolve().parent.parent
+        self.src_dir = self.root / "src" / "cursus" / "core"
+        self.test_dir = self.root / "test" / "core"
         
-    def load_test_report(self, report_path: str = "test/core_test_report.json"):
-        """Load the test report from JSON file."""
-        report_file = self.project_root / report_path
-        if not report_file.exists():
-            print(f"❌ Test report not found: {report_file}")
-            return False
-            
-        try:
-            with open(report_file, 'r', encoding='utf-8') as f:
-                self.test_report = json.load(f)
-            print(f"✅ Loaded test report from: {report_file}")
-            return True
-        except Exception as e:
-            print(f"❌ Failed to load test report: {e}")
-            return False
-    
-    def analyze_source_functions(self, component: str) -> Dict[str, Set[str]]:
-        """Analyze functions in source files for a component."""
-        _, source_path = self.CORE_COMPONENTS[component]
-        source_dir = self.project_root / source_path.replace('../', '')
-        
-        if not source_dir.exists():
-            print(f"⚠️  Source directory not found: {source_dir}")
-            return {}
-        
-        functions_by_file = {}
-        
-        for py_file in source_dir.rglob("*.py"):
-            if py_file.name == "__init__.py":
-                continue
-                
-            try:
-                with open(py_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    
-                tree = ast.parse(content)
-                functions = set()
-                
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.FunctionDef):
-                        if not node.name.startswith('_'):  # Skip private functions
-                            functions.add(node.name)
-                    elif isinstance(node, ast.ClassDef):
-                        for item in node.body:
-                            if isinstance(item, ast.FunctionDef) and not item.name.startswith('_'):
-                                functions.add(f"{node.name}.{item.name}")
-                
-                if functions:
-                    rel_path = str(py_file.relative_to(self.project_root))
-                    functions_by_file[rel_path] = functions
-                    
-            except Exception as e:
-                print(f"⚠️  Could not parse {py_file}: {e}")
-        
-        return functions_by_file
-    
-    def analyze_test_functions(self, component: str) -> Dict[str, Set[str]]:
-        """Analyze test functions for a component."""
-        test_path, _ = self.CORE_COMPONENTS[component]
-        # Use absolute path from project root
-        test_dir = self.project_root / 'test' / test_path
-        
-        if not test_dir.exists():
-            print(f"⚠️  Test directory not found: {test_dir}")
-            return {}
-        
-        test_functions_by_file = {}
-        
-        for py_file in test_dir.rglob("test_*.py"):
-            try:
-                with open(py_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    
-                tree = ast.parse(content)
-                test_functions = set()
-                
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.FunctionDef) and node.name.startswith('test_'):
-                        test_functions.add(node.name)
-                
-                if test_functions:
-                    rel_path = str(py_file.relative_to(self.project_root))
-                    test_functions_by_file[rel_path] = test_functions
-                    
-            except Exception as e:
-                print(f"⚠️  Could not parse {py_file}: {e}")
-        
-        return test_functions_by_file
-    
-    def analyze_function_coverage(self, component: str) -> Dict:
-        """Analyze function coverage for a component."""
-        source_functions = self.analyze_source_functions(component)
-        test_functions = self.analyze_test_functions(component)
-        
-        # Flatten source functions
-        all_source_functions = set()
-        for functions in source_functions.values():
-            all_source_functions.update(functions)
-        
-        # Flatten test functions
-        all_test_functions = set()
-        for functions in test_functions.values():
-            all_test_functions.update(functions)
-        
-        # Analyze which source functions are likely tested
-        tested_functions = set()
-        for test_func in all_test_functions:
-            # Extract potential function name from test name
-            # e.g., test_create_pipeline -> create_pipeline
-            if test_func.startswith('test_'):
-                potential_func = test_func[5:]  # Remove 'test_' prefix
-                
-                # Look for matching source functions
-                for source_func in all_source_functions:
-                    if potential_func in source_func.lower() or source_func.lower() in potential_func:
-                        tested_functions.add(source_func)
-        
-        # Calculate coverage
-        total_functions = len(all_source_functions)
-        tested_count = len(tested_functions)
-        coverage_percentage = (tested_count / total_functions * 100) if total_functions > 0 else 0
-        
-        return {
-            'component': component,
-            'source_files': list(source_functions.keys()),
-            'test_files': list(test_functions.keys()),
-            'total_source_functions': total_functions,
-            'tested_functions': tested_count,
-            'untested_functions': total_functions - tested_count,
-            'coverage_percentage': coverage_percentage,
-            'source_functions_by_file': {k: list(v) for k, v in source_functions.items()},
-            'test_functions_by_file': {k: list(v) for k, v in test_functions.items()},
-            'likely_tested_functions': list(tested_functions),
-            'likely_untested_functions': list(all_source_functions - tested_functions)
-        }
-    
-    def analyze_test_redundancy(self, component: str) -> Dict:
-        """Analyze test redundancy for a component."""
-        test_functions = self.analyze_test_functions(component)
-        
-        # Count test function names across all files
-        function_counts = Counter()
-        function_locations = defaultdict(list)
-        
-        for file_path, functions in test_functions.items():
-            for func in functions:
-                function_counts[func] += 1
-                function_locations[func].append(file_path)
-        
-        # Find redundant tests (same name in multiple files)
-        redundant_tests = {}
-        for func_name, count in function_counts.items():
-            if count > 1:
-                redundant_tests[func_name] = {
-                    'count': count,
-                    'locations': function_locations[func_name]
-                }
-        
-        # Analyze test patterns for potential redundancy
-        pattern_analysis = self._analyze_test_patterns(test_functions)
-        
-        return {
-            'component': component,
-            'total_test_functions': sum(len(funcs) for funcs in test_functions.values()),
-            'unique_test_names': len(function_counts),
-            'redundant_test_names': len(redundant_tests),
-            'redundant_tests': redundant_tests,
-            'pattern_analysis': pattern_analysis
-        }
-    
-    def _analyze_test_patterns(self, test_functions: Dict[str, Set[str]]) -> Dict:
-        """Analyze test patterns for potential redundancy."""
-        patterns = defaultdict(list)
-        
-        for file_path, functions in test_functions.items():
-            for func in functions:
-                # Extract pattern from test name
-                # e.g., test_init_with_required_fields -> init_with_required_fields
-                if func.startswith('test_'):
-                    pattern = func[5:]
-                    patterns[pattern].append((file_path, func))
-        
-        # Find patterns that appear in multiple files
-        redundant_patterns = {}
-        for pattern, occurrences in patterns.items():
-            if len(occurrences) > 1:
-                redundant_patterns[pattern] = occurrences
-        
-        return redundant_patterns
-    
-    def analyze_test_quality(self, component: str) -> Dict:
-        """Analyze test quality metrics for a component."""
-        test_path, _ = self.CORE_COMPONENTS[component]
-        test_dir = Path(test_path)
-        
-        if not test_dir.exists():
-            return {}
-        
-        quality_metrics = {
-            'component': component,
-            'edge_case_coverage': self._analyze_edge_case_coverage(test_dir),
-            'assertion_patterns': self._analyze_assertion_patterns(test_dir),
-            'mock_usage': self._analyze_mock_usage(test_dir),
-            'test_isolation': self._analyze_test_isolation(test_dir)
-        }
-        
-        return quality_metrics
-    
-    def _analyze_edge_case_coverage(self, test_dir: Path) -> Dict:
-        """Analyze edge case coverage in tests."""
-        edge_case_keywords = [
-            'empty', 'null', 'none', 'invalid', 'error', 'exception',
-            'boundary', 'edge', 'limit', 'max', 'min', 'zero'
-        ]
-        
-        edge_case_coverage = {}
-        
-        for py_file in test_dir.rglob("test_*.py"):
-            try:
-                with open(py_file, 'r', encoding='utf-8') as f:
-                    content = f.read().lower()
-                
-                found_keywords = []
-                for keyword in edge_case_keywords:
-                    if keyword in content:
-                        found_keywords.append(keyword)
-                
-                if found_keywords:
-                    rel_path = str(py_file.relative_to(test_dir))
-                    edge_case_coverage[rel_path] = found_keywords
-                    
-            except Exception as e:
-                print(f"⚠️  Could not analyze {py_file}: {e}")
-        
-        return edge_case_coverage
-    
-    def _analyze_assertion_patterns(self, test_dir: Path) -> Dict:
-        """Analyze assertion patterns in tests."""
-        assertion_patterns = defaultdict(int)
-        
-        for py_file in test_dir.rglob("test_*.py"):
-            try:
-                with open(py_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                # Count different assertion types
-                assertions = [
-                    'assertEqual', 'assertNotEqual', 'assertTrue', 'assertFalse',
-                    'assertIn', 'assertNotIn', 'assertIsNone', 'assertIsNotNone',
-                    'assertRaises', 'assertGreater', 'assertLess', 'assertIsInstance'
-                ]
-                
-                for assertion in assertions:
-                    count = content.count(assertion)
-                    if count > 0:
-                        assertion_patterns[assertion] += count
-                        
-            except Exception as e:
-                print(f"⚠️  Could not analyze {py_file}: {e}")
-        
-        return dict(assertion_patterns)
-    
-    def _analyze_mock_usage(self, test_dir: Path) -> Dict:
-        """Analyze mock usage in tests."""
-        mock_patterns = defaultdict(int)
-        
-        for py_file in test_dir.rglob("test_*.py"):
-            try:
-                with open(py_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                # Count mock usage patterns
-                mock_keywords = [
-                    'Mock(', 'MagicMock(', '@patch', 'mock.patch',
-                    'return_value', 'side_effect', 'assert_called'
-                ]
-                
-                for keyword in mock_keywords:
-                    count = content.count(keyword)
-                    if count > 0:
-                        mock_patterns[keyword] += count
-                        
-            except Exception as e:
-                print(f"⚠️  Could not analyze {py_file}: {e}")
-        
-        return dict(mock_patterns)
-    
-    def _analyze_test_isolation(self, test_dir: Path) -> Dict:
-        """Analyze test isolation patterns."""
-        isolation_patterns = {
-            'setUp_methods': 0,
-            'tearDown_methods': 0,
-            'isolated_test_case_usage': 0,
-            'global_state_resets': 0
-        }
-        
-        for py_file in test_dir.rglob("test_*.py"):
-            try:
-                with open(py_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                isolation_patterns['setUp_methods'] += content.count('def setUp(')
-                isolation_patterns['tearDown_methods'] += content.count('def tearDown(')
-                isolation_patterns['isolated_test_case_usage'] += content.count('IsolatedTestCase')
-                isolation_patterns['global_state_resets'] += content.count('reset_all_global_state')
-                        
-            except Exception as e:
-                print(f"⚠️  Could not analyze {py_file}: {e}")
-        
-        return isolation_patterns
-    
-    def generate_comprehensive_report(self):
-        """Generate comprehensive test coverage and redundancy report."""
-        print("\n" + "="*100)
-        print("CURSUS CORE PACKAGE - COMPREHENSIVE TEST COVERAGE ANALYSIS")
-        print("="*100)
-        
-        if not self.test_report:
-            print("❌ No test report loaded. Please run the core tests first.")
-            return
-        
-        # Overall summary from test report
-        summary = self.test_report.get('summary', {})
-        print(f"\n📊 TEST EXECUTION SUMMARY")
-        print(f"   Total tests: {summary.get('total_tests', 0)}")
-        print(f"   Success rate: {summary.get('success_rate', 0):.1f}%")
-        print(f"   Duration: {summary.get('duration', 0):.2f} seconds")
-        
-        # Analyze each component
-        for component in self.CORE_COMPONENTS.keys():
-            print(f"\n{'='*60}")
-            print(f"COMPONENT: {component.upper()}")
-            print(f"{'='*60}")
-            
-            # Function coverage analysis
-            coverage_data = self.analyze_function_coverage(component)
-            self.coverage_data[component] = coverage_data
-            
-            print(f"\n📈 FUNCTION COVERAGE ANALYSIS")
-            print(f"   Source files: {len(coverage_data['source_files'])}")
-            print(f"   Test files: {len(coverage_data['test_files'])}")
-            print(f"   Total source functions: {coverage_data['total_source_functions']}")
-            print(f"   Likely tested functions: {coverage_data['tested_functions']}")
-            print(f"   Coverage estimate: {coverage_data['coverage_percentage']:.1f}%")
-            
-            if coverage_data['likely_untested_functions']:
-                print(f"\n   🔍 Potentially untested functions:")
-                for func in coverage_data['likely_untested_functions'][:10]:  # Show first 10
-                    print(f"      • {func}")
-                if len(coverage_data['likely_untested_functions']) > 10:
-                    print(f"      ... and {len(coverage_data['likely_untested_functions']) - 10} more")
-            
-            # Redundancy analysis
-            redundancy_data = self.analyze_test_redundancy(component)
-            self.redundancy_data[component] = redundancy_data
-            
-            print(f"\n🔄 TEST REDUNDANCY ANALYSIS")
-            print(f"   Total test functions: {redundancy_data['total_test_functions']}")
-            print(f"   Unique test names: {redundancy_data['unique_test_names']}")
-            print(f"   Redundant test names: {redundancy_data['redundant_test_names']}")
-            
-            if redundancy_data['redundant_tests']:
-                print(f"\n   ⚠️  Redundant test functions:")
-                for func_name, data in list(redundancy_data['redundant_tests'].items())[:5]:
-                    print(f"      • {func_name} (appears {data['count']} times)")
-                    for location in data['locations'][:3]:  # Show first 3 locations
-                        print(f"        - {location}")
-            
-            # Quality analysis
-            quality_data = self.analyze_test_quality(component)
-            
-            print(f"\n🎯 TEST QUALITY ANALYSIS")
-            edge_cases = quality_data.get('edge_case_coverage', {})
-            print(f"   Files with edge case tests: {len(edge_cases)}")
-            
-            assertions = quality_data.get('assertion_patterns', {})
-            total_assertions = sum(assertions.values())
-            print(f"   Total assertions: {total_assertions}")
-            
-            mocks = quality_data.get('mock_usage', {})
-            total_mocks = sum(mocks.values())
-            print(f"   Mock usage instances: {total_mocks}")
-            
-            isolation = quality_data.get('test_isolation', {})
-            print(f"   setUp methods: {isolation.get('setUp_methods', 0)}")
-            print(f"   IsolatedTestCase usage: {isolation.get('isolated_test_case_usage', 0)}")
-        
-        # Cross-component analysis
-        self._generate_cross_component_analysis()
-        
-        # Recommendations
-        self._generate_recommendations()
-        
-        # Save detailed analysis
-        self._save_analysis_report()
-    
-    def _generate_cross_component_analysis(self):
-        """Generate cross-component analysis."""
-        print(f"\n{'='*60}")
-        print("CROSS-COMPONENT ANALYSIS")
-        print(f"{'='*60}")
-        
-        # Overall coverage statistics
-        total_source_functions = sum(data['total_source_functions'] for data in self.coverage_data.values())
-        total_tested_functions = sum(data['tested_functions'] for data in self.coverage_data.values())
-        overall_coverage = (total_tested_functions / total_source_functions * 100) if total_source_functions > 0 else 0
-        
-        print(f"\n📊 OVERALL COVERAGE STATISTICS")
-        print(f"   Total source functions: {total_source_functions}")
-        print(f"   Total tested functions: {total_tested_functions}")
-        print(f"   Overall coverage estimate: {overall_coverage:.1f}%")
-        
-        # Component coverage comparison
-        print(f"\n📈 COMPONENT COVERAGE COMPARISON")
-        coverage_by_component = []
-        for component, data in self.coverage_data.items():
-            coverage_by_component.append((component, data['coverage_percentage']))
-        
-        coverage_by_component.sort(key=lambda x: x[1], reverse=True)
-        
-        for component, coverage in coverage_by_component:
-            status = "🟢" if coverage >= 80 else "🟡" if coverage >= 60 else "🔴"
-            print(f"   {status} {component}: {coverage:.1f}%")
-        
-        # Redundancy comparison
-        print(f"\n🔄 REDUNDANCY COMPARISON")
-        for component, data in self.redundancy_data.items():
-            redundancy_ratio = (data['redundant_test_names'] / data['unique_test_names'] * 100) if data['unique_test_names'] > 0 else 0
-            status = "🔴" if redundancy_ratio > 20 else "🟡" if redundancy_ratio > 10 else "🟢"
-            print(f"   {status} {component}: {redundancy_ratio:.1f}% redundancy ({data['redundant_test_names']}/{data['unique_test_names']})")
-    
-    def _generate_recommendations(self):
-        """Generate actionable recommendations."""
-        print(f"\n{'='*60}")
-        print("RECOMMENDATIONS")
-        print(f"{'='*60}")
-        
-        recommendations = []
-        
-        # Coverage recommendations
-        low_coverage_components = [
-            component for component, data in self.coverage_data.items()
-            if data['coverage_percentage'] < 70
-        ]
-        
-        if low_coverage_components:
-            recommendations.append({
-                'priority': 'HIGH',
-                'category': 'Coverage',
-                'action': f"Improve test coverage for: {', '.join(low_coverage_components)}",
-                'details': "Add tests for untested functions and edge cases"
-            })
-        
-        # Redundancy recommendations
-        high_redundancy_components = [
-            component for component, data in self.redundancy_data.items()
-            if data['redundant_test_names'] > 5
-        ]
-        
-        if high_redundancy_components:
-            recommendations.append({
-                'priority': 'MEDIUM',
-                'category': 'Redundancy',
-                'action': f"Reduce test redundancy in: {', '.join(high_redundancy_components)}",
-                'details': "Consolidate duplicate test functions and patterns"
-            })
-        
-        # Test failures from report
-        if self.test_report:
-            total_failures = self.test_report['summary'].get('total_failures', 0)
-            total_errors = self.test_report['summary'].get('total_errors', 0)
-            
-            if total_failures > 0 or total_errors > 0:
-                recommendations.append({
-                    'priority': 'CRITICAL',
-                    'category': 'Failures',
-                    'action': f"Fix {total_failures} failures and {total_errors} errors",
-                    'details': "Address failing tests before deployment"
-                })
-        
-        # Print recommendations
-        if recommendations:
-            recommendations.sort(key=lambda x: {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}[x['priority']])
-            
-            for i, rec in enumerate(recommendations, 1):
-                priority_icon = {'CRITICAL': '🚨', 'HIGH': '🔴', 'MEDIUM': '🟡', 'LOW': '🟢'}[rec['priority']]
-                print(f"\n{i}. {priority_icon} {rec['priority']} - {rec['category']}")
-                print(f"   Action: {rec['action']}")
-                print(f"   Details: {rec['details']}")
-        else:
-            print("\n🎉 All components are in excellent condition!")
-    
-    def _save_analysis_report(self):
-        """Save detailed analysis report to file."""
-        analysis_data = {
-            'timestamp': self.test_report.get('timestamp') if self.test_report else None,
-            'coverage_analysis': self.coverage_data,
-            'redundancy_analysis': self.redundancy_data,
-            'summary': {
-                'total_components': len(self.CORE_COMPONENTS),
-                'total_source_functions': sum(data['total_source_functions'] for data in self.coverage_data.values()),
-                'total_tested_functions': sum(data['tested_functions'] for data in self.coverage_data.values()),
-                'overall_coverage': sum(data['coverage_percentage'] for data in self.coverage_data.values()) / len(self.coverage_data) if self.coverage_data else 0
+        # Component mapping
+        self.components = {
+            "assembler": {
+                "source_dir": self.src_dir / "assembler",
+                "test_dir": self.test_dir / "assembler"
+            },
+            "base": {
+                "source_dir": self.src_dir / "base", 
+                "test_dir": self.test_dir / "base"
+            },
+            "compiler": {
+                "source_dir": self.src_dir / "compiler",
+                "test_dir": self.test_dir / "compiler"
+            },
+            "config_fields": {
+                "source_dir": self.src_dir / "config_fields",
+                "test_dir": self.test_dir / "config_fields"
+            },
+            "deps": {
+                "source_dir": self.src_dir / "deps",
+                "test_dir": self.test_dir / "deps"
             }
         }
         
-        report_file = self.project_root / 'test' / 'core_coverage_analysis.json'
+        self.coverage_data = {}
+        self.redundancy_data = {}
+    
+    def extract_functions_from_file(self, file_path: Path) -> List[str]:
+        """Extract function and method names from a Python file."""
+        functions = []
+        
         try:
-            with open(report_file, 'w', encoding='utf-8') as f:
-                json.dump(analysis_data, f, indent=2, default=str)
-            print(f"\n💾 Detailed analysis saved to: {report_file}")
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            tree = ast.parse(content)
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    functions.append(node.name)
+                elif isinstance(node, ast.ClassDef):
+                    class_name = node.name
+                    for item in node.body:
+                        if isinstance(item, ast.FunctionDef):
+                            functions.append(f"{class_name}.{item.name}")
+                            functions.append(item.name)  # Also add standalone method name
+                            
         except Exception as e:
-            print(f"⚠️  Could not save analysis report: {e}")
+            print(f"Warning: Could not parse {file_path}: {e}")
+            
+        return functions
+    
+    def analyze_component_coverage(self, component_name: str) -> Dict:
+        """Analyze test coverage for a specific component."""
+        component_info = self.components[component_name]
+        source_dir = component_info["source_dir"]
+        test_dir = component_info["test_dir"]
+        
+        # Get source files and functions
+        source_files = []
+        source_functions_by_file = {}
+        all_source_functions = []
+        
+        if source_dir.exists():
+            for py_file in source_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                    
+                rel_path = f"src/cursus/core/{component_name}/{py_file.name}"
+                source_files.append(rel_path)
+                
+                functions = self.extract_functions_from_file(py_file)
+                source_functions_by_file[rel_path] = functions
+                all_source_functions.extend(functions)
+        
+        # Get test files and functions
+        test_files = []
+        test_functions_by_file = {}
+        all_test_functions = []
+        
+        if test_dir.exists():
+            for py_file in test_dir.glob("test_*.py"):
+                rel_path = f"test/core/{component_name}/{py_file.name}"
+                test_files.append(rel_path)
+                
+                functions = self.extract_functions_from_file(py_file)
+                test_functions_by_file[rel_path] = functions
+                all_test_functions.extend(functions)
+        
+        # Determine likely tested functions based on naming patterns
+        likely_tested = []
+        likely_untested = []
+        
+        for func in all_source_functions:
+            # Simple heuristic: if there's a test function that might test this function
+            is_likely_tested = False
+            
+            # Check for direct test name matches
+            func_base = func.split('.')[-1]  # Get method name without class
+            for test_func in all_test_functions:
+                if func_base.lower() in test_func.lower() or func.lower() in test_func.lower():
+                    is_likely_tested = True
+                    break
+            
+            # Check for class-based testing patterns
+            if not is_likely_tested and '.' in func:
+                class_name = func.split('.')[0]
+                for test_func in all_test_functions:
+                    if class_name.lower() in test_func.lower():
+                        is_likely_tested = True
+                        break
+            
+            if is_likely_tested:
+                likely_tested.append(func)
+            else:
+                likely_untested.append(func)
+        
+        # Calculate coverage metrics
+        total_functions = len(all_source_functions)
+        tested_functions = len(likely_tested)
+        untested_functions = len(likely_untested)
+        coverage_percentage = (tested_functions / total_functions * 100) if total_functions > 0 else 0
+        
+        return {
+            "component": component_name,
+            "source_files": source_files,
+            "test_files": test_files,
+            "total_source_functions": total_functions,
+            "tested_functions": tested_functions,
+            "untested_functions": untested_functions,
+            "coverage_percentage": coverage_percentage,
+            "source_functions_by_file": source_functions_by_file,
+            "test_functions_by_file": test_functions_by_file,
+            "likely_tested_functions": likely_tested,
+            "likely_untested_functions": likely_untested
+        }
+    
+    def get_test_count(self, component_name: str) -> int:
+        """Get total number of test functions for a component."""
+        component_info = self.components[component_name]
+        test_dir = component_info["test_dir"]
+        
+        total_test_functions = 0
+        
+        if test_dir.exists():
+            for py_file in test_dir.glob("test_*.py"):
+                functions = self.extract_functions_from_file(py_file)
+                total_test_functions += len(functions)
+        
+        return total_test_functions
+    
+    def run_full_analysis(self) -> Dict:
+        """Run complete coverage and redundancy analysis for all components."""
+        print("🚀 Starting Comprehensive Test Coverage Analysis")
+        print(f"📁 Source Directory: {self.src_dir}")
+        print(f"📁 Test Directory: {self.test_dir}")
+        
+        coverage_analysis = {}
+        redundancy_analysis = {}
+        
+        # Analyze each component
+        for component_name in self.components.keys():
+            print(f"\n🔍 Analyzing component: {component_name}")
+            
+            # Coverage analysis
+            coverage_data = self.analyze_component_coverage(component_name)
+            coverage_analysis[component_name] = coverage_data
+            
+            print(f"   📊 Coverage: {coverage_data['coverage_percentage']:.1f}% "
+                  f"({coverage_data['tested_functions']}/{coverage_data['total_source_functions']} functions)")
+            
+            # Redundancy analysis
+            redundancy_data = self.analyze_redundancy(component_name)
+            redundancy_analysis[component_name] = redundancy_data
+            
+            print(f"   🔄 Redundancy: {redundancy_data['redundant_test_names']} duplicate test names "
+                  f"out of {redundancy_data['unique_test_names']} unique names")
+        
+        # Calculate overall summary
+        total_functions = sum(comp['total_source_functions'] for comp in coverage_analysis.values())
+        total_tested = sum(comp['tested_functions'] for comp in coverage_analysis.values())
+        overall_coverage = (total_tested / total_functions * 100) if total_functions > 0 else 0
+        
+        summary = {
+            "total_components": len(self.components),
+            "total_source_functions": total_functions,
+            "total_tested_functions": total_tested,
+            "overall_coverage": overall_coverage
+        }
+        
+        return {
+            "timestamp": self._get_timestamp(),
+            "coverage_analysis": coverage_analysis,
+            "redundancy_analysis": redundancy_analysis,
+            "summary": summary
+        }
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp in ISO format."""
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    def save_analysis_results(self, results: Dict, output_file: str = "core_coverage_analysis.json"):
+        """Save analysis results to JSON file."""
+        output_path = self.root / "test" / output_file
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2, default=str)
+        
+        print(f"\n📄 Analysis results saved to: {output_path}")
+        return output_path
+    
+    def print_summary_report(self, results: Dict):
+        """Print a summary report of the analysis results."""
+        print(f"\n{'='*80}")
+        print("📊 TEST COVERAGE ANALYSIS SUMMARY")
+        print(f"{'='*80}")
+        
+        summary = results['summary']
+        print(f"📈 Overall Coverage: {summary['overall_coverage']:.1f}% "
+              f"({summary['total_tested_functions']}/{summary['total_source_functions']} functions)")
+        print(f"🧩 Components Analyzed: {summary['total_components']}")
+        
+        print(f"\n{'Component':<15} {'Coverage':<12} {'Functions':<12} {'Redundancy':<12}")
+        print("-" * 60)
+        
+        coverage_data = results['coverage_analysis']
+        redundancy_data = results['redundancy_analysis']
+        
+        for component in coverage_data.keys():
+            cov = coverage_data[component]
+            red = redundancy_data[component]
+            
+            coverage_pct = f"{cov['coverage_percentage']:.1f}%"
+            functions_str = f"{cov['tested_functions']}/{cov['total_source_functions']}"
+            redundancy_str = f"{red['redundant_test_names']} dupes"
+            
+            print(f"{component:<15} {coverage_pct:<12} {functions_str:<12} {redundancy_str:<12}")
+        
+        print(f"\n{'='*80}")
+        
+        # Highlight critical issues
+        print("🚨 CRITICAL ISSUES:")
+        for component, data in coverage_data.items():
+            if data['coverage_percentage'] < 50:
+                print(f"   ❌ {component}: Low coverage ({data['coverage_percentage']:.1f}%)")
+            
+            red_data = redundancy_data[component]
+            if red_data['redundant_test_names'] > 5:
+                print(f"   🔄 {component}: High redundancy ({red_data['redundant_test_names']} duplicates)")
+        
+        print(f"\n📁 Detailed results saved in JSON format")
+        print(f"🔍 Run with --component <name> for detailed component analysis")
+
 
 def main():
-    """Main entry point for the coverage analyzer."""
-    print("Cursus Core Package - Test Coverage Analysis")
-    print("=" * 60)
+    """Main entry point for the test coverage analysis."""
+    import argparse
     
-    analyzer = TestCoverageAnalyzer()
+    parser = argparse.ArgumentParser(description='Analyze test coverage for cursus core package')
+    parser.add_argument('--component', help='Analyze specific component only')
+    parser.add_argument('--redundancy-detail', action='store_true', 
+                       help='Show detailed redundancy analysis')
+    parser.add_argument('--output', default='core_coverage_analysis.json',
+                       help='Output file name (default: core_coverage_analysis.json)')
     
-    # Load test report
-    if not analyzer.load_test_report():
-        print("⚠️  Continuing without test report data...")
+    args = parser.parse_args()
     
-    # Generate comprehensive analysis
-    analyzer.generate_comprehensive_report()
+    try:
+        analyzer = TestCoverageAnalyzer()
+        
+        if args.component:
+            # Analyze single component
+            if args.component not in analyzer.components:
+                print(f"❌ Unknown component: {args.component}")
+                print(f"Available components: {', '.join(analyzer.components.keys())}")
+                sys.exit(1)
+            
+            print(f"🔍 Analyzing component: {args.component}")
+            coverage_data = analyzer.analyze_component_coverage(args.component)
+            redundancy_data = analyzer.analyze_redundancy(args.component)
+            
+            # Print detailed results for single component
+            print(f"\n📊 COVERAGE ANALYSIS - {args.component.upper()}")
+            print(f"   Total Functions: {coverage_data['total_source_functions']}")
+            print(f"   Tested Functions: {coverage_data['tested_functions']}")
+            print(f"   Coverage: {coverage_data['coverage_percentage']:.1f}%")
+            
+            print(f"\n🔄 REDUNDANCY ANALYSIS - {args.component.upper()}")
+            print(f"   Total Test Functions: {redundancy_data['total_test_functions']}")
+            print(f"   Unique Names: {redundancy_data['unique_test_names']}")
+            print(f"   Redundant Names: {redundancy_data['redundant_test_names']}")
+            
+            if args.redundancy_detail and redundancy_data['redundant_tests']:
+                print(f"\n📋 REDUNDANT TESTS:")
+                for test_name, info in redundancy_data['redundant_tests'].items():
+                    print(f"   • {test_name} ({info['count']} occurrences)")
+                    for location in info['locations']:
+                        print(f"     - {location}")
+        else:
+            # Run full analysis
+            results = analyzer.run_full_analysis()
+            analyzer.print_summary_report(results)
+            analyzer.save_analysis_results(results, args.output)
+        
+    except KeyboardInterrupt:
+        print("\n⚠️  Analysis interrupted by user")
+        sys.exit(1)
+        
+    except Exception as e:
+        print(f"\n❌ Fatal error during analysis: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

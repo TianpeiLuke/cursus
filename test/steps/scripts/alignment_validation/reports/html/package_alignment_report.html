@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Alignment Validation Report - package</title>
+    <title>Alignment Validation Report</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
@@ -12,6 +12,14 @@
         .passing { color: #28a745; }
         .failing { color: #dc3545; }
         .warning { color: #ffc107; }
+        .scoring-section { margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; }
+        .score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+        .score-card { background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; text-align: center; }
+        .score-excellent { border-left-color: #28a745; }
+        .score-good { border-left-color: #17a2b8; }
+        .score-fair { border-left-color: #ffc107; }
+        .score-poor { border-left-color: #dc3545; }
+        .score-value { font-size: 2em; font-weight: bold; margin: 10px 0; }
         .level-section { margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
         .level-header { background-color: #e9ecef; padding: 10px; font-weight: bold; }
         .test-result { padding: 10px; border-bottom: 1px solid #eee; }
@@ -22,41 +30,361 @@
         .error { border-left: 4px solid #fd7e14; }
         .warning { border-left: 4px solid #ffc107; }
         .info { border-left: 4px solid #17a2b8; }
-        .metadata { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+        .recommendations { margin: 20px 0; }
+        .recommendation { margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .high-priority { border-left: 4px solid #dc3545; }
+        .medium-priority { border-left: 4px solid #ffc107; }
+        .low-priority { border-left: 4px solid #28a745; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Alignment Validation Report</h1>
-        <h2>Script: package</h2>
-        <p>Generated: 2025-09-04T23:25:11.037594</p>
+        <p>Generated: 2025-09-07 20:07:42</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
+        <p>Overall Alignment Score: <strong>100.0/100</strong></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>11</h3>
+            <h3>100.0%</h3>
+            <p>Pass Rate</p>
+        </div>
+        <div class="metric">
+            <h3>4</h3>
+            <p>Total Tests</p>
+        </div>
+        <div class="metric">
+            <h3>4</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
             <h3>0</h3>
             <p>Critical Issues</p>
         </div>
-        <div class="metric">
-            <h3>0</h3>
-            <p>Error Issues</p>
+    </div>
+    
+    <div class="scoring-section">
+        <h2>Alignment Scoring</h2>
+        <div class="score-grid">
+            
+        <div class="score-card score-excellent">
+            <h4>Overall Alignment</h4>
+            <div class="score-value">100.0</div>
+            <p>Excellent</p>
         </div>
-        <div class="metric">
-            <h3>3</h3>
-            <p>Warning Issues</p>
+        
+        <div class="score-card score-excellent">
+            <h4>Script ↔ Contract</h4>
+            <div class="score-value">100.0</div>
+            <p>Excellent</p>
+        </div>
+                
+        <div class="score-card score-excellent">
+            <h4>Contract ↔ Specification</h4>
+            <div class="score-value">100.0</div>
+            <p>Excellent</p>
+        </div>
+                
+        <div class="score-card score-excellent">
+            <h4>Specification ↔ Dependencies</h4>
+            <div class="score-value">100.0</div>
+            <p>Excellent</p>
+        </div>
+                
+        <div class="score-card score-excellent">
+            <h4>Builder ↔ Configuration</h4>
+            <div class="score-value">100.0</div>
+            <p>Excellent</p>
+        </div>
+                
         </div>
     </div>
     
-    <div class="level-section">
-        <div class="level-header">Alignment Validation Results</div>
+    
+        <div class="level-section">
+            <div class="level-header">Level 1: Script ↔ Contract</div>
         
             <div class="test-result test-passed">
-                <h4>Level 1: Script ↔ Contract</h4>
+                <h4>currency_conversion</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Main function follows testability pattern with all required parameters
+                    <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper functions use direct environment access - consider parameter passing
+                    <br><em>Recommendation: Pass environment variables as parameters to helper functions instead of direct access</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
+                    <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
+                    <br><em>Recommendation: Add container detection to support both local and container execution</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper function 'None' accesses environment directly
+                    <br><em>Recommendation: Refactor 'None' to accept environment variables as parameters</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Processing script uses sklearn framework
+                    <br><em>Recommendation: Ensure sklearn dependencies are properly specified</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>dummy_training</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Main function follows testability pattern with all required parameters
+                    <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
+                    <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args, environ_vars
+                    <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
+                    <br><em>Recommendation: Add container detection to support both local and container execution</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>model_calibration</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Optional environment variable accessed without default: MULTICLASS_CATEGORIES
+                    <br><em>Recommendation: Provide default value when accessing optional variable MULTICLASS_CATEGORIES</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
+                    <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Main function follows testability pattern with all required parameters
+                    <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper functions use direct environment access - consider parameter passing
+                    <br><em>Recommendation: Pass environment variables as parameters to helper functions instead of direct access</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Main function expects environ_vars parameter but no environment collection found in entry point
+                    <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
+                    <br><em>Recommendation: Add container detection to support both local and container execution</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper function 'from_env' accesses environment directly
+                    <br><em>Recommendation: Refactor 'from_env' to accept environment variables as parameters</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper function 'None' accesses environment directly
+                    <br><em>Recommendation: Refactor 'None' to accept environment variables as parameters</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Processing script uses sklearn framework
+                    <br><em>Recommendation: Ensure sklearn dependencies are properly specified</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>package</h4>
                 <p>Status: PASSED</p>
                 
                 <div class="issue warning">
@@ -95,9 +423,95 @@
                 </div>
                 
             </div>
+            </div>
+        <div class="level-section">
+            <div class="level-header">Level 2: Contract ↔ Specification</div>
+        
+            <div class="test-result test-passed">
+                <h4>currency_conversion</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Smart Specification Selection: validated against 4 variants
+                    <br><em>Recommendation: Multi-variant validation completed successfully</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: CurrencyConversion_Training -> CurrencyConversion -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output converted_data: properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for currency_conversion_contract
+                    <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
+            </div>
             
             <div class="test-result test-passed">
-                <h4>Level 2: Contract ↔ Specification</h4>
+                <h4>dummy_training</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: DummyTraining -> DummyTraining -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output model_input: properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for dummy_training_contract
+                    <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>model_calibration</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Smart Specification Selection: validated against 4 variants
+                    <br><em>Recommendation: Multi-variant validation completed successfully</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: ModelCalibration_Training -> ModelCalibration -> Processing
+                    <br><em>Recommendation: Using Processing step property paths for validation</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output calibration_output: properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output metrics_output: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Valid property path in output calibrated_data: properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri
+                    <br><em>Recommendation: Property path is correctly formatted for the step type</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Property path validation completed for model_calibration_contract
+                    <br><em>Recommendation: Validated 3/3 outputs with property paths against SageMaker documentation</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>package</h4>
                 <p>Status: PASSED</p>
                 
                 <div class="issue info">
@@ -116,15 +530,44 @@
                 </div>
                 
             </div>
-            
+            </div>
+        <div class="level-section">
+            <div class="level-header">Level 3: Specification ↔ Dependencies</div>
+        
             <div class="test-result test-passed">
-                <h4>Level 3: Specification ↔ Dependencies</h4>
+                <h4>currency_conversion</h4>
                 <p>Status: PASSED</p>
                 
             </div>
             
             <div class="test-result test-passed">
-                <h4>Level 4: Builder ↔ Configuration</h4>
+                <h4>dummy_training</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Dependency hyperparameters_s3_uri has low compatibility score: 0.420
+                    <br><em>Recommendation: Consider renaming 'hyperparameters_s3_uri' or adding aliases to improve semantic matching; Add 'BatchTransform' to compatible_sources for hyperparameters_s3_uri</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>model_calibration</h4>
+                <p>Status: PASSED</p>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>package</h4>
+                <p>Status: PASSED</p>
+                
+            </div>
+            </div>
+        <div class="level-section">
+            <div class="level-header">Level 4: Builder ↔ Configuration</div>
+        
+            <div class="test-result test-passed">
+                <h4>currency_conversion</h4>
                 <p>Status: PASSED</p>
                 
                 <div class="issue info">
@@ -134,14 +577,43 @@
                 
             </div>
             
-    </div>
+            <div class="test-result test-passed">
+                <h4>dummy_training</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>model_calibration</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
+                </div>
+                
+            </div>
+            
+            <div class="test-result test-passed">
+                <h4>package</h4>
+                <p>Status: PASSED</p>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Builder has required fields but no explicit validation logic detected
+                    <br><em>Recommendation: Consider adding explicit validation logic for required configuration fields</em>
+                </div>
+                
+            </div>
+            </div>
     
-    <div class="metadata">
-        <h3>Metadata</h3>
-        <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py</p>
-        <p><strong>Contract Mapping:</strong> package_contract</p>
-        <p><strong>Validation Timestamp:</strong> 2025-09-04T23:25:11.037594</p>
-        <p><strong>Validator Version:</strong> 1.0.0</p>
+    <div class="recommendations">
+        <h2>Recommendations</h2>
+        
     </div>
 </body>
 </html>

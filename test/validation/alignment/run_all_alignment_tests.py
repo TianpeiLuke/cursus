@@ -11,8 +11,8 @@ import os
 from pathlib import Path
 from io import StringIO
 
-# Add the project root to the Python path
-sys.path.insert(0, str(project_root))
+# Note: sys.path setup is handled by conftest.py
+# No manual path manipulation needed
 
 # Test modules will be loaded dynamically
 

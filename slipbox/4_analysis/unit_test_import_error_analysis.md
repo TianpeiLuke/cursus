@@ -455,25 +455,329 @@ Based on the analysis above, we implemented the hybrid approach with the followi
 #### Challenge 1: Pytest Collection Phase Imports
 **Current Status**: pytest fails to import modules during test collection phase despite proper setup.
 
-**Proposed Solutions**:
-1. **Immediate Workaround**: Run tests with explicit PYTHONPATH:
-   ```bash
-   PYTHONPATH=src python -m pytest test/
-   ```
+**Root Cause Deep Dive**: The fundamental issue is that pytest's test collection phase occurs BEFORE conftest.py is loaded and executed. This creates a chicken-and-egg problem:
 
-2. **Long-term Fix**: Update pytest configuration in `pyproject.toml`:
+1. pytest starts test collection by importing test modules
+2. Test modules contain `from cursus.api.dag.base_dag import ...` imports
+3. These imports fail because `cursus` is not yet in sys.path
+4. conftest.py would add `src/` to sys.path, but it hasn't been loaded yet
+5. Test collection fails before conftest.py can help
+
+**Why `pythonpath = ["src"]` in pyproject.toml Doesn't Work**: 
+- The configuration is loaded correctly (verified by pytest --collect-only showing the setting)
+- However, there appears to be a timing issue where the pythonpath setting doesn't take effect during the initial import phase
+- This may be related to pytest version compatibility or how the configuration is processed
+
+**Concrete Portable Solutions (Compatible with Both pytest and Direct Python Execution)**:
+
+**Critical Requirement**: Our solutions must work for both:
+- **pytest execution**: `pytest test/` or `python -m pytest test/`
+- **Direct Python execution**: `python test/some_test.py` or `python -c "import cursus.api.dag.base_dag"`
+
+**Solution Compatibility Matrix**:
+
+| Solution | pytest | Direct Python | Installation Required | Portability |
+|----------|--------|---------------|----------------------|-------------|
+| A: pytest-pythonpath plugin | ✅ | ❌ | pip install | Medium |
+| B: pytest.ini | ✅ | ❌ | None | High |
+| C: Import mode config | ✅ | ❌ | None | High |
+| D: Environment variables | ✅ | ✅ | None | **Highest** |
+| E: Editable installation | ✅ | ✅ | pip install -e . | **Highest** |
+| F: Hybrid (D + E) | ✅ | ✅ | Optional | **Highest** |
+
+**Recommended Solutions for Both pytest and Python**:
+
+1. **Solution D: Environment Variable Approach (Most Portable for Both)**
+   
+   **For Unix/Linux/macOS** - Create `run_tests.sh`:
+   ```bash
+   #!/bin/bash
+   # Set PYTHONPATH to include src directory
+   export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}src"
+   
+   # Run pytest with all arguments passed through
+   python -m pytest "$@"
+   ```
+   
+   **For Windows** - Create `run_tests.bat`:
+   ```batch
+   @echo off
+   REM Set PYTHONPATH to include src directory
+   set PYTHONPATH=src;%PYTHONPATH%
+   
+   REM Run pytest with all arguments passed through
+   python -m pytest %*
+   ```
+   
+   **For direct Python execution** - Create `setup_env.sh`:
+   ```bash
+   #!/bin/bash
+   # Source this file to set up environment for direct Python execution
+   export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}src"
+   echo "PYTHONPATH set to include src/ directory"
+   echo "You can now run: python test/some_test.py"
+   ```
+   
+   **Usage**:
+   ```bash
+   # For pytest
+   ./run_tests.sh
+   ./run_tests.sh test/core/
+   ./run_tests.sh -v test/api/test_specific.py
+   
+   # For direct Python execution
+   source setup_env.sh
+   python test/core/test_some_module.py
+   python -c "import cursus.api.dag.base_dag"
+   ```
+   
+   **Why this works for both**: Environment variables are inherited by all Python processes, ensuring `src/` is available for both pytest and direct Python execution.
+
+2. **Solution E: Editable Installation (Standard Python Practice for Both)**
+   ```bash
+   # One-time setup
+   pip install -e .
+   
+   # Now both work without any path setup:
+   pytest test/                           # pytest execution
+   python test/some_test.py              # direct Python execution
+   python -c "import cursus.api.dag"     # direct imports
+   ```
+   
+   **Why this works for both**: Editable installation makes the package available system-wide, so both pytest and direct Python execution can import modules without path manipulation.
+
+3. **Solution F: Hybrid Approach (Recommended - Best of Both Worlds)**
+   
+   **Primary**: Use editable installation for development
+   ```bash
+   pip install -e .
+   ```
+   
+   **Fallback**: Environment variable scripts for environments without installation
+   ```bash
+   # If editable install not available, use environment variables
+   PYTHONPATH=src python -m pytest test/
+   PYTHONPATH=src python test/some_test.py
+   ```
+   
+   **Benefits**:
+   - Works in all environments (with or without pip install)
+   - Standard Python development practice when installed
+   - Portable fallback when installation not possible
+   - Same import statements work in both scenarios
+
+**pytest-Only Solutions (Don't Work with Direct Python)**:
+
+4. **Solution A: pytest-pythonpath Plugin (pytest Only)**
+   ```bash
+   pip install pytest-pythonpath
+   ```
+   
+   **Limitation**: Only affects pytest, doesn't help with `python test/some_test.py`
+
+5. **Solution B: pytest.ini (pytest Only)**
+   ```ini
+   [tool:pytest]
+   pythonpath = src
+   ```
+   
+   **Limitation**: Only affects pytest, doesn't help with direct Python execution
+
+6. **Solution C: Import Mode Configuration (pytest Only)**
    ```toml
    [tool.pytest.ini_options]
-   minversion = "7.0"
-   addopts = "-ra -q --strict-markers --strict-config"
-   testpaths = ["test"]
-   pythonpath = ["src"]  # This should work but may need pytest version update
-   python_files = ["test_*.py", "*_test.py"]
-   python_classes = ["Test*"]
-   python_functions = ["test_*"]
+   addopts = "--import-mode=importlib"
+   pythonpath = ["src"]
    ```
+   
+   **Limitation**: Only affects pytest import behavior
 
-3. **Alternative**: Move imports inside test functions rather than at module level for problematic tests.
+**Recommended Implementation Strategy**:
+
+**Phase 1: Immediate Solution (Works for Both)**
+```bash
+# Create run_tests.sh for pytest
+#!/bin/bash
+export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}src"
+python -m pytest "$@"
+
+# Create setup_env.sh for direct Python
+#!/bin/bash
+export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}src"
+echo "Environment ready for direct Python execution"
+```
+
+**Phase 2: Long-term Solution (Works for Both)**
+```bash
+# Install package in editable mode
+pip install -e .
+
+# Now both scenarios work without scripts:
+pytest test/                    # ✅ Works
+python test/some_test.py       # ✅ Works
+python -c "import cursus"      # ✅ Works
+```
+
+**Phase 3: Documentation and CI/CD**
+- Document both approaches in README
+- Use environment variable approach in CI/CD (no installation required)
+- Recommend editable installation for local development
+
+**Testing Both Scenarios**:
+```bash
+# Test pytest execution
+PYTHONPATH=src python -m pytest test/core/test_some_module.py -v
+
+# Test direct Python execution  
+PYTHONPATH=src python test/core/test_some_module.py
+
+# Test direct imports
+PYTHONPATH=src python -c "from cursus.core.base.config_base import BasePipelineConfig; print('Import successful')"
+```
+
+**Key Insight**: The environment variable approach (Solution D) and editable installation (Solution E) are the only solutions that work for both pytest and direct Python execution. All other solutions only work with pytest.
+
+## unittest Framework Compatibility
+
+**Critical Finding**: Our test suite uses the `unittest` framework extensively, not just pytest. This has important implications for our solutions:
+
+**unittest Test Execution Methods**:
+1. **Direct Python execution**: `python test/some_test.py`
+2. **unittest discovery**: `python -m unittest discover test/`
+3. **pytest runner**: `pytest test/` (pytest can run unittest tests)
+4. **Individual test classes**: `python -m unittest test.validation.alignment.test_enhanced_argument_validation.TestEnhancedArgumentValidation`
+
+**Solution Compatibility with unittest**:
+
+| Solution | pytest | unittest discover | Direct Python | unittest classes |
+|----------|--------|------------------|---------------|------------------|
+| A: pytest-pythonpath plugin | ✅ | ❌ | ❌ | ❌ |
+| B: pytest.ini | ✅ | ❌ | ❌ | ❌ |
+| C: Import mode config | ✅ | ❌ | ❌ | ❌ |
+| D: Environment variables | ✅ | ✅ | ✅ | ✅ |
+| E: Editable installation | ✅ | ✅ | ✅ | ✅ |
+| F: Hybrid (D + E) | ✅ | ✅ | ✅ | ✅ |
+
+**unittest-Specific Testing Examples**:
+
+```bash
+# These all need to work with our solution:
+
+# 1. Direct execution of unittest files
+python test/validation/alignment/test_enhanced_argument_validation.py
+
+# 2. unittest discovery from project root
+python -m unittest discover test/
+
+# 3. unittest discovery with pattern
+python -m unittest discover test/ -p "test_*.py"
+
+# 4. Specific test class execution
+python -m unittest test.validation.alignment.test_enhanced_argument_validation.TestEnhancedArgumentValidation
+
+# 5. Specific test method execution
+python -m unittest test.validation.alignment.test_enhanced_argument_validation.TestEnhancedArgumentValidation.test_some_method
+
+# 6. pytest running unittest tests
+pytest test/validation/alignment/test_enhanced_argument_validation.py
+```
+
+**Recommended Solution for unittest Compatibility**:
+
+**Solution F: Hybrid Approach (Optimal for unittest + pytest)**
+
+**Phase 1: Environment Variable Setup (Works with All unittest Methods)**
+```bash
+# Create run_all_tests.sh for comprehensive testing
+#!/bin/bash
+export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}src"
+
+echo "Running tests with unittest discovery..."
+python -m unittest discover test/ -v
+
+echo "Running tests with pytest..."
+python -m pytest test/ -v
+```
+
+**Phase 2: Individual Test Scripts**
+```bash
+# Create run_unittest.sh for unittest-specific testing
+#!/bin/bash
+export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}src"
+
+if [ $# -eq 0 ]; then
+    echo "Running unittest discovery..."
+    python -m unittest discover test/ -v
+else
+    echo "Running specific unittest: $1"
+    python -m unittest "$1" -v
+fi
+```
+
+**Usage Examples**:
+```bash
+# Run all tests with unittest
+./run_unittest.sh
+
+# Run specific test class
+./run_unittest.sh test.validation.alignment.test_enhanced_argument_validation.TestEnhancedArgumentValidation
+
+# Run specific test file directly
+PYTHONPATH=src python test/validation/alignment/test_enhanced_argument_validation.py
+
+# Run with pytest (also works)
+PYTHONPATH=src pytest test/validation/alignment/test_enhanced_argument_validation.py
+```
+
+**Phase 3: Editable Installation (Long-term Solution)**
+```bash
+# One-time setup makes everything work
+pip install -e .
+
+# Now all these work without PYTHONPATH:
+python test/validation/alignment/test_enhanced_argument_validation.py
+python -m unittest discover test/
+python -m unittest test.validation.alignment.test_enhanced_argument_validation.TestEnhancedArgumentValidation
+pytest test/
+```
+
+**unittest-Specific Considerations**:
+
+1. **Import Statements in unittest Files**: Our updated import pattern `from cursus.core.base.config_base import BasePipelineConfig` works perfectly with unittest when PYTHONPATH is set or package is installed.
+
+2. **Test Discovery**: unittest's discovery mechanism (`python -m unittest discover`) works the same as direct Python execution - it needs PYTHONPATH or editable installation.
+
+3. **Test Class Execution**: Running specific test classes (`python -m unittest test.module.TestClass`) also inherits the same Python path requirements.
+
+4. **IDE Integration**: Most IDEs run unittest tests using direct Python execution, so our solutions work seamlessly with IDE test runners.
+
+**Verification Commands for unittest**:
+```bash
+# Test all unittest execution methods work:
+
+# 1. Set environment
+export PYTHONPATH=src
+
+# 2. Test direct execution
+python test/validation/alignment/test_enhanced_argument_validation.py
+
+# 3. Test unittest discovery
+python -m unittest discover test/ -p "test_enhanced_argument_validation.py" -v
+
+# 4. Test specific class
+python -m unittest test.validation.alignment.test_enhanced_argument_validation.TestEnhancedArgumentValidation -v
+
+# 5. Test pytest compatibility
+pytest test/validation/alignment/test_enhanced_argument_validation.py -v
+```
+
+**Key Benefits for unittest Users**:
+- ✅ All unittest execution methods work
+- ✅ Same import statements work across pytest and unittest
+- ✅ IDE test runners work seamlessly
+- ✅ CI/CD can use either unittest or pytest
+- ✅ No framework-specific configuration needed
+- ✅ Standard Python development practices
 
 #### Challenge 2: CircularImportDetector Context
 **Current Status**: CircularImportDetector runs in isolated context without proper path setup.

@@ -12,8 +12,8 @@ import unittest
 from io import StringIO
 
 # Add the project root to the Python path
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# Note: sys.path setup is handled by conftest.py
+# No manual path manipulation needed
 
 def run_specific_test_module(module_name, description):
     """Run tests for a specific module with detailed reporting."""

@@ -1,32 +1,41 @@
 #!/usr/bin/env python3
 """
-Alignment Validation for Model Calibration Script with Job Type Variants
+Individual Alignment Validation Script for model_calibration
 
-This program runs comprehensive alignment validation for the model_calibration.py script
-across all four alignment levels and generates detailed reports. Updated to support
-job type variants (training, calibration, validation, testing).
+This script validates the alignment between script, contract, specification,
+and builder configuration for the model_calibration script.
 """
 
 import sys
 from pathlib import Path
+from typing import Dict, Any
 
-# Add the project root to the Python path
-)
+# Define workspace directory structure
+# workspace_dir points to src/cursus (the main workspace)
+current_file = Path(__file__).resolve()
+workspace_dir = current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps" 
+
+# Define component directories within the workspace
+scripts_dir = str(workspace_dir / "scripts")
+contracts_dir = str(workspace_dir / "contracts")
+specs_dir = str(workspace_dir / "specs")
+builders_dir = str(workspace_dir / "builders")
+configs_dir = str(workspace_dir / "configs")
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
 def main():
-    """Run alignment validation for model_calibration script with job type variants."""
-    print("🔍 Model Calibration Script Alignment Validation (Job Type Variants)")
-    print("=" * 70)
+    """Run alignment validation for model_calibration script."""
+    print("🔍 Model Calibration Script Alignment Validation")
+    print("=" * 60)
     
     # Initialize the tester
     tester = UnifiedAlignmentTester(
-        scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
-        contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
-        specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
-        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders"),
-        configs_dir=str(project_root / "src" / "cursus" / "steps" / "configs")
+        scripts_dir=scripts_dir,
+        contracts_dir=contracts_dir,
+        specs_dir=specs_dir,
+        builders_dir=builders_dir,
+        configs_dir=configs_dir
     )
     
     # Run validation for model_calibration script
@@ -37,24 +46,11 @@ def main():
         
         # Print detailed results
         print(f"\n📊 VALIDATION RESULTS FOR: {script_name}")
-        print("=" * 70)
+        print("=" * 60)
         
         status = results.get('overall_status', 'UNKNOWN')
         status_emoji = '✅' if status == 'PASSING' else '❌' if status == 'FAILING' else '⚠️'
         print(f"{status_emoji} Overall Status: {status}")
-        
-        # Check for job type variant support
-        level2_result = results.get('level2', {})
-        level2_details = level2_result.get('details', {})
-        unified_spec = level2_details.get('unified_specification', {})
-        variants = unified_spec.get('variants', {})
-        
-        if variants:
-            print(f"\n🎯 Job Type Variants Detected: {len(variants)} variants")
-            for variant_name in sorted(variants.keys()):
-                print(f"   • {variant_name}")
-        else:
-            print(f"\n⚠️  No job type variants detected - may need specification updates")
         
         for level_num, level_name in enumerate([
             "Script ↔ Contract",
@@ -82,29 +78,6 @@ def main():
                 print(f"   • {severity} [{category}]: {message}")
                 if recommendation:
                     print(f"     💡 Recommendation: {recommendation}")
-            
-            # Print additional details for Level 2 (Contract ↔ Specification)
-            if level_num == 2 and level_result.get('details'):
-                details = level_result['details']
-                if 'unified_specification' in details:
-                    unified_spec = details['unified_specification']
-                    variant_count = unified_spec.get('variant_count', 0)
-                    if variant_count > 1:
-                        print(f"   📋 Multi-variant validation: {variant_count} job type variants")
-                        
-                        # Show dependency and output coverage
-                        dep_sources = unified_spec.get('dependency_sources', {})
-                        output_sources = unified_spec.get('output_sources', {})
-                        
-                        if dep_sources:
-                            print(f"   📥 Dependencies covered by variants:")
-                            for dep_name, variants_list in dep_sources.items():
-                                print(f"      • {dep_name}: {', '.join(variants_list)}")
-                        
-                        if output_sources:
-                            print(f"   📤 Outputs covered by variants:")
-                            for output_name, variants_list in output_sources.items():
-                                print(f"      • {output_name}: {', '.join(variants_list)}")
         
         # Save reports
         output_dir = Path(__file__).parent / "reports" / "individual"
@@ -119,7 +92,7 @@ def main():
             'script_name': script_name,
             'validation_timestamp': datetime.now().isoformat(),
             'validator_version': '1.0.0',
-            'script_path': str(project_root / "src" / "cursus" / "steps" / "scripts" / f"{script_name}.py")
+            'script_path': str(workspace_dir / 'scripts'/ f"{script_name}.py")
         }
         
         json_file = output_dir / f"{script_name}_validation_report.json"

@@ -12,9 +12,24 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-# Add the project root to the Python path
-        real_contracts_dir = str(project_root / "src/cursus/steps/contracts")
-        real_builders_dir = str(project_root / "src/cursus/steps/builders")
+# Import the necessary modules
+from cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
+
+
+class TestBuilderArgumentIntegration(unittest.TestCase):
+    """Test builder argument integration in script contract alignment."""
+    
+    def test_builder_argument_detection_integration(self):
+        """Test that builder arguments are properly integrated into validation."""
+        # Define workspace directory structure
+        # workspace_dir points to src/cursus (the main workspace)
+        current_file = Path(__file__).resolve()
+        workspace_dir = current_file.parent.parent.parent.parent / "src" / "cursus"
+        
+        # Define component directories within the workspace
+        real_scripts_dir = str(workspace_dir / "steps" / "scripts")
+        real_contracts_dir = str(workspace_dir / "steps" / "contracts")
+        real_builders_dir = str(workspace_dir / "steps" / "builders")
         
         tester = ScriptContractAlignmentTester(
             real_scripts_dir,
@@ -70,6 +85,7 @@ from unittest.mock import patch, MagicMock
         info_issues = [issue for issue in job_type_issues if issue['severity'] == 'INFO']
         self.assertGreater(len(info_issues), 0, 
                          "Expected INFO message about builder-provided job_type")
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

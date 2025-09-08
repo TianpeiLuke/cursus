@@ -14,8 +14,34 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any
 
-# Add the project root to the Python path
-.parent / "reports"
+# Define workspace directory structure
+# workspace_dir points to src/cursus (the main workspace)
+current_file = Path(__file__).resolve()
+workspace_dir = current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps" 
+
+# Define component directories within the workspace
+scripts_dir = str(workspace_dir / "scripts")
+contracts_dir = str(workspace_dir / "contracts")
+specs_dir = str(workspace_dir / "specs")
+builders_dir = str(workspace_dir / "builders")
+configs_dir = str(workspace_dir / "configs")
+
+from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+
+class VisualizedAlignmentValidator:
+    """Enhanced alignment validator with visualization capabilities."""
+    
+    def __init__(self):
+        """Initialize the visualized alignment validator."""
+        # Set up directory paths
+        self.scripts_dir = Path(scripts_dir)
+        self.contracts_dir = Path(contracts_dir)
+        self.specs_dir = Path(specs_dir)
+        self.builders_dir = Path(builders_dir)
+        self.configs_dir = Path(configs_dir)
+        
+        # Set up output directories
+        self.output_dir = Path(__file__).parent / "reports"
         self.json_reports_dir = self.output_dir / "json"
         self.html_reports_dir = self.output_dir / "html"
         self.charts_dir = self.output_dir / "charts"
@@ -28,11 +54,11 @@ from typing import Dict, List, Any
         
         # Initialize the unified alignment tester
         self.tester = UnifiedAlignmentTester(
-            scripts_dir=str(self.scripts_dir),
-            contracts_dir=str(self.contracts_dir),
-            specs_dir=str(self.specs_dir),
-            builders_dir=str(self.builders_dir),
-            configs_dir=str(self.configs_dir)
+            scripts_dir=scripts_dir,
+            contracts_dir=contracts_dir,
+            specs_dir=specs_dir,
+            builders_dir=builders_dir,
+            configs_dir=configs_dir
         )
         
         # Script names to validate

@@ -1,0 +1,1114 @@
+{
+  "script_name": "payload",
+  "level1": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "payload",
+          "testability_parameters": [
+            "output_paths",
+            "input_paths",
+            "job_args",
+            "environ_vars"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "payload"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_parameter_usage",
+        "message": "Testability parameters defined but not used: job_args",
+        "details": {
+          "script": "payload",
+          "unused_parameters": [
+            "job_args"
+          ],
+          "used_parameters": [
+            "output_paths",
+            "input_paths",
+            "environ_vars"
+          ]
+        },
+        "recommendation": "Either use the testability parameters or remove them from function signature"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "payload",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 179
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "payload",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 185
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "payload",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 192
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "payload",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.items",
+          "line_number": 197
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "payload",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 460
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "payload"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      }
+    ],
+    "script_analysis": {
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py",
+      "path_references": [
+        "path='\\nMIMS Payload Generation Processing Script\\n\\nThis script reads field information from hyperparameters extracted from model.tar.gz,\\nextracts configuration from environment variables,\\nand creates payload files for model inference.\\n' line_number=2 context='#!/usr/bin/env python\\n>>> \"\"\"\\nMIMS Payload Generation Processing Script\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/model' line_number=32 context='\\n# Default paths (will be overridden by parameters in main function)\\n>>> DEFAULT_MODEL_DIR = \"/opt/ml/processing/input/model\"\\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\nDEFAULT_WORKING_DIRECTORY = \"/tmp/mims_payload_work\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=33 context='# Default paths (will be overridden by parameters in main function)\\nDEFAULT_MODEL_DIR = \"/opt/ml/processing/input/model\"\\n>>> DEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\nDEFAULT_WORKING_DIRECTORY = \"/tmp/mims_payload_work\"\\n' is_hardcoded=True construction_method=None",
+        "path='/tmp/mims_payload_work' line_number=34 context='DEFAULT_MODEL_DIR = \"/opt/ml/processing/input/model\"\\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\n>>> DEFAULT_WORKING_DIRECTORY = \"/tmp/mims_payload_work\"\\n\\nclass VariableType(str, Enum):' is_hardcoded=True construction_method=None",
+        "path='Ensure a directory exists, creating it if necessary.' line_number=42 context='\\ndef ensure_directory(directory_path):\\n>>>     \"\"\"Ensure a directory exists, creating it if necessary.\"\"\"\\n    try:\\n        if isinstance(directory_path, str):' is_hardcoded=True construction_method=None",
+        "path='model.tar.gz' line_number=98 context='    # The builder step has been updated to use the directory as destination, not model.tar.gz\\n    # But we\\'ll keep the name for backward compatibility and handle both cases\\n>>>     input_model_path = input_model_dir / \"model.tar.gz\"\\n    logger.info(f\"Looking for hyperparameters in model artifacts\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=115 context=\"                hyperparams_info = None\\n                for member in tar.getmembers():\\n>>>                     if member.name == 'hyperparameters.json':\\n                        hyperparams_info = member\\n                        break\" is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=127 context='                    # Extract only the hyperparameters file\\n                    tar.extract(hyperparams_info, working_directory)\\n>>>                     hyperparams_path = working_directory / \"hyperparameters.json\"\\n        except Exception as e:\\n            logger.warning(f\"Error processing model.tar.gz as tarfile: {e}\")' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=135 context='    if hyperparams_path is None and input_model_path.exists() and input_model_path.is_dir():\\n        logger.info(f\"{input_model_path} is a directory, looking for hyperparameters.json inside\")\\n>>>         direct_hyperparams_path = input_model_path / \"hyperparameters.json\"\\n        if direct_hyperparams_path.exists():\\n            logger.info(f\"Found hyperparameters.json directly in the model.tar.gz directory\")' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=143 context='    if hyperparams_path is None:\\n        logger.info(f\"Looking for hyperparameters.json directly in {input_model_dir}\")\\n>>>         direct_hyperparams_path = input_model_dir / \"hyperparameters.json\"\\n        if direct_hyperparams_path.exists():\\n            logger.info(f\"Found hyperparameters.json directly in the input model directory\")' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=151 context='    if hyperparams_path is None:\\n        logger.info(f\"Searching recursively for hyperparameters.json in {input_model_dir}\")\\n>>>         for path in input_model_dir.rglob(\"hyperparameters.json\"):\\n            hyperparams_path = path\\n            logger.info(f\"Found hyperparameters.json at {hyperparams_path}\")' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=171 context='    if not str(hyperparams_path).startswith(str(working_directory)):\\n        import shutil\\n>>>         dest_path = working_directory / \"hyperparameters.json\"\\n        shutil.copy2(hyperparams_path, dest_path)\\n        ' is_hardcoded=True construction_method=None",
+        "path='Get content types from environment variables.' line_number=178 context='\\ndef get_environment_content_types(environ_vars: Dict[str, str]) -> List[str]:\\n>>>     \"\"\"Get content types from environment variables.\"\"\"\\n    content_types_str = environ_vars.get(ENV_CONTENT_TYPES, \"application/json\")\\n    return [ct.strip() for ct in content_types_str.split(\\',\\')]' is_hardcoded=True construction_method=None",
+        "path='Get default numeric value from environment variables.' line_number=183 context='\\ndef get_environment_default_numeric_value(environ_vars: Dict[str, str]) -> float:\\n>>>     \"\"\"Get default numeric value from environment variables.\"\"\"\\n    try:\\n        return float(environ_vars.get(ENV_DEFAULT_NUMERIC_VALUE, \"0.0\"))' is_hardcoded=True construction_method=None",
+        "path='0.0' line_number=185 context='    \"\"\"Get default numeric value from environment variables.\"\"\"\\n    try:\\n>>>         return float(environ_vars.get(ENV_DEFAULT_NUMERIC_VALUE, \"0.0\"))\\n    except ValueError:\\n        logger.warning(f\"Invalid {ENV_DEFAULT_NUMERIC_VALUE}, using default 0.0\")' is_hardcoded=True construction_method=None",
+        "path=', using default 0.0' line_number=187 context='        return float(environ_vars.get(ENV_DEFAULT_NUMERIC_VALUE, \"0.0\"))\\n    except ValueError:\\n>>>         logger.warning(f\"Invalid {ENV_DEFAULT_NUMERIC_VALUE}, using default 0.0\")\\n        return 0.0\\n' is_hardcoded=True construction_method=None",
+        "path='Get default text value from environment variables.' line_number=191 context='\\ndef get_environment_default_text_value(environ_vars: Dict[str, str]) -> str:\\n>>>     \"\"\"Get default text value from environment variables.\"\"\"\\n    return environ_vars.get(ENV_DEFAULT_TEXT_VALUE, \"DEFAULT_TEXT\")\\n' is_hardcoded=True construction_method=None",
+        "path='Get special field values from environment variables.' line_number=195 context='\\ndef get_environment_special_fields(environ_vars: Dict[str, str]) -> Dict[str, str]:\\n>>>     \"\"\"Get special field values from environment variables.\"\"\"\\n    special_fields = {}\\n    for env_var, env_value in environ_vars.items():' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=357 context='        \\n        # Determine file extension and name\\n>>>         ext = \".csv\" if content_type == \"text/csv\" else \".json\"\\n        file_name = f\"payload_{content_type.replace(\\'/\\', \\'_\\')}_{i}{ext}\"\\n        file_path = output_dir / file_name' is_hardcoded=True construction_method=None",
+        "path='.json' line_number=357 context='        \\n        # Determine file extension and name\\n>>>         ext = \".csv\" if content_type == \"text/csv\" else \".json\"\\n        file_name = f\"payload_{content_type.replace(\\'/\\', \\'_\\')}_{i}{ext}\"\\n        file_path = output_dir / file_name' is_hardcoded=True construction_method=None",
+        "path='payload.tar.gz' line_number=390 context='    # Create archive in the output directory\\n    output_dir = output_dir or Path(DEFAULT_OUTPUT_DIR)\\n>>>     archive_path = output_dir / \"payload.tar.gz\"\\n    \\n    # Ensure parent directory exists (but not the actual archive path)' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=410 context='                total_size += size_mb\\n                files_added += 1\\n>>>                 logger.info(f\"Adding to tar: {file_name} ({size_mb:.2f}MB)\")\\n                tar.add(file_path, arcname=file_name)\\n        ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=415 context='        logger.info(f\"Tar creation summary:\")\\n        logger.info(f\"  Files added: {files_added}\")\\n>>>         logger.info(f\"  Total uncompressed size: {total_size:.2f}MB\")\\n        \\n        # Verify archive was created' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=421 context='            compressed_size = archive_path.stat().st_size / (1024 * 1024)\\n            logger.info(f\"Successfully created payload archive: {archive_path}\")\\n>>>             logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n            logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        else:' is_hardcoded=True construction_method=None",
+        "path='.2%' line_number=422 context='            logger.info(f\"Successfully created payload archive: {archive_path}\")\\n            logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n>>>             logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        else:\\n            logger.error(f\"Archive creation failed - file does not exist: {archive_path}\")' is_hardcoded=True construction_method=None",
+        "path='1.0.0' line_number=494 context=\"        # Extract pipeline name and version from hyperparams\\n        pipeline_name = hyperparams.get('pipeline_name', 'default_pipeline')\\n>>>         pipeline_version = hyperparams.get('pipeline_version', '1.0.0')\\n        model_objective = hyperparams.get('model_objective', None)\\n        \" is_hardcoded=True construction_method=None",
+        "path='MIMS payload generation complete.' line_number=516 context='        \\n        # Log summary information about the payload generation\\n>>>         logger.info(f\"MIMS payload generation complete.\")\\n        logger.info(f\"Number of payload samples generated: {len(payload_file_paths)}\")\\n        logger.info(f\"Content types: {content_types}\")' is_hardcoded=True construction_method=None"
+      ],
+      "env_var_accesses": [],
+      "imports": [
+        "module_name='json' import_alias=None line_number=9 is_from_import=False imported_items=[]",
+        "module_name='logging' import_alias=None line_number=10 is_from_import=False imported_items=[]",
+        "module_name='os' import_alias=None line_number=11 is_from_import=False imported_items=[]",
+        "module_name='tarfile' import_alias=None line_number=12 is_from_import=False imported_items=[]",
+        "module_name='tempfile' import_alias=None line_number=13 is_from_import=False imported_items=[]",
+        "module_name='argparse' import_alias=None line_number=14 is_from_import=False imported_items=[]",
+        "module_name='sys' import_alias=None line_number=15 is_from_import=False imported_items=[]",
+        "module_name='traceback' import_alias=None line_number=16 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=17 is_from_import=True imported_items=['Path']",
+        "module_name='enum' import_alias=None line_number=18 is_from_import=True imported_items=['Enum']",
+        "module_name='typing' import_alias=None line_number=19 is_from_import=True imported_items=['List', 'Dict', 'Any', 'Union', 'Optional']",
+        "module_name='datetime' import_alias=None line_number=20 is_from_import=True imported_items=['datetime']",
+        "module_name='shutil' import_alias=None line_number=170 is_from_import=False imported_items=[]"
+      ],
+      "argument_definitions": [],
+      "file_operations": [
+        "file_path='<file_object>' operation_type='read' line_number=166 context=\"    # Load the hyperparameters\\n    with open(hyperparams_path, 'r') as f:\\n>>>         hyperparams = json.load(f)\\n    \\n    # Copy to working directory if not already there\" mode=None method='json.load'"
+      ],
+      "step_type": "Processing",
+      "framework": null,
+      "step_type_patterns": {}
+    },
+    "contract": {
+      "entry_point": "payload.py",
+      "inputs": {
+        "model_input": {
+          "path": "/opt/ml/processing/input/model"
+        }
+      },
+      "outputs": {
+        "payload_sample": {
+          "path": "/opt/ml/processing/output"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {
+          "CONTENT_TYPES": "application/json",
+          "DEFAULT_NUMERIC_VALUE": "0.0",
+          "DEFAULT_TEXT_VALUE": "DEFAULT_TEXT"
+        }
+      },
+      "description": "\n    MIMS payload generation script that:\n    1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)\n    2. Creates model variable list from field information\n    3. Generates sample payloads in multiple formats (JSON, CSV)\n    4. Archives payload files for deployment\n    \n    Note: This script extracts pipeline name, version, and model objective from hyperparameters,\n    not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or \n    BUCKET_NAME environment variables.\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json\n    \n    Output Structure:\n    - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)\n    - /opt/ml/processing/output/: Output directory containing payload.tar.gz file\n    \n    Environment Variables:\n    - CONTENT_TYPES: Comma-separated list of content types (default: \"application/json\")\n    - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: \"0.0\")\n    - DEFAULT_TEXT_VALUE: Default value for text fields (default: \"DEFAULT_TEXT\")\n    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields\n    \n    Arguments:\n    - mode: Operating mode for the script (default: \"standard\")\n    ",
+      "framework_requirements": {
+        "python": ">=3.7"
+      }
+    }
+  },
+  "level2": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: Payload -> Payload -> Processing",
+        "details": {
+          "contract": "payload_contract",
+          "original_spec_type": "Payload",
+          "canonical_name": "Payload",
+          "resolved_sagemaker_type": "Processing",
+          "registry_available": true
+        },
+        "recommendation": "Using Processing step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output payload_sample: properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+        "details": {
+          "contract": "payload_contract",
+          "logical_name": "payload_sample",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for payload_contract",
+        "details": {
+          "contract": "payload_contract",
+          "step_type": "processing",
+          "node_type": "internal",
+          "total_outputs": 1,
+          "outputs_with_property_paths": 1,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 1/1 outputs with property paths against SageMaker documentation"
+      }
+    ],
+    "contract": {
+      "entry_point": "payload.py",
+      "inputs": {
+        "model_input": {
+          "path": "/opt/ml/processing/input/model"
+        }
+      },
+      "outputs": {
+        "payload_sample": {
+          "path": "/opt/ml/processing/output"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {
+          "CONTENT_TYPES": "application/json",
+          "DEFAULT_NUMERIC_VALUE": "0.0",
+          "DEFAULT_TEXT_VALUE": "DEFAULT_TEXT"
+        }
+      },
+      "description": "\n    MIMS payload generation script that:\n    1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)\n    2. Creates model variable list from field information\n    3. Generates sample payloads in multiple formats (JSON, CSV)\n    4. Archives payload files for deployment\n    \n    Note: This script extracts pipeline name, version, and model objective from hyperparameters,\n    not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or \n    BUCKET_NAME environment variables.\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json\n    \n    Output Structure:\n    - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)\n    - /opt/ml/processing/output/: Output directory containing payload.tar.gz file\n    \n    Environment Variables:\n    - CONTENT_TYPES: Comma-separated list of content types (default: \"application/json\")\n    - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: \"0.0\")\n    - DEFAULT_TEXT_VALUE: Default value for text fields (default: \"DEFAULT_TEXT\")\n    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields\n    \n    Arguments:\n    - mode: Operating mode for the script (default: \"standard\")\n    ",
+      "framework_requirements": {
+        "python": ">=3.7"
+      }
+    },
+    "specifications": {
+      "payload_spec": {
+        "step_type": "Payload",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "ModelStep",
+              "TrainingStep",
+              "XGBoostTraining"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts for payload generation"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "payload_sample",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Generated payload samples archive (payload.tar.gz)"
+          }
+        ]
+      }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "Payload",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "ModelStep",
+              "TrainingStep",
+              "XGBoostTraining"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts for payload generation"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "payload_sample",
+            "output_type": "processing_output",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Generated payload samples archive (payload.tar.gz)"
+          }
+        ]
+      },
+      "variants": {
+        "generic": {
+          "step_type": "Payload",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "model_input",
+              "dependency_type": "model_artifacts",
+              "required": true,
+              "compatible_sources": [
+                "ModelStep",
+                "TrainingStep",
+                "XGBoostTraining"
+              ],
+              "data_type": "S3Uri",
+              "description": "Trained model artifacts for payload generation"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "payload_sample",
+              "output_type": "processing_output",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Generated payload samples archive (payload.tar.gz)"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "model_input": {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "ModelStep",
+            "TrainingStep",
+            "XGBoostTraining"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts for payload generation"
+        }
+      },
+      "unified_outputs": {
+        "payload_sample": {
+          "logical_name": "payload_sample",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Generated payload samples archive (payload.tar.gz)"
+        }
+      },
+      "dependency_sources": {
+        "model_input": [
+          "generic"
+        ]
+      },
+      "output_sources": {
+        "payload_sample": [
+          "generic"
+        ]
+      },
+      "variant_count": 1
+    }
+  },
+  "level3": {
+    "passed": true,
+    "issues": [],
+    "specification": {
+      "step_type": "Payload",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "ModelStep",
+            "TrainingStep",
+            "XGBoostTraining"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts for payload generation"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "payload_sample",
+          "output_type": "processing_output",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Generated payload samples archive (payload.tar.gz)"
+        }
+      ]
+    }
+  },
+  "level4": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: model_owner",
+        "details": {
+          "field_name": "model_owner",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field model_owner in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: expected_tps",
+        "details": {
+          "field_name": "expected_tps",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field expected_tps in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: max_latency_in_millisecond",
+        "details": {
+          "field_name": "max_latency_in_millisecond",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field max_latency_in_millisecond in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: model_objective",
+        "details": {
+          "field_name": "model_objective",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field model_objective in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: source_model_inference_output_variable_list",
+        "details": {
+          "field_name": "source_model_inference_output_variable_list",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field source_model_inference_output_variable_list in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: source_model_inference_input_variable_list",
+        "details": {
+          "field_name": "source_model_inference_input_variable_list",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field source_model_inference_input_variable_list in builder or make it optional"
+      },
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: model_domain",
+        "details": {
+          "field_name": "model_domain",
+          "builder": "payload"
+        },
+        "recommendation": "Access required field model_domain in builder or make it optional"
+      },
+      {
+        "severity": "INFO",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
+        "details": {
+          "required_fields": [
+            "model_owner",
+            "bucket",
+            "pipeline_version",
+            "expected_tps",
+            "model_domain",
+            "max_latency_in_millisecond",
+            "model_objective",
+            "source_model_inference_output_variable_list",
+            "role",
+            "source_model_inference_input_variable_list",
+            "service_name",
+            "region",
+            "author"
+          ],
+          "builder": "payload"
+        },
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
+      }
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "bucket",
+          "line_number": 92,
+          "context": "line_92"
+        },
+        {
+          "field_name": "use_large_processing_instance",
+          "line_number": 122,
+          "context": "line_122"
+        },
+        {
+          "field_name": "processing_instance_type_large",
+          "line_number": 122,
+          "context": "line_122"
+        },
+        {
+          "field_name": "processing_instance_type_small",
+          "line_number": 122,
+          "context": "line_122"
+        },
+        {
+          "field_name": "processing_instance_count",
+          "line_number": 131,
+          "context": "line_131"
+        },
+        {
+          "field_name": "processing_volume_size",
+          "line_number": 132,
+          "context": "line_132"
+        },
+        {
+          "field_name": "source_model_inference_content_types",
+          "line_number": 154,
+          "context": "line_154"
+        },
+        {
+          "field_name": "default_numeric_value",
+          "line_number": 158,
+          "context": "line_158"
+        },
+        {
+          "field_name": "default_text_value",
+          "line_number": 162,
+          "context": "line_162"
+        },
+        {
+          "field_name": "special_field_values",
+          "line_number": 166,
+          "context": "line_166"
+        },
+        {
+          "field_name": "special_field_values",
+          "line_number": 167,
+          "context": "line_167"
+        },
+        {
+          "field_name": "pipeline_s3_loc",
+          "line_number": 268,
+          "context": "line_268"
+        },
+        {
+          "field_name": "processing_script_arguments",
+          "line_number": 290,
+          "context": "line_290"
+        },
+        {
+          "field_name": "processing_script_arguments",
+          "line_number": 291,
+          "context": "line_291"
+        },
+        {
+          "field_name": "processing_script_arguments",
+          "line_number": 292,
+          "context": "line_292"
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "PayloadStepBuilder",
+          "line_number": 30,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 38,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 81,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 111,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 138,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 173,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 226,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 281,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 298,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        }
+      ],
+      "import_statements": [
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "TYPE_CHECKING",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 2
+        },
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 3
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 9
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.registry_manager",
+          "name": "RegistryManager",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.dependency_resolver",
+          "name": "UnifiedDependencyResolver",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_payload_step",
+          "name": "PayloadConfig",
+          "alias": null,
+          "line_number": 16
+        },
+        {
+          "type": "from_import",
+          "module": "specs.payload_spec",
+          "name": "PAYLOAD_SPEC",
+          "alias": null,
+          "line_number": 20
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_payload_step",
+          "name": "PayloadConfig",
+          "alias": null,
+          "line_number": 60
+        }
+      ],
+      "config_class_usage": []
+    },
+    "config_analysis": {
+      "class_name": "PayloadConfig",
+      "fields": {
+        "author": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "bucket": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "role": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "region": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "service_name": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "pipeline_version": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_class": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "current_date": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "py_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "processing_instance_count": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "processing_volume_size": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "processing_instance_type_large": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_instance_type_small": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "use_large_processing_instance": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "processing_source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "processing_entry_point": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_script_arguments": {
+          "type": "typing.Optional[typing.List[str]]",
+          "required": false
+        },
+        "processing_framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "model_owner": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_domain": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_objective": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "source_model_inference_output_variable_list": {
+          "type": "typing.Dict[str, str]",
+          "required": true
+        },
+        "source_model_inference_input_variable_list": {
+          "type": "typing.Union[typing.Dict[str, str], typing.List[typing.List[str]]]",
+          "required": true
+        },
+        "expected_tps": {
+          "type": "<class 'int'>",
+          "required": true
+        },
+        "max_latency_in_millisecond": {
+          "type": "<class 'int'>",
+          "required": true
+        },
+        "framework": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "source_model_inference_content_types": {
+          "type": "typing.List[str]",
+          "required": false
+        },
+        "source_model_inference_response_types": {
+          "type": "typing.List[str]",
+          "required": false
+        },
+        "max_acceptable_error_rate": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "default_numeric_value": {
+          "type": "<class 'float'>",
+          "required": false
+        },
+        "default_text_value": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "special_field_values": {
+          "type": "typing.Optional[typing.Dict[str, str]]",
+          "required": false
+        },
+        "aws_region": {
+          "type": "property",
+          "required": false
+        },
+        "effective_instance_type": {
+          "type": "property",
+          "required": false
+        },
+        "effective_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "model_extra": {
+          "type": "property",
+          "required": false
+        },
+        "model_fields_set": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_description": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_name": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_s3_loc": {
+          "type": "property",
+          "required": false
+        },
+        "sample_payload_s3_key": {
+          "type": "property",
+          "required": false
+        },
+        "script_contract": {
+          "type": "property",
+          "required": false
+        },
+        "script_path": {
+          "type": "property",
+          "required": false
+        }
+      },
+      "required_fields": [
+        "author",
+        "bucket",
+        "role",
+        "region",
+        "service_name",
+        "pipeline_version",
+        "model_owner",
+        "model_domain",
+        "model_objective",
+        "source_model_inference_output_variable_list",
+        "source_model_inference_input_variable_list",
+        "expected_tps",
+        "max_latency_in_millisecond"
+      ],
+      "optional_fields": [
+        "model_class",
+        "current_date",
+        "framework_version",
+        "py_version",
+        "source_dir",
+        "processing_instance_count",
+        "processing_volume_size",
+        "processing_instance_type_large",
+        "processing_instance_type_small",
+        "use_large_processing_instance",
+        "processing_source_dir",
+        "processing_entry_point",
+        "processing_script_arguments",
+        "processing_framework_version",
+        "framework",
+        "source_model_inference_content_types",
+        "source_model_inference_response_types",
+        "max_acceptable_error_rate",
+        "default_numeric_value",
+        "default_text_value",
+        "special_field_values",
+        "aws_region",
+        "effective_instance_type",
+        "effective_source_dir",
+        "model_extra",
+        "model_fields_set",
+        "pipeline_description",
+        "pipeline_name",
+        "pipeline_s3_loc",
+        "sample_payload_s3_key",
+        "script_contract",
+        "script_path"
+      ],
+      "default_values": {
+        "author": "PydanticUndefined",
+        "bucket": "PydanticUndefined",
+        "role": "PydanticUndefined",
+        "region": "PydanticUndefined",
+        "service_name": "PydanticUndefined",
+        "pipeline_version": "PydanticUndefined",
+        "model_class": "xgboost",
+        "current_date": "PydanticUndefined",
+        "framework_version": "2.1.0",
+        "py_version": "py310",
+        "source_dir": null,
+        "processing_instance_count": 1,
+        "processing_volume_size": 500,
+        "processing_instance_type_large": "ml.m5.4xlarge",
+        "processing_instance_type_small": "ml.m5.2xlarge",
+        "use_large_processing_instance": false,
+        "processing_source_dir": null,
+        "processing_entry_point": "payload.py",
+        "processing_script_arguments": null,
+        "processing_framework_version": "1.2-1",
+        "model_owner": "PydanticUndefined",
+        "model_domain": "PydanticUndefined",
+        "model_objective": "PydanticUndefined",
+        "source_model_inference_output_variable_list": "PydanticUndefined",
+        "source_model_inference_input_variable_list": "PydanticUndefined",
+        "expected_tps": "PydanticUndefined",
+        "max_latency_in_millisecond": "PydanticUndefined",
+        "framework": "xgboost",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "max_acceptable_error_rate": 0.2,
+        "default_numeric_value": 0.0,
+        "default_text_value": "DEFAULT_TEXT",
+        "special_field_values": null
+      }
+    }
+  },
+  "overall_status": "PASSING",
+  "metadata": {
+    "script_name": "payload",
+    "validation_timestamp": "2025-09-07T19:43:59.582444",
+    "validator_version": "1.0.0",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py"
+  }
+}

@@ -1,16 +1,26 @@
 #!/usr/bin/env python3
 """
-Alignment Validation for Risk Table Mapping Script
+Individual Alignment Validation Script for risk_table_mapping
 
-This program runs comprehensive alignment validation for the risk_table_mapping.py script
-across all four alignment levels and generates detailed reports.
+This script validates the alignment between script, contract, specification,
+and builder configuration for the risk_table_mapping script.
 """
 
 import sys
 from pathlib import Path
+from typing import Dict, Any
 
-# Add the project root to the Python path
-)
+# Define workspace directory structure
+# workspace_dir points to src/cursus (the main workspace)
+current_file = Path(__file__).resolve()
+workspace_dir = current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps" 
+
+# Define component directories within the workspace
+scripts_dir = str(workspace_dir / "scripts")
+contracts_dir = str(workspace_dir / "contracts")
+specs_dir = str(workspace_dir / "specs")
+builders_dir = str(workspace_dir / "builders")
+configs_dir = str(workspace_dir / "configs")
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
@@ -21,10 +31,11 @@ def main():
     
     # Initialize the tester
     tester = UnifiedAlignmentTester(
-        scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
-        contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
-        specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
-        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders")
+        scripts_dir=scripts_dir,
+        contracts_dir=contracts_dir,
+        specs_dir=specs_dir,
+        builders_dir=builders_dir,
+        configs_dir=configs_dir
     )
     
     # Run validation for risk_table_mapping script
@@ -81,7 +92,7 @@ def main():
             'script_name': script_name,
             'validation_timestamp': datetime.now().isoformat(),
             'validator_version': '1.0.0',
-            'script_path': str(project_root / "src" / "cursus" / "steps" / "scripts" / f"{script_name}.py")
+            'script_path': str(workspace_dir / 'scripts'/ f"{script_name}.py")
         }
         
         json_file = output_dir / f"{script_name}_validation_report.json"

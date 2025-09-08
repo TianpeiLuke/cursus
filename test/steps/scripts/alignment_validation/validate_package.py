@@ -1,34 +1,45 @@
 #!/usr/bin/env python3
 """
-Alignment Validation for Mims Package Script
+Individual Alignment Validation Script for package
 
-This program runs comprehensive alignment validation for the mims_package.py script
-across all four alignment levels and generates detailed reports.
+This script validates the alignment between script, contract, specification,
+and builder configuration for the package script.
 """
 
 import sys
 from pathlib import Path
+from typing import Dict, Any
 
-# Add the project root to the Python path
-)
+# Define workspace directory structure
+# workspace_dir points to src/cursus (the main workspace)
+current_file = Path(__file__).resolve()
+workspace_dir = current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps" 
+
+# Define component directories within the workspace
+scripts_dir = str(workspace_dir / "scripts")
+contracts_dir = str(workspace_dir / "contracts")
+specs_dir = str(workspace_dir / "specs")
+builders_dir = str(workspace_dir / "builders")
+configs_dir = str(workspace_dir / "configs")
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
 def main():
-    """Run alignment validation for mims_package script."""
-    print("🔍 Mims Package Script Alignment Validation")
+    """Run alignment validation for package script."""
+    print("🔍 Package Script Alignment Validation")
     print("=" * 60)
     
     # Initialize the tester
     tester = UnifiedAlignmentTester(
-        scripts_dir=str(project_root / "src" / "cursus" / "steps" / "scripts"),
-        contracts_dir=str(project_root / "src" / "cursus" / "steps" / "contracts"),
-        specs_dir=str(project_root / "src" / "cursus" / "steps" / "specs"),
-        builders_dir=str(project_root / "src" / "cursus" / "steps" / "builders")
+        scripts_dir=scripts_dir,
+        contracts_dir=contracts_dir,
+        specs_dir=specs_dir,
+        builders_dir=builders_dir,
+        configs_dir=configs_dir
     )
     
-    # Run validation for mims_package script
-    script_name = "mims_package"
+    # Run validation for package script
+    script_name = "package"
     
     try:
         results = tester.validate_specific_script(script_name)
@@ -81,7 +92,7 @@ def main():
             'script_name': script_name,
             'validation_timestamp': datetime.now().isoformat(),
             'validator_version': '1.0.0',
-            'script_path': str(project_root / "src" / "cursus" / "steps" / "scripts" / f"{script_name}.py")
+            'script_path': str(workspace_dir / 'scripts'/ f"{script_name}.py")
         }
         
         json_file = output_dir / f"{script_name}_validation_report.json"
@@ -183,7 +194,7 @@ def generate_html_report(script_name: str, results: dict) -> str:
     html_template = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>Alignment Validation Report - mims_package</title>
+    <title>Alignment Validation Report - package</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
         .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
@@ -211,7 +222,7 @@ def generate_html_report(script_name: str, results: dict) -> str:
 <body>
     <div class="header">
         <h1>🔍 Alignment Validation Report</h1>
-        <h2>Script: mims_package</h2>
+        <h2>Script: package</h2>
         <p><strong>Generated:</strong> {timestamp}</p>
         <p><strong>Overall Status:</strong> <span class="{status_class}">{status}</span></p>
     </div>

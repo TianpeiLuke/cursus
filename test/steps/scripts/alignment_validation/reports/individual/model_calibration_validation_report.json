@@ -33,10 +33,10 @@
         "details": {
           "script": "model_calibration",
           "testability_parameters": [
-            "job_args",
-            "environ_vars",
             "input_paths",
-            "output_paths"
+            "job_args",
+            "output_paths",
+            "environ_vars"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -766,12 +766,12 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "ModelEvaluation",
               "PytorchTraining",
-              "XGBoostTraining",
+              "XGBoostModelEval",
               "TrainingEvaluation",
-              "XGBoostModelEval"
+              "ModelEvaluation",
+              "XGBoostTraining",
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Training evaluation dataset with ground truth labels and model predictions"
@@ -810,11 +810,11 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
+              "XGBoostModelEval",
+              "TrainingEvaluation",
               "ModelEvaluation",
               "XGBoostTraining",
-              "TrainingEvaluation",
-              "XGBoostModelEval"
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset with ground truth labels and model predictions"
@@ -853,12 +853,12 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "ModelEvaluation",
               "PytorchTraining",
-              "XGBoostTraining",
+              "XGBoostModelEval",
               "TrainingEvaluation",
-              "XGBoostModelEval"
+              "ModelEvaluation",
+              "XGBoostTraining",
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Validation evaluation dataset with ground truth labels and model predictions"
@@ -897,12 +897,12 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "ModelEvaluation",
               "PytorchTraining",
-              "XGBoostTraining",
+              "XGBoostModelEval",
               "TrainingEvaluation",
-              "XGBoostModelEval"
+              "ModelEvaluation",
+              "XGBoostTraining",
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Calibration evaluation dataset with ground truth labels and model predictions"
@@ -941,12 +941,12 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "ModelEvaluation",
               "PytorchTraining",
-              "XGBoostTraining",
+              "XGBoostModelEval",
               "TrainingEvaluation",
-              "XGBoostModelEval"
+              "ModelEvaluation",
+              "XGBoostTraining",
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Testing evaluation dataset with ground truth labels and model predictions"
@@ -987,12 +987,12 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CrossValidation",
-              "ModelEvaluation",
               "PytorchTraining",
-              "XGBoostTraining",
+              "XGBoostModelEval",
               "TrainingEvaluation",
-              "XGBoostModelEval"
+              "ModelEvaluation",
+              "XGBoostTraining",
+              "CrossValidation"
             ],
             "data_type": "S3Uri",
             "description": "Training evaluation dataset with ground truth labels and model predictions"
@@ -1032,12 +1032,12 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CrossValidation",
-                "ModelEvaluation",
                 "PytorchTraining",
-                "XGBoostTraining",
+                "XGBoostModelEval",
                 "TrainingEvaluation",
-                "XGBoostModelEval"
+                "ModelEvaluation",
+                "XGBoostTraining",
+                "CrossValidation"
               ],
               "data_type": "S3Uri",
               "description": "Training evaluation dataset with ground truth labels and model predictions"
@@ -1076,12 +1076,12 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CrossValidation",
-                "ModelEvaluation",
                 "PytorchTraining",
-                "XGBoostTraining",
+                "XGBoostModelEval",
                 "TrainingEvaluation",
-                "XGBoostModelEval"
+                "ModelEvaluation",
+                "XGBoostTraining",
+                "CrossValidation"
               ],
               "data_type": "S3Uri",
               "description": "Testing evaluation dataset with ground truth labels and model predictions"
@@ -1120,12 +1120,12 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CrossValidation",
-                "ModelEvaluation",
                 "PytorchTraining",
-                "XGBoostTraining",
+                "XGBoostModelEval",
                 "TrainingEvaluation",
-                "XGBoostModelEval"
+                "ModelEvaluation",
+                "XGBoostTraining",
+                "CrossValidation"
               ],
               "data_type": "S3Uri",
               "description": "Validation evaluation dataset with ground truth labels and model predictions"
@@ -1164,12 +1164,12 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CrossValidation",
-                "ModelEvaluation",
                 "PytorchTraining",
-                "XGBoostTraining",
+                "XGBoostModelEval",
                 "TrainingEvaluation",
-                "XGBoostModelEval"
+                "ModelEvaluation",
+                "XGBoostTraining",
+                "CrossValidation"
               ],
               "data_type": "S3Uri",
               "description": "Calibration evaluation dataset with ground truth labels and model predictions"
@@ -1206,12 +1206,12 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
-            "ModelEvaluation",
             "PytorchTraining",
-            "XGBoostTraining",
+            "XGBoostModelEval",
             "TrainingEvaluation",
-            "XGBoostModelEval"
+            "ModelEvaluation",
+            "XGBoostTraining",
+            "CrossValidation"
           ],
           "data_type": "S3Uri",
           "description": "Calibration evaluation dataset with ground truth labels and model predictions"
@@ -1283,12 +1283,12 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CrossValidation",
-            "ModelEvaluation",
             "PytorchTraining",
-            "XGBoostTraining",
+            "XGBoostModelEval",
             "TrainingEvaluation",
-            "XGBoostModelEval"
+            "ModelEvaluation",
+            "XGBoostTraining",
+            "CrossValidation"
           ],
           "data_type": "S3Uri",
           "description": "Calibration evaluation dataset with ground truth labels and model predictions"
@@ -1328,13 +1328,13 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "region",
+            "role",
+            "author",
+            "pipeline_version",
             "service_name",
             "bucket",
-            "author",
             "label_field",
-            "role",
-            "pipeline_version"
+            "region"
           ],
           "builder": "model_calibration"
         },
@@ -2052,7 +2052,7 @@
   "overall_status": "PASSING",
   "metadata": {
     "script_name": "model_calibration",
-    "validation_timestamp": "2025-08-21T19:13:02.212898",
+    "validation_timestamp": "2025-09-07T19:43:29.394740",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/model_calibration.py"
   }

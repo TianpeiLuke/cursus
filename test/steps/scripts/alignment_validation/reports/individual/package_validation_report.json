@@ -1,0 +1,991 @@
+{
+  "script_name": "package",
+  "level1": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/calibration",
+        "details": {
+          "path": "/opt/ml/processing/input/calibration",
+          "script": "package"
+        },
+        "recommendation": "Either use path /opt/ml/processing/input/calibration in script or remove from contract"
+      },
+      {
+        "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/calibration",
+        "details": {
+          "path": "/opt/ml/processing/input/calibration",
+          "operation": "read",
+          "script": "package"
+        },
+        "recommendation": "Either read /opt/ml/processing/input/calibration in script or remove from contract inputs"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "package",
+          "testability_parameters": [
+            "environ_vars",
+            "input_paths",
+            "job_args",
+            "output_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "package"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_parameter_usage",
+        "message": "Testability parameters defined but not used: job_args",
+        "details": {
+          "script": "package",
+          "unused_parameters": [
+            "job_args"
+          ],
+          "used_parameters": [
+            "environ_vars",
+            "input_paths",
+            "output_paths"
+          ]
+        },
+        "recommendation": "Either use the testability parameters or remove them from function signature"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "package",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 250
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "package"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      }
+    ],
+    "script_analysis": {
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py",
+      "path_references": [
+        "path='/opt/ml/processing/input/model' line_number=20 context='\\n# Constants - default paths (will be overridden by parameters in main function)\\n>>> DEFAULT_MODEL_PATH = \"/opt/ml/processing/input/model\"\\nDEFAULT_SCRIPT_PATH = \"/opt/ml/processing/input/script\"\\nDEFAULT_OUTPUT_PATH = \"/opt/ml/processing/output\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/script' line_number=21 context='# Constants - default paths (will be overridden by parameters in main function)\\nDEFAULT_MODEL_PATH = \"/opt/ml/processing/input/model\"\\n>>> DEFAULT_SCRIPT_PATH = \"/opt/ml/processing/input/script\"\\nDEFAULT_OUTPUT_PATH = \"/opt/ml/processing/output\"\\nDEFAULT_WORKING_DIRECTORY = \"/tmp/mims_packaging_directory\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=22 context='DEFAULT_MODEL_PATH = \"/opt/ml/processing/input/model\"\\nDEFAULT_SCRIPT_PATH = \"/opt/ml/processing/input/script\"\\n>>> DEFAULT_OUTPUT_PATH = \"/opt/ml/processing/output\"\\nDEFAULT_WORKING_DIRECTORY = \"/tmp/mims_packaging_directory\"\\n' is_hardcoded=True construction_method=None",
+        "path='/tmp/mims_packaging_directory' line_number=23 context='DEFAULT_SCRIPT_PATH = \"/opt/ml/processing/input/script\"\\nDEFAULT_OUTPUT_PATH = \"/opt/ml/processing/output\"\\n>>> DEFAULT_WORKING_DIRECTORY = \"/tmp/mims_packaging_directory\"\\n\\n' is_hardcoded=True construction_method=None",
+        "path='Ensure a directory exists, creating it if necessary.' line_number=27 context='\\ndef ensure_directory(directory: Path):\\n>>>     \"\"\"Ensure a directory exists, creating it if necessary.\"\"\"\\n    try:\\n        directory.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
+        "path='Check if a file exists and log its details.' line_number=39 context='    \\ndef check_file_exists(path: Path, description: str) -> bool:\\n>>>     \"\"\"Check if a file exists and log its details.\"\"\"\\n    exists = path.exists() and path.is_file()\\n    try:' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=47 context='            logger.info(f\"{description}:\")\\n            logger.info(f\"  Path: {path}\")\\n>>>             logger.info(f\"  Size: {size_mb:.2f}MB\")\\n            logger.info(f\"  Permissions: {oct(stats.st_mode)[-3:]}\")\\n            logger.info(f\"  Last modified: {stats.st_mtime}\")' is_hardcoded=True construction_method=None",
+        "path='List and log the contents of a directory.' line_number=59 context='\\ndef list_directory_contents(path: Path, description: str):\\n>>>     \"\"\"List and log the contents of a directory.\"\"\"\\n    logger.info(f\"\\\\n{\\'=\\'*20} Contents of {description} {\\'=\\'*20}\")\\n    logger.info(f\"Path: {path}\")' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=84 context='                    total_size += size_mb\\n                    file_count += 1\\n>>>                     logger.info(f\"{indent}\ud83d\udcc4 {item.name} ({size_mb:.2f}MB)\")\\n                elif item.is_dir():\\n                    dir_count += 1' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=94 context='        logger.info(f\"  Total files: {file_count}\")\\n        logger.info(f\"  Total directories: {dir_count}\")\\n>>>         logger.info(f\"  Total size: {total_size:.2f}MB\")\\n        \\n    except Exception as e:' is_hardcoded=True construction_method=None",
+        "path='Copy a file and log the operation, ensuring destination directory exists.' line_number=101 context='    \\ndef copy_file_robust(src: Path, dst: Path):\\n>>>     \"\"\"Copy a file and log the operation, ensuring destination directory exists.\"\"\"\\n    logger.info(f\"\\\\nAttempting to copy file:\")\\n    logger.info(f\"  From: {src}\")' is_hardcoded=True construction_method=None",
+        "path='Source file does not exist or is not a file. Skipping copy.' line_number=107 context='    \\n    if not check_file_exists(src, \"Source file for copy\"):\\n>>>         logger.warning(\"Source file does not exist or is not a file. Skipping copy.\")\\n        return False\\n    ' is_hardcoded=True construction_method=None",
+        "path='Recursively copy scripts from source to destination.' line_number=125 context='\\ndef copy_scripts(src_dir: Path, dst_dir: Path):\\n>>>     \"\"\"Recursively copy scripts from source to destination.\"\"\"\\n    logger.info(f\"\\\\n{\\'=\\'*20} Copying Scripts {\\'=\\'*20}\")\\n    logger.info(f\"From: {src_dir}\")' is_hardcoded=True construction_method=None",
+        "path='Source scripts directory does not exist or is not a directory. Skipping script copy.' line_number=133 context='\\n    if not src_dir.exists() or not src_dir.is_dir():\\n>>>         logger.warning(\"Source scripts directory does not exist or is not a directory. Skipping script copy.\")\\n        return\\n' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=151 context='    logger.info(f\"\\\\nScript copying summary:\")\\n    logger.info(f\"  Files copied: {files_copied}\")\\n>>>     logger.info(f\"  Total size: {total_size_mb:.2f}MB\")\\n    \\n    list_directory_contents(dst_dir, \"Destination scripts directory\")' is_hardcoded=True construction_method=None",
+        "path='Extract a tar file to the specified path.' line_number=157 context='\\ndef extract_tarfile(tar_path: Path, extract_path: Path):\\n>>>     \"\"\"Extract a tar file to the specified path.\"\"\"\\n    logger.info(f\"\\\\n{\\'=\\'*20} Extracting Tar File {\\'=\\'*20}\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='Cannot extract. Tar file does not exist.' line_number=161 context='    \\n    if not check_file_exists(tar_path, \"Tar file to extract\"):\\n>>>         logger.error(\"Cannot extract. Tar file does not exist.\")\\n        return\\n    ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=173 context='                size_mb = member.size / 1024 / 1024\\n                total_size += size_mb\\n>>>                 logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n            logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=174 context='                total_size += size_mb\\n                logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n>>>             logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            \\n            logger.info(f\"\\\\nExtracting to: {extract_path}\")' is_hardcoded=True construction_method=None",
+        "path='Create a tar file from the contents of a directory.' line_number=187 context='\\ndef create_tarfile(output_tar_path: Path, source_dir: Path):\\n>>>     \"\"\"Create a tar file from the contents of a directory.\"\"\"\\n    logger.info(f\"\\\\n{\\'=\\'*20} Creating Tar File {\\'=\\'*20}\")\\n    logger.info(f\"Output tar: {output_tar_path}\")' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=205 context='                    total_size += size_mb\\n                    files_added += 1\\n>>>                     logger.info(f\"Adding to tar: {arcname} ({size_mb:.2f}MB)\")\\n                    tar.add(item, arcname=arcname)\\n        ' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=210 context='        logger.info(f\"\\\\nTar creation summary:\")\\n        logger.info(f\"  Files added: {files_added}\")\\n>>>         logger.info(f\"  Total uncompressed size: {total_size:.2f}MB\")\\n        \\n        if check_file_exists(output_tar_path, \"Created tar file\"):' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=214 context='        if check_file_exists(output_tar_path, \"Created tar file\"):\\n            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n>>>             logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n            logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        ' is_hardcoded=True construction_method=None",
+        "path='.2%' line_number=215 context='            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n            logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n>>>             logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        \\n    except Exception as e:' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=256 context='    logger.info(f\"Python version: {sys.version}\")\\n    logger.info(f\"Working directory: {os.getcwd()}\")\\n>>>     logger.info(f\"Available disk space: {shutil.disk_usage(\\'/\\').free / (1024*1024*1024):.2f}GB\")\\n    \\n    logger.info(f\"\\\\nUsing paths:\")' is_hardcoded=True construction_method=None",
+        "path='model.tar.gz' line_number=270 context='\\n        # Extract input model.tar.gz if it exists\\n>>>         input_model_tar = model_path / \"model.tar.gz\"\\n        logger.info(\"\\\\nChecking for input model.tar.gz...\")\\n        ' is_hardcoded=True construction_method=None",
+        "path='\\nChecking for input model.tar.gz...' line_number=271 context='        # Extract input model.tar.gz if it exists\\n        input_model_tar = model_path / \"model.tar.gz\"\\n>>>         logger.info(\"\\\\nChecking for input model.tar.gz...\")\\n        \\n        if check_file_exists(input_model_tar, \"Input model.tar.gz\"):' is_hardcoded=True construction_method=None",
+        "path='Input model.tar.gz' line_number=273 context='        logger.info(\"\\\\nChecking for input model.tar.gz...\")\\n        \\n>>>         if check_file_exists(input_model_tar, \"Input model.tar.gz\"):\\n            extract_tarfile(input_model_tar, working_directory)\\n        else:' is_hardcoded=True construction_method=None",
+        "path='No model.tar.gz found. Copying all files from model_path...' line_number=276 context='            extract_tarfile(input_model_tar, working_directory)\\n        else:\\n>>>             logger.info(\"No model.tar.gz found. Copying all files from model_path...\")\\n            files_copied = 0\\n            total_size = 0' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=285 context='                        files_copied += 1\\n                        total_size += item.stat().st_size / 1024 / 1024\\n>>>             logger.info(f\"\\\\nCopied {files_copied} files, total size: {total_size:.2f}MB\")\\n\\n        # Copy inference scripts to working_directory/code' is_hardcoded=True construction_method=None",
+        "path='model.tar.gz' line_number=291 context='\\n        # Create the output model.tar.gz\\n>>>         output_tar_file = output_path / \"model.tar.gz\"\\n        create_tarfile(output_tar_file, working_directory)\\n' is_hardcoded=True construction_method=None"
+      ],
+      "env_var_accesses": [],
+      "imports": [
+        "module_name='shutil' import_alias=None line_number=1 is_from_import=False imported_items=[]",
+        "module_name='tarfile' import_alias=None line_number=2 is_from_import=False imported_items=[]",
+        "module_name='argparse' import_alias=None line_number=3 is_from_import=False imported_items=[]",
+        "module_name='traceback' import_alias=None line_number=4 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=5 is_from_import=True imported_items=['Path']",
+        "module_name='logging' import_alias=None line_number=6 is_from_import=False imported_items=[]",
+        "module_name='os' import_alias=None line_number=7 is_from_import=False imported_items=[]",
+        "module_name='typing' import_alias=None line_number=8 is_from_import=True imported_items=['List', 'Dict', 'Optional', 'Any']",
+        "module_name='sys' import_alias=None line_number=9 is_from_import=False imported_items=[]"
+      ],
+      "argument_definitions": [],
+      "file_operations": [],
+      "step_type": "Processing",
+      "framework": null,
+      "step_type_patterns": {}
+    },
+    "contract": {
+      "entry_point": "package.py",
+      "inputs": {
+        "model_input": {
+          "path": "/opt/ml/processing/input/model"
+        },
+        "inference_scripts_input": {
+          "path": "/opt/ml/processing/input/script"
+        },
+        "calibration_model": {
+          "path": "/opt/ml/processing/input/calibration"
+        }
+      },
+      "outputs": {
+        "packaged_model": {
+          "path": "/opt/ml/processing/output"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {}
+      },
+      "description": "\n    MIMS packaging script that:\n    1. Extracts model artifacts from input model directory or model.tar.gz\n    2. Includes calibration model if available\n    3. Copies inference scripts to code directory\n    4. Creates a packaged model.tar.gz file for deployment\n    4. Provides detailed logging of the packaging process\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts (files or model.tar.gz)\n    - /opt/ml/processing/input/script: Inference scripts to include\n    - /opt/ml/processing/input/calibration: Optional calibration model artifacts\n    \n    Output Structure:\n    - /opt/ml/processing/output/model.tar.gz: Packaged model ready for deployment\n    ",
+      "framework_requirements": {
+        "python": ">=3.7"
+      }
+    }
+  },
+  "level2": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: Package -> Package -> Processing",
+        "details": {
+          "contract": "package_contract",
+          "original_spec_type": "Package",
+          "canonical_name": "Package",
+          "resolved_sagemaker_type": "Processing",
+          "registry_available": true
+        },
+        "recommendation": "Using Processing step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output packaged_model: properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+        "details": {
+          "contract": "package_contract",
+          "logical_name": "packaged_model",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+          "step_type": "processing",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for package_contract",
+        "details": {
+          "contract": "package_contract",
+          "step_type": "processing",
+          "node_type": "internal",
+          "total_outputs": 1,
+          "outputs_with_property_paths": 1,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 1/1 outputs with property paths against SageMaker documentation"
+      }
+    ],
+    "contract": {
+      "entry_point": "package.py",
+      "inputs": {
+        "model_input": {
+          "path": "/opt/ml/processing/input/model"
+        },
+        "inference_scripts_input": {
+          "path": "/opt/ml/processing/input/script"
+        },
+        "calibration_model": {
+          "path": "/opt/ml/processing/input/calibration"
+        }
+      },
+      "outputs": {
+        "packaged_model": {
+          "path": "/opt/ml/processing/output"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {}
+      },
+      "description": "\n    MIMS packaging script that:\n    1. Extracts model artifacts from input model directory or model.tar.gz\n    2. Includes calibration model if available\n    3. Copies inference scripts to code directory\n    4. Creates a packaged model.tar.gz file for deployment\n    4. Provides detailed logging of the packaging process\n    \n    Input Structure:\n    - /opt/ml/processing/input/model: Model artifacts (files or model.tar.gz)\n    - /opt/ml/processing/input/script: Inference scripts to include\n    - /opt/ml/processing/input/calibration: Optional calibration model artifacts\n    \n    Output Structure:\n    - /opt/ml/processing/output/model.tar.gz: Packaged model ready for deployment\n    ",
+      "framework_requirements": {
+        "python": ">=3.7"
+      }
+    },
+    "specifications": {
+      "package_spec": {
+        "step_type": "Package",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "ModelStep",
+              "XGBoostTraining",
+              "TrainingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts to be packaged"
+          },
+          {
+            "logical_name": "inference_scripts_input",
+            "dependency_type": "custom_property",
+            "required": false,
+            "compatible_sources": [
+              "ScriptStep",
+              "ProcessingStep"
+            ],
+            "data_type": "String",
+            "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+          },
+          {
+            "logical_name": "calibration_model",
+            "dependency_type": "processing_output",
+            "required": false,
+            "compatible_sources": [
+              "ModelCalibration"
+            ],
+            "data_type": "S3Uri",
+            "description": "Calibration model and artifacts for probability calibration (optional)"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "packaged_model",
+            "output_type": "model_artifacts",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Packaged model ready for deployment"
+          }
+        ]
+      }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "Package",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "model_input",
+            "dependency_type": "model_artifacts",
+            "required": true,
+            "compatible_sources": [
+              "ModelStep",
+              "XGBoostTraining",
+              "TrainingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Trained model artifacts to be packaged"
+          },
+          {
+            "logical_name": "inference_scripts_input",
+            "dependency_type": "custom_property",
+            "required": false,
+            "compatible_sources": [
+              "ScriptStep",
+              "ProcessingStep"
+            ],
+            "data_type": "String",
+            "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+          },
+          {
+            "logical_name": "calibration_model",
+            "dependency_type": "processing_output",
+            "required": false,
+            "compatible_sources": [
+              "ModelCalibration"
+            ],
+            "data_type": "S3Uri",
+            "description": "Calibration model and artifacts for probability calibration (optional)"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "packaged_model",
+            "output_type": "model_artifacts",
+            "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+            "data_type": "S3Uri",
+            "description": "Packaged model ready for deployment"
+          }
+        ]
+      },
+      "variants": {
+        "generic": {
+          "step_type": "Package",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "model_input",
+              "dependency_type": "model_artifacts",
+              "required": true,
+              "compatible_sources": [
+                "ModelStep",
+                "XGBoostTraining",
+                "TrainingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Trained model artifacts to be packaged"
+            },
+            {
+              "logical_name": "inference_scripts_input",
+              "dependency_type": "custom_property",
+              "required": false,
+              "compatible_sources": [
+                "ScriptStep",
+                "ProcessingStep"
+              ],
+              "data_type": "String",
+              "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+            },
+            {
+              "logical_name": "calibration_model",
+              "dependency_type": "processing_output",
+              "required": false,
+              "compatible_sources": [
+                "ModelCalibration"
+              ],
+              "data_type": "S3Uri",
+              "description": "Calibration model and artifacts for probability calibration (optional)"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "packaged_model",
+              "output_type": "model_artifacts",
+              "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+              "data_type": "S3Uri",
+              "description": "Packaged model ready for deployment"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "model_input": {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "ModelStep",
+            "XGBoostTraining",
+            "TrainingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts to be packaged"
+        },
+        "inference_scripts_input": {
+          "logical_name": "inference_scripts_input",
+          "dependency_type": "custom_property",
+          "required": false,
+          "compatible_sources": [
+            "ScriptStep",
+            "ProcessingStep"
+          ],
+          "data_type": "String",
+          "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+        },
+        "calibration_model": {
+          "logical_name": "calibration_model",
+          "dependency_type": "processing_output",
+          "required": false,
+          "compatible_sources": [
+            "ModelCalibration"
+          ],
+          "data_type": "S3Uri",
+          "description": "Calibration model and artifacts for probability calibration (optional)"
+        }
+      },
+      "unified_outputs": {
+        "packaged_model": {
+          "logical_name": "packaged_model",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Packaged model ready for deployment"
+        }
+      },
+      "dependency_sources": {
+        "model_input": [
+          "generic"
+        ],
+        "inference_scripts_input": [
+          "generic"
+        ],
+        "calibration_model": [
+          "generic"
+        ]
+      },
+      "output_sources": {
+        "packaged_model": [
+          "generic"
+        ]
+      },
+      "variant_count": 1
+    }
+  },
+  "level3": {
+    "passed": true,
+    "issues": [],
+    "specification": {
+      "step_type": "Package",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "model_input",
+          "dependency_type": "model_artifacts",
+          "required": true,
+          "compatible_sources": [
+            "ModelStep",
+            "XGBoostTraining",
+            "TrainingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Trained model artifacts to be packaged"
+        },
+        {
+          "logical_name": "inference_scripts_input",
+          "dependency_type": "custom_property",
+          "required": false,
+          "compatible_sources": [
+            "ScriptStep",
+            "ProcessingStep"
+          ],
+          "data_type": "String",
+          "description": "Inference scripts and code for model deployment (can be local directory path or S3 URI)"
+        },
+        {
+          "logical_name": "calibration_model",
+          "dependency_type": "processing_output",
+          "required": false,
+          "compatible_sources": [
+            "ModelCalibration"
+          ],
+          "data_type": "S3Uri",
+          "description": "Calibration model and artifacts for probability calibration (optional)"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "packaged_model",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri",
+          "data_type": "S3Uri",
+          "description": "Packaged model ready for deployment"
+        }
+      ]
+    }
+  },
+  "level4": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
+        "details": {
+          "required_fields": [
+            "author",
+            "service_name",
+            "bucket",
+            "pipeline_version",
+            "region",
+            "role"
+          ],
+          "builder": "package"
+        },
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
+      }
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "processing_entry_point",
+          "line_number": 86,
+          "context": "line_86"
+        },
+        {
+          "field_name": "use_large_processing_instance",
+          "line_number": 114,
+          "context": "line_114"
+        },
+        {
+          "field_name": "processing_instance_type_large",
+          "line_number": 114,
+          "context": "line_114"
+        },
+        {
+          "field_name": "processing_instance_type_small",
+          "line_number": 114,
+          "context": "line_114"
+        },
+        {
+          "field_name": "processing_instance_count",
+          "line_number": 123,
+          "context": "line_123"
+        },
+        {
+          "field_name": "processing_volume_size",
+          "line_number": 124,
+          "context": "line_124"
+        },
+        {
+          "field_name": "pipeline_name",
+          "line_number": 142,
+          "context": "line_142"
+        },
+        {
+          "field_name": "region",
+          "line_number": 145,
+          "context": "line_145"
+        },
+        {
+          "field_name": "source_dir",
+          "line_number": 188,
+          "context": "line_188"
+        },
+        {
+          "field_name": "pipeline_s3_loc",
+          "line_number": 302,
+          "context": "line_302"
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "PackageStepBuilder",
+          "line_number": 27,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": [
+            "Call"
+          ]
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "notebook_root",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 75,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_create_processor",
+          "line_number": 104,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 130,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 160,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 260,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_job_arguments",
+          "line_number": 315,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 326,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        }
+      ],
+      "import_statements": [
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 2
+        },
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 3
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "ProcessingStep",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingInput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.processing",
+          "name": "ProcessingOutput",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.sklearn",
+          "name": "SKLearnProcessor",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_package_step",
+          "name": "PackageConfig",
+          "alias": null,
+          "line_number": 9
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.registry_manager",
+          "name": "RegistryManager",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.dependency_resolver",
+          "name": "UnifiedDependencyResolver",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "registry.builder_registry",
+          "name": "register_builder",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "specs.package_spec",
+          "name": "PACKAGE_SPEC",
+          "alias": null,
+          "line_number": 17
+        }
+      ],
+      "config_class_usage": []
+    },
+    "config_analysis": {
+      "class_name": "PackageConfig",
+      "fields": {
+        "author": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "bucket": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "role": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "region": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "service_name": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "pipeline_version": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_class": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "current_date": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "py_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "processing_instance_count": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "processing_volume_size": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "processing_instance_type_large": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_instance_type_small": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "use_large_processing_instance": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "processing_source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "processing_entry_point": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "processing_script_arguments": {
+          "type": "typing.Optional[typing.List[str]]",
+          "required": false
+        },
+        "processing_framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "aws_region": {
+          "type": "property",
+          "required": false
+        },
+        "effective_instance_type": {
+          "type": "property",
+          "required": false
+        },
+        "effective_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "model_extra": {
+          "type": "property",
+          "required": false
+        },
+        "model_fields_set": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_description": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_name": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_s3_loc": {
+          "type": "property",
+          "required": false
+        },
+        "script_contract": {
+          "type": "property",
+          "required": false
+        },
+        "script_path": {
+          "type": "property",
+          "required": false
+        }
+      },
+      "required_fields": [
+        "author",
+        "bucket",
+        "role",
+        "region",
+        "service_name",
+        "pipeline_version"
+      ],
+      "optional_fields": [
+        "model_class",
+        "current_date",
+        "framework_version",
+        "py_version",
+        "source_dir",
+        "processing_instance_count",
+        "processing_volume_size",
+        "processing_instance_type_large",
+        "processing_instance_type_small",
+        "use_large_processing_instance",
+        "processing_source_dir",
+        "processing_entry_point",
+        "processing_script_arguments",
+        "processing_framework_version",
+        "aws_region",
+        "effective_instance_type",
+        "effective_source_dir",
+        "model_extra",
+        "model_fields_set",
+        "pipeline_description",
+        "pipeline_name",
+        "pipeline_s3_loc",
+        "script_contract",
+        "script_path"
+      ],
+      "default_values": {
+        "author": "PydanticUndefined",
+        "bucket": "PydanticUndefined",
+        "role": "PydanticUndefined",
+        "region": "PydanticUndefined",
+        "service_name": "PydanticUndefined",
+        "pipeline_version": "PydanticUndefined",
+        "model_class": "xgboost",
+        "current_date": "PydanticUndefined",
+        "framework_version": "2.1.0",
+        "py_version": "py310",
+        "source_dir": null,
+        "processing_instance_count": 1,
+        "processing_volume_size": 500,
+        "processing_instance_type_large": "ml.m5.4xlarge",
+        "processing_instance_type_small": "ml.m5.2xlarge",
+        "use_large_processing_instance": false,
+        "processing_source_dir": null,
+        "processing_entry_point": "package.py",
+        "processing_script_arguments": null,
+        "processing_framework_version": "1.2-1"
+      }
+    }
+  },
+  "overall_status": "PASSING",
+  "metadata": {
+    "script_name": "package",
+    "validation_timestamp": "2025-09-07T19:43:49.911195",
+    "validator_version": "1.0.0",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/package.py"
+  }
+}

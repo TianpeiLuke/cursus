@@ -7,8 +7,8 @@ This script runs all the individual test files and provides a summary.
 # Add the project root to the Python path to allow for absolute imports
 import sys
 import os
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# Note: sys.path setup is handled by conftest.py
+# No manual path manipulation needed
 
 import unittest
 import importlib

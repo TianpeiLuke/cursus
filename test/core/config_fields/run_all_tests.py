@@ -14,7 +14,8 @@ from typing import Dict, List, Tuple, Optional
 import importlib.util
 
 # Add the project root to the Python path
-sys.path.insert(0, project_root)
+# Note: sys.path setup is handled by conftest.py
+# No manual path manipulation needed
 
 class ConfigFieldTestRunner:
     """Comprehensive test runner for config_field tests."""

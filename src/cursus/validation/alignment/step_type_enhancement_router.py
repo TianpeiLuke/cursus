@@ -85,7 +85,7 @@ class StepTypeEnhancementRouter:
                 try:
                     # Import the enhancer class dynamically using importlib
                     import importlib
-                    module_name = f"src.cursus.validation.alignment.step_type_enhancers.{step_type.lower()}_enhancer"
+                    module_name = f"cursus.validation.alignment.step_type_enhancers.{step_type.lower()}_enhancer"
                     module = importlib.import_module(module_name)
                     enhancer_class = getattr(module, enhancer_class_name)
                     self._enhancers[step_type] = enhancer_class()
