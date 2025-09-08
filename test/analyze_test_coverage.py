@@ -2,14 +2,14 @@
 """
 Comprehensive Test Coverage Analysis for Cursus Core Package
 
-This program analyzes test coverage and redundancy for the core package components:
+This program analyzes test coverage for the core package components:
 - assembler
 - base
 - compiler
 - config_fields (config_field in test directory)
 - deps
 
-It provides detailed reporting on test results, coverage analysis, and redundancy assessment.
+It provides detailed reporting on test results and coverage analysis.
 """
 
 import json
@@ -58,7 +58,6 @@ class TestCoverageAnalyzer:
         }
         
         self.coverage_data = {}
-        self.redundancy_data = {}
     
     def extract_functions_from_file(self, file_path: Path) -> List[str]:
         """Extract function and method names from a Python file."""
@@ -185,13 +184,12 @@ class TestCoverageAnalyzer:
         return total_test_functions
     
     def run_full_analysis(self) -> Dict:
-        """Run complete coverage and redundancy analysis for all components."""
+        """Run complete coverage analysis for all components."""
         print("🚀 Starting Comprehensive Test Coverage Analysis")
         print(f"📁 Source Directory: {self.src_dir}")
         print(f"📁 Test Directory: {self.test_dir}")
         
         coverage_analysis = {}
-        redundancy_analysis = {}
         
         # Analyze each component
         for component_name in self.components.keys():
@@ -204,12 +202,9 @@ class TestCoverageAnalyzer:
             print(f"   📊 Coverage: {coverage_data['coverage_percentage']:.1f}% "
                   f"({coverage_data['tested_functions']}/{coverage_data['total_source_functions']} functions)")
             
-            # Redundancy analysis
-            redundancy_data = self.analyze_redundancy(component_name)
-            redundancy_analysis[component_name] = redundancy_data
-            
-            print(f"   🔄 Redundancy: {redundancy_data['redundant_test_names']} duplicate test names "
-                  f"out of {redundancy_data['unique_test_names']} unique names")
+            # Test count
+            test_count = self.get_test_count(component_name)
+            print(f"   🧪 Test Functions: {test_count}")
         
         # Calculate overall summary
         total_functions = sum(comp['total_source_functions'] for comp in coverage_analysis.values())
@@ -226,7 +221,6 @@ class TestCoverageAnalyzer:
         return {
             "timestamp": self._get_timestamp(),
             "coverage_analysis": coverage_analysis,
-            "redundancy_analysis": redundancy_analysis,
             "summary": summary
         }
     
@@ -256,21 +250,20 @@ class TestCoverageAnalyzer:
               f"({summary['total_tested_functions']}/{summary['total_source_functions']} functions)")
         print(f"🧩 Components Analyzed: {summary['total_components']}")
         
-        print(f"\n{'Component':<15} {'Coverage':<12} {'Functions':<12} {'Redundancy':<12}")
+        print(f"\n{'Component':<15} {'Coverage':<12} {'Functions':<12} {'Test Count':<12}")
         print("-" * 60)
         
         coverage_data = results['coverage_analysis']
-        redundancy_data = results['redundancy_analysis']
         
         for component in coverage_data.keys():
             cov = coverage_data[component]
-            red = redundancy_data[component]
             
             coverage_pct = f"{cov['coverage_percentage']:.1f}%"
             functions_str = f"{cov['tested_functions']}/{cov['total_source_functions']}"
-            redundancy_str = f"{red['redundant_test_names']} dupes"
+            test_count = len(cov['test_functions_by_file'].get(list(cov['test_functions_by_file'].keys())[0], [])) if cov['test_functions_by_file'] else 0
+            test_count_str = f"{test_count} tests"
             
-            print(f"{component:<15} {coverage_pct:<12} {functions_str:<12} {redundancy_str:<12}")
+            print(f"{component:<15} {coverage_pct:<12} {functions_str:<12} {test_count_str:<12}")
         
         print(f"\n{'='*80}")
         
@@ -279,13 +272,9 @@ class TestCoverageAnalyzer:
         for component, data in coverage_data.items():
             if data['coverage_percentage'] < 50:
                 print(f"   ❌ {component}: Low coverage ({data['coverage_percentage']:.1f}%)")
-            
-            red_data = redundancy_data[component]
-            if red_data['redundant_test_names'] > 5:
-                print(f"   🔄 {component}: High redundancy ({red_data['redundant_test_names']} duplicates)")
         
         print(f"\n📁 Detailed results saved in JSON format")
-        print(f"🔍 Run with --component <name> for detailed component analysis")
+        print(f" Run with --component <name> for detailed component analysis")
 
 
 def main():
@@ -294,8 +283,6 @@ def main():
     
     parser = argparse.ArgumentParser(description='Analyze test coverage for cursus core package')
     parser.add_argument('--component', help='Analyze specific component only')
-    parser.add_argument('--redundancy-detail', action='store_true', 
-                       help='Show detailed redundancy analysis')
     parser.add_argument('--output', default='core_coverage_analysis.json',
                        help='Output file name (default: core_coverage_analysis.json)')
     
@@ -313,25 +300,19 @@ def main():
             
             print(f"🔍 Analyzing component: {args.component}")
             coverage_data = analyzer.analyze_component_coverage(args.component)
-            redundancy_data = analyzer.analyze_redundancy(args.component)
+            test_count = analyzer.get_test_count(args.component)
             
             # Print detailed results for single component
             print(f"\n📊 COVERAGE ANALYSIS - {args.component.upper()}")
             print(f"   Total Functions: {coverage_data['total_source_functions']}")
             print(f"   Tested Functions: {coverage_data['tested_functions']}")
             print(f"   Coverage: {coverage_data['coverage_percentage']:.1f}%")
+            print(f"   Test Functions: {test_count}")
             
-            print(f"\n🔄 REDUNDANCY ANALYSIS - {args.component.upper()}")
-            print(f"   Total Test Functions: {redundancy_data['total_test_functions']}")
-            print(f"   Unique Names: {redundancy_data['unique_test_names']}")
-            print(f"   Redundant Names: {redundancy_data['redundant_test_names']}")
-            
-            if args.redundancy_detail and redundancy_data['redundant_tests']:
-                print(f"\n📋 REDUNDANT TESTS:")
-                for test_name, info in redundancy_data['redundant_tests'].items():
-                    print(f"   • {test_name} ({info['count']} occurrences)")
-                    for location in info['locations']:
-                        print(f"     - {location}")
+            if coverage_data['likely_untested_functions']:
+                print(f"\n📋 LIKELY UNTESTED FUNCTIONS:")
+                for func in coverage_data['likely_untested_functions']:
+                    print(f"   • {func}")
         else:
             # Run full analysis
             results = analyzer.run_full_analysis()
