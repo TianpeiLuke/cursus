@@ -55,8 +55,6 @@ import unittest
 import sys
 from pathlib import Path
 
-)
-
 # Import test modules
 from .test_workspace_file_resolver import TestDeveloperWorkspaceFileResolver
 from .test_workspace_module_loader import TestWorkspaceModuleLoader

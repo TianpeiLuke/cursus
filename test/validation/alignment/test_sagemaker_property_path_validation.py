@@ -8,9 +8,6 @@ that validates SageMaker step property paths against official documentation.
 import sys
 from pathlib import Path
 
-# Add the project root to Python path
-sys.path.insert(0, str(project_root))
-
 from cursus.validation.alignment.property_path_validator import SageMakerPropertyPathValidator
 
 def test_sagemaker_property_path_validator():

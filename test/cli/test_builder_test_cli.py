@@ -17,7 +17,6 @@ from io import StringIO
 # Import the CLI module
 import sys
 import os
-)
 
 from cursus.cli.builder_test_cli import (
     print_test_results,

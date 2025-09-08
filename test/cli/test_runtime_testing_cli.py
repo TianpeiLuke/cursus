@@ -7,8 +7,6 @@ Tests the Click-based CLI interface for runtime testing functionality.
 import sys
 from pathlib import Path
 
-)
-
 import unittest
 import tempfile
 import json

@@ -11,10 +11,6 @@ import os
 import sys
 from pathlib import Path
 
-# Add src to path for imports
-src_path = os.path.join(project_root, 'src')
-sys.path.insert(0, project_root)
-
 from cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
 from cursus.validation.alignment.static_analysis.builder_analyzer import BuilderArgumentExtractor, extract_builder_arguments
 

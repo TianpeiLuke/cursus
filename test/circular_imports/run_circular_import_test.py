@@ -9,10 +9,6 @@ test for the cursus package.
 import sys
 import os
 
-# Add the project root to the Python path
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 from .test_circular_imports import run_circular_import_tests
 
 if __name__ == '__main__':
