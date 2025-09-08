@@ -365,7 +365,7 @@ def list_available_builders() -> List[str]:
                         obj.__module__ == module_path and  # Ensure it's defined in this module
                         name != "StepBuilder"):  # Exclude base classes
                         
-                        full_path = f"src.cursus.steps.builders.{module_name}.{name}"
+                        full_path = f"cursus.steps.builders.{module_name}.{name}"
                         available_builders.append(full_path)
                         
             except ImportError as e:
@@ -378,7 +378,7 @@ def list_available_builders() -> List[str]:
                     tree = ast.parse(content)
                     for node in ast.walk(tree):
                         if isinstance(node, ast.ClassDef) and node.name.endswith("StepBuilder") and node.name != "StepBuilder":
-                            full_path = f"src.cursus.steps.builders.{module_name}.{node.name}"
+                            full_path = f"cursus.steps.builders.{module_name}.{node.name}"
                             builders_with_missing_deps.append(full_path)
                             
                 except Exception:
