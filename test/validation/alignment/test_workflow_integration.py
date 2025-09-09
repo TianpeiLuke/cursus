@@ -13,7 +13,6 @@ import tempfile
 import shutil
 from datetime import datetime, timedelta
 
-)
 
 from cursus.validation.alignment.workflow_integration import (
     AlignmentValidationWorkflow, run_alignment_validation_workflow

@@ -14,7 +14,6 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import sys
 
-)
 
 from cursus.validation.alignment.analyzers.config_analyzer import ConfigurationAnalyzer
 

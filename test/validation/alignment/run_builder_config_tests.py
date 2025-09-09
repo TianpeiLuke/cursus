@@ -12,7 +12,6 @@ import unittest
 import sys
 from pathlib import Path
 
-)
 
 # Import test modules
 from analyzers.test_config_analyzer import TestConfigurationAnalyzer

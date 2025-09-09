@@ -11,7 +11,6 @@ import os
 import unittest
 from datetime import datetime
 
-)
 
 from cursus.validation.alignment.alignment_reporter import (
     AlignmentReport, ValidationResult, AlignmentIssue, SeverityLevel

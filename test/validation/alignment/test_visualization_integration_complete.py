@@ -14,7 +14,6 @@ import shutil
 import json
 from unittest.mock import patch, MagicMock
 
-)
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 from cursus.validation.alignment.alignment_reporter import (
