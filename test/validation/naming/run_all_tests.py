@@ -4,11 +4,14 @@ Test runner for all validation tests.
 This script runs all the individual test files and provides a summary.
 """
 
-# Add the project root to the Python path to allow for absolute imports
+# Import conftest to ensure path setup
 import sys
 import os
-# Note: sys.path setup is handled by conftest.py
-# No manual path manipulation needed
+from pathlib import Path
+
+# Import conftest to trigger path setup
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+import conftest
 
 import unittest
 import importlib
@@ -16,18 +19,26 @@ import importlib
 def run_all_validation_tests():
     """Run all validation test modules."""
     
-    # List of test modules to run
-    test_modules = [
-        'test.validation.naming.test_naming_violation',
-        'test.validation.naming.test_validator_basic',
-        'test.validation.naming.test_canonical_step_name_validation',
-        'test.validation.naming.test_config_class_name_validation',
-        'test.validation.naming.test_builder_class_name_validation',
-        'test.validation.naming.test_logical_name_validation',
-        'test.validation.naming.test_file_naming_validation',
-        'test.validation.naming.test_class_validation',
-        'test.validation.naming.test_registry_validation'
+    # List of test modules to run (using relative imports from current directory)
+    current_dir = Path(__file__).parent
+    test_files = [
+        'test_naming_violation',
+        'test_validator_basic',
+        'test_canonical_step_name_validation',
+        'test_config_class_name_validation',
+        'test_builder_class_name_validation',
+        'test_logical_name_validation',
+        'test_file_naming_validation',
+        'test_class_validation',
+        'test_registry_validation'
     ]
+    
+    # Add current directory to path for relative imports
+    current_dir_str = str(current_dir.resolve())
+    if current_dir_str not in sys.path:
+        sys.path.insert(0, current_dir_str)
+    
+    test_modules = test_files
     
     # Create a test suite
     loader = unittest.TestLoader()
