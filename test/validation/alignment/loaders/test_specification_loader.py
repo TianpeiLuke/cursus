@@ -6,7 +6,7 @@ specification files from Python modules with robust sys.path management and
 job type awareness.
 """
 
-import pytest
+import unittest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 import sys
@@ -17,10 +17,10 @@ from typing import Dict, List, Any, Optional
 from cursus.validation.alignment.loaders.specification_loader import SpecificationLoader
 
 
-class TestSpecificationLoader:
+class TestSpecificationLoader(unittest.TestCase):
     """Test cases for SpecificationLoader class."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.specs_dir = Path(self.temp_dir) / "specs"
@@ -69,7 +69,7 @@ class TestSpecificationLoader:
         
         self.sample_spec_obj.outputs = {"model": mock_output}
     
-    def teardown_method(self):
+    def tearDown(self):
         """Clean up test fixtures."""
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -78,8 +78,8 @@ class TestSpecificationLoader:
         """Test SpecificationLoader initialization."""
         loader = SpecificationLoader("/path/to/specs")
         
-        assert loader.specs_dir == Path("/path/to/specs")
-        assert loader.file_resolver is not None
+        self.assertEqual(loader.specs_dir, Path("/path/to/specs"))
+        self.assertIsNotNone(loader.file_resolver)
     
     def test_find_specification_files_direct_matching(self):
         """Test finding specification files using direct matching."""
@@ -91,9 +91,9 @@ class TestSpecificationLoader:
             self.specs_dir / "model_training_validation_spec.py"
         ]
         
-        assert len(spec_files) == 2
+        self.assertEqual(len(spec_files), 2)
         for expected_file in expected_files:
-            assert expected_file in spec_files
+            self.assertIn(expected_file, spec_files)
     
     def test_find_specification_files_no_direct_match(self):
         """Test finding specification files when no direct match exists."""
@@ -177,10 +177,10 @@ class TestSpecificationLoader:
         
         spec_path = Path("test_spec.py")
         
-        with pytest.raises(ValueError) as exc_info:
+        with self.assertRaises(ValueError) as exc_info:
             self.loader.load_specification_from_python(spec_path, "test", "default")
         
-        assert "Could not load specification module" in str(exc_info.value)
+        self.assertIn("Could not load specification module", str(exc_info.exception))
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
@@ -202,10 +202,10 @@ class TestSpecificationLoader:
             with patch.object(self.loader.file_resolver, 'find_spec_constant_name', return_value=None):
                 spec_path = Path("test_spec.py")
                 
-                with pytest.raises(ValueError) as exc_info:
+                with self.assertRaises(ValueError) as exc_info:
                     self.loader.load_specification_from_python(spec_path, "test", "default")
                 
-                assert "No specification constant found" in str(exc_info.value)
+                self.assertIn("No specification constant found", str(exc_info.exception))
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
@@ -492,10 +492,10 @@ class TestSpecificationLoader:
             assert result == {'step_type': 'TestSpec'}
 
 
-class TestSpecificationLoaderIntegration:
+class TestSpecificationLoaderIntegration(unittest.TestCase):
     """Integration test cases for SpecificationLoader."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up integration test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.specs_dir = Path(self.temp_dir) / "specs"
@@ -503,7 +503,7 @@ class TestSpecificationLoaderIntegration:
         
         self.loader = SpecificationLoader(str(self.specs_dir))
     
-    def teardown_method(self):
+    def tearDown(self):
         """Clean up integration test fixtures."""
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -565,10 +565,10 @@ class TestSpecificationLoaderIntegration:
             assert 'valid' in result or 'another_valid' in result
 
 
-class TestSpecificationLoaderErrorScenarios:
+class TestSpecificationLoaderErrorScenarios(unittest.TestCase):
     """Test cases for error scenarios and edge cases."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up error scenario test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.specs_dir = Path(self.temp_dir) / "specs"
@@ -576,7 +576,7 @@ class TestSpecificationLoaderErrorScenarios:
         
         self.loader = SpecificationLoader(str(self.specs_dir))
     
-    def teardown_method(self):
+    def tearDown(self):
         """Clean up error scenario test fixtures."""
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -648,4 +648,4 @@ class TestSpecificationLoaderErrorScenarios:
 
 
 if __name__ == '__main__':
-    pytest.main([__file__])
+    unittest.main()

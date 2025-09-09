@@ -12,7 +12,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from ..alignment_utils import FlexibleFileResolver
-from ....core.base.specification_base import StepSpecification
+from ....core.base.specification_base import StepSpecification, DependencySpec, OutputSpec
 
 logger = logging.getLogger(__name__)
 
@@ -232,8 +232,6 @@ class SpecificationLoader:
         Returns:
             StepSpecification object
         """
-        from ....core.base.specification_base import DependencySpec, OutputSpec
-        
         # Convert dependencies
         dependencies = {}
         for dep in spec_dict.get('dependencies', []):

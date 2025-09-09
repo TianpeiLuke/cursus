@@ -35,20 +35,27 @@ class ContractSpecValidator:
         """
         issues = []
         
-        # Get logical names from contract
-        contract_inputs = set(contract.get('inputs', {}).keys())
-        contract_outputs = set(contract.get('outputs', {}).keys())
+        # Get logical names from contract (handle malformed data gracefully)
+        contract_inputs_dict = contract.get('inputs', {})
+        contract_inputs = set(contract_inputs_dict.keys()) if isinstance(contract_inputs_dict, dict) else set()
         
-        # Get logical names from specification
+        contract_outputs_dict = contract.get('outputs', {})
+        contract_outputs = set(contract_outputs_dict.keys()) if isinstance(contract_outputs_dict, dict) else set()
+        
+        # Get logical names from specification (handle malformed data gracefully)
         spec_dependencies = set()
-        for dep in specification.get('dependencies', []):
-            if 'logical_name' in dep:
-                spec_dependencies.add(dep['logical_name'])
+        dependencies = specification.get('dependencies', [])
+        if isinstance(dependencies, list):
+            for dep in dependencies:
+                if isinstance(dep, dict) and 'logical_name' in dep:
+                    spec_dependencies.add(dep['logical_name'])
         
         spec_outputs = set()
-        for output in specification.get('outputs', []):
-            if 'logical_name' in output:
-                spec_outputs.add(output['logical_name'])
+        outputs = specification.get('outputs', [])
+        if isinstance(outputs, list):
+            for output in outputs:
+                if isinstance(output, dict) and 'logical_name' in output:
+                    spec_outputs.add(output['logical_name'])
         
         # Check for contract inputs not in spec dependencies
         missing_deps = contract_inputs - spec_dependencies
@@ -112,34 +119,50 @@ class ContractSpecValidator:
         """
         issues = []
         
-        # Check for specification dependencies without corresponding contract inputs
-        spec_deps = {dep.get('logical_name') for dep in specification.get('dependencies', [])}
-        contract_inputs = set(contract.get('inputs', {}).keys())
+        # Check for specification dependencies without corresponding contract inputs (handle malformed data)
+        dependencies = specification.get('dependencies', [])
+        spec_deps = set()
+        if isinstance(dependencies, list):
+            for dep in dependencies:
+                if isinstance(dep, dict):
+                    logical_name = dep.get('logical_name')
+                    if logical_name:
+                        spec_deps.add(logical_name)
+        
+        contract_inputs_dict = contract.get('inputs', {})
+        contract_inputs = set(contract_inputs_dict.keys()) if isinstance(contract_inputs_dict, dict) else set()
         
         unmatched_deps = spec_deps - contract_inputs
         for logical_name in unmatched_deps:
-            if logical_name:  # Skip None values
-                issues.append({
-                    'severity': 'WARNING',
-                    'category': 'input_output_alignment',
-                    'message': f'Specification dependency {logical_name} has no corresponding contract input',
-                    'details': {'logical_name': logical_name, 'contract': contract_name},
-                    'recommendation': f'Add {logical_name} to contract inputs or remove from specification dependencies'
-                })
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'input_output_alignment',
+                'message': f'Specification dependency {logical_name} has no corresponding contract input',
+                'details': {'logical_name': logical_name, 'contract': contract_name},
+                'recommendation': f'Add {logical_name} to contract inputs or remove from specification dependencies'
+            })
         
-        # Check for specification outputs without corresponding contract outputs
-        spec_outputs = {out.get('logical_name') for out in specification.get('outputs', [])}
-        contract_outputs = set(contract.get('outputs', {}).keys())
+        # Check for specification outputs without corresponding contract outputs (handle malformed data)
+        outputs = specification.get('outputs', [])
+        spec_outputs = set()
+        if isinstance(outputs, list):
+            for out in outputs:
+                if isinstance(out, dict):
+                    logical_name = out.get('logical_name')
+                    if logical_name:
+                        spec_outputs.add(logical_name)
+        
+        contract_outputs_dict = contract.get('outputs', {})
+        contract_outputs = set(contract_outputs_dict.keys()) if isinstance(contract_outputs_dict, dict) else set()
         
         unmatched_outputs = spec_outputs - contract_outputs
         for logical_name in unmatched_outputs:
-            if logical_name:  # Skip None values
-                issues.append({
-                    'severity': 'WARNING',
-                    'category': 'input_output_alignment',
-                    'message': f'Specification output {logical_name} has no corresponding contract output',
-                    'details': {'logical_name': logical_name, 'contract': contract_name},
-                    'recommendation': f'Add {logical_name} to contract outputs or remove from specification outputs'
-                })
+            issues.append({
+                'severity': 'WARNING',
+                'category': 'input_output_alignment',
+                'message': f'Specification output {logical_name} has no corresponding contract output',
+                'details': {'logical_name': logical_name, 'contract': contract_name},
+                'recommendation': f'Add {logical_name} to contract outputs or remove from specification outputs'
+            })
         
         return issues

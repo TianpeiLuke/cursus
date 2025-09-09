@@ -9,6 +9,14 @@ from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 import numpy as np
 
+# Try to import matplotlib, but make it optional
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    plt = None
+    MATPLOTLIB_AVAILABLE = False
+
 # Common chart styling configuration
 DEFAULT_CHART_CONFIG = {
     "figure_size": (10, 6),
@@ -54,11 +62,15 @@ def get_quality_color(score: float, config: Dict[str, Any] = None) -> str:
         
     colors = config.get("colors", DEFAULT_CHART_CONFIG["colors"])
     
+    # Handle None scores
+    if score is None:
+        return colors.get("poor", DEFAULT_CHART_CONFIG["colors"]["poor"])
+    
     for threshold, quality in sorted(QUALITY_THRESHOLDS.items(), reverse=True):
         if score >= threshold:
-            return colors.get(quality, colors["poor"])
+            return colors.get(quality, colors.get("poor", DEFAULT_CHART_CONFIG["colors"]["poor"]))
     
-    return colors["poor"]
+    return colors.get("poor", DEFAULT_CHART_CONFIG["colors"]["poor"])
 
 
 def get_quality_rating(score: float) -> str:

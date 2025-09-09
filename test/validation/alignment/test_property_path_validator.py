@@ -9,7 +9,7 @@ Tests SageMaker Property Path Validator functionality including:
 - Error handling and edge cases
 """
 
-import pytest
+import unittest
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
@@ -19,18 +19,18 @@ from cursus.validation.alignment.property_path_validator import (
 )
 
 
-class TestSageMakerPropertyPathValidator:
+class TestSageMakerPropertyPathValidator(unittest.TestCase):
     """Test SageMaker Property Path Validator functionality."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.validator = SageMakerPropertyPathValidator()
     
     def test_validator_initialization(self):
         """Test validator initialization."""
-        assert self.validator.documentation_version == "v2.92.2"
-        assert "sagemaker.readthedocs.io" in self.validator.documentation_url
-        assert self.validator._property_path_cache == {}
+        self.assertEqual(self.validator.documentation_version, "v2.92.2")
+        self.assertIn("sagemaker.readthedocs.io", self.validator.documentation_url)
+        self.assertEqual(self.validator._property_path_cache, {})
     
     def test_validate_specification_property_paths_empty_spec(self):
         """Test validation with empty specification."""
@@ -38,8 +38,8 @@ class TestSageMakerPropertyPathValidator:
         issues = self.validator.validate_specification_property_paths(specification, "test_contract")
         
         # Should have step type resolution info
-        assert len(issues) >= 1
-        assert any(issue['category'] == 'step_type_resolution' for issue in issues)
+        self.assertGreaterEqual(len(issues), 1)
+        self.assertTrue(any(issue['category'] == 'step_type_resolution' for issue in issues))
     
     def test_validate_specification_property_paths_training_step(self):
         """Test validation for training step."""
@@ -62,13 +62,13 @@ class TestSageMakerPropertyPathValidator:
         
         # Should have validation results for both outputs
         validation_issues = [issue for issue in issues if issue['category'] == 'property_path_validation']
-        assert len(validation_issues) == 2
+        self.assertEqual(len(validation_issues), 2)
         
         # One should be valid, one invalid
         valid_issues = [issue for issue in validation_issues if issue['severity'] == 'INFO']
         error_issues = [issue for issue in validation_issues if issue['severity'] == 'ERROR']
-        assert len(valid_issues) == 1
-        assert len(error_issues) == 1
+        self.assertEqual(len(valid_issues), 1)
+        self.assertEqual(len(error_issues), 1)
     
     def test_validate_specification_property_paths_processing_step(self):
         """Test validation for processing step."""
@@ -430,7 +430,7 @@ class TestSageMakerPropertyPathValidator:
             assert 'valid_property_paths' in step_info
 
 
-class TestValidatePropertyPathsConvenienceFunction:
+class TestValidatePropertyPathsConvenienceFunction(unittest.TestCase):
     """Test the convenience function for property path validation."""
     
     def test_validate_property_paths_function(self):
@@ -453,10 +453,10 @@ class TestValidatePropertyPathsConvenienceFunction:
         assert 'step_type_resolution' in categories
 
 
-class TestEdgeCasesAndErrorHandling:
+class TestEdgeCasesAndErrorHandling(unittest.TestCase):
     """Test edge cases and error handling."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.validator = SageMakerPropertyPathValidator()
     
@@ -611,4 +611,4 @@ class TestEdgeCasesAndErrorHandling:
 
 
 if __name__ == '__main__':
-    pytest.main([__file__])
+    unittest.main()

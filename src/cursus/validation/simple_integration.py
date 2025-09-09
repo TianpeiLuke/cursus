@@ -55,7 +55,7 @@ class SimpleValidationCoordinator:
         
         try:
             # Run standardization validation
-            from cursus.validation.builders.universal_test import UniversalStepBuilderTest
+            from .builders.universal_test import UniversalStepBuilderTest
             tester = UniversalStepBuilderTest(builder_class, **kwargs)
             results = tester.run_all_tests()
             
@@ -103,7 +103,7 @@ class SimpleValidationCoordinator:
         
         try:
             # Run alignment validation
-            from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+            from .alignment.unified_alignment_tester import UnifiedAlignmentTester
             tester = UnifiedAlignmentTester()
             results = tester.run_full_validation(script_names)
             

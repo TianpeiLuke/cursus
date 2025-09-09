@@ -6,16 +6,16 @@ contract-specification alignment including data type validation, input/output
 alignment, and logical name validation.
 """
 
-import pytest
+import unittest
 from typing import Dict, Any, List
 
 from cursus.validation.alignment.validators.contract_spec_validator import ContractSpecValidator
 
 
-class TestContractSpecValidator:
+class TestContractSpecValidator(unittest.TestCase):
     """Test cases for ContractSpecValidator class."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.validator = ContractSpecValidator()
         
@@ -84,7 +84,7 @@ class TestContractSpecValidator:
             "model_training"
         )
         
-        assert issues == []
+        self.assertEqual(issues, [])
     
     def test_validate_logical_names_missing_contract_input(self):
         """Test validation when contract is missing an input declared in spec."""
@@ -100,7 +100,7 @@ class TestContractSpecValidator:
             "model_training"
         )
         
-        assert len(issues) == 0  # This should not generate issues since spec deps should match contract inputs
+        self.assertEqual(len(issues), 0)  # This should not generate issues since spec deps should match contract inputs
     
     def test_validate_logical_names_extra_contract_input(self):
         """Test validation when contract has extra input not in spec."""
@@ -119,11 +119,11 @@ class TestContractSpecValidator:
         )
         
         # Should have one error for extra input not in spec
-        assert len(issues) == 1
-        assert issues[0]['severity'] == 'ERROR'
-        assert issues[0]['category'] == 'logical_names'
-        assert 'extra_data' in issues[0]['message']
-        assert 'not declared as specification dependency' in issues[0]['message']
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0]['severity'], 'ERROR')
+        self.assertEqual(issues[0]['category'], 'logical_names')
+        self.assertIn('extra_data', issues[0]['message'])
+        self.assertIn('not declared as specification dependency', issues[0]['message'])
     
     def test_validate_logical_names_missing_contract_output(self):
         """Test validation when contract is missing an output declared in spec."""
@@ -139,7 +139,7 @@ class TestContractSpecValidator:
             "model_training"
         )
         
-        assert len(issues) == 0  # This should not generate issues since spec outputs should match contract outputs
+        self.assertEqual(len(issues), 0)  # This should not generate issues since spec outputs should match contract outputs
     
     def test_validate_logical_names_extra_contract_output(self):
         """Test validation when contract has extra output not in spec."""
@@ -158,11 +158,11 @@ class TestContractSpecValidator:
         )
         
         # Should have one error for extra output not in spec
-        assert len(issues) == 1
-        assert issues[0]['severity'] == 'ERROR'
-        assert issues[0]['category'] == 'logical_names'
-        assert 'extra_output' in issues[0]['message']
-        assert 'not declared as specification output' in issues[0]['message']
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0]['severity'], 'ERROR')
+        self.assertEqual(issues[0]['category'], 'logical_names')
+        self.assertIn('extra_output', issues[0]['message'])
+        self.assertIn('not declared as specification output', issues[0]['message'])
     
     def test_validate_logical_names_empty_contract(self):
         """Test validation with empty contract."""
@@ -179,7 +179,7 @@ class TestContractSpecValidator:
         )
         
         # Should have no issues since empty contract has no extra inputs/outputs
-        assert len(issues) == 0
+        self.assertEqual(len(issues), 0)
     
     def test_validate_logical_names_empty_specification(self):
         """Test validation with empty specification."""
@@ -197,13 +197,13 @@ class TestContractSpecValidator:
         )
         
         # Should have errors for all contract inputs/outputs not in empty spec
-        assert len(issues) == 4  # 2 inputs + 2 outputs
+        self.assertEqual(len(issues), 4)  # 2 inputs + 2 outputs
         
         # Check that all issues are about missing declarations
         for issue in issues:
-            assert issue['severity'] == 'ERROR'
-            assert issue['category'] == 'logical_names'
-            assert 'not declared as specification' in issue['message']
+            self.assertEqual(issue['severity'], 'ERROR')
+            self.assertEqual(issue['category'], 'logical_names')
+            self.assertIn('not declared as specification', issue['message'])
     
     def test_validate_logical_names_with_job_type(self):
         """Test validation with job type parameter."""
@@ -215,7 +215,7 @@ class TestContractSpecValidator:
         )
         
         # Job type should not affect basic logical name validation
-        assert issues == []
+        self.assertEqual(issues, [])
     
     def test_validate_logical_names_missing_logical_name_in_spec(self):
         """Test validation when spec dependencies/outputs are missing logical_name."""
@@ -245,7 +245,7 @@ class TestContractSpecValidator:
         )
         
         # Should have errors for all contract inputs/outputs since spec has no logical names
-        assert len(issues) == 4  # 2 inputs + 2 outputs
+        self.assertEqual(len(issues), 4)  # 2 inputs + 2 outputs
     
     def test_validate_data_types_basic(self):
         """Test basic data type validation."""
@@ -256,7 +256,7 @@ class TestContractSpecValidator:
         )
         
         # Currently returns empty list as noted in the implementation
-        assert issues == []
+        self.assertEqual(issues, [])
     
     def test_validate_data_types_empty_inputs(self):
         """Test data type validation with empty inputs."""
@@ -272,7 +272,7 @@ class TestContractSpecValidator:
             "test_contract"
         )
         
-        assert issues == []
+        self.assertEqual(issues, [])
     
     def test_validate_input_output_alignment_perfect_match(self):
         """Test input/output alignment when contract and spec match perfectly."""
@@ -282,7 +282,7 @@ class TestContractSpecValidator:
             "model_training"
         )
         
-        assert issues == []
+        self.assertEqual(issues, [])
     
     def test_validate_input_output_alignment_unmatched_dependency(self):
         """Test alignment when spec has dependency without contract input."""
@@ -306,11 +306,11 @@ class TestContractSpecValidator:
         )
         
         # Should have one warning for unmatched dependency
-        assert len(issues) == 1
-        assert issues[0]['severity'] == 'WARNING'
-        assert issues[0]['category'] == 'input_output_alignment'
-        assert 'extra_dependency' in issues[0]['message']
-        assert 'has no corresponding contract input' in issues[0]['message']
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0]['severity'], 'WARNING')
+        self.assertEqual(issues[0]['category'], 'input_output_alignment')
+        self.assertIn('extra_dependency', issues[0]['message'])
+        self.assertIn('has no corresponding contract input', issues[0]['message'])
     
     def test_validate_input_output_alignment_unmatched_output(self):
         """Test alignment when spec has output without contract output."""
@@ -333,11 +333,11 @@ class TestContractSpecValidator:
         )
         
         # Should have one warning for unmatched output
-        assert len(issues) == 1
-        assert issues[0]['severity'] == 'WARNING'
-        assert issues[0]['category'] == 'input_output_alignment'
-        assert 'extra_output' in issues[0]['message']
-        assert 'has no corresponding contract output' in issues[0]['message']
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0]['severity'], 'WARNING')
+        self.assertEqual(issues[0]['category'], 'input_output_alignment')
+        self.assertIn('extra_output', issues[0]['message'])
+        self.assertIn('has no corresponding contract output', issues[0]['message'])
     
     def test_validate_input_output_alignment_none_logical_names(self):
         """Test alignment when spec has None logical names."""
@@ -377,11 +377,11 @@ class TestContractSpecValidator:
         )
         
         # Should have warnings for valid_dep and valid_output, but not for None values
-        assert len(issues) == 2
+        self.assertEqual(len(issues), 2)
         for issue in issues:
-            assert issue['severity'] == 'WARNING'
-            assert issue['category'] == 'input_output_alignment'
-            assert 'valid_' in issue['message']
+            self.assertEqual(issue['severity'], 'WARNING')
+            self.assertEqual(issue['category'], 'input_output_alignment')
+            self.assertIn('valid_', issue['message'])
     
     def test_validate_input_output_alignment_empty_spec(self):
         """Test alignment with empty specification."""
@@ -399,7 +399,7 @@ class TestContractSpecValidator:
         )
         
         # Should have no issues since empty spec has no unmatched dependencies/outputs
-        assert issues == []
+        self.assertEqual(issues, [])
     
     def test_validate_input_output_alignment_empty_contract(self):
         """Test alignment with empty contract."""
@@ -416,11 +416,11 @@ class TestContractSpecValidator:
         )
         
         # Should have warnings for all spec dependencies and outputs
-        assert len(issues) == 4  # 2 dependencies + 2 outputs
+        self.assertEqual(len(issues), 4)  # 2 dependencies + 2 outputs
         for issue in issues:
-            assert issue['severity'] == 'WARNING'
-            assert issue['category'] == 'input_output_alignment'
-            assert 'has no corresponding contract' in issue['message']
+            self.assertEqual(issue['severity'], 'WARNING')
+            self.assertEqual(issue['category'], 'input_output_alignment')
+            self.assertIn('has no corresponding contract', issue['message'])
     
     def test_validate_input_output_alignment_missing_keys(self):
         """Test alignment when contract is missing inputs/outputs keys."""
@@ -436,16 +436,16 @@ class TestContractSpecValidator:
         )
         
         # Should handle missing keys gracefully and report unmatched spec items
-        assert len(issues) == 4  # 2 dependencies + 2 outputs
+        self.assertEqual(len(issues), 4)  # 2 dependencies + 2 outputs
         for issue in issues:
-            assert issue['severity'] == 'WARNING'
-            assert issue['category'] == 'input_output_alignment'
+            self.assertEqual(issue['severity'], 'WARNING')
+            self.assertEqual(issue['category'], 'input_output_alignment')
 
 
-class TestContractSpecValidatorEdgeCases:
+class TestContractSpecValidatorEdgeCases(unittest.TestCase):
     """Test cases for edge cases and error conditions."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.validator = ContractSpecValidator()
     
@@ -466,10 +466,10 @@ class TestContractSpecValidatorEdgeCases:
         
         # Should handle malformed data gracefully
         issues = self.validator.validate_logical_names(malformed_contract, spec, "test")
-        assert isinstance(issues, list)
+        self.assertIsInstance(issues, list)
         
         issues = self.validator.validate_input_output_alignment(malformed_contract, spec, "test")
-        assert isinstance(issues, list)
+        self.assertIsInstance(issues, list)
     
     def test_validate_with_malformed_specification(self):
         """Test validation with malformed specification data."""
@@ -488,10 +488,10 @@ class TestContractSpecValidatorEdgeCases:
         
         # Should handle malformed data gracefully
         issues = self.validator.validate_logical_names(contract, malformed_spec, "test")
-        assert isinstance(issues, list)
+        self.assertIsInstance(issues, list)
         
         issues = self.validator.validate_input_output_alignment(contract, malformed_spec, "test")
-        assert isinstance(issues, list)
+        self.assertIsInstance(issues, list)
     
     def test_validate_with_complex_logical_names(self):
         """Test validation with complex logical names containing special characters."""
@@ -521,10 +521,10 @@ class TestContractSpecValidatorEdgeCases:
         }
         
         issues = self.validator.validate_logical_names(contract, spec, "test")
-        assert issues == []
+        self.assertEqual(issues, [])
         
         issues = self.validator.validate_input_output_alignment(contract, spec, "test")
-        assert issues == []
+        self.assertEqual(issues, [])
     
     def test_issue_format_consistency(self):
         """Test that all validation methods return consistently formatted issues."""
@@ -550,19 +550,19 @@ class TestContractSpecValidatorEdgeCases:
         
         # Check that all issues have required fields
         for issue in all_issues:
-            assert 'severity' in issue
-            assert 'category' in issue
-            assert 'message' in issue
-            assert 'details' in issue
-            assert 'recommendation' in issue
+            self.assertIn('severity', issue)
+            self.assertIn('category', issue)
+            self.assertIn('message', issue)
+            self.assertIn('details', issue)
+            self.assertIn('recommendation', issue)
             
             # Check severity values are valid
-            assert issue['severity'] in ['ERROR', 'WARNING', 'INFO']
+            self.assertIn(issue['severity'], ['ERROR', 'WARNING', 'INFO'])
             
             # Check that details contain contract name
-            assert 'contract' in issue['details']
-            assert issue['details']['contract'] == "test"
+            self.assertIn('contract', issue['details'])
+            self.assertEqual(issue['details']['contract'], "test")
 
 
 if __name__ == '__main__':
-    pytest.main([__file__])
+    unittest.main()

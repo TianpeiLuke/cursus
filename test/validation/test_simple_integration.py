@@ -6,7 +6,7 @@ coordination between Standardization Tester and Alignment Tester with caching,
 statistics tracking, and production validation workflows.
 """
 
-import pytest
+import unittest
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 import warnings
@@ -24,10 +24,10 @@ from cursus.validation.simple_integration import (
 )
 
 
-class TestSimpleValidationCoordinator:
+class TestSimpleValidationCoordinator(unittest.TestCase):
     """Test cases for SimpleValidationCoordinator class."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.coordinator = SimpleValidationCoordinator()
         
@@ -56,14 +56,14 @@ class TestSimpleValidationCoordinator:
         """Test coordinator initialization."""
         coordinator = SimpleValidationCoordinator()
         
-        assert coordinator.cache == {}
-        assert coordinator.stats == {
+        self.assertEqual(coordinator.cache, {})
+        self.assertEqual(coordinator.stats, {
             'development_validations': 0,
             'integration_validations': 0,
             'production_validations': 0,
             'cache_hits': 0,
             'cache_misses': 0
-        }
+        })
     
     @patch('cursus.validation.simple_integration.UniversalStepBuilderTest')
     def test_validate_development_success(self, mock_test_class):
@@ -77,20 +77,20 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_development(self.mock_builder, test_arg="value")
         
         # Verify results
-        assert result['passed'] is True
-        assert result['validation_type'] == 'development'
-        assert result['tester'] == 'standardization'
-        assert result['builder_class'] == 'TestBuilder'
-        assert result['status'] == 'success'
+        self.assertTrue(result['passed'])
+        self.assertEqual(result['validation_type'], 'development')
+        self.assertEqual(result['tester'], 'standardization')
+        self.assertEqual(result['builder_class'], 'TestBuilder')
+        self.assertEqual(result['status'], 'success')
         
         # Verify mock calls
         mock_test_class.assert_called_once_with(self.mock_builder, test_arg="value")
         mock_tester.run_all_tests.assert_called_once()
         
         # Verify statistics
-        assert self.coordinator.stats['development_validations'] == 1
-        assert self.coordinator.stats['cache_misses'] == 1
-        assert self.coordinator.stats['cache_hits'] == 0
+        self.assertEqual(self.coordinator.stats['development_validations'], 1)
+        self.assertEqual(self.coordinator.stats['cache_misses'], 1)
+        self.assertEqual(self.coordinator.stats['cache_hits'], 0)
     
     @patch('cursus.validation.simple_integration.UniversalStepBuilderTest')
     def test_validate_development_error(self, mock_test_class):
@@ -102,13 +102,13 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_development(self.mock_builder)
         
         # Verify error handling
-        assert result['passed'] is False
-        assert result['status'] == 'error'
-        assert result['validation_type'] == 'development'
-        assert result['tester'] == 'standardization'
-        assert result['builder_class'] == 'TestBuilder'
-        assert result['error'] == 'Test error'
-        assert 'Development validation failed' in result['message']
+        self.assertFalse(result['passed'])
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['validation_type'], 'development')
+        self.assertEqual(result['tester'], 'standardization')
+        self.assertEqual(result['builder_class'], 'TestBuilder')
+        self.assertEqual(result['error'], 'Test error')
+        self.assertIn('Development validation failed', result['message'])
     
     @patch('cursus.validation.simple_integration.UniversalStepBuilderTest')
     def test_validate_development_caching(self, mock_test_class):
@@ -120,16 +120,16 @@ class TestSimpleValidationCoordinator:
         
         # First call - should miss cache
         result1 = self.coordinator.validate_development(self.mock_builder)
-        assert self.coordinator.stats['cache_misses'] == 1
-        assert self.coordinator.stats['cache_hits'] == 0
+        self.assertEqual(self.coordinator.stats['cache_misses'], 1)
+        self.assertEqual(self.coordinator.stats['cache_hits'], 0)
         
         # Second call - should hit cache
         result2 = self.coordinator.validate_development(self.mock_builder)
-        assert self.coordinator.stats['cache_misses'] == 1
-        assert self.coordinator.stats['cache_hits'] == 1
+        self.assertEqual(self.coordinator.stats['cache_misses'], 1)
+        self.assertEqual(self.coordinator.stats['cache_hits'], 1)
         
         # Results should be identical
-        assert result1 == result2
+        self.assertEqual(result1, result2)
         
         # Mock should only be called once
         mock_test_class.assert_called_once()
@@ -148,19 +148,19 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_integration(script_names, test_arg="value")
         
         # Verify results
-        assert result['passed'] is True
-        assert result['validation_type'] == 'integration'
-        assert result['tester'] == 'alignment'
-        assert result['script_names'] == script_names
-        assert result['status'] == 'success'
+        self.assertTrue(result['passed'])
+        self.assertEqual(result['validation_type'], 'integration')
+        self.assertEqual(result['tester'], 'alignment')
+        self.assertEqual(result['script_names'], script_names)
+        self.assertEqual(result['status'], 'success')
         
         # Verify mock calls
         mock_tester_class.assert_called_once()
         mock_tester.run_full_validation.assert_called_once_with(script_names)
         
         # Verify statistics
-        assert self.coordinator.stats['integration_validations'] == 1
-        assert self.coordinator.stats['cache_misses'] == 1
+        self.assertEqual(self.coordinator.stats['integration_validations'], 1)
+        self.assertEqual(self.coordinator.stats['cache_misses'], 1)
     
     @patch('cursus.validation.simple_integration.UnifiedAlignmentTester')
     def test_validate_integration_error(self, mock_tester_class):
@@ -174,13 +174,13 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_integration(script_names)
         
         # Verify error handling
-        assert result['passed'] is False
-        assert result['status'] == 'error'
-        assert result['validation_type'] == 'integration'
-        assert result['tester'] == 'alignment'
-        assert result['script_names'] == script_names
-        assert result['error'] == 'Integration error'
-        assert 'Integration validation failed' in result['message']
+        self.assertFalse(result['passed'])
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['validation_type'], 'integration')
+        self.assertEqual(result['tester'], 'alignment')
+        self.assertEqual(result['script_names'], script_names)
+        self.assertEqual(result['error'], 'Integration error')
+        self.assertIn('Integration validation failed', result['message'])
     
     @patch('cursus.validation.simple_integration.UnifiedAlignmentTester')
     def test_validate_integration_caching(self, mock_tester_class):
@@ -194,20 +194,20 @@ class TestSimpleValidationCoordinator:
         
         # First call - should miss cache
         result1 = self.coordinator.validate_integration(script_names)
-        assert self.coordinator.stats['cache_misses'] == 1
-        assert self.coordinator.stats['cache_hits'] == 0
+        self.assertEqual(self.coordinator.stats['cache_misses'], 1)
+        self.assertEqual(self.coordinator.stats['cache_hits'], 0)
         
         # Second call with same scripts - should hit cache
         result2 = self.coordinator.validate_integration(script_names)
-        assert self.coordinator.stats['cache_misses'] == 1
-        assert self.coordinator.stats['cache_hits'] == 1
+        self.assertEqual(self.coordinator.stats['cache_misses'], 1)
+        self.assertEqual(self.coordinator.stats['cache_hits'], 1)
         
         # Results should be identical
-        assert result1 == result2
+        self.assertEqual(result1, result2)
         
         # Different order should still hit cache (sorted)
         result3 = self.coordinator.validate_integration(['script2', 'script1'])
-        assert self.coordinator.stats['cache_hits'] == 2
+        self.assertEqual(self.coordinator.stats['cache_hits'], 2)
     
     def test_validate_production_both_pass(self):
         """Test production validation when both testers pass."""
@@ -222,23 +222,23 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_production(self.mock_builder, 'test_script')
         
         # Verify results
-        assert result['status'] == 'passed'
-        assert result['validation_type'] == 'production'
-        assert result['phase'] == 'combined'
-        assert result['builder_class'] == 'TestBuilder'
-        assert result['script_name'] == 'test_script'
-        assert result['both_passed'] is True
-        assert result['standardization_passed'] is True
-        assert result['alignment_passed'] is True
-        assert result['correlation'] == 'basic'
-        assert 'Production validation passed' in result['message']
+        self.assertEqual(result['status'], 'passed')
+        self.assertEqual(result['validation_type'], 'production')
+        self.assertEqual(result['phase'], 'combined')
+        self.assertEqual(result['builder_class'], 'TestBuilder')
+        self.assertEqual(result['script_name'], 'test_script')
+        self.assertTrue(result['both_passed'])
+        self.assertTrue(result['standardization_passed'])
+        self.assertTrue(result['alignment_passed'])
+        self.assertEqual(result['correlation'], 'basic')
+        self.assertIn('Production validation passed', result['message'])
         
         # Verify both validations were called
         self.coordinator.validate_development.assert_called_once_with(self.mock_builder)
         self.coordinator.validate_integration.assert_called_once_with(['test_script'])
         
         # Verify statistics
-        assert self.coordinator.stats['production_validations'] == 1
+        self.assertEqual(self.coordinator.stats['production_validations'], 1)
     
     def test_validate_production_std_fails(self):
         """Test production validation when standardization fails."""
@@ -252,13 +252,13 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_production(self.mock_builder, 'test_script')
         
         # Verify fail-fast behavior
-        assert result['status'] == 'failed_standardization'
-        assert result['validation_type'] == 'production'
-        assert result['phase'] == 'standardization'
-        assert result['both_passed'] is False
-        assert result['standardization_results'] == std_results
-        assert result['alignment_results'] is None
-        assert 'Fix implementation issues' in result['message']
+        self.assertEqual(result['status'], 'failed_standardization')
+        self.assertEqual(result['validation_type'], 'production')
+        self.assertEqual(result['phase'], 'standardization')
+        self.assertFalse(result['both_passed'])
+        self.assertEqual(result['standardization_results'], std_results)
+        self.assertIsNone(result['alignment_results'])
+        self.assertIn('Fix implementation issues', result['message'])
         
         # Integration should not be called due to fail-fast
         self.coordinator.validate_integration.assert_not_called()
@@ -276,11 +276,11 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_production(self.mock_builder, 'test_script')
         
         # Verify results
-        assert result['status'] == 'failed_integration'
-        assert result['both_passed'] is False
-        assert result['standardization_passed'] is True
-        assert result['alignment_passed'] is False
-        assert 'Implementation quality validated but integration issues' in result['message']
+        self.assertEqual(result['status'], 'failed_integration')
+        self.assertFalse(result['both_passed'])
+        self.assertTrue(result['standardization_passed'])
+        self.assertFalse(result['alignment_passed'])
+        self.assertIn('Implementation quality validated but integration issues', result['message'])
     
     def test_validate_production_error(self):
         """Test production validation with error."""
@@ -291,13 +291,13 @@ class TestSimpleValidationCoordinator:
         result = self.coordinator.validate_production(self.mock_builder, 'test_script')
         
         # Verify error handling
-        assert result['status'] == 'error'
-        assert result['validation_type'] == 'production'
-        assert result['phase'] == 'error'
-        assert result['builder_class'] == 'TestBuilder'
-        assert result['script_name'] == 'test_script'
-        assert result['error'] == 'Production error'
-        assert 'Production validation error' in result['message']
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['validation_type'], 'production')
+        self.assertEqual(result['phase'], 'error')
+        self.assertEqual(result['builder_class'], 'TestBuilder')
+        self.assertEqual(result['script_name'], 'test_script')
+        self.assertEqual(result['error'], 'Production error')
+        self.assertIn('Production validation error', result['message'])
     
     def test_clear_cache(self):
         """Test cache clearing."""
@@ -305,13 +305,13 @@ class TestSimpleValidationCoordinator:
         self.coordinator.cache['test1'] = {'result': 'data1'}
         self.coordinator.cache['test2'] = {'result': 'data2'}
         
-        assert len(self.coordinator.cache) == 2
+        self.assertEqual(len(self.coordinator.cache), 2)
         
         # Clear cache
         self.coordinator.clear_cache()
         
-        assert len(self.coordinator.cache) == 0
-        assert self.coordinator.cache == {}
+        self.assertEqual(len(self.coordinator.cache), 0)
+        self.assertEqual(self.coordinator.cache, {})
     
     def test_get_statistics_empty(self):
         """Test statistics with no validations."""
@@ -326,7 +326,7 @@ class TestSimpleValidationCoordinator:
             'cache_size': 0
         }
         
-        assert stats == expected
+        self.assertEqual(stats, expected)
     
     def test_get_statistics_with_data(self):
         """Test statistics with validation data."""
@@ -345,18 +345,18 @@ class TestSimpleValidationCoordinator:
         
         stats = self.coordinator.get_statistics()
         
-        assert stats['total_validations'] == 10  # 5 + 3 + 2
-        assert stats['development_validations'] == 5
-        assert stats['integration_validations'] == 3
-        assert stats['production_validations'] == 2
-        assert stats['cache_hit_rate_percentage'] == 70.0  # 7/(7+3) * 100
-        assert stats['cache_size'] == 2
+        self.assertEqual(stats['total_validations'], 10)  # 5 + 3 + 2
+        self.assertEqual(stats['development_validations'], 5)
+        self.assertEqual(stats['integration_validations'], 3)
+        self.assertEqual(stats['production_validations'], 2)
+        self.assertEqual(stats['cache_hit_rate_percentage'], 70.0)  # 7/(7+3) * 100
+        self.assertEqual(stats['cache_size'], 2)
 
 
-class TestPublicAPIFunctions:
+class TestPublicAPIFunctions(unittest.TestCase):
     """Test cases for public API functions."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         # Clear global coordinator state
         _coordinator.clear_cache()
@@ -379,7 +379,7 @@ class TestPublicAPIFunctions:
         
         result = validate_development(self.mock_builder, test_arg="value")
         
-        assert result == expected_result
+        self.assertEqual(result, expected_result)
         mock_method.assert_called_once_with(self.mock_builder, test_arg="value")
     
     @patch.object(_coordinator, 'validate_integration')
@@ -391,7 +391,7 @@ class TestPublicAPIFunctions:
         script_names = ['script1', 'script2']
         result = validate_integration(script_names, test_arg="value")
         
-        assert result == expected_result
+        self.assertEqual(result, expected_result)
         mock_method.assert_called_once_with(script_names, test_arg="value")
     
     @patch.object(_coordinator, 'validate_production')
@@ -402,7 +402,7 @@ class TestPublicAPIFunctions:
         
         result = validate_production(self.mock_builder, 'test_script', test_arg="value")
         
-        assert result == expected_result
+        self.assertEqual(result, expected_result)
         mock_method.assert_called_once_with(self.mock_builder, 'test_script', test_arg="value")
     
     @patch.object(_coordinator, 'clear_cache')
@@ -419,14 +419,14 @@ class TestPublicAPIFunctions:
         
         result = get_validation_statistics()
         
-        assert result == expected_stats
+        self.assertEqual(result, expected_stats)
         mock_method.assert_called_once()
 
 
-class TestLegacyCompatibilityFunctions:
+class TestLegacyCompatibilityFunctions(unittest.TestCase):
     """Test cases for legacy compatibility functions."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.mock_builder = Mock()
         self.mock_builder.__name__ = "TestBuilder"
@@ -443,13 +443,13 @@ class TestLegacyCompatibilityFunctions:
             result = validate_step_builder(self.mock_builder, test_arg="value")
             
             # Check deprecation warning
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert "validate_step_builder() is deprecated" in str(w[0].message)
-            assert "Use validate_development() instead" in str(w[0].message)
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[0].category, DeprecationWarning))
+            self.assertIn("validate_step_builder() is deprecated", str(w[0].message))
+            self.assertIn("Use validate_development() instead", str(w[0].message))
             
             # Check function still works
-            assert result == expected_result
+            self.assertEqual(result, expected_result)
             mock_validate_dev.assert_called_once_with(self.mock_builder, test_arg="value")
     
     @patch('cursus.validation.simple_integration.validate_integration')
@@ -466,20 +466,20 @@ class TestLegacyCompatibilityFunctions:
             result = validate_step_integration(script_names, test_arg="value")
             
             # Check deprecation warning
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert "validate_step_integration() is deprecated" in str(w[0].message)
-            assert "Use validate_integration() instead" in str(w[0].message)
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[0].category, DeprecationWarning))
+            self.assertIn("validate_step_integration() is deprecated", str(w[0].message))
+            self.assertIn("Use validate_integration() instead", str(w[0].message))
             
             # Check function still works
-            assert result == expected_result
+            self.assertEqual(result, expected_result)
             mock_validate_int.assert_called_once_with(script_names, test_arg="value")
 
 
-class TestIntegrationScenarios:
+class TestIntegrationScenarios(unittest.TestCase):
     """Test cases for integration scenarios and edge cases."""
     
-    def setup_method(self):
+    def setUp(self):
         """Set up test fixtures."""
         self.coordinator = SimpleValidationCoordinator()
         self.mock_builder = Mock()
@@ -500,7 +500,7 @@ class TestIntegrationScenarios:
             coordinator.validate_development(self.mock_builder)
             
             # Should only call once due to caching
-            assert mock_test.call_count == 1
+            self.assertEqual(mock_test.call_count, 1)
         
         # Test integration cache key with script order
         with patch('cursus.validation.simple_integration.UnifiedAlignmentTester') as mock_align:
@@ -513,7 +513,7 @@ class TestIntegrationScenarios:
             coordinator.validate_integration(['script1', 'script2'])
             
             # Should only call once due to caching
-            assert mock_align.call_count == 1
+            self.assertEqual(mock_align.call_count, 1)
     
     def test_statistics_accuracy(self):
         """Test statistics tracking accuracy."""
@@ -531,9 +531,9 @@ class TestIntegrationScenarios:
             
             stats = coordinator.get_statistics()
             
-            assert stats['development_validations'] == 1
-            assert stats['integration_validations'] == 1
-            assert stats['cache_hit_rate_percentage'] == 50.0  # 2 hits out of 4 total
+            self.assertEqual(stats['development_validations'], 1)
+            self.assertEqual(stats['integration_validations'], 1)
+            self.assertEqual(stats['cache_hit_rate_percentage'], 50.0)  # 2 hits out of 4 total
     
     def test_error_resilience(self):
         """Test error handling and resilience."""
@@ -544,14 +544,14 @@ class TestIntegrationScenarios:
             # Import error
             mock_test.side_effect = ImportError("Module not found")
             result = coordinator.validate_development(self.mock_builder)
-            assert result['status'] == 'error'
-            assert 'Module not found' in result['error']
+            self.assertEqual(result['status'], 'error')
+            self.assertIn('Module not found', result['error'])
             
             # Runtime error
             mock_test.side_effect = RuntimeError("Runtime issue")
             result = coordinator.validate_development(self.mock_builder)
-            assert result['status'] == 'error'
-            assert 'Runtime issue' in result['error']
+            self.assertEqual(result['status'], 'error')
+            self.assertIn('Runtime issue', result['error'])
     
     def test_production_validation_workflow(self):
         """Test complete production validation workflow."""
@@ -567,10 +567,10 @@ class TestIntegrationScenarios:
         result = coordinator.validate_production(self.mock_builder, 'test_script')
         
         # Should proceed through both phases
-        assert result['status'] == 'failed_integration'
-        assert result['standardization_passed'] is True
-        assert result['alignment_passed'] is False
-        assert result['both_passed'] is False
+        self.assertEqual(result['status'], 'failed_integration')
+        self.assertTrue(result['standardization_passed'])
+        self.assertFalse(result['alignment_passed'])
+        self.assertFalse(result['both_passed'])
         
         # Both methods should be called
         coordinator.validate_development.assert_called_once()
@@ -587,7 +587,7 @@ class TestIntegrationScenarios:
             
             result = coordinator.validate_integration([])
             
-            assert result['script_names'] == []
+            self.assertEqual(result['script_names'], [])
             mock_tester.run_full_validation.assert_called_once_with([])
     
     def test_large_cache_behavior(self):
@@ -599,13 +599,13 @@ class TestIntegrationScenarios:
             coordinator.cache[f'test_key_{i}'] = {'result': f'data_{i}'}
         
         stats = coordinator.get_statistics()
-        assert stats['cache_size'] == 100
+        self.assertEqual(stats['cache_size'], 100)
         
         # Clear and verify
         coordinator.clear_cache()
         stats = coordinator.get_statistics()
-        assert stats['cache_size'] == 0
+        self.assertEqual(stats['cache_size'], 0)
 
 
 if __name__ == '__main__':
-    pytest.main([__file__])
+    unittest.main()
