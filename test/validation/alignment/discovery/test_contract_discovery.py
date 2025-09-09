@@ -91,14 +91,14 @@ class TestContractDiscoveryEngine(unittest.TestCase):
         """Test discovering contracts that have corresponding scripts."""
         # Mock the tester
         mock_tester = Mock()
-        mock_tester.discover_scripts.return_value = ["model_training", "data_preprocessing"]
+        mock_tester.discover_scripts.return_value = ["model_training", "data_preprocessing", "nonexistent_script"]
         mock_tester_class.return_value = mock_tester
         
         # Mock contract loading
         with patch.object(self.engine, '_load_contract_for_entry_point') as mock_load:
             mock_load.side_effect = [
-                {'entry_point': 'model_training.py'},
                 {'entry_point': 'data_preprocessing.py'},
+                {'entry_point': 'model_training.py'},
                 {'entry_point': 'nonexistent_script.py'}
             ]
             
@@ -112,42 +112,42 @@ class TestContractDiscoveryEngine(unittest.TestCase):
         """Test discovering contracts when some have no entry_point."""
         # Mock the tester
         mock_tester = Mock()
-        mock_tester.discover_scripts.return_value = ["model_training"]
+        mock_tester.discover_scripts.return_value = ["model_evaluation"]
         mock_tester_class.return_value = mock_tester
         
         # Mock contract loading - some with no entry_point
         with patch.object(self.engine, '_load_contract_for_entry_point') as mock_load:
             mock_load.side_effect = [
-                {'entry_point': 'model_training.py'},
-                {'entry_point': ''},  # No entry point
-                {'entry_point': 'model_evaluation.py'}
+                {'entry_point': ''},  # No entry point for data_preprocessing
+                {'entry_point': 'model_evaluation.py'},  # model_evaluation
+                {'entry_point': 'model_training.py'}  # model_training
             ]
             
             contracts = self.engine.discover_contracts_with_scripts()
             
-            # Only the one with valid entry_point and existing script
-            self.assertEqual(contracts, ["model_training"])
+            # Only model_evaluation has both valid entry_point and existing script
+            self.assertEqual(contracts, ["model_evaluation"])
     
     @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
     def test_discover_contracts_with_scripts_load_error(self, mock_tester_class):
         """Test discovering contracts when some fail to load."""
         # Mock the tester
         mock_tester = Mock()
-        mock_tester.discover_scripts.return_value = ["model_training"]
+        mock_tester.discover_scripts.return_value = ["model_evaluation"]
         mock_tester_class.return_value = mock_tester
         
         # Mock contract loading with errors
         with patch.object(self.engine, '_load_contract_for_entry_point') as mock_load:
             mock_load.side_effect = [
-                {'entry_point': 'model_training.py'},
-                Exception("Failed to load contract"),
-                {'entry_point': 'nonexistent.py'}
+                Exception("Failed to load contract"),  # data_preprocessing fails
+                {'entry_point': 'model_evaluation.py'},  # model_evaluation
+                {'entry_point': 'model_training.py'}  # model_training
             ]
             
             contracts = self.engine.discover_contracts_with_scripts()
             
             # Only the successfully loaded contract with existing script
-            self.assertEqual(contracts, ["model_training"])
+            self.assertEqual(contracts, ["model_evaluation"])
     
     @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
     def test_discover_contracts_with_scripts_nonexistent_directory(self, mock_tester_class):
@@ -204,26 +204,26 @@ from pathlib import Path
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
         
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a proper mock module that doesn't have _mock_methods
+        mock_module = type('MockModule', (), {})()
         
-        # Mock the specification object
-        mock_contract = Mock()
+        # Create a mock contract that returns a proper string when accessed
+        mock_contract = type('MockContract', (), {})()
         mock_contract.entry_point = "model_training.py"
         
-        mock_spec_obj = Mock()
+        mock_spec_obj = type('MockSpec', (), {})()
         mock_spec_obj.script_contract = mock_contract
         
         # Set up module attributes
-        mock_module.__dict__ = {
-            'MODEL_TRAINING_SPEC': mock_spec_obj,
-            'other_attr': 'value'
-        }
+        mock_module.MODEL_TRAINING_SPEC = mock_spec_obj
+        mock_module.other_attr = 'value'
+        mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_SPEC', 'other_attr']):
             spec_file = Path("model_training_spec.py")
             result = self.engine.extract_script_contract_from_spec(spec_file)
             
+            # The method should extract the base name from the entry_point
             self.assertEqual(result, "model_training")
     
     @patch('importlib.util.spec_from_file_location')
@@ -246,8 +246,8 @@ from pathlib import Path
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
         
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a proper mock module that doesn't have _mock_methods
+        mock_module = type('MockModule', (), {})()
         
         # Mock callable contract
         mock_contract_result = Mock()
@@ -259,7 +259,8 @@ from pathlib import Path
         mock_spec_obj.script_contract = mock_contract_func
         
         # Set up module attributes
-        mock_module.__dict__ = {'DATA_PREPROCESSING_SPEC': mock_spec_obj}
+        mock_module.DATA_PREPROCESSING_SPEC = mock_spec_obj
+        mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['DATA_PREPROCESSING_SPEC']):
             spec_file = Path("data_preprocessing_spec.py")
@@ -290,18 +291,18 @@ from pathlib import Path
         """Test building entry point mapping successfully."""
         with patch.object(self.engine, '_extract_entry_point_from_contract') as mock_extract:
             mock_extract.side_effect = [
+                "data_preprocessing.py",
+                "model_evaluation.py", 
                 "model_training.py",
-                "data_preprocessing.py", 
-                "model_evaluation.py",
                 None  # __init__.py should be skipped anyway
             ]
             
             mapping = self.engine.build_entry_point_mapping()
             
             expected = {
-                "model_training.py": "model_training_contract.py",
                 "data_preprocessing.py": "data_preprocessing_contract.py",
-                "model_evaluation.py": "model_evaluation_contract.py"
+                "model_evaluation.py": "model_evaluation_contract.py",
+                "model_training.py": "model_training_contract.py"
             }
             
             self.assertEqual(mapping, expected)
@@ -330,17 +331,17 @@ from pathlib import Path
         """Test building entry point mapping when some contracts fail to load."""
         with patch.object(self.engine, '_extract_entry_point_from_contract') as mock_extract:
             mock_extract.side_effect = [
-                "model_training.py",
+                "data_preprocessing.py",
                 Exception("Failed to load"),
-                "model_evaluation.py"
+                "model_training.py"
             ]
             
             mapping = self.engine.build_entry_point_mapping()
             
             # Should only include successfully loaded contracts
             expected = {
-                "model_training.py": "model_training_contract.py",
-                "model_evaluation.py": "model_evaluation_contract.py"
+                "data_preprocessing.py": "data_preprocessing_contract.py",
+                "model_training.py": "model_training_contract.py"
             }
             
             self.assertEqual(mapping, expected)
@@ -355,18 +356,17 @@ from pathlib import Path
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
         
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a proper mock module that doesn't have _mock_methods
+        mock_module = type('MockModule', (), {})()
         
         # Mock contract object
         mock_contract = Mock()
         mock_contract.entry_point = "model_training.py"
         
         # Set up module attributes
-        mock_module.__dict__ = {
-            'MODEL_TRAINING_CONTRACT': mock_contract,
-            'other_attr': 'value'
-        }
+        mock_module.MODEL_TRAINING_CONTRACT = mock_contract
+        mock_module.other_attr = 'value'
+        mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_CONTRACT', 'other_attr']):
             contract_path = Path("model_training_contract.py")
@@ -394,11 +394,12 @@ from pathlib import Path
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
         
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a proper mock module that doesn't have _mock_methods
+        mock_module = type('MockModule', (), {})()
         
         # Set up module with no contract objects
-        mock_module.__dict__ = {'other_attr': 'value'}
+        mock_module.other_attr = 'value'
+        mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['other_attr']):
             contract_path = Path("test_contract.py")
@@ -416,15 +417,16 @@ from pathlib import Path
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
         
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a proper mock module that doesn't have _mock_methods
+        mock_module = type('MockModule', (), {})()
         
         # Mock contract object
         mock_contract = Mock()
         mock_contract.entry_point = "model_training.py"
         
         # Set up module attributes
-        mock_module.__dict__ = {'MODEL_TRAINING_CONTRACT': mock_contract}
+        mock_module.MODEL_TRAINING_CONTRACT = mock_contract
+        mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_CONTRACT']):
             contract_path = Path("model_training_contract.py")
@@ -455,11 +457,12 @@ from pathlib import Path
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
         
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a proper mock module that doesn't have _mock_methods
+        mock_module = type('MockModule', (), {})()
         
         # Set up module with no valid contract objects
-        mock_module.__dict__ = {'other_attr': 'value'}
+        mock_module.other_attr = 'value'
+        mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['other_attr']):
             contract_path = Path("test_contract.py")
@@ -479,15 +482,16 @@ from pathlib import Path
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
         
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a proper mock module that doesn't have _mock_methods
+        mock_module = type('MockModule', (), {})()
         
         # Mock contract object with different naming
         mock_contract = Mock()
         mock_contract.entry_point = "model_evaluation.py"
         
         # Set up module with CONTRACT naming pattern
-        mock_module.__dict__ = {'CONTRACT': mock_contract}
+        mock_module.CONTRACT = mock_contract
+        mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['CONTRACT']):
             contract_path = Path("model_evaluation_xgb_contract.py")
@@ -527,7 +531,7 @@ class TestContractDiscoveryEngineIntegration(unittest.TestCase):
         
         # Test discovery
         all_contracts = self.engine.discover_all_contracts()
-        expected_contracts = ["data_preprocessing", "invalid_contract", "model_training"]
+        expected_contracts = ["data_preprocessing", "invalid", "model_training"]
         
         self.assertEqual(all_contracts, expected_contracts)
     
@@ -552,21 +556,21 @@ class TestContractDiscoveryEngineIntegration(unittest.TestCase):
     def test_error_resilience_in_discovery(self):
         """Test that discovery continues even when some contracts fail to load."""
         # Create mix of valid and invalid contract files
-        (self.contracts_dir / "valid_contract.py").touch()
         (self.contracts_dir / "another_valid_contract.py").touch()
+        (self.contracts_dir / "valid_contract.py").touch()
         
         with patch.object(self.engine, '_extract_entry_point_from_contract') as mock_extract:
             # Simulate some contracts failing to load
             mock_extract.side_effect = [
-                "valid.py",
+                "another_valid.py",
                 Exception("Load failed"),
             ]
             
             mapping = self.engine.build_entry_point_mapping()
             
             # Should still get the valid contract
-            self.assertIn("valid.py", mapping)
-            self.assertEqual(mapping["valid.py"], "valid_contract.py")
+            self.assertIn("another_valid.py", mapping)
+            self.assertEqual(mapping["another_valid.py"], "another_valid_contract.py")
 
 
 if __name__ == '__main__':

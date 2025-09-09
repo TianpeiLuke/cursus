@@ -56,7 +56,7 @@ class FlexibleFileResolver:
         # Define patterns for each component type
         patterns = {
             'contracts': r'^(.+)_contract\.py$',
-            'specs': r'^(.+)_spec\.py$', 
+            'specs': r'^(.+)_spec\.py$',
             'builders': r'^builder_(.+)_step\.py$',
             'configs': r'^config_(.+)_step\.py$'
         }
@@ -124,6 +124,8 @@ class FlexibleFileResolver:
         - preprocess vs preprocessing
         - eval vs evaluation  
         - xgb vs xgboost
+        - dashes to underscores
+        - dots to underscores
         
         Args:
             name: Name to normalize
@@ -133,6 +135,10 @@ class FlexibleFileResolver:
         """
         # Convert to lowercase
         normalized = name.lower()
+        
+        # Convert dashes and dots to underscores
+        normalized = normalized.replace('-', '_')
+        normalized = normalized.replace('.', '_')
         
         # Handle common word variations
         variations = {
@@ -171,7 +177,7 @@ class FlexibleFileResolver:
         for component_type, file_map in self.file_cache.items():
             report[component_type] = {
                 'directory': str(self.base_dirs[component_type]),
-                'discovered_files': list(file_map.values()),
+                'files': list(file_map.values()),
                 'base_names': list(file_map.keys()),
                 'count': len(file_map)
             }

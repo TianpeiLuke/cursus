@@ -150,15 +150,16 @@ class TestScoreBarChart(unittest.TestCase):
     
     def test_create_score_bar_chart_no_matplotlib(self):
         """Test chart creation when matplotlib is not available."""
-        with patch('cursus.validation.shared.chart_utils.plt', side_effect=ImportError):
-            result = create_score_bar_chart(
-                levels=["Level1", "Level2"],
-                scores=[80.0, 90.0],
-                title="Test Chart"
-            )
-            self.assertIsNone(result)
+        with patch('cursus.validation.shared.chart_utils.plt', None):
+            with patch('builtins.__import__', side_effect=ImportError("No module named 'matplotlib'")):
+                result = create_score_bar_chart(
+                    levels=["Level1", "Level2"],
+                    scores=[80.0, 90.0],
+                    title="Test Chart"
+                )
+                self.assertIsNone(result)
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     def test_create_score_bar_chart_basic(self, mock_plt):
         """Test basic score bar chart creation."""
         # Mock matplotlib components
@@ -184,7 +185,7 @@ class TestScoreBarChart(unittest.TestCase):
         
         self.assertIsNone(result)  # No output path specified
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     @patch('cursus.validation.shared.chart_utils.Path')
     def test_create_score_bar_chart_with_output(self, mock_path, mock_plt):
         """Test score bar chart creation with output file."""
@@ -214,7 +215,7 @@ class TestScoreBarChart(unittest.TestCase):
         
         self.assertEqual(result, output_path)
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     def test_create_score_bar_chart_with_overall_score(self, mock_plt):
         """Test score bar chart with overall score line."""
         mock_plt.bar.return_value = [Mock(get_height=Mock(return_value=80.0), 
@@ -233,7 +234,7 @@ class TestScoreBarChart(unittest.TestCase):
         mock_plt.axhline.assert_called_with(y=85.0, color='blue', linestyle='-', alpha=0.7)
         mock_plt.text.assert_called()
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     def test_create_score_bar_chart_many_levels(self, mock_plt):
         """Test score bar chart with many levels (should rotate labels)."""
         mock_plt.bar.return_value = [Mock(get_height=Mock(return_value=80.0), 
@@ -249,7 +250,7 @@ class TestScoreBarChart(unittest.TestCase):
         # Verify x-axis labels are rotated for many levels
         mock_plt.xticks.assert_called_with(rotation=45, ha='right')
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     def test_create_score_bar_chart_exception_handling(self, mock_plt):
         """Test chart creation with exception handling."""
         mock_plt.bar.side_effect = Exception("Test error")
@@ -268,7 +269,7 @@ class TestScoreBarChart(unittest.TestCase):
 class TestComparisonChart(unittest.TestCase):
     """Test comparison chart creation functionality."""
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     @patch('cursus.validation.shared.chart_utils.np')
     def test_create_comparison_chart_basic(self, mock_np, mock_plt):
         """Test basic comparison chart creation."""
@@ -303,7 +304,7 @@ class TestComparisonChart(unittest.TestCase):
     
     def test_create_comparison_chart_no_matplotlib(self):
         """Test comparison chart creation when matplotlib is not available."""
-        with patch('cursus.validation.shared.chart_utils.plt', side_effect=ImportError):
+        with patch('builtins.__import__', side_effect=ImportError("No module named 'matplotlib'")):
             result = create_comparison_chart(
                 categories=["Cat1"],
                 series_data={"Series1": [80.0]},
@@ -315,7 +316,7 @@ class TestComparisonChart(unittest.TestCase):
 class TestTrendChart(unittest.TestCase):
     """Test trend chart creation functionality."""
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     def test_create_trend_chart_basic(self, mock_plt):
         """Test basic trend chart creation."""
         result = create_trend_chart(
@@ -339,7 +340,7 @@ class TestTrendChart(unittest.TestCase):
     
     def test_create_trend_chart_no_matplotlib(self):
         """Test trend chart creation when matplotlib is not available."""
-        with patch('cursus.validation.shared.chart_utils.plt', side_effect=ImportError):
+        with patch('builtins.__import__', side_effect=ImportError("No module named 'matplotlib'")):
             result = create_trend_chart(
                 x_values=[1, 2, 3],
                 y_values=[70.0, 80.0, 90.0],
@@ -351,7 +352,7 @@ class TestTrendChart(unittest.TestCase):
 class TestQualityDistributionChart(unittest.TestCase):
     """Test quality distribution chart creation functionality."""
     
-    @patch('cursus.validation.shared.chart_utils.plt')
+    @patch('matplotlib.pyplot')
     @patch('cursus.validation.shared.chart_utils.np')
     def test_create_quality_distribution_chart_basic(self, mock_np, mock_plt):
         """Test basic quality distribution chart creation."""
@@ -385,7 +386,7 @@ class TestQualityDistributionChart(unittest.TestCase):
     
     def test_create_quality_distribution_chart_no_matplotlib(self):
         """Test quality distribution chart when matplotlib is not available."""
-        with patch('cursus.validation.shared.chart_utils.plt', side_effect=ImportError):
+        with patch('builtins.__import__', side_effect=ImportError("No module named 'matplotlib'")):
             result = create_quality_distribution_chart(
                 scores=[70.0, 80.0, 90.0],
                 title="Test Chart"
@@ -436,7 +437,7 @@ class TestEdgeCasesAndErrorHandling(unittest.TestCase):
     def test_empty_data_handling(self):
         """Test handling of empty data."""
         # Test empty levels and scores
-        with patch('cursus.validation.shared.chart_utils.plt') as mock_plt:
+        with patch('matplotlib.pyplot') as mock_plt:
             mock_plt.bar.return_value = []
             
             result = create_score_bar_chart(
@@ -450,7 +451,7 @@ class TestEdgeCasesAndErrorHandling(unittest.TestCase):
     
     def test_mismatched_data_lengths(self):
         """Test handling of mismatched data lengths."""
-        with patch('cursus.validation.shared.chart_utils.plt') as mock_plt:
+        with patch('matplotlib.pyplot') as mock_plt:
             # This should be handled by matplotlib, but we test our code doesn't crash
             create_score_bar_chart(
                 levels=["Level1", "Level2"],
@@ -477,7 +478,7 @@ class TestEdgeCasesAndErrorHandling(unittest.TestCase):
     
     def test_file_path_edge_cases(self):
         """Test file path edge cases."""
-        with patch('cursus.validation.shared.chart_utils.plt') as mock_plt:
+        with patch('matplotlib.pyplot') as mock_plt:
             with patch('cursus.validation.shared.chart_utils.Path') as mock_path:
                 # Test with None output path
                 result = create_score_bar_chart(

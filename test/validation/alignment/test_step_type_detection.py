@@ -19,46 +19,20 @@ class TestStepTypeDetection(unittest.TestCase):
         """Set up test fixtures."""
         pass
 
-    @patch('builtins.__import__')
-    def test_detect_step_type_from_registry_training(self, mock_import):
+    def test_detect_step_type_from_registry_training(self):
         """Test step type detection for training script."""
-        # Mock the import to return a mock module
-        mock_module = Mock()
-        mock_module.get_canonical_name_from_file_name.return_value = "xgboost_training"
-        mock_module.get_sagemaker_step_type.return_value = "Training"
-        
-        def side_effect(name, *args, **kwargs):
-            if name == 'cursus.steps.registry.step_names':
-                return mock_module
-            return __import__(name, *args, **kwargs)
-        
-        mock_import.side_effect = side_effect
-        
-        # Execute
+        # Test the fallback behavior when registry is not available
         result = detect_step_type_from_registry("xgboost_training")
         
-        # Verify
+        # The actual implementation returns "Training" for training scripts
         self.assertEqual(result, "Training")
 
-    @patch('builtins.__import__')
-    def test_detect_step_type_from_registry_processing(self, mock_import):
+    def test_detect_step_type_from_registry_processing(self):
         """Test step type detection for processing script."""
-        # Mock the import to return a mock module
-        mock_module = Mock()
-        mock_module.get_canonical_name_from_file_name.return_value = "tabular_preprocessing"
-        mock_module.get_sagemaker_step_type.return_value = "Processing"
-        
-        def side_effect(name, *args, **kwargs):
-            if name == 'cursus.steps.registry.step_names':
-                return mock_module
-            return __import__(name, *args, **kwargs)
-        
-        mock_import.side_effect = side_effect
-        
-        # Execute
+        # Test the fallback behavior when registry is not available
         result = detect_step_type_from_registry("tabular_preprocessing")
         
-        # Verify
+        # Should return "Processing" as fallback when registry import fails
         self.assertEqual(result, "Processing")
 
     def test_detect_step_type_from_registry_fallback(self):

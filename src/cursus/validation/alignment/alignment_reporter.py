@@ -474,10 +474,16 @@ class AlignmentReport:
         if not self.summary:
             self.generate_summary()
             
+        # Get scoring information
+        overall_score = self.get_alignment_score()
+        scorer = self.get_scorer()
+        quality_rating = scorer.get_rating(overall_score)
+        
         report_data = {
             'summary': self.summary.to_dict(),
             'scoring': {
-                'overall_score': self.get_alignment_score(),
+                'overall_score': overall_score,
+                'quality_rating': quality_rating,
                 'level_scores': self.get_level_scores(),
                 'scoring_report': self.get_scoring_report()
             },

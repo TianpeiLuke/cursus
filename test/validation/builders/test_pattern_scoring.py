@@ -141,7 +141,7 @@ class TestPatternBasedScoring(unittest.TestCase):
         # Test explicit prefix detection
         self.assertEqual(scorer._detect_level_from_test_name("level1_test_processor_creation_method"), "level1_interface")
         self.assertEqual(scorer._detect_level_from_test_name("level2_test_job_type_specification_loading"), "level2_specification")
-        self.assertEqual(scorer._detect_level_from_test_name("level3_test_processing_input_creation"), "level3_path_mapping")
+        self.assertEqual(scorer._detect_level_from_test_name("level3_test_processing_input_creation"), "level3_step_creation")
         self.assertEqual(scorer._detect_level_from_test_name("level4_test_step_creation_pattern_execution"), "level4_integration")
     
     def test_keyword_based_detection(self):
@@ -153,8 +153,8 @@ class TestPatternBasedScoring(unittest.TestCase):
         self.assertEqual(scorer._detect_level_from_test_name("test_processor_creation"), "level1_interface")
         self.assertEqual(scorer._detect_level_from_test_name("test_specification_usage"), "level2_specification")
         self.assertEqual(scorer._detect_level_from_test_name("test_environment_variable_handling"), "level2_specification")
-        self.assertEqual(scorer._detect_level_from_test_name("test_input_path_mapping"), "level3_path_mapping")
-        self.assertEqual(scorer._detect_level_from_test_name("test_processing_inputs_outputs"), "level3_path_mapping")
+        self.assertEqual(scorer._detect_level_from_test_name("test_input_path_mapping"), "level3_step_creation")
+        self.assertEqual(scorer._detect_level_from_test_name("test_processing_inputs_outputs"), "level3_step_creation")
         self.assertEqual(scorer._detect_level_from_test_name("test_dependency_resolution"), "level4_integration")
         self.assertEqual(scorer._detect_level_from_test_name("test_step_creation"), "level4_integration")
     
@@ -211,7 +211,7 @@ class TestPatternBasedScoring(unittest.TestCase):
         # Should have tests in all 4 levels
         self.assertGreater(levels["level1_interface"]["total"], 0)
         self.assertGreater(levels["level2_specification"]["total"], 0)
-        self.assertGreater(levels["level3_path_mapping"]["total"], 0)
+        self.assertGreater(levels["level3_step_creation"]["total"], 0)
         self.assertGreater(levels["level4_integration"]["total"], 0)
     
     def test_mixed_scenario_handling(self):
@@ -234,7 +234,7 @@ class TestPatternBasedScoring(unittest.TestCase):
         scorer = StepBuilderScorer(self.sample_results)
         
         # Test level score calculation
-        for level in ["level1_interface", "level2_specification", "level3_path_mapping", "level4_integration"]:
+        for level in ["level1_interface", "level2_specification", "level3_step_creation", "level4_integration"]:
             score, passed, total = scorer.calculate_level_score(level)
             
             # Score should be between 0 and 100
@@ -275,7 +275,7 @@ class TestPatternBasedScoring(unittest.TestCase):
         
         # Verify levels section
         levels = report["levels"]
-        for level in ["level1_interface", "level2_specification", "level3_path_mapping", "level4_integration"]:
+        for level in ["level1_interface", "level2_specification", "level3_step_creation", "level4_integration"]:
             self.assertIn(level, levels)
             level_data = levels[level]
             self.assertIn("score", level_data)

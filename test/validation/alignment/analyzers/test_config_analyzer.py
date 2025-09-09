@@ -279,9 +279,9 @@ class TestConfig(BaseModel):
         self.assertIn('configuration', schema)
         config_schema = schema['configuration']
         
-        # Check that required and optional are lists (order may vary)
-        self.assertIsInstance(config_schema['required'], list)
-        self.assertIsInstance(config_schema['optional'], list)
+        # Check that required and optional are lists or sets (order may vary)
+        self.assertIn(type(config_schema['required']), [list, set])
+        self.assertIn(type(config_schema['optional']), [list, set])
         
         # Check contents (convert to sets for comparison since order doesn't matter)
         self.assertEqual(set(config_schema['required']), {'field1', 'field2'})

@@ -395,6 +395,39 @@ class UnifiedAlignmentTester:
         if not self.report.summary:
             self.report.generate_summary()
         
+        # Get scoring information
+        scoring_info = {}
+        try:
+            scorer = self.report.get_scorer()
+            overall_score = scorer.calculate_overall_score()
+            overall_rating = scorer.get_rating(overall_score)
+            
+            scoring_info = {
+                'overall_score': overall_score,
+                'quality_rating': overall_rating,
+                'level_scores': {}
+            }
+            
+            # Add level scores
+            level_keys = ["level1_script_contract", "level2_contract_spec", 
+                         "level3_spec_dependencies", "level4_builder_config"]
+            for level_key in level_keys:
+                score, passed, total = scorer.calculate_level_score(level_key)
+                scoring_info['level_scores'][level_key] = score
+                
+        except Exception as e:
+            # If scoring fails, provide default values
+            scoring_info = {
+                'overall_score': 0.0,
+                'quality_rating': 'Unknown',
+                'level_scores': {
+                    'level1_script_contract': 0.0,
+                    'level2_contract_spec': 0.0,
+                    'level3_spec_dependencies': 0.0,
+                    'level4_builder_config': 0.0
+                }
+            }
+        
         return {
             'overall_status': 'PASSING' if self.report.is_passing() else 'FAILING',
             'total_tests': self.report.summary.total_tests,
@@ -408,7 +441,8 @@ class UnifiedAlignmentTester:
                 'level3_tests': len(self.report.level3_results),
                 'level4_tests': len(self.report.level4_results)
             },
-            'recommendations_count': len(self.report.get_recommendations())
+            'recommendations_count': len(self.report.get_recommendations()),
+            'scoring': scoring_info
         }
     
     def export_report(self, format: str = 'json', output_path: Optional[str] = None, 
@@ -519,6 +553,65 @@ class UnifiedAlignmentTester:
             ])
             
             results['overall_status'] = 'PASSING' if all_passed else 'FAILING'
+            
+            # Add scoring information
+            try:
+                # Create temporary validation results to calculate scoring
+                temp_report = AlignmentReport()
+                
+                # Add results to temporary report for scoring calculation
+                for level_name, level_result in [
+                    ('level1', level1_results), ('level2', level2_results),
+                    ('level3', level3_results), ('level4', level4_results)
+                ]:
+                    if level_result.get('passed') is not None:
+                        validation_result = ValidationResult(
+                            test_name=f"{level_name}_{script_name}",
+                            passed=level_result.get('passed', False),
+                            details=level_result
+                        )
+                        
+                        if level_name == 'level1':
+                            temp_report.add_level1_result(script_name, validation_result)
+                        elif level_name == 'level2':
+                            temp_report.add_level2_result(script_name, validation_result)
+                        elif level_name == 'level3':
+                            temp_report.add_level3_result(script_name, validation_result)
+                        elif level_name == 'level4':
+                            temp_report.add_level4_result(script_name, validation_result)
+                
+                temp_report.generate_summary()
+                scorer = temp_report.get_scorer()
+                overall_score = scorer.calculate_overall_score()
+                overall_rating = scorer.get_rating(overall_score)
+                
+                scoring_info = {
+                    'overall_score': overall_score,
+                    'quality_rating': overall_rating,
+                    'level_scores': {}
+                }
+                
+                # Add level scores
+                level_keys = ["level1_script_contract", "level2_contract_spec", 
+                             "level3_spec_dependencies", "level4_builder_config"]
+                for level_key in level_keys:
+                    score, passed, total = scorer.calculate_level_score(level_key)
+                    scoring_info['level_scores'][level_key] = score
+                
+                results['scoring'] = scoring_info
+                
+            except Exception as e:
+                # If scoring fails, provide default values
+                results['scoring'] = {
+                    'overall_score': 0.0,
+                    'quality_rating': 'Unknown',
+                    'level_scores': {
+                        'level1_script_contract': 0.0,
+                        'level2_contract_spec': 0.0,
+                        'level3_spec_dependencies': 0.0,
+                        'level4_builder_config': 0.0
+                    }
+                }
             
         except Exception as e:
             results['error'] = str(e)

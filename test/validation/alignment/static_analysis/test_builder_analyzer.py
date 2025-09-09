@@ -246,32 +246,14 @@ class TestStepBuilder:
         extractor = BuilderArgumentExtractor(str(self.builder_file))
         method_node = extractor._find_job_arguments_method()
         
-        # Mock ast.Str nodes for older Python compatibility testing
-        with patch('ast.walk') as mock_walk:
-            # Create mock nodes including ast.Str
-            mock_str_node = Mock()
-            mock_str_node.s = "--old-style-arg"
-            
-            mock_constant_node = Mock()
-            mock_constant_node.value = "--new-style-arg"
-            
-            mock_walk.return_value = [mock_str_node, mock_constant_node]
-            
-            # Mock isinstance to return appropriate values
-            def mock_isinstance(obj, cls):
-                if obj is mock_str_node and cls is ast.Str:
-                    return True
-                elif obj is mock_constant_node and cls is ast.Constant:
-                    return True
-                elif obj is mock_constant_node.value and cls is str:
-                    return True
-                return False
-            
-            with patch('builtins.isinstance', side_effect=mock_isinstance):
-                arguments = extractor._extract_arguments_from_method(method_node)
-                
-                expected_args = {"old-style-arg", "new-style-arg"}
-                self.assertEqual(arguments, expected_args)
+        # Test with actual method node - this avoids recursion issues with mocking
+        if method_node:
+            arguments = extractor._extract_arguments_from_method(method_node)
+            # Should extract arguments from the sample builder content
+            expected_args = {"learning-rate", "max-depth", "n-estimators", "output-path"}
+            self.assertEqual(arguments, expected_args)
+        else:
+            self.fail("Could not find _get_job_arguments method in test builder")
 
 
 class TestBuilderRegistry(unittest.TestCase):

@@ -65,7 +65,7 @@ class TestSimpleValidationCoordinator(unittest.TestCase):
             'cache_misses': 0
         })
     
-    @patch('cursus.validation.simple_integration.UniversalStepBuilderTest')
+    @patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest')
     def test_validate_development_success(self, mock_test_class):
         """Test successful development validation."""
         # Setup mock
@@ -92,7 +92,7 @@ class TestSimpleValidationCoordinator(unittest.TestCase):
         self.assertEqual(self.coordinator.stats['cache_misses'], 1)
         self.assertEqual(self.coordinator.stats['cache_hits'], 0)
     
-    @patch('cursus.validation.simple_integration.UniversalStepBuilderTest')
+    @patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest')
     def test_validate_development_error(self, mock_test_class):
         """Test development validation with error."""
         # Setup mock to raise exception
@@ -110,7 +110,7 @@ class TestSimpleValidationCoordinator(unittest.TestCase):
         self.assertEqual(result['error'], 'Test error')
         self.assertIn('Development validation failed', result['message'])
     
-    @patch('cursus.validation.simple_integration.UniversalStepBuilderTest')
+    @patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest')
     def test_validate_development_caching(self, mock_test_class):
         """Test development validation caching."""
         # Setup mock
@@ -134,7 +134,7 @@ class TestSimpleValidationCoordinator(unittest.TestCase):
         # Mock should only be called once
         mock_test_class.assert_called_once()
     
-    @patch('cursus.validation.simple_integration.UnifiedAlignmentTester')
+    @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
     def test_validate_integration_success(self, mock_tester_class):
         """Test successful integration validation."""
         # Setup mock
@@ -162,7 +162,7 @@ class TestSimpleValidationCoordinator(unittest.TestCase):
         self.assertEqual(self.coordinator.stats['integration_validations'], 1)
         self.assertEqual(self.coordinator.stats['cache_misses'], 1)
     
-    @patch('cursus.validation.simple_integration.UnifiedAlignmentTester')
+    @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
     def test_validate_integration_error(self, mock_tester_class):
         """Test integration validation with error."""
         # Setup mock to raise exception
@@ -182,7 +182,7 @@ class TestSimpleValidationCoordinator(unittest.TestCase):
         self.assertEqual(result['error'], 'Integration error')
         self.assertIn('Integration validation failed', result['message'])
     
-    @patch('cursus.validation.simple_integration.UnifiedAlignmentTester')
+    @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
     def test_validate_integration_caching(self, mock_tester_class):
         """Test integration validation caching."""
         # Setup mock
@@ -490,7 +490,7 @@ class TestIntegrationScenarios(unittest.TestCase):
         coordinator = SimpleValidationCoordinator()
         
         # Test development cache key
-        with patch('cursus.validation.simple_integration.UniversalStepBuilderTest') as mock_test:
+        with patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_test:
             mock_tester = Mock()
             mock_tester.run_all_tests.return_value = {'passed': True}
             mock_test.return_value = mock_tester
@@ -503,7 +503,7 @@ class TestIntegrationScenarios(unittest.TestCase):
             self.assertEqual(mock_test.call_count, 1)
         
         # Test integration cache key with script order
-        with patch('cursus.validation.simple_integration.UnifiedAlignmentTester') as mock_align:
+        with patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester') as mock_align:
             mock_tester = Mock()
             mock_tester.run_full_validation.return_value = {'passed': True}
             mock_align.return_value = mock_tester
@@ -520,8 +520,8 @@ class TestIntegrationScenarios(unittest.TestCase):
         coordinator = SimpleValidationCoordinator()
         
         # Mock the validation methods
-        with patch('cursus.validation.simple_integration.UniversalStepBuilderTest'), \
-             patch('cursus.validation.simple_integration.UnifiedAlignmentTester'):
+        with patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest'), \
+             patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester'):
             
             # Run various validations
             coordinator.validate_development(self.mock_builder)  # cache miss
@@ -540,7 +540,7 @@ class TestIntegrationScenarios(unittest.TestCase):
         coordinator = SimpleValidationCoordinator()
         
         # Test with various error types
-        with patch('cursus.validation.simple_integration.UniversalStepBuilderTest') as mock_test:
+        with patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_test:
             # Import error
             mock_test.side_effect = ImportError("Module not found")
             result = coordinator.validate_development(self.mock_builder)
@@ -580,7 +580,7 @@ class TestIntegrationScenarios(unittest.TestCase):
         """Test handling of empty script names list."""
         coordinator = SimpleValidationCoordinator()
         
-        with patch('cursus.validation.simple_integration.UnifiedAlignmentTester') as mock_align:
+        with patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester') as mock_align:
             mock_tester = Mock()
             mock_tester.run_full_validation.return_value = {'passed': True}
             mock_align.return_value = mock_tester
