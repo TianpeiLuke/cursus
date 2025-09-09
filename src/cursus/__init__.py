@@ -30,7 +30,40 @@ Advanced Usage:
     >>> pipeline = compile_dag_to_pipeline(dag, config_path="config.yaml")
 """
 
-from .__version__ import __version__, __title__, __description__, __author__
+# Import version info with fallback for missing __version__.py (e.g., if gitignored)
+try:
+    from .__version__ import __version__, __title__, __description__, __author__
+except ImportError:
+    # Fallback: read directly from VERSION file or use defaults
+    import os
+    from pathlib import Path
+    
+    def _get_fallback_version():
+        """Get version from VERSION file as fallback."""
+        current_dir = Path(__file__).parent
+        version_file_paths = [
+            # Try project root (2 levels up from src/cursus/__init__.py)
+            current_dir.parent.parent / "VERSION",
+            # Try relative to current directory
+            current_dir / "VERSION",
+            # Try one level up
+            current_dir.parent / "VERSION",
+        ]
+        
+        for version_file in version_file_paths:
+            try:
+                if version_file.exists():
+                    return version_file.read_text().strip()
+            except (OSError, IOError):
+                continue
+        
+        # Final fallback
+        return "1.2.3"
+    
+    __version__ = _get_fallback_version()
+    __title__ = "cursus"
+    __description__ = "Automatic SageMaker Pipeline Generation from DAG Specifications"
+    __author__ = "Tianpei Xie"
 
 # Core API exports - main user interface
 try:

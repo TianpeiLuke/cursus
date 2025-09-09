@@ -144,7 +144,7 @@ Changelog = "https://github.com/TianpeiLuke/cursus/blob/main/CHANGELOG.md"
 package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
-version = {attr = "cursus.__version__.__version__"}
+version = {file = "VERSION"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
