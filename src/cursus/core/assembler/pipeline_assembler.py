@@ -359,7 +359,7 @@ class PipelineAssembler:
             # Special case for CradleDataLoading steps - store request dict for execution document
             config = self.config_map[step_name]
             step_type = BasePipelineConfig.get_step_name(type(config).__name__)
-            if step_type == "CradleDataLoading" and hasattr(builder, "get_request_dict"):
+            if "CradleDataLoad" in step_type and hasattr(builder, "get_request_dict"):
                 self.cradle_loading_requests[step.name] = builder.get_request_dict()
                 logger.info(f"Stored Cradle data loading request for step: {step.name}")
             
