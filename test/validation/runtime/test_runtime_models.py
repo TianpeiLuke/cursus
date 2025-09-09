@@ -8,8 +8,6 @@ PipelineTestingSpec, and RuntimeTestingConfiguration.
 import sys
 from pathlib import Path
 
-)
-
 import unittest
 import tempfile
 import json

@@ -24,10 +24,14 @@ def discover_test_modules(base_path):
     
     # Walk through all subdirectories
     for test_file in base_path.rglob("test_*.py"):
-        # Convert file path to module path
-        relative_path = test_file.relative_to(base_path.parent.parent)  # Relative to project root
-        module_path = str(relative_path.with_suffix('')).replace(os.sep, '.')
-        test_modules.append((module_path, str(test_file)))
+        # Convert file path to module path relative to the test directory
+        try:
+            relative_path = test_file.relative_to(base_path.parent)  # Relative to test/ directory
+            module_path = str(relative_path.with_suffix('')).replace(os.sep, '.')
+            test_modules.append((module_path, str(test_file)))
+        except ValueError:
+            # Skip files that aren't under the test directory
+            continue
     
     return test_modules
 

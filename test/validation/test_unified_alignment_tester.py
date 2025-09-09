@@ -11,8 +11,6 @@ import tempfile
 import json
 from pathlib import Path
 
-)
-
 from cursus.validation.alignment import UnifiedAlignmentTester
 
 def create_test_files():

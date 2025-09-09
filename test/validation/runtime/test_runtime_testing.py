@@ -8,8 +8,6 @@ data compatibility testing, and pipeline flow validation.
 import sys
 from pathlib import Path
 
-)
-
 import unittest
 import tempfile
 import json

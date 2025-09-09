@@ -10,8 +10,6 @@ import unittest
 from pathlib import Path
 from typing import Dict, Any
 
-)
-
 from cursus.validation.builders.scoring import StepBuilderScorer, score_builder_results
 
 class TestPatternBasedScoring(unittest.TestCase):
