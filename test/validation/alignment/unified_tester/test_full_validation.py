@@ -2,7 +2,7 @@
 Test suite for UnifiedAlignmentTester full validation.
 """
 
-import unittest
+import pytest
 import sys
 import os
 from unittest.mock import patch, MagicMock
@@ -17,10 +17,11 @@ from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
 
-class TestFullValidation(unittest.TestCase):
+class TestFullValidation:
     """Test full validation functionality in UnifiedAlignmentTester."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.tester = UnifiedAlignmentTester()
     
@@ -50,8 +51,8 @@ class TestFullValidation(unittest.TestCase):
             mock_l3.assert_called_once_with(["test_script"])
             mock_l4.assert_called_once_with(["test_script"])
             
-            self.assertIsNotNone(report)
-            self.assertIsNotNone(report.summary)
+            assert report is not None
+            assert report.summary is not None
     
     def test_run_full_validation_with_skip_levels(self):
         """Test full validation with some levels skipped."""
@@ -77,7 +78,7 @@ class TestFullValidation(unittest.TestCase):
             mock_l3.assert_called_once_with(["test_script"])
             mock_l4.assert_not_called()
             
-            self.assertIsNotNone(report)
+            assert report is not None
     
     def test_run_full_validation_with_failures(self):
         """Test full validation with some failures."""
@@ -107,13 +108,13 @@ class TestFullValidation(unittest.TestCase):
             
             report = self.tester.run_full_validation(["test_script"])
             
-            self.assertIsNotNone(report)
-            self.assertEqual(len(self.tester.report.level1_results), 1)
+            assert report is not None
+            assert len(self.tester.report.level1_results) == 1
             
             # Check that the failure was recorded
             result = self.tester.report.level1_results["test_script"]
-            self.assertFalse(result.passed)
-            self.assertGreater(len(result.issues), 0)
+            assert result.passed is False
+            assert len(result.issues) > 0
     
     def test_run_full_validation_with_critical_issues(self):
         """Test full validation with critical issues."""
@@ -142,11 +143,11 @@ class TestFullValidation(unittest.TestCase):
             
             report = self.tester.run_full_validation(["test_script"])
             
-            self.assertIsNotNone(report)
+            assert report is not None
             
             # Check for critical issues
             critical_issues = self.tester.get_critical_issues()
-            self.assertGreater(len(critical_issues), 0)
+            assert len(critical_issues) > 0
     
     def test_run_full_validation_early_termination(self):
         """Test that validation continues even with critical issues."""
@@ -179,7 +180,7 @@ class TestFullValidation(unittest.TestCase):
             mock_l3.assert_called_once()
             mock_l4.assert_called_once()
             
-            self.assertIsNotNone(report)
+            assert report is not None
     
     def test_run_full_validation_with_exception(self):
         """Test full validation when an exception occurs."""
@@ -189,7 +190,7 @@ class TestFullValidation(unittest.TestCase):
             # Should not raise exception, but continue with other levels
             report = self.tester.run_full_validation(["test_script"])
             
-            self.assertIsNotNone(report)
+            assert report is not None
     
     def test_run_full_validation_missing_config(self):
         """Test full validation with incomplete configuration."""
@@ -210,7 +211,7 @@ class TestFullValidation(unittest.TestCase):
             
             # Should call with None (which means discover all scripts)
             mock_l1.assert_called_once_with(None)
-            self.assertIsNotNone(report)
+            assert report is not None
     
     def test_export_report_json(self):
         """Test exporting report to JSON format."""
@@ -220,15 +221,15 @@ class TestFullValidation(unittest.TestCase):
         
         json_output = self.tester.export_report(format='json')
         
-        self.assertIsInstance(json_output, str)
-        self.assertIn('"test"', json_output)  # Should contain test name
+        assert isinstance(json_output, str)
+        assert '"test"' in json_output  # Should contain test name
         
         # Verify JSON contains scoring information (new functionality)
         import json
         parsed_json = json.loads(json_output)
-        self.assertIn('scoring', parsed_json)
-        self.assertIn('overall_score', parsed_json['scoring'])
-        self.assertIn('quality_rating', parsed_json['scoring'])
+        assert 'scoring' in parsed_json
+        assert 'overall_score' in parsed_json['scoring']
+        assert 'quality_rating' in parsed_json['scoring']
     
     def test_export_report_html(self):
         """Test exporting report to HTML format."""
@@ -242,8 +243,8 @@ class TestFullValidation(unittest.TestCase):
             
             html_output = self.tester.export_report(format='html')
             
-            self.assertIsInstance(html_output, str)
-            self.assertIn('<html>', html_output)
+            assert isinstance(html_output, str)
+            assert '<html>' in html_output
     
     def test_export_report_with_chart_generation(self):
         """Test exporting report with chart generation enabled."""
@@ -263,16 +264,16 @@ class TestFullValidation(unittest.TestCase):
                 script_name="test_script"
             )
             
-            self.assertIsInstance(json_output, str)
+            assert isinstance(json_output, str)
             # Chart generation should be attempted
             mock_scorer.generate_chart.assert_called_once()
     
     def test_export_report_invalid_format(self):
         """Test exporting report with invalid format."""
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as context:
             self.tester.export_report(format='xml')
         
-        self.assertIn("Unsupported export format: xml", str(context.exception))
+        assert "Unsupported export format: xml" in str(context.value)
     
     def test_get_alignment_status_matrix(self):
         """Test getting alignment status matrix."""
@@ -288,37 +289,28 @@ class TestFullValidation(unittest.TestCase):
             
             matrix = self.tester.get_alignment_status_matrix()
             
-            self.assertIn("script1", matrix)
-            self.assertIn("script2", matrix)
-            self.assertEqual(matrix["script1"]["level1"], "PASSING")
-            self.assertEqual(matrix["script1"]["level2"], "FAILING")
-            self.assertEqual(matrix["script2"]["level1"], "UNKNOWN")
+            assert "script1" in matrix
+            assert "script2" in matrix
+            assert matrix["script1"]["level1"] == "PASSING"
+            assert matrix["script1"]["level2"] == "FAILING"
+            assert matrix["script2"]["level1"] == "UNKNOWN"
     
     def test_phase1_fixes_integration(self):
         """Test that Phase 1 fixes are properly integrated in the unified tester."""
         # Test that all level testers are properly initialized and functional
         
         # Verify level testers exist and are properly configured
-        self.assertIsNotNone(self.tester.level1_tester, "Level 1 tester should be initialized")
-        self.assertIsNotNone(self.tester.level2_tester, "Level 2 tester should be initialized")
-        self.assertIsNotNone(self.tester.level3_tester, "Level 3 tester should be initialized")
-        self.assertIsNotNone(self.tester.level4_tester, "Level 4 tester should be initialized")
+        assert self.tester.level1_tester is not None, "Level 1 tester should be initialized"
+        assert self.tester.level2_tester is not None, "Level 2 tester should be initialized"
+        assert self.tester.level3_tester is not None, "Level 3 tester should be initialized"
+        assert self.tester.level4_tester is not None, "Level 4 tester should be initialized"
         
         # Test that level 3 config is properly set
-        self.assertTrue(
-            hasattr(self.tester, 'level3_config'),
-            "Unified tester should have level3_config"
-        )
+        assert hasattr(self.tester, 'level3_config'), "Unified tester should have level3_config"
         
         # Test that level 4 tester has proper configuration
-        self.assertTrue(
-            hasattr(self.tester.level4_tester, 'builders_dir'),
-            "Level 4 tester should have builders_dir"
-        )
-        self.assertTrue(
-            hasattr(self.tester.level4_tester, 'configs_dir'),
-            "Level 4 tester should have configs_dir"
-        )
+        assert hasattr(self.tester.level4_tester, 'builders_dir'), "Level 4 tester should have builders_dir"
+        assert hasattr(self.tester.level4_tester, 'configs_dir'), "Level 4 tester should have configs_dir"
     
     def test_reduced_false_positives_simulation(self):
         """Test simulation of reduced false positives from Phase 1 fixes."""
@@ -364,7 +356,7 @@ class TestFullValidation(unittest.TestCase):
             report = self.tester.run_full_validation(["test_script"])
             
             # Should have improved pass rates due to Phase 1 fixes
-            self.assertIsNotNone(report)
+            assert report is not None
             
             # Check that issues are informational rather than errors
             all_issues = []
@@ -376,8 +368,7 @@ class TestFullValidation(unittest.TestCase):
             # All issues should be INFO level (not ERROR/CRITICAL)
             error_issues = [issue for issue in all_issues 
                           if issue.level.value in ['ERROR', 'CRITICAL']]
-            self.assertEqual(len(error_issues), 0, 
-                           "Phase 1 fixes should reduce ERROR/CRITICAL issues")
+            assert len(error_issues) == 0, "Phase 1 fixes should reduce ERROR/CRITICAL issues"
     
     def test_json_serialization_with_complex_objects(self):
         """Test that JSON serialization works with complex Python objects."""
@@ -414,12 +405,12 @@ class TestFullValidation(unittest.TestCase):
         
         # Verify it's valid JSON
         parsed_json = json.loads(json_output)
-        self.assertIsInstance(parsed_json, dict)
+        assert isinstance(parsed_json, dict)
         
         # Verify complex objects were converted to strings
-        self.assertIn("complex_test", json_output)
-        self.assertIn("<property object at", json_output)  # Property objects converted
-        self.assertIn("<class 'str'>", json_output)  # Type objects converted
+        assert "complex_test" in json_output
+        assert "<property object at" in json_output  # Property objects converted
+        assert "<class 'str'>" in json_output  # Type objects converted
     
     def test_json_serialization_with_pydantic_models(self):
         """Test JSON serialization with Pydantic model fields and complex structures."""
@@ -455,8 +446,8 @@ class TestFullValidation(unittest.TestCase):
             json_output = self.tester.export_report(format='json')
             parsed_json = json.loads(json_output)
             
-            self.assertIsInstance(parsed_json, dict)
-            self.assertIn("test_script", json_output)
+            assert isinstance(parsed_json, dict)
+            assert "test_script" in json_output
     
     def test_cli_integration_compatibility(self):
         """Test that the unified tester works with CLI integration patterns."""
@@ -475,23 +466,23 @@ class TestFullValidation(unittest.TestCase):
             result = self.tester.validate_specific_script("test_script")
             
             # Verify the result structure matches CLI expectations
-            self.assertEqual(result['script_name'], "test_script")
-            self.assertEqual(result['overall_status'], "PASSING")
-            self.assertIn('level1', result)
-            self.assertIn('level2', result)
-            self.assertIn('level3', result)
-            self.assertIn('level4', result)
+            assert result['script_name'] == "test_script"
+            assert result['overall_status'] == "PASSING"
+            assert 'level1' in result
+            assert 'level2' in result
+            assert 'level3' in result
+            assert 'level4' in result
             
             # Verify each level result is properly structured
             for level in ['level1', 'level2', 'level3', 'level4']:
-                self.assertIn('passed', result[level])
-                self.assertIn('issues', result[level])
+                assert 'passed' in result[level]
+                assert 'issues' in result[level]
             
             # Verify scoring information is included (new functionality)
-            self.assertIn('scoring', result)
-            self.assertIn('overall_score', result['scoring'])
-            self.assertIn('quality_rating', result['scoring'])
-            self.assertIn('level_scores', result['scoring'])
+            assert 'scoring' in result
+            assert 'overall_score' in result['scoring']
+            assert 'quality_rating' in result['scoring']
+            assert 'level_scores' in result['scoring']
     
     def test_comprehensive_validation_workflow(self):
         """Test the complete validation workflow as used by the CLI and standalone scripts."""
@@ -564,30 +555,31 @@ class TestFullValidation(unittest.TestCase):
             report = self.tester.run_full_validation(["payload"])
             
             # Verify report structure
-            self.assertIsNotNone(report)
-            self.assertIsNotNone(report.summary)
+            assert report is not None
+            assert report.summary is not None
             
             # Verify JSON export works
             json_output = self.tester.export_report(format='json')
             parsed_json = json.loads(json_output)
-            self.assertIsInstance(parsed_json, dict)
+            assert isinstance(parsed_json, dict)
             
             # Verify validation summary
             summary = self.tester.get_validation_summary()
-            self.assertIn('overall_status', summary)
-            self.assertIn('total_tests', summary)
-            self.assertIn('level_breakdown', summary)
+            assert 'overall_status' in summary
+            assert 'total_tests' in summary
+            assert 'level_breakdown' in summary
             
             # Verify scoring information is included in summary (new functionality)
-            self.assertIn('scoring', summary)
-            self.assertIn('overall_score', summary['scoring'])
-            self.assertIn('quality_rating', summary['scoring'])
+            assert 'scoring' in summary
+            assert 'overall_score' in summary['scoring']
+            assert 'quality_rating' in summary['scoring']
             
             # Verify specific script validation
             script_result = self.tester.validate_specific_script("payload")
             # Should be PASSING since all levels pass (warnings don't fail the test)
-            self.assertIn(script_result['overall_status'], ["PASSING", "FAILING"])
-            self.assertEqual(script_result['script_name'], "payload")
+            assert script_result['overall_status'] in ["PASSING", "FAILING"]
+            assert script_result['script_name'] == "payload"
 
 if __name__ == '__main__':
-    unittest.main()
+    import pytest
+    pytest.main([__file__])

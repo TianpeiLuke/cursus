@@ -8,7 +8,7 @@ Tests the enhanced configuration analysis capabilities including:
 - Required/optional field classification
 """
 
-import unittest
+import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -17,16 +17,16 @@ import sys
 
 from cursus.validation.alignment.analyzers.config_analyzer import ConfigurationAnalyzer
 
-class TestConfigurationAnalyzer(unittest.TestCase):
+class TestConfigurationAnalyzer:
     """Test cases for ConfigurationAnalyzer"""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures"""
         self.temp_dir = tempfile.mkdtemp()
         self.analyzer = ConfigurationAnalyzer(self.temp_dir)
-    
-    def tearDown(self):
-        """Clean up test fixtures"""
+        yield
+        # Clean up test fixtures
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
@@ -44,15 +44,15 @@ class TestConfigurationAnalyzer(unittest.TestCase):
         
         result = self.analyzer.analyze_config_class(MockConfig, 'MockConfig')
         
-        self.assertEqual(result['class_name'], 'MockConfig')
-        self.assertIn('required_field', result['fields'])
-        self.assertIn('optional_field', result['fields'])
-        self.assertIn('union_field', result['fields'])
+        assert result['class_name'] == 'MockConfig'
+        assert 'required_field' in result['fields']
+        assert 'optional_field' in result['fields']
+        assert 'union_field' in result['fields']
         
         # Check required/optional classification
-        self.assertIn('required_field', result['required_fields'])
-        self.assertIn('optional_field', result['optional_fields'])
-        self.assertIn('union_field', result['optional_fields'])
+        assert 'required_field' in result['required_fields']
+        assert 'optional_field' in result['optional_fields']
+        assert 'union_field' in result['optional_fields']
     
     def test_analyze_config_class_with_properties(self):
         """Test detection of properties from base classes"""
@@ -73,13 +73,13 @@ class TestConfigurationAnalyzer(unittest.TestCase):
         result = self.analyzer.analyze_config_class(MockConfig, 'MockConfig')
         
         # Should detect both regular fields and properties
-        self.assertIn('regular_field', result['fields'])
-        self.assertIn('pipeline_s3_loc', result['fields'])
-        self.assertIn('computed_field', result['fields'])
+        assert 'regular_field' in result['fields']
+        assert 'pipeline_s3_loc' in result['fields']
+        assert 'computed_field' in result['fields']
         
         # Properties should be optional
-        self.assertIn('pipeline_s3_loc', result['optional_fields'])
-        self.assertEqual(result['fields']['pipeline_s3_loc']['type'], 'property')
+        assert 'pipeline_s3_loc' in result['optional_fields']
+        assert result['fields']['pipeline_s3_loc']['type'] == 'property'
     
     def test_analyze_config_class_pydantic_v2(self):
         """Test analysis of Pydantic v2 model fields"""
@@ -105,10 +105,10 @@ class TestConfigurationAnalyzer(unittest.TestCase):
         result = self.analyzer.analyze_config_class(MockConfig, 'MockConfig')
         
         # Check Pydantic field info is used for required/optional
-        self.assertIn('field1', result['required_fields'])
-        self.assertIn('field2', result['optional_fields'])
-        self.assertTrue(result['fields']['field1']['required'])
-        self.assertFalse(result['fields']['field2']['required'])
+        assert 'field1' in result['required_fields']
+        assert 'field2' in result['optional_fields']
+        assert result['fields']['field1']['required'] is True
+        assert result['fields']['field2']['required'] is False
     
     def test_analyze_config_class_pydantic_v1(self):
         """Test analysis of Pydantic v1 model fields"""
@@ -133,9 +133,9 @@ class TestConfigurationAnalyzer(unittest.TestCase):
         result = self.analyzer.analyze_config_class(MockConfig, 'MockConfig')
         
         # Check Pydantic v1 field info is used
-        self.assertIn('field1', result['required_fields'])
-        self.assertIn('field2', result['optional_fields'])
-        self.assertEqual(result['default_values']['field2'], "default_value")
+        assert 'field1' in result['required_fields']
+        assert 'field2' in result['optional_fields']
+        assert result['default_values']['field2'] == "default_value"
     
     def test_analyze_config_class_inheritance(self):
         """Test analysis handles inheritance through MRO"""
@@ -158,10 +158,10 @@ class TestConfigurationAnalyzer(unittest.TestCase):
         result = self.analyzer.analyze_config_class(MockConfig, 'MockConfig')
         
         # Should detect fields from all levels of inheritance
-        self.assertIn('base_field', result['fields'])
-        self.assertIn('inherited_field', result['fields'])
-        self.assertIn('middle_field', result['fields'])
-        self.assertIn('child_field', result['fields'])
+        assert 'base_field' in result['fields']
+        assert 'inherited_field' in result['fields']
+        assert 'middle_field' in result['fields']
+        assert 'child_field' in result['fields']
     
     def test_is_optional_field_optional_type(self):
         """Test detection of Optional[Type] annotations"""
@@ -170,10 +170,10 @@ class TestConfigurationAnalyzer(unittest.TestCase):
         
         # Test Optional[str]
         from typing import Optional
-        self.assertTrue(self.analyzer._is_optional_field(Optional[str], 'test_field', MockConfig))
+        assert self.analyzer._is_optional_field(Optional[str], 'test_field', MockConfig) is True
         
         # Test regular str
-        self.assertFalse(self.analyzer._is_optional_field(str, 'test_field', MockConfig))
+        assert self.analyzer._is_optional_field(str, 'test_field', MockConfig) is False
     
     def test_is_optional_field_union_with_none(self):
         """Test detection of Union[Type, None] annotations"""
@@ -182,10 +182,10 @@ class TestConfigurationAnalyzer(unittest.TestCase):
         
         from typing import Union
         # Test Union[str, None]
-        self.assertTrue(self.analyzer._is_optional_field(Union[str, None], 'test_field', MockConfig))
+        assert self.analyzer._is_optional_field(Union[str, None], 'test_field', MockConfig) is True
         
         # Test Union[str, int] (no None)
-        self.assertFalse(self.analyzer._is_optional_field(Union[str, int], 'test_field', MockConfig))
+        assert self.analyzer._is_optional_field(Union[str, int], 'test_field', MockConfig) is False
     
     def test_is_optional_field_with_default(self):
         """Test detection of fields with default values"""
@@ -193,10 +193,10 @@ class TestConfigurationAnalyzer(unittest.TestCase):
             test_field = "default_value"
         
         # Field with default should be optional
-        self.assertTrue(self.analyzer._is_optional_field(str, 'test_field', MockConfig))
+        assert self.analyzer._is_optional_field(str, 'test_field', MockConfig) is True
         
         # Field without default should be required
-        self.assertFalse(self.analyzer._is_optional_field(str, 'other_field', MockConfig))
+        assert self.analyzer._is_optional_field(str, 'other_field', MockConfig) is False
     
     def test_load_config_from_python_success(self):
         """Test successful loading of config from Python file"""
@@ -243,10 +243,10 @@ class TestConfig(BaseModel):
             
             result = self.analyzer.load_config_from_python(config_file, "test")
             
-            self.assertEqual(result['class_name'], 'TestConfig')
-            self.assertIn('required_field', result['fields'])
-            self.assertIn('optional_field', result['fields'])
-            self.assertIn('computed_field', result['fields'])
+            assert result['class_name'] == 'TestConfig'
+            assert 'required_field' in result['fields']
+            assert 'optional_field' in result['fields']
+            assert 'computed_field' in result['fields']
     
     def test_load_config_from_python_error_handling(self):
         """Test error handling when config loading fails"""
@@ -255,9 +255,9 @@ class TestConfig(BaseModel):
         result = self.analyzer.load_config_from_python(non_existent_file, "test")
         
         # Should return error analysis
-        self.assertEqual(result['class_name'], 'testConfig')
-        self.assertIn('load_error', result)
-        self.assertEqual(result['fields'], {})
+        assert result['class_name'] == 'testConfig'
+        assert 'load_error' in result
+        assert result['fields'] == {}
     
     def test_get_configuration_schema(self):
         """Test conversion to standardized schema format"""
@@ -276,20 +276,21 @@ class TestConfig(BaseModel):
         schema = self.analyzer.get_configuration_schema(config_analysis)
         
         # Check structure
-        self.assertIn('configuration', schema)
+        assert 'configuration' in schema
         config_schema = schema['configuration']
         
         # Check that required and optional are lists or sets (order may vary)
-        self.assertIn(type(config_schema['required']), [list, set])
-        self.assertIn(type(config_schema['optional']), [list, set])
+        assert type(config_schema['required']) in [list, set]
+        assert type(config_schema['optional']) in [list, set]
         
         # Check contents (convert to sets for comparison since order doesn't matter)
-        self.assertEqual(set(config_schema['required']), {'field1', 'field2'})
-        self.assertEqual(set(config_schema['optional']), {'field3', 'field4'})
+        assert set(config_schema['required']) == {'field1', 'field2'}
+        assert set(config_schema['optional']) == {'field3', 'field4'}
         
         # Check fields and defaults
-        self.assertEqual(config_schema['fields'], config_analysis['fields'])
-        self.assertEqual(config_schema['defaults'], {'field3': True, 'field4': 1.0})
+        assert config_schema['fields'] == config_analysis['fields']
+        assert config_schema['defaults'] == {'field3': True, 'field4': 1.0}
 
 if __name__ == '__main__':
-    unittest.main()
+    import pytest
+    pytest.main([__file__])

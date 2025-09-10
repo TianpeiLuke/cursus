@@ -8,7 +8,7 @@ Tests the enhanced builder code analysis capabilities including:
 - Class definition analysis
 """
 
-import unittest
+import pytest
 import tempfile
 import ast
 from pathlib import Path
@@ -18,10 +18,11 @@ import sys
 
 from cursus.validation.alignment.analyzers.builder_analyzer import BuilderCodeAnalyzer
 
-class TestBuilderCodeAnalyzer(unittest.TestCase):
+class TestBuilderCodeAnalyzer:
     """Test cases for BuilderCodeAnalyzer"""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures"""
         self.analyzer = BuilderCodeAnalyzer()
     
@@ -54,16 +55,16 @@ class TestStepBuilder:
         Path(f.name).unlink()
         
         # Check results
-        self.assertIn('config_accesses', result)
-        self.assertIn('class_definitions', result)
+        assert 'config_accesses' in result
+        assert 'class_definitions' in result
         
         # Should detect field accesses but not method calls
         config_accesses = result['config_accesses']
         accessed_fields = {access['field_name'] for access in config_accesses}
         
-        self.assertIn('processing_instance_type', accessed_fields)
-        self.assertIn('processing_volume_size', accessed_fields)
-        self.assertNotIn('get_script_path', accessed_fields)  # Method call, not field access
+        assert 'processing_instance_type' in accessed_fields
+        assert 'processing_volume_size' in accessed_fields
+        assert 'get_script_path' not in accessed_fields  # Method call, not field access
     
     def test_distinguish_method_calls_from_field_access(self):
         """Test that method calls are not flagged as field accesses"""
@@ -92,10 +93,10 @@ class TestStepBuilder:
         accessed_fields = {access['field_name'] for access in config_accesses}
         
         # Should only contain field accesses, not method calls
-        self.assertIn('processing_instance_type', accessed_fields)
-        self.assertIn('processing_instance_count', accessed_fields)
-        self.assertNotIn('get_script_path', accessed_fields)
-        self.assertNotIn('get_processing_args', accessed_fields)
+        assert 'processing_instance_type' in accessed_fields
+        assert 'processing_instance_count' in accessed_fields
+        assert 'get_script_path' not in accessed_fields
+        assert 'get_processing_args' not in accessed_fields
     
     def test_detect_validation_calls(self):
         """Test detection of validation method calls"""
@@ -120,11 +121,11 @@ class TestStepBuilder:
         Path(f.name).unlink()
         
         # Should detect validation calls
-        self.assertIn('validation_calls', result)
+        assert 'validation_calls' in result
         validation_calls = result['validation_calls']
         
         # Should have detected validation calls
-        self.assertTrue(len(validation_calls) > 0)
+        assert len(validation_calls) > 0
     
     def test_detect_class_definitions(self):
         """Test detection of class definitions"""
@@ -148,12 +149,12 @@ class HelperClass:
         Path(f.name).unlink()
         
         # Should detect both classes
-        self.assertIn('class_definitions', result)
+        assert 'class_definitions' in result
         class_defs = result['class_definitions']
         
         class_names = {cls['class_name'] for cls in class_defs}
-        self.assertIn('TestStepBuilder', class_names)
-        self.assertIn('HelperClass', class_names)
+        assert 'TestStepBuilder' in class_names
+        assert 'HelperClass' in class_names
     
     def test_complex_config_access_patterns(self):
         """Test detection of complex configuration access patterns"""
@@ -190,13 +191,13 @@ class TestStepBuilder:
         accessed_fields = {access['field_name'] for access in config_accesses}
         
         # Should detect field accesses
-        self.assertIn('processing_instance_type', accessed_fields)
-        self.assertIn('enable_feature', accessed_fields)
-        self.assertIn('feature_settings', accessed_fields)
-        self.assertIn('data_path', accessed_fields)
+        assert 'processing_instance_type' in accessed_fields
+        assert 'enable_feature' in accessed_fields
+        assert 'feature_settings' in accessed_fields
+        assert 'data_path' in accessed_fields
         
         # Should not detect method calls
-        self.assertNotIn('validate_settings', accessed_fields)
+        assert 'validate_settings' not in accessed_fields
     
     def test_visit_attribute_method_vs_field(self):
         """Test the visit_Attribute method distinguishes methods from fields"""
@@ -225,8 +226,8 @@ class TestBuilder:
         # Check results
         accessed_fields = {access['field_name'] for access in result['config_accesses']}
         
-        self.assertIn('field_name', accessed_fields)
-        self.assertNotIn('method_name', accessed_fields)
+        assert 'field_name' in accessed_fields
+        assert 'method_name' not in accessed_fields
     
     def test_error_handling_invalid_syntax(self):
         """Test error handling for files with invalid syntax"""
@@ -249,9 +250,9 @@ class TestStepBuilder:
         Path(f.name).unlink()
         
         # Should return error information
-        self.assertIn('error', result)
-        self.assertIn('config_accesses', result)
-        self.assertEqual(len(result['config_accesses']), 0)
+        assert 'error' in result
+        assert 'config_accesses' in result
+        assert len(result['config_accesses']) == 0
     
     def test_empty_file_handling(self):
         """Test handling of empty or minimal files"""
@@ -269,12 +270,12 @@ pass
         Path(f.name).unlink()
         
         # Should return valid structure with empty lists
-        self.assertIn('config_accesses', result)
-        self.assertIn('class_definitions', result)
-        self.assertIn('validation_calls', result)
+        assert 'config_accesses' in result
+        assert 'class_definitions' in result
+        assert 'validation_calls' in result
         
-        self.assertEqual(len(result['config_accesses']), 0)
-        self.assertEqual(len(result['class_definitions']), 0)
+        assert len(result['config_accesses']) == 0
+        assert len(result['class_definitions']) == 0
     
     def test_analyze_builder_code_direct(self):
         """Test direct analysis of builder AST"""
@@ -290,13 +291,14 @@ class TestBuilder:
         result = self.analyzer.analyze_builder_code(test_ast, test_code)
         
         # Check that analysis returns expected structure
-        self.assertIn('config_accesses', result)
-        self.assertIn('class_definitions', result)
-        self.assertIn('validation_calls', result)
+        assert 'config_accesses' in result
+        assert 'class_definitions' in result
+        assert 'validation_calls' in result
         
         # Should detect the config access
         accessed_fields = {access['field_name'] for access in result['config_accesses']}
-        self.assertIn('test_field', accessed_fields)
+        assert 'test_field' in accessed_fields
 
 if __name__ == '__main__':
-    unittest.main()
+    import pytest
+    pytest.main([__file__])
