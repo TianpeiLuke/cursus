@@ -1,24 +1,25 @@
-"""Unit tests for the StepBuilderRegistry class."""
+"""Pytest tests for the StepBuilderRegistry class."""
 
-import unittest
+import pytest
 import logging
 
 from cursus.registry.builder_registry import StepBuilderRegistry, get_global_registry
 from cursus.registry.step_names import STEP_NAMES, get_all_step_names
 from cursus.registry.exceptions import RegistryError
 
-class TestBuilderRegistry(unittest.TestCase):
+
+class TestBuilderRegistry:
     """Test case for StepBuilderRegistry."""
 
-    def setUp(self):
+    def setup_method(self):
         """Set up test case."""
         logging.basicConfig(level=logging.INFO)
         self.registry = StepBuilderRegistry()
 
     def test_registry_initialization(self):
         """Test registry initialization."""
-        self.assertGreater(len(self.registry.BUILDER_REGISTRY), 0)
-        self.assertGreater(len(self.registry.LEGACY_ALIASES), 0)
+        assert len(self.registry.BUILDER_REGISTRY) > 0
+        assert len(self.registry.LEGACY_ALIASES) > 0
 
     def test_canonical_step_names(self):
         """Test that canonical step names are properly mapped."""
@@ -28,7 +29,7 @@ class TestBuilderRegistry(unittest.TestCase):
         expected_canonical_names = ["Package", "Payload", "PyTorchTraining", "PyTorchModel"]
         for name in expected_canonical_names:
             if name in builder_map:
-                self.assertIn(name, builder_map)
+                assert name in builder_map
         
         # Verify legacy aliases are properly handled
         legacy_aliases_to_test = [
@@ -37,7 +38,7 @@ class TestBuilderRegistry(unittest.TestCase):
         for alias in legacy_aliases_to_test:
             # Only test if the registry supports this alias
             if hasattr(self.registry, 'LEGACY_ALIASES') and alias in self.registry.LEGACY_ALIASES:
-                self.assertTrue(self.registry.is_step_type_supported(alias))
+                assert self.registry.is_step_type_supported(alias)
         
     def test_config_class_to_step_type(self):
         """Test _config_class_to_step_type method."""
@@ -61,26 +62,26 @@ class TestBuilderRegistry(unittest.TestCase):
         
         # Test fallback for unknown config class
         unknown_step = self.registry._config_class_to_step_type("UnknownConfig")
-        self.assertEqual(unknown_step, "Unknown")
+        assert unknown_step == "Unknown"
     
     def test_get_config_types_for_step_type(self):
         """Test get_config_types_for_step_type method."""
         # Test with step types from registry
         for step_name in get_all_step_names():
             config_types = self.registry.get_config_types_for_step_type(step_name)
-            self.assertGreater(len(config_types), 0)
+            assert len(config_types) > 0
         
         # Test with legacy aliases
         for legacy_name in self.registry.LEGACY_ALIASES:
             config_types = self.registry.get_config_types_for_step_type(legacy_name)
-            self.assertGreater(len(config_types), 0)
+            assert len(config_types) > 0
     
     def test_validate_registry(self):
         """Test validate_registry method."""
         validation = self.registry.validate_registry()
         
         # Should have valid entries
-        self.assertGreater(len(validation['valid']), 0)
+        assert len(validation['valid']) > 0
         
         # Print any invalid entries
         if validation.get('invalid'):
@@ -94,7 +95,4 @@ class TestBuilderRegistry(unittest.TestCase):
         """Test that the global registry is a singleton."""
         reg1 = get_global_registry()
         reg2 = get_global_registry()
-        self.assertIs(reg1, reg2)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert reg1 is reg2

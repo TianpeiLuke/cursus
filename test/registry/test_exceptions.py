@@ -1,9 +1,10 @@
-"""Unit tests for the registry exceptions module."""
+"""Pytest tests for the registry exceptions module."""
 
-import unittest
+import pytest
 from cursus.registry.exceptions import RegistryError
 
-class TestRegistryExceptions(unittest.TestCase):
+
+class TestRegistryExceptions:
     """Test case for registry exception classes."""
 
     def test_registry_error_basic(self):
@@ -11,9 +12,9 @@ class TestRegistryExceptions(unittest.TestCase):
         message = "Test error message"
         error = RegistryError(message)
         
-        self.assertEqual(str(error), message)
-        self.assertEqual(error.unresolvable_types, [])
-        self.assertEqual(error.available_builders, [])
+        assert str(error) == message
+        assert error.unresolvable_types == []
+        assert error.available_builders == []
 
     def test_registry_error_with_unresolvable_types(self):
         """Test RegistryError with unresolvable types."""
@@ -22,10 +23,10 @@ class TestRegistryExceptions(unittest.TestCase):
         
         error = RegistryError(message, unresolvable_types=unresolvable_types)
         
-        self.assertEqual(error.unresolvable_types, unresolvable_types)
-        self.assertIn("UnknownStep1", str(error))
-        self.assertIn("UnknownStep2", str(error))
-        self.assertIn("Unresolvable step types", str(error))
+        assert error.unresolvable_types == unresolvable_types
+        assert "UnknownStep1" in str(error)
+        assert "UnknownStep2" in str(error)
+        assert "Unresolvable step types" in str(error)
 
     def test_registry_error_with_available_builders(self):
         """Test RegistryError with available builders."""
@@ -34,11 +35,11 @@ class TestRegistryExceptions(unittest.TestCase):
         
         error = RegistryError(message, available_builders=available_builders)
         
-        self.assertEqual(error.available_builders, available_builders)
-        self.assertIn("Builder1", str(error))
-        self.assertIn("Builder2", str(error))
-        self.assertIn("Builder3", str(error))
-        self.assertIn("Available builders", str(error))
+        assert error.available_builders == available_builders
+        assert "Builder1" in str(error)
+        assert "Builder2" in str(error)
+        assert "Builder3" in str(error)
+        assert "Available builders" in str(error)
 
     def test_registry_error_with_both_parameters(self):
         """Test RegistryError with both unresolvable types and available builders."""
@@ -53,19 +54,19 @@ class TestRegistryExceptions(unittest.TestCase):
         )
         
         error_str = str(error)
-        self.assertIn(message, error_str)
-        self.assertIn("BadStep", error_str)
-        self.assertIn("GoodBuilder1", error_str)
-        self.assertIn("GoodBuilder2", error_str)
-        self.assertIn("Unresolvable step types", error_str)
-        self.assertIn("Available builders", error_str)
+        assert message in error_str
+        assert "BadStep" in error_str
+        assert "GoodBuilder1" in error_str
+        assert "GoodBuilder2" in error_str
+        assert "Unresolvable step types" in error_str
+        assert "Available builders" in error_str
 
     def test_registry_error_inheritance(self):
         """Test that RegistryError properly inherits from Exception."""
         error = RegistryError("Test message")
         
-        self.assertIsInstance(error, Exception)
-        self.assertTrue(issubclass(RegistryError, Exception))
+        assert isinstance(error, Exception)
+        assert issubclass(RegistryError, Exception)
 
     def test_registry_error_empty_lists(self):
         """Test RegistryError with empty lists."""
@@ -78,9 +79,6 @@ class TestRegistryExceptions(unittest.TestCase):
         
         # Should only show the main message, not the empty list sections
         error_str = str(error)
-        self.assertEqual(error_str, message)
-        self.assertNotIn("Unresolvable step types", error_str)
-        self.assertNotIn("Available builders", error_str)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert error_str == message
+        assert "Unresolvable step types" not in error_str
+        assert "Available builders" not in error_str

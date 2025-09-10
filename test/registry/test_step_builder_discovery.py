@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Test for the auto-discovery and registration of step builders.
+Pytest tests for the auto-discovery and registration of step builders.
 """
 
-import unittest
+import pytest
 import logging
-import unittest.mock as mock
+from unittest import mock
 import importlib.util
+
 
 # Create a simple test builder registry that doesn't depend on external modules
 class TestBuilderRegistry:
@@ -66,10 +67,11 @@ class TestBuilderRegistry:
             'step_registry_names': len(self.BUILDER_REGISTRY),
         }
 
-class TestStepBuilderDiscovery(unittest.TestCase):
+
+class TestStepBuilderDiscovery:
     """Test cases for step builder auto-discovery and registration."""
     
-    def setUp(self):
+    def setup_method(self):
         """Set up test case."""
         logging.basicConfig(level=logging.INFO)
         self.registry = TestBuilderRegistry()
@@ -77,7 +79,7 @@ class TestStepBuilderDiscovery(unittest.TestCase):
     def test_builder_discovery(self):
         """Test that step builders are correctly discovered and registered."""
         builder_map = self.registry.get_builder_map()
-        self.assertGreater(len(builder_map), 0, "No step builders were discovered")
+        assert len(builder_map) > 0, "No step builders were discovered"
         
         # Check for specific expected step types (excluding those requiring external packages)
         expected_step_types = [
@@ -100,7 +102,7 @@ class TestStepBuilderDiscovery(unittest.TestCase):
         ]
         
         for step_type in expected_step_types:
-            self.assertIn(step_type, builder_map, f"Expected step type '{step_type}' not found in registry")
+            assert step_type in builder_map, f"Expected step type '{step_type}' not found in registry"
             
         # Check that legacy aliases are properly mapped 
         # Note: we exclude Registry-based builders since they require external packages
@@ -112,24 +114,20 @@ class TestStepBuilderDiscovery(unittest.TestCase):
         }
         
         for legacy_name, canonical_name in legacy_aliases.items():
-            self.assertTrue(
-                self.registry.is_step_type_supported(legacy_name),
+            assert self.registry.is_step_type_supported(legacy_name), \
                 f"Legacy alias '{legacy_name}' not properly mapped to '{canonical_name}'"
-            )
             
         # For ModelRegistration, we'll check conditionally since it requires external packages
         if "Registration" in builder_map:
-            self.assertTrue(
-                self.registry.is_step_type_supported("ModelRegistration"),
+            assert self.registry.is_step_type_supported("ModelRegistration"), \
                 "Legacy alias 'ModelRegistration' not properly mapped to 'Registration'"
-            )
     
     def test_registry_validation(self):
         """Test that registry validation correctly identifies issues."""
         validation = self.registry.validate_registry()
         
         # There should be valid entries
-        self.assertGreater(len(validation.get('valid', [])), 0, "No valid entries found in validation")
+        assert len(validation.get('valid', [])) > 0, "No valid entries found in validation"
         
         # Display any invalid or missing entries for debugging
         if validation.get('invalid'):
@@ -149,21 +147,21 @@ class TestStepBuilderDiscovery(unittest.TestCase):
         ]
         
         for stat in expected_stats:
-            self.assertIn(stat, stats, f"Expected statistic '{stat}' not found")
+            assert stat in stats, f"Expected statistic '{stat}' not found"
             
         # Check that stats make sense
-        self.assertGreaterEqual(stats['total_builders'], stats['default_builders'], 
-                              "Total builders should be at least equal to default builders")
-        self.assertEqual(stats['total_builders'], stats['default_builders'] + stats['custom_builders'],
-                        "Total builders should equal default + custom builders")
-        self.assertGreaterEqual(stats['legacy_aliases'], 0, "Legacy aliases count should be non-negative")
+        assert stats['total_builders'] >= stats['default_builders'], \
+            "Total builders should be at least equal to default builders"
+        assert stats['total_builders'] == stats['default_builders'] + stats['custom_builders'], \
+            "Total builders should equal default + custom builders"
+        assert stats['legacy_aliases'] >= 0, "Legacy aliases count should be non-negative"
         
     def test_step_type_listing(self):
         """Test that supported step types are correctly listed."""
         step_types = self.registry.list_supported_step_types()
         
         # Check that we have step types
-        self.assertGreater(len(step_types), 0, "No supported step types found")
+        assert len(step_types) > 0, "No supported step types found"
         
         # Check that it includes both canonical names and legacy aliases
         builder_map = self.registry.get_builder_map()
@@ -171,13 +169,13 @@ class TestStepBuilderDiscovery(unittest.TestCase):
         
         # All canonical names should be in the list
         for canonical_name in builder_map.keys():
-            self.assertIn(canonical_name, step_types, 
-                        f"Canonical step type '{canonical_name}' not in list_supported_step_types")
+            assert canonical_name in step_types, \
+                f"Canonical step type '{canonical_name}' not in list_supported_step_types"
             
         # All legacy aliases should be in the list
         for legacy_name in legacy_aliases.keys():
-            self.assertIn(legacy_name, step_types,
-                        f"Legacy alias '{legacy_name}' not in list_supported_step_types")
+            assert legacy_name in step_types, \
+                f"Legacy alias '{legacy_name}' not in list_supported_step_types"
                         
     def test_real_registry_import(self):
         """Test importing the real registry with a more robust approach."""
@@ -188,14 +186,11 @@ class TestStepBuilderDiscovery(unittest.TestCase):
             
             # If we succeed, run some basic tests
             builder_map = real_registry.get_builder_map()
-            self.assertGreater(len(builder_map), 0, "Real registry has no builders")
+            assert len(builder_map) > 0, "Real registry has no builders"
             
             logging.info(f"Successfully imported real registry with {len(builder_map)} builders")
             
         except ImportError as e:
             # If import fails due to external dependencies, skip the test
             logging.warning(f"Skipping real registry test due to import error: {e}")
-            self.skipTest(f"Real registry import failed: {e}")
-
-if __name__ == '__main__':
-    unittest.main()
+            pytest.skip(f"Real registry import failed: {e}")

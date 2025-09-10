@@ -1,5 +1,5 @@
 """
-Unit tests for registry validation utilities.
+Pytest tests for registry validation utilities.
 
 Tests the simplified validation approach implemented in Phase 1 of the
 Hybrid Registry Standardization Enforcement Implementation Plan.
@@ -23,6 +23,7 @@ from cursus.registry.validation_utils import (
     PASCAL_CASE_PATTERN,
     VALID_SAGEMAKER_TYPES
 )
+
 
 class TestValidateNewStepDefinition:
     """Test core validation function for new step definitions."""
@@ -179,6 +180,7 @@ class TestValidateNewStepDefinition:
         errors = validate_new_step_definition(step_data)
         assert errors == []  # Should pass with empty optional fields
 
+
 class TestAutoCorrectStepDefinition:
     """Test auto-correction functionality for step definitions."""
     
@@ -254,6 +256,7 @@ class TestAutoCorrectStepDefinition:
         assert corrected["sagemaker_step_type"] == "Processing"  # Preserved
         assert corrected["description"] == "Test step"  # Preserved
 
+
 class TestToPascalCase:
     """Test PascalCase conversion utility function."""
     
@@ -320,6 +323,7 @@ class TestToPascalCase:
         for input_text, expected in test_cases:
             result = to_pascal_case(input_text)
             assert result == expected
+
 
 class TestGetValidationErrorsWithSuggestions:
     """Test detailed error messages with suggestions."""
@@ -392,6 +396,7 @@ class TestGetValidationErrorsWithSuggestions:
         
         assert "CradleDataLoadingStepBuilder" in error_text
         assert "XGBoostTrainingStepBuilder" in error_text
+
 
 class TestRegisterStepWithValidation:
     """Test step registration with validation integration."""
@@ -492,6 +497,7 @@ class TestRegisterStepWithValidation:
         assert len(warnings) >= 3  # Should have warnings for each violation
         assert all("Validation issue:" in warning for warning in warnings)
 
+
 class TestValidationPatterns:
     """Test validation patterns and constants."""
     
@@ -535,6 +541,3 @@ class TestValidationPatterns:
         assert "Training" in VALID_SAGEMAKER_TYPES
         assert "CradleDataLoading" in VALID_SAGEMAKER_TYPES
         assert "InvalidType" not in VALID_SAGEMAKER_TYPES
-
-if __name__ == "__main__":
-    pytest.main([__file__])
