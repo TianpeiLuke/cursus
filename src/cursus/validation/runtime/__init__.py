@@ -18,9 +18,30 @@ from .runtime_models import (
 )
 from .runtime_spec_builder import PipelineTestingSpecBuilder
 
+# Enhanced logical name matching components
+from .logical_name_matching import (
+    PathSpec,
+    PathMatch,
+    MatchType,
+    EnhancedScriptExecutionSpec,
+    PathMatcher,
+    TopologicalExecutor,
+    LogicalNameMatchingTester,
+    EnhancedDataCompatibilityResult
+)
+
 # Main API exports - Simplified to user requirements only
 __all__ = [
     'RuntimeTester',
     'ScriptTestResult', 
-    'DataCompatibilityResult'
+    'DataCompatibilityResult',
+    # Enhanced logical name matching exports
+    'PathSpec',
+    'PathMatch',
+    'MatchType',
+    'EnhancedScriptExecutionSpec',
+    'PathMatcher',
+    'TopologicalExecutor',
+    'LogicalNameMatchingTester',
+    'EnhancedDataCompatibilityResult'
 ]
