@@ -2,7 +2,7 @@
 Test suite for AlignmentReport class.
 """
 
-import unittest
+import pytest
 import json
 
 from cursus.validation.alignment.alignment_reporter import (
@@ -12,84 +12,92 @@ from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
 
-class TestAlignmentReport(unittest.TestCase):
+
+@pytest.fixture
+def sample_issue():
+    """Set up sample issue fixture."""
+    return AlignmentIssue(
+        level=SeverityLevel.ERROR,
+        category="test_category",
+        message="Test issue",
+        details={"key": "value"}
+    )
+
+
+@pytest.fixture
+def sample_result(sample_issue):
+    """Set up sample validation result fixture."""
+    result = ValidationResult(
+        test_name="test_validation",
+        passed=False
+    )
+    result.add_issue(sample_issue)
+    return result
+
+
+class TestAlignmentReport:
     """Test AlignmentReport class."""
-    
-    def setUp(self):
-        """Set up test fixtures."""
-        self.sample_issue = AlignmentIssue(
-            level=SeverityLevel.ERROR,
-            category="test_category",
-            message="Test issue",
-            details={"key": "value"}
-        )
-        
-        self.sample_result = ValidationResult(
-            test_name="test_validation",
-            passed=False
-        )
-        self.sample_result.add_issue(self.sample_issue)
     
     def test_alignment_report_creation(self):
         """Test basic AlignmentReport creation."""
         report = AlignmentReport()
         
-        self.assertEqual(len(report.level1_results), 0)
-        self.assertEqual(len(report.level2_results), 0)
-        self.assertEqual(len(report.level3_results), 0)
-        self.assertEqual(len(report.level4_results), 0)
-        self.assertIsNone(report.summary)
-        self.assertEqual(len(report.recommendations), 0)
-        self.assertEqual(report.metadata, {})
+        assert len(report.level1_results) == 0
+        assert len(report.level2_results) == 0
+        assert len(report.level3_results) == 0
+        assert len(report.level4_results) == 0
+        assert report.summary is None
+        assert len(report.recommendations) == 0
+        assert report.metadata == {}
     
-    def test_add_result(self):
+    def test_add_result(self, sample_result):
         """Test adding results to different levels."""
         report = AlignmentReport()
         
         # Add results to each level
-        report.add_level1_result("script_test", self.sample_result)
-        report.add_level2_result("contract_test", self.sample_result)
-        report.add_level3_result("spec_test", self.sample_result)
-        report.add_level4_result("builder_test", self.sample_result)
+        report.add_level1_result("script_test", sample_result)
+        report.add_level2_result("contract_test", sample_result)
+        report.add_level3_result("spec_test", sample_result)
+        report.add_level4_result("builder_test", sample_result)
         
-        self.assertEqual(len(report.level1_results), 1)
-        self.assertEqual(len(report.level2_results), 1)
-        self.assertEqual(len(report.level3_results), 1)
-        self.assertEqual(len(report.level4_results), 1)
+        assert len(report.level1_results) == 1
+        assert len(report.level2_results) == 1
+        assert len(report.level3_results) == 1
+        assert len(report.level4_results) == 1
         
-        self.assertIn("script_test", report.level1_results)
-        self.assertIn("contract_test", report.level2_results)
-        self.assertIn("spec_test", report.level3_results)
-        self.assertIn("builder_test", report.level4_results)
+        assert "script_test" in report.level1_results
+        assert "contract_test" in report.level2_results
+        assert "spec_test" in report.level3_results
+        assert "builder_test" in report.level4_results
     
-    def test_get_all_results(self):
+    def test_get_all_results(self, sample_result):
         """Test getting all results across levels."""
         report = AlignmentReport()
         
-        report.add_level1_result("test1", self.sample_result)
-        report.add_level2_result("test2", self.sample_result)
+        report.add_level1_result("test1", sample_result)
+        report.add_level2_result("test2", sample_result)
         
         all_results = report.get_all_results()
         
-        self.assertEqual(len(all_results), 2)
-        self.assertIn("test1", all_results)
-        self.assertIn("test2", all_results)
+        assert len(all_results) == 2
+        assert "test1" in all_results
+        assert "test2" in all_results
     
-    def test_get_summary(self):
+    def test_get_summary(self, sample_result):
         """Test generating summary."""
         report = AlignmentReport()
-        report.add_level1_result("test1", self.sample_result)
+        report.add_level1_result("test1", sample_result)
         
         summary = report.generate_summary()
         
-        self.assertIsNotNone(summary)
-        self.assertEqual(summary.total_tests, 1)
-        self.assertEqual(summary.failed_tests, 1)
-        self.assertEqual(summary.passed_tests, 0)
-        self.assertEqual(summary.total_issues, 1)
-        self.assertEqual(summary.error_issues, 1)
+        assert summary is not None
+        assert summary.total_tests == 1
+        assert summary.failed_tests == 1
+        assert summary.passed_tests == 0
+        assert summary.total_issues == 1
+        assert summary.error_issues == 1
     
-    def test_get_issues_by_level(self):
+    def test_get_issues_by_level(self, sample_result):
         """Test getting issues by severity level."""
         report = AlignmentReport()
         
@@ -103,22 +111,22 @@ class TestAlignmentReport(unittest.TestCase):
         critical_result.add_issue(critical_issue)
         
         report.add_level1_result("critical_test", critical_result)
-        report.add_level2_result("error_test", self.sample_result)
+        report.add_level2_result("error_test", sample_result)
         
         critical_issues = report.get_critical_issues()
         error_issues = report.get_error_issues()
         
-        self.assertEqual(len(critical_issues), 1)
-        self.assertEqual(len(error_issues), 1)
-        self.assertEqual(critical_issues[0].level, SeverityLevel.CRITICAL)
-        self.assertEqual(error_issues[0].level, SeverityLevel.ERROR)
+        assert len(critical_issues) == 1
+        assert len(error_issues) == 1
+        assert critical_issues[0].level == SeverityLevel.CRITICAL
+        assert error_issues[0].level == SeverityLevel.ERROR
     
     def test_has_critical_issues(self):
         """Test checking for critical issues."""
         report = AlignmentReport()
         
         # No critical issues initially
-        self.assertFalse(report.has_critical_issues())
+        assert report.has_critical_issues() is False
         
         # Add critical issue
         critical_issue = AlignmentIssue(
@@ -130,35 +138,36 @@ class TestAlignmentReport(unittest.TestCase):
         critical_result.add_issue(critical_issue)
         report.add_level1_result("critical_test", critical_result)
         
-        self.assertTrue(report.has_critical_issues())
+        assert report.has_critical_issues() is True
     
-    def test_export_to_json(self):
+    def test_export_to_json(self, sample_result):
         """Test exporting report to JSON."""
         report = AlignmentReport()
-        report.add_level1_result("test1", self.sample_result)
+        report.add_level1_result("test1", sample_result)
         
         json_output = report.export_to_json()
         
-        self.assertIsInstance(json_output, str)
+        assert isinstance(json_output, str)
         
         # Parse JSON to verify structure
         data = json.loads(json_output)
-        self.assertIn('summary', data)
-        self.assertIn('level1_results', data)
-        self.assertIn('recommendations', data)
-        self.assertIn('metadata', data)
+        assert 'summary' in data
+        assert 'level1_results' in data
+        assert 'recommendations' in data
+        assert 'metadata' in data
     
-    def test_export_to_html(self):
+    def test_export_to_html(self, sample_result):
         """Test exporting report to HTML."""
         report = AlignmentReport()
-        report.add_level1_result("test1", self.sample_result)
+        report.add_level1_result("test1", sample_result)
         
         html_output = report.export_to_html()
         
-        self.assertIsInstance(html_output, str)
-        self.assertIn('<html>', html_output)
-        self.assertIn('Alignment Validation Report', html_output)
-        self.assertIn('test1', html_output)
+        assert isinstance(html_output, str)
+        assert '<html>' in html_output
+        assert 'Alignment Validation Report' in html_output
+        assert 'test1' in html_output
+
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

@@ -2,7 +2,7 @@
 Test suite for ValidationResult model.
 """
 
-import unittest
+import pytest
 from datetime import datetime
 
 from cursus.validation.alignment.alignment_reporter import ValidationResult
@@ -10,17 +10,20 @@ from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
 
-class TestValidationResult(unittest.TestCase):
+
+@pytest.fixture
+def sample_issue():
+    """Set up sample issue fixture."""
+    return AlignmentIssue(
+        level=SeverityLevel.ERROR,
+        category="test_category",
+        message="Test issue",
+        details={"key": "value"}
+    )
+
+
+class TestValidationResult:
     """Test ValidationResult model."""
-    
-    def setUp(self):
-        """Set up test fixtures."""
-        self.sample_issue = AlignmentIssue(
-            level=SeverityLevel.ERROR,
-            category="test_category",
-            message="Test issue",
-            details={"key": "value"}
-        )
     
     def test_validation_result_creation(self):
         """Test basic ValidationResult creation."""
@@ -29,13 +32,13 @@ class TestValidationResult(unittest.TestCase):
             passed=True
         )
         
-        self.assertEqual(result.test_name, "test_script_contract")
-        self.assertTrue(result.passed)
-        self.assertEqual(len(result.issues), 0)
-        self.assertEqual(result.details, {})
-        self.assertIsInstance(result.timestamp, datetime)
+        assert result.test_name == "test_script_contract"
+        assert result.passed is True
+        assert len(result.issues) == 0
+        assert result.details == {}
+        assert isinstance(result.timestamp, datetime)
     
-    def test_add_issue(self):
+    def test_add_issue(self, sample_issue):
         """Test adding issues to ValidationResult."""
         result = ValidationResult(
             test_name="test_with_issues",
@@ -50,16 +53,16 @@ class TestValidationResult(unittest.TestCase):
         )
         result.add_issue(warning_issue)
         
-        self.assertTrue(result.passed)  # Still passing
-        self.assertEqual(len(result.issues), 1)
+        assert result.passed is True  # Still passing
+        assert len(result.issues) == 1
         
         # Add an error issue - should change passed status
-        result.add_issue(self.sample_issue)
+        result.add_issue(sample_issue)
         
-        self.assertFalse(result.passed)  # Now failing
-        self.assertEqual(len(result.issues), 2)
+        assert result.passed is False  # Now failing
+        assert len(result.issues) == 2
     
-    def test_get_severity_level(self):
+    def test_get_severity_level(self, sample_issue):
         """Test getting highest severity level."""
         result = ValidationResult(
             test_name="test_severity",
@@ -67,7 +70,7 @@ class TestValidationResult(unittest.TestCase):
         )
         
         # No issues - should return None
-        self.assertIsNone(result.get_severity_level())
+        assert result.get_severity_level() is None
         
         # Add warning issue
         warning_issue = AlignmentIssue(
@@ -76,11 +79,11 @@ class TestValidationResult(unittest.TestCase):
             message="Warning"
         )
         result.add_issue(warning_issue)
-        self.assertEqual(result.get_severity_level(), SeverityLevel.WARNING)
+        assert result.get_severity_level() == SeverityLevel.WARNING
         
         # Add error issue - should return ERROR as highest
-        result.add_issue(self.sample_issue)
-        self.assertEqual(result.get_severity_level(), SeverityLevel.ERROR)
+        result.add_issue(sample_issue)
+        assert result.get_severity_level() == SeverityLevel.ERROR
     
     def test_has_critical_issues(self):
         """Test checking for critical issues."""
@@ -89,7 +92,7 @@ class TestValidationResult(unittest.TestCase):
             passed=True
         )
         
-        self.assertFalse(result.has_critical_issues())
+        assert result.has_critical_issues() is False
         
         # Add critical issue
         critical_issue = AlignmentIssue(
@@ -99,39 +102,40 @@ class TestValidationResult(unittest.TestCase):
         )
         result.add_issue(critical_issue)
         
-        self.assertTrue(result.has_critical_issues())
+        assert result.has_critical_issues() is True
     
-    def test_has_errors(self):
+    def test_has_errors(self, sample_issue):
         """Test checking for error issues."""
         result = ValidationResult(
             test_name="test_errors",
             passed=True
         )
         
-        self.assertFalse(result.has_errors())
+        assert result.has_errors() is False
         
         # Add error issue
-        result.add_issue(self.sample_issue)
+        result.add_issue(sample_issue)
         
-        self.assertTrue(result.has_errors())
+        assert result.has_errors() is True
     
-    def test_to_dict(self):
+    def test_to_dict(self, sample_issue):
         """Test converting ValidationResult to dictionary."""
         result = ValidationResult(
             test_name="test_dict",
             passed=False,
             details={"config": "test_config"}
         )
-        result.add_issue(self.sample_issue)
+        result.add_issue(sample_issue)
         
         result_dict = result.to_dict()
         
-        self.assertEqual(result_dict['test_name'], "test_dict")
-        self.assertFalse(result_dict['passed'])
-        self.assertEqual(result_dict['details'], {"config": "test_config"})
-        self.assertEqual(len(result_dict['issues']), 1)
-        self.assertEqual(result_dict['severity_level'], "ERROR")
-        self.assertIn('timestamp', result_dict)
+        assert result_dict['test_name'] == "test_dict"
+        assert result_dict['passed'] is False
+        assert result_dict['details'] == {"config": "test_config"}
+        assert len(result_dict['issues']) == 1
+        assert result_dict['severity_level'] == "ERROR"
+        assert 'timestamp' in result_dict
+
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

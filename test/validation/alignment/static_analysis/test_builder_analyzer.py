@@ -6,7 +6,7 @@ builder classes to extract arguments from _get_job_arguments() methods and map
 scripts to their corresponding builders.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
 import ast
@@ -20,16 +20,22 @@ from cursus.validation.alignment.static_analysis.builder_analyzer import (
 )
 
 
-class TestBuilderArgumentExtractor(unittest.TestCase):
-    """Test cases for BuilderArgumentExtractor class."""
+@pytest.fixture
+def temp_dir():
+    """Set up temporary directory fixture."""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    import shutil
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@pytest.fixture
+def builder_file(temp_dir):
+    """Set up builder file fixture."""
+    builder_file = Path(temp_dir) / "test_builder.py"
     
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.builder_file = Path(self.temp_dir) / "test_builder.py"
-        
-        # Sample builder file content with _get_job_arguments method
-        self.sample_builder_content = '''
+    # Sample builder file content with _get_job_arguments method
+    sample_builder_content = '''
 class TestStepBuilder:
     def _get_job_arguments(self):
         return [
@@ -42,47 +48,83 @@ class TestStepBuilder:
     def other_method(self):
         return ["--not-a-job-arg"]
 '''
-        
-        # Create the test builder file
-        with open(self.builder_file, 'w') as f:
-            f.write(self.sample_builder_content)
     
-    def tearDown(self):
-        """Clean up test fixtures."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    # Create the test builder file
+    with open(builder_file, 'w') as f:
+        f.write(sample_builder_content)
     
-    def test_init_success(self):
+    return builder_file
+
+
+@pytest.fixture
+def builders_dir(temp_dir):
+    """Set up builders directory fixture."""
+    builders_dir = Path(temp_dir) / "builders"
+    builders_dir.mkdir()
+    
+    # Create sample builder files
+    sample_builders = {
+        "builder_model_training_step.py": '''
+from ..configs.config_model_training_step import ModelTrainingConfig
+class ModelTrainingStepBuilder:
+    pass
+''',
+        "builder_data_preprocessing_step.py": '''
+from ..configs.config_data_preprocessing_step import DataPreprocessingConfig
+class DataPreprocessingStepBuilder:
+    entry_point = "data_preprocessing.py"
+''',
+        "builder_model_evaluation_xgb_step.py": '''
+from ..configs.config_model_evaluation_step import ModelEvaluationConfig
+class ModelEvaluationXGBStepBuilder:
+    pass
+''',
+        "__init__.py": "# Init file"
+    }
+    
+    # Create the builder files
+    for filename, content in sample_builders.items():
+        builder_file = builders_dir / filename
+        with open(builder_file, 'w') as f:
+            f.write(content)
+    
+    return builders_dir
+
+
+class TestBuilderArgumentExtractor:
+    """Test cases for BuilderArgumentExtractor class."""
+    
+    def test_init_success(self, builder_file):
         """Test successful initialization of BuilderArgumentExtractor."""
-        extractor = BuilderArgumentExtractor(str(self.builder_file))
+        extractor = BuilderArgumentExtractor(str(builder_file))
         
-        self.assertEqual(extractor.builder_file_path, self.builder_file)
-        self.assertIsNotNone(extractor.builder_ast)
-        self.assertIsInstance(extractor.builder_ast, ast.Module)
+        assert extractor.builder_file_path == builder_file
+        assert extractor.builder_ast is not None
+        assert isinstance(extractor.builder_ast, ast.Module)
     
-    def test_init_file_not_found(self):
+    def test_init_file_not_found(self, temp_dir):
         """Test initialization with non-existent file."""
-        nonexistent_file = Path(self.temp_dir) / "nonexistent.py"
+        nonexistent_file = Path(temp_dir) / "nonexistent.py"
         
-        with self.assertRaises(ValueError) as exc_info:
+        with pytest.raises(ValueError) as exc_info:
             BuilderArgumentExtractor(str(nonexistent_file))
         
-        self.assertIn("Failed to parse builder file", str(exc_info.exception))
+        assert "Failed to parse builder file" in str(exc_info.value)
     
-    def test_init_invalid_python_file(self):
+    def test_init_invalid_python_file(self, temp_dir):
         """Test initialization with invalid Python syntax."""
-        invalid_file = Path(self.temp_dir) / "invalid.py"
+        invalid_file = Path(temp_dir) / "invalid.py"
         with open(invalid_file, 'w') as f:
             f.write("invalid python syntax !!!")
         
-        with self.assertRaises(ValueError) as exc_info:
+        with pytest.raises(ValueError) as exc_info:
             BuilderArgumentExtractor(str(invalid_file))
         
-        self.assertIn("Failed to parse builder file", str(exc_info.exception))
+        assert "Failed to parse builder file" in str(exc_info.value)
     
-    def test_extract_job_arguments_success(self):
+    def test_extract_job_arguments_success(self, builder_file):
         """Test successful extraction of job arguments."""
-        extractor = BuilderArgumentExtractor(str(self.builder_file))
+        extractor = BuilderArgumentExtractor(str(builder_file))
         arguments = extractor.extract_job_arguments()
         
         expected_args = {
@@ -92,9 +134,9 @@ class TestStepBuilder:
             "output-path"
         }
         
-        self.assertEqual(arguments, expected_args)
+        assert arguments == expected_args
     
-    def test_extract_job_arguments_no_method(self):
+    def test_extract_job_arguments_no_method(self, temp_dir):
         """Test extraction when _get_job_arguments method doesn't exist."""
         # Create builder without _get_job_arguments method
         no_method_content = '''
@@ -102,32 +144,32 @@ class TestStepBuilder:
     def other_method(self):
         return ["--not-relevant"]
 '''
-        no_method_file = Path(self.temp_dir) / "no_method.py"
+        no_method_file = Path(temp_dir) / "no_method.py"
         with open(no_method_file, 'w') as f:
             f.write(no_method_content)
         
         extractor = BuilderArgumentExtractor(str(no_method_file))
         arguments = extractor.extract_job_arguments()
         
-        self.assertEqual(arguments, set())
+        assert arguments == set()
     
-    def test_extract_job_arguments_empty_method(self):
+    def test_extract_job_arguments_empty_method(self, temp_dir):
         """Test extraction from empty _get_job_arguments method."""
         empty_method_content = '''
 class TestStepBuilder:
     def _get_job_arguments(self):
         return []
 '''
-        empty_method_file = Path(self.temp_dir) / "empty_method.py"
+        empty_method_file = Path(temp_dir) / "empty_method.py"
         with open(empty_method_file, 'w') as f:
             f.write(empty_method_content)
         
         extractor = BuilderArgumentExtractor(str(empty_method_file))
         arguments = extractor.extract_job_arguments()
         
-        self.assertEqual(arguments, set())
+        assert arguments == set()
     
-    def test_extract_job_arguments_list_format(self):
+    def test_extract_job_arguments_list_format(self, temp_dir):
         """Test extraction from method that returns list of arguments."""
         list_format_content = '''
 class TestStepBuilder:
@@ -138,7 +180,7 @@ class TestStepBuilder:
         ]
         return args
 '''
-        list_format_file = Path(self.temp_dir) / "list_format.py"
+        list_format_file = Path(temp_dir) / "list_format.py"
         with open(list_format_file, 'w') as f:
             f.write(list_format_content)
         
@@ -146,9 +188,9 @@ class TestStepBuilder:
         arguments = extractor.extract_job_arguments()
         
         expected_args = {"batch-size", "epochs"}
-        self.assertEqual(arguments, expected_args)
+        assert arguments == expected_args
     
-    def test_extract_job_arguments_mixed_format(self):
+    def test_extract_job_arguments_mixed_format(self, temp_dir):
         """Test extraction from method with mixed argument formats."""
         mixed_format_content = '''
 class TestStepBuilder:
@@ -159,7 +201,7 @@ class TestStepBuilder:
         # Some inline arguments
         return base_args + additional_args + ["--debug", "false"]
 '''
-        mixed_format_file = Path(self.temp_dir) / "mixed_format.py"
+        mixed_format_file = Path(temp_dir) / "mixed_format.py"
         with open(mixed_format_file, 'w') as f:
             f.write(mixed_format_content)
         
@@ -167,9 +209,9 @@ class TestStepBuilder:
         arguments = extractor.extract_job_arguments()
         
         expected_args = {"model-type", "verbose", "debug"}
-        self.assertEqual(arguments, expected_args)
+        assert arguments == expected_args
     
-    def test_extract_job_arguments_ignores_non_args(self):
+    def test_extract_job_arguments_ignores_non_args(self, temp_dir):
         """Test that extraction ignores strings that don't start with --."""
         non_args_content = '''
 class TestStepBuilder:
@@ -181,7 +223,7 @@ class TestStepBuilder:
             "--another-valid-arg", "value"
         ]
 '''
-        non_args_file = Path(self.temp_dir) / "non_args.py"
+        non_args_file = Path(temp_dir) / "non_args.py"
         with open(non_args_file, 'w') as f:
             f.write(non_args_content)
         
@@ -189,61 +231,61 @@ class TestStepBuilder:
         arguments = extractor.extract_job_arguments()
         
         expected_args = {"valid-arg", "another-valid-arg"}
-        self.assertEqual(arguments, expected_args)
+        assert arguments == expected_args
     
-    def test_find_job_arguments_method_success(self):
+    def test_find_job_arguments_method_success(self, builder_file):
         """Test finding _get_job_arguments method in AST."""
-        extractor = BuilderArgumentExtractor(str(self.builder_file))
+        extractor = BuilderArgumentExtractor(str(builder_file))
         method_node = extractor._find_job_arguments_method()
         
-        self.assertIsNotNone(method_node)
-        self.assertIsInstance(method_node, ast.FunctionDef)
-        self.assertEqual(method_node.name, "_get_job_arguments")
+        assert method_node is not None
+        assert isinstance(method_node, ast.FunctionDef)
+        assert method_node.name == "_get_job_arguments"
     
-    def test_find_job_arguments_method_not_found(self):
+    def test_find_job_arguments_method_not_found(self, temp_dir):
         """Test finding method when it doesn't exist."""
         no_method_content = '''
 class TestStepBuilder:
     def other_method(self):
         pass
 '''
-        no_method_file = Path(self.temp_dir) / "no_method.py"
+        no_method_file = Path(temp_dir) / "no_method.py"
         with open(no_method_file, 'w') as f:
             f.write(no_method_content)
         
         extractor = BuilderArgumentExtractor(str(no_method_file))
         method_node = extractor._find_job_arguments_method()
         
-        self.assertIsNone(method_node)
+        assert method_node is None
     
-    def test_get_method_source_success(self):
+    def test_get_method_source_success(self, builder_file):
         """Test getting source code of _get_job_arguments method."""
-        extractor = BuilderArgumentExtractor(str(self.builder_file))
+        extractor = BuilderArgumentExtractor(str(builder_file))
         source = extractor.get_method_source()
         
-        self.assertIsNotNone(source)
-        self.assertIn("def _get_job_arguments(self):", source)
-        self.assertIn("--learning-rate", source)
+        assert source is not None
+        assert "def _get_job_arguments(self):" in source
+        assert "--learning-rate" in source
     
-    def test_get_method_source_no_method(self):
+    def test_get_method_source_no_method(self, temp_dir):
         """Test getting source when method doesn't exist."""
         no_method_content = '''
 class TestStepBuilder:
     def other_method(self):
         pass
 '''
-        no_method_file = Path(self.temp_dir) / "no_method.py"
+        no_method_file = Path(temp_dir) / "no_method.py"
         with open(no_method_file, 'w') as f:
             f.write(no_method_content)
         
         extractor = BuilderArgumentExtractor(str(no_method_file))
         source = extractor.get_method_source()
         
-        self.assertIsNone(source)
+        assert source is None
     
-    def test_extract_arguments_from_method_ast_str_compatibility(self):
+    def test_extract_arguments_from_method_ast_str_compatibility(self, builder_file):
         """Test extraction works with both ast.Constant and ast.Str (older Python)."""
-        extractor = BuilderArgumentExtractor(str(self.builder_file))
+        extractor = BuilderArgumentExtractor(str(builder_file))
         method_node = extractor._find_job_arguments_method()
         
         # Test with actual method node - this avoids recursion issues with mocking
@@ -251,185 +293,149 @@ class TestStepBuilder:
             arguments = extractor._extract_arguments_from_method(method_node)
             # Should extract arguments from the sample builder content
             expected_args = {"learning-rate", "max-depth", "n-estimators", "output-path"}
-            self.assertEqual(arguments, expected_args)
+            assert arguments == expected_args
         else:
-            self.fail("Could not find _get_job_arguments method in test builder")
+            pytest.fail("Could not find _get_job_arguments method in test builder")
 
 
-class TestBuilderRegistry(unittest.TestCase):
+class TestBuilderRegistry:
     """Test cases for BuilderRegistry class."""
     
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.builders_dir = Path(self.temp_dir) / "builders"
-        self.builders_dir.mkdir()
-        
-        # Create sample builder files
-        self.sample_builders = {
-            "builder_model_training_step.py": '''
-from ..configs.config_model_training_step import ModelTrainingConfig
-class ModelTrainingStepBuilder:
-    pass
-''',
-            "builder_data_preprocessing_step.py": '''
-from ..configs.config_data_preprocessing_step import DataPreprocessingConfig
-class DataPreprocessingStepBuilder:
-    entry_point = "data_preprocessing.py"
-''',
-            "builder_model_evaluation_xgb_step.py": '''
-from ..configs.config_model_evaluation_step import ModelEvaluationConfig
-class ModelEvaluationXGBStepBuilder:
-    pass
-''',
-            "__init__.py": "# Init file"
-        }
-        
-        # Create the builder files
-        for filename, content in self.sample_builders.items():
-            builder_file = self.builders_dir / filename
-            with open(builder_file, 'w') as f:
-                f.write(content)
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
-    def test_init_success(self):
+    def test_init_success(self, builders_dir):
         """Test successful initialization of BuilderRegistry."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
-        self.assertEqual(registry.builders_dir, self.builders_dir)
-        self.assertIsInstance(registry._script_to_builder_mapping, dict)
-        self.assertGreater(len(registry._script_to_builder_mapping), 0)
+        assert registry.builders_dir == builders_dir
+        assert isinstance(registry._script_to_builder_mapping, dict)
+        assert len(registry._script_to_builder_mapping) > 0
     
-    def test_init_nonexistent_directory(self):
+    def test_init_nonexistent_directory(self, temp_dir):
         """Test initialization with non-existent directory."""
-        nonexistent_dir = Path(self.temp_dir) / "nonexistent"
+        nonexistent_dir = Path(temp_dir) / "nonexistent"
         
         registry = BuilderRegistry(str(nonexistent_dir))
         
-        self.assertEqual(registry._script_to_builder_mapping, {})
+        assert registry._script_to_builder_mapping == {}
     
-    def test_build_script_mapping_success(self):
+    def test_build_script_mapping_success(self, builders_dir):
         """Test building script-to-builder mapping."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         mapping = registry.get_all_mappings()
         
         # Should contain mappings for the builder files
-        self.assertIn("model_training", mapping)
-        self.assertIn("data_preprocessing", mapping)
-        self.assertIn("model_evaluation_xgb", mapping)
+        assert "model_training" in mapping
+        assert "data_preprocessing" in mapping
+        assert "model_evaluation_xgb" in mapping
         
         # Should not contain __init__
-        self.assertNotIn("__init__", mapping)
+        assert "__init__" not in mapping
     
-    def test_extract_script_names_from_builder_filename(self):
+    def test_extract_script_names_from_builder_filename(self, builders_dir):
         """Test extracting script names from builder filename."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
-        builder_file = self.builders_dir / "builder_model_training_step.py"
+        builder_file = builders_dir / "builder_model_training_step.py"
         script_names = registry._extract_script_names_from_builder(builder_file)
         
-        self.assertIn("model_training", script_names)
+        assert "model_training" in script_names
     
-    def test_extract_script_names_from_builder_config_import(self):
+    def test_extract_script_names_from_builder_config_import(self, builders_dir):
         """Test extracting script names from config imports."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
-        builder_file = self.builders_dir / "builder_data_preprocessing_step.py"
+        builder_file = builders_dir / "builder_data_preprocessing_step.py"
         script_names = registry._extract_script_names_from_builder(builder_file)
         
         # Should extract from both filename and config import
-        self.assertIn("data_preprocessing", script_names)
+        assert "data_preprocessing" in script_names
     
-    def test_extract_script_names_from_builder_entry_point(self):
+    def test_extract_script_names_from_builder_entry_point(self, builders_dir):
         """Test extracting script names from entry_point references."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
-        builder_file = self.builders_dir / "builder_data_preprocessing_step.py"
+        builder_file = builders_dir / "builder_data_preprocessing_step.py"
         script_names = registry._extract_script_names_from_builder(builder_file)
         
         # Should extract from entry_point reference
-        self.assertIn("data_preprocessing", script_names)
+        assert "data_preprocessing" in script_names
     
-    def test_generate_name_variations_preprocessing(self):
+    def test_generate_name_variations_preprocessing(self, builders_dir):
         """Test generating name variations for preprocessing."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
         variations = registry._generate_name_variations("data_preprocessing")
-        self.assertIn("data_preprocess", variations)
+        assert "data_preprocess" in variations
         
         variations = registry._generate_name_variations("data_preprocess")
-        self.assertIn("data_preprocessing", variations)
+        assert "data_preprocessing" in variations
     
-    def test_generate_name_variations_evaluation(self):
+    def test_generate_name_variations_evaluation(self, builders_dir):
         """Test generating name variations for evaluation."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
         variations = registry._generate_name_variations("model_evaluation")
-        self.assertIn("model_eval", variations)
+        assert "model_eval" in variations
         
         variations = registry._generate_name_variations("model_eval")
-        self.assertIn("model_evaluation", variations)
+        assert "model_evaluation" in variations
     
-    def test_generate_name_variations_xgboost(self):
+    def test_generate_name_variations_xgboost(self, builders_dir):
         """Test generating name variations for xgboost."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
         variations = registry._generate_name_variations("model_xgboost")
-        self.assertIn("model_xgb", variations)
+        assert "model_xgb" in variations
         
         variations = registry._generate_name_variations("model_xgb")
-        self.assertIn("model_xgboost", variations)
+        assert "model_xgboost" in variations
     
-    def test_get_builder_for_script_success(self):
+    def test_get_builder_for_script_success(self, builders_dir):
         """Test getting builder file for existing script."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
         builder_file = registry.get_builder_for_script("model_training")
         
-        self.assertIsNotNone(builder_file)
-        self.assertIn("builder_model_training_step.py", builder_file)
+        assert builder_file is not None
+        assert "builder_model_training_step.py" in builder_file
     
-    def test_get_builder_for_script_not_found(self):
+    def test_get_builder_for_script_not_found(self, builders_dir):
         """Test getting builder file for non-existent script."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
         builder_file = registry.get_builder_for_script("nonexistent_script")
         
-        self.assertIsNone(builder_file)
+        assert builder_file is None
     
-    def test_get_builder_for_script_with_variations(self):
+    def test_get_builder_for_script_with_variations(self, builders_dir):
         """Test getting builder file using name variations."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
         # Should find builder using name variations
         builder_file = registry.get_builder_for_script("data_preprocess")
         
         # Might find it through variations
         if builder_file is not None:
-            self.assertIn("builder_data_preprocessing_step.py", builder_file)
+            assert "builder_data_preprocessing_step.py" in builder_file
     
-    def test_get_all_mappings(self):
+    def test_get_all_mappings(self, builders_dir):
         """Test getting all script-to-builder mappings."""
-        registry = BuilderRegistry(str(self.builders_dir))
+        registry = BuilderRegistry(str(builders_dir))
         
         mappings = registry.get_all_mappings()
         
-        self.assertIsInstance(mappings, dict)
-        self.assertGreater(len(mappings), 0)
+        assert isinstance(mappings, dict)
+        assert len(mappings) > 0
         
         # Should be a copy, not the original
         original_mappings = registry._script_to_builder_mapping
-        self.assertIsNot(mappings, original_mappings)
+        assert mappings is not original_mappings
 
 
-class TestExtractBuilderArgumentsFunction(unittest.TestCase):
+class TestExtractBuilderArgumentsFunction:
     """Test cases for the extract_builder_arguments convenience function."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.builders_dir = Path(self.temp_dir) / "builders"
@@ -444,9 +450,10 @@ class TestStepBuilder:
         builder_file = self.builders_dir / "builder_test_script_step.py"
         with open(builder_file, 'w') as f:
             f.write(builder_content)
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
+        
+        yield
+        
+        # Clean up test fixtures
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
@@ -455,13 +462,13 @@ class TestStepBuilder:
         arguments = extract_builder_arguments("test_script", str(self.builders_dir))
         
         expected_args = {"test-arg", "another-arg"}
-        self.assertEqual(arguments, expected_args)
+        assert arguments == expected_args
     
     def test_extract_builder_arguments_script_not_found(self):
         """Test extraction when script has no corresponding builder."""
         arguments = extract_builder_arguments("nonexistent_script", str(self.builders_dir))
         
-        self.assertEqual(arguments, set())
+        assert arguments == set()
     
     def test_extract_builder_arguments_invalid_builder_dir(self):
         """Test extraction with invalid builder directory."""
@@ -469,7 +476,7 @@ class TestStepBuilder:
         
         arguments = extract_builder_arguments("test_script", str(nonexistent_dir))
         
-        self.assertEqual(arguments, set())
+        assert arguments == set()
     
     @patch('cursus.validation.alignment.static_analysis.builder_analyzer.BuilderArgumentExtractor')
     def test_extract_builder_arguments_extractor_error(self, mock_extractor_class):
@@ -478,20 +485,22 @@ class TestStepBuilder:
         
         arguments = extract_builder_arguments("test_script", str(self.builders_dir))
         
-        self.assertEqual(arguments, set())
+        assert arguments == set()
 
 
-class TestBuilderAnalyzerIntegration(unittest.TestCase):
+class TestBuilderAnalyzerIntegration:
     """Integration test cases for builder analyzer components."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up integration test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.builders_dir = Path(self.temp_dir) / "builders"
         self.builders_dir.mkdir()
-    
-    def tearDown(self):
-        """Clean up integration test fixtures."""
+        
+        yield
+        
+        # Clean up integration test fixtures
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
@@ -542,7 +551,7 @@ class ModelTrainingStepBuilder:
             "early-stopping"
         }
         
-        self.assertEqual(arguments, expected_args)
+        assert arguments == expected_args
     
     def test_error_resilience_integration(self):
         """Test that the system handles various error conditions gracefully."""
@@ -561,15 +570,15 @@ class ModelTrainingStepBuilder:
         mappings = registry.get_all_mappings()
         
         # Should still work despite some invalid files
-        self.assertIsInstance(mappings, dict)
+        assert isinstance(mappings, dict)
         
         # Test extraction with invalid files
         args1 = extract_builder_arguments("invalid", str(self.builders_dir))
         args2 = extract_builder_arguments("no_method", str(self.builders_dir))
         
-        self.assertEqual(args1, set())
-        self.assertEqual(args2, set())
+        assert args1 == set()
+        assert args2 == set()
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

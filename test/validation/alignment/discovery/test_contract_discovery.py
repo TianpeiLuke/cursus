@@ -6,7 +6,7 @@ contract files, including finding contracts by script name, extracting contract
 references from specification files, and building entry point mappings.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from pathlib import Path
 import sys
@@ -17,77 +17,92 @@ from typing import Dict, List, Optional, Any
 from cursus.validation.alignment.discovery.contract_discovery import ContractDiscoveryEngine
 
 
-class TestContractDiscoveryEngine(unittest.TestCase):
+@pytest.fixture
+def temp_dir():
+    """Set up temporary directory fixture."""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    import shutil
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@pytest.fixture
+def contracts_dir(temp_dir):
+    """Set up contracts directory fixture."""
+    contracts_dir = Path(temp_dir) / "contracts"
+    contracts_dir.mkdir(exist_ok=True)
+    return contracts_dir
+
+
+@pytest.fixture
+def engine(contracts_dir):
+    """Set up ContractDiscoveryEngine fixture."""
+    return ContractDiscoveryEngine(str(contracts_dir))
+
+
+@pytest.fixture
+def sample_contracts(contracts_dir):
+    """Set up sample contract files fixture."""
+    sample_contracts = [
+        "model_training_contract.py",
+        "data_preprocessing_contract.py",
+        "model_evaluation_contract.py",
+        "__init__.py"  # Should be ignored
+    ]
+    
+    # Create sample contract files
+    for contract_file in sample_contracts:
+        (contracts_dir / contract_file).touch()
+    
+    return sample_contracts
+
+
+class TestContractDiscoveryEngine:
     """Test cases for ContractDiscoveryEngine class."""
-    
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.contracts_dir = Path(self.temp_dir) / "contracts"
-        self.contracts_dir.mkdir(exist_ok=True)
-        
-        self.engine = ContractDiscoveryEngine(str(self.contracts_dir))
-        
-        # Sample contract files
-        self.sample_contracts = [
-            "model_training_contract.py",
-            "data_preprocessing_contract.py",
-            "model_evaluation_contract.py",
-            "__init__.py"  # Should be ignored
-        ]
-        
-        # Create sample contract files
-        for contract_file in self.sample_contracts:
-            (self.contracts_dir / contract_file).touch()
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def test_init(self):
         """Test ContractDiscoveryEngine initialization."""
         engine = ContractDiscoveryEngine("/path/to/contracts")
         
-        self.assertEqual(engine.contracts_dir, Path("/path/to/contracts"))
-        self.assertIsNone(engine._entry_point_mapping)
+        assert engine.contracts_dir == Path("/path/to/contracts")
+        assert engine._entry_point_mapping is None
     
-    def test_discover_all_contracts_with_files(self):
+    def test_discover_all_contracts_with_files(self, engine, sample_contracts):
         """Test discovering all contracts when files exist."""
-        contracts = self.engine.discover_all_contracts()
+        contracts = engine.discover_all_contracts()
         
         expected = ["data_preprocessing", "model_evaluation", "model_training"]
-        self.assertEqual(contracts, expected)
+        assert contracts == expected
     
-    def test_discover_all_contracts_empty_directory(self):
+    def test_discover_all_contracts_empty_directory(self, temp_dir):
         """Test discovering contracts in empty directory."""
-        empty_dir = Path(self.temp_dir) / "empty_contracts"
+        empty_dir = Path(temp_dir) / "empty_contracts"
         empty_dir.mkdir()
         
         engine = ContractDiscoveryEngine(str(empty_dir))
         contracts = engine.discover_all_contracts()
         
-        self.assertEqual(contracts, [])
+        assert contracts == []
     
-    def test_discover_all_contracts_nonexistent_directory(self):
+    def test_discover_all_contracts_nonexistent_directory(self, temp_dir):
         """Test discovering contracts when directory doesn't exist."""
-        nonexistent_dir = Path(self.temp_dir) / "nonexistent"
+        nonexistent_dir = Path(temp_dir) / "nonexistent"
         
         engine = ContractDiscoveryEngine(str(nonexistent_dir))
         contracts = engine.discover_all_contracts()
         
-        self.assertEqual(contracts, [])
+        assert contracts == []
     
-    def test_discover_all_contracts_ignores_init_files(self):
+    def test_discover_all_contracts_ignores_init_files(self, engine, sample_contracts):
         """Test that __init__.py files are ignored."""
-        contracts = self.engine.discover_all_contracts()
+        contracts = engine.discover_all_contracts()
         
         # Should not include __init__ in the results
-        self.assertNotIn("__init__", contracts)
-        self.assertIn("data_preprocessing", contracts)
+        assert "__init__" not in contracts
+        assert "data_preprocessing" in contracts
     
     @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
-    def test_discover_contracts_with_scripts_success(self, mock_tester_class):
+    def test_discover_contracts_with_scripts_success(self, mock_tester_class, engine, sample_contracts):
         """Test discovering contracts that have corresponding scripts."""
         # Mock the tester
         mock_tester = Mock()
@@ -95,20 +110,20 @@ class TestContractDiscoveryEngine(unittest.TestCase):
         mock_tester_class.return_value = mock_tester
         
         # Mock contract loading
-        with patch.object(self.engine, '_load_contract_for_entry_point') as mock_load:
+        with patch.object(engine, '_load_contract_for_entry_point') as mock_load:
             mock_load.side_effect = [
                 {'entry_point': 'data_preprocessing.py'},
                 {'entry_point': 'model_training.py'},
                 {'entry_point': 'nonexistent_script.py'}
             ]
             
-            contracts = self.engine.discover_contracts_with_scripts()
+            contracts = engine.discover_contracts_with_scripts()
             
             expected = ["data_preprocessing", "model_training"]
-            self.assertEqual(contracts, expected)
+            assert contracts == expected
     
     @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
-    def test_discover_contracts_with_scripts_no_entry_point(self, mock_tester_class):
+    def test_discover_contracts_with_scripts_no_entry_point(self, mock_tester_class, engine, sample_contracts):
         """Test discovering contracts when some have no entry_point."""
         # Mock the tester
         mock_tester = Mock()
@@ -116,20 +131,20 @@ class TestContractDiscoveryEngine(unittest.TestCase):
         mock_tester_class.return_value = mock_tester
         
         # Mock contract loading - some with no entry_point
-        with patch.object(self.engine, '_load_contract_for_entry_point') as mock_load:
+        with patch.object(engine, '_load_contract_for_entry_point') as mock_load:
             mock_load.side_effect = [
                 {'entry_point': ''},  # No entry point for data_preprocessing
                 {'entry_point': 'model_evaluation.py'},  # model_evaluation
                 {'entry_point': 'model_training.py'}  # model_training
             ]
             
-            contracts = self.engine.discover_contracts_with_scripts()
+            contracts = engine.discover_contracts_with_scripts()
             
             # Only model_evaluation has both valid entry_point and existing script
-            self.assertEqual(contracts, ["model_evaluation"])
+            assert contracts == ["model_evaluation"]
     
     @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
-    def test_discover_contracts_with_scripts_load_error(self, mock_tester_class):
+    def test_discover_contracts_with_scripts_load_error(self, mock_tester_class, engine, sample_contracts):
         """Test discovering contracts when some fail to load."""
         # Mock the tester
         mock_tester = Mock()
@@ -137,29 +152,29 @@ class TestContractDiscoveryEngine(unittest.TestCase):
         mock_tester_class.return_value = mock_tester
         
         # Mock contract loading with errors
-        with patch.object(self.engine, '_load_contract_for_entry_point') as mock_load:
+        with patch.object(engine, '_load_contract_for_entry_point') as mock_load:
             mock_load.side_effect = [
                 Exception("Failed to load contract"),  # data_preprocessing fails
                 {'entry_point': 'model_evaluation.py'},  # model_evaluation
                 {'entry_point': 'model_training.py'}  # model_training
             ]
             
-            contracts = self.engine.discover_contracts_with_scripts()
+            contracts = engine.discover_contracts_with_scripts()
             
             # Only the successfully loaded contract with existing script
-            self.assertEqual(contracts, ["model_evaluation"])
+            assert contracts == ["model_evaluation"]
     
     @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
-    def test_discover_contracts_with_scripts_nonexistent_directory(self, mock_tester_class):
+    def test_discover_contracts_with_scripts_nonexistent_directory(self, mock_tester_class, temp_dir):
         """Test discovering contracts when contracts directory doesn't exist."""
-        nonexistent_dir = Path(self.temp_dir) / "nonexistent"
+        nonexistent_dir = Path(temp_dir) / "nonexistent"
         engine = ContractDiscoveryEngine(str(nonexistent_dir))
         
         contracts = engine.discover_contracts_with_scripts()
         
-        self.assertEqual(contracts, [])
+        assert contracts == []
     
-    def test_extract_contract_reference_from_spec_import_patterns(self):
+    def test_extract_contract_reference_from_spec_import_patterns(self, engine):
         """Test extracting contract reference from spec file using import patterns."""
         spec_content = """
 from ..contracts.model_training import CONTRACT
@@ -170,10 +185,10 @@ from ..contracts.data_preprocessing_contract import PREPROCESSING_CONTRACT
             spec_file = Path("test_spec.py")
             
             # Test first pattern
-            result = self.engine.extract_contract_reference_from_spec(spec_file)
-            self.assertEqual(result, "model_training_contract")
+            result = engine.extract_contract_reference_from_spec(spec_file)
+            assert result == "model_training_contract"
     
-    def test_extract_contract_reference_from_spec_no_match(self):
+    def test_extract_contract_reference_from_spec_no_match(self, engine):
         """Test extracting contract reference when no patterns match."""
         spec_content = """
 import some_other_module
@@ -183,20 +198,20 @@ from pathlib import Path
         with patch('builtins.open', mock_open(read_data=spec_content)):
             spec_file = Path("test_spec.py")
             
-            result = self.engine.extract_contract_reference_from_spec(spec_file)
-            self.assertIsNone(result)
+            result = engine.extract_contract_reference_from_spec(spec_file)
+            assert result is None
     
-    def test_extract_contract_reference_from_spec_file_error(self):
+    def test_extract_contract_reference_from_spec_file_error(self, engine):
         """Test extracting contract reference when file can't be read."""
         spec_file = Path("nonexistent_spec.py")
         
         with patch('builtins.open', side_effect=FileNotFoundError()):
-            result = self.engine.extract_contract_reference_from_spec(spec_file)
-            self.assertIsNone(result)
+            result = engine.extract_contract_reference_from_spec(spec_file)
+            assert result is None
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_extract_script_contract_from_spec_success(self, mock_module_from_spec, mock_spec_from_file):
+    def test_extract_script_contract_from_spec_success(self, mock_module_from_spec, mock_spec_from_file, engine):
         """Test extracting script_contract from specification file."""
         # Mock the module loading
         mock_spec = Mock()
@@ -221,24 +236,24 @@ from pathlib import Path
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_SPEC', 'other_attr']):
             spec_file = Path("model_training_spec.py")
-            result = self.engine.extract_script_contract_from_spec(spec_file)
+            result = engine.extract_script_contract_from_spec(spec_file)
             
             # The method should extract the base name from the entry_point
-            self.assertEqual(result, "model_training")
+            assert result == "model_training"
     
     @patch('importlib.util.spec_from_file_location')
-    def test_extract_script_contract_from_spec_no_spec(self, mock_spec_from_file):
+    def test_extract_script_contract_from_spec_no_spec(self, mock_spec_from_file, engine):
         """Test extracting script_contract when spec loading fails."""
         mock_spec_from_file.return_value = None
         
         spec_file = Path("test_spec.py")
-        result = self.engine.extract_script_contract_from_spec(spec_file)
+        result = engine.extract_script_contract_from_spec(spec_file)
         
-        self.assertIsNone(result)
+        assert result is None
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_extract_script_contract_from_spec_callable_contract(self, mock_module_from_spec, mock_spec_from_file):
+    def test_extract_script_contract_from_spec_callable_contract(self, mock_module_from_spec, mock_spec_from_file, engine):
         """Test extracting script_contract when contract is callable."""
         # Mock the module loading
         mock_spec = Mock()
@@ -264,32 +279,32 @@ from pathlib import Path
         
         with patch('builtins.dir', return_value=['DATA_PREPROCESSING_SPEC']):
             spec_file = Path("data_preprocessing_spec.py")
-            result = self.engine.extract_script_contract_from_spec(spec_file)
+            result = engine.extract_script_contract_from_spec(spec_file)
             
-            self.assertEqual(result, "data_preprocessing")
+            assert result == "data_preprocessing"
             mock_contract_func.assert_called_once()
     
-    def test_contracts_match_direct_match(self):
+    def test_contracts_match_direct_match(self, engine):
         """Test contract matching with direct match."""
-        self.assertTrue(self.engine.contracts_match("model_training", "model_training"))
+        assert engine.contracts_match("model_training", "model_training") is True
     
-    def test_contracts_match_with_py_extension(self):
+    def test_contracts_match_with_py_extension(self, engine):
         """Test contract matching when spec has .py extension."""
-        self.assertTrue(self.engine.contracts_match("model_training.py", "model_training"))
+        assert engine.contracts_match("model_training.py", "model_training") is True
     
-    def test_contracts_match_prefix_match(self):
+    def test_contracts_match_prefix_match(self, engine):
         """Test contract matching with prefix matching."""
-        self.assertTrue(self.engine.contracts_match("model_evaluation", "model_evaluation_xgb"))
-        self.assertTrue(self.engine.contracts_match("model_evaluation_xgb", "model_evaluation"))
+        assert engine.contracts_match("model_evaluation", "model_evaluation_xgb") is True
+        assert engine.contracts_match("model_evaluation_xgb", "model_evaluation") is True
     
-    def test_contracts_match_no_match(self):
+    def test_contracts_match_no_match(self, engine):
         """Test contract matching when contracts don't match."""
-        self.assertFalse(self.engine.contracts_match("model_training", "data_preprocessing"))
-        self.assertFalse(self.engine.contracts_match("completely_different", "model_training"))
+        assert engine.contracts_match("model_training", "data_preprocessing") is False
+        assert engine.contracts_match("completely_different", "model_training") is False
     
-    def test_build_entry_point_mapping_success(self):
+    def test_build_entry_point_mapping_success(self, engine, sample_contracts):
         """Test building entry point mapping successfully."""
-        with patch.object(self.engine, '_extract_entry_point_from_contract') as mock_extract:
+        with patch.object(engine, '_extract_entry_point_from_contract') as mock_extract:
             mock_extract.side_effect = [
                 "data_preprocessing.py",
                 "model_evaluation.py", 
@@ -297,7 +312,7 @@ from pathlib import Path
                 None  # __init__.py should be skipped anyway
             ]
             
-            mapping = self.engine.build_entry_point_mapping()
+            mapping = engine.build_entry_point_mapping()
             
             expected = {
                 "data_preprocessing.py": "data_preprocessing_contract.py",
@@ -305,38 +320,38 @@ from pathlib import Path
                 "model_training.py": "model_training_contract.py"
             }
             
-            self.assertEqual(mapping, expected)
+            assert mapping == expected
     
-    def test_build_entry_point_mapping_cached(self):
+    def test_build_entry_point_mapping_cached(self, engine):
         """Test that entry point mapping is cached."""
         # Set up cached mapping
         cached_mapping = {"test.py": "test_contract.py"}
-        self.engine._entry_point_mapping = cached_mapping
+        engine._entry_point_mapping = cached_mapping
         
-        result = self.engine.build_entry_point_mapping()
+        result = engine.build_entry_point_mapping()
         
-        self.assertEqual(result, cached_mapping)
+        assert result == cached_mapping
     
-    def test_build_entry_point_mapping_nonexistent_directory(self):
+    def test_build_entry_point_mapping_nonexistent_directory(self, temp_dir):
         """Test building entry point mapping when directory doesn't exist."""
-        nonexistent_dir = Path(self.temp_dir) / "nonexistent"
+        nonexistent_dir = Path(temp_dir) / "nonexistent"
         engine = ContractDiscoveryEngine(str(nonexistent_dir))
         
         mapping = engine.build_entry_point_mapping()
         
-        self.assertEqual(mapping, {})
-        self.assertEqual(engine._entry_point_mapping, {})
+        assert mapping == {}
+        assert engine._entry_point_mapping == {}
     
-    def test_build_entry_point_mapping_with_errors(self):
+    def test_build_entry_point_mapping_with_errors(self, engine, sample_contracts):
         """Test building entry point mapping when some contracts fail to load."""
-        with patch.object(self.engine, '_extract_entry_point_from_contract') as mock_extract:
+        with patch.object(engine, '_extract_entry_point_from_contract') as mock_extract:
             mock_extract.side_effect = [
                 "data_preprocessing.py",
                 Exception("Failed to load"),
                 "model_training.py"
             ]
             
-            mapping = self.engine.build_entry_point_mapping()
+            mapping = engine.build_entry_point_mapping()
             
             # Should only include successfully loaded contracts
             expected = {
@@ -344,11 +359,11 @@ from pathlib import Path
                 "model_training.py": "model_training_contract.py"
             }
             
-            self.assertEqual(mapping, expected)
+            assert mapping == expected
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_extract_entry_point_from_contract_success(self, mock_module_from_spec, mock_spec_from_file):
+    def test_extract_entry_point_from_contract_success(self, mock_module_from_spec, mock_spec_from_file, engine):
         """Test extracting entry point from contract file."""
         # Mock the module loading
         mock_spec = Mock()
@@ -370,23 +385,23 @@ from pathlib import Path
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_CONTRACT', 'other_attr']):
             contract_path = Path("model_training_contract.py")
-            result = self.engine._extract_entry_point_from_contract(contract_path)
+            result = engine._extract_entry_point_from_contract(contract_path)
             
-            self.assertEqual(result, "model_training.py")
+            assert result == "model_training.py"
     
     @patch('importlib.util.spec_from_file_location')
-    def test_extract_entry_point_from_contract_no_spec(self, mock_spec_from_file):
+    def test_extract_entry_point_from_contract_no_spec(self, mock_spec_from_file, engine):
         """Test extracting entry point when spec loading fails."""
         mock_spec_from_file.return_value = None
         
         contract_path = Path("test_contract.py")
-        result = self.engine._extract_entry_point_from_contract(contract_path)
+        result = engine._extract_entry_point_from_contract(contract_path)
         
-        self.assertIsNone(result)
+        assert result is None
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_extract_entry_point_from_contract_no_contract_object(self, mock_module_from_spec, mock_spec_from_file):
+    def test_extract_entry_point_from_contract_no_contract_object(self, mock_module_from_spec, mock_spec_from_file, engine):
         """Test extracting entry point when no contract object found."""
         # Mock the module loading
         mock_spec = Mock()
@@ -403,13 +418,13 @@ from pathlib import Path
         
         with patch('builtins.dir', return_value=['other_attr']):
             contract_path = Path("test_contract.py")
-            result = self.engine._extract_entry_point_from_contract(contract_path)
+            result = engine._extract_entry_point_from_contract(contract_path)
             
-            self.assertIsNone(result)
+            assert result is None
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_for_entry_point_success(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_for_entry_point_success(self, mock_module_from_spec, mock_spec_from_file, engine):
         """Test loading contract for entry point extraction."""
         # Mock the module loading
         mock_spec = Mock()
@@ -430,26 +445,26 @@ from pathlib import Path
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_CONTRACT']):
             contract_path = Path("model_training_contract.py")
-            result = self.engine._load_contract_for_entry_point(contract_path, "model_training")
+            result = engine._load_contract_for_entry_point(contract_path, "model_training")
             
             expected = {'entry_point': 'model_training.py'}
-            self.assertEqual(result, expected)
+            assert result == expected
     
     @patch('importlib.util.spec_from_file_location')
-    def test_load_contract_for_entry_point_no_spec(self, mock_spec_from_file):
+    def test_load_contract_for_entry_point_no_spec(self, mock_spec_from_file, engine):
         """Test loading contract when spec creation fails."""
         mock_spec_from_file.return_value = None
         
         contract_path = Path("test_contract.py")
         
-        with self.assertRaises(Exception) as exc_info:
-            self.engine._load_contract_for_entry_point(contract_path, "test")
+        with pytest.raises(Exception) as exc_info:
+            engine._load_contract_for_entry_point(contract_path, "test")
         
-        self.assertIn("Could not load contract module", str(exc_info.exception))
+        assert "Could not load contract module" in str(exc_info.value)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_for_entry_point_no_contract_found(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_for_entry_point_no_contract_found(self, mock_module_from_spec, mock_spec_from_file, engine):
         """Test loading contract when no contract object is found."""
         # Mock the module loading
         mock_spec = Mock()
@@ -467,14 +482,14 @@ from pathlib import Path
         with patch('builtins.dir', return_value=['other_attr']):
             contract_path = Path("test_contract.py")
             
-            with self.assertRaises(Exception) as exc_info:
-                self.engine._load_contract_for_entry_point(contract_path, "test")
+            with pytest.raises(Exception) as exc_info:
+                engine._load_contract_for_entry_point(contract_path, "test")
             
-            self.assertIn("No contract object found", str(exc_info.exception))
+            assert "No contract object found" in str(exc_info.value)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_for_entry_point_multiple_naming_patterns(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_for_entry_point_multiple_naming_patterns(self, mock_module_from_spec, mock_spec_from_file, engine):
         """Test loading contract with various naming patterns."""
         # Mock the module loading
         mock_spec = Mock()
@@ -495,25 +510,27 @@ from pathlib import Path
         
         with patch('builtins.dir', return_value=['CONTRACT']):
             contract_path = Path("model_evaluation_xgb_contract.py")
-            result = self.engine._load_contract_for_entry_point(contract_path, "model_evaluation_xgb")
+            result = engine._load_contract_for_entry_point(contract_path, "model_evaluation_xgb")
             
             expected = {'entry_point': 'model_evaluation.py'}
-            self.assertEqual(result, expected)
+            assert result == expected
 
 
-class TestContractDiscoveryEngineIntegration(unittest.TestCase):
+class TestContractDiscoveryEngineIntegration:
     """Integration test cases for ContractDiscoveryEngine."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up integration test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.contracts_dir = Path(self.temp_dir) / "contracts"
         self.contracts_dir.mkdir(exist_ok=True)
         
         self.engine = ContractDiscoveryEngine(str(self.contracts_dir))
-    
-    def tearDown(self):
-        """Clean up integration test fixtures."""
+        
+        yield
+        
+        # Clean up integration test fixtures
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
@@ -533,7 +550,7 @@ class TestContractDiscoveryEngineIntegration(unittest.TestCase):
         all_contracts = self.engine.discover_all_contracts()
         expected_contracts = ["data_preprocessing", "invalid", "model_training"]
         
-        self.assertEqual(all_contracts, expected_contracts)
+        assert all_contracts == expected_contracts
     
     def test_sys_path_management(self):
         """Test that sys.path is properly managed during contract loading."""
@@ -551,7 +568,7 @@ class TestContractDiscoveryEngineIntegration(unittest.TestCase):
             self.engine.build_entry_point_mapping()
             
             # Verify sys.path is restored
-            self.assertEqual(sys.path, original_path)
+            assert sys.path == original_path
     
     def test_error_resilience_in_discovery(self):
         """Test that discovery continues even when some contracts fail to load."""
@@ -569,9 +586,9 @@ class TestContractDiscoveryEngineIntegration(unittest.TestCase):
             mapping = self.engine.build_entry_point_mapping()
             
             # Should still get the valid contract
-            self.assertIn("another_valid.py", mapping)
-            self.assertEqual(mapping["another_valid.py"], "another_valid_contract.py")
+            assert "another_valid.py" in mapping
+            assert mapping["another_valid.py"] == "another_valid_contract.py"
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

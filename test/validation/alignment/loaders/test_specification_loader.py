@@ -245,9 +245,9 @@ class TestSpecificationLoader:
                 # Verify sys.path is restored
                 assert sys.path == original_path
     
-    def test_step_specification_to_dict_complete(self):
+    def test_step_specification_to_dict_complete(self, loader, sample_spec_obj):
         """Test converting complete StepSpecification object to dictionary."""
-        result = self.loader.step_specification_to_dict(self.sample_spec_obj)
+        result = loader.step_specification_to_dict(sample_spec_obj)
         
         # Verify structure
         assert result['step_type'] == "ModelTraining"
@@ -272,7 +272,7 @@ class TestSpecificationLoader:
         assert output['data_type'] == "model"
         assert output['description'] == "Trained model"
     
-    def test_step_specification_to_dict_empty_collections(self):
+    def test_step_specification_to_dict_empty_collections(self, loader):
         """Test converting StepSpecification with empty collections."""
         empty_spec = Mock()
         empty_spec.step_type = "EmptySpec"
@@ -281,7 +281,7 @@ class TestSpecificationLoader:
         empty_spec.dependencies = {}
         empty_spec.outputs = {}
         
-        result = self.loader.step_specification_to_dict(empty_spec)
+        result = loader.step_specification_to_dict(empty_spec)
         
         assert result['step_type'] == "EmptySpec"
         assert result['dependencies'] == []
@@ -290,7 +290,7 @@ class TestSpecificationLoader:
     @patch('cursus.validation.alignment.loaders.specification_loader.DependencySpec')
     @patch('cursus.validation.alignment.loaders.specification_loader.OutputSpec')
     @patch('cursus.validation.alignment.loaders.specification_loader.StepSpecification')
-    def test_dict_to_step_specification(self, mock_step_spec, mock_output_spec, mock_dep_spec):
+    def test_dict_to_step_specification(self, mock_step_spec, mock_output_spec, mock_dep_spec, loader):
         """Test converting specification dictionary back to StepSpecification object."""
         spec_dict = {
             'step_type': 'ModelTraining',
@@ -322,7 +322,7 @@ class TestSpecificationLoader:
         mock_step_instance = Mock()
         mock_step_spec.return_value = mock_step_instance
         
-        result = self.loader.dict_to_step_specification(spec_dict)
+        result = loader.dict_to_step_specification(spec_dict)
         
         # Verify DependencySpec was created correctly
         mock_dep_spec.assert_called_once_with(
@@ -350,20 +350,20 @@ class TestSpecificationLoader:
         
         assert result == mock_step_instance
     
-    def test_load_all_specifications_success(self):
+    def test_load_all_specifications_success(self, loader, sample_spec_files):
         """Test loading all specifications from directory."""
-        with patch.object(self.loader, 'load_specification_from_python') as mock_load:
+        with patch.object(loader, 'load_specification_from_python') as mock_load:
             mock_load.return_value = {'step_type': 'TestSpec', 'node_type': 'ProcessingJob'}
             
-            result = self.loader.load_all_specifications()
+            result = loader.load_all_specifications()
             
             # Should load specifications for each unique spec name
             assert 'model_training' in result
             assert 'data_preprocessing' in result
     
-    def test_load_all_specifications_with_errors(self):
+    def test_load_all_specifications_with_errors(self, loader, sample_spec_files):
         """Test loading all specifications when some fail to load."""
-        with patch.object(self.loader, 'load_specification_from_python') as mock_load:
+        with patch.object(loader, 'load_specification_from_python') as mock_load:
             # First call succeeds, second fails
             mock_load.side_effect = [
                 {'step_type': 'TestSpec', 'node_type': 'ProcessingJob'},
@@ -371,16 +371,16 @@ class TestSpecificationLoader:
             ]
             
             with patch('cursus.validation.alignment.loaders.specification_loader.logger') as mock_logger:
-                result = self.loader.load_all_specifications()
+                result = loader.load_all_specifications()
                 
                 # Should still return the successful one
                 assert len(result) >= 1
                 # Should log the warning
                 mock_logger.warning.assert_called()
     
-    def test_load_all_specifications_empty_directory(self):
+    def test_load_all_specifications_empty_directory(self, temp_dir):
         """Test loading specifications from empty directory."""
-        empty_dir = Path(self.temp_dir) / "empty_specs"
+        empty_dir = Path(temp_dir) / "empty_specs"
         empty_dir.mkdir()
         
         loader = SpecificationLoader(str(empty_dir))
@@ -388,24 +388,24 @@ class TestSpecificationLoader:
         
         assert result == {}
     
-    def test_discover_specifications_success(self):
+    def test_discover_specifications_success(self, loader, sample_spec_files):
         """Test discovering specifications in directory."""
-        specs = self.loader.discover_specifications()
+        specs = loader.discover_specifications()
         
         expected = ["data_preprocessing", "model_training"]
         assert sorted(specs) == expected
     
-    def test_discover_specifications_ignores_init_files(self):
+    def test_discover_specifications_ignores_init_files(self, loader, sample_spec_files):
         """Test that __init__.py files are ignored during discovery."""
-        specs = self.loader.discover_specifications()
+        specs = loader.discover_specifications()
         
         # Should not include __init__ in the results
         assert "__init__" not in specs
         assert "data_preprocessing" in specs
     
-    def test_discover_specifications_empty_directory(self):
+    def test_discover_specifications_empty_directory(self, temp_dir):
         """Test discovering specifications in empty directory."""
-        empty_dir = Path(self.temp_dir) / "empty_specs"
+        empty_dir = Path(temp_dir) / "empty_specs"
         empty_dir.mkdir()
         
         loader = SpecificationLoader(str(empty_dir))
@@ -413,13 +413,13 @@ class TestSpecificationLoader:
         
         assert specs == []
     
-    def test_find_specifications_by_contract_success(self):
+    def test_find_specifications_by_contract_success(self, loader, sample_spec_files):
         """Test finding specifications that reference a specific contract."""
-        with patch.object(self.loader, 'load_specification_from_python') as mock_load:
+        with patch.object(loader, 'load_specification_from_python') as mock_load:
             mock_load.return_value = {'step_type': 'ModelTraining'}
             
-            with patch.object(self.loader, '_specification_references_contract', return_value=True):
-                result = self.loader.find_specifications_by_contract("model_training")
+            with patch.object(loader, '_specification_references_contract', return_value=True):
+                result = loader.find_specifications_by_contract("model_training")
                 
                 assert len(result) > 0
                 # Should contain spec file paths as keys
@@ -427,98 +427,100 @@ class TestSpecificationLoader:
                     assert isinstance(spec_file, Path)
                     assert spec_file.suffix == '.py'
     
-    def test_find_specifications_by_contract_no_match(self):
+    def test_find_specifications_by_contract_no_match(self, loader, sample_spec_files):
         """Test finding specifications when none reference the contract."""
-        with patch.object(self.loader, 'load_specification_from_python') as mock_load:
+        with patch.object(loader, 'load_specification_from_python') as mock_load:
             mock_load.return_value = {'step_type': 'DataPreprocessing'}
             
-            with patch.object(self.loader, '_specification_references_contract', return_value=False):
-                result = self.loader.find_specifications_by_contract("model_training")
+            with patch.object(loader, '_specification_references_contract', return_value=False):
+                result = loader.find_specifications_by_contract("model_training")
                 
                 assert result == {}
     
-    def test_find_specifications_by_contract_load_error(self):
+    def test_find_specifications_by_contract_load_error(self, loader, sample_spec_files):
         """Test finding specifications when some fail to load."""
-        with patch.object(self.loader, 'load_specification_from_python') as mock_load:
+        with patch.object(loader, 'load_specification_from_python') as mock_load:
             mock_load.side_effect = Exception("Load failed")
             
-            result = self.loader.find_specifications_by_contract("model_training")
+            result = loader.find_specifications_by_contract("model_training")
             
             # Should handle errors gracefully
             assert result == {}
     
-    def test_specification_references_contract_direct_match(self):
+    def test_specification_references_contract_direct_match(self, loader):
         """Test specification contract reference with direct match."""
         spec_dict = {'step_type': 'model_training'}
         
-        result = self.loader._specification_references_contract(spec_dict, "model_training")
+        result = loader._specification_references_contract(spec_dict, "model_training")
         
         assert result is True
     
-    def test_specification_references_contract_partial_match(self):
+    def test_specification_references_contract_partial_match(self, loader):
         """Test specification contract reference with partial match."""
         spec_dict = {'step_type': 'ModelTraining_XGBoost'}
         
-        result = self.loader._specification_references_contract(spec_dict, "model_training")
+        result = loader._specification_references_contract(spec_dict, "model_training")
         
         assert result is True
     
-    def test_specification_references_contract_eval_evaluation_match(self):
+    def test_specification_references_contract_eval_evaluation_match(self, loader):
         """Test specification contract reference with eval/evaluation substitution."""
         spec_dict = {'step_type': 'model_evaluation'}
         
-        result = self.loader._specification_references_contract(spec_dict, "model_eval")
+        result = loader._specification_references_contract(spec_dict, "model_eval")
         
         assert result is True
     
-    def test_specification_references_contract_no_match(self):
+    def test_specification_references_contract_no_match(self, loader):
         """Test specification contract reference with no match."""
         spec_dict = {'step_type': 'data_preprocessing'}
         
-        result = self.loader._specification_references_contract(spec_dict, "model_training")
+        result = loader._specification_references_contract(spec_dict, "model_training")
         
         assert result is False
     
-    def test_load_specification_with_spec_dict(self):
+    def test_load_specification_with_spec_dict(self, loader):
         """Test loading specification when spec_dict is already provided."""
         spec_info = {
             'spec_dict': {'step_type': 'TestSpec', 'node_type': 'ProcessingJob'}
         }
         
-        result = self.loader.load_specification(Path("test_spec.py"), spec_info)
+        result = loader.load_specification(Path("test_spec.py"), spec_info)
         
         assert result == spec_info['spec_dict']
     
-    def test_load_specification_without_spec_dict(self):
+    def test_load_specification_without_spec_dict(self, loader):
         """Test loading specification when spec_dict is not provided."""
         spec_info = {
             'spec_name': 'test_spec',
             'job_type': 'training'
         }
         
-        with patch.object(self.loader, 'load_specification_from_python') as mock_load:
+        with patch.object(loader, 'load_specification_from_python') as mock_load:
             mock_load.return_value = {'step_type': 'TestSpec'}
             
             spec_file = Path("test_spec.py")
-            result = self.loader.load_specification(spec_file, spec_info)
+            result = loader.load_specification(spec_file, spec_info)
             
             mock_load.assert_called_once_with(spec_file, 'test_spec', 'training')
             assert result == {'step_type': 'TestSpec'}
 
 
-class TestSpecificationLoaderIntegration(unittest.TestCase):
+class TestSpecificationLoaderIntegration:
     """Integration test cases for SpecificationLoader."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up integration test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.specs_dir = Path(self.temp_dir) / "specs"
         self.specs_dir.mkdir(exist_ok=True)
         
         self.loader = SpecificationLoader(str(self.specs_dir))
-    
-    def tearDown(self):
-        """Clean up integration test fixtures."""
+        
+        yield
+        
+        # Clean up integration test fixtures
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
@@ -582,19 +584,21 @@ class TestSpecificationLoaderIntegration(unittest.TestCase):
             assert 'valid' in result or 'another_valid' in result
 
 
-class TestSpecificationLoaderErrorScenarios(unittest.TestCase):
+class TestSpecificationLoaderErrorScenarios:
     """Test cases for error scenarios and edge cases."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up error scenario test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.specs_dir = Path(self.temp_dir) / "specs"
         self.specs_dir.mkdir(exist_ok=True)
         
         self.loader = SpecificationLoader(str(self.specs_dir))
-    
-    def tearDown(self):
-        """Clean up error scenario test fixtures."""
+        
+        yield
+        
+        # Clean up error scenario test fixtures
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
@@ -665,4 +669,4 @@ class TestSpecificationLoaderErrorScenarios(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])
