@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Unit tests for AlignmentScorer class.
+Pytest tests for AlignmentScorer class.
 
 This test suite provides comprehensive coverage for the AlignmentScorer functionality
 which was identified as a critical missing test in the validation test coverage analysis.
 """
 
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 import tempfile
 import os
@@ -15,12 +15,13 @@ import json
 from cursus.validation.alignment.alignment_scorer import AlignmentScorer
 
 
-class TestAlignmentScorer(unittest.TestCase):
+class TestAlignmentScorer:
     """Test AlignmentScorer functionality."""
     
-    def setUp(self):
+    @pytest.fixture
+    def sample_validation_results(self):
         """Set up test fixtures."""
-        self.sample_validation_results = {
+        return {
             'script_path_validation': {
                 'passed': True,
                 'issues': [],
@@ -71,19 +72,19 @@ class TestAlignmentScorer(unittest.TestCase):
             }
         }
     
-    def test_scorer_initialization(self):
+    def test_scorer_initialization(self, sample_validation_results):
         """Test AlignmentScorer initialization."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
-        self.assertIsNotNone(scorer)
-        self.assertEqual(scorer.results, self.sample_validation_results)
+        assert scorer is not None
+        assert scorer.results == sample_validation_results
     
-    def test_group_by_level(self):
+    def test_group_by_level(self, sample_validation_results):
         """Test grouping validation results by level."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         grouped = scorer._group_by_level()
         
-        self.assertIsInstance(grouped, dict)
+        assert isinstance(grouped, dict)
         
         # Should have level groupings
         expected_levels = [
@@ -95,11 +96,11 @@ class TestAlignmentScorer(unittest.TestCase):
         
         for level in expected_levels:
             if level in grouped:
-                self.assertIsInstance(grouped[level], dict)
+                assert isinstance(grouped[level], dict)
     
-    def test_detect_level_from_test_name(self):
+    def test_detect_level_from_test_name(self, sample_validation_results):
         """Test level detection from test names."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         # Test level 1 detection - these should match "script" and "contract" keywords
         level1_tests = ['script_path_validation', 'environment_variable_validation']
@@ -107,7 +108,7 @@ class TestAlignmentScorer(unittest.TestCase):
             level = scorer._detect_level_from_test_name(test_name)
             # script_path_validation should match "script" keyword
             if 'script' in test_name:
-                self.assertEqual(level, 'level1_script_contract')
+                assert level == 'level1_script_contract'
             # environment_variable_validation doesn't have clear level 1 keywords, might not match
         
         # Test level 2 detection - these should match "logical_names" and "specification" keywords
@@ -116,66 +117,66 @@ class TestAlignmentScorer(unittest.TestCase):
             level = scorer._detect_level_from_test_name(test_name)
             # logical_name_alignment should match level 2 keywords
             if 'logical' in test_name:
-                self.assertEqual(level, 'level2_contract_spec')
+                assert level == 'level2_contract_spec'
         
         # Test level 3 detection - should match "dependency" keyword
         level3_tests = ['dependency_resolution']
         for test_name in level3_tests:
             level = scorer._detect_level_from_test_name(test_name)
-            self.assertEqual(level, 'level3_spec_dependencies')
+            assert level == 'level3_spec_dependencies'
         
         # Test level 4 detection - should match "configuration" keyword
         level4_tests = ['configuration_validation']
         for test_name in level4_tests:
             level = scorer._detect_level_from_test_name(test_name)
-            self.assertEqual(level, 'level4_builder_config')
+            assert level == 'level4_builder_config'
     
-    def test_is_test_passed(self):
+    def test_is_test_passed(self, sample_validation_results):
         """Test test pass/fail detection."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         # Test with passed result
         passed_result = {'passed': True, 'issues': []}
-        self.assertTrue(scorer._is_test_passed(passed_result))
+        assert scorer._is_test_passed(passed_result) is True
         
         # Test with failed result
         failed_result = {'passed': False, 'issues': [{'level': 'error'}]}
-        self.assertFalse(scorer._is_test_passed(failed_result))
+        assert scorer._is_test_passed(failed_result) is False
         
         # Test with boolean True
-        self.assertTrue(scorer._is_test_passed(True))
+        assert scorer._is_test_passed(True) is True
         
         # Test with boolean False
-        self.assertFalse(scorer._is_test_passed(False))
+        assert scorer._is_test_passed(False) is False
     
-    def test_calculate_level_score(self):
+    def test_calculate_level_score(self, sample_validation_results):
         """Test level score calculation."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         # Test level 1 score - should have some tests
         score, passed, total = scorer.calculate_level_score('level1_script_contract')
-        self.assertIsInstance(score, float)
-        self.assertGreaterEqual(score, 0.0)
-        self.assertLessEqual(score, 100.0)
+        assert isinstance(score, float)
+        assert score >= 0.0
+        assert score <= 100.0
         # Don't assert exact counts since the grouping logic may not find tests
         
         # Test level 2 score
         score, passed, total = scorer.calculate_level_score('level2_contract_spec')
-        self.assertIsInstance(score, float)
-        self.assertGreaterEqual(score, 0.0)
-        self.assertLessEqual(score, 100.0)
+        assert isinstance(score, float)
+        assert score >= 0.0
+        assert score <= 100.0
         
         # Test level 3 score
         score, passed, total = scorer.calculate_level_score('level3_spec_dependencies')
-        self.assertIsInstance(score, float)
-        self.assertGreaterEqual(score, 0.0)
-        self.assertLessEqual(score, 100.0)
+        assert isinstance(score, float)
+        assert score >= 0.0
+        assert score <= 100.0
         
         # Test level 4 score
         score, passed, total = scorer.calculate_level_score('level4_builder_config')
-        self.assertIsInstance(score, float)
-        self.assertGreaterEqual(score, 0.0)
-        self.assertLessEqual(score, 100.0)
+        assert isinstance(score, float)
+        assert score >= 0.0
+        assert score <= 100.0
     
     def test_calculate_overall_score(self):
         """Test overall score calculation."""
@@ -200,19 +201,19 @@ class TestAlignmentScorer(unittest.TestCase):
         scorer = AlignmentScorer(test_data)
         overall_score = scorer.calculate_overall_score()
         
-        self.assertIsInstance(overall_score, float)
-        self.assertGreaterEqual(overall_score, 0.0)
-        self.assertLessEqual(overall_score, 100.0)
+        assert isinstance(overall_score, float)
+        assert overall_score >= 0.0
+        assert overall_score <= 100.0
         
         # Should be weighted average of level scores
         # With our test data: L1=50%, L2=50%, L3=100%, L4=0%
         # Expected weighted average should be reasonable
-        self.assertGreater(overall_score, 0.0)
-        self.assertLess(overall_score, 100.0)
+        assert overall_score > 0.0
+        assert overall_score < 100.0
     
-    def test_get_rating(self):
+    def test_get_rating(self, sample_validation_results):
         """Test quality rating generation."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         # Test different score ranges
         test_scores = [95.0, 85.0, 75.0, 65.0, 45.0]
@@ -220,15 +221,15 @@ class TestAlignmentScorer(unittest.TestCase):
         
         for score, expected_rating in zip(test_scores, expected_ratings):
             rating = scorer.get_rating(score)
-            self.assertEqual(rating, expected_rating)
+            assert rating == expected_rating
     
-    def test_generate_report(self):
+    def test_generate_report(self, sample_validation_results):
         """Test report generation."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         report = scorer.generate_report()
         
-        self.assertIsInstance(report, dict)
+        assert isinstance(report, dict)
         
         # Verify report structure (based on actual implementation)
         required_fields = [
@@ -239,18 +240,18 @@ class TestAlignmentScorer(unittest.TestCase):
         ]
         
         for field in required_fields:
-            self.assertIn(field, report)
+            assert field in report
         
         # Verify score values
-        self.assertIsInstance(report['overall']['score'], float)
-        self.assertIsInstance(report['overall']['rating'], str)
-        self.assertIsInstance(report['levels'], dict)
-        self.assertIsInstance(report['failed_tests'], list)
-        self.assertIsInstance(report['metadata'], dict)
+        assert isinstance(report['overall']['score'], float)
+        assert isinstance(report['overall']['rating'], str)
+        assert isinstance(report['levels'], dict)
+        assert isinstance(report['failed_tests'], list)
+        assert isinstance(report['metadata'], dict)
     
-    def test_extract_error_message(self):
+    def test_extract_error_message(self, sample_validation_results):
         """Test error message extraction."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         # Test with result containing issues
         result_with_issues = {
@@ -262,53 +263,53 @@ class TestAlignmentScorer(unittest.TestCase):
         }
         
         error_msg = scorer._extract_error_message(result_with_issues)
-        self.assertIn('2 alignment issues found', error_msg)
+        assert '2 alignment issues found' in error_msg
         
         # Test with result without issues
         result_without_issues = {'passed': True, 'issues': []}
         error_msg = scorer._extract_error_message(result_without_issues)
-        self.assertEqual(error_msg, 'Test failed')
+        assert error_msg == 'Test failed'
     
-    def test_save_report(self):
+    def test_save_report(self, sample_validation_results):
         """Test report saving functionality."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         with tempfile.TemporaryDirectory() as temp_dir:
             # Test saving report
             saved_path = scorer.save_report("test_script", temp_dir)
             
-            self.assertTrue(os.path.exists(saved_path))
-            self.assertTrue(saved_path.endswith('.json'))
+            assert os.path.exists(saved_path)
+            assert saved_path.endswith('.json')
             
             # Verify saved content
             with open(saved_path, 'r') as f:
                 saved_data = json.load(f)
             
-            self.assertIsInstance(saved_data, dict)
-            self.assertIn('overall', saved_data)
-            self.assertIn('levels', saved_data)
+            assert isinstance(saved_data, dict)
+            assert 'overall' in saved_data
+            assert 'levels' in saved_data
     
-    def test_print_report(self):
+    def test_print_report(self, sample_validation_results):
         """Test report printing functionality."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         # Test that print_report doesn't raise exceptions
         try:
             scorer.print_report()
         except Exception as e:
-            self.fail(f"print_report raised an exception: {e}")
+            pytest.fail(f"print_report raised an exception: {e}")
     
-    def test_generate_chart(self):
+    def test_generate_chart(self, sample_validation_results):
         """Test chart generation functionality."""
-        scorer = AlignmentScorer(self.sample_validation_results)
+        scorer = AlignmentScorer(sample_validation_results)
         
         with tempfile.TemporaryDirectory() as temp_dir:
             # Test chart generation (may not work if matplotlib not available)
             try:
                 chart_path = scorer.generate_chart("test_script", temp_dir)
                 if chart_path:  # Only test if chart was generated
-                    self.assertTrue(os.path.exists(chart_path))
-                    self.assertTrue(chart_path.endswith('.png'))
+                    assert os.path.exists(chart_path)
+                    assert chart_path.endswith('.png')
             except ImportError:
                 # matplotlib not available, skip test
                 pass
@@ -322,11 +323,11 @@ class TestAlignmentScorer(unittest.TestCase):
         scorer = AlignmentScorer(empty_results)
         
         overall_score = scorer.calculate_overall_score()
-        self.assertEqual(overall_score, 0.0)
+        assert overall_score == 0.0
         
         report = scorer.generate_report()
-        self.assertIsInstance(report, dict)
-        self.assertEqual(report['overall']['score'], 0.0)
+        assert isinstance(report, dict)
+        assert report['overall']['score'] == 0.0
     
     def test_all_passing_results(self):
         """Test scorer with all passing results."""
@@ -352,10 +353,10 @@ class TestAlignmentScorer(unittest.TestCase):
         overall_score = scorer.calculate_overall_score()
         
         # Should be 100% since all tests pass
-        self.assertEqual(overall_score, 100.0)
+        assert overall_score == 100.0
         
         rating = scorer.get_rating(overall_score)
-        self.assertEqual(rating, "Excellent")
+        assert rating == "Excellent"
     
     def test_all_failing_results(self):
         """Test scorer with all failing results."""
@@ -369,24 +370,24 @@ class TestAlignmentScorer(unittest.TestCase):
         scorer = AlignmentScorer(all_failing)
         overall_score = scorer.calculate_overall_score()
         
-        self.assertEqual(overall_score, 0.0)
+        assert overall_score == 0.0
         
         rating = scorer.get_rating(overall_score)
-        self.assertEqual(rating, "Poor")
+        assert rating == "Poor"
     
-    def test_score_alignment_results_function(self):
+    def test_score_alignment_results_function(self, sample_validation_results):
         """Test the standalone score_alignment_results function."""
         from cursus.validation.alignment.alignment_scorer import score_alignment_results
         
-        report = score_alignment_results(self.sample_validation_results, "test_script", save_report=False, generate_chart=False)
+        report = score_alignment_results(sample_validation_results, "test_script", save_report=False, generate_chart=False)
         
-        self.assertIsInstance(report, dict)
-        self.assertIn('overall', report)
-        self.assertIn('levels', report)
-        self.assertIn('metadata', report)
+        assert isinstance(report, dict)
+        assert 'overall' in report
+        assert 'levels' in report
+        assert 'metadata' in report
 
 
-class TestAlignmentScorerEdgeCases(unittest.TestCase):
+class TestAlignmentScorerEdgeCases:
     """Test AlignmentScorer edge cases and error conditions."""
     
     def test_malformed_validation_results(self):
@@ -402,9 +403,9 @@ class TestAlignmentScorerEdgeCases(unittest.TestCase):
         
         # Should handle malformed data gracefully
         overall_score = scorer.calculate_overall_score()
-        self.assertIsInstance(overall_score, float)
-        self.assertGreaterEqual(overall_score, 0.0)
-        self.assertLessEqual(overall_score, 100.0)
+        assert isinstance(overall_score, float)
+        assert overall_score >= 0.0
+        assert overall_score <= 100.0
     
     def test_mixed_result_formats(self):
         """Test scorer with mixed result formats."""
@@ -423,8 +424,8 @@ class TestAlignmentScorerEdgeCases(unittest.TestCase):
         scorer = AlignmentScorer(mixed_results)
         overall_score = scorer.calculate_overall_score()
         
-        self.assertIsInstance(overall_score, float)
-        self.assertEqual(overall_score, 50.0)  # 2 pass, 2 fail = 50%
+        assert isinstance(overall_score, float)
+        assert overall_score == 50.0  # 2 pass, 2 fail = 50%
     
     def test_unknown_test_names(self):
         """Test scorer with unknown test names."""
@@ -438,10 +439,6 @@ class TestAlignmentScorerEdgeCases(unittest.TestCase):
         
         # Should still calculate scores even with unknown test names
         overall_score = scorer.calculate_overall_score()
-        self.assertIsInstance(overall_score, float)
-        self.assertGreaterEqual(overall_score, 0.0)
-        self.assertLessEqual(overall_score, 100.0)
-
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)
+        assert isinstance(overall_score, float)
+        assert overall_score >= 0.0
+        assert overall_score <= 100.0

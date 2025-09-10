@@ -1,5 +1,5 @@
 """
-Test Step Type Enhancement System
+Pytest tests for Step Type Enhancement System
 
 Tests the step type-aware validation enhancement system including:
 - Step type enhancement router
@@ -8,7 +8,7 @@ Tests the step type-aware validation enhancement system including:
 - Integration with unified alignment tester
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 import tempfile
@@ -26,36 +26,37 @@ from cursus.validation.alignment.framework_patterns import (
     get_framework_patterns, get_all_framework_patterns
 )
 
-class TestStepTypeEnhancementRouter(unittest.TestCase):
+class TestStepTypeEnhancementRouter:
     """Test the Step Type Enhancement Router."""
     
-    def setUp(self):
+    @pytest.fixture
+    def router(self):
         """Set up test fixtures."""
-        self.router = StepTypeEnhancementRouter()
+        return StepTypeEnhancementRouter()
     
-    def test_router_initialization(self):
+    def test_router_initialization(self, router):
         """Test router initializes with all enhancers."""
-        self.assertIsNotNone(self.router._enhancer_classes)
-        self.assertIn('Training', self.router._enhancer_classes)
-        self.assertIn('Processing', self.router._enhancer_classes)
-        self.assertIn('CreateModel', self.router._enhancer_classes)
-        self.assertIn('Transform', self.router._enhancer_classes)
-        self.assertIn('RegisterModel', self.router._enhancer_classes)
-        self.assertIn('Utility', self.router._enhancer_classes)
+        assert router._enhancer_classes is not None
+        assert 'Training' in router._enhancer_classes
+        assert 'Processing' in router._enhancer_classes
+        assert 'CreateModel' in router._enhancer_classes
+        assert 'Transform' in router._enhancer_classes
+        assert 'RegisterModel' in router._enhancer_classes
+        assert 'Utility' in router._enhancer_classes
     
-    def test_step_type_detection(self):
+    def test_step_type_detection(self, router):
         """Test step type detection from script name."""
         # Test that router can get step type requirements for different types
-        training_req = self.router.get_step_type_requirements('Training')
-        self.assertIn('training_loop', training_req.get('required_patterns', []))
+        training_req = router.get_step_type_requirements('Training')
+        assert 'training_loop' in training_req.get('required_patterns', [])
         
-        processing_req = self.router.get_step_type_requirements('Processing')
-        self.assertIn('data_transformation', processing_req.get('required_patterns', []))
+        processing_req = router.get_step_type_requirements('Processing')
+        assert 'data_transformation' in processing_req.get('required_patterns', [])
         
-        model_req = self.router.get_step_type_requirements('CreateModel')
-        self.assertIn('model_loading', model_req.get('required_patterns', []))
+        model_req = router.get_step_type_requirements('CreateModel')
+        assert 'model_loading' in model_req.get('required_patterns', [])
     
-    def test_enhancement_routing(self):
+    def test_enhancement_routing(self, router):
         """Test enhancement routing to correct enhancer."""
         # Mock validation results
         mock_results = {
@@ -70,36 +71,37 @@ class TestStepTypeEnhancementRouter(unittest.TestCase):
         }
         
         # Test training enhancement
-        enhanced_results = self.router.enhance_validation('xgboost_training.py', mock_results)
+        enhanced_results = router.enhance_validation('xgboost_training.py', mock_results)
         
         # Should return enhanced results
-        self.assertIsInstance(enhanced_results, dict)
-        self.assertIn('issues', enhanced_results)
+        assert isinstance(enhanced_results, dict)
+        assert 'issues' in enhanced_results
     
-    def test_unknown_step_type_handling(self):
+    def test_unknown_step_type_handling(self, router):
         """Test handling of unknown step types."""
         mock_results = {'passed': True, 'issues': []}
         
-        enhanced_results = self.router.enhance_validation('unknown_script.py', mock_results)
+        enhanced_results = router.enhance_validation('unknown_script.py', mock_results)
         
         # Should still return results
-        self.assertIsInstance(enhanced_results, dict)
-        self.assertIn('issues', enhanced_results)
+        assert isinstance(enhanced_results, dict)
+        assert 'issues' in enhanced_results
 
-class TestTrainingStepEnhancer(unittest.TestCase):
+class TestTrainingStepEnhancer:
     """Test the Training Step Enhancer."""
     
-    def setUp(self):
+    @pytest.fixture
+    def enhancer(self):
         """Set up test fixtures."""
-        self.enhancer = TrainingStepEnhancer()
+        return TrainingStepEnhancer()
     
-    def test_training_enhancer_initialization(self):
+    def test_training_enhancer_initialization(self, enhancer):
         """Test training enhancer initializes correctly."""
-        self.assertEqual(self.enhancer.step_type, 'Training')
-        self.assertIn('xgboost', self.enhancer.framework_validators)
-        self.assertIn('pytorch', self.enhancer.framework_validators)
+        assert enhancer.step_type == 'Training'
+        assert 'xgboost' in enhancer.framework_validators
+        assert 'pytorch' in enhancer.framework_validators
     
-    def test_training_loop_validation(self):
+    def test_training_loop_validation(self, enhancer):
         """Test training loop validation."""
         # Mock script analysis without training loop
         mock_analysis = {
@@ -108,15 +110,15 @@ class TestTrainingStepEnhancer(unittest.TestCase):
             'path_references': ['/opt/ml/model']
         }
         
-        with patch.object(self.enhancer, '_get_script_analysis', return_value=mock_analysis):
-            enhanced_results = self.enhancer.enhance_validation({}, 'xgboost_training.py')
+        with patch.object(enhancer, '_get_script_analysis', return_value=mock_analysis):
+            enhanced_results = enhancer.enhance_validation({}, 'xgboost_training.py')
         
         # Should detect missing training loop
         issues = enhanced_results.get('issues', [])
         training_loop_issues = [issue for issue in issues if 'training_loop' in issue.get('category', '')]
-        self.assertTrue(len(issues) > 0)
+        assert len(issues) > 0
     
-    def test_xgboost_specific_validation(self):
+    def test_xgboost_specific_validation(self, enhancer):
         """Test XGBoost-specific training validation."""
         mock_analysis = {
             'functions': ['fit', 'train'],
@@ -124,14 +126,14 @@ class TestTrainingStepEnhancer(unittest.TestCase):
             'path_references': []
         }
         
-        with patch.object(self.enhancer, '_get_script_analysis', return_value=mock_analysis):
-            with patch.object(self.enhancer, '_detect_framework_from_script_analysis', return_value='xgboost'):
-                enhanced_results = self.enhancer.enhance_validation({}, 'xgboost_training.py')
+        with patch.object(enhancer, '_get_script_analysis', return_value=mock_analysis):
+            with patch.object(enhancer, '_detect_framework_from_script_analysis', return_value='xgboost'):
+                enhanced_results = enhancer.enhance_validation({}, 'xgboost_training.py')
         
         # Should apply XGBoost-specific validation
-        self.assertIn('issues', enhanced_results)
+        assert 'issues' in enhanced_results
     
-    def test_pytorch_specific_validation(self):
+    def test_pytorch_specific_validation(self, enhancer):
         """Test PyTorch-specific training validation."""
         mock_analysis = {
             'functions': ['forward', 'backward', 'zero_grad'],
@@ -139,27 +141,28 @@ class TestTrainingStepEnhancer(unittest.TestCase):
             'path_references': []
         }
         
-        with patch.object(self.enhancer, '_get_script_analysis', return_value=mock_analysis):
-            with patch.object(self.enhancer, '_detect_framework_from_script_analysis', return_value='pytorch'):
-                enhanced_results = self.enhancer.enhance_validation({}, 'pytorch_training.py')
+        with patch.object(enhancer, '_get_script_analysis', return_value=mock_analysis):
+            with patch.object(enhancer, '_detect_framework_from_script_analysis', return_value='pytorch'):
+                enhanced_results = enhancer.enhance_validation({}, 'pytorch_training.py')
         
         # Should apply PyTorch-specific validation
-        self.assertIn('issues', enhanced_results)
+        assert 'issues' in enhanced_results
 
-class TestProcessingStepEnhancer(unittest.TestCase):
+class TestProcessingStepEnhancer:
     """Test the Processing Step Enhancer."""
     
-    def setUp(self):
+    @pytest.fixture
+    def enhancer(self):
         """Set up test fixtures."""
-        self.enhancer = ProcessingStepEnhancer()
+        return ProcessingStepEnhancer()
     
-    def test_processing_enhancer_initialization(self):
+    def test_processing_enhancer_initialization(self, enhancer):
         """Test processing enhancer initializes correctly."""
-        self.assertEqual(self.enhancer.step_type, 'Processing')
-        self.assertIn('pandas', self.enhancer.framework_validators)
-        self.assertIn('sklearn', self.enhancer.framework_validators)
+        assert enhancer.step_type == 'Processing'
+        assert 'pandas' in enhancer.framework_validators
+        assert 'sklearn' in enhancer.framework_validators
     
-    def test_data_processing_validation(self):
+    def test_data_processing_validation(self, enhancer):
         """Test data processing validation."""
         mock_analysis = {
             'functions': ['main'],
@@ -167,14 +170,14 @@ class TestProcessingStepEnhancer(unittest.TestCase):
             'path_references': []
         }
         
-        with patch.object(self.enhancer, '_get_script_analysis', return_value=mock_analysis):
-            enhanced_results = self.enhancer.enhance_validation({}, 'data_preprocessing.py')
+        with patch.object(enhancer, '_get_script_analysis', return_value=mock_analysis):
+            enhanced_results = enhancer.enhance_validation({}, 'data_preprocessing.py')
         
         # Should detect missing data processing patterns
         issues = enhanced_results.get('issues', [])
-        self.assertTrue(len(issues) > 0)
+        assert len(issues) > 0
     
-    def test_pandas_specific_validation(self):
+    def test_pandas_specific_validation(self, enhancer):
         """Test Pandas-specific processing validation."""
         mock_analysis = {
             'functions': ['read_csv', 'to_csv', 'DataFrame'],
@@ -182,14 +185,14 @@ class TestProcessingStepEnhancer(unittest.TestCase):
             'path_references': []
         }
         
-        with patch.object(self.enhancer, '_get_script_analysis', return_value=mock_analysis):
-            with patch.object(self.enhancer, '_detect_framework_from_script_analysis', return_value='pandas'):
-                enhanced_results = self.enhancer.enhance_validation({}, 'data_preprocessing.py')
+        with patch.object(enhancer, '_get_script_analysis', return_value=mock_analysis):
+            with patch.object(enhancer, '_detect_framework_from_script_analysis', return_value='pandas'):
+                enhanced_results = enhancer.enhance_validation({}, 'data_preprocessing.py')
         
         # Should apply Pandas-specific validation
-        self.assertIn('issues', enhanced_results)
+        assert 'issues' in enhanced_results
 
-class TestFrameworkPatterns(unittest.TestCase):
+class TestFrameworkPatterns:
     """Test framework pattern detection."""
     
     def test_xgboost_pattern_detection(self):
@@ -201,10 +204,10 @@ class TestFrameworkPatterns(unittest.TestCase):
         
         patterns = detect_xgboost_patterns(mock_analysis)
         
-        self.assertTrue(patterns['has_xgboost_import'])
-        self.assertTrue(patterns['has_dmatrix_usage'])
-        self.assertTrue(patterns['has_xgb_train'])
-        self.assertTrue(patterns['has_booster_usage'])
+        assert patterns['has_xgboost_import'] is True
+        assert patterns['has_dmatrix_usage'] is True
+        assert patterns['has_xgb_train'] is True
+        assert patterns['has_booster_usage'] is True
     
     def test_pytorch_pattern_detection(self):
         """Test PyTorch pattern detection."""
@@ -215,10 +218,10 @@ class TestFrameworkPatterns(unittest.TestCase):
         
         patterns = detect_pytorch_patterns(mock_analysis)
         
-        self.assertTrue(patterns['has_torch_import'])
-        self.assertTrue(patterns['has_nn_module'])
-        self.assertTrue(patterns['has_optimizer'])
-        self.assertTrue(patterns['has_training_loop'])
+        assert patterns['has_torch_import'] is True
+        assert patterns['has_nn_module'] is True
+        assert patterns['has_optimizer'] is True
+        assert patterns['has_training_loop'] is True
     
     def test_training_pattern_detection(self):
         """Test general training pattern detection."""
@@ -229,9 +232,9 @@ class TestFrameworkPatterns(unittest.TestCase):
         
         patterns = detect_training_patterns(mock_analysis)
         
-        self.assertTrue(patterns['has_training_loop'])
-        self.assertTrue(patterns['has_model_saving'])
-        self.assertTrue(patterns['has_data_loading'])
+        assert patterns['has_training_loop'] is True
+        assert patterns['has_model_saving'] is True
+        assert patterns['has_data_loading'] is True
     
     def test_get_framework_patterns(self):
         """Test getting patterns for specific framework."""
@@ -242,8 +245,8 @@ class TestFrameworkPatterns(unittest.TestCase):
         
         patterns = get_framework_patterns('xgboost', mock_analysis)
         
-        self.assertIn('has_xgboost_import', patterns)
-        self.assertIn('has_xgb_train', patterns)
+        assert 'has_xgboost_import' in patterns
+        assert 'has_xgb_train' in patterns
     
     def test_get_all_framework_patterns(self):
         """Test getting patterns for all frameworks."""
@@ -254,36 +257,45 @@ class TestFrameworkPatterns(unittest.TestCase):
         
         all_patterns = get_all_framework_patterns(mock_analysis)
         
-        self.assertIn('xgboost', all_patterns)
-        self.assertIn('pytorch', all_patterns)
-        self.assertIn('training', all_patterns)
+        assert 'xgboost' in all_patterns
+        assert 'pytorch' in all_patterns
+        assert 'training' in all_patterns
 
-class TestStepTypeEnhancementIntegration(unittest.TestCase):
+class TestStepTypeEnhancementIntegration:
     """Test integration of step type enhancement with unified alignment tester."""
     
-    def setUp(self):
+    @pytest.fixture
+    def temp_dirs(self):
         """Set up test fixtures."""
         # Create temporary directories for testing
-        self.temp_dir = tempfile.mkdtemp()
-        self.scripts_dir = Path(self.temp_dir) / "scripts"
-        self.contracts_dir = Path(self.temp_dir) / "contracts"
-        self.specs_dir = Path(self.temp_dir) / "specs"
-        self.builders_dir = Path(self.temp_dir) / "builders"
-        self.configs_dir = Path(self.temp_dir) / "configs"
+        temp_dir = tempfile.mkdtemp()
+        scripts_dir = Path(temp_dir) / "scripts"
+        contracts_dir = Path(temp_dir) / "contracts"
+        specs_dir = Path(temp_dir) / "specs"
+        builders_dir = Path(temp_dir) / "builders"
+        configs_dir = Path(temp_dir) / "configs"
         
         # Create directories
-        for dir_path in [self.scripts_dir, self.contracts_dir, self.specs_dir, self.builders_dir, self.configs_dir]:
+        for dir_path in [scripts_dir, contracts_dir, specs_dir, builders_dir, configs_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
+        
+        yield {
+            'temp_dir': temp_dir,
+            'scripts_dir': scripts_dir,
+            'contracts_dir': contracts_dir,
+            'specs_dir': specs_dir,
+            'builders_dir': builders_dir,
+            'configs_dir': configs_dir
+        }
+        
+        # Clean up test fixtures
         import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
-    def test_unified_tester_with_step_type_enhancement(self):
+    def test_unified_tester_with_step_type_enhancement(self, temp_dirs):
         """Test unified alignment tester with step type enhancement enabled."""
         # Create a sample training script
-        training_script = self.scripts_dir / "xgboost_training.py"
+        training_script = temp_dirs['scripts_dir'] / "xgboost_training.py"
         training_script.write_text("""
 import xgboost as xgb
 import pandas as pd
@@ -321,22 +333,22 @@ if __name__ == '__main__':
             )
             
             # Should return enhanced results
-            self.assertIsInstance(enhanced_results, dict)
-            self.assertIn('issues', enhanced_results)
+            assert isinstance(enhanced_results, dict)
+            assert 'issues' in enhanced_results
     
     def test_step_type_enhancement_feature_flag(self):
         """Test step type enhancement feature flag."""
         # Test with feature flag enabled
         with patch.dict(os.environ, {'ENABLE_STEP_TYPE_AWARENESS': 'true'}):
             router = StepTypeEnhancementRouter()
-            self.assertIsNotNone(router)
+            assert router is not None
         
         # Test with feature flag disabled
         with patch.dict(os.environ, {'ENABLE_STEP_TYPE_AWARENESS': 'false'}):
             router = StepTypeEnhancementRouter()
-            self.assertIsNotNone(router)  # Should still work but may have different behavior
+            assert router is not None  # Should still work but may have different behavior
 
-class TestStepTypeEnhancementEndToEnd(unittest.TestCase):
+class TestStepTypeEnhancementEndToEnd:
     """End-to-end tests for step type enhancement system."""
     
     def test_training_script_enhancement_flow(self):
@@ -359,8 +371,8 @@ class TestStepTypeEnhancementEndToEnd(unittest.TestCase):
         enhanced_results = router.enhance_validation('xgboost_training.py', mock_results)
         
         # Verify enhancement was applied
-        self.assertIsInstance(enhanced_results, dict)
-        self.assertIn('issues', enhanced_results)
+        assert isinstance(enhanced_results, dict)
+        assert 'issues' in enhanced_results
     
     def test_processing_script_enhancement_flow(self):
         """Test complete enhancement flow for processing script."""
@@ -373,8 +385,8 @@ class TestStepTypeEnhancementEndToEnd(unittest.TestCase):
         
         enhanced_results = router.enhance_validation('data_preprocessing.py', mock_results)
         
-        self.assertIsInstance(enhanced_results, dict)
-        self.assertIn('issues', enhanced_results)
+        assert isinstance(enhanced_results, dict)
+        assert 'issues' in enhanced_results
     
     def test_multiple_step_types_enhancement(self):
         """Test enhancement for multiple step types."""
@@ -393,8 +405,5 @@ class TestStepTypeEnhancementEndToEnd(unittest.TestCase):
             mock_results = {'passed': True, 'issues': []}
             enhanced_results = router.enhance_validation(script_name, mock_results)
             
-            self.assertIsInstance(enhanced_results, dict)
-            self.assertIn('issues', enhanced_results)
-
-if __name__ == '__main__':
-    unittest.main()
+            assert isinstance(enhanced_results, dict)
+            assert 'issues' in enhanced_results
