@@ -2,7 +2,7 @@
 Test suite for script analysis models.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.alignment.alignment_utils import (
     PathReference,
@@ -13,7 +13,7 @@ from cursus.validation.alignment.alignment_utils import (
     FileOperation
 )
 
-class TestPathReference(unittest.TestCase):
+class TestPathReference:
     """Test PathReference model."""
     
     def test_path_reference_creation(self):
@@ -24,9 +24,9 @@ class TestPathReference(unittest.TestCase):
             context="data loading"
         )
         
-        self.assertEqual(path_ref.path, "/opt/ml/input/data/train")
-        self.assertEqual(path_ref.line_number, 10)
-        self.assertEqual(path_ref.context, "data loading")
+        assert path_ref.path == "/opt/ml/input/data/train"
+        assert path_ref.line_number == 10
+        assert path_ref.context == "data loading"
     
     def test_path_reference_defaults(self):
         """Test PathReference default values."""
@@ -36,11 +36,11 @@ class TestPathReference(unittest.TestCase):
             context="model loading"
         )
         
-        self.assertEqual(path_ref.path, "/opt/ml/model")
-        self.assertEqual(path_ref.line_number, 1)
-        self.assertEqual(path_ref.context, "model loading")
-        self.assertTrue(path_ref.is_hardcoded)  # Default value
-        self.assertIsNone(path_ref.construction_method)  # Default value
+        assert path_ref.path == "/opt/ml/model"
+        assert path_ref.line_number == 1
+        assert path_ref.context == "model loading"
+        assert path_ref.is_hardcoded is True  # Default value
+        assert path_ref.construction_method is None  # Default value
     
     def test_path_reference_serialization(self):
         """Test PathReference serialization."""
@@ -51,11 +51,12 @@ class TestPathReference(unittest.TestCase):
         )
         
         path_dict = path_ref.model_dump()
-        self.assertEqual(path_dict["path"], "/opt/ml/processing/output")
-        self.assertEqual(path_dict["line_number"], 25)
-        self.assertEqual(path_dict["context"], "output saving")
+        assert path_dict["path"] == "/opt/ml/processing/output"
+        assert path_dict["line_number"] == 25
+        assert path_dict["context"] == "output saving"
 
-class TestEnvVarAccess(unittest.TestCase):
+
+class TestEnvVarAccess:
     """Test EnvVarAccess model."""
     
     def test_env_var_access_creation(self):
@@ -67,9 +68,9 @@ class TestEnvVarAccess(unittest.TestCase):
             access_method="os.environ.get"
         )
         
-        self.assertEqual(env_var.variable_name, "SM_CHANNEL_TRAIN")
-        self.assertEqual(env_var.line_number, 15)
-        self.assertEqual(env_var.access_method, "os.environ.get")
+        assert env_var.variable_name == "SM_CHANNEL_TRAIN"
+        assert env_var.line_number == 15
+        assert env_var.access_method == "os.environ.get"
     
     def test_env_var_access_defaults(self):
         """Test EnvVarAccess default values."""
@@ -80,11 +81,11 @@ class TestEnvVarAccess(unittest.TestCase):
             access_method="os.environ"
         )
         
-        self.assertEqual(env_var.variable_name, "SM_MODEL_DIR")
-        self.assertEqual(env_var.line_number, 10)
-        self.assertEqual(env_var.access_method, "os.environ")
-        self.assertFalse(env_var.has_default)  # Default value
-        self.assertIsNone(env_var.default_value)  # Default value
+        assert env_var.variable_name == "SM_MODEL_DIR"
+        assert env_var.line_number == 10
+        assert env_var.access_method == "os.environ"
+        assert env_var.has_default is False  # Default value
+        assert env_var.default_value is None  # Default value
     
     def test_env_var_access_serialization(self):
         """Test EnvVarAccess serialization."""
@@ -96,11 +97,12 @@ class TestEnvVarAccess(unittest.TestCase):
         )
         
         env_dict = env_var.model_dump()
-        self.assertEqual(env_dict["variable_name"], "SM_CHANNEL_VALIDATION")
-        self.assertEqual(env_dict["line_number"], 20)
-        self.assertEqual(env_dict["access_method"], "os.getenv")
+        assert env_dict["variable_name"] == "SM_CHANNEL_VALIDATION"
+        assert env_dict["line_number"] == 20
+        assert env_dict["access_method"] == "os.getenv"
 
-class TestImportStatement(unittest.TestCase):
+
+class TestImportStatement:
     """Test ImportStatement model."""
     
     def test_import_statement_creation(self):
@@ -111,9 +113,9 @@ class TestImportStatement(unittest.TestCase):
             line_number=1
         )
         
-        self.assertEqual(import_stmt.module_name, "xgboost")
-        self.assertEqual(import_stmt.import_alias, "xgb")
-        self.assertEqual(import_stmt.line_number, 1)
+        assert import_stmt.module_name == "xgboost"
+        assert import_stmt.import_alias == "xgb"
+        assert import_stmt.line_number == 1
     
     def test_import_statement_no_alias(self):
         """Test ImportStatement without alias."""
@@ -123,9 +125,9 @@ class TestImportStatement(unittest.TestCase):
             line_number=2
         )
         
-        self.assertEqual(import_stmt.module_name, "pandas")
-        self.assertIsNone(import_stmt.import_alias)
-        self.assertEqual(import_stmt.line_number, 2)
+        assert import_stmt.module_name == "pandas"
+        assert import_stmt.import_alias is None
+        assert import_stmt.line_number == 2
     
     def test_import_statement_defaults(self):
         """Test ImportStatement default values."""
@@ -135,11 +137,11 @@ class TestImportStatement(unittest.TestCase):
             line_number=1
         )
         
-        self.assertEqual(import_stmt.module_name, "torch")
-        self.assertIsNone(import_stmt.import_alias)
-        self.assertEqual(import_stmt.line_number, 1)
-        self.assertFalse(import_stmt.is_from_import)  # Default value
-        self.assertEqual(import_stmt.imported_items, [])  # Default value
+        assert import_stmt.module_name == "torch"
+        assert import_stmt.import_alias is None
+        assert import_stmt.line_number == 1
+        assert import_stmt.is_from_import is False  # Default value
+        assert import_stmt.imported_items == []  # Default value
     
     def test_import_statement_serialization(self):
         """Test ImportStatement serialization."""
@@ -150,11 +152,12 @@ class TestImportStatement(unittest.TestCase):
         )
         
         import_dict = import_stmt.model_dump()
-        self.assertEqual(import_dict["module_name"], "sklearn.ensemble")
-        self.assertIsNone(import_dict["import_alias"])
-        self.assertEqual(import_dict["line_number"], 5)
+        assert import_dict["module_name"] == "sklearn.ensemble"
+        assert import_dict["import_alias"] is None
+        assert import_dict["line_number"] == 5
 
-class TestArgumentDefinition(unittest.TestCase):
+
+class TestArgumentDefinition:
     """Test ArgumentDefinition model."""
     
     def test_argument_definition_creation(self):
@@ -166,10 +169,10 @@ class TestArgumentDefinition(unittest.TestCase):
             default_value="/opt/ml/input/data/train"
         )
         
-        self.assertEqual(arg_def.argument_name, "train_data_path")
-        self.assertEqual(arg_def.argument_type, "str")
-        self.assertEqual(arg_def.default_value, "/opt/ml/input/data/train")
-        self.assertEqual(arg_def.line_number, 10)
+        assert arg_def.argument_name == "train_data_path"
+        assert arg_def.argument_type == "str"
+        assert arg_def.default_value == "/opt/ml/input/data/train"
+        assert arg_def.line_number == 10
     
     def test_argument_definition_no_default(self):
         """Test ArgumentDefinition without default value."""
@@ -179,10 +182,10 @@ class TestArgumentDefinition(unittest.TestCase):
             argument_type="str"
         )
         
-        self.assertEqual(arg_def.argument_name, "model_name")
-        self.assertEqual(arg_def.argument_type, "str")
-        self.assertIsNone(arg_def.default_value)
-        self.assertEqual(arg_def.line_number, 12)
+        assert arg_def.argument_name == "model_name"
+        assert arg_def.argument_type == "str"
+        assert arg_def.default_value is None
+        assert arg_def.line_number == 12
     
     def test_argument_definition_defaults(self):
         """Test ArgumentDefinition default values."""
@@ -191,12 +194,12 @@ class TestArgumentDefinition(unittest.TestCase):
             line_number=5
         )
         
-        self.assertEqual(arg_def.argument_name, "learning_rate")
-        self.assertIsNone(arg_def.argument_type)
-        self.assertIsNone(arg_def.default_value)
-        self.assertEqual(arg_def.line_number, 5)
-        self.assertFalse(arg_def.is_required)  # Default value
-        self.assertFalse(arg_def.has_default)  # Default value
+        assert arg_def.argument_name == "learning_rate"
+        assert arg_def.argument_type is None
+        assert arg_def.default_value is None
+        assert arg_def.line_number == 5
+        assert arg_def.is_required is False  # Default value
+        assert arg_def.has_default is False  # Default value
     
     def test_argument_definition_serialization(self):
         """Test ArgumentDefinition serialization."""
@@ -208,12 +211,13 @@ class TestArgumentDefinition(unittest.TestCase):
         )
         
         arg_dict = arg_def.model_dump()
-        self.assertEqual(arg_dict["argument_name"], "epochs")
-        self.assertEqual(arg_dict["argument_type"], "int")
-        self.assertEqual(arg_dict["default_value"], "100")
-        self.assertEqual(arg_dict["line_number"], 8)
+        assert arg_dict["argument_name"] == "epochs"
+        assert arg_dict["argument_type"] == "int"
+        assert arg_dict["default_value"] == "100"
+        assert arg_dict["line_number"] == 8
 
-class TestPathConstruction(unittest.TestCase):
+
+class TestPathConstruction:
     """Test PathConstruction model."""
     
     def test_path_construction_creation(self):
@@ -226,10 +230,10 @@ class TestPathConstruction(unittest.TestCase):
             method="os.path.join"
         )
         
-        self.assertEqual(path_const.method, "os.path.join")
-        self.assertEqual(path_const.construction_parts, ["data", "train"])
-        self.assertEqual(path_const.line_number, 15)
-        self.assertEqual(path_const.base_path, "/opt/ml/input")
+        assert path_const.method == "os.path.join"
+        assert path_const.construction_parts == ["data", "train"]
+        assert path_const.line_number == 15
+        assert path_const.base_path == "/opt/ml/input"
     
     def test_path_construction_f_string(self):
         """Test PathConstruction with f-string method."""
@@ -241,9 +245,9 @@ class TestPathConstruction(unittest.TestCase):
             method="f-string"
         )
         
-        self.assertEqual(path_const.method, "f-string")
-        self.assertEqual(path_const.construction_parts, ["filename"])
-        self.assertEqual(path_const.line_number, 20)
+        assert path_const.method == "f-string"
+        assert path_const.construction_parts == ["filename"]
+        assert path_const.line_number == 20
     
     def test_path_construction_defaults(self):
         """Test PathConstruction default values."""
@@ -255,9 +259,9 @@ class TestPathConstruction(unittest.TestCase):
             method="string_concatenation"
         )
         
-        self.assertEqual(path_const.method, "string_concatenation")
-        self.assertEqual(path_const.construction_parts, ["path2"])
-        self.assertEqual(path_const.line_number, 10)
+        assert path_const.method == "string_concatenation"
+        assert path_const.construction_parts == ["path2"]
+        assert path_const.line_number == 10
     
     def test_path_construction_serialization(self):
         """Test PathConstruction serialization."""
@@ -270,11 +274,12 @@ class TestPathConstruction(unittest.TestCase):
         )
         
         path_dict = path_const.model_dump()
-        self.assertEqual(path_dict["method"], "pathlib.Path")
-        self.assertEqual(path_dict["construction_parts"], ["artifacts"])
-        self.assertEqual(path_dict["line_number"], 30)
+        assert path_dict["method"] == "pathlib.Path"
+        assert path_dict["construction_parts"] == ["artifacts"]
+        assert path_dict["line_number"] == 30
 
-class TestFileOperation(unittest.TestCase):
+
+class TestFileOperation:
     """Test FileOperation model."""
     
     def test_file_operation_creation(self):
@@ -287,10 +292,10 @@ class TestFileOperation(unittest.TestCase):
             method="pd.read_csv"
         )
         
-        self.assertEqual(file_op.operation_type, "read")
-        self.assertEqual(file_op.file_path, "/opt/ml/input/data/train.csv")
-        self.assertEqual(file_op.method, "pd.read_csv")
-        self.assertEqual(file_op.line_number, 25)
+        assert file_op.operation_type == "read"
+        assert file_op.file_path == "/opt/ml/input/data/train.csv"
+        assert file_op.method == "pd.read_csv"
+        assert file_op.line_number == 25
     
     def test_file_operation_write(self):
         """Test FileOperation for write operation."""
@@ -302,10 +307,10 @@ class TestFileOperation(unittest.TestCase):
             method="joblib.dump"
         )
         
-        self.assertEqual(file_op.operation_type, "write")
-        self.assertEqual(file_op.file_path, "/opt/ml/model/model.pkl")
-        self.assertEqual(file_op.method, "joblib.dump")
-        self.assertEqual(file_op.line_number, 50)
+        assert file_op.operation_type == "write"
+        assert file_op.file_path == "/opt/ml/model/model.pkl"
+        assert file_op.method == "joblib.dump"
+        assert file_op.line_number == 50
     
     def test_file_operation_defaults(self):
         """Test FileOperation default values."""
@@ -316,11 +321,11 @@ class TestFileOperation(unittest.TestCase):
             context="data reading"
         )
         
-        self.assertEqual(file_op.operation_type, "read")
-        self.assertEqual(file_op.file_path, "/tmp/data.json")
-        self.assertIsNone(file_op.method)
-        self.assertEqual(file_op.line_number, 10)
-        self.assertIsNone(file_op.mode)  # Default value
+        assert file_op.operation_type == "read"
+        assert file_op.file_path == "/tmp/data.json"
+        assert file_op.method is None
+        assert file_op.line_number == 10
+        assert file_op.mode is None  # Default value
     
     def test_file_operation_serialization(self):
         """Test FileOperation serialization."""
@@ -333,12 +338,13 @@ class TestFileOperation(unittest.TestCase):
         )
         
         file_dict = file_op.model_dump()
-        self.assertEqual(file_dict["operation_type"], "write")
-        self.assertEqual(file_dict["file_path"], "/opt/ml/processing/output/results.csv")
-        self.assertEqual(file_dict["method"], "df.to_csv")
-        self.assertEqual(file_dict["line_number"], 40)
+        assert file_dict["operation_type"] == "write"
+        assert file_dict["file_path"] == "/opt/ml/processing/output/results.csv"
+        assert file_dict["method"] == "df.to_csv"
+        assert file_dict["line_number"] == 40
 
-class TestScriptAnalysisModelsIntegration(unittest.TestCase):
+
+class TestScriptAnalysisModelsIntegration:
     """Test integration of script analysis models."""
     
     def test_models_work_together(self):
@@ -352,21 +358,22 @@ class TestScriptAnalysisModelsIntegration(unittest.TestCase):
         file_op = FileOperation(file_path="/data/file.csv", operation_type="read", line_number=20, context="file reading")
         
         # Verify all models are properly instantiated
-        self.assertIsInstance(path_ref, PathReference)
-        self.assertIsInstance(env_var, EnvVarAccess)
-        self.assertIsInstance(import_stmt, ImportStatement)
-        self.assertIsInstance(arg_def, ArgumentDefinition)
-        self.assertIsInstance(path_const, PathConstruction)
-        self.assertIsInstance(file_op, FileOperation)
+        assert isinstance(path_ref, PathReference)
+        assert isinstance(env_var, EnvVarAccess)
+        assert isinstance(import_stmt, ImportStatement)
+        assert isinstance(arg_def, ArgumentDefinition)
+        assert isinstance(path_const, PathConstruction)
+        assert isinstance(file_op, FileOperation)
         
         # Verify they can all be serialized
         models = [path_ref, env_var, import_stmt, arg_def, path_const, file_op]
         for model in models:
             model_dict = model.model_dump()
-            self.assertIsInstance(model_dict, dict)
+            assert isinstance(model_dict, dict)
             
             model_json = model.model_dump_json()
-            self.assertIsInstance(model_json, str)
+            assert isinstance(model_json, str)
+
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

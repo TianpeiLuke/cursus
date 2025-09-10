@@ -6,7 +6,7 @@ This test suite provides comprehensive coverage for the FlexibleFileResolver fun
 which was identified as a missing test in the validation test coverage analysis.
 """
 
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 import tempfile
 import os
@@ -15,30 +15,32 @@ from pathlib import Path
 from cursus.validation.alignment.file_resolver import FlexibleFileResolver
 
 
-class TestFlexibleFileResolver(unittest.TestCase):
+class TestFlexibleFileResolver:
     """Test FlexibleFileResolver functionality."""
     
-    def setUp(self):
+    @pytest.fixture
+    def resolver(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.setup_test_files()
+        temp_dir = tempfile.mkdtemp()
+        self.setup_test_files(temp_dir)
         
-        self.base_directories = {
-            'scripts': os.path.join(self.temp_dir, 'scripts'),
-            'contracts': os.path.join(self.temp_dir, 'contracts'),
-            'specs': os.path.join(self.temp_dir, 'specs'),
-            'builders': os.path.join(self.temp_dir, 'builders'),
-            'configs': os.path.join(self.temp_dir, 'configs')
+        base_directories = {
+            'scripts': os.path.join(temp_dir, 'scripts'),
+            'contracts': os.path.join(temp_dir, 'contracts'),
+            'specs': os.path.join(temp_dir, 'specs'),
+            'builders': os.path.join(temp_dir, 'builders'),
+            'configs': os.path.join(temp_dir, 'configs')
         }
         
-        self.resolver = FlexibleFileResolver(self.base_directories)
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
+        resolver = FlexibleFileResolver(base_directories)
+        resolver.temp_dir = temp_dir  # Store for cleanup
+        yield resolver
+        
+        # Cleanup
         import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
-    def setup_test_files(self):
+    def setup_test_files(self, temp_dir):
         """Set up test file structure."""
         # Create directory structure
         dirs = [
@@ -50,7 +52,7 @@ class TestFlexibleFileResolver(unittest.TestCase):
         ]
         
         for dir_name in dirs:
-            os.makedirs(os.path.join(self.temp_dir, dir_name), exist_ok=True)
+            os.makedirs(os.path.join(temp_dir, dir_name), exist_ok=True)
         
         # Create test files matching real cursus/steps patterns
         test_files = {
@@ -72,50 +74,48 @@ class TestFlexibleFileResolver(unittest.TestCase):
         }
         
         for file_path, content in test_files.items():
-            full_path = os.path.join(self.temp_dir, file_path)
+            full_path = os.path.join(temp_dir, file_path)
             with open(full_path, 'w') as f:
                 f.write(content)
     
-    def test_resolver_initialization(self):
+    def test_resolver_initialization(self, resolver):
         """Test FlexibleFileResolver initialization."""
-        resolver = FlexibleFileResolver(self.base_directories)
-        
-        self.assertIsNotNone(resolver)
+        assert resolver is not None
         # Check that resolver has the expected attributes (may vary by implementation)
-        self.assertTrue(hasattr(resolver, 'file_cache') or hasattr(resolver, '_file_cache'))
+        assert hasattr(resolver, 'file_cache') or hasattr(resolver, '_file_cache')
         if hasattr(resolver, 'file_cache'):
-            self.assertIsInstance(resolver.file_cache, dict)
+            assert isinstance(resolver.file_cache, dict)
         elif hasattr(resolver, '_file_cache'):
-            self.assertIsInstance(resolver._file_cache, dict)
+            assert isinstance(resolver._file_cache, dict)
     
-    def test_discover_all_files(self):
+    def test_discover_all_files(self, resolver):
         """Test file discovery functionality."""
-        self.resolver._discover_all_files()
+        resolver._discover_all_files()
         
         # Verify files were discovered
-        self.assertGreater(len(self.resolver.file_cache), 0)
+        assert len(resolver.file_cache) > 0
         
         # Check that all component types are present
         expected_types = ['scripts', 'contracts', 'specs', 'builders', 'configs']
         for component_type in expected_types:
-            self.assertIn(component_type, self.resolver.file_cache)
-            self.assertIsInstance(self.resolver.file_cache[component_type], dict)
+            assert component_type in resolver.file_cache
+            assert isinstance(resolver.file_cache[component_type], dict)
     
-    def test_scan_directory(self):
+    def test_scan_directory(self, resolver):
         """Test directory scanning functionality."""
-        scripts_dir = Path(self.base_directories['scripts'])
-        scanned_files = self.resolver._scan_directory(scripts_dir, 'scripts')
+        scripts_dir = Path(resolver.temp_dir + '/scripts')
+        scanned_files = resolver._scan_directory(scripts_dir, 'scripts')
         
-        self.assertIsInstance(scanned_files, dict)
-        self.assertGreater(len(scanned_files), 0)
+        assert isinstance(scanned_files, dict)
+        assert len(scanned_files) > 0
         
         # Verify expected files are found
         expected_files = ['train', 'preprocessing', 'evaluation']
         for expected_file in expected_files:
             found = any(expected_file in key for key in scanned_files.keys())
-            self.assertTrue(found, f"Expected file {expected_file} not found")
+            assert found, f"Expected file {expected_file} not found"
     
-    def test_normalize_name(self):
+    def test_normalize_name(self, resolver):
         """Test name normalization functionality."""
         test_cases = [
             ('train_script.py', 'train_script.py'),  # Actual implementation keeps .py extension
@@ -126,10 +126,10 @@ class TestFlexibleFileResolver(unittest.TestCase):
         ]
         
         for input_name, expected_output in test_cases:
-            normalized = self.resolver._normalize_name(input_name)
-            self.assertEqual(normalized, expected_output)
+            normalized = resolver._normalize_name(input_name)
+            assert normalized == expected_output
     
-    def test_calculate_similarity(self):
+    def test_calculate_similarity(self, resolver):
         """Test similarity calculation."""
         test_cases = [
             ('train', 'train', 1.0),
@@ -139,157 +139,157 @@ class TestFlexibleFileResolver(unittest.TestCase):
         ]
         
         for str1, str2, expected_min_similarity in test_cases:
-            similarity = self.resolver._calculate_similarity(str1, str2)
-            self.assertIsInstance(similarity, float)
-            self.assertGreaterEqual(similarity, 0.0)
-            self.assertLessEqual(similarity, 1.0)
+            similarity = resolver._calculate_similarity(str1, str2)
+            assert isinstance(similarity, float)
+            assert similarity >= 0.0
+            assert similarity <= 1.0
             
             if expected_min_similarity == 1.0:
-                self.assertEqual(similarity, 1.0)
+                assert similarity == 1.0
             elif expected_min_similarity > 0.5:
-                self.assertGreater(similarity, 0.5)
+                assert similarity > 0.5
     
-    def test_find_best_match(self):
+    def test_find_best_match(self, resolver):
         """Test best match finding functionality."""
         # Test exact match
-        exact_match = self.resolver._find_best_match('train', 'contracts')
-        self.assertIsNotNone(exact_match)
-        self.assertIn('train', exact_match.lower())
+        exact_match = resolver._find_best_match('train', 'contracts')
+        assert exact_match is not None
+        assert 'train' in exact_match.lower()
         
         # Test partial match
-        partial_match = self.resolver._find_best_match('eval', 'contracts')
-        self.assertIsNotNone(partial_match)
+        partial_match = resolver._find_best_match('eval', 'contracts')
+        assert partial_match is not None
         
         # Test no match
-        no_match = self.resolver._find_best_match('nonexistent', 'contracts')
-        self.assertIsNone(no_match)
+        no_match = resolver._find_best_match('nonexistent', 'contracts')
+        assert no_match is None
     
-    def test_find_contract_file(self):
+    def test_find_contract_file(self, resolver):
         """Test contract file finding."""
         # Test exact match
-        contract_file = self.resolver.find_contract_file('train')
-        self.assertIsNotNone(contract_file)
-        self.assertTrue(os.path.exists(contract_file))
-        self.assertIn('train', contract_file.lower())
+        contract_file = resolver.find_contract_file('train')
+        assert contract_file is not None
+        assert os.path.exists(contract_file)
+        assert 'train' in contract_file.lower()
         
         # Test partial match
-        contract_file = self.resolver.find_contract_file('preprocessing')
-        self.assertIsNotNone(contract_file)
-        self.assertTrue(os.path.exists(contract_file))
+        contract_file = resolver.find_contract_file('preprocessing')
+        assert contract_file is not None
+        assert os.path.exists(contract_file)
         
         # Test no match
-        contract_file = self.resolver.find_contract_file('nonexistent')
-        self.assertIsNone(contract_file)
+        contract_file = resolver.find_contract_file('nonexistent')
+        assert contract_file is None
     
-    def test_find_spec_file(self):
+    def test_find_spec_file(self, resolver):
         """Test specification file finding."""
         # Test exact match
-        spec_file = self.resolver.find_spec_file('train')
-        self.assertIsNotNone(spec_file)
-        self.assertTrue(os.path.exists(spec_file))
-        self.assertIn('train', spec_file.lower())
+        spec_file = resolver.find_spec_file('train')
+        assert spec_file is not None
+        assert os.path.exists(spec_file)
+        assert 'train' in spec_file.lower()
         
         # Test partial match
-        spec_file = self.resolver.find_spec_file('evaluation')
-        self.assertIsNotNone(spec_file)
-        self.assertTrue(os.path.exists(spec_file))
+        spec_file = resolver.find_spec_file('evaluation')
+        assert spec_file is not None
+        assert os.path.exists(spec_file)
         
         # Test no match
-        spec_file = self.resolver.find_spec_file('nonexistent')
-        self.assertIsNone(spec_file)
+        spec_file = resolver.find_spec_file('nonexistent')
+        assert spec_file is None
     
-    def test_find_specification_file(self):
+    def test_find_specification_file(self, resolver):
         """Test specification file finding (alias method)."""
         # Should work the same as find_spec_file
-        spec_file = self.resolver.find_specification_file('train')
-        self.assertIsNotNone(spec_file)
-        self.assertTrue(os.path.exists(spec_file))
-        self.assertIn('train', spec_file.lower())
+        spec_file = resolver.find_specification_file('train')
+        assert spec_file is not None
+        assert os.path.exists(spec_file)
+        assert 'train' in spec_file.lower()
     
-    def test_find_builder_file(self):
+    def test_find_builder_file(self, resolver):
         """Test builder file finding."""
         # Test exact match
-        builder_file = self.resolver.find_builder_file('train')
-        self.assertIsNotNone(builder_file)
-        self.assertTrue(os.path.exists(builder_file))
-        self.assertIn('train', builder_file.lower())
+        builder_file = resolver.find_builder_file('train')
+        assert builder_file is not None
+        assert os.path.exists(builder_file)
+        assert 'train' in builder_file.lower()
         
         # Test partial match
-        builder_file = self.resolver.find_builder_file('preprocessing')
-        self.assertIsNotNone(builder_file)
-        self.assertTrue(os.path.exists(builder_file))
+        builder_file = resolver.find_builder_file('preprocessing')
+        assert builder_file is not None
+        assert os.path.exists(builder_file)
         
         # Test no match
-        builder_file = self.resolver.find_builder_file('nonexistent')
-        self.assertIsNone(builder_file)
+        builder_file = resolver.find_builder_file('nonexistent')
+        assert builder_file is None
     
-    def test_find_config_file(self):
+    def test_find_config_file(self, resolver):
         """Test config file finding."""
         # Test exact match
-        config_file = self.resolver.find_config_file('train')
-        self.assertIsNotNone(config_file)
-        self.assertTrue(os.path.exists(config_file))
-        self.assertIn('train', config_file.lower())
+        config_file = resolver.find_config_file('train')
+        assert config_file is not None
+        assert os.path.exists(config_file)
+        assert 'train' in config_file.lower()
         
         # Test partial match
-        config_file = self.resolver.find_config_file('evaluation')
-        self.assertIsNotNone(config_file)
-        self.assertTrue(os.path.exists(config_file))
+        config_file = resolver.find_config_file('evaluation')
+        assert config_file is not None
+        assert os.path.exists(config_file)
         
         # Test no match
-        config_file = self.resolver.find_config_file('nonexistent')
-        self.assertIsNone(config_file)
+        config_file = resolver.find_config_file('nonexistent')
+        assert config_file is None
     
-    def test_find_all_component_files(self):
+    def test_find_all_component_files(self, resolver):
         """Test finding all component files for a script."""
-        all_files = self.resolver.find_all_component_files('train')
+        all_files = resolver.find_all_component_files('train')
         
-        self.assertIsInstance(all_files, dict)
+        assert isinstance(all_files, dict)
         
         # The method returns keys: 'contract', 'spec', 'builder', 'config'
         expected_components = ['contract', 'spec', 'builder', 'config']
         for component in expected_components:
-            self.assertIn(component, all_files)
+            assert component in all_files
         
         # Verify that found files exist
         for component, file_path in all_files.items():
             if file_path is not None:
-                self.assertTrue(os.path.exists(file_path))
+                assert os.path.exists(file_path)
     
-    def test_refresh_cache(self):
+    def test_refresh_cache(self, resolver):
         """Test cache refresh functionality."""
         # Initial cache
-        initial_cache_size = len(self.resolver.file_cache)
+        initial_cache_size = len(resolver.file_cache)
         
         # Add a new file
-        new_file_path = os.path.join(self.temp_dir, 'contracts', 'new_contract.py')
+        new_file_path = os.path.join(resolver.temp_dir, 'contracts', 'new_contract.py')
         with open(new_file_path, 'w') as f:
             f.write('# New contract')
         
         # Refresh cache
-        self.resolver.refresh_cache()
+        resolver.refresh_cache()
         
         # Verify cache was updated
-        self.assertGreaterEqual(len(self.resolver.file_cache), initial_cache_size)
+        assert len(resolver.file_cache) >= initial_cache_size
         
         # Verify new file can be found
-        new_contract = self.resolver.find_contract_file('new')
-        self.assertIsNotNone(new_contract)
+        new_contract = resolver.find_contract_file('new')
+        assert new_contract is not None
     
-    def test_get_available_files_report(self):
+    def test_get_available_files_report(self, resolver):
         """Test available files report generation."""
-        report = self.resolver.get_available_files_report()
+        report = resolver.get_available_files_report()
         
-        self.assertIsInstance(report, dict)
+        assert isinstance(report, dict)
         
         expected_components = ['scripts', 'contracts', 'specs', 'builders', 'configs']
         for component in expected_components:
-            self.assertIn(component, report)
-            self.assertIn('count', report[component])
-            self.assertIn('files', report[component])
-            self.assertIsInstance(report[component]['files'], list)
+            assert component in report
+            assert 'count' in report[component]
+            assert 'files' in report[component]
+            assert isinstance(report[component]['files'], list)
     
-    def test_extract_base_name_from_spec(self):
+    def test_extract_base_name_from_spec(self, resolver):
         """Test base name extraction from specification path."""
         test_cases = [
             ('train_spec.py', 'train'),
@@ -300,35 +300,35 @@ class TestFlexibleFileResolver(unittest.TestCase):
         
         for spec_name, expected_base in test_cases:
             spec_path = Path(spec_name)
-            base_name = self.resolver.extract_base_name_from_spec(spec_path)
-            self.assertEqual(base_name, expected_base)
+            base_name = resolver.extract_base_name_from_spec(spec_path)
+            assert base_name == expected_base
     
-    def test_find_spec_constant_name(self):
+    def test_find_spec_constant_name(self, resolver):
         """Test specification constant name finding."""
         # This method might return None if no specific pattern is found
-        constant_name = self.resolver.find_spec_constant_name('train', 'training')
+        constant_name = resolver.find_spec_constant_name('train', 'training')
         
         # Should return a string or None
         if constant_name is not None:
-            self.assertIsInstance(constant_name, str)
+            assert isinstance(constant_name, str)
     
-    def test_case_insensitive_matching(self):
+    def test_case_insensitive_matching(self, resolver):
         """Test case-insensitive file matching."""
         # Create files with different cases
-        mixed_case_file = os.path.join(self.temp_dir, 'contracts', 'TrainContract.py')
+        mixed_case_file = os.path.join(resolver.temp_dir, 'contracts', 'TrainContract.py')
         with open(mixed_case_file, 'w') as f:
             f.write('# Mixed case contract')
         
-        self.resolver.refresh_cache()
+        resolver.refresh_cache()
         
         # Should find file regardless of case
-        found_file = self.resolver.find_contract_file('traincontract')
-        self.assertIsNotNone(found_file)
+        found_file = resolver.find_contract_file('traincontract')
+        assert found_file is not None
         
-        found_file = self.resolver.find_contract_file('TRAINCONTRACT')
-        self.assertIsNotNone(found_file)
+        found_file = resolver.find_contract_file('TRAINCONTRACT')
+        assert found_file is not None
     
-    def test_fuzzy_matching(self):
+    def test_fuzzy_matching(self, resolver):
         """Test fuzzy matching capabilities."""
         # Test with slight variations
         test_cases = [
@@ -339,9 +339,9 @@ class TestFlexibleFileResolver(unittest.TestCase):
         ]
         
         for search_term, expected_match in test_cases:
-            contract_file = self.resolver.find_contract_file(search_term)
+            contract_file = resolver.find_contract_file(search_term)
             if contract_file:
-                self.assertIn(expected_match.lower(), contract_file.lower())
+                assert expected_match.lower() in contract_file.lower()
     
     def test_empty_directories(self):
         """Test resolver behavior with empty directories."""
@@ -364,13 +364,13 @@ class TestFlexibleFileResolver(unittest.TestCase):
             
             # Should handle empty directories gracefully
             contract_file = empty_resolver.find_contract_file('train')
-            self.assertIsNone(contract_file)
+            assert contract_file is None
             
             report = empty_resolver.get_available_files_report()
-            self.assertIsInstance(report, dict)
+            assert isinstance(report, dict)
             
             for component in empty_dirs.keys():
-                self.assertEqual(report[component]['count'], 0)
+                assert report[component]['count'] == 0
         
         finally:
             import shutil
@@ -391,17 +391,17 @@ class TestFlexibleFileResolver(unittest.TestCase):
             nonexistent_resolver = FlexibleFileResolver(nonexistent_dirs)
             
             contract_file = nonexistent_resolver.find_contract_file('train')
-            self.assertIsNone(contract_file)
+            assert contract_file is None
             
             report = nonexistent_resolver.get_available_files_report()
-            self.assertIsInstance(report, dict)
+            assert isinstance(report, dict)
         
         except Exception as e:
             # Should not raise exceptions for nonexistent directories
-            self.fail(f"Resolver raised exception for nonexistent directories: {e}")
+            pytest.fail(f"Resolver raised exception for nonexistent directories: {e}")
 
 
-class TestFlexibleFileResolverEdgeCases(unittest.TestCase):
+class TestFlexibleFileResolverEdgeCases:
     """Test FlexibleFileResolver edge cases and error conditions."""
     
     def test_special_characters_in_filenames(self):
@@ -430,10 +430,10 @@ class TestFlexibleFileResolverEdgeCases(unittest.TestCase):
             
             # Should handle special characters gracefully
             found_file = resolver.find_contract_file('train')
-            self.assertIsNotNone(found_file)
+            assert found_file is not None
             
             found_file = resolver.find_contract_file('preprocessing')
-            self.assertIsNotNone(found_file)
+            assert found_file is not None
         
         finally:
             import shutil
@@ -459,7 +459,7 @@ class TestFlexibleFileResolverEdgeCases(unittest.TestCase):
             
             # Should handle long filenames gracefully
             found_file = resolver.find_contract_file('very_long_filename')
-            self.assertIsNotNone(found_file)
+            assert found_file is not None
         
         finally:
             import shutil
@@ -486,7 +486,7 @@ class TestFlexibleFileResolverEdgeCases(unittest.TestCase):
                 
                 # Should handle unicode filenames gracefully
                 report = resolver.get_available_files_report()
-                self.assertIsInstance(report, dict)
+                assert isinstance(report, dict)
             
             except (OSError, UnicodeError):
                 # Skip test if filesystem doesn't support unicode filenames
@@ -530,14 +530,10 @@ class TestFlexibleFileResolverEdgeCases(unittest.TestCase):
                 thread.join()
             
             # All threads should find the file
-            self.assertEqual(len(results), 5)
+            assert len(results) == 5
             for result in results:
-                self.assertIsNotNone(result)
+                assert result is not None
         
         finally:
             import shutil
             shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)

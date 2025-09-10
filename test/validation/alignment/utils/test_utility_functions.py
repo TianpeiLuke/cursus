@@ -2,7 +2,7 @@
 Test suite for alignment utility functions.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.alignment.alignment_utils import (
     normalize_path, is_sagemaker_path, extract_logical_name_from_path,
@@ -10,26 +10,26 @@ from cursus.validation.alignment.alignment_utils import (
     create_alignment_issue, SeverityLevel, AlignmentLevel, AlignmentIssue
 )
 
-class TestUtilityFunctions(unittest.TestCase):
+class TestUtilityFunctions:
     """Test alignment utility functions."""
     
     def test_normalize_path_basic(self):
         """Test basic path normalization."""
         # Test absolute path
         result = normalize_path("/opt/ml/input/data")
-        self.assertEqual(result, "/opt/ml/input/data")
+        assert result == "/opt/ml/input/data"
         
         # Test relative path
         result = normalize_path("./data/train")
-        self.assertEqual(result, "data/train")
+        assert result == "data/train"
         
         # Test path with double slashes
         result = normalize_path("/opt//ml/input//data")
-        self.assertEqual(result, "/opt/ml/input/data")
+        assert result == "/opt/ml/input/data"
         
         # Test Windows path normalization
         result = normalize_path("C:\\data\\train")
-        self.assertEqual(result, "C:/data/train")
+        assert result == "C:/data/train"
     
     def test_is_sagemaker_path_positive(self):
         """Test SageMaker path detection - positive cases."""
@@ -42,8 +42,7 @@ class TestUtilityFunctions(unittest.TestCase):
         ]
         
         for path in sagemaker_paths:
-            with self.subTest(path=path):
-                self.assertTrue(is_sagemaker_path(path))
+            assert is_sagemaker_path(path), f"Path {path} should be detected as SageMaker path"
     
     def test_is_sagemaker_path_negative(self):
         """Test SageMaker path detection - negative cases."""
@@ -56,8 +55,7 @@ class TestUtilityFunctions(unittest.TestCase):
         ]
         
         for path in non_sagemaker_paths:
-            with self.subTest(path=path):
-                self.assertFalse(is_sagemaker_path(path))
+            assert not is_sagemaker_path(path), f"Path {path} should not be detected as SageMaker path"
     
     def test_extract_logical_name_from_path(self):
         """Test logical name extraction from SageMaker paths."""
@@ -70,9 +68,8 @@ class TestUtilityFunctions(unittest.TestCase):
         ]
         
         for path, expected in test_cases:
-            with self.subTest(path=path):
-                result = extract_logical_name_from_path(path)
-                self.assertEqual(result, expected)
+            result = extract_logical_name_from_path(path)
+            assert result == expected, f"Expected {expected} for path {path}, got {result}"
     
     def test_extract_logical_name_from_path_invalid(self):
         """Test logical name extraction from non-SageMaker paths."""
@@ -85,9 +82,8 @@ class TestUtilityFunctions(unittest.TestCase):
         ]
         
         for path in invalid_paths:
-            with self.subTest(path=path):
-                result = extract_logical_name_from_path(path)
-                self.assertIsNone(result)
+            result = extract_logical_name_from_path(path)
+            assert result is None, f"Expected None for path {path}, got {result}"
     
     def test_format_alignment_issue(self):
         """Test alignment issue formatting."""
@@ -100,9 +96,9 @@ class TestUtilityFunctions(unittest.TestCase):
         )
         
         formatted = format_alignment_issue(issue)
-        self.assertIn("ERROR", formatted)
-        self.assertIn("Test error message", formatted)
-        self.assertIn("Fix the issue", formatted)
+        assert "ERROR" in formatted
+        assert "Test error message" in formatted
+        assert "Fix the issue" in formatted
     
     def test_group_issues_by_severity(self):
         """Test grouping issues by severity level."""
@@ -115,10 +111,10 @@ class TestUtilityFunctions(unittest.TestCase):
         
         grouped = group_issues_by_severity(issues)
         
-        self.assertEqual(len(grouped[SeverityLevel.ERROR]), 2)
-        self.assertEqual(len(grouped[SeverityLevel.WARNING]), 1)
-        self.assertEqual(len(grouped[SeverityLevel.INFO]), 1)
-        self.assertEqual(len(grouped[SeverityLevel.CRITICAL]), 0)
+        assert len(grouped[SeverityLevel.ERROR]) == 2
+        assert len(grouped[SeverityLevel.WARNING]) == 1
+        assert len(grouped[SeverityLevel.INFO]) == 1
+        assert len(grouped[SeverityLevel.CRITICAL]) == 0
     
     def test_get_highest_severity(self):
         """Test getting highest severity level."""
@@ -130,16 +126,16 @@ class TestUtilityFunctions(unittest.TestCase):
         ]
         
         highest = get_highest_severity(issues)
-        self.assertEqual(highest, SeverityLevel.ERROR)
+        assert highest == SeverityLevel.ERROR
         
         # Test with critical issue
         issues.append(AlignmentIssue(level=SeverityLevel.CRITICAL, category="test", message="Critical"))
         highest = get_highest_severity(issues)
-        self.assertEqual(highest, SeverityLevel.CRITICAL)
+        assert highest == SeverityLevel.CRITICAL
         
         # Test with empty list
         highest = get_highest_severity([])
-        self.assertIsNone(highest)
+        assert highest is None
     
     def test_create_alignment_issue(self):
         """Test alignment issue creation helper."""
@@ -152,12 +148,12 @@ class TestUtilityFunctions(unittest.TestCase):
             alignment_level=AlignmentLevel.SCRIPT_CONTRACT
         )
         
-        self.assertEqual(issue.level, SeverityLevel.WARNING)
-        self.assertEqual(issue.category, "path_validation")
-        self.assertEqual(issue.message, "Hardcoded path detected")
-        self.assertEqual(issue.details["path"], "/opt/ml/input")
-        self.assertEqual(issue.recommendation, "Use environment variables")
-        self.assertEqual(issue.alignment_level, AlignmentLevel.SCRIPT_CONTRACT)
+        assert issue.level == SeverityLevel.WARNING
+        assert issue.category == "path_validation"
+        assert issue.message == "Hardcoded path detected"
+        assert issue.details["path"] == "/opt/ml/input"
+        assert issue.recommendation == "Use environment variables"
+        assert issue.alignment_level == AlignmentLevel.SCRIPT_CONTRACT
     
     def test_create_alignment_issue_minimal(self):
         """Test alignment issue creation with minimal parameters."""
@@ -167,12 +163,13 @@ class TestUtilityFunctions(unittest.TestCase):
             message="Info message"
         )
         
-        self.assertEqual(issue.level, SeverityLevel.INFO)
-        self.assertEqual(issue.category, "general")
-        self.assertEqual(issue.message, "Info message")
-        self.assertEqual(issue.details, {})
-        self.assertIsNone(issue.recommendation)
-        self.assertIsNone(issue.alignment_level)
+        assert issue.level == SeverityLevel.INFO
+        assert issue.category == "general"
+        assert issue.message == "Info message"
+        assert issue.details == {}
+        assert issue.recommendation is None
+        assert issue.alignment_level is None
+
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

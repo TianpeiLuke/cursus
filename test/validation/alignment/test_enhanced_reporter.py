@@ -6,7 +6,7 @@ This test suite provides comprehensive coverage for the EnhancedAlignmentReport 
 which was identified as a critical missing test in the validation test coverage analysis.
 """
 
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 import tempfile
 import os
@@ -17,15 +17,17 @@ from cursus.validation.alignment.enhanced_reporter import EnhancedAlignmentRepor
 from cursus.validation.alignment.alignment_reporter import ValidationResult, AlignmentIssue, SeverityLevel
 
 
-class TestEnhancedAlignmentReport(unittest.TestCase):
+class TestEnhancedAlignmentReport:
     """Test EnhancedAlignmentReport functionality."""
     
-    def setUp(self):
+    @pytest.fixture
+    def report(self):
         """Set up test fixtures."""
-        self.report = EnhancedAlignmentReport()
-        self.setup_sample_data()
+        report = EnhancedAlignmentReport()
+        self.setup_sample_data(report)
+        return report
     
-    def setup_sample_data(self):
+    def setup_sample_data(self, report):
         """Set up sample validation data."""
         # Add some sample results
         level1_result = ValidationResult(
@@ -65,24 +67,24 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
             ]
         )
         
-        self.report.add_level1_result("script_path_validation", level1_result)
-        self.report.add_level2_result("logical_name_alignment", level2_result)
-        self.report.add_level3_result("dependency_resolution", level3_result)
-        self.report.add_level4_result("configuration_validation", level4_result)
+        report.add_level1_result("script_path_validation", level1_result)
+        report.add_level2_result("logical_name_alignment", level2_result)
+        report.add_level3_result("dependency_resolution", level3_result)
+        report.add_level4_result("configuration_validation", level4_result)
     
     def test_enhanced_report_initialization(self):
         """Test EnhancedAlignmentReport initialization."""
         report = EnhancedAlignmentReport()
         
-        self.assertIsNotNone(report)
+        assert report is not None
         # Check if quality_metrics exists and initialize if needed
         if hasattr(report, 'quality_metrics'):
-            self.assertIsInstance(report.quality_metrics, dict)
+            assert isinstance(report.quality_metrics, dict)
         else:
             # Initialize quality_metrics if it doesn't exist
             report.quality_metrics = {'trends': {}, 'comparisons': {}, 'improvement_suggestions': []}
     
-    def test_add_historical_data(self):
+    def test_add_historical_data(self, report):
         """Test adding historical data for trend analysis."""
         # Create historical data
         historical_data = []
@@ -109,22 +111,22 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
                 }
             })
         
-        self.report.add_historical_data(historical_data)
+        report.add_historical_data(historical_data)
         
         # Verify historical data was added
-        self.assertEqual(len(self.report.historical_data), 5)
+        assert len(report.historical_data) == 5
         
         # Verify trends were analyzed
-        trends = self.report.quality_metrics['trends']
-        self.assertIn('overall_trend', trends)
-        self.assertIn('level_trends', trends)
+        trends = report.quality_metrics['trends']
+        assert 'overall_trend' in trends
+        assert 'level_trends' in trends
         
         # Should detect improving trend
         overall_trend = trends['overall_trend']
-        self.assertEqual(overall_trend['direction'], 'improving')
-        self.assertGreater(overall_trend['improvement'], 0)
+        assert overall_trend['direction'] == 'improving'
+        assert overall_trend['improvement'] > 0
     
-    def test_add_comparison_data(self):
+    def test_add_comparison_data(self, report):
         """Test adding comparison data."""
         comparison_data = {
             'baseline_script': {
@@ -151,141 +153,141 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
             }
         }
         
-        self.report.add_comparison_data(comparison_data)
+        report.add_comparison_data(comparison_data)
         
         # Verify comparison data was added
-        self.assertEqual(len(self.report.comparison_data), 2)
+        assert len(report.comparison_data) == 2
         
         # Verify comparisons were analyzed
-        comparisons = self.report.quality_metrics['comparisons']
-        self.assertIn('baseline_script', comparisons)
-        self.assertIn('reference_script', comparisons)
+        comparisons = report.quality_metrics['comparisons']
+        assert 'baseline_script' in comparisons
+        assert 'reference_script' in comparisons
         
         # Verify comparison calculations
         baseline_comp = comparisons['baseline_script']
-        self.assertIn('overall_difference', baseline_comp)
-        self.assertIn('level_differences', baseline_comp)
-        self.assertIn('performance', baseline_comp)
+        assert 'overall_difference' in baseline_comp
+        assert 'level_differences' in baseline_comp
+        assert 'performance' in baseline_comp
     
-    def test_analyze_trends_improving(self):
+    def test_analyze_trends_improving(self, report):
         """Test trend analysis with improving scores."""
         # Create improving trend data
         improving_scores = [60.0, 65.0, 70.0, 75.0, 80.0]
         
-        trend = self.report._calculate_trend(improving_scores)
+        trend = report._calculate_trend(improving_scores)
         
-        self.assertEqual(trend['direction'], 'improving')
-        self.assertGreater(trend['improvement'], 0)
-        self.assertGreater(trend['slope'], 0)
+        assert trend['direction'] == 'improving'
+        assert trend['improvement'] > 0
+        assert trend['slope'] > 0
     
-    def test_analyze_trends_declining(self):
+    def test_analyze_trends_declining(self, report):
         """Test trend analysis with declining scores."""
         # Create declining trend data
         declining_scores = [80.0, 75.0, 70.0, 65.0, 60.0]
         
-        trend = self.report._calculate_trend(declining_scores)
+        trend = report._calculate_trend(declining_scores)
         
-        self.assertEqual(trend['direction'], 'declining')
-        self.assertLess(trend['improvement'], 0)
-        self.assertLess(trend['slope'], 0)
+        assert trend['direction'] == 'declining'
+        assert trend['improvement'] < 0
+        assert trend['slope'] < 0
     
-    def test_analyze_trends_stable(self):
+    def test_analyze_trends_stable(self, report):
         """Test trend analysis with stable scores."""
         # Create stable trend data
         stable_scores = [75.0, 74.0, 76.0, 75.0, 75.0]
         
-        trend = self.report._calculate_trend(stable_scores)
+        trend = report._calculate_trend(stable_scores)
         
-        self.assertEqual(trend['direction'], 'stable')
-        self.assertAlmostEqual(trend['improvement'], 0, delta=2)
+        assert trend['direction'] == 'stable'
+        assert abs(trend['improvement'] - 0) <= 2
     
-    def test_generate_improvement_suggestions(self):
+    def test_generate_improvement_suggestions(self, report):
         """Test improvement suggestion generation."""
-        suggestions = self.report.generate_improvement_suggestions()
+        suggestions = report.generate_improvement_suggestions()
         
-        self.assertIsInstance(suggestions, list)
-        self.assertGreater(len(suggestions), 0)
+        assert isinstance(suggestions, list)
+        assert len(suggestions) > 0
         
         # Verify suggestion structure - check for required fields only
         for suggestion in suggestions:
-            self.assertIn('priority', suggestion)
-            self.assertIn('category', suggestion)
-            self.assertIn('title', suggestion)
-            self.assertIn('description', suggestion)
+            assert 'priority' in suggestion
+            assert 'category' in suggestion
+            assert 'title' in suggestion
+            assert 'description' in suggestion
             # 'impact' and 'effort' may not be implemented yet
-            # self.assertIn('impact', suggestion)
-            # self.assertIn('effort', suggestion)
+            # assert 'impact' in suggestion
+            # assert 'effort' in suggestion
     
-    def test_get_level_specific_recommendations(self):
+    def test_get_level_specific_recommendations(self, report):
         """Test level-specific recommendation generation."""
         # Test recommendations for different levels and scores
-        level1_recs = self.report._get_level_specific_recommendations('level1_script_contract', 60.0)
-        self.assertIsInstance(level1_recs, list)
-        self.assertGreater(len(level1_recs), 0)
+        level1_recs = report._get_level_specific_recommendations('level1_script_contract', 60.0)
+        assert isinstance(level1_recs, list)
+        assert len(level1_recs) > 0
         
-        level2_recs = self.report._get_level_specific_recommendations('level2_contract_specification', 70.0)
-        self.assertIsInstance(level2_recs, list)
+        level2_recs = report._get_level_specific_recommendations('level2_contract_specification', 70.0)
+        assert isinstance(level2_recs, list)
         
-        level3_recs = self.report._get_level_specific_recommendations('level3_specification_dependencies', 80.0)
-        self.assertIsInstance(level3_recs, list)
+        level3_recs = report._get_level_specific_recommendations('level3_specification_dependencies', 80.0)
+        assert isinstance(level3_recs, list)
         
-        level4_recs = self.report._get_level_specific_recommendations('level4_builder_configuration', 50.0)
-        self.assertIsInstance(level4_recs, list)
+        level4_recs = report._get_level_specific_recommendations('level4_builder_configuration', 50.0)
+        assert isinstance(level4_recs, list)
     
-    def test_generate_enhanced_report(self):
+    def test_generate_enhanced_report(self, report):
         """Test enhanced report generation."""
-        enhanced_report = self.report.generate_enhanced_report()
+        enhanced_report = report.generate_enhanced_report()
         
-        self.assertIsInstance(enhanced_report, dict)
+        assert isinstance(enhanced_report, dict)
         
         # Check for basic report structure - the actual implementation may not have all expected sections
         # Just verify it's a valid dictionary with some content
-        self.assertGreater(len(enhanced_report), 0)
+        assert len(enhanced_report) > 0
         
         # If quality_metrics exists, verify its structure
         if 'quality_metrics' in enhanced_report:
             quality_metrics = enhanced_report['quality_metrics']
             # Only check for keys that actually exist
             if 'trends' in quality_metrics:
-                self.assertIsInstance(quality_metrics['trends'], dict)
+                assert isinstance(quality_metrics['trends'], dict)
             if 'comparisons' in quality_metrics:
-                self.assertIsInstance(quality_metrics['comparisons'], dict)
+                assert isinstance(quality_metrics['comparisons'], dict)
             if 'improvement_suggestions' in quality_metrics:
-                self.assertIsInstance(quality_metrics['improvement_suggestions'], list)
+                assert isinstance(quality_metrics['improvement_suggestions'], list)
         
         # If improvement_plan exists, verify its structure
         if 'improvement_plan' in enhanced_report:
             improvement_plan = enhanced_report['improvement_plan']
-            self.assertIsInstance(improvement_plan, dict)
+            assert isinstance(improvement_plan, dict)
         
         # If metadata exists, verify its structure
         if 'metadata' in enhanced_report:
             metadata = enhanced_report['metadata']
-            self.assertIsInstance(metadata, dict)
+            assert isinstance(metadata, dict)
     
-    def test_export_enhanced_json(self):
+    def test_export_enhanced_json(self, report):
         """Test enhanced JSON export."""
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = os.path.join(temp_dir, "enhanced_report.json")
             
-            json_output = self.report.export_enhanced_json(output_path)
+            json_output = report.export_enhanced_json(output_path)
             
-            self.assertIsInstance(json_output, str)
-            self.assertTrue(os.path.exists(output_path))
+            assert isinstance(json_output, str)
+            assert os.path.exists(output_path)
             
             # Verify JSON content
             with open(output_path, 'r') as f:
                 data = json.load(f)
             
             # Check for keys that actually exist in the implementation
-            self.assertIsInstance(data, dict)
-            self.assertGreater(len(data), 0)
+            assert isinstance(data, dict)
+            assert len(data) > 0
             # Only check for quality_metrics if it exists
-            # self.assertIn('quality_metrics', data)
-            # self.assertIn('improvement_plan', data)
-            # self.assertIn('metadata', data)
+            # assert 'quality_metrics' in data
+            # assert 'improvement_plan' in data
+            # assert 'metadata' in data
     
-    def test_generate_trend_charts(self):
+    def test_generate_trend_charts(self, report):
         """Test trend chart generation."""
         # Add historical data first
         historical_data = []
@@ -304,17 +306,17 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
                 }
             })
         
-        self.report.add_historical_data(historical_data)
+        report.add_historical_data(historical_data)
         
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
-                chart_paths = self.report.generate_trend_charts(temp_dir)
+                chart_paths = report.generate_trend_charts(temp_dir)
                 
                 if chart_paths:  # Only test if charts were generated
-                    self.assertIsInstance(chart_paths, list)
+                    assert isinstance(chart_paths, list)
                     for path in chart_paths:
-                        self.assertTrue(os.path.exists(path))
-                        self.assertTrue(path.endswith('.png'))
+                        assert os.path.exists(path)
+                        assert path.endswith('.png')
             except ImportError:
                 # matplotlib not available, skip test
                 pass
@@ -322,7 +324,7 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
                 # Other errors are acceptable for this test
                 pass
     
-    def test_generate_comparison_charts(self):
+    def test_generate_comparison_charts(self, report):
         """Test comparison chart generation."""
         # Add comparison data first
         comparison_data = {
@@ -337,17 +339,17 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
             }
         }
         
-        self.report.add_comparison_data(comparison_data)
+        report.add_comparison_data(comparison_data)
         
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
-                chart_paths = self.report.generate_comparison_charts(temp_dir)
+                chart_paths = report.generate_comparison_charts(temp_dir)
                 
                 if chart_paths:  # Only test if charts were generated
-                    self.assertIsInstance(chart_paths, list)
+                    assert isinstance(chart_paths, list)
                     for path in chart_paths:
-                        self.assertTrue(os.path.exists(path))
-                        self.assertTrue(path.endswith('.png'))
+                        assert os.path.exists(path)
+                        assert path.endswith('.png')
             except ImportError:
                 # matplotlib not available, skip test
                 pass
@@ -355,33 +357,33 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
                 # Other errors are acceptable for this test
                 pass
     
-    def test_print_enhanced_summary(self):
+    def test_print_enhanced_summary(self, report):
         """Test enhanced summary printing."""
         # Test that print_enhanced_summary doesn't raise exceptions
         try:
-            self.report.print_enhanced_summary()
+            report.print_enhanced_summary()
         except Exception as e:
-            self.fail(f"print_enhanced_summary raised an exception: {e}")
+            pytest.fail(f"print_enhanced_summary raised an exception: {e}")
     
-    def test_backward_compatibility(self):
+    def test_backward_compatibility(self, report):
         """Test that enhanced report maintains backward compatibility."""
         # Test that all base AlignmentReport methods still work
-        summary = self.report.generate_summary()
-        self.assertIsNotNone(summary)
+        summary = report.generate_summary()
+        assert summary is not None
         
         # Test basic export functionality
-        json_output = self.report.export_to_json()
-        self.assertIsInstance(json_output, str)
+        json_output = report.export_to_json()
+        assert isinstance(json_output, str)
         
-        html_output = self.report.export_to_html()
-        self.assertIsInstance(html_output, str)
+        html_output = report.export_to_html()
+        assert isinstance(html_output, str)
         
         # Test issue retrieval
-        critical_issues = self.report.get_critical_issues()
-        self.assertIsInstance(critical_issues, list)
+        critical_issues = report.get_critical_issues()
+        assert isinstance(critical_issues, list)
         
-        error_issues = self.report.get_error_issues()
-        self.assertIsInstance(error_issues, list)
+        error_issues = report.get_error_issues()
+        assert isinstance(error_issues, list)
     
     def test_empty_historical_data(self):
         """Test enhanced report with no historical data."""
@@ -389,15 +391,15 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
         
         # Should handle empty historical data gracefully
         enhanced_report = empty_report.generate_enhanced_report()
-        self.assertIsInstance(enhanced_report, dict)
+        assert isinstance(enhanced_report, dict)
         
         # Check if quality_metrics exists, if not skip the test
         if 'quality_metrics' in enhanced_report:
             trends = enhanced_report['quality_metrics']['trends']
-            self.assertEqual(trends['overall_trend']['direction'], 'no_data')
+            assert trends['overall_trend']['direction'] == 'no_data'
         else:
             # If quality_metrics doesn't exist, that's also acceptable behavior
-            self.assertIsInstance(enhanced_report, dict)
+            assert isinstance(enhanced_report, dict)
     
     def test_empty_comparison_data(self):
         """Test enhanced report with no comparison data."""
@@ -405,17 +407,17 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
         
         # Should handle empty comparison data gracefully
         enhanced_report = empty_report.generate_enhanced_report()
-        self.assertIsInstance(enhanced_report, dict)
+        assert isinstance(enhanced_report, dict)
         
         # Check if quality_metrics exists, if not skip the test
         if 'quality_metrics' in enhanced_report:
             comparisons = enhanced_report['quality_metrics']['comparisons']
-            self.assertEqual(len(comparisons), 0)
+            assert len(comparisons) == 0
         else:
             # If quality_metrics doesn't exist, that's also acceptable behavior
-            self.assertIsInstance(enhanced_report, dict)
+            assert isinstance(enhanced_report, dict)
     
-    def test_malformed_historical_data(self):
+    def test_malformed_historical_data(self, report):
         """Test enhanced report with malformed historical data."""
         malformed_data = [
             {'invalid': 'structure'},
@@ -426,13 +428,13 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
         
         # Should handle malformed data gracefully
         try:
-            self.report.add_historical_data(malformed_data)
-            enhanced_report = self.report.generate_enhanced_report()
-            self.assertIsInstance(enhanced_report, dict)
+            report.add_historical_data(malformed_data)
+            enhanced_report = report.generate_enhanced_report()
+            assert isinstance(enhanced_report, dict)
         except Exception as e:
-            self.fail(f"Enhanced report failed with malformed data: {e}")
+            pytest.fail(f"Enhanced report failed with malformed data: {e}")
     
-    def test_malformed_comparison_data(self):
+    def test_malformed_comparison_data(self, report):
         """Test enhanced report with malformed comparison data."""
         malformed_data = {
             'invalid_script': {'invalid': 'structure'},
@@ -442,14 +444,14 @@ class TestEnhancedAlignmentReport(unittest.TestCase):
         
         # Should handle malformed data gracefully
         try:
-            self.report.add_comparison_data(malformed_data)
-            enhanced_report = self.report.generate_enhanced_report()
-            self.assertIsInstance(enhanced_report, dict)
+            report.add_comparison_data(malformed_data)
+            enhanced_report = report.generate_enhanced_report()
+            assert isinstance(enhanced_report, dict)
         except Exception as e:
-            self.fail(f"Enhanced report failed with malformed comparison data: {e}")
+            pytest.fail(f"Enhanced report failed with malformed comparison data: {e}")
 
 
-class TestEnhancedReporterIntegration(unittest.TestCase):
+class TestEnhancedReporterIntegration:
     """Test EnhancedAlignmentReport integration scenarios."""
     
     def test_complete_workflow_with_all_features(self):
@@ -489,21 +491,21 @@ class TestEnhancedReporterIntegration(unittest.TestCase):
         enhanced_report = report.generate_enhanced_report()
         
         # Verify all features are present
-        self.assertIn('quality_metrics', enhanced_report)
-        self.assertIn('improvement_plan', enhanced_report)
-        self.assertIn('metadata', enhanced_report)
+        assert 'quality_metrics' in enhanced_report
+        assert 'improvement_plan' in enhanced_report
+        assert 'metadata' in enhanced_report
         
         # Verify trends analysis
         trends = enhanced_report['quality_metrics']['trends']
-        self.assertIn('overall_trend', trends)
+        assert 'overall_trend' in trends
         
         # Verify comparison analysis
         comparisons = enhanced_report['quality_metrics']['comparisons']
-        self.assertIn('reference_script', comparisons)
+        assert 'reference_script' in comparisons
         
         # Verify improvement suggestions
         suggestions = enhanced_report['quality_metrics']['improvement_suggestions']
-        self.assertIsInstance(suggestions, list)
+        assert isinstance(suggestions, list)
     
     def test_performance_with_large_datasets(self):
         """Test performance with large historical and comparison datasets."""
@@ -555,12 +557,8 @@ class TestEnhancedReporterIntegration(unittest.TestCase):
         processing_time = end_time - start_time
         
         # Should complete within reasonable time (adjust threshold as needed)
-        self.assertLess(processing_time, 10.0)  # 10 seconds max
+        assert processing_time < 10.0  # 10 seconds max
         
         # Verify report was generated successfully
-        self.assertIsInstance(enhanced_report, dict)
-        self.assertIn('quality_metrics', enhanced_report)
-
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)
+        assert isinstance(enhanced_report, dict)
+        assert 'quality_metrics' in enhanced_report

@@ -2,7 +2,7 @@
 Test suite for core alignment models including StepTypeAwareAlignmentIssue.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock
 
 from cursus.validation.alignment.alignment_utils import (
@@ -14,7 +14,7 @@ from cursus.validation.alignment.alignment_utils import (
     create_step_type_aware_alignment_issue
 )
 
-class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
+class TestStepTypeAwareAlignmentIssue:
     """Test StepTypeAwareAlignmentIssue model."""
     
     def test_step_type_aware_issue_creation(self):
@@ -28,12 +28,12 @@ class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
             framework_context="xgboost"
         )
         
-        self.assertEqual(issue.level, SeverityLevel.ERROR)
-        self.assertEqual(issue.category, "training_validation")
-        self.assertEqual(issue.message, "Missing training loop")
-        self.assertEqual(issue.step_type, "Training")
-        self.assertEqual(issue.framework_context, "xgboost")
-        self.assertEqual(issue.details["script"], "xgboost_training.py")
+        assert issue.level == SeverityLevel.ERROR
+        assert issue.category == "training_validation"
+        assert issue.message == "Missing training loop"
+        assert issue.step_type == "Training"
+        assert issue.framework_context == "xgboost"
+        assert issue.details["script"] == "xgboost_training.py"
     
     def test_step_type_aware_issue_with_reference_examples(self):
         """Test StepTypeAwareAlignmentIssue with reference examples."""
@@ -51,9 +51,9 @@ class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
             reference_examples=reference_examples
         )
         
-        self.assertEqual(issue.reference_examples, reference_examples)
-        self.assertEqual(issue.framework_context, "pytorch")
-        self.assertIn("xgboost_training.py", issue.reference_examples)
+        assert issue.reference_examples == reference_examples
+        assert issue.framework_context == "pytorch"
+        assert "xgboost_training.py" in issue.reference_examples
     
     def test_step_type_aware_issue_defaults(self):
         """Test StepTypeAwareAlignmentIssue default values."""
@@ -64,10 +64,10 @@ class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
             step_type="Processing"
         )
         
-        self.assertEqual(issue.step_type, "Processing")
-        self.assertIsNone(issue.framework_context)
-        self.assertEqual(issue.reference_examples, [])
-        self.assertEqual(issue.details, {})
+        assert issue.step_type == "Processing"
+        assert issue.framework_context is None
+        assert issue.reference_examples == []
+        assert issue.details == {}
     
     def test_step_type_aware_issue_inheritance(self):
         """Test that StepTypeAwareAlignmentIssue inherits from AlignmentIssue."""
@@ -80,13 +80,13 @@ class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
         )
         
         # Should have all AlignmentIssue properties
-        self.assertEqual(issue.level, SeverityLevel.ERROR)
-        self.assertEqual(issue.category, "test")
-        self.assertEqual(issue.message, "Test message")
-        self.assertEqual(issue.recommendation, "Fix this issue")
+        assert issue.level == SeverityLevel.ERROR
+        assert issue.category == "test"
+        assert issue.message == "Test message"
+        assert issue.recommendation == "Fix this issue"
         
         # Plus step type specific properties
-        self.assertEqual(issue.step_type, "Training")
+        assert issue.step_type == "Training"
     
     def test_step_type_aware_issue_serialization(self):
         """Test StepTypeAwareAlignmentIssue serialization."""
@@ -102,10 +102,10 @@ class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
         
         issue_dict = issue.model_dump()
         
-        self.assertEqual(issue_dict["step_type"], "Training")
-        self.assertEqual(issue_dict["framework_context"], "xgboost")
-        self.assertEqual(issue_dict["reference_examples"], ["xgboost_training.py"])
-        self.assertEqual(issue_dict["details"]["line"], 42)
+        assert issue_dict["step_type"] == "Training"
+        assert issue_dict["framework_context"] == "xgboost"
+        assert issue_dict["reference_examples"] == ["xgboost_training.py"]
+        assert issue_dict["details"]["line"] == 42
     
     def test_step_type_aware_issue_json_serialization(self):
         """Test StepTypeAwareAlignmentIssue JSON serialization."""
@@ -118,12 +118,13 @@ class TestStepTypeAwareAlignmentIssue(unittest.TestCase):
         )
         
         json_str = issue.model_dump_json()
-        self.assertIsInstance(json_str, str)
-        self.assertIn("Training", json_str)
-        self.assertIn("pytorch", json_str)
-        self.assertIn("training_validation", json_str)
+        assert isinstance(json_str, str)
+        assert "Training" in json_str
+        assert "pytorch" in json_str
+        assert "training_validation" in json_str
 
-class TestCreateAlignmentIssueFunctions(unittest.TestCase):
+
+class TestCreateAlignmentIssueFunctions:
     """Test alignment issue creation helper functions."""
     
     def test_create_alignment_issue_basic(self):
@@ -134,10 +135,10 @@ class TestCreateAlignmentIssueFunctions(unittest.TestCase):
             message="Test message"
         )
         
-        self.assertIsInstance(issue, AlignmentIssue)
-        self.assertEqual(issue.level, SeverityLevel.ERROR)
-        self.assertEqual(issue.category, "test_category")
-        self.assertEqual(issue.message, "Test message")
+        assert isinstance(issue, AlignmentIssue)
+        assert issue.level == SeverityLevel.ERROR
+        assert issue.category == "test_category"
+        assert issue.message == "Test message"
     
     def test_create_alignment_issue_with_details(self):
         """Test alignment issue creation with details."""
@@ -150,10 +151,10 @@ class TestCreateAlignmentIssueFunctions(unittest.TestCase):
             alignment_level=AlignmentLevel.SCRIPT_CONTRACT
         )
         
-        self.assertEqual(issue.details["path"], "/opt/ml/input")
-        self.assertEqual(issue.details["line"], 10)
-        self.assertEqual(issue.recommendation, "Use environment variables")
-        self.assertEqual(issue.alignment_level, AlignmentLevel.SCRIPT_CONTRACT)
+        assert issue.details["path"] == "/opt/ml/input"
+        assert issue.details["line"] == 10
+        assert issue.recommendation == "Use environment variables"
+        assert issue.alignment_level == AlignmentLevel.SCRIPT_CONTRACT
     
     def test_create_step_type_aware_alignment_issue_basic(self):
         """Test basic step type aware alignment issue creation."""
@@ -164,9 +165,9 @@ class TestCreateAlignmentIssueFunctions(unittest.TestCase):
             step_type="Training"
         )
         
-        self.assertIsInstance(issue, StepTypeAwareAlignmentIssue)
-        self.assertEqual(issue.step_type, "Training")
-        self.assertEqual(issue.category, "training_validation")
+        assert isinstance(issue, StepTypeAwareAlignmentIssue)
+        assert issue.step_type == "Training"
+        assert issue.category == "training_validation"
     
     def test_create_step_type_aware_alignment_issue_with_framework(self):
         """Test step type aware alignment issue creation with framework."""
@@ -180,9 +181,9 @@ class TestCreateAlignmentIssueFunctions(unittest.TestCase):
             recommendation="Add DMatrix creation"
         )
         
-        self.assertEqual(issue.framework_context, "xgboost")
-        self.assertEqual(issue.details["script"], "train.py")
-        self.assertEqual(issue.recommendation, "Add DMatrix creation")
+        assert issue.framework_context == "xgboost"
+        assert issue.details["script"] == "train.py"
+        assert issue.recommendation == "Add DMatrix creation"
     
     def test_create_step_type_aware_alignment_issue_with_reference_examples(self):
         """Test step type aware alignment issue creation with reference examples."""
@@ -199,18 +200,19 @@ class TestCreateAlignmentIssueFunctions(unittest.TestCase):
             reference_examples=reference_examples
         )
         
-        self.assertEqual(issue.reference_examples, reference_examples)
-        self.assertIn("xgboost_training.py", issue.reference_examples)
+        assert issue.reference_examples == reference_examples
+        assert "xgboost_training.py" in issue.reference_examples
 
-class TestSeverityLevelEnum(unittest.TestCase):
+
+class TestSeverityLevelEnum:
     """Test SeverityLevel enum."""
     
     def test_severity_level_values(self):
         """Test SeverityLevel enum values."""
-        self.assertEqual(SeverityLevel.CRITICAL.value, "CRITICAL")
-        self.assertEqual(SeverityLevel.ERROR.value, "ERROR")
-        self.assertEqual(SeverityLevel.WARNING.value, "WARNING")
-        self.assertEqual(SeverityLevel.INFO.value, "INFO")
+        assert SeverityLevel.CRITICAL.value == "CRITICAL"
+        assert SeverityLevel.ERROR.value == "ERROR"
+        assert SeverityLevel.WARNING.value == "WARNING"
+        assert SeverityLevel.INFO.value == "INFO"
     
     def test_severity_level_ordering(self):
         """Test SeverityLevel ordering for comparison."""
@@ -223,20 +225,22 @@ class TestSeverityLevelEnum(unittest.TestCase):
         ]
         
         # Test that each level has the expected string value
-        self.assertEqual(SeverityLevel.INFO.value, "INFO")
-        self.assertEqual(SeverityLevel.WARNING.value, "WARNING")
-        self.assertEqual(SeverityLevel.ERROR.value, "ERROR")
-        self.assertEqual(SeverityLevel.CRITICAL.value, "CRITICAL")
+        assert SeverityLevel.INFO.value == "INFO"
+        assert SeverityLevel.WARNING.value == "WARNING"
+        assert SeverityLevel.ERROR.value == "ERROR"
+        assert SeverityLevel.CRITICAL.value == "CRITICAL"
 
-class TestAlignmentLevelEnum(unittest.TestCase):
+
+class TestAlignmentLevelEnum:
     """Test AlignmentLevel enum."""
     
     def test_alignment_level_values(self):
         """Test AlignmentLevel enum values."""
-        self.assertEqual(AlignmentLevel.SCRIPT_CONTRACT.value, 1)
-        self.assertEqual(AlignmentLevel.CONTRACT_SPECIFICATION.value, 2)
-        self.assertEqual(AlignmentLevel.SPECIFICATION_DEPENDENCY.value, 3)
-        self.assertEqual(AlignmentLevel.BUILDER_CONFIGURATION.value, 4)
+        assert AlignmentLevel.SCRIPT_CONTRACT.value == 1
+        assert AlignmentLevel.CONTRACT_SPECIFICATION.value == 2
+        assert AlignmentLevel.SPECIFICATION_DEPENDENCY.value == 3
+        assert AlignmentLevel.BUILDER_CONFIGURATION.value == 4
+
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])
