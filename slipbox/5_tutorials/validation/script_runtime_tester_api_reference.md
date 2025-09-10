@@ -361,28 +361,46 @@ print(f"Test workspace root: {pipeline_spec.test_workspace_root}")
 
 ### PipelineTestingSpecBuilder
 
-Builder for creating and managing testing specifications.
+Enhanced builder for creating and managing testing specifications with **contract-aware capabilities** and **intelligent node-to-script resolution**.
 
 ```python
 from cursus.validation.runtime import PipelineTestingSpecBuilder
 
-# Initialize builder
+# Initialize builder with enhanced capabilities
 builder = PipelineTestingSpecBuilder("./test_workspace")
 
-# Build pipeline spec from DAG
+# Build pipeline spec from DAG with intelligent node-to-script resolution
 dag = PipelineDAG()
 dag.add_node("preprocessing")
 dag.add_node("training")
 dag.add_edge("preprocessing", "training")
 
 try:
-    # This will load saved specs or create defaults
+    # Enhanced build process with:
+    # 1. Registry integration for canonical name extraction
+    # 2. PascalCase to snake_case conversion with special cases
+    # 3. Workspace-first file discovery with fuzzy matching
+    # 4. Contract-aware specification population
     pipeline_spec = builder.build_from_dag(dag, validate=False)
-    print("✅ Built pipeline specification from DAG")
+    print("✅ Built pipeline specification from DAG with node-to-script resolution")
     print(f"Workspace root: {pipeline_spec.test_workspace_root}")
     print(f"Script specs: {list(pipeline_spec.script_specs.keys())}")
+    
+    # Show resolved script mappings
+    for node_name, spec in pipeline_spec.script_specs.items():
+        print(f"  📋 {node_name} → {spec.script_name} (step: {spec.step_name})")
+        
 except ValueError as e:
     print(f"❌ Validation failed: {e}")
+
+# Create contract-aware specification (NEW)
+contract_aware_spec = builder.create_contract_aware_spec(
+    script_name="tabular_preprocessing",
+    step_name="preprocessing_step"
+)
+print(f"✅ Created contract-aware spec: {contract_aware_spec.script_name}")
+print(f"Input paths from contract: {contract_aware_spec.input_paths}")
+print(f"Environment variables from contract: {contract_aware_spec.environ_vars}")
 
 # Update a specific script spec
 updated_spec = builder.update_script_spec(
@@ -406,17 +424,131 @@ if spec:
     print(f"Found spec: {spec.script_name}")
 else:
     print("Spec not found")
+
+# Resolve script execution spec from DAG node (NEW)
+resolved_spec = builder.resolve_script_execution_spec_from_node("XGBoostTraining")
+print(f"✅ Resolved DAG node 'XGBoostTraining' to script: {resolved_spec.script_name}")
 ```
 
-**PipelineTestingSpecBuilder Methods:**
-- `build_from_dag(dag, validate=True)`: Build PipelineTestingSpec from DAG
+**Enhanced PipelineTestingSpecBuilder Methods:**
+- `build_from_dag(dag, validate=True)`: Build PipelineTestingSpec from DAG with intelligent resolution
+- `create_contract_aware_spec(script_name, step_name)`: Create specification using script contracts
+- `resolve_script_execution_spec_from_node(node_name)`: Resolve DAG node to script specification
 - `save_script_spec(spec)`: Save ScriptExecutionSpec to local file
 - `update_script_spec(node_name, **updates)`: Update specific fields in a spec
 - `list_saved_specs()`: List all saved specification names
 - `get_script_spec_by_name(script_name)`: Get spec by script name
 - `get_script_main_params(spec)`: Get parameters for script main() function
 
+**New Contract-Aware Features:**
+- **Automatic Contract Discovery**: Finds and uses real script contracts
+- **Path Adaptation**: Converts SageMaker container paths to local testing paths
+- **Registry Integration**: Uses `cursus.registry.step_names.get_step_name_from_spec_type`
+- **Special Case Handling**: Proper conversion of technical terms (XGBoost → xgboost, PyTorch → pytorch)
+- **Fuzzy Matching**: Fallback matching when exact names don't match
+
+### ContractDiscoveryManager
+
+**NEW**: Enhanced contract discovery and loading system for intelligent specification building.
+
+```python
+from cursus.validation.runtime import ContractDiscoveryManager
+
+# Initialize contract discovery manager
+contract_manager = ContractDiscoveryManager()
+
+# Discover contract for a specific script
+discovery_result = contract_manager.discover_contract("tabular_preprocessing")
+
+if discovery_result.contract_found:
+    print(f"✅ Contract discovered for tabular_preprocessing:")
+    print(f"  Contract class: {discovery_result.contract_class.__name__}")
+    print(f"  Discovery method: {discovery_result.discovery_method}")
+    print(f"  Entry point validated: {discovery_result.entry_point_valid}")
+    
+    # Access contract instance
+    contract_instance = discovery_result.contract_instance
+    print(f"  Input paths: {contract_instance.input_paths}")
+    print(f"  Output paths: {contract_instance.output_paths}")
+    print(f"  Environment variables: {contract_instance.environ_vars}")
+else:
+    print("ℹ️ No contract found, using fallback defaults")
+    print(f"  Attempted methods: {discovery_result.attempted_methods}")
+    print(f"  Error details: {discovery_result.error_details}")
+
+# Get contract-aware paths with local adaptation
+if discovery_result.contract_found:
+    adapted_input_paths = contract_manager._adapt_paths_for_local_testing(
+        discovery_result.contract_instance.input_paths,
+        "tabular_preprocessing"
+    )
+    print(f"  Adapted input paths: {adapted_input_paths}")
+```
+
+**ContractDiscoveryManager Methods:**
+- `discover_contract(script_name)`: Discover contract using multi-strategy approach
+- `_discover_contract_direct(script_name)`: Direct import-based discovery
+- `_discover_contract_pattern(script_name)`: Pattern-based matching discovery
+- `_discover_contract_fuzzy(script_name)`: Fuzzy search fallback discovery
+- `_validate_entry_point(contract_class, script_name)`: Validate contract-script mapping
+- `_adapt_paths_for_local_testing(paths, script_name)`: Convert SageMaker paths to local paths
+
+**ContractDiscoveryResult Fields:**
+- `contract_found`: Boolean indicating if contract was discovered
+- `contract_class`: The discovered contract class (if found)
+- `contract_instance`: Instantiated contract object (if found)
+- `discovery_method`: Method used for successful discovery
+- `entry_point_valid`: Whether entry_point validation passed
+- `attempted_methods`: List of discovery methods attempted
+- `error_details`: Dictionary of errors encountered during discovery
+
+**Discovery Strategy:**
+1. **Direct Import**: Try to import contract directly from `cursus.steps.contracts.{script_name}`
+2. **Pattern Matching**: Search for contracts with matching patterns in the contracts module
+3. **Fuzzy Search**: Use string similarity to find closest matching contract names
+4. **Entry Point Validation**: Verify contract's entry_point field matches the script name
+
+**Path Adaptation Features:**
+- **SageMaker to Local**: Converts `/opt/ml/input/data/` to `{test_data_dir}/data/{script_name}/`
+- **Output Path Mapping**: Maps `/opt/ml/output/` to appropriate local output directories
+- **Intelligent Defaults**: Provides sensible local paths when contracts use generic paths
+
 ## Data Models
+
+### ContractDiscoveryResult
+
+**NEW**: Result of contract discovery operation with comprehensive details.
+
+```python
+from cursus.validation.runtime import ContractDiscoveryResult
+
+# Example usage (typically returned by ContractDiscoveryManager)
+discovery_result = contract_manager.discover_contract("tabular_preprocessing")
+
+# Access discovery results
+print(f"Contract found: {discovery_result.contract_found}")
+if discovery_result.contract_found:
+    print(f"Contract class: {discovery_result.contract_class}")
+    print(f"Discovery method: {discovery_result.discovery_method}")
+    print(f"Entry point valid: {discovery_result.entry_point_valid}")
+    
+    # Use contract instance
+    contract = discovery_result.contract_instance
+    print(f"Input paths: {contract.input_paths}")
+    print(f"Output paths: {contract.output_paths}")
+else:
+    print(f"Attempted methods: {discovery_result.attempted_methods}")
+    print(f"Error details: {discovery_result.error_details}")
+```
+
+**ContractDiscoveryResult Fields:**
+- `contract_found`: Boolean indicating successful discovery
+- `contract_class`: The discovered contract class (Optional)
+- `contract_instance`: Instantiated contract object (Optional)
+- `discovery_method`: String indicating successful discovery method
+- `entry_point_valid`: Boolean indicating entry_point validation result
+- `attempted_methods`: List of discovery methods that were attempted
+- `error_details`: Dictionary mapping method names to error messages
 
 ### ScriptTestResult
 
@@ -588,6 +720,87 @@ if tester.enable_logical_matching:
     print(f"Logical matches found: {len(enhanced_result.path_matches)}")
     print(f"Matching confidence: {enhanced_result.average_confidence:.3f}")
 ```
+
+### Topological Pipeline Execution
+
+**test_pipeline_flow_with_topological_order()**
+
+**NEW**: Enhanced pipeline testing with topological execution ordering that mimics actual pipeline execution flow.
+
+**Signature:**
+```python
+def test_pipeline_flow_with_topological_order(
+    self,
+    pipeline_spec: PipelineTestingSpec
+) -> Dict[str, Any]
+```
+
+**Parameters:**
+- `pipeline_spec`: PipelineTestingSpec defining complete pipeline testing configuration
+
+**Returns:** Dictionary with comprehensive pipeline test results including execution order
+
+**Example:**
+```python
+from cursus.validation.runtime import PipelineTestingSpec
+from cursus.api.dag.base_dag import PipelineDAG
+
+# Create DAG with dependencies
+dag = PipelineDAG()
+dag.add_node("data_loading")
+dag.add_node("preprocessing") 
+dag.add_node("feature_engineering")
+dag.add_node("training")
+dag.add_node("evaluation")
+
+# Add dependencies
+dag.add_edge("data_loading", "preprocessing")
+dag.add_edge("preprocessing", "feature_engineering")
+dag.add_edge("feature_engineering", "training")
+dag.add_edge("training", "evaluation")
+
+# Create pipeline specification
+pipeline_spec = PipelineTestingSpec(
+    dag=dag,
+    script_specs=script_specs,  # Defined elsewhere
+    test_workspace_root="./test_workspace"
+)
+
+# Test with topological ordering
+results = tester.test_pipeline_flow_with_topological_order(pipeline_spec)
+
+if results["pipeline_success"]:
+    print("✅ Topological pipeline test passed!")
+    print(f"Execution order: {results['execution_order']}")
+    print(f"Total execution time: {results['total_execution_time']:.3f}s")
+else:
+    print("❌ Topological pipeline test failed!")
+    print(f"Failed at step: {results.get('failed_step', 'Unknown')}")
+
+# Access detailed execution results
+for step_name in results['execution_order']:
+    step_result = results['script_results'][step_name]
+    status = "✅" if step_result.success else "❌"
+    print(f"{status} {step_name}: {step_result.execution_time:.3f}s")
+
+# Check data flow validation
+for edge_key, flow_result in results['data_flow_results'].items():
+    status = "✅" if flow_result.compatible else "❌"
+    print(f"{status} Data flow {edge_key}: {'PASS' if flow_result.compatible else 'FAIL'}")
+```
+
+**Enhanced Features:**
+- **Dependency-Aware Execution**: Scripts execute in proper topological order
+- **Early Failure Detection**: Pipeline stops when a dependency fails
+- **Data Flow Validation**: Tests actual data transfer between connected scripts
+- **Comprehensive Timing**: Tracks execution time for each step and overall pipeline
+- **Edge Coverage**: Ensures all DAG edges are tested for data compatibility
+
+**Topological Execution Benefits:**
+- **Realistic Testing**: Mimics actual pipeline execution flow
+- **Efficient Resource Usage**: Stops execution early when dependencies fail
+- **Clear Error Reporting**: Shows exactly where pipeline execution failed
+- **Performance Insights**: Provides timing data for pipeline optimization
 
 ## Utility Methods
 

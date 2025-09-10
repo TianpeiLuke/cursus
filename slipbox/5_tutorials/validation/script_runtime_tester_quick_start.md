@@ -86,13 +86,29 @@ tester = RuntimeTester("./test_workspace")
 
 ## Step 2: Create Script Execution Specifications (3 minutes)
 
-The modern approach uses ScriptExecutionSpec to define how scripts should be executed:
+The modern approach uses ScriptExecutionSpec to define how scripts should be executed. The enhanced system now supports **contract-aware specification building** that automatically uses real script contracts instead of generic defaults:
 
 ```python
 from cursus.validation.runtime import ScriptExecutionSpec, PipelineTestingSpecBuilder
 
-# Create a script execution specification based on actual tabular_preprocessing contract
-script_spec = ScriptExecutionSpec(
+# Create builder with contract-aware capabilities
+builder = PipelineTestingSpecBuilder("./test_workspace")
+
+# Option 1: Contract-aware specification (RECOMMENDED)
+# This automatically discovers and uses the actual script contract
+script_spec = builder.create_contract_aware_spec(
+    script_name="tabular_preprocessing",
+    step_name="preprocessing_step"
+)
+
+print("📋 Created contract-aware script execution specification:")
+print(f"Script: {script_spec.script_name}")
+print(f"Input paths: {script_spec.input_paths}")
+print(f"Output paths: {script_spec.output_paths}")
+print(f"Environment variables: {script_spec.environ_vars}")
+
+# Option 2: Manual specification (for custom testing)
+manual_spec = ScriptExecutionSpec(
     script_name="tabular_preprocessing",
     step_name="preprocessing_step",
     input_paths={"DATA": "./test_data/input/data"},
@@ -107,23 +123,17 @@ script_spec = ScriptExecutionSpec(
     job_args={"job_type": "training"}
 )
 
-print("📋 Created script execution specification:")
-print(f"Script: {script_spec.script_name}")
-print(f"Input paths: {script_spec.input_paths}")
-print(f"Output paths: {script_spec.output_paths}")
-
-# Create builder for parameter extraction
-builder = PipelineTestingSpecBuilder("./test_workspace")
-
 # Get main function parameters
 main_params = builder.get_script_main_params(script_spec)
 print(f"Main parameters ready: {list(main_params.keys())}")
 ```
 
 **What this creates:**
-- Precise control over script execution parameters
-- Reusable specifications that can be saved/loaded
-- Proper parameter formatting for script main() functions
+- **Contract-aware specifications**: Automatically uses real script contracts for accurate testing
+- **Intelligent path adaptation**: Converts SageMaker container paths to local testing paths
+- **Precise control**: Override contract defaults when needed for specific testing scenarios
+- **Reusable specifications**: Can be saved/loaded for consistent testing
+- **Proper parameter formatting**: Ready for script main() functions
 
 ## Step 3: Test Your First Script (3 minutes)
 
@@ -353,23 +363,31 @@ print(f"Data flow tests: {successful_flows}/{total_flows} passed")
 print(f"Total errors: {len(pipeline_results['errors'])}")
 ```
 
-## Step 7: Using the Spec Builder for DAG Integration (3 minutes)
+## Step 7: Enhanced DAG Integration with Node-to-Script Resolution (3 minutes)
 
-The PipelineTestingSpecBuilder can help create specifications from DAGs:
+The enhanced PipelineTestingSpecBuilder now includes intelligent **node-to-script resolution** that automatically maps DAG node names to actual script files:
 
 ```python
-# Initialize builder
+# Initialize builder with enhanced capabilities
 builder = PipelineTestingSpecBuilder("./test_workspace")
 
-# Build pipeline spec from DAG with validation
+# Build pipeline spec from DAG with intelligent node-to-script resolution
 try:
-    # This will load saved specs or create defaults
+    # This automatically resolves DAG node names to script files using:
+    # 1. Registry integration (cursus.registry.step_names.get_step_name_from_spec_type)
+    # 2. PascalCase to snake_case conversion with special cases (XGBoost → xgboost)
+    # 3. Workspace-first file discovery with fuzzy matching fallback
+    # 4. Contract-aware specification population
     built_pipeline_spec = builder.build_from_dag(dag, validate=False)
-    print("✅ Built pipeline specification from DAG")
+    print("✅ Built pipeline specification from DAG with node-to-script resolution")
     print(f"Workspace root: {built_pipeline_spec.test_workspace_root}")
     print(f"Script specs: {list(built_pipeline_spec.script_specs.keys())}")
     
-    # Update a specific script spec
+    # Show resolved script mappings
+    for node_name, spec in built_pipeline_spec.script_specs.items():
+        print(f"  📋 {node_name} → {spec.script_name} (step: {spec.step_name})")
+    
+    # Update a specific script spec with contract-aware enhancements
     updated_spec = builder.update_script_spec(
         "preprocessing",
         input_paths={"data_input": "./custom_data/input.csv"},
@@ -381,10 +399,32 @@ try:
     saved_specs = builder.list_saved_specs()
     print(f"📂 Saved specifications: {saved_specs}")
     
+    # Demonstrate contract discovery for a specific script
+    from cursus.validation.runtime import ContractDiscoveryManager
+    
+    contract_manager = ContractDiscoveryManager()
+    discovery_result = contract_manager.discover_contract("tabular_preprocessing")
+    
+    if discovery_result.contract_found:
+        print(f"🔍 Contract discovered for tabular_preprocessing:")
+        print(f"  Contract class: {discovery_result.contract_class.__name__}")
+        print(f"  Discovery method: {discovery_result.discovery_method}")
+        print(f"  Entry point validated: {discovery_result.entry_point_valid}")
+    else:
+        print("ℹ️ No contract found, using fallback defaults")
+    
 except ValueError as e:
     print(f"❌ Validation failed: {e}")
     print("💡 Use builder.update_script_spec() to fix missing specifications")
 ```
+
+**Enhanced Features:**
+- **Intelligent Node Resolution**: Automatically maps DAG nodes to script files
+- **Registry Integration**: Uses existing step name registry for canonical names
+- **Special Case Handling**: Proper conversion of technical terms (XGBoost, PyTorch, etc.)
+- **Contract Discovery**: Automatically finds and uses script contracts
+- **Fuzzy Matching**: Fallback matching when exact names don't match
+- **Path Adaptation**: Converts SageMaker paths to local testing paths
 
 ## Advanced Features: Logical Name Matching (Optional)
 
