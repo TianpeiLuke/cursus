@@ -1,19 +1,20 @@
 """
-Unit tests for logical name validation.
+Pytest tests for logical name validation.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
-class TestLogicalNameValidation(unittest.TestCase):
+class TestLogicalNameValidation:
     """Test logical name validation."""
     
-    def setUp(self):
+    @pytest.fixture
+    def validator(self):
         """Set up test fixtures."""
-        self.validator = NamingStandardValidator()
+        return NamingStandardValidator()
     
-    def test_valid_logical_names(self):
+    def test_valid_logical_names(self, validator):
         """Test valid snake_case logical names."""
         valid_names = [
             "input_data",
@@ -26,11 +27,10 @@ class TestLogicalNameValidation(unittest.TestCase):
         ]
         
         for name in valid_names:
-            with self.subTest(name=name):
-                violations = self.validator._validate_logical_name(name, "Test")
-                self.assertEqual(len(violations), 0, f"Valid logical name '{name}' should not have violations")
+            violations = validator._validate_logical_name(name, "Test")
+            assert len(violations) == 0, f"Valid logical name '{name}' should not have violations"
     
-    def test_invalid_logical_names(self):
+    def test_invalid_logical_names(self, validator):
         """Test invalid logical names."""
         invalid_names = [
             "PascalCase",
@@ -43,11 +43,10 @@ class TestLogicalNameValidation(unittest.TestCase):
         ]
         
         for name in invalid_names:
-            with self.subTest(name=name):
-                violations = self.validator._validate_logical_name(name, "Test")
-                self.assertGreater(len(violations), 0, f"Invalid logical name '{name}' should have violations")
+            violations = validator._validate_logical_name(name, "Test")
+            assert len(violations) > 0, f"Invalid logical name '{name}' should have violations"
     
-    def test_boundary_underscore_issues(self):
+    def test_boundary_underscore_issues(self, validator):
         """Test logical names with boundary underscore issues."""
         boundary_names = [
             "_leading_underscore",
@@ -56,12 +55,11 @@ class TestLogicalNameValidation(unittest.TestCase):
         ]
         
         for name in boundary_names:
-            with self.subTest(name=name):
-                violations = self.validator._validate_logical_name(name, "Test")
-                violation_types = [v.violation_type for v in violations]
-                self.assertIn("underscore_boundary", violation_types)
+            violations = validator._validate_logical_name(name, "Test")
+            violation_types = [v.violation_type for v in violations]
+            assert "underscore_boundary" in violation_types
     
-    def test_double_underscore_issues(self):
+    def test_double_underscore_issues(self, validator):
         """Test logical names with double underscores."""
         double_underscore_names = [
             "double__underscore",
@@ -70,22 +68,18 @@ class TestLogicalNameValidation(unittest.TestCase):
         ]
         
         for name in double_underscore_names:
-            with self.subTest(name=name):
-                violations = self.validator._validate_logical_name(name, "Test")
-                violation_types = [v.violation_type for v in violations]
-                self.assertIn("double_underscore", violation_types)
+            violations = validator._validate_logical_name(name, "Test")
+            violation_types = [v.violation_type for v in violations]
+            assert "double_underscore" in violation_types
     
-    def test_empty_logical_name(self):
+    def test_empty_logical_name(self, validator):
         """Test empty logical name validation."""
-        violations = self.validator._validate_logical_name("", "Test")
-        self.assertEqual(len(violations), 1)
-        self.assertEqual(violations[0].violation_type, "snake_case")
+        violations = validator._validate_logical_name("", "Test")
+        assert len(violations) == 1
+        assert violations[0].violation_type == "snake_case"
     
-    def test_none_logical_name(self):
+    def test_none_logical_name(self, validator):
         """Test None logical name validation."""
         # The current implementation doesn't handle None properly, so this will raise TypeError
-        with self.assertRaises(TypeError):
-            self.validator._validate_logical_name(None, "Test")
-
-if __name__ == '__main__':
-    unittest.main()
+        with pytest.raises(TypeError):
+            validator._validate_logical_name(None, "Test")

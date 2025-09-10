@@ -1,29 +1,27 @@
 """
-Unit tests for basic NamingStandardValidator functionality.
+Pytest tests for basic NamingStandardValidator functionality.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock
 
 from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
-class TestNamingStandardValidator(unittest.TestCase):
+class TestNamingStandardValidator:
     """Test the NamingStandardValidator class."""
     
-    def setUp(self):
+    @pytest.fixture
+    def validator(self):
         """Set up test fixtures."""
-        self.validator = NamingStandardValidator()
+        return NamingStandardValidator()
     
-    def test_validator_initialization(self):
+    def test_validator_initialization(self, validator):
         """Test validator initialization."""
-        self.assertIsInstance(self.validator, NamingStandardValidator)
-        self.assertEqual(self.validator.violations, [])
+        assert isinstance(validator, NamingStandardValidator)
+        assert validator.violations == []
     
-    def test_clear_violations(self):
+    def test_clear_violations(self, validator):
         """Test clearing violations."""
-        self.validator.violations = [Mock()]
-        self.validator.clear_violations()
-        self.assertEqual(self.validator.violations, [])
-
-if __name__ == '__main__':
-    unittest.main()
+        validator.violations = [Mock()]
+        validator.clear_violations()
+        assert validator.violations == []

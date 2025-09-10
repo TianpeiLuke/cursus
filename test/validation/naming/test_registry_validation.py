@@ -1,21 +1,22 @@
 """
-Unit tests for registry validation functionality.
+Pytest tests for registry validation functionality.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch
 
 from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
-class TestRegistryValidation(unittest.TestCase):
+class TestRegistryValidation:
     """Test registry validation functionality."""
     
-    def setUp(self):
+    @pytest.fixture
+    def validator(self):
         """Set up test fixtures."""
-        self.validator = NamingStandardValidator()
+        return NamingStandardValidator()
     
     @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
-    def test_validate_all_registry_entries_valid(self, mock_step_names):
+    def test_validate_all_registry_entries_valid(self, mock_step_names, validator):
         """Test validation of valid registry entries."""
         # Mock a valid registry - spec_type should match step name
         mock_step_names.items.return_value = [
@@ -29,11 +30,11 @@ class TestRegistryValidation(unittest.TestCase):
             })
         ]
         
-        violations = self.validator.validate_all_registry_entries()
-        self.assertEqual(len(violations), 0)
+        violations = validator.validate_all_registry_entries()
+        assert len(violations) == 0
     
     @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
-    def test_validate_all_registry_entries_invalid_step_name(self, mock_step_names):
+    def test_validate_all_registry_entries_invalid_step_name(self, mock_step_names, validator):
         """Test validation with invalid step names in registry."""
         # Mock registry with invalid step name
         mock_step_names.items.return_value = [
@@ -43,13 +44,13 @@ class TestRegistryValidation(unittest.TestCase):
             })
         ]
         
-        violations = self.validator.validate_all_registry_entries()
-        self.assertGreater(len(violations), 0)
+        violations = validator.validate_all_registry_entries()
+        assert len(violations) > 0
         violation_types = [v.violation_type for v in violations]
-        self.assertIn("pascal_case", violation_types)
+        assert "pascal_case" in violation_types
     
     @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
-    def test_validate_all_registry_entries_invalid_sagemaker_type(self, mock_step_names):
+    def test_validate_all_registry_entries_invalid_sagemaker_type(self, mock_step_names, validator):
         """Test validation with invalid SageMaker step type."""
         # Mock registry with invalid SageMaker step type
         mock_step_names.items.return_value = [
@@ -59,13 +60,13 @@ class TestRegistryValidation(unittest.TestCase):
             })
         ]
         
-        violations = self.validator.validate_all_registry_entries()
-        self.assertGreater(len(violations), 0)
+        violations = validator.validate_all_registry_entries()
+        assert len(violations) > 0
         violation_types = [v.violation_type for v in violations]
-        self.assertIn("invalid_sagemaker_type", violation_types)
+        assert "invalid_sagemaker_type" in violation_types
     
     @patch('cursus.validation.naming.naming_standard_validator.STEP_NAMES')
-    def test_validate_all_registry_entries_spec_type_mismatch(self, mock_step_names):
+    def test_validate_all_registry_entries_spec_type_mismatch(self, mock_step_names, validator):
         """Test validation with spec type mismatch."""
         # Mock registry with spec type that doesn't match step name
         mock_step_names.items.return_value = [
@@ -75,33 +76,33 @@ class TestRegistryValidation(unittest.TestCase):
             })
         ]
         
-        violations = self.validator.validate_all_registry_entries()
-        self.assertGreater(len(violations), 0)
+        violations = validator.validate_all_registry_entries()
+        assert len(violations) > 0
         violation_types = [v.violation_type for v in violations]
-        self.assertIn("spec_type_mismatch", violation_types)
+        assert "spec_type_mismatch" in violation_types
     
-    def test_validate_registry_entry_valid(self):
+    def test_validate_registry_entry_valid(self, validator):
         """Test validation of a single valid registry entry."""
-        violations = self.validator.validate_registry_entry(
+        violations = validator.validate_registry_entry(
             "XGBoostTraining",
             {
                 "sagemaker_step_type": "Training",
                 "spec_type": "XGBoostTraining"  # Should match step name
             }
         )
-        self.assertEqual(len(violations), 0)
+        assert len(violations) == 0
     
-    def test_validate_registry_entry_missing_fields(self):
+    def test_validate_registry_entry_missing_fields(self, validator):
         """Test validation of registry entry with missing fields."""
-        violations = self.validator.validate_registry_entry(
+        violations = validator.validate_registry_entry(
             "XGBoostTraining",
             {}  # Missing required fields
         )
         # Missing fields don't generate violations in current implementation
         # The method only validates what's present
-        self.assertEqual(len(violations), 0)
+        assert len(violations) == 0
     
-    def test_validate_sagemaker_step_type_valid(self):
+    def test_validate_sagemaker_step_type_valid(self, validator):
         """Test validation of valid SageMaker step types."""
         valid_types = [
             "Processing", 
@@ -116,11 +117,10 @@ class TestRegistryValidation(unittest.TestCase):
         ]
         
         for step_type in valid_types:
-            with self.subTest(step_type=step_type):
-                violations = self.validator._validate_sagemaker_step_type(step_type, "Test")
-                self.assertEqual(len(violations), 0, f"Valid SageMaker step type '{step_type}' should not have violations")
+            violations = validator._validate_sagemaker_step_type(step_type, "Test")
+            assert len(violations) == 0, f"Valid SageMaker step type '{step_type}' should not have violations"
     
-    def test_validate_sagemaker_step_type_invalid(self):
+    def test_validate_sagemaker_step_type_invalid(self, validator):
         """Test validation of invalid SageMaker step types."""
         invalid_types = [
             "InvalidType",
@@ -130,9 +130,5 @@ class TestRegistryValidation(unittest.TestCase):
         ]
         
         for step_type in invalid_types:
-            with self.subTest(step_type=step_type):
-                violations = self.validator._validate_sagemaker_step_type(step_type, "Test")
-                self.assertGreater(len(violations), 0, f"Invalid SageMaker step type '{step_type}' should have violations")
-
-if __name__ == '__main__':
-    unittest.main()
+            violations = validator._validate_sagemaker_step_type(step_type, "Test")
+            assert len(violations) > 0, f"Invalid SageMaker step type '{step_type}' should have violations"
