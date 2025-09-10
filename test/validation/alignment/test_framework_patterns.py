@@ -10,7 +10,7 @@ Tests framework-specific pattern detection functionality including:
 - Framework detection from script content and imports
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch
 from typing import Dict, Any, List
 
@@ -27,7 +27,7 @@ from cursus.validation.alignment.framework_patterns import (
 )
 
 
-class TestDetectTrainingPatterns(unittest.TestCase):
+class TestDetectTrainingPatterns:
     """Test training pattern detection functionality."""
     
     def test_detect_training_patterns_empty_analysis(self):
@@ -116,7 +116,7 @@ class TestDetectTrainingPatterns(unittest.TestCase):
             assert result[pattern_key] is True
 
 
-class TestDetectXGBoostPatterns(unittest.TestCase):
+class TestDetectXGBoostPatterns:
     """Test XGBoost pattern detection functionality."""
     
     def test_detect_xgboost_patterns_empty_analysis(self):
@@ -201,7 +201,7 @@ class TestDetectXGBoostPatterns(unittest.TestCase):
             assert result[pattern_key] is True
 
 
-class TestDetectPyTorchPatterns(unittest.TestCase):
+class TestDetectPyTorchPatterns:
     """Test PyTorch pattern detection functionality."""
     
     def test_detect_pytorch_patterns_empty_analysis(self):
@@ -280,7 +280,7 @@ class TestDetectPyTorchPatterns(unittest.TestCase):
         assert result['has_training_loop'] is True
 
 
-class TestDetectSklearnPatterns(unittest.TestCase):
+class TestDetectSklearnPatterns:
     """Test Scikit-learn pattern detection functionality."""
     
     def test_detect_sklearn_patterns_empty_analysis(self):
@@ -348,7 +348,7 @@ class TestDetectSklearnPatterns(unittest.TestCase):
         assert result['has_pipeline'] is True
 
 
-class TestDetectPandasPatterns(unittest.TestCase):
+class TestDetectPandasPatterns:
     """Test Pandas pattern detection functionality."""
     
     def test_detect_pandas_patterns_empty_analysis(self):
@@ -416,7 +416,7 @@ class TestDetectPandasPatterns(unittest.TestCase):
         assert result['has_data_transformation'] is True
 
 
-class TestGetFrameworkPatterns(unittest.TestCase):
+class TestGetFrameworkPatterns:
     """Test framework pattern retrieval functionality."""
     
     def test_get_framework_patterns_xgboost(self):
@@ -493,7 +493,7 @@ class TestGetFrameworkPatterns(unittest.TestCase):
         assert result == {}
 
 
-class TestGetAllFrameworkPatterns(unittest.TestCase):
+class TestGetAllFrameworkPatterns:
     """Test comprehensive framework pattern detection."""
     
     def test_get_all_framework_patterns_empty_analysis(self):
@@ -533,7 +533,7 @@ class TestGetAllFrameworkPatterns(unittest.TestCase):
         assert result['training']['has_training_loop'] is True
 
 
-class TestDetectFrameworkFromScriptContent(unittest.TestCase):
+class TestDetectFrameworkFromScriptContent:
     """Test framework detection from script content."""
     
     def test_detect_framework_from_script_content_empty(self):
@@ -614,7 +614,7 @@ class TestDetectFrameworkFromScriptContent(unittest.TestCase):
         assert result == 'pandas'
 
 
-class TestDetectFrameworkFromImports(unittest.TestCase):
+class TestDetectFrameworkFromImports:
     """Test framework detection from import statements."""
     
     def test_detect_framework_from_imports_empty(self):
@@ -674,7 +674,7 @@ class TestDetectFrameworkFromImports(unittest.TestCase):
         assert result is None
 
 
-class TestEdgeCases(unittest.TestCase):
+class TestEdgeCases:
     """Test edge cases and error conditions."""
     
     def test_pattern_detection_with_none_values(self):
@@ -737,7 +737,7 @@ class TestEdgeCases(unittest.TestCase):
         assert result['training']['has_model_saving'] is True
 
 
-class TestFrameworkPatterns(unittest.TestCase):
+class TestFrameworkPatterns:
     """Main test class for framework patterns - used by other test modules."""
     
     def test_framework_patterns_integration(self):
@@ -749,11 +749,11 @@ class TestFrameworkPatterns(unittest.TestCase):
         }
         
         all_patterns = get_all_framework_patterns(script_analysis)
-        self.assertIn('xgboost', all_patterns)
-        self.assertIn('pytorch', all_patterns)
-        self.assertTrue(all_patterns['xgboost']['has_xgboost_import'])
-        self.assertTrue(all_patterns['pytorch']['has_torch_import'])
+        assert 'xgboost' in all_patterns
+        assert 'pytorch' in all_patterns
+        assert all_patterns['xgboost']['has_xgboost_import'] is True
+        assert all_patterns['pytorch']['has_torch_import'] is True
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__, '-v'])

@@ -4,7 +4,7 @@ Unit tests for step_type_detection.py module.
 Tests step type detection functionality.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from cursus.validation.alignment.step_type_detection import (
     detect_step_type_from_registry,
@@ -12,12 +12,8 @@ from cursus.validation.alignment.step_type_detection import (
     get_step_type_context
 )
 
-class TestStepTypeDetection(unittest.TestCase):
+class TestStepTypeDetection:
     """Test step type detection functionality."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        pass
 
     def test_detect_step_type_from_registry_training(self):
         """Test step type detection for training script."""
@@ -25,7 +21,7 @@ class TestStepTypeDetection(unittest.TestCase):
         result = detect_step_type_from_registry("xgboost_training")
         
         # The actual implementation returns "Training" for training scripts
-        self.assertEqual(result, "Training")
+        assert result == "Training"
 
     def test_detect_step_type_from_registry_processing(self):
         """Test step type detection for processing script."""
@@ -33,7 +29,7 @@ class TestStepTypeDetection(unittest.TestCase):
         result = detect_step_type_from_registry("tabular_preprocessing")
         
         # Should return "Processing" as fallback when registry import fails
-        self.assertEqual(result, "Processing")
+        assert result == "Processing"
 
     def test_detect_step_type_from_registry_fallback(self):
         """Test step type detection fallback for unknown script."""
@@ -41,7 +37,7 @@ class TestStepTypeDetection(unittest.TestCase):
         result = detect_step_type_from_registry("unknown_script")
         
         # Verify - should return "Processing" as fallback
-        self.assertEqual(result, "Processing")
+        assert result == "Processing"
 
     def test_detect_framework_from_imports_xgboost(self):
         """Test framework detection from XGBoost imports."""
@@ -49,7 +45,7 @@ class TestStepTypeDetection(unittest.TestCase):
         
         result = detect_framework_from_imports(imports)
         
-        self.assertEqual(result, 'xgboost')
+        assert result == 'xgboost'
 
     def test_detect_framework_from_imports_pytorch(self):
         """Test framework detection from PyTorch imports."""
@@ -57,7 +53,7 @@ class TestStepTypeDetection(unittest.TestCase):
         
         result = detect_framework_from_imports(imports)
         
-        self.assertEqual(result, 'pytorch')
+        assert result == 'pytorch'
 
     def test_detect_framework_from_imports_sklearn(self):
         """Test framework detection from sklearn imports."""
@@ -65,7 +61,7 @@ class TestStepTypeDetection(unittest.TestCase):
         
         result = detect_framework_from_imports(imports)
         
-        self.assertEqual(result, 'sklearn')
+        assert result == 'sklearn'
 
     def test_detect_framework_from_imports_pandas(self):
         """Test framework detection from pandas imports."""
@@ -73,7 +69,7 @@ class TestStepTypeDetection(unittest.TestCase):
         
         result = detect_framework_from_imports(imports)
         
-        self.assertEqual(result, 'pandas')
+        assert result == 'pandas'
 
     def test_detect_framework_from_imports_unknown(self):
         """Test framework detection for unknown imports."""
@@ -81,7 +77,7 @@ class TestStepTypeDetection(unittest.TestCase):
         
         result = detect_framework_from_imports(imports)
         
-        self.assertIsNone(result)
+        assert result is None
 
     def test_detect_framework_from_imports_empty(self):
         """Test framework detection with empty imports."""
@@ -89,7 +85,7 @@ class TestStepTypeDetection(unittest.TestCase):
         
         result = detect_framework_from_imports(imports)
         
-        self.assertIsNone(result)
+        assert result is None
 
     def test_detect_framework_from_imports_multiple_frameworks(self):
         """Test framework detection with multiple frameworks."""
@@ -98,7 +94,7 @@ class TestStepTypeDetection(unittest.TestCase):
         result = detect_framework_from_imports(imports)
         
         # Should return the first detected framework (priority order)
-        self.assertIn(result, ['xgboost', 'torch', 'sklearn'])
+        assert result in ['xgboost', 'torch', 'sklearn']
 
     def test_get_step_type_context(self):
         """Test getting step type context."""
@@ -114,11 +110,11 @@ def main():
         context = get_step_type_context(script_name, script_content)
         
         # Verify
-        self.assertEqual(context['script_name'], script_name)
-        self.assertIn('registry_step_type', context)
-        self.assertIn('pattern_step_type', context)
-        self.assertIn('final_step_type', context)
-        self.assertIn('confidence', context)
+        assert context['script_name'] == script_name
+        assert 'registry_step_type' in context
+        assert 'pattern_step_type' in context
+        assert 'final_step_type' in context
+        assert 'confidence' in context
 
     def test_get_step_type_context_no_content(self):
         """Test getting step type context without script content."""
@@ -128,13 +124,13 @@ def main():
         context = get_step_type_context(script_name)
         
         # Verify
-        self.assertEqual(context['script_name'], script_name)
-        self.assertIn('registry_step_type', context)
-        self.assertIn('pattern_step_type', context)
-        self.assertIn('final_step_type', context)
-        self.assertIn('confidence', context)
+        assert context['script_name'] == script_name
+        assert 'registry_step_type' in context
+        assert 'pattern_step_type' in context
+        assert 'final_step_type' in context
+        assert 'confidence' in context
         # Should have Processing as default
-        self.assertEqual(context['final_step_type'], 'Processing')
+        assert context['final_step_type'] == 'Processing'
 
     def test_framework_detection_case_insensitive(self):
         """Test that framework detection is case insensitive."""
@@ -143,7 +139,7 @@ def main():
         result = detect_framework_from_imports(imports)
         
         # Should still detect xgboost despite case differences
-        self.assertEqual(result, 'xgboost')
+        assert result == 'xgboost'
 
     def test_framework_detection_partial_matches(self):
         """Test framework detection with partial import names."""
@@ -153,7 +149,7 @@ def main():
         
         # Should handle common abbreviations
         # This depends on implementation - might return None if not handled
-        self.assertIsInstance(result, (str, type(None)))
+        assert isinstance(result, (str, type(None)))
 
     def test_step_type_detection_with_file_extension(self):
         """Test step type detection with file extension."""
@@ -161,17 +157,17 @@ def main():
         result = detect_step_type_from_registry("xgboost_training.py")
         
         # Should handle file extensions gracefully
-        self.assertIsInstance(result, (str, type(None)))
+        assert isinstance(result, (str, type(None)))
 
     def test_step_type_detection_edge_cases(self):
         """Test step type detection edge cases."""
         # Test with empty string
         result = detect_step_type_from_registry("")
-        self.assertIsInstance(result, (str, type(None)))
+        assert isinstance(result, (str, type(None)))
         
         # Test with None
         result = detect_step_type_from_registry(None)
-        self.assertIsInstance(result, (str, type(None)))
+        assert isinstance(result, (str, type(None)))
 
     def test_framework_detection_priority_order(self):
         """Test that framework detection follows priority order."""
@@ -181,7 +177,7 @@ def main():
         result = detect_framework_from_imports(imports)
         
         # Should return one of the frameworks based on priority
-        self.assertIn(result, ['xgboost', 'torch', 'pandas'])
+        assert result in ['xgboost', 'torch', 'pandas']
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])
