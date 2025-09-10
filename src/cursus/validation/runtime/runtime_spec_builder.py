@@ -1,25 +1,57 @@
 """
 Pipeline Testing Specification Builder
 
-Builder to generate PipelineTestingSpec from DAG with local spec persistence and validation.
+Builder to generate PipelineTestingSpec from DAG with intelligent node-to-script resolution,
+workspace-first file discovery, and comprehensive dual identity management.
 """
 
 import json
 import argparse
+import re
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
+from difflib import SequenceMatcher
 
 from ...api.dag.base_dag import PipelineDAG
 from .runtime_models import ScriptExecutionSpec, PipelineTestingSpec
 
+try:
+    from ...registry.step_names import get_step_name_from_spec_type
+except ImportError:
+    # Fallback for testing or when registry is not available
+    def get_step_name_from_spec_type(node_name: str) -> str:
+        """Fallback implementation that removes job type suffixes."""
+        suffixes = ['_training', '_evaluation', '_calibration', '_inference', '_registration']
+        for suffix in suffixes:
+            if node_name.endswith(suffix):
+                return node_name[:-len(suffix)]
+        return node_name
+
 
 class PipelineTestingSpecBuilder:
-    """Builder to generate PipelineTestingSpec from DAG with local spec persistence and validation"""
+    """
+    Builder to generate PipelineTestingSpec from DAG with intelligent node-to-script resolution.
+    
+    Handles the core challenge of mapping DAG node names to script files through:
+    1. Registry-based canonical name resolution
+    2. PascalCase to snake_case conversion with special cases
+    3. Workspace-first file discovery with fuzzy matching fallback
+    4. ScriptExecutionSpec creation with dual identity management
+    """
     
     def __init__(self, test_data_dir: str = "test/integration/runtime"):
         self.test_data_dir = Path(test_data_dir)
-        self.specs_dir = self.test_data_dir / ".specs"  # Hidden directory for saved specs
+        self.specs_dir = self.test_data_dir / ".specs"      # ScriptExecutionSpec storage
+        self.scripts_dir = self.test_data_dir / "scripts"   # Test script files
+        
+        # Ensure directories exist
         self.specs_dir.mkdir(parents=True, exist_ok=True)
+        self.scripts_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create other standard directories
+        (self.test_data_dir / "input").mkdir(parents=True, exist_ok=True)
+        (self.test_data_dir / "output").mkdir(parents=True, exist_ok=True)
+        (self.test_data_dir / "results").mkdir(parents=True, exist_ok=True)
     
     def build_from_dag(self, dag: PipelineDAG, validate: bool = True) -> PipelineTestingSpec:
         """
@@ -301,4 +333,306 @@ class PipelineTestingSpecBuilder:
             "output_paths": spec.output_paths,
             "environ_vars": spec.environ_vars,
             "job_args": argparse.Namespace(**spec.job_args) if spec.job_args else argparse.Namespace(job_type="testing")
+        }
+    
+    # New intelligent node-to-script resolution methods
+    
+    def resolve_script_execution_spec_from_node(self, node_name: str) -> ScriptExecutionSpec:
+        """
+        Resolve ScriptExecutionSpec from PipelineDAG node name using intelligent resolution.
+        
+        Multi-step resolution process:
+        1. Registry-based canonical name extraction
+        2. PascalCase to snake_case conversion with special cases
+        3. Workspace-first file discovery with fuzzy matching
+        4. ScriptExecutionSpec creation with dual identity
+        
+        Args:
+            node_name: DAG node name (e.g., "TabularPreprocessing_training")
+            
+        Returns:
+            ScriptExecutionSpec with proper script_name and step_name mapping
+            
+        Raises:
+            ValueError: If node cannot be resolved to a valid script
+        """
+        # Step 1: Get canonical step name using existing registry function
+        try:
+            canonical_name = get_step_name_from_spec_type(node_name)
+        except Exception as e:
+            raise ValueError(f"Registry resolution failed for '{node_name}': {str(e)}")
+        
+        # Step 2: Convert to script name with special case handling
+        script_name = self._canonical_to_script_name(canonical_name)
+        
+        # Step 3: Find actual script file with verification
+        try:
+            script_path = self._find_script_file(script_name)
+        except FileNotFoundError as e:
+            raise ValueError(f"Script file not found for '{node_name}' -> '{script_name}': {str(e)}")
+        
+        # Step 4: Create ScriptExecutionSpec with dual identity
+        # Try to load existing spec first, then create new one
+        try:
+            existing_spec = ScriptExecutionSpec.load_from_file(script_name, str(self.specs_dir))
+            # Update step_name for current context
+            existing_spec.step_name = node_name
+            return existing_spec
+        except FileNotFoundError:
+            # Create new spec with intelligent defaults
+            spec = ScriptExecutionSpec.create_default(
+                script_name=script_name,      # For file discovery (snake_case)
+                step_name=node_name,          # For DAG node matching (PascalCase + job type)
+                test_workspace_root=str(self.test_data_dir)
+            )
+            
+            # Update with intelligent script path
+            spec_dict = spec.model_dump()
+            spec_dict['script_path'] = str(script_path)
+            spec_dict['input_paths'] = self._get_default_input_paths(script_name)
+            spec_dict['output_paths'] = self._get_default_output_paths(script_name)
+            spec_dict['environ_vars'] = self._get_default_environ_vars()
+            spec_dict['job_args'] = self._get_default_job_args(script_name)
+            
+            enhanced_spec = ScriptExecutionSpec(**spec_dict)
+            
+            # Save for future use
+            self.save_script_spec(enhanced_spec)
+            
+            return enhanced_spec
+    
+    def _canonical_to_script_name(self, canonical_name: str) -> str:
+        """
+        Convert canonical step name (PascalCase) to script name (snake_case).
+        
+        Handles special cases for compound technical terms:
+        - XGBoost -> xgboost (not x_g_boost)
+        - PyTorch -> pytorch (not py_torch)
+        - ModelEval -> model_eval
+        
+        Args:
+            canonical_name: PascalCase canonical name
+            
+        Returns:
+            snake_case script name
+        """
+        # Handle special cases for compound technical terms
+        special_cases = {
+            'XGBoost': 'Xgboost',
+            'PyTorch': 'Pytorch',
+            'MLFlow': 'Mlflow',
+            'TensorFlow': 'Tensorflow',
+            'SageMaker': 'Sagemaker',
+            'AutoML': 'Automl'
+        }
+        
+        # Apply special case replacements
+        processed_name = canonical_name
+        for original, replacement in special_cases.items():
+            processed_name = processed_name.replace(original, replacement)
+        
+        # Convert PascalCase to snake_case
+        # Handle sequences of capitals followed by lowercase
+        result = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', processed_name)
+        # Handle lowercase followed by uppercase
+        result = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', result)
+        
+        return result.lower()
+    
+    def _find_script_file(self, script_name: str) -> Path:
+        """
+        Find actual script file with workspace-first lookup and fuzzy matching.
+        
+        Priority order:
+        1. Test workspace scripts (self.scripts_dir) - for testing environment
+        2. Core framework scripts (workspace discovery) - fallback
+        3. Fuzzy matching for similar names - error recovery
+        4. Create placeholder script - last resort
+        
+        Args:
+            script_name: snake_case script name
+            
+        Returns:
+            Path to script file
+            
+        Raises:
+            FileNotFoundError: If no suitable script can be found or created
+        """
+        # Priority 1: Test workspace scripts
+        test_script_path = self.scripts_dir / f"{script_name}.py"
+        if test_script_path.exists():
+            return test_script_path
+        
+        # Priority 2: Core framework scripts (workspace discovery)
+        workspace_script = self._find_in_workspace(script_name)
+        if workspace_script:
+            return workspace_script
+        
+        # Priority 3: Fuzzy matching fallback
+        fuzzy_match = self._find_fuzzy_match(script_name)
+        if fuzzy_match:
+            return fuzzy_match
+        
+        # Priority 4: Create placeholder script
+        return self._create_placeholder_script(script_name)
+    
+    def _find_in_workspace(self, script_name: str) -> Optional[Path]:
+        """
+        Find script in core framework workspace.
+        
+        Searches common locations for cursus step scripts.
+        
+        Args:
+            script_name: snake_case script name
+            
+        Returns:
+            Path to script if found, None otherwise
+        """
+        # Common locations for cursus step scripts
+        search_paths = [
+            Path("src/cursus/steps/scripts"),
+            Path("cursus/steps/scripts"),
+            Path("steps/scripts"),
+            Path("scripts")
+        ]
+        
+        script_filename = f"{script_name}.py"
+        
+        for search_path in search_paths:
+            if search_path.exists():
+                script_path = search_path / script_filename
+                if script_path.exists():
+                    return script_path.resolve()
+        
+        return None
+    
+    def _find_fuzzy_match(self, script_name: str) -> Optional[Path]:
+        """
+        Find script using fuzzy matching for error recovery.
+        
+        Looks for similar script names in the test workspace.
+        
+        Args:
+            script_name: snake_case script name
+            
+        Returns:
+            Path to best matching script if found, None otherwise
+        """
+        if not self.scripts_dir.exists():
+            return None
+        
+        best_match = None
+        best_ratio = 0.0
+        threshold = 0.7  # Minimum similarity threshold
+        
+        for script_file in self.scripts_dir.glob("*.py"):
+            file_stem = script_file.stem
+            ratio = SequenceMatcher(None, script_name, file_stem).ratio()
+            
+            if ratio > best_ratio and ratio >= threshold:
+                best_ratio = ratio
+                best_match = script_file
+        
+        if best_match:
+            print(f"Fuzzy match: '{script_name}' -> '{best_match.name}' (similarity: {best_ratio:.2f})")
+        
+        return best_match
+    
+    def _create_placeholder_script(self, script_name: str) -> Path:
+        """
+        Create placeholder script for missing scripts.
+        
+        Creates a basic Python script template that can be used for testing.
+        
+        Args:
+            script_name: snake_case script name
+            
+        Returns:
+            Path to created placeholder script
+            
+        Raises:
+            FileNotFoundError: If placeholder cannot be created
+        """
+        placeholder_path = self.scripts_dir / f"{script_name}.py"
+        
+        try:
+            placeholder_content = f'''"""
+Placeholder script for {script_name}.
+
+This script was automatically generated by PipelineTestingSpecBuilder
+because no existing script was found for this step.
+
+TODO: Implement the actual script logic.
+"""
+
+import sys
+import json
+from pathlib import Path
+
+
+def main():
+    """Main entry point for {script_name} script."""
+    print(f"Running placeholder script: {script_name}")
+    
+    # Basic argument parsing
+    if len(sys.argv) > 1:
+        print(f"Arguments: {{sys.argv[1:]}}")
+    
+    # Create minimal output for testing
+    output_dir = Path("output")
+    output_dir.mkdir(exist_ok=True)
+    
+    # Create a simple output file
+    output_file = output_dir / f"{script_name}_output.json"
+    with open(output_file, 'w') as f:
+        json.dump({{
+            "script": "{script_name}",
+            "status": "placeholder_executed",
+            "message": "This is a placeholder script output"
+        }}, f, indent=2)
+    
+    print(f"Created placeholder output: {{output_file}}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+'''
+            
+            with open(placeholder_path, 'w') as f:
+                f.write(placeholder_content)
+            
+            print(f"Created placeholder script: {placeholder_path}")
+            return placeholder_path
+            
+        except OSError as e:
+            raise FileNotFoundError(f"Cannot create placeholder script '{placeholder_path}': {str(e)}")
+    
+    def _get_default_input_paths(self, script_name: str) -> Dict[str, str]:
+        """Get default input paths for a script."""
+        return {
+            "data_input": str(self.test_data_dir / "input" / "raw_data"),
+            "config": str(self.test_data_dir / "input" / "config" / f"{script_name}_config.json")
+        }
+    
+    def _get_default_output_paths(self, script_name: str) -> Dict[str, str]:
+        """Get default output paths for a script."""
+        return {
+            "data_output": str(self.test_data_dir / "output" / f"{script_name}_output"),
+            "metrics": str(self.test_data_dir / "output" / f"{script_name}_metrics")
+        }
+    
+    def _get_default_environ_vars(self) -> Dict[str, str]:
+        """Get default environment variables."""
+        return {
+            "PYTHONPATH": str(Path("src").resolve()),
+            "CURSUS_ENV": "testing"
+        }
+    
+    def _get_default_job_args(self, script_name: str) -> Dict[str, Any]:
+        """Get default job arguments for a script."""
+        return {
+            "script_name": script_name,
+            "execution_mode": "testing",
+            "log_level": "INFO"
         }

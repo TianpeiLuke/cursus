@@ -17,6 +17,7 @@ from .runtime_models import (
     RuntimeTestingConfiguration
 )
 from .runtime_spec_builder import PipelineTestingSpecBuilder
+from .workspace_aware_spec_builder import WorkspaceAwarePipelineTestingSpecBuilder
 
 # Enhanced logical name matching components
 from .logical_name_matching import (
@@ -35,6 +36,8 @@ __all__ = [
     'RuntimeTester',
     'ScriptTestResult', 
     'DataCompatibilityResult',
+    'PipelineTestingSpecBuilder',
+    'WorkspaceAwarePipelineTestingSpecBuilder',
     # Enhanced logical name matching exports
     'PathSpec',
     'PathMatch',
