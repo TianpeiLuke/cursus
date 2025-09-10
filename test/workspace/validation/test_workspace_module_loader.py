@@ -12,39 +12,42 @@ Tests workspace-aware module loading functionality including:
 
 import sys
 import tempfile
-import unittest
+import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
 from cursus.workspace.validation.workspace_module_loader import WorkspaceModuleLoader
 
-class TestWorkspaceModuleLoader(unittest.TestCase):
+
+class TestWorkspaceModuleLoader:
     """Test cases for WorkspaceModuleLoader."""
     
-    def setUp(self):
+    @pytest.fixture
+    def temp_workspace(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.workspace_root = Path(self.temp_dir) / "workspaces"
-        self.workspace_root.mkdir(parents=True)
+        temp_dir = tempfile.mkdtemp()
+        workspace_root = Path(temp_dir) / "workspaces"
+        workspace_root.mkdir(parents=True)
         
         # Create test workspace structure
-        self._create_test_workspace_structure()
+        self._create_test_workspace_structure(workspace_root)
         
         # Store original sys.path
-        self.original_sys_path = sys.path.copy()
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
+        original_sys_path = sys.path.copy()
+        
+        yield temp_dir, workspace_root, original_sys_path
+        
+        # Clean up test fixtures
         import shutil
-        shutil.rmtree(self.temp_dir)
+        shutil.rmtree(temp_dir)
         
         # Restore original sys.path
-        sys.path[:] = self.original_sys_path
+        sys.path[:] = original_sys_path
     
-    def _create_test_workspace_structure(self):
+    def _create_test_workspace_structure(self, workspace_root):
         """Create test workspace directory structure."""
         # Developer workspace
-        dev1_dir = self.workspace_root / "developers" / "developer_1" / "src"
+        dev1_dir = workspace_root / "developers" / "developer_1" / "src"
         dev1_dir.mkdir(parents=True)
         
         # Create cursus_dev structure
@@ -79,7 +82,7 @@ class TestStepContract:
         (cursus_dev_dir / "__init__.py").touch()
         
         # Shared workspace
-        shared_dir = self.workspace_root / "shared" / "src"
+        shared_dir = workspace_root / "shared" / "src"
         shared_dir.mkdir(parents=True)
         
         shared_cursus_dev_dir = shared_dir / "cursus_dev" / "steps"
@@ -103,73 +106,83 @@ class SharedBuilder:
         (shared_dir / "cursus_dev" / "__init__.py").touch()
         (shared_cursus_dev_dir / "__init__.py").touch()
     
-    def test_init_workspace_mode(self):
+    def test_init_workspace_mode(self, temp_workspace):
         """Test initialization in workspace mode."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
-        self.assertTrue(loader.workspace_mode)
-        self.assertEqual(loader.workspace_root, self.workspace_root)
-        self.assertEqual(loader.developer_id, "developer_1")
-        self.assertTrue(loader.enable_shared_fallback)
-        self.assertTrue(loader.cache_modules)
+        assert loader.workspace_mode
+        assert loader.workspace_root == workspace_root
+        assert loader.developer_id == "developer_1"
+        assert loader.enable_shared_fallback
+        assert loader.cache_modules
     
     def test_init_single_workspace_mode(self):
         """Test initialization in single workspace mode."""
         loader = WorkspaceModuleLoader()
         
-        self.assertFalse(loader.workspace_mode)
-        self.assertIsNone(loader.workspace_root)
-        self.assertIsNone(loader.developer_id)
-        self.assertTrue(loader.enable_shared_fallback)
-        self.assertTrue(loader.cache_modules)
+        assert not loader.workspace_mode
+        assert loader.workspace_root is None
+        assert loader.developer_id is None
+        assert loader.enable_shared_fallback
+        assert loader.cache_modules
     
-    def test_validate_workspace_structure_valid(self):
+    def test_validate_workspace_structure_valid(self, temp_workspace):
         """Test workspace structure validation with valid structure."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
         # Should not raise exception
-        self.assertTrue(loader.workspace_mode)
+        assert loader.workspace_mode
     
-    def test_validate_workspace_structure_invalid_root(self):
+    def test_validate_workspace_structure_invalid_root(self, temp_workspace):
         """Test workspace structure validation with invalid root."""
-        invalid_root = Path(self.temp_dir) / "nonexistent"
+        temp_dir, workspace_root, original_sys_path = temp_workspace
         
-        with self.assertRaises(ValueError) as context:
+        invalid_root = Path(temp_dir) / "nonexistent"
+        
+        with pytest.raises(ValueError) as exc_info:
             WorkspaceModuleLoader(
                 workspace_root=invalid_root,
                 developer_id="developer_1"
             )
         
-        self.assertIn("does not exist", str(context.exception))
+        assert "does not exist" in str(exc_info.value)
     
-    def test_build_workspace_paths(self):
+    def test_build_workspace_paths(self, temp_workspace):
         """Test building workspace-specific Python paths."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
-        self.assertTrue(hasattr(loader, 'developer_paths'))
-        self.assertTrue(hasattr(loader, 'shared_paths'))
+        assert hasattr(loader, 'developer_paths')
+        assert hasattr(loader, 'shared_paths')
         
         # Check developer paths
-        dev_base = str(self.workspace_root / "developers" / "developer_1" / "src")
-        self.assertIn(dev_base, loader.developer_paths)
+        dev_base = str(workspace_root / "developers" / "developer_1" / "src")
+        assert dev_base in loader.developer_paths
         
         # Check shared paths
-        shared_base = str(self.workspace_root / "shared" / "src")
-        self.assertIn(shared_base, loader.shared_paths)
+        shared_base = str(workspace_root / "shared" / "src")
+        assert shared_base in loader.shared_paths
     
-    def test_workspace_path_context(self):
+    def test_workspace_path_context(self, temp_workspace):
         """Test workspace path context manager."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
@@ -177,14 +190,14 @@ class SharedBuilder:
         
         with loader.workspace_path_context() as added_paths:
             # Check that paths were added
-            self.assertGreater(len(added_paths), 0)
+            assert len(added_paths) > 0
             
             # Check that sys.path was modified
             for path in added_paths:
-                self.assertIn(path, sys.path)
+                assert path in sys.path
         
         # Check that sys.path was restored
-        self.assertEqual(sys.path, original_path)
+        assert sys.path == original_path
     
     def test_workspace_path_context_single_mode(self):
         """Test workspace path context manager in single workspace mode."""
@@ -192,11 +205,13 @@ class SharedBuilder:
         
         with loader.workspace_path_context() as added_paths:
             # Should return empty list in single workspace mode
-            self.assertEqual(added_paths, [])
+            assert added_paths == []
     
     @patch('importlib.import_module')
-    def test_load_builder_class_success(self, mock_import):
+    def test_load_builder_class_success(self, mock_import, temp_workspace):
         """Test successful builder class loading."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         # Mock module with builder class
         mock_module = MagicMock()
         mock_builder_class = MagicMock()
@@ -204,32 +219,36 @@ class SharedBuilder:
         mock_import.return_value = mock_module
         
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
         result = loader.load_builder_class("test_step")
         
-        self.assertEqual(result, mock_builder_class)
-        self.assertTrue(mock_import.called)
+        assert result == mock_builder_class
+        assert mock_import.called
     
     @patch('importlib.import_module')
-    def test_load_builder_class_not_found(self, mock_import):
+    def test_load_builder_class_not_found(self, mock_import, temp_workspace):
         """Test builder class loading when class not found."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         mock_import.side_effect = ImportError("Module not found")
         
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
         result = loader.load_builder_class("nonexistent_step")
         
-        self.assertIsNone(result)
+        assert result is None
     
     @patch('importlib.import_module')
-    def test_load_contract_class_success(self, mock_import):
+    def test_load_contract_class_success(self, mock_import, temp_workspace):
         """Test successful contract class loading."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         # Mock module with contract class
         mock_module = MagicMock()
         mock_contract_class = MagicMock()
@@ -237,19 +256,21 @@ class SharedBuilder:
         mock_import.return_value = mock_module
         
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
         result = loader.load_contract_class("test_step")
         
-        self.assertEqual(result, mock_contract_class)
-        self.assertTrue(mock_import.called)
+        assert result == mock_contract_class
+        assert mock_import.called
     
-    def test_module_caching(self):
+    def test_module_caching(self, temp_workspace):
         """Test module caching functionality."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1",
             cache_modules=True
         )
@@ -262,18 +283,20 @@ class SharedBuilder:
             
             # First call should import module
             result1 = loader.load_builder_class("test_step")
-            self.assertEqual(result1, mock_builder_class)
-            self.assertEqual(mock_import.call_count, 1)
+            assert result1 == mock_builder_class
+            assert mock_import.call_count == 1
             
             # Second call should use cache
             result2 = loader.load_builder_class("test_step")
-            self.assertEqual(result2, mock_builder_class)
-            self.assertEqual(mock_import.call_count, 1)  # Should not increase
+            assert result2 == mock_builder_class
+            assert mock_import.call_count == 1  # Should not increase
     
-    def test_module_caching_disabled(self):
+    def test_module_caching_disabled(self, temp_workspace):
         """Test behavior when module caching is disabled."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1",
             cache_modules=False
         )
@@ -288,14 +311,16 @@ class SharedBuilder:
             result1 = loader.load_builder_class("test_step")
             result2 = loader.load_builder_class("test_step")
             
-            self.assertEqual(mock_import.call_count, 2)
+            assert mock_import.call_count == 2
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_module_from_file_success(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_module_from_file_success(self, mock_module_from_spec, mock_spec_from_file, temp_workspace):
         """Test successful module loading from file."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         # Create test file
-        test_file = Path(self.temp_dir) / "test_module.py"
+        test_file = Path(temp_dir) / "test_module.py"
         Path(test_file).write_text("# Test module")
         
         # Mock importlib functions
@@ -311,7 +336,7 @@ class SharedBuilder:
         
         result = loader.load_module_from_file(test_file)
         
-        self.assertEqual(result, mock_module)
+        assert result == mock_module
         mock_spec_from_file.assert_called_once_with("test_module", test_file)
         mock_loader.exec_module.assert_called_once_with(mock_module)
     
@@ -321,27 +346,29 @@ class SharedBuilder:
         
         result = loader.load_module_from_file("/nonexistent/file.py")
         
-        self.assertIsNone(result)
+        assert result is None
     
-    def test_discover_workspace_modules(self):
+    def test_discover_workspace_modules(self, temp_workspace):
         """Test workspace module discovery."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
         discovered = loader.discover_workspace_modules("builders")
         
-        self.assertIn("developer:developer_1", discovered)
-        self.assertIn("shared", discovered)
+        assert "developer:developer_1" in discovered
+        assert "shared" in discovered
         
         # Check developer modules
         dev_modules = discovered["developer:developer_1"]
-        self.assertIn("test_step_builder", dev_modules)
+        assert "test_step_builder" in dev_modules
         
         # Check shared modules
         shared_modules = discovered["shared"]
-        self.assertIn("shared_builder", shared_modules)
+        assert "shared_builder" in shared_modules
     
     def test_discover_workspace_modules_single_mode(self):
         """Test module discovery in single workspace mode."""
@@ -349,12 +376,14 @@ class SharedBuilder:
         
         discovered = loader.discover_workspace_modules("builders")
         
-        self.assertEqual(discovered, {})
+        assert discovered == {}
     
-    def test_clear_cache(self):
+    def test_clear_cache(self, temp_workspace):
         """Test cache clearing."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
@@ -364,13 +393,15 @@ class SharedBuilder:
         
         loader.clear_cache()
         
-        self.assertEqual(len(loader._module_cache), 0)
-        self.assertEqual(len(loader._path_cache), 0)
+        assert len(loader._module_cache) == 0
+        assert len(loader._path_cache) == 0
     
-    def test_invalidate_cache_for_step(self):
+    def test_invalidate_cache_for_step(self, temp_workspace):
         """Test cache invalidation for specific step."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
@@ -382,38 +413,42 @@ class SharedBuilder:
         loader.invalidate_cache_for_step("test_step")
         
         # test_step entries should be removed
-        self.assertNotIn("builder:test_step:module:class", loader._module_cache)
-        self.assertNotIn("contract:test_step:module:class", loader._module_cache)
+        assert "builder:test_step:module:class" not in loader._module_cache
+        assert "contract:test_step:module:class" not in loader._module_cache
         
         # other_step entry should remain
-        self.assertIn("builder:other_step:module:class", loader._module_cache)
+        assert "builder:other_step:module:class" in loader._module_cache
     
-    def test_get_workspace_info(self):
+    def test_get_workspace_info(self, temp_workspace):
         """Test getting workspace information."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
         info = loader.get_workspace_info()
         
-        self.assertTrue(info['workspace_mode'])
-        self.assertEqual(info['workspace_root'], str(self.workspace_root))
-        self.assertEqual(info['developer_id'], "developer_1")
-        self.assertTrue(info['enable_shared_fallback'])
-        self.assertTrue(info['cache_modules'])
-        self.assertGreater(len(info['developer_paths']), 0)
-        self.assertGreater(len(info['shared_paths']), 0)
-        self.assertEqual(info['cached_modules'], 0)
+        assert info['workspace_mode']
+        assert info['workspace_root'] == str(workspace_root)
+        assert info['developer_id'] == "developer_1"
+        assert info['enable_shared_fallback']
+        assert info['cache_modules']
+        assert len(info['developer_paths']) > 0
+        assert len(info['shared_paths']) > 0
+        assert info['cached_modules'] == 0
     
-    def test_switch_developer(self):
+    def test_switch_developer(self, temp_workspace):
         """Test switching to different developer workspace."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         # Create another developer workspace
-        dev2_dir = self.workspace_root / "developers" / "developer_2" / "src" / "cursus_dev" / "steps"
+        dev2_dir = workspace_root / "developers" / "developer_2" / "src" / "cursus_dev" / "steps"
         dev2_dir.mkdir(parents=True)
         
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
@@ -423,32 +458,36 @@ class SharedBuilder:
         # Switch to developer_2
         loader.switch_developer("developer_2")
         
-        self.assertEqual(loader.developer_id, "developer_2")
+        assert loader.developer_id == "developer_2"
         
         # Cache should be cleared
-        self.assertEqual(len(loader._module_cache), 0)
+        assert len(loader._module_cache) == 0
     
-    def test_switch_developer_invalid(self):
+    def test_switch_developer_invalid(self, temp_workspace):
         """Test switching to invalid developer workspace."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             loader.switch_developer("nonexistent_developer")
     
     def test_switch_developer_single_mode(self):
         """Test switching developer in single workspace mode."""
         loader = WorkspaceModuleLoader()
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             loader.switch_developer("developer_1")
     
-    def test_class_name_generation(self):
+    def test_class_name_generation(self, temp_workspace):
         """Test automatic class name generation from step names."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
@@ -462,7 +501,7 @@ class SharedBuilder:
             result = loader.load_builder_class("create_model")
             
             # Should look for CreateModelBuilder class
-            self.assertTrue(hasattr(mock_module, 'CreateModelBuilder'))
+            assert hasattr(mock_module, 'CreateModelBuilder')
             
             # Test contract class name generation
             mock_module.CreateModelContract = MagicMock()
@@ -471,12 +510,14 @@ class SharedBuilder:
             result = loader.load_contract_class("create_model")
             
             # Should look for CreateModelContract class
-            self.assertTrue(hasattr(mock_module, 'CreateModelContract'))
+            assert hasattr(mock_module, 'CreateModelContract')
     
-    def test_module_pattern_search(self):
+    def test_module_pattern_search(self, temp_workspace):
         """Test different module path patterns are tried."""
+        temp_dir, workspace_root, original_sys_path = temp_workspace
+        
         loader = WorkspaceModuleLoader(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             developer_id="developer_1"
         )
         
@@ -492,8 +533,5 @@ class SharedBuilder:
             result = loader.load_builder_class("test_step")
             
             # Should have tried multiple patterns
-            self.assertEqual(mock_import.call_count, 4)
-            self.assertIsNotNone(result)
-
-if __name__ == '__main__':
-    unittest.main()
+            assert mock_import.call_count == 4
+            assert result is not None
