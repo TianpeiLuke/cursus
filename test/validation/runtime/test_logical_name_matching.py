@@ -1,11 +1,11 @@
 """
-Unit tests for logical name matching system
+Pytest tests for logical name matching system
 
 Tests the logical name matching components including PathSpec, PathMatcher,
 EnhancedScriptExecutionSpec, TopologicalExecutor, and LogicalNameMatchingTester.
 """
 
-import unittest
+import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
@@ -24,7 +24,7 @@ from cursus.validation.runtime.runtime_models import ScriptExecutionSpec
 from cursus.api.dag.base_dag import PipelineDAG
 
 
-class TestPathSpec(unittest.TestCase):
+class TestPathSpec:
     """Test PathSpec model"""
     
     def test_path_spec_creation(self):
@@ -35,9 +35,9 @@ class TestPathSpec(unittest.TestCase):
             aliases=["input_data", "training_data"]
         )
         
-        self.assertEqual(spec.logical_name, "processed_data")
-        self.assertEqual(spec.path, "/path/to/data")
-        self.assertEqual(spec.aliases, ["input_data", "training_data"])
+        assert spec.logical_name == "processed_data"
+        assert spec.path == "/path/to/data"
+        assert spec.aliases == ["input_data", "training_data"]
     
     def test_matches_name_or_alias_logical_name(self):
         """Test matching against logical name"""
@@ -47,8 +47,8 @@ class TestPathSpec(unittest.TestCase):
             aliases=["input_data", "training_data"]
         )
         
-        self.assertTrue(spec.matches_name_or_alias("processed_data"))
-        self.assertFalse(spec.matches_name_or_alias("other_data"))
+        assert spec.matches_name_or_alias("processed_data") is True
+        assert spec.matches_name_or_alias("other_data") is False
     
     def test_matches_name_or_alias_aliases(self):
         """Test matching against aliases"""
@@ -58,12 +58,12 @@ class TestPathSpec(unittest.TestCase):
             aliases=["input_data", "training_data"]
         )
         
-        self.assertTrue(spec.matches_name_or_alias("input_data"))
-        self.assertTrue(spec.matches_name_or_alias("training_data"))
-        self.assertFalse(spec.matches_name_or_alias("test_data"))
+        assert spec.matches_name_or_alias("input_data") is True
+        assert spec.matches_name_or_alias("training_data") is True
+        assert spec.matches_name_or_alias("test_data") is False
 
 
-class TestPathMatch(unittest.TestCase):
+class TestPathMatch:
     """Test PathMatch model"""
     
     def test_path_match_creation(self):
@@ -77,15 +77,15 @@ class TestPathMatch(unittest.TestCase):
             matched_dest_name="input_data"
         )
         
-        self.assertEqual(match.source_logical_name, "output_data")
-        self.assertEqual(match.dest_logical_name, "input_data")
-        self.assertEqual(match.match_type, MatchType.EXACT_LOGICAL)
-        self.assertEqual(match.confidence, 1.0)
-        self.assertEqual(match.matched_source_name, "output_data")
-        self.assertEqual(match.matched_dest_name, "input_data")
+        assert match.source_logical_name == "output_data"
+        assert match.dest_logical_name == "input_data"
+        assert match.match_type == MatchType.EXACT_LOGICAL
+        assert match.confidence == 1.0
+        assert match.matched_source_name == "output_data"
+        assert match.matched_dest_name == "input_data"
 
 
-class TestEnhancedScriptExecutionSpec(unittest.TestCase):
+class TestEnhancedScriptExecutionSpec:
     """Test EnhancedScriptExecutionSpec model"""
     
     def test_enhanced_spec_creation(self):
@@ -114,12 +114,12 @@ class TestEnhancedScriptExecutionSpec(unittest.TestCase):
             job_args={"test_arg": "test_value"}
         )
         
-        self.assertEqual(spec.script_name, "test_script")
-        self.assertEqual(spec.step_name, "test_step")
-        self.assertEqual(len(spec.input_path_specs), 1)
-        self.assertEqual(len(spec.output_path_specs), 1)
-        self.assertEqual(spec.environ_vars["TEST_VAR"], "test_value")
-        self.assertEqual(spec.job_args["test_arg"], "test_value")
+        assert spec.script_name == "test_script"
+        assert spec.step_name == "test_step"
+        assert len(spec.input_path_specs) == 1
+        assert len(spec.output_path_specs) == 1
+        assert spec.environ_vars["TEST_VAR"] == "test_value"
+        assert spec.job_args["test_arg"] == "test_value"
     
     def test_backward_compatibility_properties(self):
         """Test backward compatibility properties"""
@@ -141,8 +141,8 @@ class TestEnhancedScriptExecutionSpec(unittest.TestCase):
         input_paths = spec.input_paths
         output_paths = spec.output_paths
         
-        self.assertEqual(input_paths["data_input"], "/input/path")
-        self.assertEqual(output_paths["data_output"], "/output/path")
+        assert input_paths["data_input"] == "/input/path"
+        assert output_paths["data_output"] == "/output/path"
     
     def test_from_script_execution_spec(self):
         """Test creating enhanced spec from original spec"""
@@ -162,31 +162,32 @@ class TestEnhancedScriptExecutionSpec(unittest.TestCase):
             original_spec, input_aliases, output_aliases
         )
         
-        self.assertEqual(enhanced_spec.script_name, "original_script")
-        self.assertEqual(enhanced_spec.step_name, "original_step")
-        self.assertEqual(enhanced_spec.input_path_specs["data_input"].logical_name, "data_input")
-        self.assertEqual(enhanced_spec.input_path_specs["data_input"].aliases, ["training_data", "processed_data"])
-        self.assertEqual(enhanced_spec.output_path_specs["data_output"].logical_name, "data_output")
-        self.assertEqual(enhanced_spec.output_path_specs["data_output"].aliases, ["model_output", "artifacts"])
+        assert enhanced_spec.script_name == "original_script"
+        assert enhanced_spec.step_name == "original_step"
+        assert enhanced_spec.input_path_specs["data_input"].logical_name == "data_input"
+        assert enhanced_spec.input_path_specs["data_input"].aliases == ["training_data", "processed_data"]
+        assert enhanced_spec.output_path_specs["data_output"].logical_name == "data_output"
+        assert enhanced_spec.output_path_specs["data_output"].aliases == ["model_output", "artifacts"]
 
 
-class TestPathMatcher(unittest.TestCase):
+class TestPathMatcher:
     """Test PathMatcher class"""
     
-    def setUp(self):
-        """Set up test fixtures"""
-        self.path_matcher = PathMatcher(semantic_threshold=0.7)
+    @pytest.fixture
+    def path_matcher(self):
+        """Create PathMatcher instance"""
+        return PathMatcher(semantic_threshold=0.7)
     
     @patch('cursus.validation.runtime.logical_name_matching.SemanticMatcher')
     def test_path_matcher_initialization(self, mock_semantic_matcher):
         """Test PathMatcher initialization"""
         matcher = PathMatcher(semantic_threshold=0.8)
         
-        self.assertEqual(matcher.semantic_threshold, 0.8)
+        assert matcher.semantic_threshold == 0.8
         mock_semantic_matcher.assert_called_once()
     
     @patch('cursus.validation.runtime.logical_name_matching.SemanticMatcher')
-    def test_find_path_matches_exact_logical(self, mock_semantic_matcher):
+    def test_find_path_matches_exact_logical(self, mock_semantic_matcher, path_matcher):
         """Test finding exact logical name matches"""
         # Create source spec
         source_spec = EnhancedScriptExecutionSpec(
@@ -206,16 +207,16 @@ class TestPathMatcher(unittest.TestCase):
             }
         )
         
-        matches = self.path_matcher.find_path_matches(source_spec, dest_spec)
+        matches = path_matcher.find_path_matches(source_spec, dest_spec)
         
-        self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].source_logical_name, "output1")
-        self.assertEqual(matches[0].dest_logical_name, "input1")
-        self.assertEqual(matches[0].match_type, MatchType.EXACT_LOGICAL)
-        self.assertEqual(matches[0].confidence, 1.0)
+        assert len(matches) == 1
+        assert matches[0].source_logical_name == "output1"
+        assert matches[0].dest_logical_name == "input1"
+        assert matches[0].match_type == MatchType.EXACT_LOGICAL
+        assert matches[0].confidence == 1.0
     
     @patch('cursus.validation.runtime.logical_name_matching.SemanticMatcher')
-    def test_find_path_matches_logical_to_alias(self, mock_semantic_matcher):
+    def test_find_path_matches_logical_to_alias(self, mock_semantic_matcher, path_matcher):
         """Test finding logical name to alias matches"""
         # Create source spec
         source_spec = EnhancedScriptExecutionSpec(
@@ -239,18 +240,20 @@ class TestPathMatcher(unittest.TestCase):
             }
         )
         
-        matches = self.path_matcher.find_path_matches(source_spec, dest_spec)
+        matches = path_matcher.find_path_matches(source_spec, dest_spec)
         
-        self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].match_type, MatchType.LOGICAL_TO_ALIAS)
-        self.assertEqual(matches[0].confidence, 0.95)
+        assert len(matches) == 1
+        assert matches[0].match_type == MatchType.LOGICAL_TO_ALIAS
+        assert matches[0].confidence == 0.95
     
     @patch('cursus.validation.runtime.logical_name_matching.SemanticMatcher')
-    def test_find_path_matches_semantic(self, mock_semantic_matcher):
+    def test_find_path_matches_semantic(self, mock_semantic_matcher_class, path_matcher):
         """Test finding semantic similarity matches"""
         # Mock semantic matcher
-        mock_semantic_matcher.return_value.calculate_similarity.return_value = 0.8
-        mock_semantic_matcher.return_value.explain_similarity.return_value = {"method": "semantic"}
+        mock_semantic_matcher = Mock()
+        mock_semantic_matcher.calculate_similarity.return_value = 0.8
+        mock_semantic_matcher.explain_similarity.return_value = {"method": "semantic"}
+        mock_semantic_matcher_class.return_value = mock_semantic_matcher
         
         # Create source spec
         source_spec = EnhancedScriptExecutionSpec(
@@ -274,15 +277,17 @@ class TestPathMatcher(unittest.TestCase):
         path_matcher = PathMatcher(semantic_threshold=0.7)
         matches = path_matcher.find_path_matches(source_spec, dest_spec)
         
-        self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].match_type, MatchType.SEMANTIC)
-        self.assertEqual(matches[0].confidence, 0.8)
+        assert len(matches) == 1
+        assert matches[0].match_type == MatchType.SEMANTIC
+        assert matches[0].confidence == 0.8
     
     @patch('cursus.validation.runtime.logical_name_matching.SemanticMatcher')
-    def test_find_path_matches_no_matches(self, mock_semantic_matcher):
+    def test_find_path_matches_no_matches(self, mock_semantic_matcher_class, path_matcher):
         """Test finding no matches when similarity is below threshold"""
         # Mock semantic matcher to return low similarity
-        mock_semantic_matcher.return_value.calculate_similarity.return_value = 0.3
+        mock_semantic_matcher = Mock()
+        mock_semantic_matcher.calculate_similarity.return_value = 0.3
+        mock_semantic_matcher_class.return_value = mock_semantic_matcher
         
         # Create source spec
         source_spec = EnhancedScriptExecutionSpec(
@@ -302,19 +307,19 @@ class TestPathMatcher(unittest.TestCase):
             }
         )
         
-        matches = self.path_matcher.find_path_matches(source_spec, dest_spec)
+        matches = path_matcher.find_path_matches(source_spec, dest_spec)
         
-        self.assertEqual(len(matches), 0)
+        assert len(matches) == 0
     
-    def test_generate_matching_report_no_matches(self):
+    def test_generate_matching_report_no_matches(self, path_matcher):
         """Test generating matching report with no matches"""
-        report = self.path_matcher.generate_matching_report([])
+        report = path_matcher.generate_matching_report([])
         
-        self.assertEqual(report["total_matches"], 0)
-        self.assertEqual(report["match_summary"], "No matches found")
-        self.assertIn("Check logical names and aliases for compatibility", report["recommendations"])
+        assert report["total_matches"] == 0
+        assert report["match_summary"] == "No matches found"
+        assert "Check logical names and aliases for compatibility" in report["recommendations"]
     
-    def test_generate_matching_report_with_matches(self):
+    def test_generate_matching_report_with_matches(self, path_matcher):
         """Test generating matching report with matches"""
         matches = [
             PathMatch(
@@ -335,42 +340,47 @@ class TestPathMatcher(unittest.TestCase):
             )
         ]
         
-        report = self.path_matcher.generate_matching_report(matches)
+        report = path_matcher.generate_matching_report(matches)
         
-        self.assertEqual(report["total_matches"], 2)
-        self.assertEqual(report["high_confidence_matches"], 2)
-        self.assertEqual(report["average_confidence"], 0.9)
-        self.assertEqual(report["matches_by_type"]["exact_logical"], 1)
-        self.assertEqual(report["matches_by_type"]["semantic"], 1)
-        self.assertEqual(len(report["best_matches"]), 2)
+        assert report["total_matches"] == 2
+        assert report["high_confidence_matches"] == 2
+        assert report["average_confidence"] == 0.9
+        assert report["matches_by_type"]["exact_logical"] == 1
+        assert report["matches_by_type"]["semantic"] == 1
+        assert len(report["best_matches"]) == 2
 
 
-class TestTopologicalExecutor(unittest.TestCase):
+class TestTopologicalExecutor:
     """Test TopologicalExecutor class"""
     
-    def setUp(self):
-        """Set up test fixtures"""
-        self.dag = PipelineDAG(
+    @pytest.fixture
+    def dag(self):
+        """Create test DAG"""
+        return PipelineDAG(
             nodes=["step_a", "step_b", "step_c"],
             edges=[("step_a", "step_b"), ("step_b", "step_c")]
         )
-        self.executor = TopologicalExecutor()
     
-    def test_get_execution_order(self):
+    @pytest.fixture
+    def executor(self):
+        """Create TopologicalExecutor instance"""
+        return TopologicalExecutor()
+    
+    def test_get_execution_order(self, dag, executor):
         """Test getting topological execution order"""
-        with patch.object(self.dag, 'topological_sort', return_value=["step_a", "step_b", "step_c"]):
-            order = self.executor.get_execution_order(self.dag)
-            self.assertEqual(order, ["step_a", "step_b", "step_c"])
+        with patch.object(dag, 'topological_sort', return_value=["step_a", "step_b", "step_c"]):
+            order = executor.get_execution_order(dag)
+            assert order == ["step_a", "step_b", "step_c"]
     
-    def test_get_execution_order_with_error(self):
+    def test_get_execution_order_with_error(self, dag, executor):
         """Test getting execution order with DAG error"""
-        with patch.object(self.dag, 'topological_sort', side_effect=ValueError("Cycle detected")):
-            with self.assertRaises(ValueError) as context:
-                self.executor.get_execution_order(self.dag)
+        with patch.object(dag, 'topological_sort', side_effect=ValueError("Cycle detected")):
+            with pytest.raises(ValueError) as exc_info:
+                executor.get_execution_order(dag)
             
-            self.assertIn("DAG topology error", str(context.exception))
+            assert "DAG topology error" in str(exc_info.value)
     
-    def test_validate_dag_structure(self):
+    def test_validate_dag_structure(self, dag, executor):
         """Test DAG structure validation"""
         script_specs = {
             "step_a": Mock(),
@@ -378,22 +388,22 @@ class TestTopologicalExecutor(unittest.TestCase):
             "step_c": Mock()
         }
         
-        errors = self.executor.validate_dag_structure(self.dag, script_specs)
-        self.assertEqual(len(errors), 0)
+        errors = executor.validate_dag_structure(dag, script_specs)
+        assert len(errors) == 0
     
-    def test_validate_dag_structure_missing_specs(self):
+    def test_validate_dag_structure_missing_specs(self, dag, executor):
         """Test DAG structure validation with missing specs"""
         script_specs = {
             "step_a": Mock(),
             # Missing step_b and step_c
         }
         
-        errors = self.executor.validate_dag_structure(self.dag, script_specs)
-        self.assertEqual(len(errors), 2)
-        self.assertIn("No ScriptExecutionSpec found for DAG node: step_b", errors)
-        self.assertIn("No ScriptExecutionSpec found for DAG node: step_c", errors)
+        errors = executor.validate_dag_structure(dag, script_specs)
+        assert len(errors) == 2
+        assert "No ScriptExecutionSpec found for DAG node: step_b" in errors
+        assert "No ScriptExecutionSpec found for DAG node: step_c" in errors
     
-    def test_validate_dag_structure_extra_specs(self):
+    def test_validate_dag_structure_extra_specs(self, dag, executor):
         """Test DAG structure validation with extra specs"""
         script_specs = {
             "step_a": Mock(),
@@ -402,21 +412,27 @@ class TestTopologicalExecutor(unittest.TestCase):
             "step_d": Mock()  # Extra spec not in DAG
         }
         
-        errors = self.executor.validate_dag_structure(self.dag, script_specs)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("ScriptExecutionSpec 'step_d' not found in DAG nodes", errors)
+        errors = executor.validate_dag_structure(dag, script_specs)
+        assert len(errors) == 1
+        assert "ScriptExecutionSpec 'step_d' not found in DAG nodes" in errors
 
 
-class TestLogicalNameMatchingTester(unittest.TestCase):
+class TestLogicalNameMatchingTester:
     """Test LogicalNameMatchingTester class"""
     
-    def setUp(self):
-        """Set up test fixtures"""
-        self.tester = LogicalNameMatchingTester(semantic_threshold=0.7)
-        self.temp_dir = Path(tempfile.mkdtemp())
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+    
+    @pytest.fixture
+    def tester(self):
+        """Create LogicalNameMatchingTester instance"""
+        return LogicalNameMatchingTester(semantic_threshold=0.7)
     
     @patch('cursus.validation.runtime.logical_name_matching.PathMatcher')
-    def test_test_data_compatibility_with_logical_matching_success(self, mock_path_matcher_class):
+    def test_test_data_compatibility_with_logical_matching_success(self, mock_path_matcher_class, tester, temp_dir):
         """Test successful data compatibility with logical matching"""
         # Mock path matcher
         mock_path_matcher = Mock()
@@ -454,21 +470,21 @@ class TestLogicalNameMatchingTester(unittest.TestCase):
         )
         
         # Create mock output files
-        output_files = [self.temp_dir / "output.csv"]
+        output_files = [temp_dir / "output.csv"]
         output_files[0].touch()
         
-        result = self.tester.test_data_compatibility_with_logical_matching(
+        result = tester.test_data_compatibility_with_logical_matching(
             spec_a, spec_b, output_files
         )
         
-        self.assertIsInstance(result, EnhancedDataCompatibilityResult)
-        self.assertEqual(result.script_a, "script_a")
-        self.assertEqual(result.script_b, "script_b")
-        self.assertTrue(result.compatible)
-        self.assertEqual(len(result.path_matches), 1)
+        assert isinstance(result, EnhancedDataCompatibilityResult)
+        assert result.script_a == "script_a"
+        assert result.script_b == "script_b"
+        assert result.compatible is True
+        assert len(result.path_matches) == 1
     
     @patch('cursus.validation.runtime.logical_name_matching.PathMatcher')
-    def test_test_data_compatibility_no_matches(self, mock_path_matcher_class):
+    def test_test_data_compatibility_no_matches(self, mock_path_matcher_class, tester, temp_dir):
         """Test data compatibility with no logical matches"""
         # Mock path matcher to return no matches
         mock_path_matcher = Mock()
@@ -495,17 +511,17 @@ class TestLogicalNameMatchingTester(unittest.TestCase):
             }
         )
         
-        output_files = [self.temp_dir / "output.csv"]
+        output_files = [temp_dir / "output.csv"]
         output_files[0].touch()
         
-        result = self.tester.test_data_compatibility_with_logical_matching(
+        result = tester.test_data_compatibility_with_logical_matching(
             spec_a, spec_b, output_files
         )
         
-        self.assertFalse(result.compatible)
-        self.assertIn("No matching logical names found between source outputs and destination inputs", result.compatibility_issues)
+        assert result.compatible is False
+        assert "No matching logical names found between source outputs and destination inputs" in result.compatibility_issues
     
-    def test_test_pipeline_with_topological_order_success(self):
+    def test_test_pipeline_with_topological_order_success(self, tester):
         """Test successful pipeline testing with topological order"""
         # Create test DAG
         dag = PipelineDAG(
@@ -541,7 +557,7 @@ class TestLogicalNameMatchingTester(unittest.TestCase):
             )
         
         with patch.object(dag, 'topological_sort', return_value=["step_a", "step_b"]):
-            with patch.object(self.tester.path_matcher, 'find_path_matches') as mock_find_matches:
+            with patch.object(tester.path_matcher, 'find_path_matches') as mock_find_matches:
                 mock_find_matches.return_value = [
                     PathMatch(
                         source_logical_name="output1",
@@ -553,81 +569,87 @@ class TestLogicalNameMatchingTester(unittest.TestCase):
                     )
                 ]
                 
-                with patch.object(self.tester.path_matcher, 'generate_matching_report') as mock_report:
+                with patch.object(tester.path_matcher, 'generate_matching_report') as mock_report:
                     mock_report.return_value = {"total_matches": 1}
                     
-                    result = self.tester.test_pipeline_with_topological_execution(
+                    result = tester.test_pipeline_with_topological_execution(
                         dag, script_specs, mock_script_tester
                     )
         
-        self.assertTrue(result["pipeline_success"])
-        self.assertEqual(result["execution_order"], ["step_a", "step_b"])
-        self.assertEqual(len(result["logical_matching_results"]), 1)
+        assert result["pipeline_success"] is True
+        assert result["execution_order"] == ["step_a", "step_b"]
+        assert len(result["logical_matching_results"]) == 1
     
-    def test_test_pipeline_with_topological_order_dag_error(self):
+    def test_test_pipeline_with_topological_order_dag_error(self, tester):
         """Test pipeline testing with DAG topology error"""
         dag = PipelineDAG(nodes=["step_a"], edges=[])
         script_specs = {"step_a": Mock()}
         
         with patch.object(dag, 'topological_sort', side_effect=ValueError("Cycle detected")):
-            result = self.tester.test_pipeline_with_topological_execution(
+            result = tester.test_pipeline_with_topological_execution(
                 dag, script_specs, Mock()
             )
         
-        self.assertFalse(result["pipeline_success"])
-        self.assertIn("DAG topology error", result["errors"][0])
+        assert result["pipeline_success"] is False
+        assert "DAG topology error" in result["errors"][0]
     
-    def test_find_best_file_for_logical_name(self):
+    def test_find_best_file_for_logical_name(self, tester, temp_dir):
         """Test finding best file for logical name"""
         # Create test files
-        file1 = self.temp_dir / "processed_data.csv"
-        file2 = self.temp_dir / "other_data.csv"
+        file1 = temp_dir / "processed_data.csv"
+        file2 = temp_dir / "other_data.csv"
         file1.touch()
         file2.touch()
         
         output_files = [file1, file2]
         
         # Test exact match
-        best_file = self.tester._find_best_file_for_logical_name("processed_data", output_files)
-        self.assertEqual(best_file, file1)
+        best_file = tester._find_best_file_for_logical_name("processed_data", output_files)
+        assert best_file == file1
         
         # Test no match (should return most recent)
         with patch('pathlib.Path.stat') as mock_stat:
             mock_stat.return_value.st_mtime = 1000  # Mock modification time
-            best_file = self.tester._find_best_file_for_logical_name("unrelated", output_files)
-            self.assertIn(best_file, output_files)
+            best_file = tester._find_best_file_for_logical_name("unrelated", output_files)
+            assert best_file in output_files
     
-    def test_detect_primary_format(self):
+    def test_detect_primary_format(self, tester, temp_dir):
         """Test detecting primary file format"""
         # Create test files with different extensions
         files = [
-            self.temp_dir / "file1.csv",
-            self.temp_dir / "file2.csv",
-            self.temp_dir / "file3.json"
+            temp_dir / "file1.csv",
+            temp_dir / "file2.csv",
+            temp_dir / "file3.json"
         ]
         
         for file in files:
             file.touch()
         
         # CSV should be primary (most common)
-        primary_format = self.tester._detect_primary_format(files)
-        self.assertEqual(primary_format, ".csv")
+        primary_format = tester._detect_primary_format(files)
+        assert primary_format == ".csv"
         
         # Test with no files
-        primary_format = self.tester._detect_primary_format([])
-        self.assertEqual(primary_format, "unknown")
+        primary_format = tester._detect_primary_format([])
+        assert primary_format == "unknown"
 
 
-class TestLogicalNameMatchingIntegration(unittest.TestCase):
+class TestLogicalNameMatchingIntegration:
     """Integration tests for logical name matching system"""
     
-    def setUp(self):
-        """Set up integration test fixtures"""
-        self.temp_dir = Path(tempfile.mkdtemp())
-        self.tester = LogicalNameMatchingTester(semantic_threshold=0.7)
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+    
+    @pytest.fixture
+    def tester(self):
+        """Create LogicalNameMatchingTester instance"""
+        return LogicalNameMatchingTester(semantic_threshold=0.7)
     
     @patch('cursus.validation.runtime.logical_name_matching.SemanticMatcher')
-    def test_end_to_end_matching_workflow(self, mock_semantic_matcher_class):
+    def test_end_to_end_matching_workflow(self, mock_semantic_matcher_class, tester):
         """Test complete end-to-end matching workflow"""
         # Mock semantic matcher to return low similarity for hyperparameter_s3
         mock_semantic_matcher = Mock()
@@ -679,15 +701,154 @@ class TestLogicalNameMatchingIntegration(unittest.TestCase):
         
         # Should find alias match for processed_data -> training_data
         # Note: May find multiple matches (alias + semantic), but alias should be highest confidence
-        self.assertGreaterEqual(len(matches), 1)
-        self.assertEqual(matches[0].match_type, MatchType.LOGICAL_TO_ALIAS)
-        self.assertEqual(matches[0].confidence, 0.95)
+        assert len(matches) >= 1
+        assert matches[0].match_type == MatchType.LOGICAL_TO_ALIAS
+        assert matches[0].confidence == 0.95
         
         # hyperparameter_s3 should remain independent (no match)
         matched_inputs = {match.dest_logical_name for match in matches}
-        self.assertIn("training_data", matched_inputs)
-        self.assertNotIn("hyperparameter_s3", matched_inputs)
+        assert "training_data" in matched_inputs
+        assert "hyperparameter_s3" not in matched_inputs
 
 
-if __name__ == '__main__':
-    unittest.main()
+class TestMatchTypeEnum:
+    """Test MatchType enum"""
+    
+    def test_match_type_enum_values(self):
+        """Test MatchType enum values"""
+        # Test that all expected match types exist
+        expected_types = [
+            MatchType.EXACT_LOGICAL,
+            MatchType.LOGICAL_TO_ALIAS,
+            MatchType.ALIAS_TO_LOGICAL,
+            MatchType.ALIAS_TO_ALIAS,
+            MatchType.SEMANTIC
+        ]
+        
+        for match_type in expected_types:
+            assert isinstance(match_type, MatchType)
+    
+    def test_match_type_string_values(self):
+        """Test MatchType string values"""
+        assert MatchType.EXACT_LOGICAL.value == "exact_logical"
+        assert MatchType.LOGICAL_TO_ALIAS.value == "logical_to_alias"
+        assert MatchType.ALIAS_TO_LOGICAL.value == "alias_to_logical"
+        assert MatchType.ALIAS_TO_ALIAS.value == "alias_to_alias"
+        assert MatchType.SEMANTIC.value == "semantic"
+
+
+class TestEnhancedDataCompatibilityResult:
+    """Test EnhancedDataCompatibilityResult model"""
+    
+    def test_enhanced_data_compatibility_result_creation(self):
+        """Test creating an EnhancedDataCompatibilityResult"""
+        # Create sample path matches
+        path_matches = [
+            PathMatch(
+                source_logical_name="processed_data",
+                dest_logical_name="training_data",
+                match_type=MatchType.EXACT_LOGICAL,
+                confidence=0.95,
+                matched_source_name="processed_data",
+                matched_dest_name="training_data"
+            )
+        ]
+        
+        result = EnhancedDataCompatibilityResult(
+            script_a="tabular_preprocessing",
+            script_b="xgboost_training",
+            compatible=True,
+            path_matches=path_matches,
+            matching_details={"total_matches": 1, "high_confidence_matches": 1}
+        )
+        
+        assert result.script_a == "tabular_preprocessing"
+        assert result.script_b == "xgboost_training"
+        assert result.compatible is True
+        assert len(result.path_matches) == 1
+        assert result.matching_details is not None
+        
+        # Check the path match details
+        match = result.path_matches[0]
+        assert match.source_logical_name == "processed_data"
+        assert match.dest_logical_name == "training_data"
+        assert match.match_type == MatchType.EXACT_LOGICAL
+        assert match.confidence == 0.95
+    
+    def test_enhanced_result_with_no_matches(self):
+        """Test EnhancedDataCompatibilityResult with no path matches"""
+        result = EnhancedDataCompatibilityResult(
+            script_a="script_a",
+            script_b="script_b",
+            compatible=False,
+            path_matches=[],
+            matching_details={"total_matches": 0, "recommendations": ["Check logical names"]},
+            compatibility_issues=["No compatible outputs found"]
+        )
+        
+        assert result.compatible is False
+        assert len(result.path_matches) == 0
+        assert result.matching_details is not None
+        assert "No compatible outputs found" in result.compatibility_issues
+    
+    def test_enhanced_result_multiple_matches(self):
+        """Test EnhancedDataCompatibilityResult with multiple path matches"""
+        path_matches = [
+            PathMatch(
+                source_logical_name="processed_data",
+                dest_logical_name="training_data",
+                match_type=MatchType.EXACT_LOGICAL,
+                confidence=0.95,
+                matched_source_name="processed_data",
+                matched_dest_name="training_data"
+            ),
+            PathMatch(
+                source_logical_name="feature_data",
+                dest_logical_name="feature_input",
+                match_type=MatchType.SEMANTIC,
+                confidence=0.8,
+                matched_source_name="feature_data",
+                matched_dest_name="feature_input"
+            )
+        ]
+        
+        result = EnhancedDataCompatibilityResult(
+            script_a="preprocessing",
+            script_b="training",
+            compatible=True,
+            path_matches=path_matches,
+            matching_details={"total_matches": 2, "high_confidence_matches": 1}
+        )
+        
+        assert result.compatible is True
+        assert len(result.path_matches) == 2
+        
+        # Check match types
+        match_types = [match.match_type for match in result.path_matches]
+        assert MatchType.EXACT_LOGICAL in match_types
+        assert MatchType.SEMANTIC in match_types
+        
+        # Check confidence scores
+        confidences = [match.confidence for match in result.path_matches]
+        assert 0.95 in confidences
+        assert 0.8 in confidences
+    
+    def test_enhanced_result_inheritance_from_basic(self):
+        """Test that EnhancedDataCompatibilityResult has basic fields"""
+        result = EnhancedDataCompatibilityResult(
+            script_a="script_a",
+            script_b="script_b",
+            compatible=True,
+            path_matches=[],
+            matching_details={"total_matches": 0}
+        )
+        
+        # Should have all basic fields
+        assert result.script_a == "script_a"
+        assert result.script_b == "script_b"
+        assert result.compatible is True
+        assert result.compatibility_issues == []  # Default from base class
+        
+        # Should also have enhanced fields
+        assert result.path_matches == []
+        assert result.matching_details is not None
