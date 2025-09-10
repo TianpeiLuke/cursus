@@ -7,12 +7,16 @@ Contains Pydantic models for runtime testing specifications and results.
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union, TYPE_CHECKING
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 # Import PipelineDAG for integration
 from ...api.dag.base_dag import PipelineDAG
+
+# Forward reference to avoid circular imports
+if TYPE_CHECKING:
+    from .logical_name_matching import EnhancedScriptExecutionSpec
 
 
 class ScriptTestResult(BaseModel):
@@ -100,12 +104,36 @@ class PipelineTestingSpec(BaseModel):
     # Copy of the pipeline DAG structure
     dag: PipelineDAG = Field(..., description="Copy of Pipeline DAG defining step dependencies and execution order")
     
-    # Script execution specifications for each step
-    script_specs: Dict[str, ScriptExecutionSpec] = Field(..., description="Execution specs for each pipeline step")
+    # Script execution specifications for each step (supports both basic and enhanced specs)
+    script_specs: Dict[str, ScriptExecutionSpec] = Field(
+        ..., 
+        description="Execution specs for each pipeline step (supports both ScriptExecutionSpec and EnhancedScriptExecutionSpec)"
+    )
     
     # Testing workspace configuration
     test_workspace_root: str = Field(default="test/integration/runtime", description="Root directory for test data and outputs")
     workspace_aware_root: Optional[str] = Field(None, description="Workspace-aware project root")
+    
+    def has_enhanced_specs(self) -> bool:
+        """Check if any script specs are enhanced specs"""
+        from .logical_name_matching import EnhancedScriptExecutionSpec
+        return any(isinstance(spec, EnhancedScriptExecutionSpec) for spec in self.script_specs.values())
+    
+    def get_enhanced_specs(self) -> Dict[str, "EnhancedScriptExecutionSpec"]:
+        """Get only the enhanced script specs"""
+        from .logical_name_matching import EnhancedScriptExecutionSpec
+        return {
+            name: spec for name, spec in self.script_specs.items() 
+            if isinstance(spec, EnhancedScriptExecutionSpec)
+        }
+    
+    def get_basic_specs(self) -> Dict[str, ScriptExecutionSpec]:
+        """Get only the basic script specs"""
+        from .logical_name_matching import EnhancedScriptExecutionSpec
+        return {
+            name: spec for name, spec in self.script_specs.items() 
+            if not isinstance(spec, EnhancedScriptExecutionSpec)
+        }
 
 
 class RuntimeTestingConfiguration(BaseModel):
@@ -119,5 +147,18 @@ class RuntimeTestingConfiguration(BaseModel):
     test_data_compatibility: bool = Field(default=True, description="Whether to test data compatibility between connected scripts")
     test_pipeline_flow: bool = Field(default=True, description="Whether to test complete pipeline flow")
     
+    # Enhanced features configuration
+    enable_enhanced_features: bool = Field(default=False, description="Whether to enable enhanced logical name matching features")
+    enable_logical_matching: bool = Field(default=False, description="Whether to enable logical name matching for data compatibility")
+    
     # Workspace configuration
     use_workspace_aware: bool = Field(default=False, description="Whether to use workspace-aware project structure")
+    
+    def model_post_init(self, __context) -> None:
+        """Post-initialization to auto-enable enhanced features if enhanced specs are present"""
+        super().model_post_init(__context)
+        
+        # Auto-enable enhanced features if pipeline has enhanced specs
+        if self.pipeline_spec.has_enhanced_specs():
+            self.enable_enhanced_features = True
+            self.enable_logical_matching = True

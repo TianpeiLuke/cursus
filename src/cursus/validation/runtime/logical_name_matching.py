@@ -14,6 +14,7 @@ from enum import Enum
 
 # Import existing semantic matching infrastructure
 from ...core.deps.semantic_matcher import SemanticMatcher
+from .runtime_models import ScriptExecutionSpec
 
 logger = logging.getLogger(__name__)
 
@@ -49,35 +50,38 @@ class PathMatch(BaseModel):
     matched_dest_name: str = Field(..., description="Actual destination name that matched")
 
 
-class EnhancedScriptExecutionSpec(BaseModel):
+class EnhancedScriptExecutionSpec(ScriptExecutionSpec):
     """Enhanced ScriptExecutionSpec with alias system support"""
-    # Core fields from original ScriptExecutionSpec
-    script_name: str = Field(..., description="Name of the script to test")
-    step_name: str = Field(..., description="Step name that matches PipelineDAG node name")
-    script_path: Optional[str] = Field(None, description="Full path to script file")
     
     # Enhanced path specifications with alias support
     input_path_specs: Dict[str, PathSpec] = Field(default_factory=dict, description="Input path specifications with aliases")
     output_path_specs: Dict[str, PathSpec] = Field(default_factory=dict, description="Output path specifications with aliases")
     
-    # Environment and job configuration
-    environ_vars: Dict[str, str] = Field(default_factory=dict, description="Environment variables for script main()")
-    job_args: Dict[str, Any] = Field(default_factory=dict, description="Job arguments for script main()")
-    
-    # User metadata
-    last_updated: Optional[str] = Field(None, description="Timestamp when spec was last updated")
-    user_notes: Optional[str] = Field(None, description="User notes about this script configuration")
-    
-    # Backward compatibility properties
-    @property
-    def input_paths(self) -> Dict[str, str]:
-        """Backward compatibility: return dict of logical_name -> path"""
-        return {logical_name: spec.path for logical_name, spec in self.input_path_specs.items()}
-    
-    @property 
-    def output_paths(self) -> Dict[str, str]:
-        """Backward compatibility: return dict of logical_name -> path"""
-        return {logical_name: spec.path for logical_name, spec in self.output_path_specs.items()}
+    def model_post_init(self, __context) -> None:
+        """Post-initialization to sync path specs with inherited path fields"""
+        super().model_post_init(__context)
+        
+        # If input_path_specs is provided but input_paths is empty, populate input_paths
+        if self.input_path_specs and not self.input_paths:
+            self.input_paths = {logical_name: spec.path for logical_name, spec in self.input_path_specs.items()}
+        
+        # If output_path_specs is provided but output_paths is empty, populate output_paths  
+        if self.output_path_specs and not self.output_paths:
+            self.output_paths = {logical_name: spec.path for logical_name, spec in self.output_path_specs.items()}
+        
+        # If input_paths is provided but input_path_specs is empty, populate input_path_specs
+        if self.input_paths and not self.input_path_specs:
+            self.input_path_specs = {
+                logical_name: PathSpec(logical_name=logical_name, path=path, aliases=[])
+                for logical_name, path in self.input_paths.items()
+            }
+        
+        # If output_paths is provided but output_path_specs is empty, populate output_path_specs
+        if self.output_paths and not self.output_path_specs:
+            self.output_path_specs = {
+                logical_name: PathSpec(logical_name=logical_name, path=path, aliases=[])
+                for logical_name, path in self.output_paths.items()
+            }
     
     @classmethod
     def from_script_execution_spec(cls, original_spec, input_aliases: Optional[Dict[str, List[str]]] = None, 
