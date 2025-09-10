@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from cursus.core.deps import (
     UnifiedDependencyResolver,
     SpecificationRegistry,
@@ -14,13 +14,26 @@ from cursus.core.base import (
     NodeType,
 )
 
-class TestDependencyResolver(unittest.TestCase):
-    def test_dependency_resolution_with_aliases(self):
+
+class TestDependencyResolver:
+    
+    @pytest.fixture
+    def registry(self):
+        """Create a SpecificationRegistry instance."""
+        return SpecificationRegistry()
+    
+    @pytest.fixture
+    def semantic_matcher(self):
+        """Create a SemanticMatcher instance."""
+        return SemanticMatcher()
+    
+    @pytest.fixture
+    def resolver(self, registry, semantic_matcher):
+        """Create a UnifiedDependencyResolver instance."""
+        return UnifiedDependencyResolver(registry, semantic_matcher)
+    
+    def test_dependency_resolution_with_aliases(self, resolver, registry):
         """Test that dependency resolution uses aliases for matching."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Create producer step specification with aliases
         producer_spec = StepSpecification(
             step_type="PreprocessingStep",
@@ -61,16 +74,12 @@ class TestDependencyResolver(unittest.TestCase):
         resolved = resolver.resolve_step_dependencies("consumer", ["producer"])
         
         # Assert that resolution was successful
-        self.assertIn("training_data", resolved)
-        self.assertEqual(resolved["training_data"].step_name, "producer")
-        self.assertEqual(resolved["training_data"].output_spec.logical_name, "processed_data")
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "producer"
+        assert resolved["training_data"].output_spec.logical_name == "processed_data"
 
-    def test_weight_calculation(self):
+    def test_weight_calculation(self, resolver, registry):
         """Test that the weight calculation is correct."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Create producer step specification
         producer_spec = StepSpecification(
             step_type="PreprocessingStep",
@@ -129,14 +138,10 @@ class TestDependencyResolver(unittest.TestCase):
         actual_score = resolver._calculate_compatibility(dep_spec, output_spec, producer_spec)
         
         # Assert that the scores are equal
-        self.assertAlmostEqual(expected_score, actual_score, places=5)
+        assert abs(expected_score - actual_score) < 1e-5
 
-    def test_multiple_competing_candidates(self):
+    def test_multiple_competing_candidates(self, resolver, registry):
         """Test that resolver selects the best candidate among multiple options."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Create three producer step specifications with varying compatibility scores
         # Producer 1: Good type match but poor semantic match
         producer1_spec = StepSpecification(
@@ -206,16 +211,12 @@ class TestDependencyResolver(unittest.TestCase):
         resolved = resolver.resolve_step_dependencies("training", ["data_loading", "preprocessing", "evaluation"])
         
         # Assert that the resolver selected the best candidate (producer2)
-        self.assertIn("training_data", resolved)
-        self.assertEqual(resolved["training_data"].step_name, "preprocessing")
-        self.assertEqual(resolved["training_data"].output_spec.logical_name, "training_dataset")
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "preprocessing"
+        assert resolved["training_data"].output_spec.logical_name == "training_dataset"
 
-    def test_type_compatibility_matrix(self):
+    def test_type_compatibility_matrix(self, resolver):
         """Test compatibility matrix for different dependency types."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Test compatible types according to the matrix in dependency_resolver.py
         compatible_pairs = [
             (DependencyType.MODEL_ARTIFACTS, DependencyType.MODEL_ARTIFACTS),
@@ -244,24 +245,16 @@ class TestDependencyResolver(unittest.TestCase):
         
         # Assert compatible types
         for dep_type, output_type in compatible_pairs:
-            self.assertTrue(
-                resolver._are_types_compatible(dep_type, output_type),
+            assert resolver._are_types_compatible(dep_type, output_type), \
                 f"Types should be compatible: {dep_type.value} <- {output_type.value}"
-            )
         
         # Assert incompatible types
         for dep_type, output_type in incompatible_pairs:
-            self.assertFalse(
-                resolver._are_types_compatible(dep_type, output_type),
+            assert not resolver._are_types_compatible(dep_type, output_type), \
                 f"Types should not be compatible: {dep_type.value} <- {output_type.value}"
-            )
 
-    def test_data_type_compatibility(self):
+    def test_data_type_compatibility(self, resolver):
         """Test data type compatibility rules."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Compatible data type pairs (dep_type, output_type)
         compatible_pairs = [
             ("S3Uri", "S3Uri"),
@@ -293,42 +286,36 @@ class TestDependencyResolver(unittest.TestCase):
         
         # Assert compatible data types
         for dep_type, output_type in compatible_pairs:
-            self.assertTrue(
-                resolver._are_data_types_compatible(dep_type, output_type),
+            assert resolver._are_data_types_compatible(dep_type, output_type), \
                 f"Data types should be compatible: {dep_type} <- {output_type}"
-            )
         
         # Assert incompatible data types
         for dep_type, output_type in incompatible_pairs:
-            self.assertFalse(
-                resolver._are_data_types_compatible(dep_type, output_type),
+            assert not resolver._are_data_types_compatible(dep_type, output_type), \
                 f"Data types should not be compatible: {dep_type} <- {output_type}"
-            )
 
-    def test_semantic_matching(self):
+    def test_semantic_matching(self, semantic_matcher):
         """Test semantic similarity for name matching."""
-        semantic_matcher = SemanticMatcher()
-        
         # Test exact match
         exact_score = semantic_matcher.calculate_similarity("training_data", "training_data")
-        self.assertEqual(exact_score, 1.0)
+        assert exact_score == 1.0
         
         # Test close match
         close_score = semantic_matcher.calculate_similarity("training_data", "training_dataset")
-        self.assertGreater(close_score, 0.7)
+        assert close_score > 0.7
         
         # Test partial match
         partial_score = semantic_matcher.calculate_similarity("training_data", "data")
-        self.assertGreater(partial_score, 0.3)
+        assert partial_score > 0.3
         
         # Test synonym match based on semantic matcher's synonym dictionary
         # "data" and "dataset" should be considered related
         synonym_score = semantic_matcher.calculate_similarity("data", "dataset")
-        self.assertGreater(synonym_score, 0.3)
+        assert synonym_score > 0.3
         
         # Test unrelated terms
         unrelated_score = semantic_matcher.calculate_similarity("training_data", "model_output")
-        self.assertLess(unrelated_score, 0.3)
+        assert unrelated_score < 0.3
         
         # Test with aliases
         output_spec = OutputSpec(
@@ -339,14 +326,10 @@ class TestDependencyResolver(unittest.TestCase):
         )
         
         alias_score = semantic_matcher.calculate_similarity_with_aliases("training_dataset", output_spec)
-        self.assertGreater(alias_score, 0.7)
+        assert alias_score > 0.7
 
-    def test_required_vs_optional_dependencies(self):
+    def test_required_vs_optional_dependencies(self, resolver, registry):
         """Test resolution of required vs. optional dependencies."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Create a producer step
         producer_spec = StepSpecification(
             step_type="PreprocessingStep",
@@ -400,16 +383,12 @@ class TestDependencyResolver(unittest.TestCase):
         resolved = resolver.resolve_step_dependencies("training", ["preprocessing"])
         
         # Assert that only the required dependency is resolved
-        self.assertIn("training_data", resolved)
-        self.assertEqual(resolved["training_data"].step_name, "preprocessing")
-        self.assertNotIn("validation_data", resolved)  # Optional dependency not resolved
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "preprocessing"
+        assert "validation_data" not in resolved  # Optional dependency not resolved
 
-    def test_unresolvable_dependencies(self):
+    def test_unresolvable_dependencies(self, resolver, registry):
         """Test error handling for unresolvable dependencies."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Create a consumer step with a required dependency
         consumer_spec = StepSpecification(
             step_type="TrainingStep",
@@ -444,12 +423,12 @@ class TestDependencyResolver(unittest.TestCase):
         registry.register("wrong_producer", wrong_type_producer)
         
         # Attempt to resolve with incompatible producer
-        with self.assertRaises(DependencyResolutionError) as context:
+        with pytest.raises(DependencyResolutionError) as exc_info:
             resolver.resolve_step_dependencies("training", ["wrong_producer"])
         
         # Check that the error message mentions the unresolved dependency
-        self.assertIn("training_data", str(context.exception))
-        self.assertIn("unresolved required dependencies", str(context.exception).lower())
+        assert "training_data" in str(exc_info.value)
+        assert "unresolved required dependencies" in str(exc_info.value).lower()
 
     def test_registry_isolation(self):
         """Test that different registry contexts remain isolated."""
@@ -493,12 +472,12 @@ class TestDependencyResolver(unittest.TestCase):
         registry2.register("step1", spec2)  # Same step name, different spec
         
         # Assert registries have isolated contents
-        self.assertEqual(registry1.get_specification("step1").step_type, "PreprocessingStep")
-        self.assertEqual(registry2.get_specification("step1").step_type, "ProcessingStep")
+        assert registry1.get_specification("step1").step_type == "PreprocessingStep"
+        assert registry2.get_specification("step1").step_type == "ProcessingStep"
         
         # Assert resolvers use their own registry
-        self.assertEqual(resolver1.registry.get_specification("step1").step_type, "PreprocessingStep")
-        self.assertEqual(resolver2.registry.get_specification("step1").step_type, "ProcessingStep")
+        assert resolver1.registry.get_specification("step1").step_type == "PreprocessingStep"
+        assert resolver2.registry.get_specification("step1").step_type == "ProcessingStep"
 
     def test_property_reference_functionality(self):
         """Test PropertyReference navigation and conversion."""
@@ -518,13 +497,10 @@ class TestDependencyResolver(unittest.TestCase):
         
         # Test to_sagemaker_property - implementation removes "properties." prefix
         sagemaker_prop = prop_ref.to_sagemaker_property()
-        self.assertEqual(
-            sagemaker_prop,
-            {"Get": "Steps.preprocessing.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri"}
-        )
+        assert sagemaker_prop == {"Get": "Steps.preprocessing.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri"}
         
         # Test string representation
-        self.assertEqual(str(prop_ref), "preprocessing.processed_data")
+        assert str(prop_ref) == "preprocessing.processed_data"
         
         # Test parsing of property path
         path_parts = prop_ref._parse_property_path(output_spec.property_path)
@@ -537,26 +513,22 @@ class TestDependencyResolver(unittest.TestCase):
             "S3Uri"
         ]
         
-        self.assertEqual(len(path_parts), len(expected_parts))
+        assert len(path_parts) == len(expected_parts)
         
         # Check first part is a string
-        self.assertEqual(path_parts[0], expected_parts[0])
+        assert path_parts[0] == expected_parts[0]
         
         # Check second part is a tuple with correct dict access
-        self.assertIsInstance(path_parts[1], tuple)
-        self.assertEqual(path_parts[1][0], expected_parts[1][0])
-        self.assertEqual(path_parts[1][1], expected_parts[1][1])
+        assert isinstance(path_parts[1], tuple)
+        assert path_parts[1][0] == expected_parts[1][0]
+        assert path_parts[1][1] == expected_parts[1][1]
         
         # Check remaining parts
-        self.assertEqual(path_parts[2], expected_parts[2])
-        self.assertEqual(path_parts[3], expected_parts[3])
+        assert path_parts[2] == expected_parts[2]
+        assert path_parts[3] == expected_parts[3]
 
-    def test_end_to_end_resolution(self):
+    def test_end_to_end_resolution(self, resolver, registry):
         """Test end-to-end resolution of a multi-step pipeline."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Create a chain of steps: data loading → preprocessing → training → evaluation
         data_loading_spec = StepSpecification(
             step_type="DataLoadingStep",
@@ -662,38 +634,34 @@ class TestDependencyResolver(unittest.TestCase):
         resolved = resolver.resolve_all_dependencies(all_steps)
         
         # Check that all expected steps have dependencies resolved
-        self.assertIn("preprocessing", resolved)
-        self.assertIn("training", resolved)
-        self.assertIn("evaluation", resolved)
+        assert "preprocessing" in resolved
+        assert "training" in resolved
+        assert "evaluation" in resolved
         
         # Check preprocessing step dependencies
-        self.assertIn("input_data", resolved["preprocessing"])
-        self.assertEqual(resolved["preprocessing"]["input_data"].step_name, "data_loading")
-        self.assertEqual(resolved["preprocessing"]["input_data"].output_spec.logical_name, "raw_data")
+        assert "input_data" in resolved["preprocessing"]
+        assert resolved["preprocessing"]["input_data"].step_name == "data_loading"
+        assert resolved["preprocessing"]["input_data"].output_spec.logical_name == "raw_data"
         
         # Check training step dependencies
-        self.assertIn("training_data", resolved["training"])
-        self.assertIn("validation_data", resolved["training"])
-        self.assertEqual(resolved["training"]["training_data"].step_name, "preprocessing")
-        self.assertEqual(resolved["training"]["training_data"].output_spec.logical_name, "processed_data")
-        self.assertEqual(resolved["training"]["validation_data"].step_name, "preprocessing")
-        self.assertEqual(resolved["training"]["validation_data"].output_spec.logical_name, "validation_data")
+        assert "training_data" in resolved["training"]
+        assert "validation_data" in resolved["training"]
+        assert resolved["training"]["training_data"].step_name == "preprocessing"
+        assert resolved["training"]["training_data"].output_spec.logical_name == "processed_data"
+        assert resolved["training"]["validation_data"].step_name == "preprocessing"
+        assert resolved["training"]["validation_data"].output_spec.logical_name == "validation_data"
         
         # Check evaluation step dependencies
-        self.assertIn("model", resolved["evaluation"])
-        self.assertIn("test_data", resolved["evaluation"])
-        self.assertEqual(resolved["evaluation"]["model"].step_name, "training")
-        self.assertEqual(resolved["evaluation"]["model"].output_spec.logical_name, "model_artifacts")
-        self.assertEqual(resolved["evaluation"]["test_data"].step_name, "preprocessing")
+        assert "model" in resolved["evaluation"]
+        assert "test_data" in resolved["evaluation"]
+        assert resolved["evaluation"]["model"].step_name == "training"
+        assert resolved["evaluation"]["model"].output_spec.logical_name == "model_artifacts"
+        assert resolved["evaluation"]["test_data"].step_name == "preprocessing"
         # Given the added semantic keywords, it should now match with validation_data
-        self.assertEqual(resolved["evaluation"]["test_data"].output_spec.logical_name, "validation_data")
+        assert resolved["evaluation"]["test_data"].output_spec.logical_name == "validation_data"
 
-    def test_job_type_normalization(self):
+    def test_job_type_normalization(self, resolver, registry):
         """Test that job type normalization works correctly for compatible sources."""
-        registry = SpecificationRegistry()
-        semantic_matcher = SemanticMatcher()
-        resolver = UnifiedDependencyResolver(registry, semantic_matcher)
-        
         # Create a producer step with job type suffix
         producer_spec = StepSpecification(
             step_type="TabularPreprocessing_Training",  # Job type variant
@@ -731,13 +699,13 @@ class TestDependencyResolver(unittest.TestCase):
         resolved = resolver.resolve_step_dependencies("training", ["preprocessing"])
         
         # Assert that resolution was successful despite the job type suffix
-        self.assertIn("training_data", resolved)
-        self.assertEqual(resolved["training_data"].step_name, "preprocessing")
-        self.assertEqual(resolved["training_data"].output_spec.logical_name, "processed_data")
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "preprocessing"
+        assert resolved["training_data"].output_spec.logical_name == "processed_data"
         
         # Test the normalization method directly
         normalized = resolver._normalize_step_type_for_compatibility("TabularPreprocessing_Training")
-        self.assertEqual(normalized, "TabularPreprocessing")
+        assert normalized == "TabularPreprocessing"
         
         # Test with other job type suffixes
         test_cases = [
@@ -749,8 +717,5 @@ class TestDependencyResolver(unittest.TestCase):
         
         for input_type, expected_output in test_cases:
             normalized = resolver._normalize_step_type_for_compatibility(input_type)
-            self.assertEqual(normalized, expected_output, 
-                           f"Failed to normalize {input_type} to {expected_output}, got {normalized}")
-
-if __name__ == '__main__':
-    unittest.main()
+            assert normalized == expected_output, \
+                f"Failed to normalize {input_type} to {expected_output}, got {normalized}"

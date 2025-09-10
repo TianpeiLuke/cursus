@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from typing import Dict, Any
@@ -7,6 +7,7 @@ from abc import ABC
 
 from cursus.core.base.builder_base import StepBuilderBase
 from cursus.core.base.config_base import BasePipelineConfig
+
 
 class MockConfig(BasePipelineConfig):
     """Mock configuration for testing."""
@@ -20,6 +21,7 @@ class MockConfig(BasePipelineConfig):
             service_name='test_service',
             pipeline_version='1.0.0'
         )
+
 
 class ConcreteStepBuilder(StepBuilderBase):
     """Concrete implementation of StepBuilderBase for testing."""
@@ -42,56 +44,77 @@ class ConcreteStepBuilder(StepBuilderBase):
         mock_step.name = "test_step"
         return mock_step
 
-class TestStepBuilderBase(unittest.TestCase):
+
+class TestStepBuilderBase:
     """Test cases for StepBuilderBase class."""
     
-    def setUp(self):
+    @pytest.fixture
+    def config(self):
         """Set up test fixtures."""
-        self.config = MockConfig()
-        self.mock_session = Mock()
-        self.role = "arn:aws:iam::123456789012:role/TestRole"
-        self.notebook_root = Path("/test/notebook")
-        self.mock_registry_manager = Mock()
-        self.mock_dependency_resolver = Mock()
-        self.mock_spec = Mock()
+        return MockConfig()
     
-    def test_init_with_required_params(self):
+    @pytest.fixture
+    def mock_session(self):
+        return Mock()
+    
+    @pytest.fixture
+    def role(self):
+        return "arn:aws:iam::123456789012:role/TestRole"
+    
+    @pytest.fixture
+    def notebook_root(self):
+        return Path("/test/notebook")
+    
+    @pytest.fixture
+    def mock_registry_manager(self):
+        return Mock()
+    
+    @pytest.fixture
+    def mock_dependency_resolver(self):
+        return Mock()
+    
+    @pytest.fixture
+    def mock_spec(self):
+        return Mock()
+    
+    def test_init_with_required_params(self, config, mock_session, role, notebook_root):
         """Test initialization with required parameters."""
         builder = ConcreteStepBuilder(
-            config=self.config,
-            sagemaker_session=self.mock_session,
-            role=self.role,
-            notebook_root=self.notebook_root
+            config=config,
+            sagemaker_session=mock_session,
+            role=role,
+            notebook_root=notebook_root
         )
         
-        self.assertEqual(builder.config, self.config)
-        self.assertEqual(builder.session, self.mock_session)
-        self.assertEqual(builder.role, self.role)
-        self.assertEqual(builder.notebook_root, self.notebook_root)
-        self.assertEqual(builder.aws_region, 'us-east-1')  # NA maps to us-east-1
+        assert builder.config == config
+        assert builder.session == mock_session
+        assert builder.role == role
+        assert builder.notebook_root == notebook_root
+        assert builder.aws_region == 'us-east-1'  # NA maps to us-east-1
     
-    def test_init_with_optional_params(self):
+    def test_init_with_optional_params(self, config, mock_session, role, notebook_root, 
+                                     mock_registry_manager, mock_dependency_resolver, mock_spec):
         """Test initialization with optional parameters."""
         builder = ConcreteStepBuilder(
-            config=self.config,
-            spec=self.mock_spec,
-            sagemaker_session=self.mock_session,
-            role=self.role,
-            notebook_root=self.notebook_root,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            config=config,
+            spec=mock_spec,
+            sagemaker_session=mock_session,
+            role=role,
+            notebook_root=notebook_root,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
-        self.assertEqual(builder.spec, self.mock_spec)
-        self.assertEqual(builder._registry_manager, self.mock_registry_manager)
-        self.assertEqual(builder._dependency_resolver, self.mock_dependency_resolver)
+        assert builder.spec == mock_spec
+        assert builder._registry_manager == mock_registry_manager
+        assert builder._dependency_resolver == mock_dependency_resolver
     
     def test_invalid_region_raises_error(self):
         """Test that invalid region raises ValidationError during config creation."""
         # Pydantic now validates the region during model construction
         from pydantic_core import ValidationError
         
-        with self.assertRaises(ValidationError) as context:
+        with pytest.raises(ValidationError) as exc_info:
             invalid_config = BasePipelineConfig(
                 author='test_author',
                 bucket='test-bucket',
@@ -102,82 +125,82 @@ class TestStepBuilderBase(unittest.TestCase):
             )
         
         # Check that the error message mentions the invalid region
-        error_str = str(context.exception)
-        self.assertIn("INVALID", error_str)
-        self.assertIn("region", error_str.lower())
+        error_str = str(exc_info.value)
+        assert "INVALID" in error_str
+        assert "region" in error_str.lower()
     
-    def test_sanitize_name_for_sagemaker(self):
+    def test_sanitize_name_for_sagemaker(self, config):
         """Test name sanitization for SageMaker."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         # Test normal name
         sanitized = builder._sanitize_name_for_sagemaker("test-name")
-        self.assertEqual(sanitized, "test-name")
+        assert sanitized == "test-name"
         
         # Test name with special characters
         sanitized = builder._sanitize_name_for_sagemaker("test@name#with$special%chars")
-        self.assertEqual(sanitized, "test-name-with-special-chars")
+        assert sanitized == "test-name-with-special-chars"
         
         # Test empty name
         sanitized = builder._sanitize_name_for_sagemaker("")
-        self.assertEqual(sanitized, "default-name")
+        assert sanitized == "default-name"
         
         # Test name too long
         long_name = "a" * 100
         sanitized = builder._sanitize_name_for_sagemaker(long_name, max_length=10)
-        self.assertEqual(len(sanitized), 10)
+        assert len(sanitized) == 10
     
-    def test_get_step_name(self):
+    def test_get_step_name(self, config):
         """Test step name generation."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         # Test without job_type
         step_name = builder._get_step_name(include_job_type=False)
-        self.assertEqual(step_name, "Concrete")  # Current implementation returns "Concrete"
+        assert step_name == "Concrete"  # Current implementation returns "Concrete"
         
         # Test with job_type
-        self.config.job_type = "training"
+        config.job_type = "training"
         step_name = builder._get_step_name(include_job_type=True)
-        self.assertEqual(step_name, "Concrete-Training")  # Current format uses dash separator
+        assert step_name == "Concrete-Training"  # Current format uses dash separator
     
-    def test_generate_job_name(self):
+    def test_generate_job_name(self, config):
         """Test job name generation."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         with patch('time.time', return_value=1234567890):
             job_name = builder._generate_job_name()
-            self.assertIn("Concrete", job_name)  # Current implementation uses "Concrete"
-            self.assertIn("1234567890", job_name)
+            assert "Concrete" in job_name  # Current implementation uses "Concrete"
+            assert "1234567890" in job_name
             # Verify the expected format: "Concrete-1234567890"
-            self.assertEqual(job_name, "Concrete-1234567890")
+            assert job_name == "Concrete-1234567890"
     
-    def test_get_property_path(self):
+    def test_get_property_path(self, config, mock_spec):
         """Test property path retrieval."""
         # Mock specification with outputs
         mock_output_spec = Mock()
         mock_output_spec.logical_name = "test_output"
         mock_output_spec.property_path = "Steps.TestStep.Properties.{output_descriptor}"
         
-        self.mock_spec.outputs = {"output1": mock_output_spec}
+        mock_spec.outputs = {"output1": mock_output_spec}
         
         builder = ConcreteStepBuilder(
-            config=self.config,
-            spec=self.mock_spec
+            config=config,
+            spec=mock_spec
         )
         
         # Test without format args
         path = builder.get_property_path("test_output")
-        self.assertEqual(path, "Steps.TestStep.Properties.{output_descriptor}")
+        assert path == "Steps.TestStep.Properties.{output_descriptor}"
         
         # Test with format args
         path = builder.get_property_path("test_output", {"output_descriptor": "data"})
-        self.assertEqual(path, "Steps.TestStep.Properties.data")
+        assert path == "Steps.TestStep.Properties.data"
         
         # Test non-existent output
         path = builder.get_property_path("nonexistent")
-        self.assertIsNone(path)
+        assert path is None
     
-    def test_get_all_property_paths(self):
+    def test_get_all_property_paths(self, config, mock_spec):
         """Test getting all property paths."""
         # Mock specification with multiple outputs
         mock_output1 = Mock()
@@ -188,14 +211,14 @@ class TestStepBuilderBase(unittest.TestCase):
         mock_output2.logical_name = "output2"
         mock_output2.property_path = "Steps.TestStep.Output2"
         
-        self.mock_spec.outputs = {
+        mock_spec.outputs = {
             "out1": mock_output1,
             "out2": mock_output2
         }
         
         builder = ConcreteStepBuilder(
-            config=self.config,
-            spec=self.mock_spec
+            config=config,
+            spec=mock_spec
         )
         
         paths = builder.get_all_property_paths()
@@ -203,66 +226,63 @@ class TestStepBuilderBase(unittest.TestCase):
             "output1": "Steps.TestStep.Output1",
             "output2": "Steps.TestStep.Output2"
         }
-        self.assertEqual(paths, expected)
+        assert paths == expected
     
-    def test_safe_logging_methods(self):
+    def test_safe_logging_methods(self, config):
         """Test safe logging methods."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         # Test that logging methods don't raise exceptions
-        try:
-            builder.log_info("Test info message: %s", "test_value")
-            builder.log_debug("Test debug message: %s", "test_value")
-            builder.log_warning("Test warning message: %s", "test_value")
-            builder.log_error("Test error message: %s", "test_value")
-        except Exception as e:
-            self.fail(f"Safe logging methods raised an exception: {e}")
+        builder.log_info("Test info message: %s", "test_value")
+        builder.log_debug("Test debug message: %s", "test_value")
+        builder.log_warning("Test warning message: %s", "test_value")
+        builder.log_error("Test error message: %s", "test_value")
     
-    def test_get_cache_config(self):
+    def test_get_cache_config(self, config):
         """Test cache configuration."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         cache_config = builder._get_cache_config(enable_caching=True)
-        self.assertIsNotNone(cache_config)
+        assert cache_config is not None
         
         cache_config = builder._get_cache_config(enable_caching=False)
-        self.assertIsNotNone(cache_config)
+        assert cache_config is not None
     
-    def test_get_environment_variables_no_contract(self):
+    def test_get_environment_variables_no_contract(self, config):
         """Test environment variables without contract."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         env_vars = builder._get_environment_variables()
-        self.assertEqual(env_vars, {})
+        assert env_vars == {}
     
-    def test_get_environment_variables_with_contract(self):
+    def test_get_environment_variables_with_contract(self, config):
         """Test environment variables with contract."""
         # Mock contract
         mock_contract = Mock()
         mock_contract.required_env_vars = ["TEST_VAR"]
         mock_contract.optional_env_vars = {"OPTIONAL_VAR": "default_value"}
         
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         builder.contract = mock_contract
         
         # Add test_var to config
-        self.config.test_var = "test_value"
+        config.test_var = "test_value"
         
         env_vars = builder._get_environment_variables()
         
-        self.assertIn("TEST_VAR", env_vars)
-        self.assertEqual(env_vars["TEST_VAR"], "test_value")
-        self.assertIn("OPTIONAL_VAR", env_vars)
-        self.assertEqual(env_vars["OPTIONAL_VAR"], "default_value")
+        assert "TEST_VAR" in env_vars
+        assert env_vars["TEST_VAR"] == "test_value"
+        assert "OPTIONAL_VAR" in env_vars
+        assert env_vars["OPTIONAL_VAR"] == "default_value"
     
-    def test_get_job_arguments_no_contract(self):
+    def test_get_job_arguments_no_contract(self, config):
         """Test job arguments without contract."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         args = builder._get_job_arguments()
-        self.assertIsNone(args)
+        assert args is None
     
-    def test_get_job_arguments_with_contract(self):
+    def test_get_job_arguments_with_contract(self, config):
         """Test job arguments with contract."""
         # Mock contract
         mock_contract = Mock()
@@ -271,14 +291,14 @@ class TestStepBuilderBase(unittest.TestCase):
             "output-path": "/test/output"
         }
         
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         builder.contract = mock_contract
         
         args = builder._get_job_arguments()
         expected = ["--input-path", "/test/input", "--output-path", "/test/output"]
-        self.assertEqual(args, expected)
+        assert args == expected
     
-    def test_get_required_dependencies(self):
+    def test_get_required_dependencies(self, config, mock_spec):
         """Test getting required dependencies."""
         # Mock specification with dependencies
         mock_dep1 = Mock()
@@ -289,20 +309,20 @@ class TestStepBuilderBase(unittest.TestCase):
         mock_dep2.logical_name = "dep2"
         mock_dep2.required = False
         
-        self.mock_spec.dependencies = {
+        mock_spec.dependencies = {
             "d1": mock_dep1,
             "d2": mock_dep2
         }
         
         builder = ConcreteStepBuilder(
-            config=self.config,
-            spec=self.mock_spec
+            config=config,
+            spec=mock_spec
         )
         
         required_deps = builder.get_required_dependencies()
-        self.assertEqual(required_deps, ["dep1"])
+        assert required_deps == ["dep1"]
     
-    def test_get_optional_dependencies(self):
+    def test_get_optional_dependencies(self, config, mock_spec):
         """Test getting optional dependencies."""
         # Mock specification with dependencies
         mock_dep1 = Mock()
@@ -313,20 +333,20 @@ class TestStepBuilderBase(unittest.TestCase):
         mock_dep2.logical_name = "dep2"
         mock_dep2.required = False
         
-        self.mock_spec.dependencies = {
+        mock_spec.dependencies = {
             "d1": mock_dep1,
             "d2": mock_dep2
         }
         
         builder = ConcreteStepBuilder(
-            config=self.config,
-            spec=self.mock_spec
+            config=config,
+            spec=mock_spec
         )
         
         optional_deps = builder.get_optional_dependencies()
-        self.assertEqual(optional_deps, ["dep2"])
+        assert optional_deps == ["dep2"]
     
-    def test_get_outputs(self):
+    def test_get_outputs(self, config, mock_spec):
         """Test getting outputs."""
         # Mock specification with outputs
         mock_output1 = Mock()
@@ -335,14 +355,14 @@ class TestStepBuilderBase(unittest.TestCase):
         mock_output2 = Mock()
         mock_output2.logical_name = "output2"
         
-        self.mock_spec.outputs = {
+        mock_spec.outputs = {
             "out1": mock_output1,
             "out2": mock_output2
         }
         
         builder = ConcreteStepBuilder(
-            config=self.config,
-            spec=self.mock_spec
+            config=config,
+            spec=mock_spec
         )
         
         outputs = builder.get_outputs()
@@ -350,25 +370,25 @@ class TestStepBuilderBase(unittest.TestCase):
             "output1": mock_output1,
             "output2": mock_output2
         }
-        self.assertEqual(outputs, expected)
+        assert outputs == expected
     
-    def test_get_context_name(self):
+    def test_get_context_name(self, config):
         """Test getting context name."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         context_name = builder._get_context_name()
         # Should use pipeline_name from config
-        expected = self.config.pipeline_name
-        self.assertEqual(context_name, expected)
+        expected = config.pipeline_name
+        assert context_name == expected
     
-    def test_abstract_methods_must_be_implemented(self):
+    def test_abstract_methods_must_be_implemented(self, config):
         """Test that abstract methods must be implemented."""
         # This should fail because abstract methods are not implemented
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             class IncompleteBuilder(StepBuilderBase):
                 pass
             
-            IncompleteBuilder(config=self.config)
+            IncompleteBuilder(config=config)
     
     def test_region_mapping(self):
         """Test region mapping."""
@@ -390,29 +410,24 @@ class TestStepBuilderBase(unittest.TestCase):
             )
             
             builder = ConcreteStepBuilder(config=config)
-            self.assertEqual(builder.aws_region, expected_aws_region)
+            assert builder.aws_region == expected_aws_region
     
-    def test_step_names_class_variable(self):
+    def test_step_names_class_variable(self, config):
         """Test STEP_NAMES class variable."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         # Should have STEP_NAMES attribute
-        self.assertTrue(hasattr(builder, 'STEP_NAMES'))
-        self.assertIsInstance(builder.STEP_NAMES, dict)
+        assert hasattr(builder, 'STEP_NAMES')
+        assert isinstance(builder.STEP_NAMES, dict)
     
-    def test_common_properties_class_variable(self):
+    def test_common_properties_class_variable(self, config):
         """Test COMMON_PROPERTIES class variable."""
-        builder = ConcreteStepBuilder(config=self.config)
+        builder = ConcreteStepBuilder(config=config)
         
         # Should have COMMON_PROPERTIES attribute
-        self.assertTrue(hasattr(builder, 'COMMON_PROPERTIES'))
-        self.assertIsInstance(builder.COMMON_PROPERTIES, dict)
+        assert hasattr(builder, 'COMMON_PROPERTIES')
+        assert isinstance(builder.COMMON_PROPERTIES, dict)
         
         # Should contain expected common properties
-        self.assertIn('dependencies', builder.COMMON_PROPERTIES)
-        self.assertIn('enable_caching', builder.COMMON_PROPERTIES)
-
-if __name__ == '__main__':
-    # Set up logging for tests
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
+        assert 'dependencies' in builder.COMMON_PROPERTIES
+        assert 'enable_caching' in builder.COMMON_PROPERTIES

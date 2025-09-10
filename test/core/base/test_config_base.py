@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from typing import Dict, Any
@@ -7,12 +7,14 @@ from datetime import datetime
 
 from cursus.core.base.config_base import BasePipelineConfig
 
-class TestBasePipelineConfig(unittest.TestCase):
+
+class TestBasePipelineConfig:
     """Test cases for BasePipelineConfig class."""
     
-    def setUp(self):
+    @pytest.fixture
+    def valid_config_data(self):
         """Set up test fixtures."""
-        self.valid_config_data = {
+        return {
             'author': 'test_author',
             'bucket': 'test-bucket',
             'role': 'arn:aws:iam::123456789012:role/TestRole',
@@ -21,31 +23,31 @@ class TestBasePipelineConfig(unittest.TestCase):
             'pipeline_version': '1.0.0'
         }
     
-    def test_init_with_required_fields(self):
+    def test_init_with_required_fields(self, valid_config_data):
         """Test initialization with all required fields."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         
         # Verify required fields
-        self.assertEqual(config.author, 'test_author')
-        self.assertEqual(config.bucket, 'test-bucket')
-        self.assertEqual(config.role, 'arn:aws:iam::123456789012:role/TestRole')
-        self.assertEqual(config.region, 'NA')
-        self.assertEqual(config.service_name, 'test_service')
-        self.assertEqual(config.pipeline_version, '1.0.0')
+        assert config.author == 'test_author'
+        assert config.bucket == 'test-bucket'
+        assert config.role == 'arn:aws:iam::123456789012:role/TestRole'
+        assert config.region == 'NA'
+        assert config.service_name == 'test_service'
+        assert config.pipeline_version == '1.0.0'
         
         # Verify default fields
-        self.assertEqual(config.model_class, 'xgboost')
-        self.assertEqual(config.framework_version, '2.1.0')
-        self.assertEqual(config.py_version, 'py310')
-        self.assertIsNone(config.source_dir)
+        assert config.model_class == 'xgboost'
+        assert config.framework_version == '2.1.0'
+        assert config.py_version == 'py310'
+        assert config.source_dir is None
         
         # Verify current_date is set
-        self.assertIsInstance(config.current_date, str)
-        self.assertTrue(len(config.current_date) > 0)
+        assert isinstance(config.current_date, str)
+        assert len(config.current_date) > 0
     
-    def test_init_with_optional_fields(self):
+    def test_init_with_optional_fields(self, valid_config_data):
         """Test initialization with optional fields."""
-        config_data = self.valid_config_data.copy()
+        config_data = valid_config_data.copy()
         config_data.update({
             'model_class': 'pytorch',
             'framework_version': '1.8.0',
@@ -57,134 +59,134 @@ class TestBasePipelineConfig(unittest.TestCase):
              patch('pathlib.Path.is_dir', return_value=True):
             config = BasePipelineConfig(**config_data)
             
-            self.assertEqual(config.model_class, 'pytorch')
-            self.assertEqual(config.framework_version, '1.8.0')
-            self.assertEqual(config.py_version, 'py39')
-            self.assertEqual(config.source_dir, '/test/source')
+            assert config.model_class == 'pytorch'
+            assert config.framework_version == '1.8.0'
+            assert config.py_version == 'py39'
+            assert config.source_dir == '/test/source'
     
-    def test_derived_properties(self):
+    def test_derived_properties(self, valid_config_data):
         """Test derived properties are calculated correctly."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         
         # Test aws_region
-        self.assertEqual(config.aws_region, 'us-east-1')
+        assert config.aws_region == 'us-east-1'
         
         # Test pipeline_name
         expected_name = 'test_author-test_service-xgboost-NA'
-        self.assertEqual(config.pipeline_name, expected_name)
+        assert config.pipeline_name == expected_name
         
         # Test pipeline_description
         expected_desc = 'test_service xgboost Model NA'
-        self.assertEqual(config.pipeline_description, expected_desc)
+        assert config.pipeline_description == expected_desc
         
         # Test pipeline_s3_loc
         expected_s3_loc = 's3://test-bucket/MODS/test_author-test_service-xgboost-NA_1.0.0'
-        self.assertEqual(config.pipeline_s3_loc, expected_s3_loc)
+        assert config.pipeline_s3_loc == expected_s3_loc
     
-    def test_region_validation(self):
+    def test_region_validation(self, valid_config_data):
         """Test region validation."""
         # Test valid regions
         for region in ['NA', 'EU', 'FE']:
-            config_data = self.valid_config_data.copy()
+            config_data = valid_config_data.copy()
             config_data['region'] = region
             config = BasePipelineConfig(**config_data)
-            self.assertEqual(config.region, region)
+            assert config.region == region
         
         # Test invalid region
-        config_data = self.valid_config_data.copy()
+        config_data = valid_config_data.copy()
         config_data['region'] = 'INVALID'
         
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             BasePipelineConfig(**config_data)
         
-        self.assertIn("Invalid custom region code", str(context.exception))
+        assert "Invalid custom region code" in str(exc_info.value)
     
-    def test_source_dir_validation(self):
+    def test_source_dir_validation(self, valid_config_data):
         """Test source_dir validation."""
-        config_data = self.valid_config_data.copy()
+        config_data = valid_config_data.copy()
         config_data['source_dir'] = '/nonexistent/path'
         
         # Test non-existent local path
         with patch('pathlib.Path.exists', return_value=False):
-            with self.assertRaises(ValueError) as context:
+            with pytest.raises(ValueError) as exc_info:
                 BasePipelineConfig(**config_data)
             
-            self.assertIn("Local source directory does not exist", str(context.exception))
+            assert "Local source directory does not exist" in str(exc_info.value)
         
         # Test path that exists but is not a directory
         with patch('pathlib.Path.exists', return_value=True), \
              patch('pathlib.Path.is_dir', return_value=False):
-            with self.assertRaises(ValueError) as context:
+            with pytest.raises(ValueError) as exc_info:
                 BasePipelineConfig(**config_data)
             
-            self.assertIn("Local source_dir is not a directory", str(context.exception))
+            assert "Local source_dir is not a directory" in str(exc_info.value)
         
         # Test S3 path (should not be validated)
         config_data['source_dir'] = 's3://bucket/path'
         config = BasePipelineConfig(**config_data)
-        self.assertEqual(config.source_dir, 's3://bucket/path')
+        assert config.source_dir == 's3://bucket/path'
     
-    def test_model_dump_includes_derived_properties(self):
+    def test_model_dump_includes_derived_properties(self, valid_config_data):
         """Test that model_dump includes derived properties."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         data = config.model_dump()
         
         # Check that derived properties are included
-        self.assertIn('aws_region', data)
-        self.assertIn('pipeline_name', data)
-        self.assertIn('pipeline_description', data)
-        self.assertIn('pipeline_s3_loc', data)
+        assert 'aws_region' in data
+        assert 'pipeline_name' in data
+        assert 'pipeline_description' in data
+        assert 'pipeline_s3_loc' in data
         
         # Verify values
-        self.assertEqual(data['aws_region'], 'us-east-1')
-        self.assertEqual(data['pipeline_name'], 'test_author-test_service-xgboost-NA')
+        assert data['aws_region'] == 'us-east-1'
+        assert data['pipeline_name'] == 'test_author-test_service-xgboost-NA'
     
-    def test_categorize_fields(self):
+    def test_categorize_fields(self, valid_config_data):
         """Test field categorization."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         categories = config.categorize_fields()
         
         # Check that all categories exist
-        self.assertIn('essential', categories)
-        self.assertIn('system', categories)
-        self.assertIn('derived', categories)
+        assert 'essential' in categories
+        assert 'system' in categories
+        assert 'derived' in categories
         
         # Check essential fields (required, no defaults)
         essential_fields = set(categories['essential'])
         expected_essential = {'author', 'bucket', 'role', 'region', 'service_name', 'pipeline_version'}
-        self.assertEqual(essential_fields, expected_essential)
+        assert essential_fields == expected_essential
         
         # Check system fields (have defaults)
         system_fields = set(categories['system'])
         expected_system = {'model_class', 'current_date', 'framework_version', 'py_version', 'source_dir'}
-        self.assertEqual(system_fields, expected_system)
+        assert system_fields == expected_system
         
         # Check derived fields (properties)
         derived_fields = set(categories['derived'])
         expected_derived = {'aws_region', 'pipeline_name', 'pipeline_description', 'pipeline_s3_loc', 'script_contract', 'model_extra', 'model_fields_set'}
-        self.assertEqual(derived_fields, expected_derived)
+        assert derived_fields == expected_derived
     
-    def test_get_public_init_fields(self):
+    def test_get_public_init_fields(self, valid_config_data):
         """Test getting public initialization fields."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         init_fields = config.get_public_init_fields()
         
         # Should include all essential fields
         for field in ['author', 'bucket', 'role', 'region', 'service_name', 'pipeline_version']:
-            self.assertIn(field, init_fields)
-            self.assertEqual(init_fields[field], getattr(config, field))
+            assert field in init_fields
+            assert init_fields[field] == getattr(config, field)
         
         # Should include non-None system fields
         for field in ['model_class', 'current_date', 'framework_version', 'py_version']:
-            self.assertIn(field, init_fields)
+            assert field in init_fields
         
         # Should not include None fields
         if config.source_dir is None:
-            self.assertNotIn('source_dir', init_fields)
+            assert 'source_dir' not in init_fields
     
-    def test_from_base_config(self):
+    def test_from_base_config(self, valid_config_data):
         """Test creating config from base config."""
-        base_config = BasePipelineConfig(**self.valid_config_data)
+        base_config = BasePipelineConfig(**valid_config_data)
         
         # Create derived config with additional fields
         derived_config = BasePipelineConfig.from_base_config(
@@ -194,76 +196,73 @@ class TestBasePipelineConfig(unittest.TestCase):
         )
         
         # Should inherit base fields
-        self.assertEqual(derived_config.author, base_config.author)
-        self.assertEqual(derived_config.bucket, base_config.bucket)
+        assert derived_config.author == base_config.author
+        assert derived_config.bucket == base_config.bucket
         
         # Should override with new values
-        self.assertEqual(derived_config.model_class, 'pytorch')
-        self.assertEqual(derived_config.framework_version, '1.8.0')
+        assert derived_config.model_class == 'pytorch'
+        assert derived_config.framework_version == '1.8.0'
     
     def test_get_step_name_class_method(self):
         """Test get_step_name class method."""
         # This tests the class method that looks up step names
         step_name = BasePipelineConfig.get_step_name('TestConfig')
         # Should return the input if not found in registry
-        self.assertEqual(step_name, 'TestConfig')
+        assert step_name == 'TestConfig'
     
     def test_get_config_class_name_class_method(self):
         """Test get_config_class_name class method."""
         # This tests the reverse lookup
         config_class = BasePipelineConfig.get_config_class_name('TestStep')
         # Should return the input if not found in reverse mapping
-        self.assertEqual(config_class, 'TestStep')
+        assert config_class == 'TestStep'
     
-    def test_get_script_contract_default(self):
+    def test_get_script_contract_default(self, valid_config_data):
         """Test get_script_contract default implementation."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         contract = config.get_script_contract()
         
         # Base implementation should return None
-        self.assertIsNone(contract)
+        assert contract is None
     
-    def test_get_script_path_default(self):
+    def test_get_script_path_default(self, valid_config_data):
         """Test get_script_path with default."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         
         # Should return default when no contract or script_path
         default_path = '/test/default/script.py'
         script_path = config.get_script_path(default_path)
-        self.assertEqual(script_path, default_path)
+        assert script_path == default_path
         
         # Should return None when no default provided
         script_path = config.get_script_path()
-        self.assertIsNone(script_path)
+        assert script_path is None
     
-    def test_string_representation(self):
+    def test_string_representation(self, valid_config_data):
         """Test string representation."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         str_repr = str(config)
         
         # Should contain class name
-        self.assertIn('BasePipelineConfig', str_repr)
+        assert 'BasePipelineConfig' in str_repr
         
         # Should contain field categories
-        self.assertIn('Essential User Inputs', str_repr)
-        self.assertIn('System Inputs', str_repr)
-        self.assertIn('Derived Fields', str_repr)
+        assert 'Essential User Inputs' in str_repr
+        assert 'System Inputs' in str_repr
+        assert 'Derived Fields' in str_repr
         
         # Should contain some field values
-        self.assertIn('test_author', str_repr)
-        self.assertIn('test-bucket', str_repr)
+        assert 'test_author' in str_repr
+        assert 'test-bucket' in str_repr
     
-    def test_print_config_method(self):
+    def test_print_config_method(self, valid_config_data):
         """Test print_config method."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         
         # Should not raise any exceptions
-        try:
-            config.print_config()
-        except Exception as e:
-            self.fail(f"print_config raised an exception: {e}")
+        config.print_config()
     
-    def test_region_mapping(self):
+    def test_region_mapping(self, valid_config_data):
         """Test region mapping for all supported regions."""
         region_tests = [
             ('NA', 'us-east-1'),
@@ -272,36 +271,31 @@ class TestBasePipelineConfig(unittest.TestCase):
         ]
         
         for region_code, expected_aws_region in region_tests:
-            config_data = self.valid_config_data.copy()
+            config_data = valid_config_data.copy()
             config_data['region'] = region_code
             config = BasePipelineConfig(**config_data)
             
-            self.assertEqual(config.aws_region, expected_aws_region)
+            assert config.aws_region == expected_aws_region
     
-    def test_derived_fields_caching(self):
+    def test_derived_fields_caching(self, valid_config_data):
         """Test that derived fields are cached."""
-        config = BasePipelineConfig(**self.valid_config_data)
+        config = BasePipelineConfig(**valid_config_data)
         
         # Access derived property multiple times
         first_access = config.pipeline_name
         second_access = config.pipeline_name
         
         # Should return the same value (testing caching behavior)
-        self.assertEqual(first_access, second_access)
-        self.assertEqual(first_access, 'test_author-test_service-xgboost-NA')
+        assert first_access == second_access
+        assert first_access == 'test_author-test_service-xgboost-NA'
     
-    def test_extra_fields_allowed(self):
+    def test_extra_fields_allowed(self, valid_config_data):
         """Test that extra fields are allowed."""
-        config_data = self.valid_config_data.copy()
+        config_data = valid_config_data.copy()
         config_data['extra_field'] = 'extra_value'
         
         # Should not raise an exception
         config = BasePipelineConfig(**config_data)
         
         # Extra field should be accessible
-        self.assertEqual(config.extra_field, 'extra_value')
-
-if __name__ == '__main__':
-    # Set up logging for tests
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
+        assert config.extra_field == 'extra_value'

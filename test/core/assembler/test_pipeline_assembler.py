@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from unittest.mock import Mock, MagicMock, patch, call
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Type
@@ -10,6 +10,7 @@ from cursus.api.dag.base_dag import PipelineDAG
 from cursus.core.deps.registry_manager import RegistryManager
 from cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
 from cursus.core.base.enums import DependencyType, NodeType
+
 
 class MockConfig(BasePipelineConfig):
     """Mock configuration class for testing."""
@@ -24,6 +25,7 @@ class MockConfig(BasePipelineConfig):
             service_name=service_name,
             pipeline_version=pipeline_version
         )
+
 
 class MockStepBuilder(StepBuilderBase):
     """Mock step builder class for testing."""
@@ -95,69 +97,100 @@ class MockStepBuilder(StepBuilderBase):
         mock_step.dependencies = dependencies or []
         return mock_step
 
-class TestPipelineAssembler(unittest.TestCase):
+
+class TestPipelineAssembler:
     """Test cases for PipelineAssembler class."""
     
-    def setUp(self):
-        """Set up test fixtures."""
-        # Create mock DAG
-        self.nodes = ['step1', 'step2', 'step3']
-        self.edges = [('step1', 'step2'), ('step2', 'step3')]
-        self.dag = PipelineDAG(nodes=self.nodes, edges=self.edges)
-        
-        # Create mock configs
-        self.config_map = {
+    @pytest.fixture
+    def nodes(self):
+        """DAG nodes."""
+        return ['step1', 'step2', 'step3']
+    
+    @pytest.fixture
+    def edges(self):
+        """DAG edges."""
+        return [('step1', 'step2'), ('step2', 'step3')]
+    
+    @pytest.fixture
+    def dag(self, nodes, edges):
+        """Create mock DAG."""
+        return PipelineDAG(nodes=nodes, edges=edges)
+    
+    @pytest.fixture
+    def config_map(self):
+        """Create mock configs."""
+        return {
             'step1': MockConfig(),
             'step2': MockConfig(),
             'step3': MockConfig()
         }
-        
-        # Create mock step builder map
-        self.step_builder_map = {
+    
+    @pytest.fixture
+    def step_builder_map(self):
+        """Create mock step builder map."""
+        return {
             'MockConfig': MockStepBuilder
         }
-        
-        # Mock SageMaker session
-        self.mock_session = Mock()
-        self.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-        self.notebook_root = Path("/test/notebook")
-        
-        # Mock registry manager and dependency resolver
-        self.mock_registry_manager = Mock(spec=RegistryManager)
-        self.mock_registry = Mock()
-        self.mock_registry_manager.get_registry.return_value = self.mock_registry
-        
-        self.mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
-        self.mock_dependency_resolver._calculate_compatibility.return_value = 0.8
+    
+    @pytest.fixture
+    def mock_session(self):
+        """Mock SageMaker session."""
+        return Mock()
+    
+    @pytest.fixture
+    def role(self):
+        """IAM role."""
+        return "arn:aws:iam::123456789012:role/SageMakerRole"
+    
+    @pytest.fixture
+    def notebook_root(self):
+        """Notebook root path."""
+        return Path("/test/notebook")
+    
+    @pytest.fixture
+    def mock_registry_manager(self):
+        """Mock registry manager and dependency resolver."""
+        mock_registry_manager = Mock(spec=RegistryManager)
+        mock_registry = Mock()
+        mock_registry_manager.get_registry.return_value = mock_registry
+        return mock_registry_manager
+    
+    @pytest.fixture
+    def mock_dependency_resolver(self):
+        """Mock dependency resolver."""
+        mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
+        mock_dependency_resolver._calculate_compatibility.return_value = 0.8
+        return mock_dependency_resolver
 
-    def test_init_success(self):
+    def test_init_success(self, dag, config_map, step_builder_map, mock_session, role, 
+                         notebook_root, mock_registry_manager, mock_dependency_resolver):
         """Test successful initialization of PipelineAssembler."""
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            sagemaker_session=self.mock_session,
-            role=self.role,
-            notebook_root=self.notebook_root,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            sagemaker_session=mock_session,
+            role=role,
+            notebook_root=notebook_root,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Verify initialization
-        self.assertEqual(assembler.dag, self.dag)
-        self.assertEqual(assembler.config_map, self.config_map)
-        self.assertEqual(assembler.step_builder_map, self.step_builder_map)
-        self.assertEqual(assembler.sagemaker_session, self.mock_session)
-        self.assertEqual(assembler.role, self.role)
-        self.assertEqual(assembler.notebook_root, self.notebook_root)
-        self.assertEqual(len(assembler.step_builders), 3)
+        assert assembler.dag == dag
+        assert assembler.config_map == config_map
+        assert assembler.step_builder_map == step_builder_map
+        assert assembler.sagemaker_session == mock_session
+        assert assembler.role == role
+        assert assembler.notebook_root == notebook_root
+        assert len(assembler.step_builders) == 3
         
         # Verify step builders were created
-        for step_name in self.nodes:
-            self.assertIn(step_name, assembler.step_builders)
-            self.assertIsInstance(assembler.step_builders[step_name], MockStepBuilder)
+        for step_name in ['step1', 'step2', 'step3']:
+            assert step_name in assembler.step_builders
+            assert isinstance(assembler.step_builders[step_name], MockStepBuilder)
 
-    def test_init_missing_configs(self):
+    def test_init_missing_configs(self, dag, step_builder_map):
         """Test initialization with missing configs raises ValueError."""
         incomplete_config_map = {
             'step1': MockConfig(),
@@ -165,72 +198,74 @@ class TestPipelineAssembler(unittest.TestCase):
             # Missing step3
         }
         
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             PipelineAssembler(
-                dag=self.dag,
+                dag=dag,
                 config_map=incomplete_config_map,
-                step_builder_map=self.step_builder_map
+                step_builder_map=step_builder_map
             )
         
-        self.assertIn("Missing configs for nodes", str(context.exception))
+        assert "Missing configs for nodes" in str(exc_info.value)
 
-    def test_init_missing_step_builders(self):
+    def test_init_missing_step_builders(self, dag, config_map):
         """Test initialization with missing step builders raises ValueError."""
         incomplete_builder_map = {}  # Empty builder map
         
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             PipelineAssembler(
-                dag=self.dag,
-                config_map=self.config_map,
+                dag=dag,
+                config_map=config_map,
                 step_builder_map=incomplete_builder_map
             )
         
-        self.assertIn("Missing step builder for step type", str(context.exception))
+        assert "Missing step builder for step type" in str(exc_info.value)
 
     def test_init_invalid_dag_edges(self):
         """Test initialization with invalid DAG edges raises KeyError during DAG creation."""
         # The PipelineDAG constructor itself validates edges and raises KeyError
         # when trying to create a DAG with edges to non-existent nodes
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             invalid_dag = PipelineDAG(
                 nodes=['step1', 'step2'],
                 edges=[('step1', 'step2'), ('step2', 'step3')]  # step3 doesn't exist
             )
 
     @patch('cursus.core.assembler.pipeline_assembler.CONFIG_STEP_REGISTRY')
-    def test_initialize_step_builders(self, mock_registry):
+    def test_initialize_step_builders(self, mock_registry, dag, config_map, step_builder_map, 
+                                    mock_registry_manager, mock_dependency_resolver):
         """Test step builder initialization."""
         # Mock the registry to return step type
         mock_registry.get.return_value = 'MockConfig'
         
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Verify all step builders were initialized
-        self.assertEqual(len(assembler.step_builders), 3)
-        for step_name in self.nodes:
-            self.assertIn(step_name, assembler.step_builders)
+        assert len(assembler.step_builders) == 3
+        for step_name in ['step1', 'step2', 'step3']:
+            assert step_name in assembler.step_builders
             builder = assembler.step_builders[step_name]
-            self.assertIsInstance(builder, MockStepBuilder)
-            self.assertEqual(builder.config, self.config_map[step_name])
+            assert isinstance(builder, MockStepBuilder)
+            assert builder.config == config_map[step_name]
 
-    def test_propagate_messages(self):
+    def test_propagate_messages(self, dag, config_map, step_builder_map, 
+                               mock_registry_manager, mock_dependency_resolver):
         """Test message propagation between steps."""
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Mock compatibility calculation to return high score
-        self.mock_dependency_resolver._calculate_compatibility.return_value = 0.9
+        mock_dependency_resolver._calculate_compatibility.return_value = 0.9
         
         # Call propagate messages
         assembler._propagate_messages()
@@ -238,67 +273,70 @@ class TestPipelineAssembler(unittest.TestCase):
         # Verify messages were stored
         # step2 should have messages from step1
         # step3 should have messages from step2
-        self.assertTrue(len(assembler.step_messages) >= 0)  # May be empty if no matches
+        assert len(assembler.step_messages) >= 0  # May be empty if no matches
 
-    def test_generate_outputs(self):
+    def test_generate_outputs(self, dag, config_map, step_builder_map, 
+                             mock_registry_manager, mock_dependency_resolver):
         """Test output generation for a step."""
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Generate outputs for step1
         outputs = assembler._generate_outputs('step1')
         
         # Verify outputs were generated based on specification
-        self.assertIsInstance(outputs, dict)
+        assert isinstance(outputs, dict)
         # Should have outputs based on the mock spec
         expected_base = "s3://test-bucket/pipeline/mockstep"
         if outputs:  # Only check if outputs were generated
             for output_name, output_path in outputs.items():
-                self.assertTrue(output_path.startswith("s3://"))
+                assert output_path.startswith("s3://")
 
-    def test_instantiate_step(self):
+    def test_instantiate_step(self, dag, config_map, step_builder_map, 
+                             mock_registry_manager, mock_dependency_resolver):
         """Test step instantiation."""
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Instantiate step1 (no dependencies)
         step = assembler._instantiate_step('step1')
         
         # Verify step was created
-        self.assertIsNotNone(step)
-        self.assertTrue(hasattr(step, 'name'))
+        assert step is not None
+        assert hasattr(step, 'name')
         
         # Store the step for dependency testing
         assembler.step_instances['step1'] = step
         
         # Instantiate step2 (depends on step1)
         step2 = assembler._instantiate_step('step2')
-        self.assertIsNotNone(step2)
+        assert step2 is not None
 
     @patch('cursus.core.assembler.pipeline_assembler.Pipeline')
-    def test_generate_pipeline(self, mock_pipeline_class):
+    def test_generate_pipeline(self, mock_pipeline_class, dag, config_map, step_builder_map, 
+                              mock_session, mock_registry_manager, mock_dependency_resolver):
         """Test pipeline generation."""
         # Mock Pipeline constructor
         mock_pipeline = Mock()
         mock_pipeline_class.return_value = mock_pipeline
         
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            sagemaker_session=self.mock_session,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            sagemaker_session=mock_session,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Generate pipeline
@@ -306,13 +344,14 @@ class TestPipelineAssembler(unittest.TestCase):
         result = assembler.generate_pipeline(pipeline_name)
         
         # Verify pipeline was created
-        self.assertEqual(result, mock_pipeline)
+        assert result == mock_pipeline
         mock_pipeline_class.assert_called_once()
         
         # Verify all steps were instantiated
-        self.assertEqual(len(assembler.step_instances), 3)
+        assert len(assembler.step_instances) == 3
 
-    def test_generate_pipeline_with_cycle(self):
+    def test_generate_pipeline_with_cycle(self, config_map, step_builder_map, 
+                                         mock_registry_manager, mock_dependency_resolver):
         """Test pipeline generation with cyclic DAG raises error."""
         # Create DAG with cycle
         cyclic_dag = PipelineDAG(
@@ -322,70 +361,73 @@ class TestPipelineAssembler(unittest.TestCase):
         
         assembler = PipelineAssembler(
             dag=cyclic_dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Should raise ValueError due to cycle
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             assembler.generate_pipeline("test_pipeline")
         
-        self.assertIn("Failed to determine build order", str(context.exception))
+        assert "Failed to determine build order" in str(exc_info.value)
 
     @patch('cursus.core.assembler.pipeline_assembler.create_pipeline_components')
-    def test_create_with_components(self, mock_create_components):
+    def test_create_with_components(self, mock_create_components, dag, config_map, step_builder_map, 
+                                   mock_session, role, mock_registry_manager, mock_dependency_resolver):
         """Test factory method for creating assembler with components."""
         # Mock component creation
         mock_components = {
-            "registry_manager": self.mock_registry_manager,
-            "resolver": self.mock_dependency_resolver
+            "registry_manager": mock_registry_manager,
+            "resolver": mock_dependency_resolver
         }
         mock_create_components.return_value = mock_components
         
         # Create assembler using factory method
         assembler = PipelineAssembler.create_with_components(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
             context_name="test_context",
-            sagemaker_session=self.mock_session,
-            role=self.role
+            sagemaker_session=mock_session,
+            role=role
         )
         
         # Verify components were used
         mock_create_components.assert_called_once_with("test_context")
-        self.assertEqual(assembler._registry_manager, self.mock_registry_manager)
-        self.assertEqual(assembler._dependency_resolver, self.mock_dependency_resolver)
+        assert assembler._registry_manager == mock_registry_manager
+        assert assembler._dependency_resolver == mock_dependency_resolver
 
-    def test_get_registry_manager(self):
+    def test_get_registry_manager(self, dag, config_map, step_builder_map, 
+                                 mock_registry_manager, mock_dependency_resolver):
         """Test registry manager getter."""
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         result = assembler._get_registry_manager()
-        self.assertEqual(result, self.mock_registry_manager)
+        assert result == mock_registry_manager
 
-    def test_get_dependency_resolver(self):
+    def test_get_dependency_resolver(self, dag, config_map, step_builder_map, 
+                                    mock_registry_manager, mock_dependency_resolver):
         """Test dependency resolver getter."""
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         result = assembler._get_dependency_resolver()
-        self.assertEqual(result, self.mock_dependency_resolver)
+        assert result == mock_dependency_resolver
 
-    def test_cradle_loading_requests_storage(self):
+    def test_cradle_loading_requests_storage(self, mock_registry_manager, mock_dependency_resolver):
         """Test that Cradle data loading requests are stored correctly."""
         # Create a mock builder that has get_request_dict method
         class MockCradleBuilder(MockStepBuilder):
@@ -412,25 +454,26 @@ class TestPipelineAssembler(unittest.TestCase):
                 dag=cradle_dag,
                 config_map=cradle_config_map,
                 step_builder_map=cradle_builder_map,
-                registry_manager=self.mock_registry_manager,
-                dependency_resolver=self.mock_dependency_resolver
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver
             )
             
             # Instantiate the step
             step = assembler._instantiate_step('step1')
             
             # Verify request was stored
-            self.assertIn(step.name, assembler.cradle_loading_requests)
-            self.assertEqual(assembler.cradle_loading_requests[step.name], {"request": "test_cradle_request"})
+            assert step.name in assembler.cradle_loading_requests
+            assert assembler.cradle_loading_requests[step.name] == {"request": "test_cradle_request"}
 
-    def test_pipeline_regeneration(self):
+    def test_pipeline_regeneration(self, dag, config_map, step_builder_map, 
+                                  mock_registry_manager, mock_dependency_resolver):
         """Test that pipeline can be regenerated (step instances are cleared)."""
         assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=self.config_map,
-            step_builder_map=self.step_builder_map,
-            registry_manager=self.mock_registry_manager,
-            dependency_resolver=self.mock_dependency_resolver
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver
         )
         
         # Add some mock step instances
@@ -443,23 +486,19 @@ class TestPipelineAssembler(unittest.TestCase):
             assembler.generate_pipeline("test_pipeline")
             
             # Verify instances were cleared and recreated
-            self.assertEqual(len(assembler.step_instances), 3)  # All steps recreated
+            assert len(assembler.step_instances) == 3  # All steps recreated
 
-    def test_logging_integration(self):
+    def test_logging_integration(self, dag, config_map, step_builder_map, 
+                                mock_registry_manager, mock_dependency_resolver):
         """Test that logging is properly integrated."""
         with patch('cursus.core.assembler.pipeline_assembler.logger') as mock_logger:
             assembler = PipelineAssembler(
-                dag=self.dag,
-                config_map=self.config_map,
-                step_builder_map=self.step_builder_map,
-                registry_manager=self.mock_registry_manager,
-                dependency_resolver=self.mock_dependency_resolver
+                dag=dag,
+                config_map=config_map,
+                step_builder_map=step_builder_map,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver
             )
             
             # Verify logging calls were made during initialization
             mock_logger.info.assert_called()
-
-if __name__ == '__main__':
-    # Set up logging for tests
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
