@@ -5,7 +5,7 @@ This module tests the pipeline compilation process, particularly focusing on the
 conversion of PipelineDAG structures to SageMaker pipelines.
 """
 
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
 
@@ -16,10 +16,11 @@ from cursus.core.compiler.name_generator import validate_pipeline_name
 from cursus.core.compiler.exceptions import PipelineAPIError, ConfigurationError
 from cursus.core.compiler.validation import ValidationResult, ResolutionPreview, ConversionReport
 
-class TestDagCompiler(unittest.TestCase):
+class TestDagCompiler:
     """Tests for the dag_compiler module."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         # Create a simple DAG for testing
         self.dag = PipelineDAG()
@@ -64,12 +65,15 @@ class TestDagCompiler(unittest.TestCase):
         result = compiler.compile(self.dag, pipeline_name="custom-pipeline-name")
         
         # Verify custom name is used directly
-        self.assertEqual(result.name, "custom-pipeline-name")
+        assert result.name == "custom-pipeline-name"
+        
+        yield
 
-class TestCompileDagToPipeline(unittest.TestCase):
+class TestCompileDagToPipeline:
     """Tests for the compile_dag_to_pipeline function."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.dag = PipelineDAG()
         self.dag.add_node("data_loading")
@@ -79,41 +83,43 @@ class TestCompileDagToPipeline(unittest.TestCase):
         self.config_path = "test_config.json"
         self.mock_session = MagicMock()
         self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
+        
+        yield
 
     def test_compile_dag_to_pipeline_invalid_dag(self):
         """Test compile_dag_to_pipeline with invalid DAG."""
-        with self.assertRaises(PipelineAPIError) as context:
+        with pytest.raises(PipelineAPIError) as context:
             compile_dag_to_pipeline(
                 dag="not_a_dag",
                 config_path=self.config_path,
                 sagemaker_session=self.mock_session,
                 role=self.mock_role
             )
-        self.assertIn("dag must be a PipelineDAG instance", str(context.exception))
+        assert "dag must be a PipelineDAG instance" in str(context.value)
 
     def test_compile_dag_to_pipeline_empty_dag(self):
         """Test compile_dag_to_pipeline with empty DAG."""
         empty_dag = PipelineDAG()
         
-        with self.assertRaises(PipelineAPIError) as context:
+        with pytest.raises(PipelineAPIError) as context:
             compile_dag_to_pipeline(
                 dag=empty_dag,
                 config_path=self.config_path,
                 sagemaker_session=self.mock_session,
                 role=self.mock_role
             )
-        self.assertIn("DAG must contain at least one node", str(context.exception))
+        assert "DAG must contain at least one node" in str(context.value)
 
     def test_compile_dag_to_pipeline_missing_config_file(self):
         """Test compile_dag_to_pipeline with missing config file."""
-        with self.assertRaises(PipelineAPIError) as context:
+        with pytest.raises(PipelineAPIError) as context:
             compile_dag_to_pipeline(
                 dag=self.dag,
                 config_path="nonexistent_config.json",
                 sagemaker_session=self.mock_session,
                 role=self.mock_role
             )
-        self.assertIn("Configuration file not found", str(context.exception))
+        assert "Configuration file not found" in str(context.value)
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.PipelineDAGCompiler')
@@ -150,7 +156,7 @@ class TestCompileDagToPipeline(unittest.TestCase):
         mock_compiler.compile.assert_called_once_with(self.dag, pipeline_name="custom-pipeline")
         
         # Verify result
-        self.assertEqual(result, mock_pipeline)
+        assert result == mock_pipeline
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.PipelineDAGCompiler')
@@ -166,7 +172,7 @@ class TestCompileDagToPipeline(unittest.TestCase):
         mock_compiler_class.return_value = mock_compiler
         
         # Call function and expect PipelineAPIError
-        with self.assertRaises(PipelineAPIError) as context:
+        with pytest.raises(PipelineAPIError) as context:
             compile_dag_to_pipeline(
                 dag=self.dag,
                 config_path=self.config_path,
@@ -174,16 +180,19 @@ class TestCompileDagToPipeline(unittest.TestCase):
                 role=self.mock_role
             )
         
-        self.assertIn("DAG compilation failed", str(context.exception))
+        assert "DAG compilation failed" in str(context.value)
 
-class TestPipelineDAGCompilerInit(unittest.TestCase):
+class TestPipelineDAGCompilerInit:
     """Tests for PipelineDAGCompiler initialization."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.config_path = "test_config.json"
         self.mock_session = MagicMock()
         self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
+        
+        yield
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -204,23 +213,23 @@ class TestPipelineDAGCompilerInit(unittest.TestCase):
         )
         
         # Verify initialization
-        self.assertEqual(compiler.config_path, self.config_path)
-        self.assertEqual(compiler.sagemaker_session, self.mock_session)
-        self.assertEqual(compiler.role, self.mock_role)
-        self.assertIsNotNone(compiler.config_resolver)
-        self.assertIsNotNone(compiler.builder_registry)
-        self.assertIsNotNone(compiler.validation_engine)
-        self.assertIsNone(compiler._last_template)
+        assert compiler.config_path == self.config_path
+        assert compiler.sagemaker_session == self.mock_session
+        assert compiler.role == self.mock_role
+        assert compiler.config_resolver is not None
+        assert compiler.builder_registry is not None
+        assert compiler.validation_engine is not None
+        assert compiler._last_template is None
 
     def test_compiler_init_missing_config_file(self):
         """Test PipelineDAGCompiler initialization with missing config file."""
-        with self.assertRaises(FileNotFoundError) as context:
+        with pytest.raises(FileNotFoundError) as context:
             PipelineDAGCompiler(
                 config_path="nonexistent_config.json",
                 sagemaker_session=self.mock_session,
                 role=self.mock_role
             )
-        self.assertIn("Configuration file not found", str(context.exception))
+        assert "Configuration file not found" in str(context.value)
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     def test_compiler_init_with_custom_components(self, mock_path):
@@ -241,13 +250,14 @@ class TestPipelineDAGCompilerInit(unittest.TestCase):
         )
         
         # Verify custom components are used
-        self.assertEqual(compiler.config_resolver, custom_resolver)
-        self.assertEqual(compiler.builder_registry, custom_registry)
+        assert compiler.config_resolver == custom_resolver
+        assert compiler.builder_registry == custom_registry
 
-class TestPipelineDAGCompilerValidation(unittest.TestCase):
+class TestPipelineDAGCompilerValidation:
     """Tests for PipelineDAGCompiler validation methods."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.dag = PipelineDAG()
         self.dag.add_node("data_loading")
@@ -255,6 +265,8 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         self.dag.add_edge("data_loading", "training")
         
         self.config_path = "test_config.json"
+        
+        yield
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -293,8 +305,8 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         result = compiler.validate_dag_compatibility(self.dag)
         
         # Verify result
-        self.assertIsInstance(result, ValidationResult)
-        self.assertTrue(result.is_valid)
+        assert isinstance(result, ValidationResult)
+        assert result.is_valid
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -319,8 +331,8 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         result = compiler.validate_dag_compatibility(self.dag)
         
         # Verify result indicates failure
-        self.assertFalse(result.is_valid)
-        self.assertIn("Config resolution failed", str(result.config_errors))
+        assert not result.is_valid
+        assert "Config resolution failed" in str(result.config_errors)
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -369,11 +381,11 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         result = compiler.preview_resolution(self.dag)
         
         # Verify result
-        self.assertIsInstance(result, ResolutionPreview)
-        self.assertIn("data_loading", result.node_config_map)
-        self.assertIn("training", result.node_config_map)
-        self.assertEqual(result.node_config_map["data_loading"], "CradleDataLoadConfig")
-        self.assertEqual(result.resolution_confidence["data_loading"], 1.0)
+        assert isinstance(result, ResolutionPreview)
+        assert "data_loading" in result.node_config_map
+        assert "training" in result.node_config_map
+        assert result.node_config_map["data_loading"] == "CradleDataLoadConfig"
+        assert result.resolution_confidence["data_loading"] == 1.0
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -395,14 +407,15 @@ class TestPipelineDAGCompilerValidation(unittest.TestCase):
         result = compiler.preview_resolution(self.dag)
         
         # Verify result indicates failure
-        self.assertIsInstance(result, ResolutionPreview)
-        self.assertEqual(result.node_config_map, {})
-        self.assertIn("Preview failed", result.recommendations[0])
+        assert isinstance(result, ResolutionPreview)
+        assert result.node_config_map == {}
+        assert "Preview failed" in result.recommendations[0]
 
-class TestPipelineDAGCompilerCompilation(unittest.TestCase):
+class TestPipelineDAGCompilerCompilation:
     """Tests for PipelineDAGCompiler compilation methods."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.dag = PipelineDAG()
         self.dag.add_node("data_loading")
@@ -410,6 +423,8 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         self.dag.add_edge("data_loading", "training")
         
         self.config_path = "test_config.json"
+        
+        yield
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -440,9 +455,9 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
             result = compiler.compile(self.dag)
         
         # Verify result
-        self.assertEqual(result, mock_pipeline)
-        self.assertEqual(result.name, "generated-pipeline-name")
-        self.assertEqual(compiler._last_template, mock_template)
+        assert result == mock_pipeline
+        assert result.name == "generated-pipeline-name"
+        assert compiler._last_template == mock_template
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -467,7 +482,7 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         result = compiler.compile(self.dag, pipeline_name="custom-pipeline-name")
         
         # Verify custom name is used
-        self.assertEqual(result.name, "custom-pipeline-name")
+        assert result.name == "custom-pipeline-name"
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -486,10 +501,10 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         compiler.create_template = MagicMock(side_effect=Exception("Template creation failed"))
         
         # Test compilation
-        with self.assertRaises(PipelineAPIError) as context:
+        with pytest.raises(PipelineAPIError) as context:
             compiler.compile(self.dag)
         
-        self.assertIn("DAG compilation failed", str(context.exception))
+        assert "DAG compilation failed" in str(context.value)
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -526,19 +541,22 @@ class TestPipelineDAGCompilerCompilation(unittest.TestCase):
         pipeline, report = compiler.compile_with_report(self.dag)
         
         # Verify result
-        self.assertEqual(pipeline, mock_pipeline)
-        self.assertIsInstance(report, ConversionReport)
-        self.assertEqual(report.pipeline_name, "test-pipeline")
-        self.assertEqual(len(report.steps), 2)
-        self.assertIn("data_loading", report.resolution_details)
-        self.assertIn("training", report.resolution_details)
+        assert pipeline == mock_pipeline
+        assert isinstance(report, ConversionReport)
+        assert report.pipeline_name == "test-pipeline"
+        assert len(report.steps) == 2
+        assert "data_loading" in report.resolution_details
+        assert "training" in report.resolution_details
 
-class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
+class TestPipelineDAGCompilerUtilityMethods:
     """Tests for PipelineDAGCompiler utility methods."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.config_path = "test_config.json"
+        
+        yield
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -561,7 +579,7 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         result = compiler.get_supported_step_types()
         
         # Verify result
-        self.assertEqual(result, ["DataLoading", "Training", "Evaluation"])
+        assert result == ["DataLoading", "Training", "Evaluation"]
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -588,9 +606,9 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         result = compiler.validate_config_file()
         
         # Verify result
-        self.assertTrue(result['valid'])
-        self.assertEqual(result['config_count'], 2)
-        self.assertEqual(result['config_names'], ["config1", "config2"])
+        assert result['valid']
+        assert result['config_count'] == 2
+        assert result['config_names'] == ["config1", "config2"]
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -612,9 +630,9 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         result = compiler.validate_config_file()
         
         # Verify result
-        self.assertFalse(result['valid'])
-        self.assertIn("Config loading failed", result['error'])
-        self.assertEqual(result['config_count'], 0)
+        assert not result['valid']
+        assert "Config loading failed" in result['error']
+        assert result['config_count'] == 0
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -630,14 +648,14 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         compiler = PipelineDAGCompiler(config_path=self.config_path)
         
         # Initially should return None
-        self.assertIsNone(compiler.get_last_template())
+        assert compiler.get_last_template() is None
         
         # Set a template
         mock_template = MagicMock()
         compiler._last_template = mock_template
         
         # Should return the template
-        self.assertEqual(compiler.get_last_template(), mock_template)
+        assert compiler.get_last_template() == mock_template
 
     @patch('cursus.core.compiler.dag_compiler.Path')
     @patch('cursus.core.compiler.dag_compiler.StepBuilderRegistry')
@@ -670,9 +688,6 @@ class TestPipelineDAGCompilerUtilityMethods(unittest.TestCase):
         pipeline, result_doc = compiler.compile_and_fill_execution_doc(dag, execution_doc)
         
         # Verify results
-        self.assertEqual(pipeline, mock_pipeline)
-        self.assertEqual(result_doc, filled_doc)
+        assert pipeline == mock_pipeline
+        assert result_doc == filled_doc
         mock_template.fill_execution_document.assert_called_once_with(execution_doc)
-
-if __name__ == '__main__':
-    unittest.main()

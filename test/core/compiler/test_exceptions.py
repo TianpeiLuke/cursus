@@ -5,7 +5,7 @@ This module tests the custom exception classes used throughout the Pipeline API
 to ensure they provide clear, actionable error messages for users.
 """
 
-import unittest
+import pytest
 from cursus.core.compiler.exceptions import (
     PipelineAPIError,
     ConfigurationError,
@@ -14,22 +14,23 @@ from cursus.core.compiler.exceptions import (
     ResolutionError
 )
 
-class TestPipelineAPIExceptions(unittest.TestCase):
+
+class TestPipelineAPIExceptions:
     """Tests for the Pipeline API exception classes."""
 
     def test_pipeline_api_error_base(self):
         """Test the base PipelineAPIError exception."""
         error = PipelineAPIError("Test error message")
-        self.assertEqual(str(error), "Test error message")
-        self.assertIsInstance(error, Exception)
+        assert str(error) == "Test error message"
+        assert isinstance(error, Exception)
 
     def test_configuration_error_basic(self):
         """Test ConfigurationError with basic message."""
         error = ConfigurationError("Configuration not found")
-        self.assertEqual(str(error), "Configuration not found")
-        self.assertIsInstance(error, PipelineAPIError)
-        self.assertEqual(error.missing_configs, [])
-        self.assertEqual(error.available_configs, [])
+        assert str(error) == "Configuration not found"
+        assert isinstance(error, PipelineAPIError)
+        assert error.missing_configs == []
+        assert error.available_configs == []
 
     def test_configuration_error_with_details(self):
         """Test ConfigurationError with missing and available configs."""
@@ -43,20 +44,20 @@ class TestPipelineAPIExceptions(unittest.TestCase):
         )
         
         error_str = str(error)
-        self.assertIn("Missing configurations", error_str)
-        self.assertIn("Missing configurations: ['data_loading', 'preprocessing']", error_str)
-        self.assertIn("Available configurations: ['training', 'evaluation']", error_str)
+        assert "Missing configurations" in error_str
+        assert "Missing configurations: ['data_loading', 'preprocessing']" in error_str
+        assert "Available configurations: ['training', 'evaluation']" in error_str
         
-        self.assertEqual(error.missing_configs, missing_configs)
-        self.assertEqual(error.available_configs, available_configs)
+        assert error.missing_configs == missing_configs
+        assert error.available_configs == available_configs
 
     def test_ambiguity_error_basic(self):
         """Test AmbiguityError with basic message."""
         error = AmbiguityError("Multiple configurations match")
-        self.assertEqual(str(error), "Multiple configurations match")
-        self.assertIsInstance(error, PipelineAPIError)
-        self.assertIsNone(error.node_name)
-        self.assertEqual(error.candidates, [])
+        assert str(error) == "Multiple configurations match"
+        assert isinstance(error, PipelineAPIError)
+        assert error.node_name is None
+        assert error.candidates == []
 
     def test_ambiguity_error_with_tuple_candidates(self):
         """Test AmbiguityError with tuple format candidates."""
@@ -80,13 +81,13 @@ class TestPipelineAPIExceptions(unittest.TestCase):
         )
         
         error_str = str(error)
-        self.assertIn("Ambiguous match for node", error_str)
-        self.assertIn("Candidates for node 'preprocessing':", error_str)
-        self.assertIn("MockConfig (job_type='training', confidence=0.85)", error_str)
-        self.assertIn("MockConfig (job_type='evaluation', confidence=0.82)", error_str)
+        assert "Ambiguous match for node" in error_str
+        assert "Candidates for node 'preprocessing':" in error_str
+        assert "MockConfig (job_type='training', confidence=0.85)" in error_str
+        assert "MockConfig (job_type='evaluation', confidence=0.82)" in error_str
         
-        self.assertEqual(error.node_name, "preprocessing")
-        self.assertEqual(error.candidates, candidates)
+        assert error.node_name == "preprocessing"
+        assert error.candidates == candidates
 
     def test_ambiguity_error_with_dict_candidates(self):
         """Test AmbiguityError with dictionary format candidates."""
@@ -110,17 +111,17 @@ class TestPipelineAPIExceptions(unittest.TestCase):
         )
         
         error_str = str(error)
-        self.assertIn("Multiple matches found", error_str)
-        self.assertIn("Candidates for node 'model_step':", error_str)
-        self.assertIn("XGBoostTrainingConfig (job_type='training', confidence=0.85)", error_str)
-        self.assertIn("XGBoostModelEvalConfig (job_type='evaluation', confidence=0.82)", error_str)
+        assert "Multiple matches found" in error_str
+        assert "Candidates for node 'model_step':" in error_str
+        assert "XGBoostTrainingConfig (job_type='training', confidence=0.85)" in error_str
+        assert "XGBoostModelEvalConfig (job_type='evaluation', confidence=0.82)" in error_str
 
     def test_validation_error_basic(self):
         """Test ValidationError with basic message."""
         error = ValidationError("Validation failed")
-        self.assertEqual(str(error), "Validation failed")
-        self.assertIsInstance(error, PipelineAPIError)
-        self.assertEqual(error.validation_errors, {})
+        assert str(error) == "Validation failed"
+        assert isinstance(error, PipelineAPIError)
+        assert error.validation_errors == {}
 
     def test_validation_error_with_details(self):
         """Test ValidationError with detailed validation errors."""
@@ -136,26 +137,26 @@ class TestPipelineAPIExceptions(unittest.TestCase):
         )
         
         error_str = str(error)
-        self.assertIn("Configuration validation failed", error_str)
-        self.assertIn("Validation errors:", error_str)
-        self.assertIn("missing_fields:", error_str)
-        self.assertIn("- required_param", error_str)
-        self.assertIn("- output_path", error_str)
-        self.assertIn("invalid_values:", error_str)
-        self.assertIn("- batch_size must be positive", error_str)
-        self.assertIn("- learning_rate out of range", error_str)
-        self.assertIn("dependency_issues:", error_str)
-        self.assertIn("- input_data not found", error_str)
+        assert "Configuration validation failed" in error_str
+        assert "Validation errors:" in error_str
+        assert "missing_fields:" in error_str
+        assert "- required_param" in error_str
+        assert "- output_path" in error_str
+        assert "invalid_values:" in error_str
+        assert "- batch_size must be positive" in error_str
+        assert "- learning_rate out of range" in error_str
+        assert "dependency_issues:" in error_str
+        assert "- input_data not found" in error_str
         
-        self.assertEqual(error.validation_errors, validation_errors)
+        assert error.validation_errors == validation_errors
 
     def test_resolution_error_basic(self):
         """Test ResolutionError with basic message."""
         error = ResolutionError("Resolution failed")
-        self.assertEqual(str(error), "Resolution failed")
-        self.assertIsInstance(error, PipelineAPIError)
-        self.assertEqual(error.failed_nodes, [])
-        self.assertEqual(error.suggestions, [])
+        assert str(error) == "Resolution failed"
+        assert isinstance(error, PipelineAPIError)
+        assert error.failed_nodes == []
+        assert error.suggestions == []
 
     def test_resolution_error_with_details(self):
         """Test ResolutionError with failed nodes and suggestions."""
@@ -173,15 +174,15 @@ class TestPipelineAPIExceptions(unittest.TestCase):
         )
         
         error_str = str(error)
-        self.assertIn("Failed to resolve DAG nodes", error_str)
-        self.assertIn("Failed to resolve nodes: ['data_loading', 'preprocessing']", error_str)
-        self.assertIn("Suggestions:", error_str)
-        self.assertIn("- Add configuration for data_loading node", error_str)
-        self.assertIn("- Check node naming conventions", error_str)
-        self.assertIn("- Ensure job_type attributes are set correctly", error_str)
+        assert "Failed to resolve DAG nodes" in error_str
+        assert "Failed to resolve nodes: ['data_loading', 'preprocessing']" in error_str
+        assert "Suggestions:" in error_str
+        assert "- Add configuration for data_loading node" in error_str
+        assert "- Check node naming conventions" in error_str
+        assert "- Ensure job_type attributes are set correctly" in error_str
         
-        self.assertEqual(error.failed_nodes, failed_nodes)
-        self.assertEqual(error.suggestions, suggestions)
+        assert error.failed_nodes == failed_nodes
+        assert error.suggestions == suggestions
 
     def test_exception_inheritance(self):
         """Test that all exceptions inherit from PipelineAPIError."""
@@ -193,8 +194,5 @@ class TestPipelineAPIExceptions(unittest.TestCase):
         ]
         
         for exc in exceptions:
-            self.assertIsInstance(exc, PipelineAPIError)
-            self.assertIsInstance(exc, Exception)
-
-if __name__ == '__main__':
-    unittest.main()
+            assert isinstance(exc, PipelineAPIError)
+            assert isinstance(exc, Exception)

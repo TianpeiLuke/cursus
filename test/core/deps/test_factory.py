@@ -8,7 +8,7 @@ Tests the factory module functionality including:
 - Component wiring and integration
 """
 
-import unittest
+import pytest
 import threading
 import time
 from contextlib import contextmanager
@@ -26,14 +26,15 @@ from cursus.core.deps import (
 from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from .test_helpers import IsolatedTestCase
+from .test_helpers import reset_all_global_state
 
-class TestFactoryFunctions(IsolatedTestCase):
+class TestFactoryFunctions:
     """Test factory function functionality."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        reset_all_global_state()
         
         # Create test specification for testing
         output_spec = OutputSpec(
@@ -49,25 +50,28 @@ class TestFactoryFunctions(IsolatedTestCase):
             dependencies=[],
             outputs=[output_spec]
         )
+        
+        yield
+        reset_all_global_state()
     
     def test_create_pipeline_components_default(self):
         """Test creating pipeline components with default context."""
         components = create_pipeline_components()
         
         # Verify all components are created
-        self.assertIn("semantic_matcher", components)
-        self.assertIn("registry_manager", components)
-        self.assertIn("registry", components)
-        self.assertIn("resolver", components)
+        assert "semantic_matcher" in components
+        assert "registry_manager" in components
+        assert "registry" in components
+        assert "resolver" in components
         
         # Verify component types
-        self.assertIsInstance(components["semantic_matcher"], SemanticMatcher)
-        self.assertIsInstance(components["registry_manager"], RegistryManager)
-        self.assertIsInstance(components["registry"], SpecificationRegistry)
-        self.assertIsInstance(components["resolver"], UnifiedDependencyResolver)
+        assert isinstance(components["semantic_matcher"], SemanticMatcher)
+        assert isinstance(components["registry_manager"], RegistryManager)
+        assert isinstance(components["registry"], SpecificationRegistry)
+        assert isinstance(components["resolver"], UnifiedDependencyResolver)
         
         # Verify default context
-        self.assertEqual(components["registry"].context_name, "default")
+        assert components["registry"].context_name == "default"
     
     def test_create_pipeline_components_custom_context(self):
         """Test creating pipeline components with custom context."""
@@ -75,10 +79,10 @@ class TestFactoryFunctions(IsolatedTestCase):
         components = create_pipeline_components(context_name)
         
         # Verify custom context is used
-        self.assertEqual(components["registry"].context_name, context_name)
+        assert components["registry"].context_name == context_name
         
         # Verify registry manager contains the context
-        self.assertIn(context_name, components["registry_manager"].list_contexts())
+        assert context_name in components["registry_manager"].list_contexts()
     
     def test_create_pipeline_components_wiring(self):
         """Test that components are properly wired together."""
@@ -93,8 +97,8 @@ class TestFactoryFunctions(IsolatedTestCase):
         
         # Verify resolver can find the specification
         found_specs = registry.get_specifications_by_type("TestStep")
-        self.assertEqual(len(found_specs), 1)
-        self.assertEqual(found_specs[0].step_type, "TestStep")
+        assert len(found_specs) == 1
+        assert found_specs[0].step_type == "TestStep"
     
     def test_create_pipeline_components_isolation(self):
         """Test that different component sets are isolated."""
@@ -102,27 +106,28 @@ class TestFactoryFunctions(IsolatedTestCase):
         components2 = create_pipeline_components("context2")
         
         # Verify different instances
-        self.assertIsNot(components1["registry_manager"], components2["registry_manager"])
-        self.assertIsNot(components1["registry"], components2["registry"])
-        self.assertIsNot(components1["resolver"], components2["resolver"])
+        assert components1["registry_manager"] is not components2["registry_manager"]
+        assert components1["registry"] is not components2["registry"]
+        assert components1["resolver"] is not components2["resolver"]
         
         # Verify different contexts
-        self.assertEqual(components1["registry"].context_name, "context1")
-        self.assertEqual(components2["registry"].context_name, "context2")
+        assert components1["registry"].context_name == "context1"
+        assert components2["registry"].context_name == "context2"
         
         # Test isolation by registering different specs
         components1["registry"].register("step1", self.test_spec)
         
         # Verify isolation
-        self.assertIn("step1", components1["registry"].list_step_names())
-        self.assertNotIn("step1", components2["registry"].list_step_names())
+        assert "step1" in components1["registry"].list_step_names()
+        assert "step1" not in components2["registry"].list_step_names()
 
-class TestThreadLocalComponents(IsolatedTestCase):
+class TestThreadLocalComponents:
     """Test thread-local component management."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        reset_all_global_state()
         
         # Create test specification
         output_spec = OutputSpec(
@@ -138,6 +143,9 @@ class TestThreadLocalComponents(IsolatedTestCase):
             dependencies=[],
             outputs=[output_spec]
         )
+        
+        yield
+        reset_all_global_state()
     
     def test_get_thread_components_single_thread(self):
         """Test getting thread components in single thread."""
@@ -145,15 +153,15 @@ class TestThreadLocalComponents(IsolatedTestCase):
         components2 = get_thread_components()
         
         # Should return same instances within same thread
-        self.assertIs(components1["registry_manager"], components2["registry_manager"])
-        self.assertIs(components1["registry"], components2["registry"])
-        self.assertIs(components1["resolver"], components2["resolver"])
+        assert components1["registry_manager"] is components2["registry_manager"]
+        assert components1["registry"] is components2["registry"]
+        assert components1["resolver"] is components2["resolver"]
         
         # Verify components are properly initialized
-        self.assertIsInstance(components1["semantic_matcher"], SemanticMatcher)
-        self.assertIsInstance(components1["registry_manager"], RegistryManager)
-        self.assertIsInstance(components1["registry"], SpecificationRegistry)
-        self.assertIsInstance(components1["resolver"], UnifiedDependencyResolver)
+        assert isinstance(components1["semantic_matcher"], SemanticMatcher)
+        assert isinstance(components1["registry_manager"], RegistryManager)
+        assert isinstance(components1["registry"], SpecificationRegistry)
+        assert isinstance(components1["resolver"], UnifiedDependencyResolver)
     
     def test_get_thread_components_multi_thread(self):
         """Test thread isolation of components."""
@@ -187,28 +195,28 @@ class TestThreadLocalComponents(IsolatedTestCase):
             thread.join()
         
         # Verify no errors
-        self.assertEqual(len(errors), 0, f"Errors occurred: {errors}")
+        assert len(errors) == 0, f"Errors occurred: {errors}"
         
         # Verify all threads got results
-        self.assertEqual(len(results), 5)
+        assert len(results) == 5
         
         # Verify thread isolation
         for thread_id, result in results.items():
             step_names = result["step_names"]
-            self.assertEqual(len(step_names), 1)
-            self.assertIn(f"step_{thread_id}", step_names)
+            assert len(step_names) == 1
+            assert f"step_{thread_id}" in step_names
             
             # Verify no cross-contamination
             for other_id in results:
                 if other_id != thread_id:
-                    self.assertNotIn(f"step_{other_id}", step_names)
+                    assert f"step_{other_id}" not in step_names
         
         # Verify different component instances across threads
         component_instances = [result["components"]["registry"] for result in results.values()]
         for i, comp1 in enumerate(component_instances):
             for j, comp2 in enumerate(component_instances):
                 if i != j:
-                    self.assertIsNot(comp1, comp2)
+                    assert comp1 is not comp2
     
     def test_thread_components_persistence(self):
         """Test that thread components persist across multiple calls."""
@@ -220,17 +228,18 @@ class TestThreadLocalComponents(IsolatedTestCase):
         components2 = get_thread_components()
         
         # Should be same instances
-        self.assertIs(components1["registry"], components2["registry"])
+        assert components1["registry"] is components2["registry"]
         
         # Should maintain state
-        self.assertIn("persistent_step", components2["registry"].list_step_names())
+        assert "persistent_step" in components2["registry"].list_step_names()
 
-class TestDependencyResolutionContext(IsolatedTestCase):
+class TestDependencyResolutionContext:
     """Test dependency resolution context management."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        reset_all_global_state()
         
         # Create test specification
         output_spec = OutputSpec(
@@ -246,25 +255,28 @@ class TestDependencyResolutionContext(IsolatedTestCase):
             dependencies=[],
             outputs=[output_spec]
         )
+        
+        yield
+        reset_all_global_state()
     
     def test_dependency_resolution_context_basic(self):
         """Test basic context manager functionality."""
         with dependency_resolution_context() as components:
             # Verify components are provided
-            self.assertIn("semantic_matcher", components)
-            self.assertIn("registry_manager", components)
-            self.assertIn("registry", components)
-            self.assertIn("resolver", components)
+            assert "semantic_matcher" in components
+            assert "registry_manager" in components
+            assert "registry" in components
+            assert "resolver" in components
             
             # Verify component types
-            self.assertIsInstance(components["semantic_matcher"], SemanticMatcher)
-            self.assertIsInstance(components["registry_manager"], RegistryManager)
-            self.assertIsInstance(components["registry"], SpecificationRegistry)
-            self.assertIsInstance(components["resolver"], UnifiedDependencyResolver)
+            assert isinstance(components["semantic_matcher"], SemanticMatcher)
+            assert isinstance(components["registry_manager"], RegistryManager)
+            assert isinstance(components["registry"], SpecificationRegistry)
+            assert isinstance(components["resolver"], UnifiedDependencyResolver)
             
             # Test functionality within context
             components["registry"].register("test_step", self.test_spec)
-            self.assertIn("test_step", components["registry"].list_step_names())
+            assert "test_step" in components["registry"].list_step_names()
     
     def test_dependency_resolution_context_cleanup(self):
         """Test context cleanup on exit."""
@@ -277,13 +289,13 @@ class TestDependencyResolutionContext(IsolatedTestCase):
             
             # Add some data
             components["registry"].register("test_step", self.test_spec)
-            self.assertIn("test_step", components["registry"].list_step_names())
+            assert "test_step" in components["registry"].list_step_names()
             
             # Verify context exists
-            self.assertIn("default", registry_manager.list_contexts())
+            assert "default" in registry_manager.list_contexts()
         
         # After context exit, should be cleaned up
-        self.assertEqual(len(registry_manager.list_contexts()), 0)
+        assert len(registry_manager.list_contexts()) == 0
     
     def test_dependency_resolution_context_no_cleanup(self):
         """Test context without cleanup."""
@@ -294,13 +306,13 @@ class TestDependencyResolutionContext(IsolatedTestCase):
             
             # Add some data
             components["registry"].register("test_step", self.test_spec)
-            self.assertIn("test_step", components["registry"].list_step_names())
+            assert "test_step" in components["registry"].list_step_names()
             
             # Verify context exists
-            self.assertIn("default", registry_manager.list_contexts())
+            assert "default" in registry_manager.list_contexts()
         
         # After context exit, should still exist
-        self.assertIn("default", registry_manager.list_contexts())
+        assert "default" in registry_manager.list_contexts()
         
         # Clean up manually for test isolation
         registry_manager.clear_all_contexts()
@@ -315,7 +327,7 @@ class TestDependencyResolutionContext(IsolatedTestCase):
                 
                 # Add some data
                 components["registry"].register("test_step", self.test_spec)
-                self.assertIn("default", registry_manager.list_contexts())
+                assert "default" in registry_manager.list_contexts()
                 
                 # Raise exception
                 raise ValueError("Test exception")
@@ -323,7 +335,7 @@ class TestDependencyResolutionContext(IsolatedTestCase):
             pass  # Expected exception
         
         # Should still be cleaned up despite exception
-        self.assertEqual(len(registry_manager.list_contexts()), 0)
+        assert len(registry_manager.list_contexts()) == 0
     
     def test_dependency_resolution_context_nested(self):
         """Test nested context usage."""
@@ -334,20 +346,21 @@ class TestDependencyResolutionContext(IsolatedTestCase):
                 inner_components["registry"].register("inner_step", self.test_spec)
                 
                 # Verify isolation
-                self.assertIn("outer_step", outer_components["registry"].list_step_names())
-                self.assertIn("inner_step", inner_components["registry"].list_step_names())
+                assert "outer_step" in outer_components["registry"].list_step_names()
+                assert "inner_step" in inner_components["registry"].list_step_names()
                 
                 # Verify different instances
-                self.assertIsNot(outer_components["registry"], inner_components["registry"])
-                self.assertNotIn("inner_step", outer_components["registry"].list_step_names())
-                self.assertNotIn("outer_step", inner_components["registry"].list_step_names())
+                assert outer_components["registry"] is not inner_components["registry"]
+                assert "inner_step" not in outer_components["registry"].list_step_names()
+                assert "outer_step" not in inner_components["registry"].list_step_names()
 
-class TestFactoryIntegration(IsolatedTestCase):
+class TestFactoryIntegration:
     """Test integration scenarios with factory components."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        reset_all_global_state()
         
         # Create test specifications
         self.data_output = OutputSpec(
@@ -381,6 +394,9 @@ class TestFactoryIntegration(IsolatedTestCase):
             )],
             outputs=[self.model_output]
         )
+        
+        yield
+        reset_all_global_state()
     
     def test_end_to_end_pipeline_creation(self):
         """Test complete pipeline creation and dependency resolution."""
@@ -397,14 +413,14 @@ class TestFactoryIntegration(IsolatedTestCase):
             dependencies = resolver.resolve_all_dependencies(available_steps)
             
             # Verify resolution worked
-            self.assertIn("training_step", dependencies)
+            assert "training_step" in dependencies
             training_deps = dependencies["training_step"]
-            self.assertEqual(len(training_deps), 1)
-            self.assertIn("input_data", training_deps)
+            assert len(training_deps) == 1
+            assert "input_data" in training_deps
             
             # Verify the property reference points to the correct step
             prop_ref = training_deps["input_data"]
-            self.assertEqual(prop_ref.step_name, "data_step")
+            assert prop_ref.step_name == "data_step"
     
     def test_multi_context_pipeline_isolation(self):
         """Test isolation between multiple pipeline contexts."""
@@ -422,17 +438,14 @@ class TestFactoryIntegration(IsolatedTestCase):
         training_steps = training_components["registry"].list_step_names()
         inference_steps = inference_components["registry"].list_step_names()
         
-        self.assertEqual(len(training_steps), 2)
-        self.assertEqual(len(inference_steps), 1)
+        assert len(training_steps) == 2
+        assert len(inference_steps) == 1
         
-        self.assertIn("train_data", training_steps)
-        self.assertIn("train_model", training_steps)
-        self.assertIn("infer_data", inference_steps)
+        assert "train_data" in training_steps
+        assert "train_model" in training_steps
+        assert "infer_data" in inference_steps
         
         # Verify no cross-contamination
-        self.assertNotIn("infer_data", training_steps)
-        self.assertNotIn("train_data", inference_steps)
-        self.assertNotIn("train_model", inference_steps)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert "infer_data" not in training_steps
+        assert "train_data" not in inference_steps
+        assert "train_model" not in inference_steps

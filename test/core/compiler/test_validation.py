@@ -5,7 +5,7 @@ This module tests the validation and preview classes for the Pipeline API,
 ensuring they provide accurate validation results and helpful previews.
 """
 
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 from dataclasses import dataclass
 
@@ -16,7 +16,8 @@ from cursus.core.compiler.validation import (
     ValidationEngine
 )
 
-class TestValidationResult(unittest.TestCase):
+
+class TestValidationResult:
     """Tests for the ValidationResult dataclass."""
 
     def test_validation_result_valid(self):
@@ -30,10 +31,10 @@ class TestValidationResult(unittest.TestCase):
             warnings=["Minor warning about naming"]
         )
         
-        self.assertTrue(result.is_valid)
+        assert result.is_valid
         summary = result.summary()
-        self.assertIn("✅ Validation passed", summary)
-        self.assertIn("with 1 warnings", summary)
+        assert "✅ Validation passed" in summary
+        assert "with 1 warnings" in summary
 
     def test_validation_result_invalid(self):
         """Test ValidationResult for an invalid configuration."""
@@ -46,13 +47,13 @@ class TestValidationResult(unittest.TestCase):
             warnings=[]
         )
         
-        self.assertFalse(result.is_valid)
+        assert not result.is_valid
         summary = result.summary()
-        self.assertIn("❌ Validation failed", summary)
-        self.assertIn("2 missing configs", summary)
-        self.assertIn("1 unresolvable builders", summary)
-        self.assertIn("1 config errors", summary)
-        self.assertIn("1 dependency issues", summary)
+        assert "❌ Validation failed" in summary
+        assert "2 missing configs" in summary
+        assert "1 unresolvable builders" in summary
+        assert "1 config errors" in summary
+        assert "1 dependency issues" in summary
 
     def test_detailed_report_valid(self):
         """Test detailed report for valid configuration."""
@@ -66,9 +67,9 @@ class TestValidationResult(unittest.TestCase):
         )
         
         report = result.detailed_report()
-        self.assertIn("✅ Validation passed", report)
-        self.assertIn("Warnings:", report)
-        self.assertIn("Consider using more descriptive names", report)
+        assert "✅ Validation passed" in report
+        assert "Warnings:" in report
+        assert "Consider using more descriptive names" in report
 
     def test_detailed_report_invalid_with_recommendations(self):
         """Test detailed report for invalid configuration with recommendations."""
@@ -82,23 +83,24 @@ class TestValidationResult(unittest.TestCase):
         )
         
         report = result.detailed_report()
-        self.assertIn("❌ Validation failed", report)
-        self.assertIn("Missing Configurations:", report)
-        self.assertIn("- data_loading", report)
-        self.assertIn("Unresolvable Step Builders:", report)
-        self.assertIn("- custom_step", report)
-        self.assertIn("Configuration Errors:", report)
-        self.assertIn("training:", report)
-        self.assertIn("- invalid parameter", report)
-        self.assertIn("Dependency Issues:", report)
-        self.assertIn("- missing dependency", report)
-        self.assertIn("Recommendations:", report)
-        self.assertIn("Add missing configuration instances", report)
-        self.assertIn("Register missing step builders", report)
-        self.assertIn("Fix configuration validation errors", report)
-        self.assertIn("Review DAG structure", report)
+        assert "❌ Validation failed" in report
+        assert "Missing Configurations:" in report
+        assert "- data_loading" in report
+        assert "Unresolvable Step Builders:" in report
+        assert "- custom_step" in report
+        assert "Configuration Errors:" in report
+        assert "training:" in report
+        assert "- invalid parameter" in report
+        assert "Dependency Issues:" in report
+        assert "- missing dependency" in report
+        assert "Recommendations:" in report
+        assert "Add missing configuration instances" in report
+        assert "Register missing step builders" in report
+        assert "Fix configuration validation errors" in report
+        assert "Review DAG structure" in report
 
-class TestResolutionPreview(unittest.TestCase):
+
+class TestResolutionPreview:
     """Tests for the ResolutionPreview dataclass."""
 
     def test_resolution_preview_display(self):
@@ -124,19 +126,20 @@ class TestResolutionPreview(unittest.TestCase):
         )
         
         display = preview.display()
-        self.assertIn("Resolution Preview", display)
-        self.assertIn("Node → Configuration Mappings:", display)
-        self.assertIn("🟢 data_loading → CradleDataLoadConfig (confidence: 1.00)", display)
-        self.assertIn("🟡 preprocessing → TabularPreprocessingConfig (confidence: 0.85)", display)
-        self.assertIn("🔴 training → XGBoostTrainingConfig (confidence: 0.65)", display)
-        self.assertIn("Configuration → Builder Mappings:", display)
-        self.assertIn("✓ CradleDataLoadConfig → CradleDataLoadingStepBuilder", display)
-        self.assertIn("⚠️  Ambiguous Resolutions:", display)
-        self.assertIn("training has 2 similar candidates", display)
-        self.assertIn("💡 Recommendations:", display)
-        self.assertIn("Consider renaming 'training' for better matching", display)
+        assert "Resolution Preview" in display
+        assert "Node → Configuration Mappings:" in display
+        assert "🟢 data_loading → CradleDataLoadConfig (confidence: 1.00)" in display
+        assert "🟡 preprocessing → TabularPreprocessingConfig (confidence: 0.85)" in display
+        assert "🔴 training → XGBoostTrainingConfig (confidence: 0.65)" in display
+        assert "Configuration → Builder Mappings:" in display
+        assert "✓ CradleDataLoadConfig → CradleDataLoadingStepBuilder" in display
+        assert "⚠️  Ambiguous Resolutions:" in display
+        assert "training has 2 similar candidates" in display
+        assert "💡 Recommendations:" in display
+        assert "Consider renaming 'training' for better matching" in display
 
-class TestConversionReport(unittest.TestCase):
+
+class TestConversionReport:
     """Tests for the ConversionReport dataclass."""
 
     def test_conversion_report_summary(self):
@@ -152,7 +155,7 @@ class TestConversionReport(unittest.TestCase):
         
         summary = report.summary()
         expected = "Pipeline 'test-pipeline' created successfully with 3 steps (avg confidence: 0.85)"
-        self.assertEqual(summary, expected)
+        assert summary == expected
 
     def test_conversion_report_detailed_report(self):
         """Test the detailed_report method of ConversionReport."""
@@ -179,60 +182,72 @@ class TestConversionReport(unittest.TestCase):
         )
         
         detailed = report.detailed_report()
-        self.assertIn("Pipeline Conversion Report", detailed)
-        self.assertIn("Pipeline Name: test-pipeline", detailed)
-        self.assertIn("Steps Created: 2", detailed)
-        self.assertIn("Average Confidence: 0.90", detailed)
-        self.assertIn("Step Resolution Details:", detailed)
-        self.assertIn("data_loading:", detailed)
-        self.assertIn("Config: CradleDataLoadConfig", detailed)
-        self.assertIn("Builder: CradleDataLoadingStepBuilder", detailed)
-        self.assertIn("Confidence: 1.00", detailed)
-        self.assertIn("preprocessing:", detailed)
-        self.assertIn("Config: TabularPreprocessingConfig", detailed)
-        self.assertIn("Warnings:", detailed)
-        self.assertIn("Low confidence for preprocessing", detailed)
-        self.assertIn("Additional Metadata:", detailed)
-        self.assertIn("dag_nodes: 2", detailed)
-        self.assertIn("dag_edges: 1", detailed)
+        assert "Pipeline Conversion Report" in detailed
+        assert "Pipeline Name: test-pipeline" in detailed
+        assert "Steps Created: 2" in detailed
+        assert "Average Confidence: 0.90" in detailed
+        assert "Step Resolution Details:" in detailed
+        assert "data_loading:" in detailed
+        assert "Config: CradleDataLoadConfig" in detailed
+        assert "Builder: CradleDataLoadingStepBuilder" in detailed
+        assert "Confidence: 1.00" in detailed
+        assert "preprocessing:" in detailed
+        assert "Config: TabularPreprocessingConfig" in detailed
+        assert "Warnings:" in detailed
+        assert "Low confidence for preprocessing" in detailed
+        assert "Additional Metadata:" in detailed
+        assert "dag_nodes: 2" in detailed
+        assert "dag_edges: 1" in detailed
 
-class TestValidationEngine(unittest.TestCase):
+
+class TestValidationEngine:
     """Tests for the ValidationEngine class."""
 
-    def setUp(self):
+    @pytest.fixture
+    def engine(self):
         """Set up test fixtures."""
-        self.engine = ValidationEngine()
-        
-        # Mock configurations
-        self.mock_config1 = MagicMock()
-        self.mock_config1.job_type = "training"
-        type(self.mock_config1).__name__ = "XGBoostTrainingConfig"
-        
-        self.mock_config2 = MagicMock()
-        self.mock_config2.job_type = "evaluation"
-        type(self.mock_config2).__name__ = "XGBoostModelEvalConfig"
-        
-        # Mock available configs
-        self.available_configs = {
-            "training": self.mock_config1,
-            "evaluation": self.mock_config2
+        return ValidationEngine()
+    
+    @pytest.fixture
+    def mock_config1(self):
+        mock_config1 = MagicMock()
+        mock_config1.job_type = "training"
+        type(mock_config1).__name__ = "XGBoostTrainingConfig"
+        return mock_config1
+    
+    @pytest.fixture
+    def mock_config2(self):
+        mock_config2 = MagicMock()
+        mock_config2.job_type = "evaluation"
+        type(mock_config2).__name__ = "XGBoostModelEvalConfig"
+        return mock_config2
+    
+    @pytest.fixture
+    def available_configs(self, mock_config1, mock_config2):
+        return {
+            "training": mock_config1,
+            "evaluation": mock_config2
         }
-        
-        # Mock config map
-        self.config_map = {
-            "training": self.mock_config1,
-            "evaluation": self.mock_config2
+    
+    @pytest.fixture
+    def config_map(self, mock_config1, mock_config2):
+        return {
+            "training": mock_config1,
+            "evaluation": mock_config2
         }
-        
-        # Mock builder registry
-        self.builder_registry = {
+    
+    @pytest.fixture
+    def builder_registry(self):
+        return {
             "XGBoostTraining": MagicMock(),
             "XGBoostModelEval": MagicMock()
         }
 
     @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
     @patch('cursus.core.compiler.validation.StepBuilderRegistry')
-    def test_validate_dag_compatibility_success(self, mock_step_builder_registry, mock_config_step_registry):
+    def test_validate_dag_compatibility_success(self, mock_step_builder_registry, mock_config_step_registry,
+                                              engine, available_configs, config_map, builder_registry, 
+                                              mock_config1, mock_config2):
         """Test successful DAG compatibility validation."""
         # Setup mocks
         mock_config_step_registry.__contains__ = lambda self, x: True
@@ -243,39 +258,39 @@ class TestValidationEngine(unittest.TestCase):
         dag_nodes = ["training", "evaluation"]
         
         # Mock config validation
-        self.mock_config1.validate_config = MagicMock()
-        self.mock_config2.validate_config = MagicMock()
+        mock_config1.validate_config = MagicMock()
+        mock_config2.validate_config = MagicMock()
         
-        result = self.engine.validate_dag_compatibility(
+        result = engine.validate_dag_compatibility(
             dag_nodes=dag_nodes,
-            available_configs=self.available_configs,
-            config_map=self.config_map,
-            builder_registry=self.builder_registry
+            available_configs=available_configs,
+            config_map=config_map,
+            builder_registry=builder_registry
         )
         
-        self.assertTrue(result.is_valid)
-        self.assertEqual(result.missing_configs, [])
-        self.assertEqual(result.unresolvable_builders, [])
-        self.assertEqual(result.config_errors, {})
-        self.assertEqual(result.dependency_issues, [])
+        assert result.is_valid
+        assert result.missing_configs == []
+        assert result.unresolvable_builders == []
+        assert result.config_errors == {}
+        assert result.dependency_issues == []
 
-    def test_validate_dag_compatibility_missing_configs(self):
+    def test_validate_dag_compatibility_missing_configs(self, engine, available_configs, config_map, builder_registry):
         """Test validation with missing configurations."""
         dag_nodes = ["training", "evaluation", "missing_node"]
         
-        result = self.engine.validate_dag_compatibility(
+        result = engine.validate_dag_compatibility(
             dag_nodes=dag_nodes,
-            available_configs=self.available_configs,
-            config_map=self.config_map,  # missing_node not in config_map
-            builder_registry=self.builder_registry
+            available_configs=available_configs,
+            config_map=config_map,  # missing_node not in config_map
+            builder_registry=builder_registry
         )
         
-        self.assertFalse(result.is_valid)
-        self.assertIn("missing_node", result.missing_configs)
+        assert not result.is_valid
+        assert "missing_node" in result.missing_configs
 
     @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
     @patch('cursus.core.compiler.validation.StepBuilderRegistry')
-    def test_validate_dag_compatibility_unresolvable_builders(self, mock_step_builder_registry, mock_config_step_registry):
+    def test_validate_dag_compatibility_unresolvable_builders(self, mock_step_builder_registry, mock_config_step_registry, engine):
         """Test validation with unresolvable step builders."""
         # Setup mocks to simulate missing builders
         mock_config_step_registry.__contains__ = lambda self, x: False  # Not in registry
@@ -291,37 +306,37 @@ class TestValidationEngine(unittest.TestCase):
         config_map = {"training": mock_unknown_config}
         builder_registry = {}  # Empty registry
         
-        result = self.engine.validate_dag_compatibility(
+        result = engine.validate_dag_compatibility(
             dag_nodes=dag_nodes,
             available_configs={"training": mock_unknown_config},
             config_map=config_map,
             builder_registry=builder_registry
         )
         
-        self.assertFalse(result.is_valid)
-        self.assertTrue(len(result.unresolvable_builders) > 0)
+        assert not result.is_valid
+        assert len(result.unresolvable_builders) > 0
 
-    def test_validate_dag_compatibility_config_errors(self):
+    def test_validate_dag_compatibility_config_errors(self, engine, available_configs, builder_registry, mock_config1):
         """Test validation with configuration validation errors."""
         dag_nodes = ["training"]
         
         # Mock config that raises validation error
-        self.mock_config1.validate_config = MagicMock(side_effect=ValueError("Invalid parameter"))
+        mock_config1.validate_config = MagicMock(side_effect=ValueError("Invalid parameter"))
         
-        result = self.engine.validate_dag_compatibility(
+        result = engine.validate_dag_compatibility(
             dag_nodes=dag_nodes,
-            available_configs=self.available_configs,
-            config_map={"training": self.mock_config1},
-            builder_registry=self.builder_registry
+            available_configs=available_configs,
+            config_map={"training": mock_config1},
+            builder_registry=builder_registry
         )
         
-        self.assertFalse(result.is_valid)
-        self.assertIn("training", result.config_errors)
-        self.assertIn("Invalid parameter", result.config_errors["training"][0])
+        assert not result.is_valid
+        assert "training" in result.config_errors
+        assert "Invalid parameter" in result.config_errors["training"][0]
 
     @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
     @patch('cursus.core.compiler.validation.StepBuilderRegistry')
-    def test_validate_dag_compatibility_with_job_type_variants(self, mock_step_builder_registry, mock_config_step_registry):
+    def test_validate_dag_compatibility_with_job_type_variants(self, mock_step_builder_registry, mock_config_step_registry, engine):
         """Test validation with job type variants."""
         # Setup mocks
         mock_config_step_registry.__contains__ = lambda self, x: True
@@ -339,18 +354,18 @@ class TestValidationEngine(unittest.TestCase):
         config_map = {"training_step": mock_config}
         builder_registry = {"XGBoostTraining_training": MagicMock()}  # Builder with job type
         
-        result = self.engine.validate_dag_compatibility(
+        result = engine.validate_dag_compatibility(
             dag_nodes=dag_nodes,
             available_configs={"training_step": mock_config},
             config_map=config_map,
             builder_registry=builder_registry
         )
         
-        self.assertTrue(result.is_valid)
+        assert result.is_valid
 
     @patch('cursus.core.compiler.validation.CONFIG_STEP_REGISTRY')
     @patch('cursus.core.compiler.validation.StepBuilderRegistry')
-    def test_validate_dag_compatibility_with_legacy_aliases(self, mock_step_builder_registry, mock_config_step_registry):
+    def test_validate_dag_compatibility_with_legacy_aliases(self, mock_step_builder_registry, mock_config_step_registry, engine):
         """Test validation with legacy aliases."""
         # Setup mocks
         mock_config_step_registry.__contains__ = lambda self, x: True
@@ -367,14 +382,11 @@ class TestValidationEngine(unittest.TestCase):
         config_map = {"packaging": mock_config}
         builder_registry = {"MIMSPackaging": MagicMock()}  # Builder under legacy name
         
-        result = self.engine.validate_dag_compatibility(
+        result = engine.validate_dag_compatibility(
             dag_nodes=dag_nodes,
             available_configs={"packaging": mock_config},
             config_map=config_map,
             builder_registry=builder_registry
         )
         
-        self.assertTrue(result.is_valid)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert result.is_valid

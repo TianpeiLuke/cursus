@@ -6,17 +6,18 @@ to better handle multiple instances of the same configuration class with differe
 job types, and to use metadata from the configuration file.
 """
 
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 
 from cursus.core.compiler.config_resolver import StepConfigResolver
 from cursus.core.compiler.exceptions import ResolutionError, AmbiguityError, ConfigurationError
 from cursus.core.base.config_base import BasePipelineConfig
 
-class TestEnhancedConfigResolver(unittest.TestCase):
+class TestEnhancedConfigResolver:
     """Tests for the enhanced StepConfigResolver capabilities."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         # Create an instance of StepConfigResolver
         self.resolver = StepConfigResolver()
@@ -81,45 +82,47 @@ class TestEnhancedConfigResolver(unittest.TestCase):
                 "XGBoostModelEval_calibration": "XGBoostModelEvalConfig"
             }
         }
+        
+        yield
 
     def test_parse_node_name(self):
         """Test the _parse_node_name method for extracting job type and config type."""
         # Test ConfigType_JobType pattern
         result = self.resolver._parse_node_name("CradleDataLoading_training")
-        self.assertEqual(result.get('config_type'), "CradleDataLoading")
-        self.assertEqual(result.get('job_type'), "training")
+        assert result.get('config_type') == "CradleDataLoading"
+        assert result.get('job_type') == "training"
         
         # Test JobType_Task pattern
         result = self.resolver._parse_node_name("training_data_load")
-        self.assertEqual(result.get('job_type'), "training")
-        self.assertEqual(result.get('config_type'), "CradleDataLoading")
+        assert result.get('job_type') == "training"
+        assert result.get('config_type') == "CradleDataLoading"
         
         # Test another ConfigType_JobType pattern
         result = self.resolver._parse_node_name("TabularPreprocessing_calibration")
-        self.assertEqual(result.get('config_type'), "TabularPreprocessing")
-        self.assertEqual(result.get('job_type'), "calibration")
+        assert result.get('config_type') == "TabularPreprocessing"
+        assert result.get('job_type') == "calibration"
         
         # Test a case that doesn't match the patterns
         result = self.resolver._parse_node_name("XGBoostTraining")
-        self.assertEqual(result, {})  # Should return empty dict
+        assert result == {}  # Should return empty dict
     
     def test_direct_name_matching(self):
         """Test the enhanced _direct_name_matching method with exact matches."""
         # Test exact key match
         match = self.resolver._direct_name_matching("CradleDataLoading_training", self.configs)
-        self.assertEqual(match, self.data_load_training)
+        assert match == self.data_load_training
         
         # Test exact key match for another config
         match = self.resolver._direct_name_matching("TabularPreprocessing_calibration", self.configs)
-        self.assertEqual(match, self.preprocess_calibration)
+        assert match == self.preprocess_calibration
         
         # Test case insensitive match
         match = self.resolver._direct_name_matching("xgboosttraining", self.configs)
-        self.assertEqual(match, self.training_config)
+        assert match == self.training_config
         
         # Test no match
         match = self.resolver._direct_name_matching("unknown_node", self.configs)
-        self.assertIsNone(match)
+        assert match is None
     
     def test_direct_name_matching_with_metadata(self):
         """Test the enhanced _direct_name_matching method with metadata."""
@@ -135,7 +138,7 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         
         # The metadata says CradleDataLoading_training maps to CradleDataLoadConfig
         match = self.resolver._direct_name_matching("CradleDataLoading_training", configs)
-        self.assertEqual(match, self.data_load_training)
+        assert match == self.data_load_training
     
     def test_job_type_matching_enhanced(self):
         """Test the _job_type_matching_enhanced method."""
@@ -143,18 +146,18 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         matches = self.resolver._job_type_matching_enhanced("training", self.configs, 
                                                           config_type="CradleDataLoading")
         # Since there might be multiple configs with the same job type, we ensure at least one matches our criteria
-        self.assertTrue(any(m[0] == self.data_load_training for m in matches))
-        self.assertTrue(all(getattr(m[0], 'job_type', '') == 'training' for m in matches))
-        self.assertEqual(matches[0][0], self.data_load_training)
-        self.assertGreaterEqual(matches[0][1], 0.8)  # Confidence should be high
+        assert any(m[0] == self.data_load_training for m in matches)
+        assert all(getattr(m[0], 'job_type', '') == 'training' for m in matches)
+        assert matches[0][0] == self.data_load_training
+        assert matches[0][1] >= 0.8  # Confidence should be high
         
         # Test job type match without config type
         matches = self.resolver._job_type_matching_enhanced("calibration", self.configs)
-        self.assertEqual(len(matches), 3)  # Should match all calibration configs
+        assert len(matches) == 3  # Should match all calibration configs
         
         # Test job type that doesn't exist
         matches = self.resolver._job_type_matching_enhanced("unknown", self.configs)
-        self.assertEqual(len(matches), 0)
+        assert len(matches) == 0
     
     def test_resolve_config_map_exact_matches(self):
         """Test the resolve_config_map method with exact matches."""
@@ -162,13 +165,13 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         config_map = self.resolver.resolve_config_map(self.dag_nodes, self.configs)
         
         # Verify all nodes were resolved correctly
-        self.assertEqual(len(config_map), 6)
-        self.assertEqual(config_map["CradleDataLoading_training"], self.data_load_training)
-        self.assertEqual(config_map["CradleDataLoading_calibration"], self.data_load_calibration)
-        self.assertEqual(config_map["TabularPreprocessing_training"], self.preprocess_training)
-        self.assertEqual(config_map["TabularPreprocessing_calibration"], self.preprocess_calibration)
-        self.assertEqual(config_map["XGBoostTraining"], self.training_config)
-        self.assertEqual(config_map["XGBoostModelEval_calibration"], self.eval_calibration)
+        assert len(config_map) == 6
+        assert config_map["CradleDataLoading_training"] == self.data_load_training
+        assert config_map["CradleDataLoading_calibration"] == self.data_load_calibration
+        assert config_map["TabularPreprocessing_training"] == self.preprocess_training
+        assert config_map["TabularPreprocessing_calibration"] == self.preprocess_calibration
+        assert config_map["XGBoostTraining"] == self.training_config
+        assert config_map["XGBoostModelEval_calibration"] == self.eval_calibration
     
     def test_resolve_config_map_with_metadata(self):
         """Test the resolve_config_map method using metadata for resolution."""
@@ -190,24 +193,24 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         )
         
         # Verify resolution using job type and metadata
-        self.assertEqual(len(config_map), 6)
+        assert len(config_map) == 6
         
         # Check each resolved config has correct job type
         for node, config in config_map.items():
             if "training" in node:
                 if "data_load" in node:
-                    self.assertEqual(config, self.data_load_training)
+                    assert config == self.data_load_training
                 elif "preprocess" in node:
-                    self.assertEqual(config, self.preprocess_training)
+                    assert config == self.preprocess_training
                 else:  # model_train
-                    self.assertEqual(config, self.training_config)
+                    assert config == self.training_config
             elif "calibration" in node:
                 if "data_load" in node:
-                    self.assertEqual(config, self.data_load_calibration)
+                    assert config == self.data_load_calibration
                 elif "preprocess" in node:
-                    self.assertEqual(config, self.preprocess_calibration)
+                    assert config == self.preprocess_calibration
                 else:  # calibration_eval
-                    self.assertEqual(config, self.eval_calibration)
+                    assert config == self.eval_calibration
     
     def test_resolve_single_node_prioritization(self):
         """Test that _resolve_single_node prioritizes direct name matching."""
@@ -230,9 +233,9 @@ class TestEnhancedConfigResolver(unittest.TestCase):
             config, confidence, method = self.resolver._resolve_single_node(node_name, self.configs)
             
             # Verify direct name match was used despite job_type match having high confidence
-            self.assertEqual(config, self.data_load_training)  # Not calibration
-            self.assertEqual(confidence, 1.0)  # Direct match confidence
-            self.assertEqual(method, "direct_name")  # Used direct matching method
+            assert config == self.data_load_training  # Not calibration
+            assert confidence == 1.0  # Direct match confidence
+            assert method == "direct_name"  # Used direct matching method
         finally:
             # Restore original method
             self.resolver._job_type_matching_enhanced = original_job_type_enhanced
@@ -246,24 +249,24 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         )
         
         # Verify the preview structure
-        self.assertIn('node_resolution', preview)
-        self.assertIn('resolution_confidence', preview)
-        self.assertIn('node_config_map', preview)
-        self.assertIn('metadata_mapping', preview)
+        assert 'node_resolution' in preview
+        assert 'resolution_confidence' in preview
+        assert 'node_config_map' in preview
+        assert 'metadata_mapping' in preview
         
         # Verify node resolution details
         node_resolution = preview['node_resolution']
-        self.assertEqual(len(node_resolution), 6)
+        assert len(node_resolution) == 6
         
         # Check a specific node
         train_data_load = node_resolution.get('CradleDataLoading_training', {})
-        self.assertEqual(train_data_load.get('config_type'), 'CradleDataLoadConfig')
-        self.assertEqual(train_data_load.get('job_type'), 'training')
-        self.assertEqual(train_data_load.get('method'), 'direct_name')
-        self.assertEqual(train_data_load.get('confidence'), 1.0)
+        assert train_data_load.get('config_type') == 'CradleDataLoadConfig'
+        assert train_data_load.get('job_type') == 'training'
+        assert train_data_load.get('method') == 'direct_name'
+        assert train_data_load.get('confidence') == 1.0
         
         # Verify metadata mapping is present
-        self.assertEqual(preview['metadata_mapping'], self.metadata['config_types'])
+        assert preview['metadata_mapping'] == self.metadata['config_types']
     
     def test_ambiguity_detection(self):
         """Test ambiguity detection with similar configurations."""
@@ -279,12 +282,12 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         node = "training_data_load"
         
         # Direct name match should fail for this node
-        self.assertIsNone(self.resolver._direct_name_matching(node, ambiguous_configs))
+        assert self.resolver._direct_name_matching(node, ambiguous_configs) is None
         
         # Parse node name
         node_info = self.resolver._parse_node_name(node)
-        self.assertEqual(node_info.get('job_type'), 'training')
-        self.assertEqual(node_info.get('config_type'), 'CradleDataLoading')
+        assert node_info.get('job_type') == 'training'
+        assert node_info.get('config_type') == 'CradleDataLoading'
         
         # Should find both configurations with similar confidence
         matches = self.resolver._job_type_matching_enhanced(
@@ -292,7 +295,7 @@ class TestEnhancedConfigResolver(unittest.TestCase):
             ambiguous_configs,
             config_type=node_info.get('config_type')
         )
-        self.assertEqual(len(matches), 2)
+        assert len(matches) == 2
         
         # Since both configs could match, this test would ideally test for ambiguity
         # However, our current implementation might be taking the first match it finds
@@ -300,11 +303,8 @@ class TestEnhancedConfigResolver(unittest.TestCase):
         resolved = self.resolver.resolve_config_map([node], ambiguous_configs)
         
         # Check that the resolved config is one of our ambiguous configs
-        self.assertIn(node, resolved)
+        assert node in resolved
         config = resolved[node]
-        self.assertEqual(type(config).__name__, "CradleDataLoadConfig")
-        self.assertEqual(getattr(config, 'job_type', ''), "training")
-        self.assertTrue(config in [ambiguous_configs["data_load_1"], ambiguous_configs["data_load_2"]])
-
-if __name__ == '__main__':
-    unittest.main()
+        assert type(config).__name__ == "CradleDataLoadConfig"
+        assert getattr(config, 'job_type', '') == "training"
+        assert config in [ambiguous_configs["data_load_1"], ambiguous_configs["data_load_2"]]

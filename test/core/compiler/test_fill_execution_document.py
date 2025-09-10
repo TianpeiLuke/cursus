@@ -5,16 +5,17 @@ These tests verify that the DynamicPipelineTemplate correctly populates executio
 with Cradle data loading requests and registration configurations.
 """
 
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 
 from cursus.api.dag.base_dag import PipelineDAG
 from cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
 
-class TestFillExecutionDocument(unittest.TestCase):
+class TestFillExecutionDocument:
     """Tests for the fill_execution_document method in DynamicPipelineTemplate."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         # Create a simple DAG with data loading and registration nodes
         self.dag = PipelineDAG()
@@ -277,6 +278,8 @@ class TestFillExecutionDocument(unittest.TestCase):
         }
         
         self.model_name = "test-model"
+        
+        yield
 
     def mock_template(self, mock_dag=None, mock_config_path=None):
         """Create a mocked DynamicPipelineTemplate."""
@@ -334,35 +337,29 @@ class TestFillExecutionDocument(unittest.TestCase):
         cradle_step_2 = result["PIPELINE_STEP_CONFIGS"]["CradleDataLoading-Calibration"]
         
         # Verify Training configuration
-        self.assertEqual(cradle_step_1["STEP_CONFIG"]["dataSources"]["dataSources"][0]["dataSourceName"], "RAW_MDS")
-        self.assertEqual(cradle_step_1["STEP_CONFIG"]["dataSources"]["startDate"], "2025-07-01T00:00:00")
-        self.assertEqual(cradle_step_1["STEP_CONFIG"]["outputSpecification"]["outputPath"], "s3://test-bucket/output/training")
+        assert cradle_step_1["STEP_CONFIG"]["dataSources"]["dataSources"][0]["dataSourceName"] == "RAW_MDS"
+        assert cradle_step_1["STEP_CONFIG"]["dataSources"]["startDate"] == "2025-07-01T00:00:00"
+        assert cradle_step_1["STEP_CONFIG"]["outputSpecification"]["outputPath"] == "s3://test-bucket/output/training"
         
         # Verify Calibration configuration
-        self.assertEqual(cradle_step_2["STEP_CONFIG"]["dataSources"]["dataSources"][0]["dataSourceName"], "RAW_MDS_CALIB")
-        self.assertEqual(cradle_step_2["STEP_CONFIG"]["dataSources"]["startDate"], "2025-06-01T00:00:00")
-        self.assertEqual(cradle_step_2["STEP_CONFIG"]["outputSpecification"]["outputPath"], "s3://test-bucket/output/calibration")
+        assert cradle_step_2["STEP_CONFIG"]["dataSources"]["dataSources"][0]["dataSourceName"] == "RAW_MDS_CALIB"
+        assert cradle_step_2["STEP_CONFIG"]["dataSources"]["startDate"] == "2025-06-01T00:00:00"
+        assert cradle_step_2["STEP_CONFIG"]["outputSpecification"]["outputPath"] == "s3://test-bucket/output/calibration"
         
         # Verify Registration configuration was populated
         reg_step = result["PIPELINE_STEP_CONFIGS"]["Registration-NA"]
         
-        self.assertEqual(reg_step["STEP_CONFIG"]["model_domain"], "fraud")
-        self.assertEqual(reg_step["STEP_CONFIG"]["model_objective"], "buyer-abuse")
-        self.assertEqual(reg_step["STEP_CONFIG"]["model_registration_region"], "NA")
-        self.assertEqual(reg_step["STEP_CONFIG"]["model_owner"], "test-team-id")
-        self.assertEqual(reg_step["STEP_CONFIG"]["source_model_inference_image_arn"], "test-image-uri:latest")
+        assert reg_step["STEP_CONFIG"]["model_domain"] == "fraud"
+        assert reg_step["STEP_CONFIG"]["model_objective"] == "buyer-abuse"
+        assert reg_step["STEP_CONFIG"]["model_registration_region"] == "NA"
+        assert reg_step["STEP_CONFIG"]["model_owner"] == "test-team-id"
+        assert reg_step["STEP_CONFIG"]["source_model_inference_image_arn"] == "test-image-uri:latest"
         
         # Verify environment variables
-        self.assertEqual(
-            reg_step["STEP_CONFIG"]["source_model_environment_variable_map"]["SAGEMAKER_PROGRAM"],
-            "inference.py"
-        )
+        assert reg_step["STEP_CONFIG"]["source_model_environment_variable_map"]["SAGEMAKER_PROGRAM"] == "inference.py"
         
         # Verify load testing info
-        self.assertEqual(
-            reg_step["STEP_CONFIG"]["load_testing_info_map"]["instance_type_list"],
-            ["ml.m5.xlarge"]
-        )
+        assert reg_step["STEP_CONFIG"]["load_testing_info_map"]["instance_type_list"] == ["ml.m5.xlarge"]
     
     def test_fill_execution_document_with_missing_sections(self):
         """Test fill_execution_document handles missing sections gracefully."""
@@ -381,7 +378,7 @@ class TestFillExecutionDocument(unittest.TestCase):
         template.logger.warning.assert_called_with("Execution document missing 'PIPELINE_STEP_CONFIGS' key")
         
         # Verify document was returned unchanged
-        self.assertEqual(result, incomplete_doc)
+        assert result == incomplete_doc
     
     def test_fill_execution_document_with_missing_steps(self):
         """Test fill_execution_document handles missing step entries gracefully."""
@@ -407,7 +404,7 @@ class TestFillExecutionDocument(unittest.TestCase):
         template.logger.warning.assert_any_call("Cradle step 'CradleDataLoading-Calibration' not found in execution document")
         
         # Verify document still has XGBoostTraining
-        self.assertIn("XGBoostTraining", result["PIPELINE_STEP_CONFIGS"])
+        assert "XGBoostTraining" in result["PIPELINE_STEP_CONFIGS"]
         
     def test_find_registration_step_nodes(self):
         """Test _find_registration_step_nodes finds registration steps correctly."""
@@ -429,7 +426,4 @@ class TestFillExecutionDocument(unittest.TestCase):
         nodes = template._find_registration_step_nodes()
         
         # Verify result
-        self.assertIn("Registration-NA", nodes)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert "Registration-NA" in nodes

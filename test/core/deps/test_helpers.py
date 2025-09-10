@@ -1,11 +1,11 @@
 """
 Test helpers for pipeline_deps tests to ensure proper isolation.
 
-This module provides utility functions and base classes to reset global state
+This module provides utility functions and fixtures to reset global state
 before and after tests, ensuring proper isolation between test cases.
 """
 
-import unittest
+import pytest
 
 def reset_all_global_state():
     """
@@ -18,44 +18,37 @@ def reset_all_global_state():
     # are now created per-test and don't require global state reset
     pass
 
-class IsolatedTestCase(unittest.TestCase):
+@pytest.fixture(autouse=True)
+def isolated_test_setup():
     """
-    Base class for tests that need isolation from global state.
+    Pytest fixture that automatically resets global state before and after each test.
     
-    This class automatically resets all global state before and after each test,
-    ensuring that tests are properly isolated from each other.
+    This fixture ensures that tests are properly isolated from each other by
+    resetting all global state before and after each test execution.
     """
-    
-    def setUp(self):
-        """Set up test fixtures, resetting global state."""
-        reset_all_global_state()
-    
-    def tearDown(self):
-        """Clean up after tests, resetting global state."""
-        reset_all_global_state()
+    # Setup: reset global state before test
+    reset_all_global_state()
+    yield
+    # Teardown: reset global state after test
+    reset_all_global_state()
 
 # Example usage:
 """
-from .test_helpers import IsolatedTestCase, reset_all_global_state
+from .test_helpers import reset_all_global_state
 
-class TestMyFeature(IsolatedTestCase):
+class TestMyFeature:
     def test_something(self):
-        # This test starts with clean global state
+        # This test starts with clean global state (via isolated_test_setup fixture)
         pass
         
     def test_something_else(self):
-        # This test also starts with clean global state
+        # This test also starts with clean global state (via isolated_test_setup fixture)
         pass
 
-# For existing test classes that can't inherit from IsolatedTestCase:
-class ExistingTestClass(unittest.TestCase):
-    def setUp(self):
-        # Reset global state
-        reset_all_global_state()
-        # ... other setup code ...
-    
-    def tearDown(self):
-        # ... other teardown code ...
-        # Reset global state
-        reset_all_global_state()
+# For tests that need explicit state reset:
+def test_with_explicit_reset():
+    reset_all_global_state()
+    # ... test code ...
+
+# The isolated_test_setup fixture runs automatically for all tests in modules that import this
 """

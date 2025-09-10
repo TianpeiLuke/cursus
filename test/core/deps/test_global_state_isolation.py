@@ -6,14 +6,14 @@ global state is not properly isolated between tests, and shows how to fix
 these issues using the test_helpers module.
 """
 
-import unittest
+import pytest
 from cursus.core.deps import RegistryManager, get_registry, create_dependency_resolver
 from cursus.core.base.specification_base import (
     StepSpecification, OutputSpec, DependencyType, NodeType
 )
-from .test_helpers import IsolatedTestCase, reset_all_global_state
+from .test_helpers import reset_all_global_state
 
-class TestWithoutIsolation(unittest.TestCase):
+class TestWithoutIsolation:
     """
     Tests that demonstrate issues when global state is not properly isolated.
     
@@ -48,8 +48,8 @@ class TestWithoutIsolation(unittest.TestCase):
         registry.register("test_step_1", spec)
         
         # Verify it was registered
-        self.assertIn("test_pipeline", manager.list_contexts())
-        self.assertIn("test_step_1", registry.list_step_names())
+        assert "test_pipeline" in manager.list_contexts()
+        assert "test_step_1" in registry.list_step_names()
         
         # Note: No cleanup is performed, so global state persists
     
@@ -67,8 +67,7 @@ class TestWithoutIsolation(unittest.TestCase):
         contexts = manager.list_contexts()
         
         # This will fail if test_registry_state_1 ran first and didn't clean up
-        self.assertEqual(len(contexts), 0, 
-                       "Expected no contexts, but found: " + str(contexts))
+        assert len(contexts) == 0, f"Expected no contexts, but found: {contexts}"
         
         # Create a new registry
         registry = get_registry(manager, "another_pipeline")
@@ -92,10 +91,10 @@ class TestWithoutIsolation(unittest.TestCase):
         registry.register("test_step_2", spec)
         
         # Verify it was registered
-        self.assertIn("another_pipeline", manager.list_contexts())
-        self.assertIn("test_step_2", registry.list_step_names())
+        assert "another_pipeline" in manager.list_contexts()
+        assert "test_step_2" in registry.list_step_names()
 
-class TestWithManualIsolation(unittest.TestCase):
+class TestWithManualIsolation:
     """
     Tests that manually handle global state isolation.
     
@@ -103,7 +102,8 @@ class TestWithManualIsolation(unittest.TestCase):
     because they manually clean up global state.
     """
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures, creating new instances for each test."""
         self.manager = RegistryManager()
         self.resolver = create_dependency_resolver()
@@ -132,8 +132,8 @@ class TestWithManualIsolation(unittest.TestCase):
         registry.register("test_step_1", spec)
         
         # Verify it was registered
-        self.assertIn("test_pipeline", self.manager.list_contexts())
-        self.assertIn("test_step_1", registry.list_step_names())
+        assert "test_pipeline" in self.manager.list_contexts()
+        assert "test_step_1" in registry.list_step_names()
     
     def test_registry_state_2(self):
         """
@@ -146,7 +146,7 @@ class TestWithManualIsolation(unittest.TestCase):
         contexts = self.manager.list_contexts()
         
         # This will pass because a new manager is created for each test
-        self.assertEqual(len(contexts), 0)
+        assert len(contexts) == 0
         
         # Create a new registry
         registry = get_registry(self.manager, "another_pipeline")
@@ -170,22 +170,25 @@ class TestWithManualIsolation(unittest.TestCase):
         registry.register("test_step_2", spec)
         
         # Verify it was registered
-        self.assertIn("another_pipeline", self.manager.list_contexts())
-        self.assertIn("test_step_2", registry.list_step_names())
+        assert "another_pipeline" in self.manager.list_contexts()
+        assert "test_step_2" in registry.list_step_names()
 
-class TestWithHelperIsolation(IsolatedTestCase):
+class TestWithHelperIsolation:
     """
-    Tests that use the IsolatedTestCase base class for global state isolation.
+    Tests that use pytest fixtures for global state isolation.
     
     These tests should pass whether run individually or together
-    because they inherit from IsolatedTestCase, which handles global state cleanup.
+    because they use pytest fixtures which handle global state cleanup.
     """
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        # Call parent setUp to reset global state
-        super().setUp()
+        # Reset global state before and after each test
+        reset_all_global_state()
         self.manager = RegistryManager()
+        yield
+        reset_all_global_state()
     
     def test_registry_state_1(self):
         """First test that modifies registry state."""
@@ -211,8 +214,8 @@ class TestWithHelperIsolation(IsolatedTestCase):
         registry.register("test_step_1", spec)
         
         # Verify it was registered
-        self.assertIn("test_pipeline", self.manager.list_contexts())
-        self.assertIn("test_step_1", registry.list_step_names())
+        assert "test_pipeline" in self.manager.list_contexts()
+        assert "test_step_1" in registry.list_step_names()
     
     def test_registry_state_2(self):
         """
@@ -224,8 +227,8 @@ class TestWithHelperIsolation(IsolatedTestCase):
         # This test assumes no registries exist yet
         contexts = self.manager.list_contexts()
         
-        # This will pass because IsolatedTestCase.setUp() cleared all contexts
-        self.assertEqual(len(contexts), 0)
+        # This will pass because setup_method() cleared all contexts
+        assert len(contexts) == 0
         
         # Create a new registry
         registry = get_registry(self.manager, "another_pipeline")
@@ -249,8 +252,8 @@ class TestWithHelperIsolation(IsolatedTestCase):
         registry.register("test_step_2", spec)
         
         # Verify it was registered
-        self.assertIn("another_pipeline", self.manager.list_contexts())
-        self.assertIn("test_step_2", registry.list_step_names())
+        assert "another_pipeline" in self.manager.list_contexts()
+        assert "test_step_2" in registry.list_step_names()
 
 def run_tests_individually():
     """Run each test individually to demonstrate they pass in isolation."""
@@ -258,19 +261,23 @@ def run_tests_individually():
     
     # Run TestWithoutIsolation tests individually
     print("\nTestWithoutIsolation.test_registry_state_1:")
-    suite = unittest.TestSuite()
-    suite.addTest(TestWithoutIsolation("test_registry_state_1"))
-    result = unittest.TextTestRunner().run(suite)
-    print("  Passed:", result.wasSuccessful())
+    try:
+        test_instance = TestWithoutIsolation()
+        test_instance.test_registry_state_1()
+        print("  Passed: True")
+    except Exception as e:
+        print(f"  Passed: False - {e}")
     
     # Reset global state between individual test runs
     reset_all_global_state()
     
     print("\nTestWithoutIsolation.test_registry_state_2:")
-    suite = unittest.TestSuite()
-    suite.addTest(TestWithoutIsolation("test_registry_state_2"))
-    result = unittest.TextTestRunner().run(suite)
-    print("  Passed:", result.wasSuccessful())
+    try:
+        test_instance = TestWithoutIsolation()
+        test_instance.test_registry_state_2()
+        print("  Passed: True")
+    except Exception as e:
+        print(f"  Passed: False - {e}")
 
 def run_tests_together():
     """Run tests together to demonstrate isolation issues."""
@@ -278,33 +285,48 @@ def run_tests_together():
     
     # Run TestWithoutIsolation tests together
     print("\nTestWithoutIsolation (both tests):")
-    suite = unittest.TestSuite()
-    suite.addTest(TestWithoutIsolation("test_registry_state_1"))
-    suite.addTest(TestWithoutIsolation("test_registry_state_2"))
-    result = unittest.TextTestRunner().run(suite)
-    print("  All passed:", result.wasSuccessful())
+    try:
+        test_instance = TestWithoutIsolation()
+        test_instance.test_registry_state_1()
+        test_instance.test_registry_state_2()
+        print("  All passed: True")
+    except Exception as e:
+        print(f"  All passed: False - {e}")
     
     # Reset global state between test classes
     reset_all_global_state()
     
     # Run TestWithManualIsolation tests together
     print("\nTestWithManualIsolation (both tests):")
-    suite = unittest.TestSuite()
-    suite.addTest(TestWithManualIsolation("test_registry_state_1"))
-    suite.addTest(TestWithManualIsolation("test_registry_state_2"))
-    result = unittest.TextTestRunner().run(suite)
-    print("  All passed:", result.wasSuccessful())
+    try:
+        test_instance = TestWithManualIsolation()
+        # Manually call setup since we're not using pytest runner
+        test_instance.setup_method()
+        test_instance.test_registry_state_1()
+        test_instance.test_registry_state_2()
+        print("  All passed: True")
+    except Exception as e:
+        print(f"  All passed: False - {e}")
     
     # Reset global state between test classes
     reset_all_global_state()
     
     # Run TestWithHelperIsolation tests together
     print("\nTestWithHelperIsolation (both tests):")
-    suite = unittest.TestSuite()
-    suite.addTest(TestWithHelperIsolation("test_registry_state_1"))
-    suite.addTest(TestWithHelperIsolation("test_registry_state_2"))
-    result = unittest.TextTestRunner().run(suite)
-    print("  All passed:", result.wasSuccessful())
+    try:
+        test_instance = TestWithHelperIsolation()
+        # Manually call setup since we're not using pytest runner
+        setup_gen = test_instance.setup_method()
+        next(setup_gen)  # Execute setup
+        test_instance.test_registry_state_1()
+        test_instance.test_registry_state_2()
+        try:
+            next(setup_gen)  # Execute teardown
+        except StopIteration:
+            pass
+        print("  All passed: True")
+    except Exception as e:
+        print(f"  All passed: False - {e}")
 
 if __name__ == "__main__":
     # First run tests individually to show they pass
@@ -317,3 +339,5 @@ if __name__ == "__main__":
     print("- TestWithoutIsolation: Tests pass individually but fail when run together")
     print("- TestWithManualIsolation: Tests pass both individually and together")
     print("- TestWithHelperIsolation: Tests pass both individually and together")
+    print("\nNote: This file demonstrates global state isolation patterns.")
+    print("In practice, use 'pytest' to run these tests with proper fixture handling.")

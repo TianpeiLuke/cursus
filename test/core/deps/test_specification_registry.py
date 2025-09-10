@@ -9,20 +9,21 @@ Tests the complete functionality of specification registry including:
 - Data type compatibility and edge cases
 """
 
-import unittest
-from .test_helpers import IsolatedTestCase, reset_all_global_state
+import pytest
+from .test_helpers import reset_all_global_state
 from cursus.core.deps.specification_registry import SpecificationRegistry
 from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
 
-class TestSpecificationRegistry(IsolatedTestCase):
+class TestSpecificationRegistry:
     """Test cases for SpecificationRegistry."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        # Call parent setUp to reset global state
-        super().setUp()
+        # Reset global state
+        reset_all_global_state()
         
         self.registry = SpecificationRegistry("test_context")
         
@@ -119,17 +120,17 @@ class TestSpecificationRegistry(IsolatedTestCase):
             outputs=[]
         )
         
-    def tearDown(self):
-        """Clean up after tests."""
-        # Call parent tearDown to reset global state
-        super().tearDown()
+        yield
+        
+        # Clean up after tests
+        reset_all_global_state()
     
     def test_registry_initialization(self):
         """Test registry initialization with context name."""
         registry = SpecificationRegistry("test_pipeline")
-        self.assertEqual(registry.context_name, "test_pipeline")
-        self.assertEqual(len(registry.list_step_names()), 0)
-        self.assertEqual(len(registry.list_step_types()), 0)
+        assert registry.context_name == "test_pipeline"
+        assert len(registry.list_step_names()) == 0
+        assert len(registry.list_step_types()) == 0
     
     def test_register_specification(self):
         """Test registering step specifications."""
@@ -137,17 +138,17 @@ class TestSpecificationRegistry(IsolatedTestCase):
         self.registry.register("data_loading", self.data_loading_spec)
         
         # Verify registration
-        self.assertIn("data_loading", self.registry.list_step_names())
-        self.assertIn("DataLoadingStep", self.registry.list_step_types())
+        assert "data_loading" in self.registry.list_step_names()
+        assert "DataLoadingStep" in self.registry.list_step_types()
         
         # Verify retrieval
         retrieved_spec = self.registry.get_specification("data_loading")
-        self.assertIsNotNone(retrieved_spec)
-        self.assertEqual(retrieved_spec.step_type, "DataLoadingStep")
+        assert retrieved_spec is not None
+        assert retrieved_spec.step_type == "DataLoadingStep"
     
     def test_register_invalid_specification(self):
         """Test registering invalid specifications raises errors."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.registry.register("invalid", "not_a_specification")
     
     def test_get_specifications_by_type(self):
@@ -158,16 +159,16 @@ class TestSpecificationRegistry(IsolatedTestCase):
         
         # Get by type
         data_loading_specs = self.registry.get_specifications_by_type("DataLoadingStep")
-        self.assertEqual(len(data_loading_specs), 1)
-        self.assertEqual(data_loading_specs[0].step_type, "DataLoadingStep")
+        assert len(data_loading_specs) == 1
+        assert data_loading_specs[0].step_type == "DataLoadingStep"
         
         preprocessing_specs = self.registry.get_specifications_by_type("PreprocessingStep")
-        self.assertEqual(len(preprocessing_specs), 1)
-        self.assertEqual(preprocessing_specs[0].step_type, "PreprocessingStep")
+        assert len(preprocessing_specs) == 1
+        assert preprocessing_specs[0].step_type == "PreprocessingStep"
         
         # Non-existent type
         nonexistent_specs = self.registry.get_specifications_by_type("NonExistentStep")
-        self.assertEqual(len(nonexistent_specs), 0)
+        assert len(nonexistent_specs) == 0
     
     def test_find_compatible_outputs(self):
         """Test finding compatible outputs for dependencies."""
@@ -188,16 +189,16 @@ class TestSpecificationRegistry(IsolatedTestCase):
         compatible = self.registry.find_compatible_outputs(dependency_spec)
         
         # Should find the data loading output
-        self.assertGreater(len(compatible), 0)
+        assert len(compatible) > 0
         
         # Check the best match
         best_match = compatible[0]
         step_name, output_name, output_spec, score = best_match
         
-        self.assertEqual(step_name, "data_loading")
-        self.assertEqual(output_name, "raw_data")
-        self.assertEqual(output_spec.output_type, DependencyType.PROCESSING_OUTPUT)
-        self.assertGreater(score, 0.5)  # Should have good compatibility score
+        assert step_name == "data_loading"
+        assert output_name == "raw_data"
+        assert output_spec.output_type == DependencyType.PROCESSING_OUTPUT
+        assert score > 0.5  # Should have good compatibility score
     
     def test_compatibility_checking(self):
         """Test internal compatibility checking logic."""
@@ -222,8 +223,8 @@ class TestSpecificationRegistry(IsolatedTestCase):
         compatible_outputs = self.registry.find_compatible_outputs(compatible_dep)
         incompatible_outputs = self.registry.find_compatible_outputs(incompatible_dep)
         
-        self.assertGreater(len(compatible_outputs), 0)
-        self.assertEqual(len(incompatible_outputs), 0)
+        assert len(compatible_outputs) > 0
+        assert len(incompatible_outputs) == 0
     
     def test_context_isolation(self):
         """Test that different registry contexts are isolated."""
@@ -236,32 +237,32 @@ class TestSpecificationRegistry(IsolatedTestCase):
         registry2.register("step2", self.preprocessing_spec)
         
         # Verify isolation
-        self.assertIn("step1", registry1.list_step_names())
-        self.assertNotIn("step1", registry2.list_step_names())
+        assert "step1" in registry1.list_step_names()
+        assert "step1" not in registry2.list_step_names()
         
-        self.assertIn("step2", registry2.list_step_names())
-        self.assertNotIn("step2", registry1.list_step_names())
+        assert "step2" in registry2.list_step_names()
+        assert "step2" not in registry1.list_step_names()
         
         # Verify context names
-        self.assertEqual(registry1.context_name, "pipeline_1")
-        self.assertEqual(registry2.context_name, "pipeline_2")
+        assert registry1.context_name == "pipeline_1"
+        assert registry2.context_name == "pipeline_2"
     
     def test_registry_string_representation(self):
         """Test string representation of registry."""
         self.registry.register("data_loading", self.data_loading_spec)
         
         repr_str = repr(self.registry)
-        self.assertIn("test_context", repr_str)
-        self.assertIn("steps=1", repr_str)
+        assert "test_context" in repr_str
+        assert "steps=1" in repr_str
     
     def test_empty_registry_operations(self):
         """Test operations on empty registry."""
         empty_registry = SpecificationRegistry("empty")
         
         # Test empty operations
-        self.assertEqual(len(empty_registry.list_step_names()), 0)
-        self.assertEqual(len(empty_registry.list_step_types()), 0)
-        self.assertIsNone(empty_registry.get_specification("nonexistent"))
+        assert len(empty_registry.list_step_names()) == 0
+        assert len(empty_registry.list_step_types()) == 0
+        assert empty_registry.get_specification("nonexistent") is None
         
         # Test finding compatible outputs on empty registry
         dep_spec = DependencySpec(
@@ -270,7 +271,7 @@ class TestSpecificationRegistry(IsolatedTestCase):
             data_type="S3Uri"
         )
         compatible = empty_registry.find_compatible_outputs(dep_spec)
-        self.assertEqual(len(compatible), 0)
+        assert len(compatible) == 0
     
     def test_compatibility_scoring_algorithm(self):
         """Test compatibility scoring algorithm in detail."""
@@ -319,17 +320,17 @@ class TestSpecificationRegistry(IsolatedTestCase):
         # Check scores
         if results1:
             _, _, _, score1 = results1[0]
-            self.assertGreater(score1, 0.7)  # Should have high score (source + keywords)
+            assert score1 > 0.7  # Should have high score (source + keywords)
         
         if results2:
             _, _, _, score2 = results2[0]
-            self.assertGreater(score2, 0.5)  # Medium score (keywords only)
-            self.assertLess(score2, score1)  # Lower than case 1
+            assert score2 > 0.5  # Medium score (keywords only)
+            assert score2 < score1  # Lower than case 1
         
         if results3:
             _, _, _, score3 = results3[0]
-            self.assertGreater(score3, 0.5)  # Medium score (source only)
-            self.assertGreater(score1, score3)  # Lower than case 1
+            assert score3 > 0.5  # Medium score (source only)
+            assert score1 > score3  # Lower than case 1
     
     def test_complex_pipeline_compatibility(self):
         """Test compatibility in a more complex pipeline with all step types."""
@@ -341,11 +342,11 @@ class TestSpecificationRegistry(IsolatedTestCase):
         
         # Verify all step types are registered
         step_types = self.registry.list_step_types()
-        self.assertEqual(len(step_types), 4)
-        self.assertIn("DataLoadingStep", step_types)
-        self.assertIn("PreprocessingStep", step_types)
-        self.assertIn("TrainingStep", step_types)
-        self.assertIn("EvaluationStep", step_types)
+        assert len(step_types) == 4
+        assert "DataLoadingStep" in step_types
+        assert "PreprocessingStep" in step_types
+        assert "TrainingStep" in step_types
+        assert "EvaluationStep" in step_types
         
         # Test training step dependency can find preprocessing outputs
         training_dep = DependencySpec(
@@ -357,10 +358,10 @@ class TestSpecificationRegistry(IsolatedTestCase):
         )
         
         training_matches = self.registry.find_compatible_outputs(training_dep)
-        self.assertGreater(len(training_matches), 0)
+        assert len(training_matches) > 0
         step_name, output_name, _, _ = training_matches[0]
-        self.assertEqual(step_name, "preprocessing")
-        self.assertEqual(output_name, "processed_data")
+        assert step_name == "preprocessing"
+        assert output_name == "processed_data"
         
         # Test evaluation step dependency can find training outputs
         eval_dep = DependencySpec(
@@ -372,10 +373,10 @@ class TestSpecificationRegistry(IsolatedTestCase):
         )
         
         eval_matches = self.registry.find_compatible_outputs(eval_dep)
-        self.assertGreater(len(eval_matches), 0)
+        assert len(eval_matches) > 0
         step_name, output_name, _, _ = eval_matches[0]
-        self.assertEqual(step_name, "training")
-        self.assertEqual(output_name, "model_artifacts")
+        assert step_name == "training"
+        assert output_name == "model_artifacts"
     
     def test_multiple_compatible_outputs(self):
         """Test handling of multiple compatible outputs with different scores."""
@@ -428,18 +429,18 @@ class TestSpecificationRegistry(IsolatedTestCase):
         compatible = self.registry.find_compatible_outputs(dep_spec)
         
         # Should find both outputs
-        self.assertEqual(len(compatible), 2)
+        assert len(compatible) == 2
         
         # First match should be training_data due to keyword match
         step_name, output_name, _, score1 = compatible[0]
-        self.assertEqual(output_name, "training_data")
+        assert output_name == "training_data"
         
         # Second match should be validation_data with lower score
         _, second_output_name, _, score2 = compatible[1]
-        self.assertEqual(second_output_name, "validation_data")
+        assert second_output_name == "validation_data"
         
         # First match should have higher score
-        self.assertGreater(score1, score2)
+        assert score1 > score2
     
     def test_data_type_compatibility(self):
         """Test compatibility checking with different data types."""
@@ -496,11 +497,11 @@ class TestSpecificationRegistry(IsolatedTestCase):
         string_matches = self.registry.find_compatible_outputs(string_dep)
         s3_matches = self.registry.find_compatible_outputs(s3_dep)
         
-        self.assertEqual(len(string_matches), 1)
-        self.assertEqual(string_matches[0][1], "string_output")
+        assert len(string_matches) == 1
+        assert string_matches[0][1] == "string_output"
         
-        self.assertEqual(len(s3_matches), 1)
-        self.assertEqual(s3_matches[0][1], "s3_output")
+        assert len(s3_matches) == 1
+        assert s3_matches[0][1] == "s3_output"
 
     def test_register_multiple_specifications(self):
         """Test registering multiple specifications."""
@@ -524,11 +525,11 @@ class TestSpecificationRegistry(IsolatedTestCase):
         self.registry.register(second_name, second_spec)
         
         # Check if both registered
-        self.assertEqual(len(self.registry._specifications), 2)
-        self.assertIn(first_name, self.registry._specifications)
-        self.assertIn(second_name, self.registry._specifications)
-        self.assertEqual(self.registry._specifications[first_name], self.data_loading_spec)
-        self.assertEqual(self.registry._specifications[second_name], second_spec)
+        assert len(self.registry._specifications) == 2
+        assert first_name in self.registry._specifications
+        assert second_name in self.registry._specifications
+        assert self.registry._specifications[first_name] == self.data_loading_spec
+        assert self.registry._specifications[second_name] == second_spec
 
     def test_get_specification_detailed(self):
         """Test detailed specification retrieval."""
@@ -540,14 +541,14 @@ class TestSpecificationRegistry(IsolatedTestCase):
         spec = self.registry.get_specification(step_name)
         
         # Check if correct
-        self.assertEqual(spec, self.preprocessing_spec)
-        self.assertEqual(spec.step_type, "PreprocessingStep")
-        self.assertEqual(len(spec.dependencies), 1)
-        self.assertEqual(len(spec.outputs), 1)
+        assert spec == self.preprocessing_spec
+        assert spec.step_type == "PreprocessingStep"
+        assert len(spec.dependencies) == 1
+        assert len(spec.outputs) == 1
         
         # Access items from dictionaries
         output_name = next(iter(spec.outputs.keys()))
-        self.assertEqual(spec.outputs[output_name].logical_name, "processed_data")
+        assert spec.outputs[output_name].logical_name == "processed_data"
 
     def test_get_specification_by_type_detailed(self):
         """Test detailed retrieval of specifications by type."""
@@ -596,8 +597,8 @@ class TestSpecificationRegistry(IsolatedTestCase):
         unique_specs = self.registry.get_specifications_by_type("UniqueType")
         
         # Check results
-        self.assertEqual(len(shared_specs), 2)  # Should be 2 specs of type "SharedType"
-        self.assertEqual(len(unique_specs), 1)  # Should be 1 spec of type "UniqueType"
+        assert len(shared_specs) == 2  # Should be 2 specs of type "SharedType"
+        assert len(unique_specs) == 1  # Should be 1 spec of type "UniqueType"
 
     def test_list_operations_detailed(self):
         """Test detailed listing operations."""
@@ -619,15 +620,15 @@ class TestSpecificationRegistry(IsolatedTestCase):
         
         # Test list_step_names
         step_names = self.registry.list_step_names()
-        self.assertEqual(len(step_names), 2)
-        self.assertIn("step1", step_names)
-        self.assertIn("step2", step_names)
+        assert len(step_names) == 2
+        assert "step1" in step_names
+        assert "step2" in step_names
         
         # Test list_step_types
         step_types = self.registry.list_step_types()
-        self.assertEqual(len(step_types), 2)
-        self.assertIn("DataLoadingStep", step_types)
-        self.assertIn("OtherType", step_types)
+        assert len(step_types) == 2
+        assert "DataLoadingStep" in step_types
+        assert "OtherType" in step_types
 
     def test_find_compatible_outputs_detailed(self):
         """Test detailed compatible output finding."""
@@ -657,9 +658,6 @@ class TestSpecificationRegistry(IsolatedTestCase):
         compatible = self.registry.find_compatible_outputs(dep_spec)
         
         # Should find the source output
-        self.assertEqual(len(compatible), 1)
-        self.assertEqual(compatible[0][0], "source")  # Step name
-        self.assertEqual(compatible[0][1], "source_output")  # Output name
-
-if __name__ == '__main__':
-    unittest.main()
+        assert len(compatible) == 1
+        assert compatible[0][0] == "source"  # Step name
+        assert compatible[0][1] == "source_output"  # Output name

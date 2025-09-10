@@ -6,7 +6,7 @@ particularly focusing on the initialization, config loading, and automatic mappi
 between DAG nodes and configurations/step builders.
 """
 
-import unittest
+import pytest
 import os
 import json
 import tempfile
@@ -25,10 +25,11 @@ from cursus.registry.builder_registry import StepBuilderRegistry
 from cursus.core.base.config_base import BasePipelineConfig
 from cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
 
-class TestDynamicPipelineTemplate(unittest.TestCase):
+class TestDynamicPipelineTemplate:
     """Tests for the DynamicPipelineTemplate class."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         # Create a simple DAG for testing
         self.dag = PipelineDAG()
@@ -75,9 +76,9 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         # Set up mocks
         self.mock_config_resolver = MagicMock(spec=StepConfigResolver)
         self.mock_builder_registry = MagicMock(spec=StepBuilderRegistry)
-
-    def tearDown(self):
-        """Tear down test fixtures."""
+        
+        yield
+        
         # Clean up temporary files
         if os.path.exists(self.config_path):
             os.remove(self.config_path)
@@ -112,11 +113,11 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         )
         
         # Assert that config_path was stored as an attribute
-        self.assertEqual(template.config_path, self.config_path)
+        assert template.config_path == self.config_path
         
         # In the new implementation, we need to verify that _detect_config_classes was called
         # by checking that CONFIG_CLASSES was populated
-        self.assertEqual(template._detect_config_classes(), {"BasePipelineConfig": BasePipelineConfig})
+        assert template._detect_config_classes() == {"BasePipelineConfig": BasePipelineConfig}
         mock_detect_classes.assert_called_with(self.config_path)
 
     @patch.object(PipelineTemplateBase, '_load_configs')
@@ -142,7 +143,7 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         )
         
         # Check that CONFIG_CLASSES was set correctly
-        self.assertEqual(template.CONFIG_CLASSES, expected_classes)
+        assert template.CONFIG_CLASSES == expected_classes
 
     @patch.object(PipelineTemplateBase, '_load_configs')
     @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
@@ -169,7 +170,7 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         result_dag = template._create_pipeline_dag()
         
         # Verify it's the same DAG
-        self.assertEqual(result_dag, self.dag)
+        assert result_dag == self.dag
 
     @patch.object(PipelineTemplateBase, '_load_configs')
     @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
@@ -216,16 +217,16 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         # Verify resolver was called with correct args
         self.mock_config_resolver.resolve_config_map.assert_called_once()
         call_args = self.mock_config_resolver.resolve_config_map.call_args[1]
-        self.assertEqual(set(call_args["dag_nodes"]), {"data_loading", "preprocessing", "training"})
-        self.assertEqual(call_args["available_configs"], configs)
+        assert set(call_args["dag_nodes"]) == {"data_loading", "preprocessing", "training"}
+        assert call_args["available_configs"] == configs
         
         # Verify result
-        self.assertEqual(config_map, expected_config_map)
+        assert config_map == expected_config_map
         
         # Verify that calling the method again returns the cached result
         self.mock_config_resolver.resolve_config_map.reset_mock()
         config_map_again = template._create_config_map()
-        self.assertEqual(config_map_again, expected_config_map)
+        assert config_map_again == expected_config_map
         self.mock_config_resolver.resolve_config_map.assert_not_called()
 
     @patch.object(PipelineTemplateBase, '_get_base_config')
@@ -291,7 +292,7 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         config_map = template._create_config_map()
         
         # Assert config_map contains expected nodes
-        self.assertEqual(set(config_map.keys()), {"data_loading", "preprocessing", "training"})
+        assert set(config_map.keys()) == {"data_loading", "preprocessing", "training"}
         
         # Skip the problematic part
         # result_map = template._create_step_builder_map()
@@ -356,24 +357,24 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         # Verify resolver was called with correct args
         self.mock_config_resolver.preview_resolution.assert_called_once()
         call_args = self.mock_config_resolver.preview_resolution.call_args[1]
-        self.assertEqual(set(call_args["dag_nodes"]), {"data_loading", "preprocessing", "training"})
-        self.assertEqual(call_args["available_configs"], configs)
+        assert set(call_args["dag_nodes"]) == {"data_loading", "preprocessing", "training"}
+        assert call_args["available_configs"] == configs
         
         # Verify preview structure
-        self.assertEqual(preview["nodes"], 3)
-        self.assertEqual(len(preview["resolutions"]), 3)
+        assert preview["nodes"] == 3
+        assert len(preview["resolutions"]) == 3
         
         # Check individual node resolutions
         for node in ["data_loading", "preprocessing", "training"]:
-            self.assertIn(node, preview["resolutions"])
+            assert node in preview["resolutions"]
             node_preview = preview["resolutions"][node]
             
             expected_data = preview_data[node][0]
-            self.assertEqual(node_preview["config_type"], expected_data["config_type"])
-            self.assertEqual(node_preview["confidence"], expected_data["confidence"])
-            self.assertEqual(node_preview["method"], expected_data["method"])
-            self.assertEqual(node_preview["job_type"], expected_data["job_type"])
-            self.assertEqual(node_preview["alternatives"], 0)  # Each node has only one candidate
+            assert node_preview["config_type"] == expected_data["config_type"]
+            assert node_preview["confidence"] == expected_data["confidence"]
+            assert node_preview["method"] == expected_data["method"]
+            assert node_preview["job_type"] == expected_data["job_type"]
+            assert node_preview["alternatives"] == 0  # Each node has only one candidate
 
     @patch.object(PipelineTemplateBase, '_load_configs')
     @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
@@ -400,9 +401,9 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         dependencies = template.get_step_dependencies()
         
         # Verify results
-        self.assertEqual(dependencies["data_loading"], [])  # No dependencies
-        self.assertEqual(dependencies["preprocessing"], ["data_loading"])
-        self.assertEqual(dependencies["training"], ["preprocessing"])
+        assert dependencies["data_loading"] == []  # No dependencies
+        assert dependencies["preprocessing"] == ["data_loading"]
+        assert dependencies["training"] == ["preprocessing"]
         
     @patch.object(PipelineTemplateBase, '_load_configs')
     @patch('cursus.steps.configs.utils.detect_config_classes_from_json')
@@ -429,11 +430,8 @@ class TestDynamicPipelineTemplate(unittest.TestCase):
         params = template._get_pipeline_parameters()
         
         # Verify the standard parameters are returned
-        self.assertEqual(len(params), 4, "Should return 4 parameters")
-        self.assertIn(PIPELINE_EXECUTION_TEMP_DIR, params)
-        self.assertIn(KMS_ENCRYPTION_KEY_PARAM, params)
-        self.assertIn(SECURITY_GROUP_ID, params)
-        self.assertIn(VPC_SUBNET, params)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert len(params) == 4, "Should return 4 parameters"
+        assert PIPELINE_EXECUTION_TEMP_DIR in params
+        assert KMS_ENCRYPTION_KEY_PARAM in params
+        assert SECURITY_GROUP_ID in params
+        assert VPC_SUBNET in params

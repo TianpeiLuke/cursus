@@ -10,21 +10,22 @@ Tests the complete functionality of registry manager including:
 - Pipeline integration scenarios
 """
 
-import unittest
+import pytest
 from cursus.core.deps import RegistryManager, get_registry, get_pipeline_registry, get_default_registry, list_contexts, clear_context, get_context_stats
 from cursus.core.deps.specification_registry import SpecificationRegistry
 from cursus.core.base.specification_base import (
     StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
 )
-from .test_helpers import IsolatedTestCase, reset_all_global_state
+from .test_helpers import reset_all_global_state
 
-class TestRegistryManagerCore(IsolatedTestCase):
+class TestRegistryManagerCore:
     """Test cases for RegistryManager."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        # Call parent setUp to reset global state
-        super().setUp()
+        # Reset global state
+        reset_all_global_state()
         
         # Create a fresh manager for each test
         self.manager = RegistryManager()
@@ -50,16 +51,17 @@ class TestRegistryManagerCore(IsolatedTestCase):
             outputs=[output_spec]
         )
         
-    def tearDown(self):
-        """Clean up after tests."""
-        # Clear all contexts to avoid state leakage between tests
+        yield
+        
+        # Clean up after tests
         self.manager.clear_all_contexts()
+        reset_all_global_state()
     
     def test_manager_initialization(self):
         """Test registry manager initialization."""
         manager = RegistryManager()
-        self.assertEqual(len(manager.list_contexts()), 0)
-        self.assertIsInstance(manager, RegistryManager)
+        assert len(manager.list_contexts()) == 0
+        assert isinstance(manager, RegistryManager)
     
     def test_get_registry_creates_new(self):
         """Test that get_registry creates new registries when needed."""
@@ -67,9 +69,9 @@ class TestRegistryManagerCore(IsolatedTestCase):
         registry = self.manager.get_registry("test_pipeline")
         
         # Verify it was created
-        self.assertTrue(hasattr(registry, 'context_name'))
-        self.assertEqual(registry.context_name, "test_pipeline")
-        self.assertIn("test_pipeline", self.manager.list_contexts())
+        assert hasattr(registry, 'context_name')
+        assert registry.context_name == "test_pipeline"
+        assert "test_pipeline" in self.manager.list_contexts()
     
     def test_get_registry_returns_existing(self):
         """Test that get_registry returns existing registries."""
@@ -81,8 +83,8 @@ class TestRegistryManagerCore(IsolatedTestCase):
         registry2 = self.manager.get_registry("test_pipeline")
         
         # Should be the same instance
-        self.assertIs(registry1, registry2)
-        self.assertIn("test_step", registry2.list_step_names())
+        assert registry1 is registry2
+        assert "test_step" in registry2.list_step_names()
     
     def test_get_registry_no_create(self):
         """Test get_registry with create_if_missing=False."""
@@ -90,8 +92,8 @@ class TestRegistryManagerCore(IsolatedTestCase):
         registry = self.manager.get_registry("nonexistent", create_if_missing=False)
         
         # Should return None
-        self.assertIsNone(registry)
-        self.assertNotIn("nonexistent", self.manager.list_contexts())
+        assert registry is None
+        assert "nonexistent" not in self.manager.list_contexts()
     
     def test_registry_isolation(self):
         """Test that registries are properly isolated."""
@@ -103,16 +105,16 @@ class TestRegistryManagerCore(IsolatedTestCase):
         registry1.register("step1", self.test_spec)
         
         # Verify isolation
-        self.assertIn("step1", registry1.list_step_names())
-        self.assertNotIn("step1", registry2.list_step_names())
+        assert "step1" in registry1.list_step_names()
+        assert "step1" not in registry2.list_step_names()
         
         # Verify they are different instances
-        self.assertIsNot(registry1, registry2)
+        assert registry1 is not registry2
     
     def test_list_contexts(self):
         """Test listing all contexts."""
         # Initially empty
-        self.assertEqual(len(self.manager.list_contexts()), 0)
+        assert len(self.manager.list_contexts()) == 0
         
         # Create some registries
         self.manager.get_registry("pipeline_1")
@@ -121,10 +123,10 @@ class TestRegistryManagerCore(IsolatedTestCase):
         
         # Verify listing
         contexts = self.manager.list_contexts()
-        self.assertEqual(len(contexts), 3)
-        self.assertIn("pipeline_1", contexts)
-        self.assertIn("pipeline_2", contexts)
-        self.assertIn("pipeline_3", contexts)
+        assert len(contexts) == 3
+        assert "pipeline_1" in contexts
+        assert "pipeline_2" in contexts
+        assert "pipeline_3" in contexts
     
     def test_clear_context(self):
         """Test clearing specific contexts."""
@@ -133,18 +135,18 @@ class TestRegistryManagerCore(IsolatedTestCase):
         registry.register("test_step", self.test_spec)
         
         # Verify it exists
-        self.assertIn("test_pipeline", self.manager.list_contexts())
+        assert "test_pipeline" in self.manager.list_contexts()
         
         # Clear it
         result = self.manager.clear_context("test_pipeline")
         
         # Verify clearing
-        self.assertTrue(result)
-        self.assertNotIn("test_pipeline", self.manager.list_contexts())
+        assert result is True
+        assert "test_pipeline" not in self.manager.list_contexts()
         
         # Try to clear non-existent context
         result = self.manager.clear_context("nonexistent")
-        self.assertFalse(result)
+        assert result is False
     
     def test_clear_all_contexts(self):
         """Test clearing all contexts."""
@@ -154,13 +156,13 @@ class TestRegistryManagerCore(IsolatedTestCase):
         self.manager.get_registry("pipeline_3")
         
         # Verify they exist
-        self.assertEqual(len(self.manager.list_contexts()), 3)
+        assert len(self.manager.list_contexts()) == 3
         
         # Clear all
         self.manager.clear_all_contexts()
         
         # Verify all cleared
-        self.assertEqual(len(self.manager.list_contexts()), 0)
+        assert len(self.manager.list_contexts()) == 0
     
     def test_get_context_stats(self):
         """Test getting context statistics."""
@@ -176,35 +178,36 @@ class TestRegistryManagerCore(IsolatedTestCase):
         stats = self.manager.get_context_stats()
         
         # Verify stats
-        self.assertIn("pipeline_1", stats)
-        self.assertIn("pipeline_2", stats)
+        assert "pipeline_1" in stats
+        assert "pipeline_2" in stats
         
-        self.assertEqual(stats["pipeline_1"]["step_count"], 1)
-        self.assertEqual(stats["pipeline_2"]["step_count"], 2)
+        assert stats["pipeline_1"]["step_count"] == 1
+        assert stats["pipeline_2"]["step_count"] == 2
         
-        self.assertEqual(stats["pipeline_1"]["step_type_count"], 1)
-        self.assertEqual(stats["pipeline_2"]["step_type_count"], 1)  # Same step type
+        assert stats["pipeline_1"]["step_type_count"] == 1
+        assert stats["pipeline_2"]["step_type_count"] == 1  # Same step type
     
     def test_manager_string_representation(self):
         """Test string representation of manager."""
         # Empty manager
         repr_str = repr(self.manager)
-        self.assertIn("contexts=0", repr_str)
+        assert "contexts=0" in repr_str
         
         # Manager with contexts
         self.manager.get_registry("test1")
         self.manager.get_registry("test2")
         
         repr_str = repr(self.manager)
-        self.assertIn("contexts=2", repr_str)
+        assert "contexts=2" in repr_str
 
-class TestConvenienceFunctions(IsolatedTestCase):
+class TestConvenienceFunctions:
     """Test convenience functions for registry management."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        # Call parent setUp to reset global state
-        super().setUp()
+        # Reset global state
+        reset_all_global_state()
         
         # Create a fresh manager for each test
         self.manager = RegistryManager()
@@ -227,6 +230,9 @@ class TestConvenienceFunctions(IsolatedTestCase):
             dependencies=[],
             outputs=[output_spec]
         )
+        
+        yield
+        reset_all_global_state()
     
     def test_get_registry_function(self):
         """Test get_registry convenience function."""
@@ -234,11 +240,11 @@ class TestConvenienceFunctions(IsolatedTestCase):
         registry = get_registry(self.manager, "test_pipeline")
         
         # Verify it works
-        self.assertTrue(hasattr(registry, 'context_name'))
-        self.assertEqual(registry.context_name, "test_pipeline")
+        assert hasattr(registry, 'context_name')
+        assert registry.context_name == "test_pipeline"
         
         # Verify it uses the provided manager
-        self.assertIn("test_pipeline", self.manager.list_contexts())
+        assert "test_pipeline" in self.manager.list_contexts()
     
     def test_get_pipeline_registry_backward_compatibility(self):
         """Test backward compatibility function."""
@@ -246,8 +252,8 @@ class TestConvenienceFunctions(IsolatedTestCase):
         registry = get_pipeline_registry(self.manager, "my_pipeline")
         
         # Should work the same as get_registry
-        self.assertTrue(hasattr(registry, 'context_name'))
-        self.assertEqual(registry.context_name, "my_pipeline")
+        assert hasattr(registry, 'context_name')
+        assert registry.context_name == "my_pipeline"
     
     def test_get_default_registry_backward_compatibility(self):
         """Test backward compatibility for default registry."""
@@ -255,13 +261,13 @@ class TestConvenienceFunctions(IsolatedTestCase):
         registry = get_default_registry(self.manager)
         
         # Should be default context
-        self.assertTrue(hasattr(registry, 'context_name'))
-        self.assertEqual(registry.context_name, "default")
+        assert hasattr(registry, 'context_name')
+        assert registry.context_name == "default"
     
     def test_list_contexts_function(self):
         """Test list_contexts convenience function."""
         # Initially empty
-        self.assertEqual(len(list_contexts(self.manager)), 0)
+        assert len(list_contexts(self.manager)) == 0
         
         # Create some registries
         get_registry(self.manager, "pipeline_1")
@@ -269,9 +275,9 @@ class TestConvenienceFunctions(IsolatedTestCase):
         
         # Verify listing
         contexts = list_contexts(self.manager)
-        self.assertEqual(len(contexts), 2)
-        self.assertIn("pipeline_1", contexts)
-        self.assertIn("pipeline_2", contexts)
+        assert len(contexts) == 2
+        assert "pipeline_1" in contexts
+        assert "pipeline_2" in contexts
     
     def test_clear_context_function(self):
         """Test clear_context convenience function."""
@@ -280,14 +286,14 @@ class TestConvenienceFunctions(IsolatedTestCase):
         registry.register("test_step", self.test_spec)
         
         # Verify it exists
-        self.assertIn("test_pipeline", list_contexts(self.manager))
+        assert "test_pipeline" in list_contexts(self.manager)
         
         # Clear using convenience function
         result = clear_context(self.manager, "test_pipeline")
         
         # Verify clearing
-        self.assertTrue(result)
-        self.assertNotIn("test_pipeline", list_contexts(self.manager))
+        assert result is True
+        assert "test_pipeline" not in list_contexts(self.manager)
     
     def test_get_context_stats_function(self):
         """Test get_context_stats convenience function."""
@@ -299,8 +305,8 @@ class TestConvenienceFunctions(IsolatedTestCase):
         stats = get_context_stats(self.manager)
         
         # Verify stats
-        self.assertIn("test_pipeline", stats)
-        self.assertEqual(stats["test_pipeline"]["step_count"], 1)
+        assert "test_pipeline" in stats
+        assert stats["test_pipeline"]["step_count"] == 1
     
     def test_multiple_contexts_isolation(self):
         """Test that multiple contexts remain isolated through convenience functions."""
@@ -315,24 +321,27 @@ class TestConvenienceFunctions(IsolatedTestCase):
         registry3.register("eval_step", self.test_spec)
         
         # Verify isolation
-        self.assertIn("train_step", registry1.list_step_names())
-        self.assertNotIn("train_step", registry2.list_step_names())
-        self.assertNotIn("train_step", registry3.list_step_names())
+        assert "train_step" in registry1.list_step_names()
+        assert "train_step" not in registry2.list_step_names()
+        assert "train_step" not in registry3.list_step_names()
         
-        self.assertIn("infer_step", registry2.list_step_names())
-        self.assertNotIn("infer_step", registry1.list_step_names())
-        self.assertNotIn("infer_step", registry3.list_step_names())
+        assert "infer_step" in registry2.list_step_names()
+        assert "infer_step" not in registry1.list_step_names()
+        assert "infer_step" not in registry3.list_step_names()
         
-        self.assertIn("eval_step", registry3.list_step_names())
-        self.assertNotIn("eval_step", registry1.list_step_names())
-        self.assertNotIn("eval_step", registry2.list_step_names())
+        assert "eval_step" in registry3.list_step_names()
+        assert "eval_step" not in registry1.list_step_names()
+        assert "eval_step" not in registry2.list_step_names()
 
-class TestRegistryManagerErrorHandling(IsolatedTestCase):
+class TestRegistryManagerErrorHandling:
     """Test error handling in RegistryManager."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        # Reset global state
+        reset_all_global_state()
+        
         self.manager = RegistryManager()
         
         # Create test specification
@@ -349,18 +358,24 @@ class TestRegistryManagerErrorHandling(IsolatedTestCase):
             dependencies=[],
             outputs=[output_spec]
         )
+        
+        yield
+        
+        # Clean up after tests
+        self.manager.clear_all_contexts()
+        reset_all_global_state()
     
     def test_invalid_context_name_handling(self):
         """Test handling of invalid context names."""
         # Test empty context name - should work but create empty context
         registry = self.manager.get_registry("")
-        self.assertIsNotNone(registry)
+        assert registry is not None
         
         # Test None context name - implementation may handle this gracefully
         try:
             registry = self.manager.get_registry(None)
             # If no exception, verify it creates a registry
-            self.assertIsNotNone(registry)
+            assert registry is not None
         except (TypeError, AttributeError):
             # If exception is raised, that's also acceptable
             pass
@@ -375,12 +390,12 @@ class TestRegistryManagerErrorHandling(IsolatedTestCase):
         self.manager.clear_context("test_context")
         
         # Verify context is cleared
-        self.assertNotIn("test_context", self.manager.list_contexts())
+        assert "test_context" not in self.manager.list_contexts()
         
         # Getting the same context should create a new empty registry
         new_registry = self.manager.get_registry("test_context")
-        self.assertEqual(len(new_registry.list_step_names()), 0)
-        self.assertIsNot(registry, new_registry)
+        assert len(new_registry.list_step_names()) == 0
+        assert registry is not new_registry
     
     def test_concurrent_access_safety(self):
         """Test thread safety of registry operations."""
@@ -413,16 +428,19 @@ class TestRegistryManagerErrorHandling(IsolatedTestCase):
             thread.join()
         
         # Verify results
-        self.assertEqual(len(errors), 0, f"Errors occurred: {errors}")
-        self.assertEqual(len(results), 10)
-        self.assertEqual(len(self.manager.list_contexts()), 10)
+        assert len(errors) == 0, f"Errors occurred: {errors}"
+        assert len(results) == 10
+        assert len(self.manager.list_contexts()) == 10
 
-class TestRegistryManagerMonitoring(IsolatedTestCase):
+class TestRegistryManagerMonitoring:
     """Test monitoring capabilities of RegistryManager."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        # Reset global state
+        reset_all_global_state()
+        
         self.manager = RegistryManager()
         
         # Create test specifications
@@ -439,6 +457,12 @@ class TestRegistryManagerMonitoring(IsolatedTestCase):
             dependencies=[],
             outputs=[self.output_spec]
         )
+        
+        yield
+        
+        # Clean up after tests
+        self.manager.clear_all_contexts()
+        reset_all_global_state()
     
     def test_context_statistics_detailed(self):
         """Test detailed context statistics."""
@@ -454,21 +478,21 @@ class TestRegistryManagerMonitoring(IsolatedTestCase):
         stats = self.manager.get_context_stats()
         
         # Verify detailed statistics
-        self.assertIn("small_pipeline", stats)
-        self.assertIn("large_pipeline", stats)
+        assert "small_pipeline" in stats
+        assert "large_pipeline" in stats
         
         small_stats = stats["small_pipeline"]
         large_stats = stats["large_pipeline"]
         
-        self.assertEqual(small_stats["step_count"], 1)
-        self.assertEqual(large_stats["step_count"], 5)
+        assert small_stats["step_count"] == 1
+        assert large_stats["step_count"] == 5
         
-        self.assertEqual(small_stats["step_type_count"], 1)
-        self.assertEqual(large_stats["step_type_count"], 1)  # All same type
+        assert small_stats["step_type_count"] == 1
+        assert large_stats["step_type_count"] == 1  # All same type
         
         # Basic stats should be present
-        self.assertIn("step_count", small_stats)
-        self.assertIn("step_type_count", small_stats)
+        assert "step_count" in small_stats
+        assert "step_type_count" in small_stats
     
     def test_memory_usage_monitoring(self):
         """Test memory usage patterns."""
@@ -482,13 +506,10 @@ class TestRegistryManagerMonitoring(IsolatedTestCase):
             registry.register(f"step_{i}", self.test_spec)
         
         # Verify contexts were created
-        self.assertEqual(len(self.manager.list_contexts()), 100)
+        assert len(self.manager.list_contexts()) == 100
         
         # Clear all contexts
         self.manager.clear_all_contexts()
         
         # Verify cleanup
-        self.assertEqual(len(self.manager.list_contexts()), 0)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert len(self.manager.list_contexts()) == 0
