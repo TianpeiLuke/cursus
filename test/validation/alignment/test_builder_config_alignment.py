@@ -8,7 +8,7 @@ Tests the enhanced builder-configuration alignment validation including:
 - File resolution strategies
 """
 
-import unittest
+import pytest
 import tempfile
 import shutil
 from pathlib import Path
@@ -18,10 +18,11 @@ import sys
 
 from cursus.validation.alignment.builder_config_alignment import BuilderConfigurationAlignmentTester
 
-class TestBuilderConfigurationAlignmentTester(unittest.TestCase):
+class TestBuilderConfigurationAlignmentTester:
     """Test cases for BuilderConfigurationAlignmentTester"""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures"""
         self.temp_dir = tempfile.mkdtemp()
         self.builders_dir = Path(self.temp_dir) / "builders"
@@ -35,31 +36,32 @@ class TestBuilderConfigurationAlignmentTester(unittest.TestCase):
             str(self.builders_dir), 
             str(self.configs_dir)
         )
-    
-    def tearDown(self):
-        """Clean up test fixtures"""
+        
+        yield
+        
+        # Clean up test fixtures
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def test_initialization(self):
         """Test proper initialization of the tester"""
-        self.assertEqual(self.tester.builders_dir, self.builders_dir)
-        self.assertEqual(self.tester.configs_dir, self.configs_dir)
+        assert self.tester.builders_dir == self.builders_dir
+        assert self.tester.configs_dir == self.configs_dir
         
         # Check that analyzers are initialized
-        self.assertIsNotNone(self.tester.config_analyzer)
-        self.assertIsNotNone(self.tester.builder_analyzer)
-        self.assertIsNotNone(self.tester.pattern_recognizer)
-        self.assertIsNotNone(self.tester.file_resolver)
+        assert self.tester.config_analyzer is not None
+        assert self.tester.builder_analyzer is not None
+        assert self.tester.pattern_recognizer is not None
+        assert self.tester.file_resolver is not None
     
     def test_validate_builder_missing_builder_file(self):
         """Test validation when builder file is missing"""
         result = self.tester.validate_builder("nonexistent_builder")
         
-        self.assertFalse(result['passed'])
-        self.assertEqual(len(result['issues']), 1)
-        self.assertEqual(result['issues'][0]['severity'], 'CRITICAL')
-        self.assertEqual(result['issues'][0]['category'], 'missing_file')
-        self.assertIn('Builder file not found', result['issues'][0]['message'])
+        assert result['passed'] is False
+        assert len(result['issues']) == 1
+        assert result['issues'][0]['severity'] == 'CRITICAL'
+        assert result['issues'][0]['category'] == 'missing_file'
+        assert 'Builder file not found' in result['issues'][0]['message']
     
     def test_validate_builder_missing_config_file(self):
         """Test validation when config file is missing"""
@@ -84,11 +86,11 @@ class TestStepBuilder:
             
             result = self.tester.validate_builder("test")
         
-        self.assertFalse(result['passed'])
+        assert result['passed'] is False
         issues = [issue for issue in result['issues'] if issue['category'] == 'missing_configuration']
-        self.assertTrue(len(issues) > 0)
-        self.assertEqual(issues[0]['severity'], 'ERROR')
-        self.assertIn('Configuration file not found', issues[0]['message'])
+        assert len(issues) > 0
+        assert issues[0]['severity'] == 'ERROR'
+        assert 'Configuration file not found' in issues[0]['message']
     
     def test_validate_builder_successful_validation(self):
         """Test successful validation with matching builder and config"""
@@ -156,11 +158,11 @@ class TestConfig(BaseModel):
             result = self.tester.validate_builder("test")
         
         # Should pass validation since all accessed fields exist in config
-        self.assertTrue(result['passed'])
+        assert result['passed'] is True
         
         # Should have config and builder analysis in result
-        self.assertIn('config_analysis', result)
-        self.assertIn('builder_analysis', result)
+        assert 'config_analysis' in result
+        assert 'builder_analysis' in result
     
     def test_validate_configuration_fields_undeclared_access(self):
         """Test detection of undeclared field access"""
@@ -185,13 +187,13 @@ class TestConfig(BaseModel):
         
         # Should detect the missing field
         error_issues = [issue for issue in issues if issue['severity'] == 'ERROR']
-        self.assertTrue(len(error_issues) > 0)
+        assert len(error_issues) > 0
         
         missing_field_issues = [
             issue for issue in error_issues 
             if 'missing_field' in issue['message']
         ]
-        self.assertTrue(len(missing_field_issues) > 0)
+        assert len(missing_field_issues) > 0
     
     def test_validate_configuration_fields_pattern_filtering(self):
         """Test that pattern recognition filters acceptable patterns"""
@@ -219,8 +221,8 @@ class TestConfig(BaseModel):
         # Should only flag truly_missing_field, not job_type
         error_messages = [issue['message'] for issue in issues if issue['severity'] == 'ERROR']
         
-        self.assertTrue(any('truly_missing_field' in msg for msg in error_messages))
-        self.assertFalse(any('job_type' in msg for msg in error_messages))
+        assert any('truly_missing_field' in msg for msg in error_messages)
+        assert not any('job_type' in msg for msg in error_messages)
     
     def test_validate_required_fields(self):
         """Test validation of required field handling"""
@@ -242,7 +244,7 @@ class TestConfig(BaseModel):
             issue for issue in info_issues 
             if 'validation logic' in issue['message']
         ]
-        self.assertTrue(len(validation_issues) > 0)
+        assert len(validation_issues) > 0
     
     def test_validate_config_import(self):
         """Test validation of configuration import"""
@@ -262,11 +264,11 @@ class TestConfig(BaseModel):
         
         # The current implementation may not always detect import issues
         # This is acceptable as import validation is informational
-        self.assertIsInstance(issues, list)
+        assert isinstance(issues, list)
         
         # If there are issues, they should be INFO level
         for issue in issues:
-            self.assertEqual(issue['severity'], 'INFO')
+            assert issue['severity'] == 'INFO'
     
     def test_find_builder_file_hybrid_standard_pattern(self):
         """Test hybrid builder file resolution with standard pattern"""
@@ -276,7 +278,7 @@ class TestConfig(BaseModel):
         
         result = self.tester._find_builder_file_hybrid("test")
         
-        self.assertEqual(result, str(builder_file))
+        assert result == str(builder_file)
     
     def test_find_config_file_hybrid_standard_pattern(self):
         """Test hybrid config file resolution with standard pattern"""
@@ -286,7 +288,7 @@ class TestConfig(BaseModel):
         
         result = self.tester._find_config_file_hybrid("test")
         
-        self.assertEqual(result, str(config_file))
+        assert result == str(config_file)
     
     def test_discover_builders(self):
         """Test discovery of builder files"""
@@ -298,10 +300,10 @@ class TestConfig(BaseModel):
         
         builders = self.tester._discover_builders()
         
-        self.assertIn("test1", builders)
-        self.assertIn("test2", builders)
-        self.assertNotIn("not_a_builder", builders)
-        self.assertNotIn("__init__", builders)
+        assert "test1" in builders
+        assert "test2" in builders
+        assert "not_a_builder" not in builders
+        assert "__init__" not in builders
     
     def test_validate_all_builders(self):
         """Test validation of all discovered builders"""
@@ -324,9 +326,9 @@ class Test2StepBuilder:
             results = self.tester.validate_all_builders()
         
         # Should validate both builders
-        self.assertIn("test1", results)
-        self.assertIn("test2", results)
-        self.assertEqual(mock_validate.call_count, 2)
+        assert "test1" in results
+        assert "test2" in results
+        assert mock_validate.call_count == 2
     
     def test_validate_all_builders_with_target_scripts(self):
         """Test validation with specific target scripts"""
@@ -341,8 +343,8 @@ class Test2StepBuilder:
             results = self.tester.validate_all_builders(target_scripts=["test1"])
         
         # Should only validate test1
-        self.assertIn("test1", results)
-        self.assertNotIn("test2", results)
+        assert "test1" in results
+        assert "test2" not in results
         mock_validate.assert_called_once_with("test1")
     
     def test_error_handling_in_validation(self):
@@ -370,14 +372,14 @@ class Test2StepBuilder:
             result = self.tester.validate_builder("test")
         
         # Should handle error gracefully
-        self.assertFalse(result['passed'])
+        assert result['passed'] is False
         
         # Check that there are issues (could be CRITICAL or ERROR)
-        self.assertTrue(len(result['issues']) > 0)
+        assert len(result['issues']) > 0
         
         # Check that at least one issue is severe (CRITICAL or ERROR)
         severe_issues = [issue for issue in result['issues'] if issue['severity'] in ['CRITICAL', 'ERROR']]
-        self.assertTrue(len(severe_issues) > 0)
+        assert len(severe_issues) > 0
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

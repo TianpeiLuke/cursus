@@ -6,16 +6,17 @@ using different strategies without requiring manual TEST_LEVEL_MAP updates.
 """
 
 import sys
-import unittest
+import pytest
 from pathlib import Path
 from typing import Dict, Any
 
 from cursus.validation.builders.scoring import StepBuilderScorer, score_builder_results
 
-class TestPatternBasedScoring(unittest.TestCase):
+class TestPatternBasedScoring:
     """Test cases for the enhanced pattern-based scoring system."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.sample_results = self._create_sample_test_results()
         self.processing_results = self._create_processing_variant_results()
@@ -139,34 +140,34 @@ class TestPatternBasedScoring(unittest.TestCase):
         scorer = StepBuilderScorer(self.sample_results)
         
         # Test explicit prefix detection
-        self.assertEqual(scorer._detect_level_from_test_name("level1_test_processor_creation_method"), "level1_interface")
-        self.assertEqual(scorer._detect_level_from_test_name("level2_test_job_type_specification_loading"), "level2_specification")
-        self.assertEqual(scorer._detect_level_from_test_name("level3_test_processing_input_creation"), "level3_step_creation")
-        self.assertEqual(scorer._detect_level_from_test_name("level4_test_step_creation_pattern_execution"), "level4_integration")
+        assert scorer._detect_level_from_test_name("level1_test_processor_creation_method") == "level1_interface"
+        assert scorer._detect_level_from_test_name("level2_test_job_type_specification_loading") == "level2_specification"
+        assert scorer._detect_level_from_test_name("level3_test_processing_input_creation") == "level3_step_creation"
+        assert scorer._detect_level_from_test_name("level4_test_step_creation_pattern_execution") == "level4_integration"
     
     def test_keyword_based_detection(self):
         """Test that keyword-based detection works correctly."""
         scorer = StepBuilderScorer(self.sample_results)
         
         # Test keyword-based detection
-        self.assertEqual(scorer._detect_level_from_test_name("test_inheritance"), "level1_interface")
-        self.assertEqual(scorer._detect_level_from_test_name("test_processor_creation"), "level1_interface")
-        self.assertEqual(scorer._detect_level_from_test_name("test_specification_usage"), "level2_specification")
-        self.assertEqual(scorer._detect_level_from_test_name("test_environment_variable_handling"), "level2_specification")
-        self.assertEqual(scorer._detect_level_from_test_name("test_input_path_mapping"), "level3_step_creation")
-        self.assertEqual(scorer._detect_level_from_test_name("test_processing_inputs_outputs"), "level3_step_creation")
-        self.assertEqual(scorer._detect_level_from_test_name("test_dependency_resolution"), "level4_integration")
-        self.assertEqual(scorer._detect_level_from_test_name("test_step_creation"), "level4_integration")
+        assert scorer._detect_level_from_test_name("test_inheritance") == "level1_interface"
+        assert scorer._detect_level_from_test_name("test_processor_creation") == "level1_interface"
+        assert scorer._detect_level_from_test_name("test_specification_usage") == "level2_specification"
+        assert scorer._detect_level_from_test_name("test_environment_variable_handling") == "level2_specification"
+        assert scorer._detect_level_from_test_name("test_input_path_mapping") == "level3_step_creation"
+        assert scorer._detect_level_from_test_name("test_processing_inputs_outputs") == "level3_step_creation"
+        assert scorer._detect_level_from_test_name("test_dependency_resolution") == "level4_integration"
+        assert scorer._detect_level_from_test_name("test_step_creation") == "level4_integration"
     
     def test_detection_method_identification(self):
         """Test that detection methods are correctly identified."""
         scorer = StepBuilderScorer(self.sample_results)
         
         # Test detection method identification
-        self.assertEqual(scorer._get_detection_method("level1_test_processor_creation_method"), "explicit_prefix")
-        self.assertEqual(scorer._get_detection_method("test_inheritance"), "keyword_based")  # Detected via keywords
-        self.assertEqual(scorer._get_detection_method("test_specification_usage"), "keyword_based")
-        self.assertEqual(scorer._get_detection_method("test_random_functionality"), "undetected")
+        assert scorer._get_detection_method("level1_test_processor_creation_method") == "explicit_prefix"
+        assert scorer._get_detection_method("test_inheritance") == "keyword_based"  # Detected via keywords
+        assert scorer._get_detection_method("test_specification_usage") == "keyword_based"
+        assert scorer._get_detection_method("test_random_functionality") == "undetected"
     
     def test_detection_summary(self):
         """Test that detection summary provides accurate statistics."""
@@ -174,24 +175,24 @@ class TestPatternBasedScoring(unittest.TestCase):
         summary = scorer.get_detection_summary()
         
         # Verify summary structure
-        self.assertIn("summary", summary)
-        self.assertIn("details", summary)
+        assert "summary" in summary
+        assert "details" in summary
         
         # Verify summary counts
         summary_data = summary["summary"]
-        self.assertGreater(summary_data["explicit_prefix"], 0)
-        self.assertGreater(summary_data["keyword_based"], 0)
+        assert summary_data["explicit_prefix"] > 0
+        assert summary_data["keyword_based"] > 0
         # Note: fallback_map might be 0 if keyword detection is comprehensive
-        self.assertGreaterEqual(summary_data["fallback_map"], 0)
-        self.assertGreater(summary_data["undetected"], 0)
-        self.assertEqual(summary_data["total"], len(self.sample_results))
+        assert summary_data["fallback_map"] >= 0
+        assert summary_data["undetected"] > 0
+        assert summary_data["total"] == len(self.sample_results)
         
         # Verify details structure
         details = summary["details"]
-        self.assertIn("explicit_prefix", details)
-        self.assertIn("keyword_based", details)
-        self.assertIn("fallback_map", details)
-        self.assertIn("undetected", details)
+        assert "explicit_prefix" in details
+        assert "keyword_based" in details
+        assert "fallback_map" in details
+        assert "undetected" in details
     
     def test_processing_variant_compatibility(self):
         """Test that Processing variant tests are correctly handled."""
@@ -199,20 +200,20 @@ class TestPatternBasedScoring(unittest.TestCase):
         detection_summary = scorer.get_detection_summary()
         
         # All Processing variant tests should use explicit prefix
-        self.assertEqual(detection_summary["summary"]["explicit_prefix"], len(self.processing_results))
-        self.assertEqual(detection_summary["summary"]["keyword_based"], 0)
-        self.assertEqual(detection_summary["summary"]["fallback_map"], 0)
-        self.assertEqual(detection_summary["summary"]["undetected"], 0)
+        assert detection_summary["summary"]["explicit_prefix"] == len(self.processing_results)
+        assert detection_summary["summary"]["keyword_based"] == 0
+        assert detection_summary["summary"]["fallback_map"] == 0
+        assert detection_summary["summary"]["undetected"] == 0
         
         # Verify level distribution
         report = scorer.generate_report()
         levels = report["levels"]
         
         # Should have tests in all 4 levels
-        self.assertGreater(levels["level1_interface"]["total"], 0)
-        self.assertGreater(levels["level2_specification"]["total"], 0)
-        self.assertGreater(levels["level3_step_creation"]["total"], 0)
-        self.assertGreater(levels["level4_integration"]["total"], 0)
+        assert levels["level1_interface"]["total"] > 0
+        assert levels["level2_specification"]["total"] > 0
+        assert levels["level3_step_creation"]["total"] > 0
+        assert levels["level4_integration"]["total"] > 0
     
     def test_mixed_scenario_handling(self):
         """Test that mixed test scenarios are handled correctly."""
@@ -221,13 +222,13 @@ class TestPatternBasedScoring(unittest.TestCase):
         
         # Should have multiple detection methods used
         summary = detection_summary["summary"]
-        self.assertGreater(summary["explicit_prefix"], 0)
-        self.assertGreater(summary["keyword_based"], 0)
+        assert summary["explicit_prefix"] > 0
+        assert summary["keyword_based"] > 0
         # Note: fallback_map might be 0 if keyword detection is comprehensive
-        self.assertGreaterEqual(summary["fallback_map"], 0)
+        assert summary["fallback_map"] >= 0
         
         # Total should match input
-        self.assertEqual(summary["total"], len(self.mixed_results))
+        assert summary["total"] == len(self.mixed_results)
     
     def test_level_score_calculation(self):
         """Test that level scores are calculated correctly."""
@@ -238,13 +239,13 @@ class TestPatternBasedScoring(unittest.TestCase):
             score, passed, total = scorer.calculate_level_score(level)
             
             # Score should be between 0 and 100
-            self.assertGreaterEqual(score, 0.0)
-            self.assertLessEqual(score, 100.0)
+            assert score >= 0.0
+            assert score <= 100.0
             
             # Passed should not exceed total
-            self.assertLessEqual(passed, total)
-            self.assertGreaterEqual(passed, 0)
-            self.assertGreaterEqual(total, 0)
+            assert passed <= total
+            assert passed >= 0
+            assert total >= 0
     
     def test_overall_score_calculation(self):
         """Test that overall score is calculated correctly."""
@@ -252,8 +253,8 @@ class TestPatternBasedScoring(unittest.TestCase):
         overall_score = scorer.calculate_overall_score()
         
         # Overall score should be between 0 and 100
-        self.assertGreaterEqual(overall_score, 0.0)
-        self.assertLessEqual(overall_score, 100.0)
+        assert overall_score >= 0.0
+        assert overall_score <= 100.0
     
     def test_report_generation(self):
         """Test that reports are generated correctly."""
@@ -261,27 +262,27 @@ class TestPatternBasedScoring(unittest.TestCase):
         report = scorer.generate_report()
         
         # Verify report structure
-        self.assertIn("overall", report)
-        self.assertIn("levels", report)
-        self.assertIn("failed_tests", report)
+        assert "overall" in report
+        assert "levels" in report
+        assert "failed_tests" in report
         
         # Verify overall section
         overall = report["overall"]
-        self.assertIn("score", overall)
-        self.assertIn("rating", overall)
-        self.assertIn("passed", overall)
-        self.assertIn("total", overall)
-        self.assertIn("pass_rate", overall)
+        assert "score" in overall
+        assert "rating" in overall
+        assert "passed" in overall
+        assert "total" in overall
+        assert "pass_rate" in overall
         
         # Verify levels section
         levels = report["levels"]
         for level in ["level1_interface", "level2_specification", "level3_step_creation", "level4_integration"]:
-            self.assertIn(level, levels)
+            assert level in levels
             level_data = levels[level]
-            self.assertIn("score", level_data)
-            self.assertIn("passed", level_data)
-            self.assertIn("total", level_data)
-            self.assertIn("tests", level_data)
+            assert "score" in level_data
+            assert "passed" in level_data
+            assert "total" in level_data
+            assert "tests" in level_data
     
     def test_zero_maintenance_requirement(self):
         """Test that new test variants require zero maintenance."""
@@ -302,12 +303,12 @@ class TestPatternBasedScoring(unittest.TestCase):
         detection_summary = scorer.get_detection_summary()
         
         # All should be detected via explicit prefix
-        self.assertEqual(detection_summary["summary"]["explicit_prefix"], len(training_results))
-        self.assertEqual(detection_summary["summary"]["undetected"], 0)
+        assert detection_summary["summary"]["explicit_prefix"] == len(training_results)
+        assert detection_summary["summary"]["undetected"] == 0
         
         # Should generate valid report
         report = scorer.generate_report()
-        self.assertGreater(report["overall"]["score"], 0)
+        assert report["overall"]["score"] > 0
     
     def test_backward_compatibility(self):
         """Test that legacy tests still work correctly."""
@@ -328,10 +329,10 @@ class TestPatternBasedScoring(unittest.TestCase):
         # All should be detected (either keyword-based or fallback map)
         detected = (detection_summary["summary"]["keyword_based"] + 
                    detection_summary["summary"]["fallback_map"])
-        self.assertEqual(detected, len(legacy_results))
-        self.assertEqual(detection_summary["summary"]["undetected"], 0)
+        assert detected == len(legacy_results)
+        assert detection_summary["summary"]["undetected"] == 0
 
-class TestPatternScoringIntegration(unittest.TestCase):
+class TestPatternScoringIntegration:
     """Integration tests for the pattern-based scoring system."""
     
     def test_score_builder_results_function(self):
@@ -352,13 +353,13 @@ class TestPatternScoringIntegration(unittest.TestCase):
         )
         
         # Verify report structure
-        self.assertIn("overall", report)
-        self.assertIn("levels", report)
-        self.assertIn("failed_tests", report)
+        assert "overall" in report
+        assert "levels" in report
+        assert "failed_tests" in report
         
         # Verify failed tests are captured
-        self.assertEqual(len(report["failed_tests"]), 1)
-        self.assertEqual(report["failed_tests"][0]["name"], "level3_test_path_mapping")
+        assert len(report["failed_tests"]) == 1
+        assert report["failed_tests"][0]["name"] == "level3_test_path_mapping"
 
 def demonstrate_pattern_detection():
     """Demonstrate the pattern-based detection capabilities."""
@@ -421,5 +422,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--demo":
         demonstrate_pattern_detection()
     else:
-        # Run unit tests
-        unittest.main()
+        # Run pytest tests
+        pytest.main([__file__])

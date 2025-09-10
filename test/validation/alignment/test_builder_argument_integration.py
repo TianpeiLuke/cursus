@@ -5,7 +5,7 @@ This test verifies that the builder argument detection is properly integrated
 into the script contract alignment validation.
 """
 
-import unittest
+import pytest
 import sys
 import os
 import tempfile
@@ -16,7 +16,7 @@ from unittest.mock import patch, MagicMock
 from cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
 
 
-class TestBuilderArgumentIntegration(unittest.TestCase):
+class TestBuilderArgumentIntegration:
     """Test builder argument integration in script contract alignment."""
     
     def test_builder_argument_detection_integration(self):
@@ -79,13 +79,12 @@ class TestBuilderArgumentIntegration(unittest.TestCase):
                     print(f"    Details: {issue['details']}")
         
         # Assertions
-        self.assertIn("job_type", builder_args, "Builder should provide job_type argument")
+        assert "job_type" in builder_args, "Builder should provide job_type argument"
         
         # Should have INFO message about builder-provided argument
         info_issues = [issue for issue in job_type_issues if issue['severity'] == 'INFO']
-        self.assertGreater(len(info_issues), 0, 
-                         "Expected INFO message about builder-provided job_type")
+        assert len(info_issues) > 0, "Expected INFO message about builder-provided job_type"
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    pytest.main([__file__, '-v'])

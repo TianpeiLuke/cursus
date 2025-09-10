@@ -10,7 +10,7 @@ Tests shared chart generation utilities including:
 - Chart configuration and styling
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 import tempfile
@@ -29,48 +29,48 @@ from cursus.validation.shared.chart_utils import (
 )
 
 
-class TestQualityColorMapping(unittest.TestCase):
+class TestQualityColorMapping:
     """Test quality color mapping functionality."""
     
     def test_get_quality_color_excellent(self):
         """Test color mapping for excellent scores."""
         color = get_quality_color(95.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["excellent"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["excellent"]
         
         color = get_quality_color(90.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["excellent"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["excellent"]
     
     def test_get_quality_color_good(self):
         """Test color mapping for good scores."""
         color = get_quality_color(85.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["good"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["good"]
         
         color = get_quality_color(80.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["good"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["good"]
     
     def test_get_quality_color_satisfactory(self):
         """Test color mapping for satisfactory scores."""
         color = get_quality_color(75.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["satisfactory"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["satisfactory"]
         
         color = get_quality_color(70.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["satisfactory"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["satisfactory"]
     
     def test_get_quality_color_needs_work(self):
         """Test color mapping for needs work scores."""
         color = get_quality_color(65.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["needs_work"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["needs_work"]
         
         color = get_quality_color(60.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["needs_work"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["needs_work"]
     
     def test_get_quality_color_poor(self):
         """Test color mapping for poor scores."""
         color = get_quality_color(50.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["poor"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["poor"]
         
         color = get_quality_color(0.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["poor"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["poor"]
     
     def test_get_quality_color_custom_config(self):
         """Test color mapping with custom configuration."""
@@ -85,64 +85,64 @@ class TestQualityColorMapping(unittest.TestCase):
         }
         
         color = get_quality_color(95.0, custom_config)
-        self.assertEqual(color, "#custom_green")
+        assert color == "#custom_green"
         
         color = get_quality_color(50.0, custom_config)
-        self.assertEqual(color, "#custom_red")
+        assert color == "#custom_red"
     
     def test_get_quality_color_edge_cases(self):
         """Test color mapping for edge cases."""
         # Test negative scores
         color = get_quality_color(-10.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["poor"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["poor"]
         
         # Test scores above 100
         color = get_quality_color(110.0)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["excellent"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["excellent"]
 
 
-class TestQualityRating(unittest.TestCase):
+class TestQualityRating:
     """Test quality rating functionality."""
     
     def test_get_quality_rating_excellent(self):
         """Test rating for excellent scores."""
         rating = get_quality_rating(95.0)
-        self.assertEqual(rating, "Excellent")
+        assert rating == "Excellent"
         
         rating = get_quality_rating(90.0)
-        self.assertEqual(rating, "Excellent")
+        assert rating == "Excellent"
     
     def test_get_quality_rating_good(self):
         """Test rating for good scores."""
         rating = get_quality_rating(85.0)
-        self.assertEqual(rating, "Good")
+        assert rating == "Good"
         
         rating = get_quality_rating(80.0)
-        self.assertEqual(rating, "Good")
+        assert rating == "Good"
     
     def test_get_quality_rating_satisfactory(self):
         """Test rating for satisfactory scores."""
         rating = get_quality_rating(75.0)
-        self.assertEqual(rating, "Satisfactory")
+        assert rating == "Satisfactory"
         
         rating = get_quality_rating(70.0)
-        self.assertEqual(rating, "Satisfactory")
+        assert rating == "Satisfactory"
     
     def test_get_quality_rating_needs_work(self):
         """Test rating for needs work scores."""
         rating = get_quality_rating(65.0)
-        self.assertEqual(rating, "Needs Work")
+        assert rating == "Needs Work"
         
         rating = get_quality_rating(60.0)
-        self.assertEqual(rating, "Needs Work")
+        assert rating == "Needs Work"
     
     def test_get_quality_rating_poor(self):
         """Test rating for poor scores."""
         rating = get_quality_rating(50.0)
-        self.assertEqual(rating, "Poor")
+        assert rating == "Poor"
         
         rating = get_quality_rating(0.0)
-        self.assertEqual(rating, "Poor")
+        assert rating == "Poor"
 
 
 class TestScoreBarChart(unittest.TestCase):
