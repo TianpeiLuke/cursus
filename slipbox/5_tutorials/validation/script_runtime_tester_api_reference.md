@@ -17,7 +17,7 @@ topics:
   - script execution validation methods
   - pipeline testing API
 language: python
-date of note: 2025-09-06
+date of note: 2025-09-09
 ---
 
 # Script Runtime Tester API Reference
@@ -33,105 +33,83 @@ The Script Runtime Tester API provides comprehensive validation of pipeline scri
 The main class for script runtime validation and testing.
 
 ```python
-from cursus.validation.runtime.runtime_testing import RuntimeTester
+from cursus.validation.runtime import RuntimeTester
 
 # Initialize with workspace directory (backward compatible)
 tester = RuntimeTester("./test_workspace")
 
 # Initialize with RuntimeTestingConfiguration (new approach)
-from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
+from cursus.validation.runtime import RuntimeTestingConfiguration, PipelineTestingSpec
 
 config = RuntimeTestingConfiguration(
-    workspace_dir="./test_workspace",
-    timeout_seconds=300,
-    enable_logging=True,
-    log_level="INFO"
+    pipeline_spec=pipeline_spec,  # PipelineTestingSpec instance
+    test_individual_scripts=True,
+    test_data_compatibility=True,
+    test_pipeline_flow=True,
+    use_workspace_aware=False
 )
 tester = RuntimeTester(config)
+
+# Initialize with logical name matching enabled
+tester = RuntimeTester("./test_workspace", enable_logical_matching=True, semantic_threshold=0.7)
 ```
+
+**Constructor Parameters:**
+- `config_or_workspace_dir`: Either a `RuntimeTestingConfiguration` object or a string path to workspace directory
+- `enable_logical_matching`: Boolean to enable enhanced logical name matching (default: True)
+- `semantic_threshold`: Float threshold for semantic matching confidence (default: 0.7)
 
 ### RuntimeTestingConfiguration
 
 Configuration object for runtime testing settings.
 
 ```python
-from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
+from cursus.validation.runtime import RuntimeTestingConfiguration
 
 # Create configuration with custom settings
 config = RuntimeTestingConfiguration(
-    workspace_dir="./test_workspace",
-    timeout_seconds=600,  # 10 minutes timeout
-    enable_logging=True,
-    log_level="DEBUG",
-    cleanup_after_test=True,
-    preserve_outputs=False
+    pipeline_spec=pipeline_spec,  # PipelineTestingSpec instance
+    test_individual_scripts=True,
+    test_data_compatibility=True,
+    test_pipeline_flow=True,
+    use_workspace_aware=False
 )
 
 # Use configuration with tester
 tester = RuntimeTester(config)
 ```
 
+**Configuration Fields:**
+- `pipeline_spec`: PipelineTestingSpec defining the complete pipeline testing configuration
+- `test_individual_scripts`: Whether to test scripts individually first (default: True)
+- `test_data_compatibility`: Whether to test data compatibility between connected scripts (default: True)
+- `test_pipeline_flow`: Whether to test complete pipeline flow (default: True)
+- `use_workspace_aware`: Whether to use workspace-aware project structure (default: False)
+
 ## Core Operations
-
-### test_script()
-
-Tests a single script for functionality and execution success.
-
-**Signature:**
-```python
-def test_script(self, script_name: str) -> ScriptTestResult
-```
-
-**Parameters:**
-- `script_name`: Name of the script to test (without .py extension)
-
-**Returns:** `ScriptTestResult` with execution details
-
-**Example:**
-```python
-# Test a single script
-result = tester.test_script("tabular_preprocessing")
-
-# Check results
-if result.success:
-    print(f"✅ Script test passed!")
-    print(f"Execution time: {result.execution_time:.3f}s")
-    print(f"Has main function: {'Yes' if result.has_main_function else 'No'}")
-else:
-    print(f"❌ Script test failed!")
-    print(f"Error: {result.error_message}")
-
-# Access detailed information
-print(f"Script name: {result.script_name}")
-print(f"Success: {result.success}")
-print(f"Execution time: {result.execution_time}")
-print(f"Main function found: {result.has_main_function}")
-print(f"Error message: {result.error_message}")
-```
 
 ### test_script_with_spec()
 
-Tests a script using a custom ScriptExecutionSpec for precise control.
+Tests a script using a ScriptExecutionSpec for precise control.
 
 **Signature:**
 ```python
 def test_script_with_spec(
     self,
-    spec: ScriptExecutionSpec,
+    script_spec: ScriptExecutionSpec,
     main_params: Dict[str, Any]
 ) -> ScriptTestResult
 ```
 
 **Parameters:**
-- `spec`: ScriptExecutionSpec defining execution parameters
+- `script_spec`: ScriptExecutionSpec defining execution parameters
 - `main_params`: Parameters to pass to script's main function
 
 **Returns:** `ScriptTestResult` with execution details
 
 **Example:**
 ```python
-from cursus.validation.runtime.runtime_models import ScriptExecutionSpec
-from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from cursus.validation.runtime import ScriptExecutionSpec, PipelineTestingSpecBuilder
 
 # Create custom execution specification
 spec = ScriptExecutionSpec(
@@ -152,89 +130,33 @@ result = tester.test_script_with_spec(spec, main_params)
 
 if result.success:
     print("✅ Script test with custom spec passed!")
+    print(f"Execution time: {result.execution_time:.3f}s")
+    print(f"Has main function: {result.has_main_function}")
 else:
     print(f"❌ Script test failed: {result.error_message}")
 ```
 
-### test_data_compatibility()
-
-Tests data compatibility between two scripts.
-
-**Signature:**
-```python
-def test_data_compatibility(
-    self,
-    script_a: str,
-    script_b: str,
-    sample_data: Dict[str, Any]
-) -> DataCompatibilityResult
-```
-
-**Parameters:**
-- `script_a`: First script (data producer)
-- `script_b`: Second script (data consumer)
-- `sample_data`: Sample data for testing
-
-**Returns:** `DataCompatibilityResult` with compatibility analysis
-
-**Example:**
-```python
-# Generate sample data
-sample_data = tester._generate_sample_data()
-
-# Test compatibility between scripts
-compat_result = tester.test_data_compatibility(
-    "tabular_preprocessing",
-    "xgboost_training",
-    sample_data
-)
-
-if compat_result.compatible:
-    print("✅ Scripts are data compatible!")
-    print(f"Data formats: {compat_result.data_format_a} -> {compat_result.data_format_b}")
-else:
-    print("❌ Scripts have compatibility issues!")
-    print("Issues found:")
-    for issue in compat_result.compatibility_issues:
-        print(f"  - {issue}")
-
-# Access detailed compatibility information
-print(f"Script A: {compat_result.script_a}")
-print(f"Script B: {compat_result.script_b}")
-print(f"Compatible: {compat_result.compatible}")
-print(f"Data format A: {compat_result.data_format_a}")
-print(f"Data format B: {compat_result.data_format_b}")
-print(f"Compatibility issues: {compat_result.compatibility_issues}")
-```
-
 ### test_data_compatibility_with_specs()
 
-Tests data compatibility using custom ScriptExecutionSpecs.
+Tests data compatibility between two scripts using ScriptExecutionSpecs.
 
 **Signature:**
 ```python
 def test_data_compatibility_with_specs(
     self,
     spec_a: ScriptExecutionSpec,
-    spec_b: ScriptExecutionSpec,
-    main_params_a: Dict[str, Any],
-    main_params_b: Dict[str, Any]
+    spec_b: ScriptExecutionSpec
 ) -> DataCompatibilityResult
 ```
 
 **Parameters:**
-- `spec_a`: Execution specification for first script
-- `spec_b`: Execution specification for second script
-- `main_params_a`: Main function parameters for first script
-- `main_params_b`: Main function parameters for second script
+- `spec_a`: Execution specification for first script (data producer)
+- `spec_b`: Execution specification for second script (data consumer)
 
 **Returns:** `DataCompatibilityResult` with compatibility analysis
 
 **Example:**
 ```python
-from cursus.validation.runtime.runtime_models import ScriptExecutionSpec
-from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
-
 # Create specifications for both scripts
 spec_a = ScriptExecutionSpec(
     script_name="tabular_preprocessing",
@@ -254,93 +176,21 @@ spec_b = ScriptExecutionSpec(
     job_args={"job_type": "training"}
 )
 
-# Get main parameters
-builder = PipelineTestingSpecBuilder("./test_workspace")
-main_params_a = builder.get_script_main_params(spec_a)
-main_params_b = builder.get_script_main_params(spec_b)
-
 # Test compatibility with specifications
-compat_result = tester.test_data_compatibility_with_specs(
-    spec_a, spec_b, main_params_a, main_params_b
-)
+compat_result = tester.test_data_compatibility_with_specs(spec_a, spec_b)
 
 if compat_result.compatible:
-    print("✅ Scripts are compatible with custom specifications!")
+    print("✅ Scripts are compatible with specifications!")
+    print(f"Data formats: {compat_result.data_format_a} -> {compat_result.data_format_b}")
 else:
-    print("❌ Compatibility issues with custom specifications:")
+    print("❌ Compatibility issues with specifications:")
     for issue in compat_result.compatibility_issues:
         print(f"  - {issue}")
 ```
 
-### test_pipeline_flow()
-
-Tests complete pipeline flow with multiple scripts.
-
-**Signature:**
-```python
-def test_pipeline_flow(self, pipeline_config: Dict[str, Any]) -> Dict[str, Any]
-```
-
-**Parameters:**
-- `pipeline_config`: Dictionary defining pipeline steps and scripts
-
-**Returns:** Dictionary with comprehensive pipeline test results
-
-**Example:**
-```python
-# Define pipeline configuration
-pipeline_config = {
-    "steps": {
-        "data_preprocessing": {"script": "tabular_preprocessing.py"},
-        "model_training": {"script": "xgboost_training.py"},
-        "model_evaluation": {"script": "model_evaluation.py"}
-    }
-}
-
-# Test pipeline flow
-results = tester.test_pipeline_flow(pipeline_config)
-
-# Check overall results
-if results["pipeline_success"]:
-    print("✅ Pipeline flow test passed!")
-else:
-    print("❌ Pipeline flow test failed!")
-    for error in results["errors"]:
-        print(f"  - {error}")
-
-# Check individual script results
-print("\n📝 Individual Script Results:")
-for script_name, result in results["script_results"].items():
-    status = "✅" if result.success else "❌"
-    print(f"  {status} {script_name}: {'PASS' if result.success else 'FAIL'}")
-    if not result.success:
-        print(f"    Error: {result.error_message}")
-
-# Check data flow results
-print("\n🔗 Data Flow Results:")
-for flow_name, result in results["data_flow_results"].items():
-    status = "✅" if result.compatible else "❌"
-    print(f"  {status} {flow_name}: {'PASS' if result.compatible else 'FAIL'}")
-    if result.compatibility_issues:
-        for issue in result.compatibility_issues:
-            print(f"    Issue: {issue}")
-
-# Access summary statistics
-total_scripts = len(results["script_results"])
-successful_scripts = sum(1 for result in results["script_results"].values() if result.success)
-total_flows = len(results["data_flow_results"])
-successful_flows = sum(1 for result in results["data_flow_results"].values() if result.compatible)
-
-print(f"\n📊 Pipeline Summary:")
-print(f"Overall success: {results['pipeline_success']}")
-print(f"Script tests: {successful_scripts}/{total_scripts} passed")
-print(f"Data flow tests: {successful_flows}/{total_flows} passed")
-print(f"Total errors: {len(results['errors'])}")
-```
-
 ### test_pipeline_flow_with_spec()
 
-Tests pipeline flow using a PipelineTestingSpec for precise control.
+Tests complete pipeline flow using a PipelineTestingSpec for precise control.
 
 **Signature:**
 ```python
@@ -354,15 +204,20 @@ def test_pipeline_flow_with_spec(self, pipeline_spec: PipelineTestingSpec) -> Di
 
 **Example:**
 ```python
-from cursus.validation.runtime.runtime_models import PipelineTestingSpec, ScriptExecutionSpec
-from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from cursus.validation.runtime import PipelineTestingSpec
+from cursus.api.dag.base_dag import PipelineDAG
 
-# Create pipeline specification
-builder = PipelineTestingSpecBuilder("./test_workspace")
+# Create DAG
+dag = PipelineDAG()
+dag.add_node("preprocessing")
+dag.add_node("training")
+dag.add_node("evaluation")
+dag.add_edge("preprocessing", "training")
+dag.add_edge("training", "evaluation")
 
-# Define script specifications
-script_specs = [
-    ScriptExecutionSpec(
+# Create script specifications
+script_specs = {
+    "preprocessing": ScriptExecutionSpec(
         script_name="tabular_preprocessing",
         step_name="preprocessing",
         input_paths={"data_input": "./test_data/raw.csv"},
@@ -370,23 +225,29 @@ script_specs = [
         environ_vars={"LABEL_FIELD": "target"},
         job_args={"job_type": "preprocessing"}
     ),
-    ScriptExecutionSpec(
+    "training": ScriptExecutionSpec(
         script_name="xgboost_training",
         step_name="training",
         input_paths={"data_input": "./test_output/processed"},
         output_paths={"model_output": "./test_output/model"},
         environ_vars={"MODEL_TYPE": "xgboost"},
         job_args={"job_type": "training"}
+    ),
+    "evaluation": ScriptExecutionSpec(
+        script_name="model_evaluation",
+        step_name="evaluation",
+        input_paths={"model_input": "./test_output/model", "data_input": "./test_output/processed"},
+        output_paths={"metrics_output": "./test_output/metrics"},
+        environ_vars={"EVAL_METRICS": "accuracy,precision,recall"},
+        job_args={"job_type": "evaluation"}
     )
-]
+}
 
 # Create pipeline specification
 pipeline_spec = PipelineTestingSpec(
-    pipeline_name="ml_training_pipeline",
+    dag=dag,
     script_specs=script_specs,
-    data_flow_specs=[
-        {"from_step": "preprocessing", "to_step": "training", "data_path": "./test_output/processed"}
-    ]
+    test_workspace_root="./test_workspace"
 )
 
 # Test pipeline with specification
@@ -398,6 +259,11 @@ else:
     print("❌ Pipeline test with specification failed!")
     for error in results["errors"]:
         print(f"  - {error}")
+
+# Access detailed results
+print(f"Execution order: {results.get('execution_order', 'N/A')}")
+print(f"Script results: {len(results['script_results'])} scripts tested")
+print(f"Data flow results: {len(results['data_flow_results'])} flows tested")
 ```
 
 ## Specification Management
@@ -407,7 +273,7 @@ else:
 Model for defining script execution parameters.
 
 ```python
-from cursus.validation.runtime.runtime_models import ScriptExecutionSpec
+from cursus.validation.runtime import ScriptExecutionSpec
 
 # Create script execution specification
 spec = ScriptExecutionSpec(
@@ -416,7 +282,8 @@ spec = ScriptExecutionSpec(
     input_paths={"data_input": "./test_data/raw_data.csv"},
     output_paths={"data_output": "./test_output/processed"},
     environ_vars={"LABEL_FIELD": "target", "FEATURE_COLS": "feature1,feature2"},
-    job_args={"job_type": "preprocessing", "batch_size": 1000}
+    job_args={"job_type": "preprocessing", "batch_size": 1000},
+    user_notes="Custom preprocessing configuration for testing"
 )
 
 # Save specification to file
@@ -427,97 +294,127 @@ print(f"Saved specification to: {saved_path}")
 loaded_spec = ScriptExecutionSpec.load_from_file("tabular_preprocessing", "./test_workspace/.specs")
 print(f"Loaded specification: {loaded_spec.script_name}")
 print(f"Last updated: {loaded_spec.last_updated}")
+print(f"User notes: {loaded_spec.user_notes}")
 
 # Create default specification
-default_spec = ScriptExecutionSpec.create_default("model_evaluation")
+default_spec = ScriptExecutionSpec.create_default("model_evaluation", "evaluation_step")
 print(f"Created default spec for: {default_spec.script_name}")
 ```
+
+**ScriptExecutionSpec Fields:**
+- `script_name`: Name of the script to test (without .py extension)
+- `step_name`: Step name that matches PipelineDAG node name
+- `script_path`: Optional full path to script file
+- `input_paths`: Dictionary of input paths for script main()
+- `output_paths`: Dictionary of output paths for script main()
+- `environ_vars`: Dictionary of environment variables for script main()
+- `job_args`: Dictionary of job arguments for script main()
+- `last_updated`: Timestamp when spec was last updated
+- `user_notes`: User notes about this script configuration
 
 ### PipelineTestingSpec
 
 Model for defining complete pipeline testing configuration.
 
 ```python
-from cursus.validation.runtime.runtime_models import PipelineTestingSpec, ScriptExecutionSpec
+from cursus.validation.runtime import PipelineTestingSpec
+from cursus.api.dag.base_dag import PipelineDAG
 
 # Create pipeline testing specification
+dag = PipelineDAG()
+dag.add_node("preprocessing")
+dag.add_node("training")
+dag.add_edge("preprocessing", "training")
+
+script_specs = {
+    "preprocessing": ScriptExecutionSpec(
+        script_name="data_loading",
+        step_name="preprocessing",
+        input_paths={"raw_data": "./data/raw"},
+        output_paths={"loaded_data": "./test_output/loaded"}
+    ),
+    "training": ScriptExecutionSpec(
+        script_name="model_training",
+        step_name="training",
+        input_paths={"loaded_data": "./test_output/loaded"},
+        output_paths={"trained_model": "./test_output/model"}
+    )
+}
+
 pipeline_spec = PipelineTestingSpec(
-    pipeline_name="ml_training_pipeline",
-    script_specs=[
-        ScriptExecutionSpec(
-            script_name="data_loading",
-            step_name="loading",
-            input_paths={"raw_data": "./data/raw"},
-            output_paths={"loaded_data": "./test_output/loaded"}
-        ),
-        ScriptExecutionSpec(
-            script_name="preprocessing",
-            step_name="preprocessing",
-            input_paths={"loaded_data": "./test_output/loaded"},
-            output_paths={"processed_data": "./test_output/processed"}
-        )
-    ],
-    data_flow_specs=[
-        {
-            "from_step": "loading",
-            "to_step": "preprocessing",
-            "data_path": "./test_output/loaded"
-        }
-    ]
+    dag=dag,
+    script_specs=script_specs,
+    test_workspace_root="./test_workspace",
+    workspace_aware_root=None  # Optional workspace-aware project root
 )
 
-# Save pipeline specification
-saved_path = pipeline_spec.save_to_file("./test_workspace/.specs")
-print(f"Saved pipeline spec to: {saved_path}")
-
-# Load pipeline specification
-loaded_pipeline = PipelineTestingSpec.load_from_file("ml_training_pipeline", "./test_workspace/.specs")
-print(f"Loaded pipeline: {loaded_pipeline.pipeline_name}")
-print(f"Number of scripts: {len(loaded_pipeline.script_specs)}")
+print(f"Pipeline DAG nodes: {pipeline_spec.dag.nodes}")
+print(f"Script specifications: {list(pipeline_spec.script_specs.keys())}")
+print(f"Test workspace root: {pipeline_spec.test_workspace_root}")
 ```
+
+**PipelineTestingSpec Fields:**
+- `dag`: PipelineDAG defining step dependencies and execution order
+- `script_specs`: Dictionary mapping step names to ScriptExecutionSpec objects
+- `test_workspace_root`: Root directory for test data and outputs
+- `workspace_aware_root`: Optional workspace-aware project root
 
 ### PipelineTestingSpecBuilder
 
 Builder for creating and managing testing specifications.
 
 ```python
-from cursus.validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
+from cursus.validation.runtime import PipelineTestingSpecBuilder
 
 # Initialize builder
 builder = PipelineTestingSpecBuilder("./test_workspace")
 
-# Create script specification from DAG
-dag_config = {
-    "steps": {
-        "preprocessing": {
-            "script": "tabular_preprocessing.py",
-            "inputs": {"data": "./data/raw.csv"},
-            "outputs": {"processed": "./output/processed"}
-        }
-    }
-}
+# Build pipeline spec from DAG
+dag = PipelineDAG()
+dag.add_node("preprocessing")
+dag.add_node("training")
+dag.add_edge("preprocessing", "training")
 
-script_specs = builder.create_script_specs_from_dag(dag_config)
-print(f"Created {len(script_specs)} script specifications")
+try:
+    # This will load saved specs or create defaults
+    pipeline_spec = builder.build_from_dag(dag, validate=False)
+    print("✅ Built pipeline specification from DAG")
+    print(f"Workspace root: {pipeline_spec.test_workspace_root}")
+    print(f"Script specs: {list(pipeline_spec.script_specs.keys())}")
+except ValueError as e:
+    print(f"❌ Validation failed: {e}")
+
+# Update a specific script spec
+updated_spec = builder.update_script_spec(
+    "preprocessing",
+    input_paths={"data_input": "./custom_data/input.csv"},
+    environ_vars={"LABEL_FIELD": "custom_target"}
+)
+print(f"✅ Updated spec for: {updated_spec.script_name}")
 
 # Get main function parameters for a specification
-spec = script_specs[0]
-main_params = builder.get_script_main_params(spec)
-print(f"Main parameters: {main_params}")
+main_params = builder.get_script_main_params(updated_spec)
+print(f"Main parameters: {list(main_params.keys())}")
 
-# Validate specification
-validation_result = builder.validate_spec(spec)
-if validation_result["valid"]:
-    print("✅ Specification is valid")
+# List all saved specs
+saved_specs = builder.list_saved_specs()
+print(f"📂 Saved specifications: {saved_specs}")
+
+# Get script spec by name
+spec = builder.get_script_spec_by_name("preprocessing")
+if spec:
+    print(f"Found spec: {spec.script_name}")
 else:
-    print("❌ Specification validation failed:")
-    for error in validation_result["errors"]:
-        print(f"  - {error}")
-
-# Create pipeline specification from DAG
-pipeline_spec = builder.create_pipeline_spec_from_dag("test_pipeline", dag_config)
-print(f"Created pipeline specification: {pipeline_spec.pipeline_name}")
+    print("Spec not found")
 ```
+
+**PipelineTestingSpecBuilder Methods:**
+- `build_from_dag(dag, validate=True)`: Build PipelineTestingSpec from DAG
+- `save_script_spec(spec)`: Save ScriptExecutionSpec to local file
+- `update_script_spec(node_name, **updates)`: Update specific fields in a spec
+- `list_saved_specs()`: List all saved specification names
+- `get_script_spec_by_name(script_name)`: Get spec by script name
+- `get_script_main_params(spec)`: Get parameters for script main() function
 
 ## Data Models
 
@@ -534,12 +431,18 @@ class ScriptTestResult:
     execution_time: float
     has_main_function: bool
     error_message: Optional[str] = None
-    
-    def __str__(self) -> str:
-        """String representation of test result."""
-        
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
+```
+
+**Example Usage:**
+```python
+result = tester.test_script_with_spec(spec, main_params)
+
+print(f"Script: {result.script_name}")
+print(f"Success: {result.success}")
+print(f"Execution time: {result.execution_time:.3f}s")
+print(f"Has main function: {result.has_main_function}")
+if result.error_message:
+    print(f"Error: {result.error_message}")
 ```
 
 ### DataCompatibilityResult
@@ -553,145 +456,140 @@ class DataCompatibilityResult:
     script_a: str
     script_b: str
     compatible: bool
+    compatibility_issues: List[str] = []
     data_format_a: Optional[str] = None
     data_format_b: Optional[str] = None
-    compatibility_issues: List[str] = []
-    
-    def __str__(self) -> str:
-        """String representation of compatibility result."""
-        
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
 ```
 
-### RuntimeTestingConfiguration
+**Example Usage:**
+```python
+compat_result = tester.test_data_compatibility_with_specs(spec_a, spec_b)
 
-Configuration for runtime testing behavior.
+print(f"Script A: {compat_result.script_a}")
+print(f"Script B: {compat_result.script_b}")
+print(f"Compatible: {compat_result.compatible}")
+print(f"Data format A: {compat_result.data_format_a}")
+print(f"Data format B: {compat_result.data_format_b}")
+
+if compat_result.compatibility_issues:
+    print("Issues:")
+    for issue in compat_result.compatibility_issues:
+        print(f"  - {issue}")
+```
+
+## Enhanced Features: Logical Name Matching
+
+### Logical Name Matching Methods
+
+When logical name matching is enabled, additional methods become available:
 
 ```python
-class RuntimeTestingConfiguration:
-    """Configuration for runtime testing."""
-    
-    workspace_dir: str
-    timeout_seconds: int = 300
-    enable_logging: bool = True
-    log_level: str = "INFO"
-    cleanup_after_test: bool = True
-    preserve_outputs: bool = False
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'RuntimeTestingConfiguration':
-        """Create from dictionary."""
+# Initialize with logical name matching
+tester = RuntimeTester("./test_workspace", enable_logical_matching=True, semantic_threshold=0.7)
+
+if tester.enable_logical_matching:
+    print("🧠 Logical name matching is available")
 ```
 
-## Command Line Interface
+### get_path_matches()
 
-### CLI Commands
-
-The runtime tester provides a comprehensive CLI through the `cursus runtime` command group.
-
-#### test-script
-
-Test a single script for functionality.
-
-```bash
-# Basic script test
-cursus runtime test-script tabular_preprocessing --workspace-dir ./test_workspace
-
-# Test with JSON output
-cursus runtime test-script tabular_preprocessing --output-format json
-
-# Test with custom timeout
-cursus runtime test-script tabular_preprocessing --timeout 600
-
-# Example output
-Script Test Results:
-==================
-Script: tabular_preprocessing
-Status: ✅ PASS
-Execution Time: 2.345s
-Has Main Function: Yes
-```
-
-#### test-compatibility
-
-Test data compatibility between two scripts.
-
-```bash
-# Basic compatibility test
-cursus runtime test-compatibility tabular_preprocessing xgboost_training --workspace-dir ./test_workspace
-
-# Test with JSON output
-cursus runtime test-compatibility tabular_preprocessing xgboost_training --output-format json
-
-# Example output
-Data Compatibility Test Results:
-Script A: tabular_preprocessing
-Script B: xgboost_training
-Status: ✅ COMPATIBLE
-Data Format A: CSV
-Data Format B: CSV
-Issues: None
-```
-
-#### test-pipeline
-
-Test complete pipeline flow with multiple scripts.
-
-```bash
-# Test pipeline from configuration file
-cursus runtime test-pipeline pipeline_config.json --workspace-dir ./test_workspace
-
-# Test with JSON output
-cursus runtime test-pipeline pipeline_config.json --output-format json
-
-# Example pipeline_config.json
-{
-  "steps": {
-    "preprocessing": {"script": "tabular_preprocessing.py"},
-    "training": {"script": "xgboost_training.py"},
-    "evaluation": {"script": "model_evaluation.py"}
-  }
-}
-
-# Example output
-Pipeline Flow Test Results:
-Pipeline Status: ✅ PASS
-Total Scripts: 3
-Successful Scripts: 3/3
-Total Data Flows: 2
-Successful Data Flows: 2/2
-Errors: None
-```
-
-## Utility Methods
-
-### _generate_sample_data()
-
-Generates sample data for testing purposes.
+Get logical name matches between two script specifications.
 
 **Signature:**
 ```python
-def _generate_sample_data(self) -> Dict[str, Any]
+def get_path_matches(
+    self,
+    spec_a: ScriptExecutionSpec,
+    spec_b: ScriptExecutionSpec
+) -> List[PathMatch]
 ```
-
-**Returns:** Dictionary containing sample data for testing
 
 **Example:**
 ```python
-# Generate sample data
-sample_data = tester._generate_sample_data()
-print(f"Sample data keys: {list(sample_data.keys())}")
-print(f"Sample data: {sample_data}")
+path_matches = tester.get_path_matches(spec_a, spec_b)
+print(f"Found {len(path_matches)} logical name matches")
 
-# Use sample data for compatibility testing
-compat_result = tester.test_data_compatibility(
-    "script_a", "script_b", sample_data
-)
+for match in path_matches:
+    print(f"Match: {match.source_logical_name} -> {match.dest_logical_name}")
+    print(f"Confidence: {match.confidence:.3f}")
+    print(f"Match type: {match.match_type}")
 ```
+
+### generate_matching_report()
+
+Generate detailed matching report between two script specifications.
+
+**Signature:**
+```python
+def generate_matching_report(
+    self,
+    spec_a: ScriptExecutionSpec,
+    spec_b: ScriptExecutionSpec
+) -> Dict[str, Any]
+```
+
+**Example:**
+```python
+matching_report = tester.generate_matching_report(spec_a, spec_b)
+
+print(f"Total matches: {matching_report['total_matches']}")
+print(f"Match types: {matching_report['match_types']}")
+print(f"Average confidence: {matching_report['confidence_distribution']['average']:.3f}")
+
+for recommendation in matching_report['recommendations']:
+    print(f"💡 {recommendation}")
+```
+
+### validate_pipeline_logical_names()
+
+Validate logical name compatibility across entire pipeline.
+
+**Signature:**
+```python
+def validate_pipeline_logical_names(
+    self,
+    pipeline_spec: PipelineTestingSpec
+) -> Dict[str, Any]
+```
+
+**Example:**
+```python
+validation_results = tester.validate_pipeline_logical_names(pipeline_spec)
+
+print(f"Overall valid: {validation_results['overall_valid']}")
+print(f"Validation rate: {validation_results['summary']['validation_rate']:.1%}")
+
+for edge_key, edge_result in validation_results['edge_validations'].items():
+    status = "✅" if edge_result['valid'] else "❌"
+    print(f"{status} {edge_key}: {edge_result['matches_found']} matches")
+```
+
+### Enhanced Data Compatibility Testing
+
+**test_data_compatibility_with_logical_matching()**
+
+Enhanced data compatibility testing with logical name matching.
+
+**Signature:**
+```python
+def test_data_compatibility_with_logical_matching(
+    self,
+    spec_a: ScriptExecutionSpec,
+    spec_b: ScriptExecutionSpec
+) -> EnhancedDataCompatibilityResult
+```
+
+**Example:**
+```python
+if tester.enable_logical_matching:
+    enhanced_result = tester.test_data_compatibility_with_logical_matching(spec_a, spec_b)
+    
+    print(f"Compatible: {enhanced_result.compatible}")
+    print(f"Logical matches found: {len(enhanced_result.path_matches)}")
+    print(f"Matching confidence: {enhanced_result.average_confidence:.3f}")
+```
+
+## Utility Methods
 
 ### _find_script_path()
 
@@ -711,78 +609,97 @@ def _find_script_path(self, script_name: str) -> str
 
 **Example:**
 ```python
-# Find script path
 try:
     script_path = tester._find_script_path("tabular_preprocessing")
     print(f"Script found at: {script_path}")
 except FileNotFoundError as e:
     print(f"Script not found: {e}")
-    
-    # Check common locations
-    possible_paths = [
-        "src/cursus/steps/scripts/tabular_preprocessing.py",
-        "scripts/tabular_preprocessing.py",
-        "dockers/xgboost_atoz/scripts/tabular_preprocessing.py"
-    ]
-    for path in possible_paths:
-        if Path(path).exists():
-            print(f"Found at: {path}")
 ```
 
-### _setup_test_environment()
+### _find_valid_output_files()
 
-Sets up the test environment for script execution.
+Find valid output files in a directory, excluding temporary and system files.
 
 **Signature:**
 ```python
-def _setup_test_environment(self, script_name: str) -> Dict[str, Any]
+def _find_valid_output_files(
+    self,
+    output_dir: Path,
+    min_size_bytes: int = 1
+) -> List[Path]
 ```
 
 **Parameters:**
-- `script_name`: Name of the script being tested
+- `output_dir`: Directory to search for output files
+- `min_size_bytes`: Minimum file size to consider (default 1 byte)
 
-**Returns:** Dictionary with test environment configuration
+**Returns:** List of valid output file paths, sorted by modification time (newest first)
 
 **Example:**
 ```python
-# Setup test environment
-env_config = tester._setup_test_environment("tabular_preprocessing")
-print(f"Test directory: {env_config['test_dir']}")
-print(f"Input paths: {env_config['input_paths']}")
-print(f"Output paths: {env_config['output_paths']}")
+from pathlib import Path
+
+output_dir = Path("./test_output/processed")
+valid_files = tester._find_valid_output_files(output_dir)
+
+print(f"Found {len(valid_files)} valid output files:")
+for file_path in valid_files:
+    print(f"  - {file_path.name} ({file_path.stat().st_size} bytes)")
 ```
 
-### _cleanup_test_environment()
+### _generate_sample_data()
 
-Cleans up test environment after script execution.
+Generates sample data for testing purposes.
 
 **Signature:**
 ```python
-def _cleanup_test_environment(self, test_dir: str) -> None
+def _generate_sample_data(self) -> Dict[str, Any]
 ```
 
-**Parameters:**
-- `test_dir`: Directory to clean up
+**Returns:** Dictionary containing sample data for testing
 
 **Example:**
 ```python
-# Manual cleanup (usually done automatically)
-test_dir = "./test_workspace/test_tabular_preprocessing"
-tester._cleanup_test_environment(test_dir)
-print(f"Cleaned up test directory: {test_dir}")
+# Generate sample data
+sample_data = tester._generate_sample_data()
+print(f"Sample data keys: {list(sample_data.keys())}")
+print(f"Sample data: {sample_data}")
+
+# Use sample data for testing
+# Note: This method is primarily used internally
+```
+
+### _detect_file_format()
+
+Detect file format from file extension.
+
+**Signature:**
+```python
+def _detect_file_format(self, file_path: Path) -> str
+```
+
+**Parameters:**
+- `file_path`: Path to the file to analyze
+
+**Returns:** String representing the detected file format
+
+**Example:**
+```python
+from pathlib import Path
+
+file_path = Path("./test_output/data.csv")
+format_detected = tester._detect_file_format(file_path)
+print(f"Detected format: {format_detected}")
 ```
 
 ## Error Handling
 
 ### Common Exceptions
 
-**ScriptNotFoundError**
+**FileNotFoundError**
 ```python
-from cursus.validation.runtime.runtime_testing import RuntimeTester
-
 try:
-    tester = RuntimeTester("./test_workspace")
-    result = tester.test_script("nonexistent_script")
+    result = tester.test_script_with_spec(spec, main_params)
 except FileNotFoundError as e:
     print(f"Script not found: {e}")
     
@@ -793,377 +710,326 @@ except FileNotFoundError as e:
         print(f"Available scripts: {available_scripts}")
 ```
 
-**ScriptExecutionError**
+**Script Execution Errors**
 ```python
-try:
-    result = tester.test_script("problematic_script")
-    if not result.success:
-        print(f"Script execution failed: {result.error_message}")
+result = tester.test_script_with_spec(spec, main_params)
+
+if not result.success:
+    print(f"Script execution failed: {result.error_message}")
+    
+    # Check if main function exists
+    if not result.has_main_function:
+        print("❌ Script missing main function")
+        print("💡 Add main(input_paths, output_paths, environ_vars, job_args) function")
+    else:
+        print("❌ Script has main function but execution failed")
         
-        # Check if main function exists
-        if not result.has_main_function:
-            print("❌ Script missing main function")
-        else:
-            print("❌ Script has main function but execution failed")
-            
-except Exception as e:
-    print(f"Unexpected error during script testing: {e}")
-```
-
-**TimeoutError**
-```python
-from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
-
-# Set shorter timeout for testing
-config = RuntimeTestingConfiguration(
-    workspace_dir="./test_workspace",
-    timeout_seconds=30  # 30 seconds timeout
-)
-tester = RuntimeTester(config)
-
-try:
-    result = tester.test_script("long_running_script")
-    if not result.success and "timeout" in result.error_message.lower():
-        print("❌ Script execution timed out")
-        print("💡 Consider increasing timeout_seconds in configuration")
-except Exception as e:
-    print(f"Error during script execution: {e}")
+        # Provide specific guidance based on error
+        if "timeout" in result.error_message.lower():
+            print("💡 Script may be taking too long - check for infinite loops")
+        elif "import" in result.error_message.lower():
+            print("💡 Check for missing dependencies or import errors")
+        elif "permission" in result.error_message.lower():
+            print("💡 Check file permissions and directory access")
 ```
 
 ### Error Handling Best Practices
 
 ```python
-from cursus.validation.runtime.runtime_testing import RuntimeTester
-from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
-from pathlib import Path
-
-def robust_runtime_testing_workflow():
-    """Example of robust runtime testing with comprehensive error handling."""
-    
-    try:
-        # Initialize with error handling
-        workspace_dir = "./test_workspace"
-        if not Path(workspace_dir).exists():
-            Path(workspace_dir).mkdir(parents=True, exist_ok=True)
-            print(f"✅ Created workspace directory: {workspace_dir}")
-        
-        # Configure tester with reasonable settings
-        config = RuntimeTestingConfiguration(
-            workspace_dir=workspace_dir,
-            timeout_seconds=300,
-            enable_logging=True,
-            log_level="INFO"
-        )
-        
-        tester = RuntimeTester(config)
-        print("✅ Runtime tester initialized successfully")
-        
-        # Test scripts with error handling
-        test_scripts = ["tabular_preprocessing", "xgboost_training", "model_evaluation"]
-        results = {}
-        
-        for script_name in test_scripts:
-            print(f"\n🔍 Testing script: {script_name}")
-            
-            try:
-                # Check if script exists first
-                script_path = tester._find_script_path(script_name)
-                print(f"  Found script at: {script_path}")
-                
-                # Test script execution
-                result = tester.test_script(script_name)
-                results[script_name] = result
-                
-                if result.success:
-                    print(f"  ✅ {script_name}: PASS ({result.execution_time:.3f}s)")
-                else:
-                    print(f"  ❌ {script_name}: FAIL - {result.error_message}")
-                    
-                    # Provide specific guidance based on error
-                    if not result.has_main_function:
-                        print("    💡 Add main(input_paths, output_paths, environ_vars, job_args) function")
-                    elif "timeout" in result.error_message.lower():
-                        print("    💡 Script may be taking too long - check for infinite loops")
-                    elif "import" in result.error_message.lower():
-                        print("    💡 Check for missing dependencies or import errors")
-                        
-            except FileNotFoundError:
-                print(f"  ❌ {script_name}: Script file not found")
-                print("    💡 Check script name and location")
-                results[script_name] = None
-                
-            except Exception as e:
-                print(f"  ❌ {script_name}: Unexpected error - {e}")
-                results[script_name] = None
-        
-        # Test data compatibility with error handling
-        print(f"\n🔗 Testing data compatibility...")
-        successful_scripts = [name for name, result in results.items() 
-                            if result and result.success]
-        
-        if len(successful_scripts) >= 2:
-            try:
-                sample_data = tester._generate_sample_data()
-                
-                for i in range(len(successful_scripts) - 1):
-                    script_a = successful_scripts[i]
-                    script_b = successful_scripts[i + 1]
-                    
-                    print(f"  Testing: {script_a} -> {script_b}")
-                    
-                    compat_result = tester.test_data_compatibility(
-                        script_a, script_b, sample_data
-                    )
-                    
-                    if compat_result.compatible:
-                        print(f"    ✅ Compatible")
-                    else:
-                        print(f"    ❌ Compatibility issues:")
-                        for issue in compat_result.compatibility_issues:
-                            print(f"      - {issue}")
-                            
-            except Exception as e:
-                print(f"  ❌ Data compatibility testing failed: {e}")
-        else:
-            print("  ⚠️ Need at least 2 successful scripts for compatibility testing")
-        
-        # Generate summary
-        total_scripts = len(test_scripts)
-        successful_scripts_count = len(successful_scripts)
-        
-        print(f"\n📊 Runtime Testing Summary:")
-        print(f"Total scripts tested: {total_scripts}")
-        print(f"Successful scripts: {successful_scripts_count}/{total_scripts}")
-        print(f"Success rate: {successful_scripts_count/total_scripts*100:.1f}%")
-        
-        return {
-            'success': successful_scripts_count > 0,
-            'total_scripts': total_scripts,
-            'successful_scripts': successful_scripts_count,
-            'results': results
-        }
-        
-    except Exception as e:
-        print(f"❌ Runtime testing workflow failed: {e}")
-        return {'success': False, 'error': str(e)}
-
-# Run robust testing workflow
-workflow_result = robust_runtime_testing_workflow()
-```
-
-## Advanced Usage
-
-### Custom Configuration Patterns
-
-```python
-from cursus.validation.runtime.runtime_models import RuntimeTestingConfiguration
-from cursus.validation.runtime.runtime_testing import RuntimeTester
-
-# Development configuration (fast, verbose)
-dev_config = RuntimeTestingConfiguration(
-    workspace_dir="./dev_workspace",
-    timeout_seconds=60,
-    enable_logging=True,
-    log_level="DEBUG",
-    cleanup_after_test=False,  # Keep outputs for debugging
-    preserve_outputs=True
-)
-
-# Production configuration (robust, clean)
-prod_config = RuntimeTestingConfiguration(
-    workspace_dir="./prod_workspace",
-    timeout_seconds=600,
-    enable_logging=True,
-    log_level="INFO",
-    cleanup_after_test=True,
-    preserve_outputs=False
-)
-
-# CI/CD configuration (strict, fast)
-ci_config = RuntimeTestingConfiguration(
-    workspace_dir="./ci_workspace",
-    timeout_seconds=300,
-    enable_logging=True,
-    log_level="WARNING",
-    cleanup_after_test=True,
-    preserve_outputs=False
-)
-
-# Use different configurations
-dev_tester = RuntimeTester(dev_config)
-prod_tester = RuntimeTester(prod_config)
-ci_tester = RuntimeTester(ci_config)
-```
-
-### Batch Testing Operations
-
-```python
-def batch_script_testing(script_names: List[str], workspace_dir: str = "./test_workspace"):
-    """Test multiple scripts in batch with comprehensive reporting."""
-    
-    tester = RuntimeTester(workspace_dir)
-    results = {}
-    
-    print(f"🔄 Batch testing {len(script_names)} scripts...")
-    
-    for i, script_name in enumerate(script_names, 1):
-        print(f"\n[{i}/{len(script_names)}] Testing {script_name}...")
-        
-        try:
-            result = tester.test_script(script_name)
-            results[script_name] = result
-            
-            status = "✅ PASS" if result.success else "❌ FAIL"
-            time_str = f"({result.execution_time:.3f}s)" if result.success else ""
-            print(f"  {status} {time_str}")
-            
-            if not result.success:
-                print(f"    Error: {result.error_message}")
-                
-        except Exception as e:
-            print(f"  ❌ EXCEPTION: {e}")
-            results[script_name] = None
-    
-    # Generate batch summary
-    successful = sum(1 for result in results.values() if result and result.success)
-    total = len(script_names)
-    
-    print(f"\n📊 Batch Testing Summary:")
-    print(f"Scripts tested: {total}")
-    print(f"Successful: {successful}")
-    print(f"Failed: {total - successful}")
-    print(f"Success rate: {successful/total*100:.1f}%")
-    
-    return results
-
-# Example usage
-scripts_to_test = [
-    "tabular_preprocessing",
-    "xgboost_training", 
-    "model_evaluation",
-    "data_validation"
-]
-
-batch_results = batch_script_testing(scripts_to_test)
-```
-
-### Pipeline Testing Workflows
-
-```python
-def comprehensive_pipeline_testing():
-    """Comprehensive pipeline testing with multiple validation approaches."""
+def robust_script_testing(script_specs: List[ScriptExecutionSpec]) -> Dict[str, Any]:
+    """Example of robust script testing with comprehensive error handling."""
     
     tester = RuntimeTester("./test_workspace")
+    builder = PipelineTestingSpecBuilder("./test_workspace")
     
-    # Define test pipeline
-    pipeline_config = {
-        "steps": {
-            "data_loading": {"script": "data_loading.py"},
-            "preprocessing": {"script": "tabular_preprocessing.py"},
-            "training": {"script": "xgboost_training.py"},
-            "evaluation": {"script": "model_evaluation.py"},
-            "registration": {"script": "model_registration.py"}
-        }
+    results = {
+        'successful_tests': [],
+        'failed_tests': [],
+        'errors': []
     }
     
-    print("🚀 Comprehensive Pipeline Testing")
-    
-    # 1. Test individual scripts first
-    print("\n1️⃣ Individual Script Testing:")
-    script_results = {}
-    for step_name, step_config in pipeline_config["steps"].items():
-        script_name = step_config["script"].replace(".py", "")
-        print(f"  Testing {script_name}...")
-        
+    for spec in script_specs:
         try:
-            result = tester.test_script(script_name)
-            script_results[script_name] = result
+            # Validate specification first
+            if not spec.script_name or not spec.step_name:
+                results['errors'].append(f"Invalid spec: missing script_name or step_name")
+                continue
+            
+            # Check if script exists
+            try:
+                script_path = tester._find_script_path(spec.script_name)
+                print(f"✅ Found script: {script_path}")
+            except FileNotFoundError:
+                results['failed_tests'].append({
+                    'script': spec.script_name,
+                    'error': 'Script file not found'
+                })
+                continue
+            
+            # Get main parameters and test
+            main_params = builder.get_script_main_params(spec)
+            result = tester.test_script_with_spec(spec, main_params)
             
             if result.success:
-                print(f"    ✅ PASS ({result.execution_time:.3f}s)")
+                results['successful_tests'].append({
+                    'script': spec.script_name,
+                    'execution_time': result.execution_time
+                })
+                print(f"✅ {spec.script_name}: PASS ({result.execution_time:.3f}s)")
             else:
-                print(f"    ❌ FAIL: {result.error_message}")
-        except Exception as e:
-            print(f"    ❌ EXCEPTION: {e}")
-            script_results[script_name] = None
-    
-    # 2. Test data compatibility between adjacent scripts
-    print("\n2️⃣ Data Compatibility Testing:")
-    script_names = list(script_results.keys())
-    compatibility_results = {}
-    
-    for i in range(len(script_names) - 1):
-        script_a = script_names[i]
-        script_b = script_names[i + 1]
-        
-        print(f"  Testing {script_a} -> {script_b}...")
-        
-        # Only test if both scripts passed individual testing
-        if (script_results[script_a] and script_results[script_a].success and
-            script_results[script_b] and script_results[script_b].success):
-            
-            try:
-                sample_data = tester._generate_sample_data()
-                compat_result = tester.test_data_compatibility(script_a, script_b, sample_data)
-                compatibility_results[f"{script_a}->{script_b}"] = compat_result
+                results['failed_tests'].append({
+                    'script': spec.script_name,
+                    'error': result.error_message,
+                    'has_main_function': result.has_main_function
+                })
+                print(f"❌ {spec.script_name}: FAIL - {result.error_message}")
                 
-                if compat_result.compatible:
-                    print(f"    ✅ COMPATIBLE")
-                else:
-                    print(f"    ❌ INCOMPATIBLE:")
-                    for issue in compat_result.compatibility_issues:
-                        print(f"      - {issue}")
-            except Exception as e:
-                print(f"    ❌ EXCEPTION: {e}")
-                compatibility_results[f"{script_a}->{script_b}"] = None
-        else:
-            print(f"    ⏭️ SKIPPED (prerequisite scripts failed)")
+        except Exception as e:
+            results['errors'].append(f"Unexpected error testing {spec.script_name}: {str(e)}")
+            print(f"❌ {spec.script_name}: EXCEPTION - {e}")
     
-    # 3. Test complete pipeline flow
-    print("\n3️⃣ Complete Pipeline Flow Testing:")
-    try:
-        pipeline_results = tester.test_pipeline_flow(pipeline_config)
-        
-        if pipeline_results["pipeline_success"]:
-            print("  ✅ PIPELINE FLOW PASSED")
-        else:
-            print("  ❌ PIPELINE FLOW FAILED")
-            for error in pipeline_results["errors"]:
-                print(f"    - {error}")
-    except Exception as e:
-        print(f"  ❌ PIPELINE FLOW EXCEPTION: {e}")
-        pipeline_results = None
+    # Generate summary
+    total_tests = len(script_specs)
+    successful_count = len(results['successful_tests'])
     
-    # 4. Generate comprehensive summary
-    print("\n📊 Comprehensive Testing Summary:")
+    print(f"\n📊 Testing Summary:")
+    print(f"Total scripts: {total_tests}")
+    print(f"Successful: {successful_count}")
+    print(f"Failed: {len(results['failed_tests'])}")
+    print(f"Errors: {len(results['errors'])}")
+    print(f"Success rate: {successful_count/total_tests*100:.1f}%")
     
-    # Script testing summary
-    successful_scripts = sum(1 for result in script_results.values() if result and result.success)
-    total_scripts = len(script_results)
-    print(f"Individual Scripts: {successful_scripts}/{total_scripts} passed ({successful_scripts/total_scripts*100:.1f}%)")
-    
-    # Compatibility testing summary
-    successful_compat = sum(1 for result in compatibility_results.values() if result and result.compatible)
-    total_compat = len(compatibility_results)
-    if total_compat > 0:
-        print(f"Data Compatibility: {successful_compat}/{total_compat} passed ({successful_compat/total_compat*100:.1f}%)")
-    
-    # Pipeline flow summary
-    if pipeline_results:
-        pipeline_status = "PASSED" if pipeline_results["pipeline_success"] else "FAILED"
-        print(f"Pipeline Flow: {pipeline_status}")
-    
-    return {
-        'script_results': script_results,
-        'compatibility_results': compatibility_results,
-        'pipeline_results': pipeline_results
-    }
-
-# Run comprehensive testing
-comprehensive_results = comprehensive_pipeline_testing()
+    return results
 ```
 
-### Integration with CI/CD
+## Advanced Usage Patterns
+
+### Batch Testing with Specifications
+
+```python
+def batch_testing_with_specs():
+    """Advanced batch testing using specifications."""
+    
+    # Create multiple specifications
+    specs = [
+        ScriptExecutionSpec.create_default("tabular_preprocessing", "preprocessing"),
+        ScriptExecutionSpec.create_default("xgboost_training", "training"),
+        ScriptExecutionSpec.create_default("model_evaluation", "evaluation")
+    ]
+    
+    tester = RuntimeTester("./test_workspace")
+    builder = PipelineTestingSpecBuilder("./test_workspace")
+    
+    # Test all specifications
+    results = robust_script_testing(specs)
+    
+    # Test data compatibility between successful scripts
+    successful_specs = [
+        spec for spec in specs 
+        if any(test['script'] == spec.script_name for test in results['successful_tests'])
+    ]
+    
+    print(f"\n🔗 Testing data compatibility between {len(successful_specs)} successful scripts...")
+    
+    for i in range(len(successful_specs) - 1):
+        spec_a = successful_specs[i]
+        spec_b = successful_specs[i + 1]
+        
+        try:
+            compat_result = tester.test_data_compatibility_with_specs(spec_a, spec_b)
+            
+            if compat_result.compatible:
+                print(f"✅ {spec_a.script_name} -> {spec_b.script_name}: COMPATIBLE")
+            else:
+                print(f"❌ {spec_a.script_name} -> {spec_b.script_name}: INCOMPATIBLE")
+                for issue in compat_result.compatibility_issues:
+                    print(f"    - {issue}")
+                    
+        except Exception as e:
+            print(f"❌ Error testing compatibility {spec_a.script_name} -> {spec_b.script_name}: {e}")
+
+# Run batch testing
+batch_testing_with_specs()
+```
+
+### Pipeline Testing with Custom DAG
+
+```python
+def custom_pipeline_testing():
+    """Advanced pipeline testing with custom DAG configuration."""
+    
+    from cursus.api.dag.base_dag import PipelineDAG
+    
+    # Create custom DAG
+    dag = PipelineDAG()
+    
+    # Add nodes
+    nodes = ["data_loading", "preprocessing", "feature_engineering", "training", "evaluation", "registration"]
+    for node in nodes:
+        dag.add_node(node)
+    
+    # Add edges (dependencies)
+    edges = [
+        ("data_loading", "preprocessing"),
+        ("preprocessing", "feature_engineering"),
+        ("feature_engineering", "training"),
+        ("training", "evaluation"),
+        ("evaluation", "registration")
+    ]
+    
+    for src, dst in edges:
+        dag.add_edge(src, dst)
+    
+    print(f"Created DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
+    
+    # Create specifications for each node
+    script_mapping = {
+        "data_loading": "data_loading_script",
+        "preprocessing": "tabular_preprocessing", 
+        "feature_engineering": "feature_engineering_script",
+        "training": "xgboost_training",
+        "evaluation": "model_evaluation",
+        "registration": "model_registration"
+    }
+    
+    script_specs = {}
+    for node, script_name in script_mapping.items():
+        script_specs[node] = ScriptExecutionSpec.create_default(script_name, node)
+        # Customize paths for data flow
+        if node == "data_loading":
+            script_specs[node].input_paths = {"raw_data": "./data/raw"}
+            script_specs[node].output_paths = {"loaded_data": "./test_output/loaded"}
+        elif node == "preprocessing":
+            script_specs[node].input_paths = {"data_input": "./test_output/loaded"}
+            script_specs[node].output_paths = {"processed_data": "./test_output/processed"}
+        # ... continue for other nodes
+    
+    # Create pipeline specification
+    pipeline_spec = PipelineTestingSpec(
+        dag=dag,
+        script_specs=script_specs,
+        test_workspace_root="./test_workspace"
+    )
+    
+    # Test the complete pipeline
+    tester = RuntimeTester("./test_workspace")
+    results = tester.test_pipeline_flow_with_spec(pipeline_spec)
+    
+    if results["pipeline_success"]:
+        print("✅ Custom pipeline test passed!")
+        if "execution_order" in results:
+            print(f"Execution order: {results['execution_order']}")
+    else:
+        print("❌ Custom pipeline test failed!")
+        for error in results["errors"]:
+            print(f"  - {error}")
+
+# Run custom pipeline testing
+custom_pipeline_testing()
+```
+
+## API Reference Summary
+
+| Method | Purpose | Returns |
+|--------|---------|---------|
+| `test_script_with_spec()` | Test single script with specification | `ScriptTestResult` |
+| `test_data_compatibility_with_specs()` | Test data compatibility with specifications | `DataCompatibilityResult` |
+| `test_pipeline_flow_with_spec()` | Test complete pipeline with specification | `Dict[str, Any]` |
+| `get_path_matches()` | Get logical name matches (if enabled) | `List[PathMatch]` |
+| `generate_matching_report()` | Generate matching report (if enabled) | `Dict[str, Any]` |
+| `validate_pipeline_logical_names()` | Validate pipeline logical names (if enabled) | `Dict[str, Any]` |
+| `_find_script_path()` | Find script file path | `str` |
+| `_find_valid_output_files()` | Find valid output files | `List[Path]` |
+| `_generate_sample_data()` | Generate sample test data | `Dict[str, Any]` |
+| `_detect_file_format()` | Detect file format | `str` |
+
+### Builder Methods Summary
+
+| Method | Purpose | Returns |
+|--------|---------|---------|
+| `build_from_dag()` | Build pipeline spec from DAG | `PipelineTestingSpec` |
+| `save_script_spec()` | Save specification to file | `None` |
+| `update_script_spec()` | Update specification fields | `ScriptExecutionSpec` |
+| `list_saved_specs()` | List saved specification names | `List[str]` |
+| `get_script_spec_by_name()` | Get specification by name | `Optional[ScriptExecutionSpec]` |
+| `get_script_main_params()` | Get main function parameters | `Dict[str, Any]` |
+
+### Configuration Options
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `test_individual_scripts` | True | Test scripts individually first |
+| `test_data_compatibility` | True | Test data compatibility between scripts |
+| `test_pipeline_flow` | True | Test complete pipeline flow |
+| `use_workspace_aware` | False | Use workspace-aware project structure |
+| `enable_logical_matching` | True | Enable enhanced logical name matching |
+| `semantic_threshold` | 0.7 | Threshold for semantic matching confidence |
+
+## Performance Considerations
+
+### Optimizing Test Execution
+
+```python
+def optimized_testing_configuration():
+    """Configure runtime tester for optimal performance."""
+    
+    # Use efficient configuration
+    config = RuntimeTestingConfiguration(
+        pipeline_spec=None,  # Set when available
+        test_individual_scripts=True,  # Essential for debugging
+        test_data_compatibility=True,  # Important for data flow
+        test_pipeline_flow=False,  # Skip for individual script testing
+        use_workspace_aware=False  # Simpler for testing
+    )
+    
+    # Initialize with optimized settings
+    tester = RuntimeTester(config, enable_logical_matching=False)  # Disable for speed
+    
+    return tester
+
+# Use optimized configuration for large-scale testing
+optimized_tester = optimized_testing_configuration()
+```
+
+### Memory Management
+
+```python
+def memory_efficient_testing():
+    """Memory-efficient testing for large pipelines."""
+    
+    tester = RuntimeTester("./test_workspace")
+    builder = PipelineTestingSpecBuilder("./test_workspace")
+    
+    # Test scripts in batches to manage memory
+    script_names = ["script1", "script2", "script3", "script4", "script5"]
+    batch_size = 2
+    
+    for i in range(0, len(script_names), batch_size):
+        batch = script_names[i:i+batch_size]
+        print(f"Testing batch: {batch}")
+        
+        for script_name in batch:
+            try:
+                spec = ScriptExecutionSpec.create_default(script_name, script_name)
+                main_params = builder.get_script_main_params(spec)
+                result = tester.test_script_with_spec(spec, main_params)
+                
+                print(f"{'✅' if result.success else '❌'} {script_name}")
+                
+            except Exception as e:
+                print(f"❌ {script_name}: {e}")
+        
+        # Optional: cleanup between batches
+        import gc
+        gc.collect()
+
+# Run memory-efficient testing
+memory_efficient_testing()
+```
+
+## Integration Examples
+
+### CI/CD Integration
 
 ```python
 def ci_cd_runtime_validation():
@@ -1171,19 +1037,7 @@ def ci_cd_runtime_validation():
     
     import sys
     import json
-    from pathlib import Path
-    
-    # CI/CD configuration
-    config = RuntimeTestingConfiguration(
-        workspace_dir="./ci_workspace",
-        timeout_seconds=300,
-        enable_logging=True,
-        log_level="INFO",
-        cleanup_after_test=True,
-        preserve_outputs=False
-    )
-    
-    tester = RuntimeTester(config)
+    from datetime import datetime
     
     # Critical scripts that must pass
     critical_scripts = [
@@ -1192,7 +1046,8 @@ def ci_cd_runtime_validation():
         "model_evaluation"
     ]
     
-    print("🔍 CI/CD Runtime Validation")
+    tester = RuntimeTester("./ci_workspace")
+    builder = PipelineTestingSpecBuilder("./ci_workspace")
     
     results = {
         'timestamp': datetime.now().isoformat(),
@@ -1205,10 +1060,11 @@ def ci_cd_runtime_validation():
     
     # Test critical scripts
     for script_name in critical_scripts:
-        print(f"\n🔍 Testing {script_name}...")
-        
         try:
-            result = tester.test_script(script_name)
+            spec = ScriptExecutionSpec.create_default(script_name, script_name)
+            main_params = builder.get_script_main_params(spec)
+            result = tester.test_script_with_spec(spec, main_params)
+            
             results['script_results'][script_name] = {
                 'success': result.success,
                 'execution_time': result.execution_time,
@@ -1217,14 +1073,11 @@ def ci_cd_runtime_validation():
             }
             
             if result.success:
-                print(f"  ✅ PASS ({result.execution_time:.3f}s)")
                 results['successful_scripts'] += 1
             else:
-                print(f"  ❌ FAIL: {result.error_message}")
                 results['failed_scripts'].append(script_name)
                 
         except Exception as e:
-            print(f"  ❌ EXCEPTION: {e}")
             results['failed_scripts'].append(script_name)
             results['script_results'][script_name] = {
                 'success': False,
@@ -1242,26 +1095,11 @@ def ci_cd_runtime_validation():
         exit_code = 1
     
     # Save results for CI/CD artifacts
-    results_file = Path("ci_runtime_validation_results.json")
-    with open(results_file, 'w') as f:
+    with open("runtime_validation_results.json", 'w') as f:
         json.dump(results, f, indent=2)
     
-    # Print summary for CI/CD logs
-    print(f"\n{'='*50}")
-    print(f"CI/CD RUNTIME VALIDATION RESULTS")
-    print(f"{'='*50}")
-    print(f"Overall Status: {results['overall_status']}")
-    print(f"Scripts Tested: {results['total_scripts']}")
-    print(f"Scripts Passed: {results['successful_scripts']}")
-    print(f"Scripts Failed: {len(results['failed_scripts'])}")
-    
-    if results['failed_scripts']:
-        print(f"\nFailed Scripts:")
-        for script in results['failed_scripts']:
-            error_msg = results['script_results'][script]['error_message']
-            print(f"  ❌ {script}: {error_msg}")
-    
-    print(f"\nResults saved to: {results_file}")
+    print(f"CI/CD Runtime Validation: {results['overall_status']}")
+    print(f"Scripts passed: {results['successful_scripts']}/{results['total_scripts']}")
     
     return exit_code
 
@@ -1271,123 +1109,67 @@ if __name__ == "__main__":
     sys.exit(exit_code)
 ```
 
-## Performance Considerations
-
-### Optimizing Test Execution
+### Testing Framework Integration
 
 ```python
-def optimized_runtime_testing():
-    """Optimized runtime testing for large codebases."""
-    
-    # Use faster configuration for bulk testing
-    config = RuntimeTestingConfiguration(
-        workspace_dir="./fast_workspace",
-        timeout_seconds=120,  # Shorter timeout
-        enable_logging=False,  # Disable verbose logging
-        cleanup_after_test=True,
-        preserve_outputs=False
-    )
-    
-    tester = RuntimeTester(config)
-    
-    # Parallel testing approach (conceptual - actual implementation would use threading/multiprocessing)
-    scripts_to_test = [
-        "script_a", "script_b", "script_c", "script_d", "script_e"
-    ]
-    
-    print(f"⚡ Optimized testing of {len(scripts_to_test)} scripts")
-    
-    # Test in batches for better resource management
-    batch_size = 3
-    batches = [scripts_to_test[i:i+batch_size] for i in range(0, len(scripts_to_test), batch_size)]
-    
-    all_results = {}
-    
-    for batch_num, batch in enumerate(batches, 1):
-        print(f"\n📦 Processing batch {batch_num}/{len(batches)}: {batch}")
-        
-        batch_results = {}
-        for script_name in batch:
-            try:
-                result = tester.test_script(script_name)
-                batch_results[script_name] = result
-                
-                status = "✅" if result.success else "❌"
-                print(f"  {status} {script_name}")
-                
-            except Exception as e:
-                print(f"  ❌ {script_name}: {e}")
-                batch_results[script_name] = None
-        
-        all_results.update(batch_results)
-        
-        # Brief batch summary
-        successful = sum(1 for result in batch_results.values() if result and result.success)
-        print(f"  Batch {batch_num} summary: {successful}/{len(batch)} passed")
-    
-    # Final summary
-    total_successful = sum(1 for result in all_results.values() if result and result.success)
-    total_scripts = len(all_results)
-    
-    print(f"\n⚡ Optimized Testing Complete:")
-    print(f"Total scripts: {total_scripts}")
-    print(f"Successful: {total_successful}")
-    print(f"Success rate: {total_successful/total_scripts*100:.1f}%")
-    
-    return all_results
+import unittest
+from cursus.validation.runtime import RuntimeTester, ScriptExecutionSpec, PipelineTestingSpecBuilder
 
-# Run optimized testing
-optimized_results = optimized_runtime_testing()
+class TestScriptRuntime(unittest.TestCase):
+    """Unit tests for script runtime validation."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.tester = RuntimeTester("./test_workspace")
+        self.builder = PipelineTestingSpecBuilder("./test_workspace")
+    
+    def test_preprocessing_script(self):
+        """Test preprocessing script execution."""
+        spec = ScriptExecutionSpec.create_default("tabular_preprocessing", "preprocessing")
+        main_params = self.builder.get_script_main_params(spec)
+        
+        result = self.tester.test_script_with_spec(spec, main_params)
+        
+        self.assertTrue(result.success, f"Preprocessing script failed: {result.error_message}")
+        self.assertTrue(result.has_main_function, "Preprocessing script missing main function")
+        self.assertGreater(result.execution_time, 0, "Execution time should be positive")
+    
+    def test_training_script(self):
+        """Test training script execution."""
+        spec = ScriptExecutionSpec.create_default("xgboost_training", "training")
+        main_params = self.builder.get_script_main_params(spec)
+        
+        result = self.tester.test_script_with_spec(spec, main_params)
+        
+        self.assertTrue(result.success, f"Training script failed: {result.error_message}")
+        self.assertTrue(result.has_main_function, "Training script missing main function")
+    
+    def test_data_compatibility(self):
+        """Test data compatibility between preprocessing and training."""
+        spec_a = ScriptExecutionSpec.create_default("tabular_preprocessing", "preprocessing")
+        spec_b = ScriptExecutionSpec.create_default("xgboost_training", "training")
+        
+        # Ensure output of A feeds into input of B
+        spec_b.input_paths = {"data_input": spec_a.output_paths["data_output"]}
+        
+        compat_result = self.tester.test_data_compatibility_with_specs(spec_a, spec_b)
+        
+        self.assertTrue(compat_result.compatible, 
+                       f"Scripts not compatible: {compat_result.compatibility_issues}")
+
+if __name__ == '__main__':
+    unittest.main()
 ```
-
-## API Reference Summary
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `test_script()` | Test single script functionality | `ScriptTestResult` |
-| `test_script_with_spec()` | Test script with custom specification | `ScriptTestResult` |
-| `test_data_compatibility()` | Test data compatibility between scripts | `DataCompatibilityResult` |
-| `test_data_compatibility_with_specs()` | Test compatibility with custom specs | `DataCompatibilityResult` |
-| `test_pipeline_flow()` | Test complete pipeline flow | `Dict[str, Any]` |
-| `test_pipeline_flow_with_spec()` | Test pipeline with custom specification | `Dict[str, Any]` |
-| `_generate_sample_data()` | Generate sample test data | `Dict[str, Any]` |
-| `_find_script_path()` | Find script file path | `str` |
-| `_setup_test_environment()` | Setup test environment | `Dict[str, Any]` |
-| `_cleanup_test_environment()` | Cleanup test environment | `None` |
-
-### CLI Commands Summary
-
-| Command | Purpose | Example |
-|---------|---------|---------|
-| `cursus runtime test-script` | Test single script | `cursus runtime test-script tabular_preprocessing` |
-| `cursus runtime test-compatibility` | Test script compatibility | `cursus runtime test-compatibility script_a script_b` |
-| `cursus runtime test-pipeline` | Test pipeline flow | `cursus runtime test-pipeline pipeline_config.json` |
-
-### Configuration Options
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `workspace_dir` | Required | Directory for test execution |
-| `timeout_seconds` | 300 | Script execution timeout |
-| `enable_logging` | True | Enable logging output |
-| `log_level` | "INFO" | Logging verbosity level |
-| `cleanup_after_test` | True | Clean up test files after execution |
-| `preserve_outputs` | False | Keep script outputs for inspection |
 
 ## References and Design Documents
 
 For deeper technical understanding of the Script Runtime Tester implementation and design decisions, refer to these key documents:
 
 ### Implementation Plans
-- **[Pipeline Runtime Testing Script Refactoring Plan](../../2_project_planning/2025-09-06_pipeline_runtime_testing_script_refactoring_plan.md)** - Complete implementation plan and progress tracking for the runtime testing system refactoring. Documents the modular architecture design, dual constructor support, and comprehensive testing approach that resulted in 50+ passing tests.
+- **[Pipeline Runtime Testing Simplified Design](../../1_design/pipeline_runtime_testing_simplified_design.md)** - Core design document outlining the simplified architecture for pipeline runtime testing. Covers the RuntimeTester class design, ScriptExecutionSpec models, PipelineTestingSpecBuilder patterns, and the overall testing framework architecture.
 
 ### Design Documentation
 - **[Pipeline Runtime Testing Simplified Design](../../1_design/pipeline_runtime_testing_simplified_design.md)** - Core design document outlining the simplified architecture for pipeline runtime testing. Covers the RuntimeTester class design, ScriptExecutionSpec models, PipelineTestingSpecBuilder patterns, and the overall testing framework architecture.
-
-### Related Design Documents
-- **[Pipeline Runtime Core Engine Design](../../1_design/pipeline_runtime_core_engine_design.md)** - Foundational design for the pipeline runtime execution engine
-- **[Pipeline Runtime API Design](../../1_design/pipeline_runtime_api_design.md)** - API design patterns and interfaces for runtime operations
-- **[Pipeline Runtime CLI Examples](../../1_design/pipeline_runtime_cli_examples.md)** - Command-line interface design and usage examples
 
 These documents provide comprehensive context for:
 - **Architecture Decisions**: Why the modular design was chosen and how components interact
@@ -1395,4 +1177,16 @@ These documents provide comprehensive context for:
 - **Design Evolution**: How the runtime testing system evolved from initial concepts to final implementation
 - **Testing Strategy**: Comprehensive approach to validation that ensures reliability and maintainability
 
-For additional examples and practical usage patterns, see the [Script Runtime Tester Quick Start Guide](script_runtime_tester_quick_start.md).
+For practical usage examples and step-by-step tutorials, see the [Script Runtime Tester Quick Start Guide](script_runtime_tester_quick_start.md).
+
+## Summary
+
+The Script Runtime Tester API provides comprehensive validation of pipeline scripts through actual execution. The modern approach uses:
+
+- **ScriptExecutionSpec** for precise control over individual script testing
+- **PipelineTestingSpec** for complete pipeline validation with DAG integration
+- **PipelineTestingSpecBuilder** for specification management and parameter extraction
+- **Enhanced logical name matching** for intelligent data compatibility testing
+- **Comprehensive error handling** for robust testing workflows
+
+This API enables reliable pipeline development by validating that scripts work correctly in real execution scenarios, ensuring data compatibility between pipeline steps, and providing detailed feedback for debugging and optimization.
