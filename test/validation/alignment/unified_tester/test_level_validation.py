@@ -226,7 +226,7 @@ class TestLevelValidation:
             tester._run_level1_validation(["test_script"])
             
             # Should be able to export to JSON without errors
-            json_output = tester.export_report(format='json')
+            json_output = tester.export_report(format='json', generate_chart=False)
             parsed_json = json.loads(json_output)
             
             assert isinstance(parsed_json, dict)

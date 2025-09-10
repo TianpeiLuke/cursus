@@ -113,12 +113,13 @@ class TestContractDiscoveryEngine:
         with patch.object(engine, '_load_contract_for_entry_point') as mock_load:
             mock_load.side_effect = [
                 {'entry_point': 'data_preprocessing.py'},
-                {'entry_point': 'model_training.py'},
-                {'entry_point': 'nonexistent_script.py'}
+                {'entry_point': 'model_evaluation.py'},
+                {'entry_point': 'model_training.py'}
             ]
             
             contracts = engine.discover_contracts_with_scripts()
             
+            # The method returns contracts in sorted order that have matching scripts
             expected = ["data_preprocessing", "model_training"]
             assert contracts == expected
     

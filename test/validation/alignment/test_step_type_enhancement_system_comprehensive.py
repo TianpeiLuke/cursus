@@ -11,15 +11,6 @@ import os
 # Add the project root to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-# Import all test modules
-from .test_framework_patterns import TestFrameworkPatterns
-from .test_step_type_enhancement_router import TestStepTypeEnhancementRouter
-from .step_type_enhancers.test_base_enhancer import (
-    TestBaseStepEnhancer, 
-    TestBaseStepEnhancerEdgeCases
-)
-from .step_type_enhancers.test_training_enhancer import TestTrainingStepEnhancer
-
 class TestStepTypeEnhancementSystemComprehensive:
     """Comprehensive integration tests for the step type enhancement system."""
 

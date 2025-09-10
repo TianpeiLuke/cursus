@@ -200,22 +200,22 @@ class SageMakerPropertyPathValidator:
         total_outputs = len(specification.get('outputs', []))
         outputs_with_paths = len([out for out in specification.get('outputs', []) if out.get('property_path')])
         
-        if total_outputs > 0:
-            issues.append({
-                'severity': 'INFO',
-                'category': 'property_path_validation_summary',
-                'message': f'Property path validation completed for {contract_name}',
-                'details': {
-                    'contract': contract_name,
-                    'step_type': resolved_step_type,
-                    'node_type': node_type,
-                    'total_outputs': total_outputs,
-                    'outputs_with_property_paths': outputs_with_paths,
-                    'validation_reference': self.documentation_url,
-                    'documentation_version': self.documentation_version
-                },
-                'recommendation': f'Validated {outputs_with_paths}/{total_outputs} outputs with property paths against SageMaker documentation'
-            })
+        # Always add summary, even when there are no outputs
+        issues.append({
+            'severity': 'INFO',
+            'category': 'property_path_validation_summary',
+            'message': f'Property path validation completed for {contract_name}',
+            'details': {
+                'contract': contract_name,
+                'step_type': resolved_step_type,
+                'node_type': node_type,
+                'total_outputs': total_outputs,
+                'outputs_with_property_paths': outputs_with_paths,
+                'validation_reference': self.documentation_url,
+                'documentation_version': self.documentation_version
+            },
+            'recommendation': f'Validated {outputs_with_paths}/{total_outputs} outputs with property paths against SageMaker documentation'
+        })
         
         return issues
     

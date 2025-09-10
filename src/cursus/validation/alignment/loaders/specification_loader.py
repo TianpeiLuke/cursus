@@ -389,7 +389,14 @@ class SpecificationLoader:
         # We need to check the original specification file for this.
         
         # For now, use a naming convention approach as the primary method
-        spec_step_type = spec_dict.get('step_type', '').lower()
+        spec_step_type = spec_dict.get('step_type', '')
+        
+        # Return False for empty, None, or missing step_type
+        if not spec_step_type:
+            return False
+            
+        spec_step_type = spec_step_type.lower()
+            
         contract_base = contract_name.lower().replace('_contract', '')
         
         # Check if the step type matches the contract name

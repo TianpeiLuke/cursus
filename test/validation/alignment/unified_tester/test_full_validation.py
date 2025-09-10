@@ -219,7 +219,7 @@ class TestFullValidation:
         test_result = ValidationResult(test_name="test", passed=True)
         self.tester.report.add_level1_result("test", test_result)
         
-        json_output = self.tester.export_report(format='json')
+        json_output = self.tester.export_report(format='json', generate_chart=False)
         
         assert isinstance(json_output, str)
         assert '"test"' in json_output  # Should contain test name
@@ -241,7 +241,7 @@ class TestFullValidation:
         with patch.object(self.tester.report, 'export_to_html') as mock_html:
             mock_html.return_value = "<html>Test Report</html>"
             
-            html_output = self.tester.export_report(format='html')
+            html_output = self.tester.export_report(format='html', generate_chart=False)
             
             assert isinstance(html_output, str)
             assert '<html>' in html_output
@@ -401,7 +401,7 @@ class TestFullValidation:
         self.tester.report.add_level1_result("complex_test", test_result)
         
         # This should not raise a JSON serialization error
-        json_output = self.tester.export_report(format='json')
+        json_output = self.tester.export_report(format='json', generate_chart=False)
         
         # Verify it's valid JSON
         parsed_json = json.loads(json_output)
@@ -443,7 +443,7 @@ class TestFullValidation:
             self.tester._run_level4_validation(["test_script"])
             
             # Should be able to serialize without errors
-            json_output = self.tester.export_report(format='json')
+            json_output = self.tester.export_report(format='json', generate_chart=False)
             parsed_json = json.loads(json_output)
             
             assert isinstance(parsed_json, dict)
@@ -559,7 +559,7 @@ class TestFullValidation:
             assert report.summary is not None
             
             # Verify JSON export works
-            json_output = self.tester.export_report(format='json')
+            json_output = self.tester.export_report(format='json', generate_chart=False)
             parsed_json = json.loads(json_output)
             assert isinstance(parsed_json, dict)
             

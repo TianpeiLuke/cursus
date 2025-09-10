@@ -55,6 +55,7 @@ class FlexibleFileResolver:
         
         # Define patterns for each component type
         patterns = {
+            'scripts': r'^(.+)\.py$',
             'contracts': r'^(.+)_contract\.py$',
             'specs': r'^(.+)_spec\.py$',
             'builders': r'^builder_(.+)_step\.py$',
@@ -94,23 +95,38 @@ class FlexibleFileResolver:
         if not available_files:
             return None
         
-        # Strategy 1: Exact match
+        # Strategy 1: Exact match (case-sensitive)
         if script_name in available_files:
             return str(self.base_dirs[component_type] / available_files[script_name])
         
-        # Strategy 2: Normalized matching
+        # Strategy 2: Case-insensitive exact match
+        script_lower = script_name.lower()
+        for base_name, filename in available_files.items():
+            if base_name.lower() == script_lower:
+                return str(self.base_dirs[component_type] / filename)
+        
+        # Strategy 3: Normalized matching
         normalized_script = self._normalize_name(script_name)
         for base_name, filename in available_files.items():
             if self._normalize_name(base_name) == normalized_script:
                 return str(self.base_dirs[component_type] / filename)
         
-        # Strategy 3: Fuzzy matching
+        # Strategy 4: Partial matching (contains)
+        for base_name, filename in available_files.items():
+            if script_lower in base_name.lower() or base_name.lower() in script_lower:
+                return str(self.base_dirs[component_type] / filename)
+        
+        # Strategy 5: Fuzzy matching with lower threshold for better matching
         best_match = None
         best_score = 0.0
         
         for base_name, filename in available_files.items():
-            score = self._calculate_similarity(script_name, base_name)
-            if score > 0.8 and score > best_score:  # 80% similarity threshold
+            # Try both directions for similarity
+            score1 = self._calculate_similarity(script_name.lower(), base_name.lower())
+            score2 = self._calculate_similarity(normalized_script, self._normalize_name(base_name))
+            score = max(score1, score2)
+            
+            if score > 0.6 and score > best_score:  # Lower threshold for better matching
                 best_score = score
                 best_match = str(self.base_dirs[component_type] / filename)
         
@@ -136,9 +152,17 @@ class FlexibleFileResolver:
         # Convert to lowercase
         normalized = name.lower()
         
-        # Convert dashes and dots to underscores
+        # Convert dashes to underscores
         normalized = normalized.replace('-', '_')
-        normalized = normalized.replace('.', '_')
+        # Replace dots with underscores, but preserve .py extension
+        if normalized.endswith('.py'):
+            # Remove .py, replace dots, then add .py back
+            base_name = normalized[:-3]  # Remove .py
+            base_name = base_name.replace('.', '_')
+            normalized = base_name + '.py'
+        else:
+            # No .py extension, replace all dots
+            normalized = normalized.replace('.', '_')
         
         # Handle common word variations
         variations = {

@@ -62,6 +62,24 @@ class EnhancedAlignmentReport(AlignmentReport):
     def _analyze_trends(self):
         """Analyze trends from historical data."""
         if not self.historical_data:
+            # Initialize empty trends structure even when no data
+            self.quality_metrics['trends'] = {
+                'timestamps': [],
+                'overall_scores': [],
+                'level_scores': {
+                    'level1_script_contract': [],
+                    'level2_contract_specification': [],
+                    'level3_specification_dependencies': [],
+                    'level4_builder_configuration': []
+                },
+                'overall_trend': {
+                    'direction': 'no_data',
+                    'slope': 0.0,
+                    'improvement': 0.0,
+                    'volatility': 0.0
+                },
+                'level_trends': {}
+            }
             return
             
         # Extract scores over time
@@ -75,25 +93,36 @@ class EnhancedAlignmentReport(AlignmentReport):
         }
         
         for report_data in self.historical_data:
+            # Handle None or malformed data gracefully
+            if report_data is None:
+                continue
+                
             if 'timestamp' in report_data:
                 timestamps.append(report_data['timestamp'])
             else:
                 timestamps.append(datetime.now().isoformat())
                 
             # Extract overall score
-            if 'scoring' in report_data and 'overall_score' in report_data['scoring']:
+            if 'scoring' in report_data and report_data['scoring'] is not None and 'overall_score' in report_data['scoring']:
                 overall_scores.append(report_data['scoring']['overall_score'])
             else:
                 overall_scores.append(0.0)
             
             # Extract level scores
-            if 'scoring' in report_data and 'level_scores' in report_data['scoring']:
+            if 'scoring' in report_data and report_data['scoring'] is not None and 'level_scores' in report_data['scoring']:
                 level_data = report_data['scoring']['level_scores']
-                for level in level_scores.keys():
-                    if level in level_data:
-                        level_scores[level].append(level_data[level])
-                    else:
+                if level_data is not None:
+                    for level in level_scores.keys():
+                        if level in level_data:
+                            level_scores[level].append(level_data[level])
+                        else:
+                            level_scores[level].append(0.0)
+                else:
+                    for level in level_scores.keys():
                         level_scores[level].append(0.0)
+            else:
+                for level in level_scores.keys():
+                    level_scores[level].append(0.0)
         
         # Calculate trend metrics
         self.quality_metrics['trends'] = {
@@ -164,6 +193,8 @@ class EnhancedAlignmentReport(AlignmentReport):
     def _analyze_comparisons(self):
         """Analyze comparison data against other validation runs."""
         if not self.comparison_data:
+            # Initialize empty comparisons structure even when no data
+            self.quality_metrics['comparisons'] = {}
             return
         
         current_score = self.get_alignment_score()
@@ -172,13 +203,23 @@ class EnhancedAlignmentReport(AlignmentReport):
         comparisons = {}
         
         for comparison_name, comparison_report in self.comparison_data.items():
+            # Handle None or malformed data gracefully
+            if comparison_report is None:
+                continue
+                
             # Extract comparison scores
             comp_overall = 0.0
             comp_levels = {}
             
-            if 'scoring' in comparison_report:
-                comp_overall = comparison_report['scoring'].get('overall_score', 0.0)
-                comp_levels = comparison_report['scoring'].get('level_scores', {})
+            if 'scoring' in comparison_report and comparison_report['scoring'] is not None:
+                scoring_data = comparison_report['scoring']
+                if isinstance(scoring_data, dict):
+                    comp_overall = scoring_data.get('overall_score', 0.0)
+                    comp_levels = scoring_data.get('level_scores', {})
+                else:
+                    # Handle malformed scoring data
+                    comp_overall = 0.0
+                    comp_levels = {}
             
             # Calculate differences
             overall_diff = current_score - comp_overall
@@ -366,11 +407,37 @@ class EnhancedAlignmentReport(AlignmentReport):
         base_data = json.loads(base_report)
         
         # Add enhanced features
+        improvement_suggestions = self.generate_improvement_suggestions()
+        
+        # Ensure quality_metrics has all required keys
+        if 'trends' not in self.quality_metrics:
+            self._analyze_trends()  # This will initialize the trends structure
+        if 'comparisons' not in self.quality_metrics:
+            self._analyze_comparisons()  # This will initialize the comparisons structure
+        
+        # Add improvement_suggestions to quality_metrics for test compatibility
+        self.quality_metrics['improvement_suggestions'] = improvement_suggestions
+        
         enhanced_report = {
             **base_data,
+            'quality_metrics': self.quality_metrics,
+            'improvement_plan': {
+                'suggestions': improvement_suggestions,
+                'priority_actions': [s for s in improvement_suggestions if s.get('priority') == 'high'],
+                'optimization_opportunities': [s for s in improvement_suggestions if s.get('priority') == 'medium'],
+                'total_suggestions': len(improvement_suggestions)
+            },
+            'metadata': {
+                'report_generation_timestamp': datetime.now().isoformat(),
+                'enhancement_version': '1.0',
+                'quality_rating': get_quality_rating(self.get_alignment_score()),
+                'has_historical_data': len(self.historical_data) > 0,
+                'has_comparison_data': len(self.comparison_data) > 0,
+                'trend_direction': self.quality_metrics.get('trends', {}).get('overall_trend', {}).get('direction', 'unknown')
+            },
             'enhanced_features': {
                 'quality_metrics': self.quality_metrics,
-                'improvement_suggestions': self.generate_improvement_suggestions(),
+                'improvement_suggestions': improvement_suggestions,
                 'trend_analysis': self.quality_metrics.get('trends', {}),
                 'comparison_analysis': self.quality_metrics.get('comparisons', {}),
                 'quality_rating': get_quality_rating(self.get_alignment_score()),

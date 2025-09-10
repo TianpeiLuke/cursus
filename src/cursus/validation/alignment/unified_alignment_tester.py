@@ -470,18 +470,18 @@ class UnifiedAlignmentTester:
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             print(f"📄 Report exported to: {output_path}")
-            
-            # Generate alignment score chart if requested
-            if generate_chart:
-                try:
-                    output_dir = str(Path(output_path).parent)
-                    chart_path = self.report.get_scorer().generate_chart(script_name, output_dir)
-                    if chart_path:
-                        print(f"📊 Alignment score chart generated: {chart_path}")
-                    else:
-                        print("⚠️  Chart generation skipped (matplotlib not available)")
-                except Exception as e:
-                    print(f"⚠️  Chart generation failed: {e}")
+        
+        # Generate alignment score chart if requested (regardless of output_path)
+        if generate_chart:
+            try:
+                output_dir = str(Path(output_path).parent) if output_path else "."
+                chart_path = self.report.get_scorer().generate_chart(script_name, output_dir)
+                if chart_path:
+                    print(f"📊 Alignment score chart generated: {chart_path}")
+                else:
+                    print("⚠️  Chart generation skipped (matplotlib not available)")
+            except Exception as e:
+                print(f"⚠️  Chart generation failed: {e}")
         
         return content
     

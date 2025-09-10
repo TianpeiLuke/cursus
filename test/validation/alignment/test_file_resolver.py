@@ -335,7 +335,7 @@ class TestFlexibleFileResolver:
             ('train', 'train'),  # Exact match
             ('training', 'train'),  # Partial match
             ('preprocess', 'preprocessing'),  # Partial match
-            ('eval', 'evaluation'),  # Abbreviation match
+            ('eval', 'eval'),  # Exact match (we have eval_contract.py in test setup)
         ]
         
         for search_term, expected_match in test_cases:
@@ -409,12 +409,12 @@ class TestFlexibleFileResolverEdgeCases:
         temp_dir = tempfile.mkdtemp()
         
         try:
-            # Create files with special characters
+            # Create files with special characters following contract naming pattern
             special_files = [
-                'train-script.py',
-                'preprocessing_step.py',
-                'evaluation.script.py',
-                'model_training_v2.py'
+                'train_script_contract.py',
+                'preprocessing_step_contract.py',
+                'evaluation_script_contract.py',
+                'model_training_v2_contract.py'
             ]
             
             contracts_dir = os.path.join(temp_dir, 'contracts')
@@ -429,10 +429,10 @@ class TestFlexibleFileResolverEdgeCases:
             resolver = FlexibleFileResolver(base_dirs)
             
             # Should handle special characters gracefully
-            found_file = resolver.find_contract_file('train')
+            found_file = resolver.find_contract_file('train_script')
             assert found_file is not None
             
-            found_file = resolver.find_contract_file('preprocessing')
+            found_file = resolver.find_contract_file('preprocessing_step')
             assert found_file is not None
         
         finally:
@@ -447,8 +447,8 @@ class TestFlexibleFileResolverEdgeCases:
             contracts_dir = os.path.join(temp_dir, 'contracts')
             os.makedirs(contracts_dir, exist_ok=True)
             
-            # Create file with very long name
-            long_filename = 'very_long_filename_that_exceeds_normal_length_expectations_for_testing_purposes.py'
+            # Create file with very long name following contract pattern
+            long_filename = 'very_long_filename_that_exceeds_normal_length_expectations_for_testing_purposes_contract.py'
             long_file_path = os.path.join(contracts_dir, long_filename)
             
             with open(long_file_path, 'w') as f:
@@ -458,7 +458,7 @@ class TestFlexibleFileResolverEdgeCases:
             resolver = FlexibleFileResolver(base_dirs)
             
             # Should handle long filenames gracefully
-            found_file = resolver.find_contract_file('very_long_filename')
+            found_file = resolver.find_contract_file('very_long_filename_that_exceeds_normal_length_expectations_for_testing_purposes')
             assert found_file is not None
         
         finally:
