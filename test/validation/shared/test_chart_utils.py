@@ -145,7 +145,7 @@ class TestQualityRating:
         assert rating == "Poor"
 
 
-class TestScoreBarChart(unittest.TestCase):
+class TestScoreBarChart:
     """Test score bar chart creation functionality."""
     
     def test_create_score_bar_chart_no_matplotlib(self):
@@ -157,7 +157,7 @@ class TestScoreBarChart(unittest.TestCase):
                     scores=[80.0, 90.0],
                     title="Test Chart"
                 )
-                self.assertIsNone(result)
+                assert result is None
     
     @patch('matplotlib.pyplot')
     def test_create_score_bar_chart_basic(self, mock_plt):
@@ -183,7 +183,7 @@ class TestScoreBarChart(unittest.TestCase):
         mock_plt.ylim.assert_called_with(0, 105)
         mock_plt.show.assert_called_once()
         
-        self.assertIsNone(result)  # No output path specified
+        assert result is None  # No output path specified
     
     @patch('matplotlib.pyplot')
     @patch('cursus.validation.shared.chart_utils.Path')
@@ -213,7 +213,7 @@ class TestScoreBarChart(unittest.TestCase):
         mock_plt.savefig.assert_called_once()
         mock_plt.close.assert_called_once()
         
-        self.assertEqual(result, output_path)
+        assert result == output_path
     
     @patch('matplotlib.pyplot')
     def test_create_score_bar_chart_with_overall_score(self, mock_plt):
@@ -262,11 +262,11 @@ class TestScoreBarChart(unittest.TestCase):
                 title="Test Chart"
             )
             
-            self.assertIsNone(result)
+            assert result is None
             mock_print.assert_called_with("Could not generate chart: Test error")
 
 
-class TestComparisonChart(unittest.TestCase):
+class TestComparisonChart:
     """Test comparison chart creation functionality."""
     
     @patch('matplotlib.pyplot')
@@ -294,13 +294,13 @@ class TestComparisonChart(unittest.TestCase):
         
         # Verify matplotlib calls
         mock_plt.figure.assert_called_once()
-        self.assertEqual(mock_plt.bar.call_count, 2)  # Two series
+        assert mock_plt.bar.call_count == 2  # Two series
         mock_plt.title.assert_called_with("Comparison Chart")
         mock_plt.ylabel.assert_called_with("Score (%)")
         mock_plt.xlabel.assert_called_with("Categories")
         mock_plt.legend.assert_called_once()
         
-        self.assertIsNone(result)  # No output path specified
+        assert result is None  # No output path specified
     
     def test_create_comparison_chart_no_matplotlib(self):
         """Test comparison chart creation when matplotlib is not available."""
@@ -310,10 +310,10 @@ class TestComparisonChart(unittest.TestCase):
                 series_data={"Series1": [80.0]},
                 title="Test Chart"
             )
-            self.assertIsNone(result)
+            assert result is None
 
 
-class TestTrendChart(unittest.TestCase):
+class TestTrendChart:
     """Test trend chart creation functionality."""
     
     @patch('matplotlib.pyplot')
@@ -336,7 +336,7 @@ class TestTrendChart(unittest.TestCase):
         mock_plt.ylabel.assert_called_with("Performance")
         mock_plt.ylim.assert_called_with(0, 105)
         
-        self.assertIsNone(result)  # No output path specified
+        assert result is None  # No output path specified
     
     def test_create_trend_chart_no_matplotlib(self):
         """Test trend chart creation when matplotlib is not available."""
@@ -346,10 +346,10 @@ class TestTrendChart(unittest.TestCase):
                 y_values=[70.0, 80.0, 90.0],
                 title="Test Chart"
             )
-            self.assertIsNone(result)
+            assert result is None
 
 
-class TestQualityDistributionChart(unittest.TestCase):
+class TestQualityDistributionChart:
     """Test quality distribution chart creation functionality."""
     
     @patch('matplotlib.pyplot')
@@ -382,7 +382,7 @@ class TestQualityDistributionChart(unittest.TestCase):
         for patch in mock_patches:
             patch.set_facecolor.assert_called_once()
         
-        self.assertIsNone(result)  # No output path specified
+        assert result is None  # No output path specified
     
     def test_create_quality_distribution_chart_no_matplotlib(self):
         """Test quality distribution chart when matplotlib is not available."""
@@ -391,47 +391,47 @@ class TestQualityDistributionChart(unittest.TestCase):
                 scores=[70.0, 80.0, 90.0],
                 title="Test Chart"
             )
-            self.assertIsNone(result)
+            assert result is None
 
 
-class TestChartConfiguration(unittest.TestCase):
+class TestChartConfiguration:
     """Test chart configuration functionality."""
     
     def test_default_chart_config_structure(self):
         """Test that default chart config has expected structure."""
-        self.assertIn("figure_size", DEFAULT_CHART_CONFIG)
-        self.assertIn("colors", DEFAULT_CHART_CONFIG)
-        self.assertIn("grid_style", DEFAULT_CHART_CONFIG)
-        self.assertIn("dpi", DEFAULT_CHART_CONFIG)
-        self.assertIn("bbox_inches", DEFAULT_CHART_CONFIG)
+        assert "figure_size" in DEFAULT_CHART_CONFIG
+        assert "colors" in DEFAULT_CHART_CONFIG
+        assert "grid_style" in DEFAULT_CHART_CONFIG
+        assert "dpi" in DEFAULT_CHART_CONFIG
+        assert "bbox_inches" in DEFAULT_CHART_CONFIG
         
         # Test colors
         colors = DEFAULT_CHART_CONFIG["colors"]
         expected_colors = ["excellent", "good", "satisfactory", "needs_work", "poor"]
         for color_key in expected_colors:
-            self.assertIn(color_key, colors)
-            self.assertIsInstance(colors[color_key], str)
-            self.assertTrue(colors[color_key].startswith("#"))
+            assert color_key in colors
+            assert isinstance(colors[color_key], str)
+            assert colors[color_key].startswith("#")
     
     def test_quality_thresholds_structure(self):
         """Test that quality thresholds are properly structured."""
-        self.assertIsInstance(QUALITY_THRESHOLDS, dict)
-        self.assertEqual(len(QUALITY_THRESHOLDS), 5)
+        assert isinstance(QUALITY_THRESHOLDS, dict)
+        assert len(QUALITY_THRESHOLDS) == 5
         
         # Test threshold values
         expected_thresholds = [90, 80, 70, 60, 0]
         for threshold in expected_thresholds:
-            self.assertIn(threshold, QUALITY_THRESHOLDS)
+            assert threshold in QUALITY_THRESHOLDS
         
         # Test threshold mappings
-        self.assertEqual(QUALITY_THRESHOLDS[90], "excellent")
-        self.assertEqual(QUALITY_THRESHOLDS[80], "good")
-        self.assertEqual(QUALITY_THRESHOLDS[70], "satisfactory")
-        self.assertEqual(QUALITY_THRESHOLDS[60], "needs_work")
-        self.assertEqual(QUALITY_THRESHOLDS[0], "poor")
+        assert QUALITY_THRESHOLDS[90] == "excellent"
+        assert QUALITY_THRESHOLDS[80] == "good"
+        assert QUALITY_THRESHOLDS[70] == "satisfactory"
+        assert QUALITY_THRESHOLDS[60] == "needs_work"
+        assert QUALITY_THRESHOLDS[0] == "poor"
 
 
-class TestEdgeCasesAndErrorHandling(unittest.TestCase):
+class TestEdgeCasesAndErrorHandling:
     """Test edge cases and error handling."""
     
     def test_empty_data_handling(self):
@@ -465,13 +465,13 @@ class TestEdgeCasesAndErrorHandling(unittest.TestCase):
         """Test handling of invalid score values."""
         # Test with None values
         color = get_quality_color(None)
-        self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["poor"])
+        assert color == DEFAULT_CHART_CONFIG["colors"]["poor"]
         
         # Test with string values (should handle gracefully)
         try:
             color = get_quality_color("invalid")
             # If it doesn't crash, it should return poor color
-            self.assertEqual(color, DEFAULT_CHART_CONFIG["colors"]["poor"])
+            assert color == DEFAULT_CHART_CONFIG["colors"]["poor"]
         except (TypeError, ValueError):
             # It's also acceptable to raise an exception
             pass
@@ -488,7 +488,7 @@ class TestEdgeCasesAndErrorHandling(unittest.TestCase):
                     output_path=None
                 )
                 
-                self.assertIsNone(result)
+                assert result is None
                 mock_path.assert_not_called()
                 mock_plt.show.assert_called_once()
     
@@ -503,13 +503,13 @@ class TestEdgeCasesAndErrorHandling(unittest.TestCase):
         
         # Should handle missing colors gracefully
         color = get_quality_color(95.0, partial_config)
-        self.assertEqual(color, "#custom_green")
+        assert color == "#custom_green"
         
         # For missing color, should fall back to default or handle gracefully
         color = get_quality_color(50.0, partial_config)
         # Should either use default poor color or custom poor color if available
-        self.assertIn(color, [DEFAULT_CHART_CONFIG["colors"]["poor"], partial_config.get("colors", {}).get("poor", DEFAULT_CHART_CONFIG["colors"]["poor"])])
+        assert color in [DEFAULT_CHART_CONFIG["colors"]["poor"], partial_config.get("colors", {}).get("poor", DEFAULT_CHART_CONFIG["colors"]["poor"])]
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

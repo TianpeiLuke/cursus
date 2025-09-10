@@ -5,7 +5,7 @@ This module contains integration tests that test the complete validation
 workflow and integration with real step builders from the codebase.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock
 from typing import List, Dict, Any
 
@@ -95,10 +95,11 @@ class MockBadStepBuilder:
     def create_step(self):  # Missing **kwargs
         return Mock()
 
-class TestInterfaceValidatorIntegration(unittest.TestCase):
+class TestInterfaceValidatorIntegration:
     """Integration tests for Interface Standard Validator."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.validator = InterfaceStandardValidator()
     
@@ -116,7 +117,7 @@ class TestInterfaceValidatorIntegration(unittest.TestCase):
             ]
         ]
         
-        self.assertEqual(len(critical_violations), 0)
+        assert len(critical_violations) == 0
     
     def test_complete_validation_bad_builder(self):
         """Test complete validation workflow with bad builder."""
@@ -126,16 +127,16 @@ class TestInterfaceValidatorIntegration(unittest.TestCase):
         violation_types = set(v.violation_type for v in violations)
         
         # Should include inheritance violations
-        self.assertIn("inheritance_missing", violation_types)
+        assert "inheritance_missing" in violation_types
         
         # Should include method violations
-        self.assertIn("method_missing", violation_types)
+        assert "method_missing" in violation_types
         
         # Should include documentation violations
         # Note: The current implementation may not generate class_documentation violations
         # but should have other documentation violations
         doc_violations = [vtype for vtype in violation_types if "documentation" in vtype]
-        self.assertGreater(len(doc_violations), 0)
+        assert len(doc_violations) > 0
     
     def test_validation_with_real_step_builder(self):
         """Test validation with a real step builder from the codebase."""
@@ -159,11 +160,10 @@ class TestInterfaceValidatorIntegration(unittest.TestCase):
                     print(f"  - {violation}")
             
             # Real builders should not have critical interface violations
-            self.assertEqual(len(critical_violations), 0, 
-                           f"Real builder has critical violations: {critical_violations}")
+            assert len(critical_violations) == 0, f"Real builder has critical violations: {critical_violations}"
             
         except ImportError:
-            self.skipTest("DummyTrainingStepBuilder not available for testing")
+            pytest.skip("DummyTrainingStepBuilder not available for testing")
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

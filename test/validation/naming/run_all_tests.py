@@ -9,83 +9,55 @@ import sys
 import os
 from pathlib import Path
 
-# Import conftest to trigger path setup
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-import conftest
-
-import unittest
-import importlib
+import pytest
 
 def run_all_validation_tests():
     """Run all validation test modules."""
     
-    # List of test modules to run (using relative imports from current directory)
+    # List of test files to run
     current_dir = Path(__file__).parent
     test_files = [
-        'test_naming_violation',
-        'test_validator_basic',
-        'test_canonical_step_name_validation',
-        'test_config_class_name_validation',
-        'test_builder_class_name_validation',
-        'test_logical_name_validation',
-        'test_file_naming_validation',
-        'test_class_validation',
-        'test_registry_validation'
+        'test_naming_violation.py',
+        'test_validator_basic.py',
+        'test_canonical_step_name_validation.py',
+        'test_config_class_name_validation.py',
+        'test_builder_class_name_validation.py',
+        'test_logical_name_validation.py',
+        'test_file_naming_validation.py',
+        'test_class_validation.py',
+        'test_registry_validation.py'
     ]
     
-    # Add current directory to path for relative imports
-    current_dir_str = str(current_dir.resolve())
-    if current_dir_str not in sys.path:
-        sys.path.insert(0, current_dir_str)
+    # Build list of test file paths
+    test_paths = []
+    for test_file in test_files:
+        test_path = current_dir / test_file
+        if test_path.exists():
+            test_paths.append(str(test_path))
+        else:
+            print(f"  ⚠️  Test file not found: {test_file}")
     
-    test_modules = test_files
+    print(f"🔍 Running {len(test_paths)} validation test files...")
     
-    # Create a test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    
-    print("🔍 Loading validation test modules...")
-    
-    # Load tests from each module
-    for module_name in test_modules:
-        try:
-            module = importlib.import_module(module_name)
-            module_suite = loader.loadTestsFromModule(module)
-            suite.addTest(module_suite)
-            print(f"  ✅ Loaded {module_name}")
-        except ImportError as e:
-            print(f"  ❌ Failed to load {module_name}: {e}")
+    # Run pytest with verbose output and summary
+    args = [
+        '-v',  # verbose
+        '--tb=short',  # short traceback format
+        '--durations=10',  # show 10 slowest tests
+        '--color=yes',  # colored output
+    ] + test_paths
     
     # Run the tests
     print("\n🚀 Running validation tests...")
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
+    exit_code = pytest.main(args)
     
-    # Print summary
-    print(f"\n📊 Test Summary:")
-    print(f"  Tests run: {result.testsRun}")
-    print(f"  Failures: {len(result.failures)}")
-    print(f"  Errors: {len(result.errors)}")
-    print(f"  Skipped: {len(result.skipped) if hasattr(result, 'skipped') else 0}")
-    
-    if result.failures:
-        print(f"\n❌ Failures:")
-        for test, traceback in result.failures:
-            print(f"  - {test}: {traceback}")
-    
-    if result.errors:
-        print(f"\n💥 Errors:")
-        for test, traceback in result.errors:
-            print(f"  - {test}: {traceback}")
-    
-    # Return success status
-    success = len(result.failures) == 0 and len(result.errors) == 0
-    if success:
+    # Print final status
+    if exit_code == 0:
         print(f"\n✅ All tests passed!")
     else:
         print(f"\n❌ Some tests failed!")
     
-    return success
+    return exit_code == 0
 
 if __name__ == '__main__':
     success = run_all_validation_tests()

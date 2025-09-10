@@ -2,13 +2,13 @@
 Test suite for AlignmentIssue model.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.alignment.alignment_utils import (
     AlignmentIssue, SeverityLevel, AlignmentLevel
 )
 
-class TestAlignmentIssue(unittest.TestCase):
+class TestAlignmentIssue:
     """Test AlignmentIssue model."""
     
     def test_alignment_issue_creation(self):
@@ -20,12 +20,12 @@ class TestAlignmentIssue(unittest.TestCase):
             details={"key": "value"}
         )
         
-        self.assertEqual(issue.level, SeverityLevel.ERROR)
-        self.assertEqual(issue.category, "test_category")
-        self.assertEqual(issue.message, "Test issue")
-        self.assertEqual(issue.details, {"key": "value"})
-        self.assertIsNone(issue.recommendation)
-        self.assertIsNone(issue.alignment_level)
+        assert issue.level == SeverityLevel.ERROR
+        assert issue.category == "test_category"
+        assert issue.message == "Test issue"
+        assert issue.details == {"key": "value"}
+        assert issue.recommendation is None
+        assert issue.alignment_level is None
     
     def test_alignment_issue_with_recommendation(self):
         """Test AlignmentIssue creation with recommendation."""
@@ -37,9 +37,9 @@ class TestAlignmentIssue(unittest.TestCase):
             recommendation="Use environment variables instead"
         )
         
-        self.assertEqual(issue.recommendation, "Use environment variables instead")
-        self.assertEqual(issue.details["path"], "/opt/ml/input")
-        self.assertEqual(issue.details["line"], 42)
+        assert issue.recommendation == "Use environment variables instead"
+        assert issue.details["path"] == "/opt/ml/input"
+        assert issue.details["line"] == 42
     
     def test_alignment_issue_with_alignment_level(self):
         """Test AlignmentIssue creation with alignment level."""
@@ -51,8 +51,8 @@ class TestAlignmentIssue(unittest.TestCase):
             alignment_level=AlignmentLevel.SCRIPT_CONTRACT
         )
         
-        self.assertEqual(issue.alignment_level, AlignmentLevel.SCRIPT_CONTRACT)
-        self.assertEqual(issue.level, SeverityLevel.CRITICAL)
+        assert issue.alignment_level == AlignmentLevel.SCRIPT_CONTRACT
+        assert issue.level == SeverityLevel.CRITICAL
     
     def test_alignment_issue_defaults(self):
         """Test AlignmentIssue default values."""
@@ -62,9 +62,9 @@ class TestAlignmentIssue(unittest.TestCase):
             message="Info message"
         )
         
-        self.assertEqual(issue.details, {})
-        self.assertIsNone(issue.recommendation)
-        self.assertIsNone(issue.alignment_level)
+        assert issue.details == {}
+        assert issue.recommendation is None
+        assert issue.alignment_level is None
     
     def test_alignment_issue_string_representation(self):
         """Test AlignmentIssue string representation."""
@@ -76,13 +76,13 @@ class TestAlignmentIssue(unittest.TestCase):
         )
         
         str_repr = str(issue)
-        self.assertIn("level=<SeverityLevel.ERROR: 'ERROR'>", str_repr)
-        self.assertIn("Test error message", str_repr)
+        assert "level=<SeverityLevel.ERROR: 'ERROR'>" in str_repr
+        assert "Test error message" in str_repr
     
     def test_alignment_issue_validation(self):
         """Test AlignmentIssue validation with invalid data."""
         # Test with invalid severity level
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             AlignmentIssue(
                 level="INVALID",  # Should be SeverityLevel enum
                 category="test",
@@ -102,12 +102,12 @@ class TestAlignmentIssue(unittest.TestCase):
         
         issue_dict = issue.model_dump()
         
-        self.assertEqual(issue_dict["level"], SeverityLevel.WARNING)
-        self.assertEqual(issue_dict["category"], "test_category")
-        self.assertEqual(issue_dict["message"], "Test message")
-        self.assertEqual(issue_dict["details"], {"key": "value"})
-        self.assertEqual(issue_dict["recommendation"], "Fix this")
-        self.assertEqual(issue_dict["alignment_level"], AlignmentLevel.SCRIPT_CONTRACT)
+        assert issue_dict["level"] == SeverityLevel.WARNING
+        assert issue_dict["category"] == "test_category"
+        assert issue_dict["message"] == "Test message"
+        assert issue_dict["details"] == {"key": "value"}
+        assert issue_dict["recommendation"] == "Fix this"
+        assert issue_dict["alignment_level"] == AlignmentLevel.SCRIPT_CONTRACT
     
     def test_alignment_issue_json_serialization(self):
         """Test AlignmentIssue JSON serialization."""
@@ -118,10 +118,10 @@ class TestAlignmentIssue(unittest.TestCase):
         )
         
         json_str = issue.model_dump_json()
-        self.assertIsInstance(json_str, str)
-        self.assertIn("ERROR", json_str)
-        self.assertIn("test", json_str)
-        self.assertIn("Test message", json_str)
+        assert isinstance(json_str, str)
+        assert "ERROR" in json_str
+        assert "test" in json_str
+        assert "Test message" in json_str
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])
