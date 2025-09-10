@@ -18,6 +18,7 @@ from .runtime_models import (
 )
 from .runtime_spec_builder import PipelineTestingSpecBuilder
 from .workspace_aware_spec_builder import WorkspaceAwarePipelineTestingSpecBuilder
+from .contract_discovery import ContractDiscoveryManager, ContractDiscoveryResult
 
 # Enhanced logical name matching components
 from .logical_name_matching import (
@@ -38,6 +39,8 @@ __all__ = [
     'DataCompatibilityResult',
     'PipelineTestingSpecBuilder',
     'WorkspaceAwarePipelineTestingSpecBuilder',
+    'ContractDiscoveryManager',
+    'ContractDiscoveryResult',
     # Enhanced logical name matching exports
     'PathSpec',
     'PathMatch',

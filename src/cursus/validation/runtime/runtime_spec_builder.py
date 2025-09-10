@@ -14,6 +14,7 @@ from difflib import SequenceMatcher
 
 from ...api.dag.base_dag import PipelineDAG
 from .runtime_models import ScriptExecutionSpec, PipelineTestingSpec
+from .contract_discovery import ContractDiscoveryManager
 
 try:
     from ...registry.step_names import get_step_name_from_spec_type
@@ -43,6 +44,9 @@ class PipelineTestingSpecBuilder:
         self.test_data_dir = Path(test_data_dir)
         self.specs_dir = self.test_data_dir / ".specs"      # ScriptExecutionSpec storage
         self.scripts_dir = self.test_data_dir / "scripts"   # Test script files
+        
+        # Initialize contract discovery manager
+        self.contract_manager = ContractDiscoveryManager(str(self.test_data_dir))
         
         # Ensure directories exist
         self.specs_dir.mkdir(parents=True, exist_ok=True)
@@ -386,13 +390,13 @@ class PipelineTestingSpecBuilder:
                 test_workspace_root=str(self.test_data_dir)
             )
             
-            # Update with intelligent script path
+            # Update with intelligent script path and contract-aware defaults
             spec_dict = spec.model_dump()
             spec_dict['script_path'] = str(script_path)
-            spec_dict['input_paths'] = self._get_default_input_paths(script_name)
-            spec_dict['output_paths'] = self._get_default_output_paths(script_name)
-            spec_dict['environ_vars'] = self._get_default_environ_vars()
-            spec_dict['job_args'] = self._get_default_job_args(script_name)
+            spec_dict['input_paths'] = self._get_contract_aware_input_paths(script_name, canonical_name)
+            spec_dict['output_paths'] = self._get_contract_aware_output_paths(script_name, canonical_name)
+            spec_dict['environ_vars'] = self._get_contract_aware_environ_vars(script_name, canonical_name)
+            spec_dict['job_args'] = self._get_contract_aware_job_args(script_name, canonical_name)
             
             enhanced_spec = ScriptExecutionSpec(**spec_dict)
             
@@ -608,29 +612,129 @@ if __name__ == "__main__":
         except OSError as e:
             raise FileNotFoundError(f"Cannot create placeholder script '{placeholder_path}': {str(e)}")
     
+    # Contract-aware methods that replace generic defaults
+    
+    def _get_contract_aware_input_paths(self, script_name: str, canonical_name: Optional[str] = None) -> Dict[str, str]:
+        """
+        Get input paths using contract discovery with fallback to generic defaults.
+        
+        Args:
+            script_name: snake_case script name
+            canonical_name: PascalCase canonical name (optional)
+            
+        Returns:
+            Dictionary of logical_name -> local_path mappings
+        """
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(script_name, canonical_name)
+        
+        if contract_result.contract is not None:
+            print(f"Using contract '{contract_result.contract_name}' for input paths (method: {contract_result.discovery_method})")
+            contract_paths = self.contract_manager.get_contract_input_paths(contract_result.contract, script_name)
+            if contract_paths:
+                return contract_paths
+        
+        # Fallback to generic defaults
+        print(f"No contract found for '{script_name}', using generic input paths")
+        return self._get_default_input_paths(script_name)
+    
+    def _get_contract_aware_output_paths(self, script_name: str, canonical_name: Optional[str] = None) -> Dict[str, str]:
+        """
+        Get output paths using contract discovery with fallback to generic defaults.
+        
+        Args:
+            script_name: snake_case script name
+            canonical_name: PascalCase canonical name (optional)
+            
+        Returns:
+            Dictionary of logical_name -> local_path mappings
+        """
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(script_name, canonical_name)
+        
+        if contract_result.contract is not None:
+            print(f"Using contract '{contract_result.contract_name}' for output paths (method: {contract_result.discovery_method})")
+            contract_paths = self.contract_manager.get_contract_output_paths(contract_result.contract, script_name)
+            if contract_paths:
+                return contract_paths
+        
+        # Fallback to generic defaults
+        print(f"No contract found for '{script_name}', using generic output paths")
+        return self._get_default_output_paths(script_name)
+    
+    def _get_contract_aware_environ_vars(self, script_name: str, canonical_name: Optional[str] = None) -> Dict[str, str]:
+        """
+        Get environment variables using contract discovery with fallback to generic defaults.
+        
+        Args:
+            script_name: snake_case script name
+            canonical_name: PascalCase canonical name (optional)
+            
+        Returns:
+            Dictionary of environment variable mappings
+        """
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(script_name, canonical_name)
+        
+        if contract_result.contract is not None:
+            print(f"Using contract '{contract_result.contract_name}' for environment variables (method: {contract_result.discovery_method})")
+            contract_env_vars = self.contract_manager.get_contract_environ_vars(contract_result.contract)
+            if contract_env_vars:
+                return contract_env_vars
+        
+        # Fallback to generic defaults
+        print(f"No contract found for '{script_name}', using generic environment variables")
+        return self._get_default_environ_vars()
+    
+    def _get_contract_aware_job_args(self, script_name: str, canonical_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get job arguments using contract discovery with fallback to generic defaults.
+        
+        Args:
+            script_name: snake_case script name
+            canonical_name: PascalCase canonical name (optional)
+            
+        Returns:
+            Dictionary of job argument mappings
+        """
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(script_name, canonical_name)
+        
+        if contract_result.contract is not None:
+            print(f"Using contract '{contract_result.contract_name}' for job arguments (method: {contract_result.discovery_method})")
+            contract_job_args = self.contract_manager.get_contract_job_args(contract_result.contract, script_name)
+            if contract_job_args:
+                return contract_job_args
+        
+        # Fallback to generic defaults
+        print(f"No contract found for '{script_name}', using generic job arguments")
+        return self._get_default_job_args(script_name)
+    
+    # Generic fallback methods (kept for backward compatibility and fallback)
+    
     def _get_default_input_paths(self, script_name: str) -> Dict[str, str]:
-        """Get default input paths for a script."""
+        """Get default input paths for a script (fallback method)."""
         return {
             "data_input": str(self.test_data_dir / "input" / "raw_data"),
             "config": str(self.test_data_dir / "input" / "config" / f"{script_name}_config.json")
         }
     
     def _get_default_output_paths(self, script_name: str) -> Dict[str, str]:
-        """Get default output paths for a script."""
+        """Get default output paths for a script (fallback method)."""
         return {
             "data_output": str(self.test_data_dir / "output" / f"{script_name}_output"),
             "metrics": str(self.test_data_dir / "output" / f"{script_name}_metrics")
         }
     
     def _get_default_environ_vars(self) -> Dict[str, str]:
-        """Get default environment variables."""
+        """Get default environment variables (fallback method)."""
         return {
             "PYTHONPATH": str(Path("src").resolve()),
             "CURSUS_ENV": "testing"
         }
     
     def _get_default_job_args(self, script_name: str) -> Dict[str, Any]:
-        """Get default job arguments for a script."""
+        """Get default job arguments for a script (fallback method)."""
         return {
             "script_name": script_name,
             "execution_mode": "testing",
