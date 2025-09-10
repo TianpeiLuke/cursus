@@ -1,19 +1,20 @@
 """
-Unit tests for file naming validation.
+Pytest tests for file naming validation.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
-class TestFileNamingValidation(unittest.TestCase):
+class TestFileNamingValidation:
     """Test file naming validation."""
     
-    def setUp(self):
+    @pytest.fixture
+    def validator(self):
         """Set up test fixtures."""
-        self.validator = NamingStandardValidator()
+        return NamingStandardValidator()
     
-    def test_valid_builder_file_names(self):
+    def test_valid_builder_file_names(self, validator):
         """Test valid builder file names."""
         valid_names = [
             "builder_xgboost_training_step.py",
@@ -22,11 +23,10 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in valid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "builder")
-                self.assertEqual(len(violations), 0, f"Valid builder file '{filename}' should not have violations")
+            violations = validator.validate_file_naming(filename, "builder")
+            assert len(violations) == 0, f"Valid builder file '{filename}' should not have violations"
     
-    def test_valid_config_file_names(self):
+    def test_valid_config_file_names(self, validator):
         """Test valid config file names."""
         valid_names = [
             "config_xgboost_training_step.py",
@@ -35,11 +35,10 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in valid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "config")
-                self.assertEqual(len(violations), 0, f"Valid config file '{filename}' should not have violations")
+            violations = validator.validate_file_naming(filename, "config")
+            assert len(violations) == 0, f"Valid config file '{filename}' should not have violations"
     
-    def test_valid_spec_file_names(self):
+    def test_valid_spec_file_names(self, validator):
         """Test valid spec file names."""
         valid_names = [
             "xgboost_training_spec.py",
@@ -48,11 +47,10 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in valid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "spec")
-                self.assertEqual(len(violations), 0, f"Valid spec file '{filename}' should not have violations")
+            violations = validator.validate_file_naming(filename, "spec")
+            assert len(violations) == 0, f"Valid spec file '{filename}' should not have violations"
     
-    def test_valid_contract_file_names(self):
+    def test_valid_contract_file_names(self, validator):
         """Test valid contract file names."""
         valid_names = [
             "xgboost_training_contract.py",
@@ -61,11 +59,10 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in valid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "contract")
-                self.assertEqual(len(violations), 0, f"Valid contract file '{filename}' should not have violations")
+            violations = validator.validate_file_naming(filename, "contract")
+            assert len(violations) == 0, f"Valid contract file '{filename}' should not have violations"
     
-    def test_invalid_builder_file_names(self):
+    def test_invalid_builder_file_names(self, validator):
         """Test invalid builder file names."""
         invalid_names = [
             "xgboost_training_step.py",  # Missing 'builder_' prefix
@@ -75,11 +72,10 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in invalid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "builder")
-                self.assertGreater(len(violations), 0, f"Invalid builder file '{filename}' should have violations")
+            violations = validator.validate_file_naming(filename, "builder")
+            assert len(violations) > 0, f"Invalid builder file '{filename}' should have violations"
     
-    def test_invalid_config_file_names(self):
+    def test_invalid_config_file_names(self, validator):
         """Test invalid config file names."""
         invalid_names = [
             "xgboost_training_step.py",  # Missing 'config_' prefix
@@ -89,11 +85,10 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in invalid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "config")
-                self.assertGreater(len(violations), 0, f"Invalid config file '{filename}' should have violations")
+            violations = validator.validate_file_naming(filename, "config")
+            assert len(violations) > 0, f"Invalid config file '{filename}' should have violations"
     
-    def test_invalid_spec_file_names(self):
+    def test_invalid_spec_file_names(self, validator):
         """Test invalid spec file names."""
         invalid_names = [
             "xgboost_training.py",  # Missing '_spec' suffix
@@ -102,11 +97,10 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in invalid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "spec")
-                self.assertGreater(len(violations), 0, f"Invalid spec file '{filename}' should have violations")
+            violations = validator.validate_file_naming(filename, "spec")
+            assert len(violations) > 0, f"Invalid spec file '{filename}' should have violations"
     
-    def test_invalid_contract_file_names(self):
+    def test_invalid_contract_file_names(self, validator):
         """Test invalid contract file names."""
         invalid_names = [
             "xgboost_training.py",  # Missing '_contract' suffix
@@ -115,15 +109,11 @@ class TestFileNamingValidation(unittest.TestCase):
         ]
         
         for filename in invalid_names:
-            with self.subTest(filename=filename):
-                violations = self.validator.validate_file_naming(filename, "contract")
-                self.assertGreater(len(violations), 0, f"Invalid contract file '{filename}' should have violations")
+            violations = validator.validate_file_naming(filename, "contract")
+            assert len(violations) > 0, f"Invalid contract file '{filename}' should have violations"
     
-    def test_unsupported_file_type(self):
+    def test_unsupported_file_type(self, validator):
         """Test validation with unsupported file type."""
-        violations = self.validator.validate_file_naming("test.py", "unsupported")
+        violations = validator.validate_file_naming("test.py", "unsupported")
         # Unsupported file types return no violations (they're just ignored)
-        self.assertEqual(len(violations), 0)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert len(violations) == 0

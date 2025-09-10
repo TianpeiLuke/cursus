@@ -1,15 +1,15 @@
 """
-Tests for InterfaceViolation class.
+Pytest tests for InterfaceViolation class.
 
 This module tests the InterfaceViolation data structure used to represent
 validation violations in the interface standard validator.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.interface.interface_standard_validator import InterfaceViolation
 
-class TestInterfaceViolation(unittest.TestCase):
+class TestInterfaceViolation:
     """Tests for InterfaceViolation class."""
     
     def test_violation_creation(self):
@@ -23,12 +23,12 @@ class TestInterfaceViolation(unittest.TestCase):
             suggestions=["suggestion1", "suggestion2"]
         )
         
-        self.assertEqual(violation.component, "TestComponent")
-        self.assertEqual(violation.violation_type, "test_violation")
-        self.assertEqual(violation.message, "Test violation message")
-        self.assertEqual(violation.expected, "expected_value")
-        self.assertEqual(violation.actual, "actual_value")
-        self.assertEqual(violation.suggestions, ["suggestion1", "suggestion2"])
+        assert violation.component == "TestComponent"
+        assert violation.violation_type == "test_violation"
+        assert violation.message == "Test violation message"
+        assert violation.expected == "expected_value"
+        assert violation.actual == "actual_value"
+        assert violation.suggestions == ["suggestion1", "suggestion2"]
     
     def test_violation_str_with_expected_actual(self):
         """Test string representation with expected and actual values."""
@@ -42,10 +42,10 @@ class TestInterfaceViolation(unittest.TestCase):
         )
         
         result = str(violation)
-        self.assertIn("TestComponent: Test message", result)
-        self.assertIn("Expected: expected", result)
-        self.assertIn("Actual: actual", result)
-        self.assertIn("Suggestions: fix it", result)
+        assert "TestComponent: Test message" in result
+        assert "Expected: expected" in result
+        assert "Actual: actual" in result
+        assert "Suggestions: fix it" in result
     
     def test_violation_str_without_expected_actual(self):
         """Test string representation without expected and actual values."""
@@ -56,7 +56,7 @@ class TestInterfaceViolation(unittest.TestCase):
         )
         
         result = str(violation)
-        self.assertEqual(result, "TestComponent: Test message")
+        assert result == "TestComponent: Test message"
     
     def test_violation_default_suggestions(self):
         """Test that suggestions default to empty list."""
@@ -66,7 +66,4 @@ class TestInterfaceViolation(unittest.TestCase):
             message="Test message"
         )
         
-        self.assertEqual(violation.suggestions, [])
-
-if __name__ == '__main__':
-    unittest.main()
+        assert violation.suggestions == []

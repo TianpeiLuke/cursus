@@ -1,19 +1,20 @@
 """
-Unit tests for config class name validation.
+Pytest tests for config class name validation.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.naming.naming_standard_validator import NamingStandardValidator
 
-class TestConfigClassNameValidation(unittest.TestCase):
+class TestConfigClassNameValidation:
     """Test config class name validation."""
     
-    def setUp(self):
+    @pytest.fixture
+    def validator(self):
         """Set up test fixtures."""
-        self.validator = NamingStandardValidator()
+        return NamingStandardValidator()
     
-    def test_valid_config_class_names(self):
+    def test_valid_config_class_names(self, validator):
         """Test valid config class names."""
         valid_names = [
             "XGBoostTrainingConfig",
@@ -24,11 +25,10 @@ class TestConfigClassNameValidation(unittest.TestCase):
         ]
         
         for name in valid_names:
-            with self.subTest(name=name):
-                violations = self.validator._validate_config_class_name(name)
-                self.assertEqual(len(violations), 0, f"Valid config name '{name}' should not have violations")
+            violations = validator._validate_config_class_name(name)
+            assert len(violations) == 0, f"Valid config name '{name}' should not have violations"
     
-    def test_missing_config_suffix(self):
+    def test_missing_config_suffix(self, validator):
         """Test config class names missing 'Config' suffix."""
         invalid_names = [
             "XGBoostTraining",
@@ -37,12 +37,11 @@ class TestConfigClassNameValidation(unittest.TestCase):
         ]
         
         for name in invalid_names:
-            with self.subTest(name=name):
-                violations = self.validator._validate_config_class_name(name)
-                violation_types = [v.violation_type for v in violations]
-                self.assertIn("config_suffix", violation_types)
+            violations = validator._validate_config_class_name(name)
+            violation_types = [v.violation_type for v in violations]
+            assert "config_suffix" in violation_types
     
-    def test_invalid_base_name_pattern(self):
+    def test_invalid_base_name_pattern(self, validator):
         """Test config class names with invalid base name patterns."""
         invalid_names = [
             "snake_caseConfig",
@@ -52,10 +51,6 @@ class TestConfigClassNameValidation(unittest.TestCase):
         ]
         
         for name in invalid_names:
-            with self.subTest(name=name):
-                violations = self.validator._validate_config_class_name(name)
-                violation_types = [v.violation_type for v in violations]
-                self.assertIn("pascal_case", violation_types)
-
-if __name__ == '__main__':
-    unittest.main()
+            violations = validator._validate_config_class_name(name)
+            violation_types = [v.violation_type for v in violations]
+            assert "pascal_case" in violation_types
