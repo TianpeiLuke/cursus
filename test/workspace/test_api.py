@@ -2,77 +2,82 @@
 Tests for workspace API functionality.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
 from cursus.workspace.api import WorkspaceAPI, WorkspaceSetupResult, ValidationReport
 
-class TestWorkspaceAPI(unittest.TestCase):
+
+class TestWorkspaceAPI:
     """Test cases for WorkspaceAPI."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_workspace(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.workspace_path = Path(self.temp_dir)
-        self.api = WorkspaceAPI(base_path=self.workspace_path)
+        temp_dir = tempfile.mkdtemp()
+        workspace_path = Path(temp_dir)
+        yield workspace_path
+        # Cleanup is handled automatically by tempfile
 
-    def test_workspace_api_initialization(self):
+    @pytest.fixture
+    def api(self, temp_workspace):
+        """Create WorkspaceAPI instance."""
+        return WorkspaceAPI(base_path=temp_workspace)
+
+    def test_workspace_api_initialization(self, api, temp_workspace):
         """Test that WorkspaceAPI initializes correctly."""
-        self.assertIsInstance(self.api, WorkspaceAPI)
-        self.assertEqual(self.api.base_path, self.workspace_path)
+        assert isinstance(api, WorkspaceAPI)
+        assert api.base_path == temp_workspace
 
-    def test_setup_developer_workspace(self):
+    def test_setup_developer_workspace(self, api):
         """Test developer workspace setup."""
         # Test basic workspace setup
-        result = self.api.setup_developer_workspace(
+        result = api.setup_developer_workspace(
             developer_id="test_developer",
             template="basic"
         )
-        self.assertIsInstance(result, WorkspaceSetupResult)
-        self.assertIsInstance(result.success, bool)
-        self.assertEqual(result.developer_id, "test_developer")
+        assert isinstance(result, WorkspaceSetupResult)
+        assert isinstance(result.success, bool)
+        assert result.developer_id == "test_developer"
 
-    def test_validate_workspace(self):
+    def test_validate_workspace(self, api, temp_workspace):
         """Test workspace validation."""
         # Test workspace validation
-        report = self.api.validate_workspace(self.workspace_path)
-        self.assertIsInstance(report, ValidationReport)
-        self.assertTrue(hasattr(report, 'status'))
+        report = api.validate_workspace(temp_workspace)
+        assert isinstance(report, ValidationReport)
+        assert hasattr(report, 'status')
 
-    def test_list_workspaces(self):
+    def test_list_workspaces(self, api):
         """Test workspace listing."""
         # Test workspace listing
-        workspaces = self.api.list_workspaces()
-        self.assertIsInstance(workspaces, list)
+        workspaces = api.list_workspaces()
+        assert isinstance(workspaces, list)
 
-    def test_promote_workspace_artifacts(self):
+    def test_promote_workspace_artifacts(self, api, temp_workspace):
         """Test workspace artifact promotion."""
         # Test artifact promotion
-        result = self.api.promote_workspace_artifacts(
-            workspace_path=self.workspace_path,
+        result = api.promote_workspace_artifacts(
+            workspace_path=temp_workspace,
             target_environment="staging"
         )
-        self.assertIsNotNone(result)
+        assert result is not None
 
-    def test_get_system_health(self):
+    def test_get_system_health(self, api):
         """Test system health reporting."""
         # Test system health
         from cursus.workspace.api import HealthReport
-        health = self.api.get_system_health()
-        self.assertIsInstance(health, HealthReport)
-        self.assertTrue(hasattr(health, 'overall_status'))
-        self.assertTrue(hasattr(health, 'workspace_reports'))
+        health = api.get_system_health()
+        assert isinstance(health, HealthReport)
+        assert hasattr(health, 'overall_status')
+        assert hasattr(health, 'workspace_reports')
 
-    def test_cleanup_workspaces(self):
+    def test_cleanup_workspaces(self, api):
         """Test workspace cleanup."""
         # Test workspace cleanup
-        cleanup_result = self.api.cleanup_workspaces(
+        cleanup_result = api.cleanup_workspaces(
             inactive_days=30,
             dry_run=True
         )
-        self.assertIsNotNone(cleanup_result)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert cleanup_result is not None

@@ -2,54 +2,64 @@
 Tests for workspace templates functionality.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
 from cursus.workspace.templates import TemplateManager, WorkspaceTemplate
 
-class TestTemplateManager(unittest.TestCase):
+
+class TestTemplateManager:
     """Test cases for TemplateManager."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_workspace(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.templates_dir = Path(self.temp_dir) / "templates"
-        self.templates_dir.mkdir()
-        self.template_manager = TemplateManager(templates_dir=self.templates_dir)
+        temp_dir = tempfile.mkdtemp()
+        templates_dir = Path(temp_dir) / "templates"
+        templates_dir.mkdir()
+        yield temp_dir, templates_dir
+        # Cleanup is handled automatically by tempfile
 
-    def test_template_manager_initialization(self):
+    @pytest.fixture
+    def template_manager(self, temp_workspace):
+        """Create TemplateManager instance."""
+        temp_dir, templates_dir = temp_workspace
+        return TemplateManager(templates_dir=templates_dir)
+
+    def test_template_manager_initialization(self, template_manager):
         """Test that TemplateManager initializes correctly."""
-        self.assertIsInstance(self.template_manager, TemplateManager)
-        self.assertTrue(hasattr(self.template_manager, 'get_template'))
+        assert isinstance(template_manager, TemplateManager)
+        assert hasattr(template_manager, 'get_template')
 
-    def test_get_template(self):
+    def test_get_template(self, template_manager):
         """Test template retrieval."""
         # Test getting a built-in template
-        template = self.template_manager.get_template("basic")
+        template = template_manager.get_template("basic")
         if template:
-            self.assertIsInstance(template, WorkspaceTemplate)
+            assert isinstance(template, WorkspaceTemplate)
 
-    def test_list_templates(self):
+    def test_list_templates(self, template_manager):
         """Test template listing."""
         # Test listing available templates
-        templates = self.template_manager.list_templates()
-        self.assertIsInstance(templates, list)
+        templates = template_manager.list_templates()
+        assert isinstance(templates, list)
 
-    def test_apply_template(self):
+    def test_apply_template(self, template_manager, temp_workspace):
         """Test template application."""
+        temp_dir, templates_dir = temp_workspace
         # Create a test workspace directory
-        workspace_path = Path(self.temp_dir) / "test_workspace"
+        workspace_path = Path(temp_dir) / "test_workspace"
         workspace_path.mkdir()
         
         # Test applying a template
-        result = self.template_manager.apply_template("basic", workspace_path)
-        self.assertIsInstance(result, bool)
+        result = template_manager.apply_template("basic", workspace_path)
+        assert isinstance(result, bool)
 
-    def test_builtin_templates(self):
+    def test_builtin_templates(self, template_manager):
         """Test that built-in templates are available."""
-        templates = self.template_manager.list_templates()
+        templates = template_manager.list_templates()
         template_names = [t.name for t in templates] if templates else []
         
         # Check for expected built-in templates
@@ -57,10 +67,11 @@ class TestTemplateManager(unittest.TestCase):
         for template_name in expected_templates:
             # Template may or may not exist depending on implementation
             # Just verify the method works
-            template = self.template_manager.get_template(template_name)
+            template = template_manager.get_template(template_name)
             # Template can be None if not implemented yet
 
-class TestWorkspaceTemplate(unittest.TestCase):
+
+class TestWorkspaceTemplate:
     """Test cases for WorkspaceTemplate."""
 
     def test_workspace_template_creation(self):
@@ -72,8 +83,5 @@ class TestWorkspaceTemplate(unittest.TestCase):
             description="Test template",
             type=TemplateType.BASIC
         )
-        self.assertEqual(template.name, "test_template")
-        self.assertEqual(template.description, "Test template")
-
-if __name__ == '__main__':
-    unittest.main()
+        assert template.name == "test_template"
+        assert template.description == "Test template"

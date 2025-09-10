@@ -11,7 +11,7 @@ Tests workspace management functionality including:
 
 import json
 import tempfile
-import unittest
+import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
@@ -22,28 +22,31 @@ from cursus.workspace.validation.workspace_manager import (
     WorkspaceInfo
 )
 
-class TestWorkspaceManager(unittest.TestCase):
+
+class TestWorkspaceManager:
     """Test cases for WorkspaceManager."""
     
-    def setUp(self):
+    @pytest.fixture
+    def temp_workspace(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.workspace_root = Path(self.temp_dir) / "workspaces"
-        self.workspace_root.mkdir(parents=True)
+        temp_dir = tempfile.mkdtemp()
+        workspace_root = Path(temp_dir) / "workspaces"
+        workspace_root.mkdir(parents=True)
         
         # Create test workspace structure
-        self._create_test_workspace_structure()
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
+        self._create_test_workspace_structure(workspace_root)
+        
+        yield temp_dir, workspace_root
+        
+        # Clean up test fixtures
         import shutil
-        shutil.rmtree(self.temp_dir)
+        shutil.rmtree(temp_dir)
     
-    def _create_test_workspace_structure(self):
+    def _create_test_workspace_structure(self, workspace_root):
         """Create test workspace directory structure."""
         # Developer workspaces
         for dev_id in ["developer_1", "developer_2"]:
-            dev_dir = self.workspace_root / "developers" / dev_id / "src" / "cursus_dev" / "steps"
+            dev_dir = workspace_root / "developers" / dev_id / "src" / "cursus_dev" / "steps"
             dev_dir.mkdir(parents=True)
             
             # Create module directories
@@ -56,7 +59,7 @@ class TestWorkspaceManager(unittest.TestCase):
             (dev_dir / "contracts" / f"{dev_id}_contract.py").write_text(f"# {dev_id} contract")
         
         # Shared workspace
-        shared_dir = self.workspace_root / "shared" / "src" / "cursus_dev" / "steps"
+        shared_dir = workspace_root / "shared" / "src" / "cursus_dev" / "steps"
         shared_dir.mkdir(parents=True)
         
         for module_type in ["builders", "contracts", "specs", "scripts", "configs"]:
@@ -67,30 +70,34 @@ class TestWorkspaceManager(unittest.TestCase):
         (shared_dir / "builders" / "shared_builder.py").write_text("# Shared builder")
         (shared_dir / "contracts" / "shared_contract.py").write_text("# Shared contract")
     
-    def test_init_with_workspace_root(self):
+    def test_init_with_workspace_root(self, temp_workspace):
         """Test initialization with workspace root."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             auto_discover=True
         )
         
-        self.assertEqual(manager.workspace_root, self.workspace_root)
-        self.assertIsNotNone(manager.workspace_info)
-        self.assertEqual(manager.workspace_info.total_developers, 2)
+        assert manager.workspace_root == workspace_root
+        assert manager.workspace_info is not None
+        assert manager.workspace_info.total_developers == 2
     
     def test_init_without_workspace_root(self):
         """Test initialization without workspace root."""
         manager = WorkspaceManager(auto_discover=False)
         
-        self.assertIsNone(manager.workspace_root)
-        self.assertIsNone(manager.workspace_info)
+        assert manager.workspace_root is None
+        assert manager.workspace_info is None
     
-    def test_init_with_config_file(self):
+    def test_init_with_config_file(self, temp_workspace):
         """Test initialization with config file."""
+        temp_dir, workspace_root = temp_workspace
+        
         # Create config file
-        config_file = Path(self.temp_dir) / "workspace.json"
+        config_file = Path(temp_dir) / "workspace.json"
         config_data = {
-            "workspace_root": str(self.workspace_root),
+            "workspace_root": str(workspace_root),
             "developer_id": "developer_1",
             "enable_shared_fallback": True,
             "cache_modules": True
@@ -104,86 +111,100 @@ class TestWorkspaceManager(unittest.TestCase):
             auto_discover=False
         )
         
-        self.assertIsNotNone(manager.config)
-        self.assertEqual(manager.config.developer_id, "developer_1")
+        assert manager.config is not None
+        assert manager.config.developer_id == "developer_1"
     
-    def test_discover_workspaces(self):
+    def test_discover_workspaces(self, temp_workspace):
         """Test workspace discovery."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(auto_discover=False)
         
-        workspace_info = manager.discover_workspaces(self.workspace_root)
+        workspace_info = manager.discover_workspaces(workspace_root)
         
-        self.assertEqual(workspace_info.workspace_root, str(self.workspace_root))
-        self.assertTrue(workspace_info.has_shared)
-        self.assertEqual(workspace_info.total_developers, 2)
-        self.assertGreater(workspace_info.total_modules, 0)
+        assert workspace_info.workspace_root == str(workspace_root)
+        assert workspace_info.has_shared
+        assert workspace_info.total_developers == 2
+        assert workspace_info.total_modules > 0
         
         # Check developer info
         dev_ids = [dev.developer_id for dev in workspace_info.developers]
-        self.assertIn("developer_1", dev_ids)
-        self.assertIn("developer_2", dev_ids)
+        assert "developer_1" in dev_ids
+        assert "developer_2" in dev_ids
     
-    def test_discover_workspaces_invalid_root(self):
+    def test_discover_workspaces_invalid_root(self, temp_workspace):
         """Test workspace discovery with invalid root."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(auto_discover=False)
         
-        invalid_root = Path(self.temp_dir) / "nonexistent"
+        invalid_root = Path(temp_dir) / "nonexistent"
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             manager.discover_workspaces(invalid_root)
     
-    def test_discover_developers(self):
+    def test_discover_developers(self, temp_workspace):
         """Test developer workspace discovery."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(auto_discover=False)
-        developers_dir = self.workspace_root / "developers"
+        developers_dir = workspace_root / "developers"
         
         developers = manager._discover_developers(developers_dir)
         
-        self.assertEqual(len(developers), 2)
+        assert len(developers) == 2
         
         dev1 = next(dev for dev in developers if dev.developer_id == "developer_1")
-        self.assertTrue(dev1.has_builders)
-        self.assertTrue(dev1.has_contracts)
-        self.assertGreater(dev1.module_count, 0)
+        assert dev1.has_builders
+        assert dev1.has_contracts
+        assert dev1.module_count > 0
     
-    def test_validate_workspace_structure_valid(self):
+    def test_validate_workspace_structure_valid(self, temp_workspace):
         """Test workspace structure validation with valid structure."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(auto_discover=False)
         
-        is_valid, issues = manager.validate_workspace_structure(self.workspace_root)
+        is_valid, issues = manager.validate_workspace_structure(workspace_root)
         
-        self.assertTrue(is_valid)
-        self.assertEqual(len(issues), 0)
+        assert is_valid
+        assert len(issues) == 0
     
-    def test_validate_workspace_structure_invalid_root(self):
+    def test_validate_workspace_structure_invalid_root(self, temp_workspace):
         """Test workspace structure validation with invalid root."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(auto_discover=False)
         
-        invalid_root = Path(self.temp_dir) / "nonexistent"
+        invalid_root = Path(temp_dir) / "nonexistent"
         is_valid, issues = manager.validate_workspace_structure(invalid_root)
         
-        self.assertFalse(is_valid)
-        self.assertGreater(len(issues), 0)
-        self.assertIn("does not exist", issues[0])
+        assert not is_valid
+        assert len(issues) > 0
+        assert "does not exist" in issues[0]
     
-    def test_validate_workspace_structure_missing_directories(self):
+    def test_validate_workspace_structure_missing_directories(self, temp_workspace):
         """Test workspace structure validation with missing directories."""
+        temp_dir, workspace_root = temp_workspace
+        
         # Create empty workspace root
-        empty_root = Path(self.temp_dir) / "empty_workspace"
+        empty_root = Path(temp_dir) / "empty_workspace"
         empty_root.mkdir()
         
         manager = WorkspaceManager(auto_discover=False)
         
         is_valid, issues = manager.validate_workspace_structure(empty_root)
         
-        self.assertFalse(is_valid)
-        self.assertGreater(len(issues), 0)
-        self.assertIn("developers", issues[0])
+        assert not is_valid
+        assert len(issues) > 0
+        assert "developers" in issues[0]
     
-    def test_validate_workspace_structure_strict(self):
+    def test_validate_workspace_structure_strict(self, temp_workspace):
         """Test strict workspace structure validation."""
+        temp_dir, workspace_root = temp_workspace
+        
         # Create workspace with empty developer directory
-        empty_workspace = Path(self.temp_dir) / "empty_dev_workspace"
+        empty_workspace = Path(temp_dir) / "empty_dev_workspace"
         empty_workspace.mkdir()
         (empty_workspace / "developers").mkdir()
         (empty_workspace / "shared").mkdir()
@@ -192,12 +213,14 @@ class TestWorkspaceManager(unittest.TestCase):
         
         is_valid, issues = manager.validate_workspace_structure(empty_workspace, strict=True)
         
-        self.assertFalse(is_valid)
-        self.assertGreater(len(issues), 0)
+        assert not is_valid
+        assert len(issues) > 0
     
-    def test_create_developer_workspace(self):
+    def test_create_developer_workspace(self, temp_workspace):
         """Test creating new developer workspace."""
-        new_workspace_root = Path(self.temp_dir) / "new_workspaces"
+        temp_dir, workspace_root = temp_workspace
+        
+        new_workspace_root = Path(temp_dir) / "new_workspaces"
         manager = WorkspaceManager(auto_discover=False)
         
         dev_workspace = manager.create_developer_workspace(
@@ -206,30 +229,34 @@ class TestWorkspaceManager(unittest.TestCase):
             create_structure=True
         )
         
-        self.assertTrue(dev_workspace.exists())
+        assert dev_workspace.exists()
         
         # Check structure was created
         cursus_dev_dir = dev_workspace / "src" / "cursus_dev" / "steps"
-        self.assertTrue(cursus_dev_dir.exists())
+        assert cursus_dev_dir.exists()
         
         # Check module directories
         for module_type in ["builders", "contracts", "specs", "scripts", "configs"]:
             module_dir = cursus_dev_dir / module_type
-            self.assertTrue(module_dir.exists())
-            self.assertTrue((module_dir / "__init__.py").exists())
+            assert module_dir.exists()
+            assert (module_dir / "__init__.py").exists()
     
-    def test_create_developer_workspace_existing(self):
+    def test_create_developer_workspace_existing(self, temp_workspace):
         """Test creating developer workspace that already exists."""
-        manager = WorkspaceManager(workspace_root=self.workspace_root, auto_discover=False)
+        temp_dir, workspace_root = temp_workspace
         
-        with self.assertRaises(ValueError) as context:
+        manager = WorkspaceManager(workspace_root=workspace_root, auto_discover=False)
+        
+        with pytest.raises(ValueError) as exc_info:
             manager.create_developer_workspace("developer_1")
         
-        self.assertIn("already exists", str(context.exception))
+        assert "already exists" in str(exc_info.value)
     
-    def test_create_shared_workspace(self):
+    def test_create_shared_workspace(self, temp_workspace):
         """Test creating shared workspace."""
-        new_workspace_root = Path(self.temp_dir) / "new_workspaces"
+        temp_dir, workspace_root = temp_workspace
+        
+        new_workspace_root = Path(temp_dir) / "new_workspaces"
         manager = WorkspaceManager(auto_discover=False)
         
         shared_workspace = manager.create_shared_workspace(
@@ -237,57 +264,63 @@ class TestWorkspaceManager(unittest.TestCase):
             create_structure=True
         )
         
-        self.assertTrue(shared_workspace.exists())
+        assert shared_workspace.exists()
         
         # Check structure was created
         cursus_dev_dir = shared_workspace / "src" / "cursus_dev" / "steps"
-        self.assertTrue(cursus_dev_dir.exists())
+        assert cursus_dev_dir.exists()
         
         # Check module directories
         for module_type in ["builders", "contracts", "specs", "scripts", "configs"]:
             module_dir = cursus_dev_dir / module_type
-            self.assertTrue(module_dir.exists())
-            self.assertTrue((module_dir / "__init__.py").exists())
+            assert module_dir.exists()
+            assert (module_dir / "__init__.py").exists()
     
-    def test_get_file_resolver(self):
+    def test_get_file_resolver(self, temp_workspace):
         """Test getting workspace-aware file resolver."""
-        manager = WorkspaceManager(workspace_root=self.workspace_root, auto_discover=False)
+        temp_dir, workspace_root = temp_workspace
+        
+        manager = WorkspaceManager(workspace_root=workspace_root, auto_discover=False)
         
         resolver = manager.get_file_resolver("developer_1")
         
-        self.assertIsNotNone(resolver)
-        self.assertEqual(resolver.developer_id, "developer_1")
-        self.assertEqual(resolver.workspace_root, self.workspace_root)
+        assert resolver is not None
+        assert resolver.developer_id == "developer_1"
+        assert resolver.workspace_root == workspace_root
     
     def test_get_file_resolver_no_workspace_root(self):
         """Test getting file resolver without workspace root."""
         manager = WorkspaceManager(auto_discover=False)
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             manager.get_file_resolver("developer_1")
     
-    def test_get_module_loader(self):
+    def test_get_module_loader(self, temp_workspace):
         """Test getting workspace-aware module loader."""
-        manager = WorkspaceManager(workspace_root=self.workspace_root, auto_discover=False)
+        temp_dir, workspace_root = temp_workspace
+        
+        manager = WorkspaceManager(workspace_root=workspace_root, auto_discover=False)
         
         loader = manager.get_module_loader("developer_1")
         
-        self.assertIsNotNone(loader)
-        self.assertEqual(loader.developer_id, "developer_1")
-        self.assertEqual(loader.workspace_root, self.workspace_root)
+        assert loader is not None
+        assert loader.developer_id == "developer_1"
+        assert loader.workspace_root == workspace_root
     
     def test_get_module_loader_no_workspace_root(self):
         """Test getting module loader without workspace root."""
         manager = WorkspaceManager(auto_discover=False)
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             manager.get_module_loader("developer_1")
     
-    def test_load_config_json(self):
+    def test_load_config_json(self, temp_workspace):
         """Test loading JSON configuration."""
-        config_file = Path(self.temp_dir) / "workspace.json"
+        temp_dir, workspace_root = temp_workspace
+        
+        config_file = Path(temp_dir) / "workspace.json"
         config_data = {
-            "workspace_root": str(self.workspace_root),
+            "workspace_root": str(workspace_root),
             "developer_id": "developer_1",
             "enable_shared_fallback": True,
             "cache_modules": False,
@@ -300,18 +333,20 @@ class TestWorkspaceManager(unittest.TestCase):
         manager = WorkspaceManager(auto_discover=False)
         config = manager.load_config(config_file)
         
-        self.assertEqual(config.workspace_root, str(self.workspace_root))
-        self.assertEqual(config.developer_id, "developer_1")
-        self.assertTrue(config.enable_shared_fallback)
-        self.assertFalse(config.cache_modules)
-        self.assertEqual(config.validation_settings["strict"], True)
+        assert config.workspace_root == str(workspace_root)
+        assert config.developer_id == "developer_1"
+        assert config.enable_shared_fallback
+        assert not config.cache_modules
+        assert config.validation_settings["strict"]
     
     @patch('yaml.safe_load')
-    def test_load_config_yaml(self, mock_yaml_load):
+    def test_load_config_yaml(self, mock_yaml_load, temp_workspace):
         """Test loading YAML configuration."""
-        config_file = Path(self.temp_dir) / "workspace.yaml"
+        temp_dir, workspace_root = temp_workspace
+        
+        config_file = Path(temp_dir) / "workspace.yaml"
         config_data = {
-            "workspace_root": str(self.workspace_root),
+            "workspace_root": str(workspace_root),
             "developer_id": "developer_1"
         }
         
@@ -323,24 +358,28 @@ class TestWorkspaceManager(unittest.TestCase):
         manager = WorkspaceManager(auto_discover=False)
         config = manager.load_config(config_file)
         
-        self.assertEqual(config.workspace_root, str(self.workspace_root))
-        self.assertEqual(config.developer_id, "developer_1")
+        assert config.workspace_root == str(workspace_root)
+        assert config.developer_id == "developer_1"
         mock_yaml_load.assert_called_once()
     
-    def test_load_config_nonexistent(self):
+    def test_load_config_nonexistent(self, temp_workspace):
         """Test loading non-existent configuration file."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(auto_discover=False)
         
-        nonexistent_file = Path(self.temp_dir) / "nonexistent.json"
+        nonexistent_file = Path(temp_dir) / "nonexistent.json"
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             manager.load_config(nonexistent_file)
     
-    def test_save_config_json(self):
+    def test_save_config_json(self, temp_workspace):
         """Test saving JSON configuration."""
-        config_file = Path(self.temp_dir) / "workspace.json"
+        temp_dir, workspace_root = temp_workspace
+        
+        config_file = Path(temp_dir) / "workspace.json"
         config = WorkspaceConfig(
-            workspace_root=str(self.workspace_root),
+            workspace_root=str(workspace_root),
             developer_id="developer_1",
             enable_shared_fallback=True
         )
@@ -348,22 +387,24 @@ class TestWorkspaceManager(unittest.TestCase):
         manager = WorkspaceManager(auto_discover=False)
         manager.save_config(config_file, config)
         
-        self.assertTrue(config_file.exists())
+        assert config_file.exists()
         
         # Verify saved content
         with open(config_file, 'r') as f:
             saved_data = json.load(f)
         
-        self.assertEqual(saved_data["workspace_root"], str(self.workspace_root))
-        self.assertEqual(saved_data["developer_id"], "developer_1")
-        self.assertTrue(saved_data["enable_shared_fallback"])
+        assert saved_data["workspace_root"] == str(workspace_root)
+        assert saved_data["developer_id"] == "developer_1"
+        assert saved_data["enable_shared_fallback"]
     
     @patch('yaml.safe_dump')
-    def test_save_config_yaml(self, mock_yaml_dump):
+    def test_save_config_yaml(self, mock_yaml_dump, temp_workspace):
         """Test saving YAML configuration."""
-        config_file = Path(self.temp_dir) / "workspace.yaml"
+        temp_dir, workspace_root = temp_workspace
+        
+        config_file = Path(temp_dir) / "workspace.yaml"
         config = WorkspaceConfig(
-            workspace_root=str(self.workspace_root),
+            workspace_root=str(workspace_root),
             developer_id="developer_1"
         )
         
@@ -372,37 +413,41 @@ class TestWorkspaceManager(unittest.TestCase):
         
         mock_yaml_dump.assert_called_once()
     
-    def test_save_config_no_config(self):
+    def test_save_config_no_config(self, temp_workspace):
         """Test saving configuration without config object."""
-        manager = WorkspaceManager(auto_discover=False)
-        config_file = Path(self.temp_dir) / "workspace.json"
+        temp_dir, workspace_root = temp_workspace
         
-        with self.assertRaises(ValueError):
+        manager = WorkspaceManager(auto_discover=False)
+        config_file = Path(temp_dir) / "workspace.json"
+        
+        with pytest.raises(ValueError):
             manager.save_config(config_file)
     
-    def test_get_workspace_summary(self):
+    def test_get_workspace_summary(self, temp_workspace):
         """Test getting workspace summary."""
+        temp_dir, workspace_root = temp_workspace
+        
         manager = WorkspaceManager(
-            workspace_root=self.workspace_root,
+            workspace_root=workspace_root,
             auto_discover=True
         )
         
         summary = manager.get_workspace_summary()
         
-        self.assertEqual(summary["workspace_root"], str(self.workspace_root))
-        self.assertTrue(summary["has_shared"])
-        self.assertEqual(summary["total_developers"], 2)
-        self.assertGreater(summary["total_modules"], 0)
-        self.assertEqual(len(summary["developers"]), 2)
+        assert summary["workspace_root"] == str(workspace_root)
+        assert summary["has_shared"]
+        assert summary["total_developers"] == 2
+        assert summary["total_modules"] > 0
+        assert len(summary["developers"]) == 2
         
         # Check developer summary
         dev1_summary = next(
             dev for dev in summary["developers"] 
             if dev["developer_id"] == "developer_1"
         )
-        self.assertTrue(dev1_summary["has_builders"])
-        self.assertTrue(dev1_summary["has_contracts"])
-        self.assertGreater(dev1_summary["module_count"], 0)
+        assert dev1_summary["has_builders"]
+        assert dev1_summary["has_contracts"]
+        assert dev1_summary["module_count"] > 0
     
     def test_get_workspace_summary_no_workspace(self):
         """Test getting workspace summary without workspace configured."""
@@ -410,7 +455,7 @@ class TestWorkspaceManager(unittest.TestCase):
         
         summary = manager.get_workspace_summary()
         
-        self.assertIn("error", summary)
+        assert "error" in summary
     
     def test_workspace_config_dataclass(self):
         """Test WorkspaceConfig dataclass."""
@@ -419,12 +464,12 @@ class TestWorkspaceManager(unittest.TestCase):
             developer_id="test_dev"
         )
         
-        self.assertEqual(config.workspace_root, "/path/to/workspace")
-        self.assertEqual(config.developer_id, "test_dev")
-        self.assertTrue(config.enable_shared_fallback)
-        self.assertTrue(config.cache_modules)
-        self.assertFalse(config.auto_create_structure)
-        self.assertEqual(config.validation_settings, {})
+        assert config.workspace_root == "/path/to/workspace"
+        assert config.developer_id == "test_dev"
+        assert config.enable_shared_fallback
+        assert config.cache_modules
+        assert not config.auto_create_structure
+        assert config.validation_settings == {}
     
     def test_developer_info_dataclass(self):
         """Test DeveloperInfo dataclass."""
@@ -435,11 +480,11 @@ class TestWorkspaceManager(unittest.TestCase):
             module_count=5
         )
         
-        self.assertEqual(dev_info.developer_id, "test_dev")
-        self.assertEqual(dev_info.workspace_path, "/path/to/dev")
-        self.assertTrue(dev_info.has_builders)
-        self.assertFalse(dev_info.has_contracts)  # Default value
-        self.assertEqual(dev_info.module_count, 5)
+        assert dev_info.developer_id == "test_dev"
+        assert dev_info.workspace_path == "/path/to/dev"
+        assert dev_info.has_builders
+        assert not dev_info.has_contracts  # Default value
+        assert dev_info.module_count == 5
     
     def test_workspace_info_dataclass(self):
         """Test WorkspaceInfo dataclass."""
@@ -449,59 +494,62 @@ class TestWorkspaceManager(unittest.TestCase):
             total_developers=2
         )
         
-        self.assertEqual(workspace_info.workspace_root, "/path/to/workspace")
-        self.assertTrue(workspace_info.has_shared)
-        self.assertEqual(workspace_info.total_developers, 2)
-        self.assertEqual(workspace_info.total_modules, 0)  # Default value
-        self.assertEqual(len(workspace_info.developers), 0)  # Default empty list
+        assert workspace_info.workspace_root == "/path/to/workspace"
+        assert workspace_info.has_shared
+        assert workspace_info.total_developers == 2
+        assert workspace_info.total_modules == 0  # Default value
+        assert len(workspace_info.developers) == 0  # Default empty list
     
-    def test_config_with_default_developer(self):
+    def test_config_with_default_developer(self, temp_workspace):
         """Test using config with default developer for file resolver and module loader."""
+        temp_dir, workspace_root = temp_workspace
+        
         config = WorkspaceConfig(
-            workspace_root=str(self.workspace_root),
+            workspace_root=str(workspace_root),
             developer_id="developer_1"
         )
         
-        manager = WorkspaceManager(workspace_root=self.workspace_root, auto_discover=False)
+        manager = WorkspaceManager(workspace_root=workspace_root, auto_discover=False)
         manager.config = config
         
         # Should use config's developer_id when none specified
         resolver = manager.get_file_resolver()
-        self.assertEqual(resolver.developer_id, "developer_1")
+        assert resolver.developer_id == "developer_1"
         
         loader = manager.get_module_loader()
-        self.assertEqual(loader.developer_id, "developer_1")
+        assert loader.developer_id == "developer_1"
     
-    def test_config_override_developer(self):
+    def test_config_override_developer(self, temp_workspace):
         """Test overriding config's default developer."""
+        temp_dir, workspace_root = temp_workspace
+        
         config = WorkspaceConfig(
-            workspace_root=str(self.workspace_root),
+            workspace_root=str(workspace_root),
             developer_id="developer_1"
         )
         
-        manager = WorkspaceManager(workspace_root=self.workspace_root, auto_discover=False)
+        manager = WorkspaceManager(workspace_root=workspace_root, auto_discover=False)
         manager.config = config
         
         # Should use specified developer_id over config default
         resolver = manager.get_file_resolver("developer_2")
-        self.assertEqual(resolver.developer_id, "developer_2")
+        assert resolver.developer_id == "developer_2"
         
         loader = manager.get_module_loader("developer_2")
-        self.assertEqual(loader.developer_id, "developer_2")
+        assert loader.developer_id == "developer_2"
     
-    def test_workspace_config_detection(self):
+    def test_workspace_config_detection(self, temp_workspace):
         """Test automatic workspace config file detection."""
+        temp_dir, workspace_root = temp_workspace
+        
         # Create workspace config file
-        config_file = self.workspace_root / "workspace.json"
-        config_data = {"workspace_root": str(self.workspace_root)}
+        config_file = workspace_root / "workspace.json"
+        config_data = {"workspace_root": str(workspace_root)}
         
         with open(config_file, 'w') as f:
             json.dump(config_data, f)
         
         manager = WorkspaceManager(auto_discover=False)
-        workspace_info = manager.discover_workspaces(self.workspace_root)
+        workspace_info = manager.discover_workspaces(workspace_root)
         
-        self.assertEqual(workspace_info.config_file, str(config_file))
-
-if __name__ == '__main__':
-    unittest.main()
+        assert workspace_info.config_file == str(config_file)

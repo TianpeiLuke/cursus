@@ -2,7 +2,7 @@
 Tests for workspace utilities functionality.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
@@ -12,78 +12,86 @@ from cursus.workspace.utils import (
     ValidationUtils, TimeUtils, LoggingUtils, WorkspaceUtils
 )
 
-class TestWorkspaceConfig(unittest.TestCase):
+
+class TestWorkspaceConfig:
     """Test cases for WorkspaceConfig."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_dir(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
+        return tempfile.mkdtemp()
 
-    def test_workspace_config_creation(self):
+    def test_workspace_config_creation(self, temp_dir):
         """Test WorkspaceConfig creation."""
-        from pathlib import Path
         config = WorkspaceConfig(
             workspace_id="test_workspace",
-            base_path=Path(self.temp_dir)
+            base_path=Path(temp_dir)
         )
-        self.assertIsInstance(config, WorkspaceConfig)
+        assert isinstance(config, WorkspaceConfig)
 
-class TestPathUtils(unittest.TestCase):
+
+class TestPathUtils:
     """Test cases for PathUtils."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_path(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.test_path = Path(self.temp_dir)
+        temp_dir = tempfile.mkdtemp()
+        return Path(temp_dir)
 
-    def test_path_normalization(self):
+    def test_path_normalization(self, temp_path):
         """Test path normalization."""
         # Test basic path normalization
-        normalized = PathUtils.normalize_workspace_path(self.test_path)
-        self.assertIsInstance(normalized, Path)
+        normalized = PathUtils.normalize_workspace_path(temp_path)
+        assert isinstance(normalized, Path)
 
-    def test_path_safety_checks(self):
+    def test_path_safety_checks(self, temp_path):
         """Test path safety validation."""
         # Test path safety checks
-        is_safe = PathUtils.is_safe_path(self.test_path, self.test_path.parent)
-        self.assertIsInstance(is_safe, bool)
+        is_safe = PathUtils.is_safe_path(temp_path, temp_path.parent)
+        assert isinstance(is_safe, bool)
 
-    def test_directory_operations(self):
+    def test_directory_operations(self, temp_path):
         """Test directory operations."""
         # Test directory creation
-        test_dir = self.test_path / "test_subdir"
+        test_dir = temp_path / "test_subdir"
         result = PathUtils.ensure_directory(test_dir)
-        self.assertIsInstance(result, bool)
+        assert isinstance(result, bool)
 
-class TestConfigUtils(unittest.TestCase):
+
+class TestConfigUtils:
     """Test cases for ConfigUtils."""
 
-    def setUp(self):
+    @pytest.fixture
+    def config_setup(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.config_path = Path(self.temp_dir) / "test_config.yaml"
+        temp_dir = tempfile.mkdtemp()
+        config_path = Path(temp_dir) / "test_config.yaml"
+        return temp_dir, config_path
 
-    def test_config_loading(self):
+    def test_config_loading(self, config_setup):
         """Test configuration loading."""
+        temp_dir, config_path = config_setup
         # Create a test config file
         test_config = {"test_key": "test_value"}
         
         # Test config loading (may not exist yet)
         try:
-            config = ConfigUtils.load_config(self.config_path)
+            config = ConfigUtils.load_config(config_path)
             if config is not None:
-                self.assertIsInstance(config, dict)
+                assert isinstance(config, dict)
         except FileNotFoundError:
             # Expected if file doesn't exist
             pass
 
-    def test_config_saving(self):
+    def test_config_saving(self, config_setup):
         """Test configuration saving."""
+        temp_dir, config_path = config_setup
         test_config = {"test_key": "test_value"}
         
         # Test config saving
-        result = ConfigUtils.save_config(test_config, self.config_path)
-        self.assertIsInstance(result, bool)
+        result = ConfigUtils.save_config(test_config, config_path)
+        assert isinstance(result, bool)
 
     def test_config_merging(self):
         """Test configuration merging."""
@@ -92,44 +100,51 @@ class TestConfigUtils(unittest.TestCase):
         
         # Test config merging
         merged = ConfigUtils.merge_configs(config1, config2)
-        self.assertIsInstance(merged, dict)
-        self.assertIn("key1", merged)
-        self.assertIn("key2", merged)
+        assert isinstance(merged, dict)
+        assert "key1" in merged
+        assert "key2" in merged
 
-class TestFileUtils(unittest.TestCase):
+
+class TestFileUtils:
     """Test cases for FileUtils."""
 
-    def setUp(self):
+    @pytest.fixture
+    def file_setup(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.test_file = Path(self.temp_dir) / "test_file.txt"
+        temp_dir = tempfile.mkdtemp()
+        test_file = Path(temp_dir) / "test_file.txt"
+        return temp_dir, test_file
 
-    def test_file_operations(self):
+    def test_file_operations(self, file_setup):
         """Test basic file operations."""
+        temp_dir, test_file = file_setup
         # Create a test file first
-        self.test_file.write_text("test content")
+        test_file.write_text("test content")
         
         # Test file hash calculation
-        file_hash = FileUtils.calculate_file_hash(self.test_file)
-        self.assertIsInstance(file_hash, (str, type(None)))
+        file_hash = FileUtils.calculate_file_hash(test_file)
+        assert isinstance(file_hash, (str, type(None)))
 
-    def test_file_reading(self):
+    def test_file_reading(self, file_setup):
         """Test file reading operations."""
+        temp_dir, test_file = file_setup
         # Create a test file
-        self.test_file.write_text("test content")
+        test_file.write_text("test content")
         
         # Test text file detection
-        is_text = FileUtils.is_text_file(self.test_file)
-        self.assertIsInstance(is_text, bool)
+        is_text = FileUtils.is_text_file(test_file)
+        assert isinstance(is_text, bool)
 
-    def test_file_writing(self):
+    def test_file_writing(self, file_setup):
         """Test file writing operations."""
+        temp_dir, test_file = file_setup
         # Test file backup
-        self.test_file.write_text("test content")
-        backup_path = FileUtils.backup_file(self.test_file)
-        self.assertIsInstance(backup_path, (Path, type(None)))
+        test_file.write_text("test content")
+        backup_path = FileUtils.backup_file(test_file)
+        assert isinstance(backup_path, (Path, type(None)))
 
-class TestValidationUtils(unittest.TestCase):
+
+class TestValidationUtils:
     """Test cases for ValidationUtils."""
 
     def test_validation_utilities(self):
@@ -138,75 +153,81 @@ class TestValidationUtils(unittest.TestCase):
         temp_dir = tempfile.mkdtemp()
         required_dirs = ["builders", "configs"]
         is_valid, missing = ValidationUtils.validate_workspace_structure(temp_dir, required_dirs)
-        self.assertIsInstance(is_valid, bool)
-        self.assertIsInstance(missing, list)
+        assert isinstance(is_valid, bool)
+        assert isinstance(missing, list)
 
     def test_workspace_validation(self):
         """Test workspace-specific validation."""
         # Test workspace size validation
         temp_dir = tempfile.mkdtemp()
         is_valid, size = ValidationUtils.validate_workspace_size(temp_dir, 100)  # 100MB limit
-        self.assertIsInstance(is_valid, bool)
-        self.assertIsInstance(size, int)
+        assert isinstance(is_valid, bool)
+        assert isinstance(size, int)
 
-class TestTimeUtils(unittest.TestCase):
+
+class TestTimeUtils:
     """Test cases for TimeUtils."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_dir(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
+        return tempfile.mkdtemp()
 
     def test_time_utilities(self):
         """Test time utility functions."""
         # Test timestamp formatting
         timestamp = TimeUtils.format_timestamp()
-        self.assertIsInstance(timestamp, str)
+        assert isinstance(timestamp, str)
 
-    def test_time_formatting(self):
+    def test_time_formatting(self, temp_dir):
         """Test time formatting utilities."""
         # Test path age checking
-        temp_file = Path(self.temp_dir) / "test_file.txt"
+        temp_file = Path(temp_dir) / "test_file.txt"
         temp_file.write_text("test")
         age_days = TimeUtils.get_path_age_days(temp_file)
-        self.assertIsInstance(age_days, (int, type(None)))
+        assert isinstance(age_days, (int, type(None)))
 
-class TestLoggingUtils(unittest.TestCase):
+
+class TestLoggingUtils:
     """Test cases for LoggingUtils."""
 
     def test_logging_utilities(self):
         """Test logging utility functions."""
         # Test logger setup
         logger = LoggingUtils.setup_workspace_logger("test_workspace")
-        self.assertIsNotNone(logger)
+        assert logger is not None
 
-class TestWorkspaceUtils(unittest.TestCase):
+
+class TestWorkspaceUtils:
     """Test cases for WorkspaceUtils."""
 
-    def setUp(self):
+    @pytest.fixture
+    def workspace_setup(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.workspace_path = Path(self.temp_dir)
+        temp_dir = tempfile.mkdtemp()
+        workspace_path = Path(temp_dir)
+        return temp_dir, workspace_path
 
-    def test_workspace_utilities(self):
+    def test_workspace_utilities(self, workspace_setup):
         """Test workspace utility functions."""
+        temp_dir, workspace_path = workspace_setup
         # Test workspace directory initialization
-        config = WorkspaceUtils.create_workspace_config("test_workspace", self.workspace_path)
-        result = WorkspaceUtils.initialize_workspace_directory(self.workspace_path, config)
-        self.assertIsInstance(result, bool)
+        config = WorkspaceUtils.create_workspace_config("test_workspace", workspace_path)
+        result = WorkspaceUtils.initialize_workspace_directory(workspace_path, config)
+        assert isinstance(result, bool)
 
-    def test_workspace_configuration(self):
+    def test_workspace_configuration(self, workspace_setup):
         """Test workspace configuration utilities."""
+        temp_dir, workspace_path = workspace_setup
         # Test workspace configuration creation
-        config = WorkspaceUtils.create_workspace_config("test_workspace", self.workspace_path)
-        self.assertIsInstance(config, WorkspaceConfig)
+        config = WorkspaceUtils.create_workspace_config("test_workspace", workspace_path)
+        assert isinstance(config, WorkspaceConfig)
 
-    def test_workspace_validation(self):
+    def test_workspace_validation(self, workspace_setup):
         """Test workspace validation utilities."""
+        temp_dir, workspace_path = workspace_setup
         # Test workspace validation
-        config = WorkspaceUtils.create_workspace_config("test_workspace", self.workspace_path)
-        is_valid, errors = WorkspaceUtils.validate_workspace(self.workspace_path, config)
-        self.assertIsInstance(is_valid, bool)
-        self.assertIsInstance(errors, list)
-
-if __name__ == '__main__':
-    unittest.main()
+        config = WorkspaceUtils.create_workspace_config("test_workspace", workspace_path)
+        is_valid, errors = WorkspaceUtils.validate_workspace(workspace_path, config)
+        assert isinstance(is_valid, bool)
+        assert isinstance(errors, list)
