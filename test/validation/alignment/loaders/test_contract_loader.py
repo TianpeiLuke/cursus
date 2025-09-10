@@ -6,7 +6,7 @@ contracts from Python files with robust import handling and contract object
 extraction.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 import sys
@@ -16,52 +16,62 @@ from typing import Dict, Any, Optional
 from cursus.validation.alignment.loaders.contract_loader import ContractLoader
 
 
-class TestContractLoader(unittest.TestCase):
+@pytest.fixture
+def temp_dir():
+    """Set up temporary directory fixture."""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    import shutil
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+@pytest.fixture
+def contracts_dir(temp_dir):
+    """Set up contracts directory fixture."""
+    contracts_dir = Path(temp_dir) / "contracts"
+    contracts_dir.mkdir(exist_ok=True)
+    return contracts_dir
+
+@pytest.fixture
+def loader(contracts_dir):
+    """Set up ContractLoader fixture."""
+    return ContractLoader(str(contracts_dir))
+
+@pytest.fixture
+def sample_contract():
+    """Set up sample contract fixture."""
+    contract = Mock()
+    contract.entry_point = "model_training.py"
+    contract.expected_input_paths = {
+        'training_data': '/opt/ml/input/data/training',
+        'validation_data': '/opt/ml/input/data/validation'
+    }
+    contract.expected_output_paths = {
+        'model': '/opt/ml/model',
+        'metrics': '/opt/ml/output/metrics.json'
+    }
+    contract.expected_arguments = {
+        'learning_rate': 0.01,
+        'max_depth': 6,
+        'required_param': None
+    }
+    contract.required_env_vars = ['AWS_REGION', 'SAGEMAKER_JOB_NAME']
+    contract.optional_env_vars = {'DEBUG': 'false', 'VERBOSE': 'true'}
+    contract.description = "Model training contract"
+    contract.framework_requirements = {'xgboost': '>=1.0.0'}
+    return contract
+
+class TestContractLoader:
     """Test cases for ContractLoader class."""
-    
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.contracts_dir = Path(self.temp_dir) / "contracts"
-        self.contracts_dir.mkdir(exist_ok=True)
-        
-        self.loader = ContractLoader(str(self.contracts_dir))
-        
-        # Sample contract object
-        self.sample_contract = Mock()
-        self.sample_contract.entry_point = "model_training.py"
-        self.sample_contract.expected_input_paths = {
-            'training_data': '/opt/ml/input/data/training',
-            'validation_data': '/opt/ml/input/data/validation'
-        }
-        self.sample_contract.expected_output_paths = {
-            'model': '/opt/ml/model',
-            'metrics': '/opt/ml/output/metrics.json'
-        }
-        self.sample_contract.expected_arguments = {
-            'learning_rate': 0.01,
-            'max_depth': 6,
-            'required_param': None
-        }
-        self.sample_contract.required_env_vars = ['AWS_REGION', 'SAGEMAKER_JOB_NAME']
-        self.sample_contract.optional_env_vars = {'DEBUG': 'false', 'VERBOSE': 'true'}
-        self.sample_contract.description = "Model training contract"
-        self.sample_contract.framework_requirements = {'xgboost': '>=1.0.0'}
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def test_init(self):
         """Test ContractLoader initialization."""
         loader = ContractLoader("/path/to/contracts")
         
-        self.assertEqual(loader.contracts_dir, Path("/path/to/contracts"))
+        assert loader.contracts_dir == Path("/path/to/contracts")
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_success(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_success(self, mock_module_from_spec, mock_spec_from_file, loader, sample_contract):
         """Test successful contract loading."""
         # Mock the module loading
         mock_spec = Mock()
@@ -74,36 +84,36 @@ class TestContractLoader(unittest.TestCase):
             def __init__(self, sample_contract):
                 self.__dict__ = {'MODEL_TRAINING_CONTRACT': sample_contract}
         
-        mock_module = MockModule(self.sample_contract)
+        mock_module = MockModule(sample_contract)
         mock_module_from_spec.return_value = mock_module
         
-        with patch.object(self.loader, '_find_contract_object', return_value=self.sample_contract):
+        with patch.object(loader, '_find_contract_object', return_value=sample_contract):
             contract_path = Path("model_training_contract.py")
-            result = self.loader.load_contract(contract_path, "model_training")
+            result = loader.load_contract(contract_path, "model_training")
             
             # Verify the result structure
-            self.assertEqual(result['entry_point'], "model_training.py")
-            self.assertIn('inputs', result)
-            self.assertIn('outputs', result)
-            self.assertIn('arguments', result)
-            self.assertIn('environment_variables', result)
-            self.assertEqual(result['description'], "Model training contract")
+            assert result['entry_point'] == "model_training.py"
+            assert 'inputs' in result
+            assert 'outputs' in result
+            assert 'arguments' in result
+            assert 'environment_variables' in result
+            assert result['description'] == "Model training contract"
     
     @patch('importlib.util.spec_from_file_location')
-    def test_load_contract_no_spec(self, mock_spec_from_file):
+    def test_load_contract_no_spec(self, mock_spec_from_file, loader):
         """Test contract loading when spec creation fails."""
         mock_spec_from_file.return_value = None
         
         contract_path = Path("test_contract.py")
         
-        with self.assertRaises(Exception) as exc_info:
-            self.loader.load_contract(contract_path, "test")
+        with pytest.raises(Exception) as exc_info:
+            loader.load_contract(contract_path, "test")
         
-        self.assertIn("Could not load contract module", str(exc_info.exception))
+        assert "Could not load contract module" in str(exc_info.value)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_no_contract_object(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_no_contract_object(self, mock_module_from_spec, mock_spec_from_file, loader):
         """Test contract loading when no contract object is found."""
         # Mock the module loading
         mock_spec = Mock()
@@ -114,17 +124,17 @@ class TestContractLoader(unittest.TestCase):
         mock_module = Mock()
         mock_module_from_spec.return_value = mock_module
         
-        with patch.object(self.loader, '_find_contract_object', return_value=None):
+        with patch.object(loader, '_find_contract_object', return_value=None):
             contract_path = Path("test_contract.py")
             
-            with self.assertRaises(Exception) as exc_info:
-                self.loader.load_contract(contract_path, "test")
+            with pytest.raises(Exception) as exc_info:
+                loader.load_contract(contract_path, "test")
             
-            self.assertIn("No contract object found", str(exc_info.exception))
+            assert "No contract object found" in str(exc_info.value)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_sys_path_management(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_sys_path_management(self, mock_module_from_spec, mock_spec_from_file, loader, sample_contract):
         """Test that sys.path is properly managed during contract loading."""
         original_path = sys.path.copy()
         
@@ -137,53 +147,53 @@ class TestContractLoader(unittest.TestCase):
         mock_module = Mock()
         mock_module_from_spec.return_value = mock_module
         
-        with patch.object(self.loader, '_find_contract_object', return_value=self.sample_contract):
+        with patch.object(loader, '_find_contract_object', return_value=sample_contract):
             contract_path = Path("test_contract.py")
-            self.loader.load_contract(contract_path, "test")
+            loader.load_contract(contract_path, "test")
             
             # Verify sys.path is restored
-            self.assertEqual(sys.path, original_path)
+            assert sys.path == original_path
     
-    def test_find_contract_object_standard_naming(self):
+    def test_find_contract_object_standard_naming(self, loader, sample_contract):
         """Test finding contract object with standard naming patterns."""
         mock_module = Mock()
         mock_module.__dict__ = {
-            'MODEL_TRAINING_CONTRACT': self.sample_contract,
+            'MODEL_TRAINING_CONTRACT': sample_contract,
             'other_attr': 'value'
         }
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_CONTRACT', 'other_attr']):
-            result = self.loader._find_contract_object(mock_module, "model_training")
+            result = loader._find_contract_object(mock_module, "model_training")
             
-            self.assertEqual(result, self.sample_contract)
+            assert result == sample_contract
     
-    def test_find_contract_object_generic_naming(self):
+    def test_find_contract_object_generic_naming(self, loader, sample_contract):
         """Test finding contract object with generic CONTRACT naming."""
         mock_module = Mock()
         mock_module.__dict__ = {
-            'CONTRACT': self.sample_contract,
+            'CONTRACT': sample_contract,
             'other_attr': 'value'
         }
         
         with patch('builtins.dir', return_value=['CONTRACT', 'other_attr']):
-            result = self.loader._find_contract_object(mock_module, "model_training")
+            result = loader._find_contract_object(mock_module, "model_training")
             
-            self.assertEqual(result, self.sample_contract)
+            assert result == sample_contract
     
-    def test_find_contract_object_dynamic_discovery(self):
+    def test_find_contract_object_dynamic_discovery(self, loader, sample_contract):
         """Test finding contract object through dynamic discovery."""
         mock_module = Mock()
         mock_module.__dict__ = {
-            'CUSTOM_TRAINING_CONTRACT': self.sample_contract,
+            'CUSTOM_TRAINING_CONTRACT': sample_contract,
             'other_attr': 'value'
         }
         
         with patch('builtins.dir', return_value=['CUSTOM_TRAINING_CONTRACT', 'other_attr']):
-            result = self.loader._find_contract_object(mock_module, "model_training")
+            result = loader._find_contract_object(mock_module, "model_training")
             
-            self.assertEqual(result, self.sample_contract)
+            assert result == sample_contract
     
-    def test_find_contract_object_no_entry_point(self):
+    def test_find_contract_object_no_entry_point(self, loader, sample_contract):
         """Test finding contract object when object has no entry_point."""
         mock_invalid_contract = Mock()
         del mock_invalid_contract.entry_point  # Remove entry_point attribute
@@ -191,64 +201,64 @@ class TestContractLoader(unittest.TestCase):
         mock_module = Mock()
         mock_module.__dict__ = {
             'INVALID_CONTRACT': mock_invalid_contract,
-            'MODEL_TRAINING_CONTRACT': self.sample_contract
+            'MODEL_TRAINING_CONTRACT': sample_contract
         }
         
         with patch('builtins.dir', return_value=['INVALID_CONTRACT', 'MODEL_TRAINING_CONTRACT']):
-            result = self.loader._find_contract_object(mock_module, "model_training")
+            result = loader._find_contract_object(mock_module, "model_training")
             
             # Should find the valid contract, not the invalid one
-            self.assertEqual(result, self.sample_contract)
+            assert result == sample_contract
     
-    def test_find_contract_object_not_found(self):
+    def test_find_contract_object_not_found(self, loader):
         """Test finding contract object when none exists."""
         mock_module = Mock()
         mock_module.__dict__ = {'other_attr': 'value'}
         
         with patch('builtins.dir', return_value=['other_attr']):
-            result = self.loader._find_contract_object(mock_module, "model_training")
+            result = loader._find_contract_object(mock_module, "model_training")
             
-            self.assertIsNone(result)
+            assert result is None
     
-    def test_find_contract_object_specific_patterns(self):
+    def test_find_contract_object_specific_patterns(self, loader, sample_contract):
         """Test finding contract object with specific naming patterns."""
         # Test XGBOOST_MODEL_EVAL_CONTRACT pattern
         mock_module = Mock()
-        mock_module.__dict__ = {'XGBOOST_MODEL_EVAL_CONTRACT': self.sample_contract}
+        mock_module.__dict__ = {'XGBOOST_MODEL_EVAL_CONTRACT': sample_contract}
         
         with patch('builtins.dir', return_value=['XGBOOST_MODEL_EVAL_CONTRACT']):
-            result = self.loader._find_contract_object(mock_module, "model_evaluation_xgb")
+            result = loader._find_contract_object(mock_module, "model_evaluation_xgb")
             
-            self.assertEqual(result, self.sample_contract)
+            assert result == sample_contract
     
-    def test_contract_to_dict_complete(self):
+    def test_contract_to_dict_complete(self, loader, sample_contract):
         """Test converting complete contract object to dictionary."""
-        result = self.loader._contract_to_dict(self.sample_contract, "model_training")
+        result = loader._contract_to_dict(sample_contract, "model_training")
         
         # Verify structure
-        self.assertEqual(result['entry_point'], "model_training.py")
-        self.assertEqual(result['description'], "Model training contract")
-        self.assertEqual(result['framework_requirements'], {'xgboost': '>=1.0.0'})
+        assert result['entry_point'] == "model_training.py"
+        assert result['description'] == "Model training contract"
+        assert result['framework_requirements'] == {'xgboost': '>=1.0.0'}
         
         # Verify inputs conversion
-        self.assertIn('training_data', result['inputs'])
-        self.assertEqual(result['inputs']['training_data']['path'], '/opt/ml/input/data/training')
+        assert 'training_data' in result['inputs']
+        assert result['inputs']['training_data']['path'] == '/opt/ml/input/data/training'
         
         # Verify outputs conversion
-        self.assertIn('model', result['outputs'])
-        self.assertEqual(result['outputs']['model']['path'], '/opt/ml/model')
+        assert 'model' in result['outputs']
+        assert result['outputs']['model']['path'] == '/opt/ml/model'
         
         # Verify arguments conversion
-        self.assertIn('learning_rate', result['arguments'])
-        self.assertEqual(result['arguments']['learning_rate']['default'], 0.01)
-        self.assertFalse(result['arguments']['learning_rate']['required'])
-        self.assertTrue(result['arguments']['required_param']['required'])
+        assert 'learning_rate' in result['arguments']
+        assert result['arguments']['learning_rate']['default'] == 0.01
+        assert result['arguments']['learning_rate']['required'] is False
+        assert result['arguments']['required_param']['required'] is True
         
         # Verify environment variables
-        self.assertEqual(result['environment_variables']['required'], ['AWS_REGION', 'SAGEMAKER_JOB_NAME'])
-        self.assertEqual(result['environment_variables']['optional'], {'DEBUG': 'false', 'VERBOSE': 'true'})
+        assert result['environment_variables']['required'] == ['AWS_REGION', 'SAGEMAKER_JOB_NAME']
+        assert result['environment_variables']['optional'] == {'DEBUG': 'false', 'VERBOSE': 'true'}
     
-    def test_contract_to_dict_minimal(self):
+    def test_contract_to_dict_minimal(self, loader):
         """Test converting minimal contract object to dictionary."""
         minimal_contract = Mock()
         minimal_contract.entry_point = "simple_script.py"
@@ -259,19 +269,19 @@ class TestContractLoader(unittest.TestCase):
             if hasattr(minimal_contract, attr):
                 delattr(minimal_contract, attr)
         
-        result = self.loader._contract_to_dict(minimal_contract, "simple_script")
+        result = loader._contract_to_dict(minimal_contract, "simple_script")
         
         # Verify defaults
-        self.assertEqual(result['entry_point'], "simple_script.py")
-        self.assertEqual(result['inputs'], {})
-        self.assertEqual(result['outputs'], {})
-        self.assertEqual(result['arguments'], {})
-        self.assertEqual(result['environment_variables']['required'], [])
-        self.assertEqual(result['environment_variables']['optional'], {})
-        self.assertEqual(result['description'], '')
-        self.assertEqual(result['framework_requirements'], {})
+        assert result['entry_point'] == "simple_script.py"
+        assert result['inputs'] == {}
+        assert result['outputs'] == {}
+        assert result['arguments'] == {}
+        assert result['environment_variables']['required'] == []
+        assert result['environment_variables']['optional'] == {}
+        assert result['description'] == ''
+        assert result['framework_requirements'] == {}
     
-    def test_contract_to_dict_default_entry_point(self):
+    def test_contract_to_dict_default_entry_point(self, loader):
         """Test contract to dict with default entry point generation."""
         contract_no_entry = Mock()
         # Remove entry_point attribute but add empty collections to avoid iteration errors
@@ -281,11 +291,11 @@ class TestContractLoader(unittest.TestCase):
         contract_no_entry.expected_output_paths = {}
         contract_no_entry.expected_arguments = {}
         
-        result = self.loader._contract_to_dict(contract_no_entry, "test_contract")
+        result = loader._contract_to_dict(contract_no_entry, "test_contract")
         
-        self.assertEqual(result['entry_point'], "test_contract.py")
+        assert result['entry_point'] == "test_contract.py"
     
-    def test_contract_to_dict_empty_collections(self):
+    def test_contract_to_dict_empty_collections(self, loader):
         """Test contract to dict with empty collections."""
         empty_contract = Mock()
         empty_contract.entry_point = "test.py"
@@ -295,44 +305,31 @@ class TestContractLoader(unittest.TestCase):
         empty_contract.required_env_vars = []
         empty_contract.optional_env_vars = {}
         
-        result = self.loader._contract_to_dict(empty_contract, "test")
+        result = loader._contract_to_dict(empty_contract, "test")
         
-        self.assertEqual(result['inputs'], {})
-        self.assertEqual(result['outputs'], {})
-        self.assertEqual(result['arguments'], {})
-        self.assertEqual(result['environment_variables']['required'], [])
-        self.assertEqual(result['environment_variables']['optional'], {})
+        assert result['inputs'] == {}
+        assert result['outputs'] == {}
+        assert result['arguments'] == {}
+        assert result['environment_variables']['required'] == []
+        assert result['environment_variables']['optional'] == {}
 
 
-class TestContractLoaderIntegration(unittest.TestCase):
+class TestContractLoaderIntegration:
     """Integration test cases for ContractLoader."""
     
-    def setUp(self):
-        """Set up integration test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.contracts_dir = Path(self.temp_dir) / "contracts"
-        self.contracts_dir.mkdir(exist_ok=True)
-        
-        self.loader = ContractLoader(str(self.contracts_dir))
-    
-    def tearDown(self):
-        """Clean up integration test fixtures."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
-    def test_load_contract_error_handling(self):
+    def test_load_contract_error_handling(self, loader):
         """Test contract loading with various error conditions."""
         # Test with non-existent file
         nonexistent_path = Path("nonexistent_contract.py")
         
-        with self.assertRaises(Exception) as exc_info:
-            self.loader.load_contract(nonexistent_path, "nonexistent")
+        with pytest.raises(Exception) as exc_info:
+            loader.load_contract(nonexistent_path, "nonexistent")
         
-        self.assertIn("Failed to load Python contract", str(exc_info.exception))
+        assert "Failed to load Python contract" in str(exc_info.value)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_import_error(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_import_error(self, mock_module_from_spec, mock_spec_from_file, loader):
         """Test contract loading when module import fails."""
         # Mock spec creation success but loader execution failure
         mock_spec = Mock()
@@ -346,12 +343,12 @@ class TestContractLoaderIntegration(unittest.TestCase):
         
         contract_path = Path("failing_contract.py")
         
-        with self.assertRaises(Exception) as exc_info:
-            self.loader.load_contract(contract_path, "failing")
+        with pytest.raises(Exception) as exc_info:
+            loader.load_contract(contract_path, "failing")
         
-        self.assertIn("Failed to load Python contract", str(exc_info.exception))
+        assert "Failed to load Python contract" in str(exc_info.value)
     
-    def test_find_contract_object_edge_cases(self):
+    def test_find_contract_object_edge_cases(self, loader):
         """Test finding contract object with edge cases."""
         # Test with module that has attributes but none are contracts
         mock_module = Mock()
@@ -366,11 +363,11 @@ class TestContractLoaderIntegration(unittest.TestCase):
         }
         
         with patch('builtins.dir', return_value=['SOME_CONTRACT', 'OTHER_ATTR']):
-            result = self.loader._find_contract_object(mock_module, "test")
+            result = loader._find_contract_object(mock_module, "test")
             
-            self.assertIsNone(result)
+            assert result is None
     
-    def test_contract_to_dict_with_none_values(self):
+    def test_contract_to_dict_with_none_values(self, loader):
         """Test contract to dict conversion with None values."""
         contract_with_nones = Mock()
         contract_with_nones.entry_point = "test.py"
@@ -383,41 +380,28 @@ class TestContractLoaderIntegration(unittest.TestCase):
                 delattr(contract_with_nones, attr)
         
         # This should handle missing attributes gracefully
-        result = self.loader._contract_to_dict(contract_with_nones, "test")
+        result = loader._contract_to_dict(contract_with_nones, "test")
         
-        self.assertEqual(result['entry_point'], "test.py")
+        assert result['entry_point'] == "test.py"
         # Should handle missing attributes by using defaults
-        self.assertIsInstance(result['inputs'], dict)
-        self.assertIsInstance(result['outputs'], dict)
-        self.assertIsInstance(result['arguments'], dict)
-        self.assertEqual(result['inputs'], {})
-        self.assertEqual(result['outputs'], {})
-        self.assertEqual(result['arguments'], {})
-        self.assertEqual(result['environment_variables']['required'], [])
-        self.assertEqual(result['environment_variables']['optional'], {})
-        self.assertEqual(result['description'], '')
-        self.assertEqual(result['framework_requirements'], {})
+        assert isinstance(result['inputs'], dict)
+        assert isinstance(result['outputs'], dict)
+        assert isinstance(result['arguments'], dict)
+        assert result['inputs'] == {}
+        assert result['outputs'] == {}
+        assert result['arguments'] == {}
+        assert result['environment_variables']['required'] == []
+        assert result['environment_variables']['optional'] == {}
+        assert result['description'] == ''
+        assert result['framework_requirements'] == {}
 
 
-class TestContractLoaderErrorScenarios(unittest.TestCase):
+class TestContractLoaderErrorScenarios:
     """Test cases for error scenarios and edge cases."""
-    
-    def setUp(self):
-        """Set up error scenario test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.contracts_dir = Path(self.temp_dir) / "contracts"
-        self.contracts_dir.mkdir(exist_ok=True)
-        
-        self.loader = ContractLoader(str(self.contracts_dir))
-    
-    def tearDown(self):
-        """Clean up error scenario test fixtures."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_contract_module_execution_error(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_contract_module_execution_error(self, mock_module_from_spec, mock_spec_from_file, loader):
         """Test contract loading when module execution fails."""
         mock_spec = Mock()
         mock_loader = Mock()
@@ -430,13 +414,13 @@ class TestContractLoaderErrorScenarios(unittest.TestCase):
         
         contract_path = Path("error_contract.py")
         
-        with self.assertRaises(Exception) as exc_info:
-            self.loader.load_contract(contract_path, "error")
+        with pytest.raises(Exception) as exc_info:
+            loader.load_contract(contract_path, "error")
         
-        self.assertIn("Failed to load Python contract", str(exc_info.exception))
-        self.assertIn("Module execution failed", str(exc_info.exception))
+        assert "Failed to load Python contract" in str(exc_info.value)
+        assert "Module execution failed" in str(exc_info.value)
     
-    def test_find_contract_object_multiple_valid_contracts(self):
+    def test_find_contract_object_multiple_valid_contracts(self, loader):
         """Test finding contract object when multiple valid contracts exist."""
         contract1 = Mock()
         contract1.entry_point = "script1.py"
@@ -452,12 +436,12 @@ class TestContractLoaderErrorScenarios(unittest.TestCase):
         
         with patch('builtins.dir', return_value=['FIRST_CONTRACT', 'SECOND_CONTRACT']):
             # Should return the first valid contract found
-            result = self.loader._find_contract_object(mock_module, "test")
+            result = loader._find_contract_object(mock_module, "test")
             
-            self.assertIn(result, [contract1, contract2])  # Either is acceptable
-            self.assertTrue(hasattr(result, 'entry_point'))
+            assert result in [contract1, contract2]  # Either is acceptable
+            assert hasattr(result, 'entry_point')
     
-    def test_contract_to_dict_complex_arguments(self):
+    def test_contract_to_dict_complex_arguments(self, loader):
         """Test contract to dict with complex argument types."""
         complex_contract = Mock()
         complex_contract.entry_point = "complex.py"
@@ -473,19 +457,19 @@ class TestContractLoaderErrorScenarios(unittest.TestCase):
             'none_param': None
         }
         
-        result = self.loader._contract_to_dict(complex_contract, "complex")
+        result = loader._contract_to_dict(complex_contract, "complex")
         
         # Verify all argument types are handled
         args = result['arguments']
-        self.assertEqual(args['string_param']['default'], 'default_string')
-        self.assertFalse(args['string_param']['required'])
-        self.assertEqual(args['int_param']['default'], 42)
-        self.assertEqual(args['float_param']['default'], 3.14)
-        self.assertTrue(args['bool_param']['default'])
-        self.assertEqual(args['list_param']['default'], [1, 2, 3])
-        self.assertEqual(args['dict_param']['default'], {'key': 'value'})
-        self.assertTrue(args['none_param']['required'])  # None means required
+        assert args['string_param']['default'] == 'default_string'
+        assert args['string_param']['required'] is False
+        assert args['int_param']['default'] == 42
+        assert args['float_param']['default'] == 3.14
+        assert args['bool_param']['default'] is True
+        assert args['list_param']['default'] == [1, 2, 3]
+        assert args['dict_param']['default'] == {'key': 'value'}
+        assert args['none_param']['required'] is True  # None means required
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

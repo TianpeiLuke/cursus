@@ -4,7 +4,7 @@ Unit tests for training_enhancer.py module.
 Tests training step-specific validation enhancement functionality.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from cursus.validation.alignment.step_type_enhancers.training_enhancer import TrainingStepEnhancer
 from cursus.validation.alignment.core_models import (
@@ -13,59 +13,64 @@ from cursus.validation.alignment.core_models import (
     SeverityLevel
 )
 
-class TestTrainingStepEnhancer(unittest.TestCase):
+@pytest.fixture
+def enhancer():
+    """Set up test enhancer fixture."""
+    return TrainingStepEnhancer()
+
+@pytest.fixture
+def mock_validation_result():
+    """Set up mock validation result fixture."""
+    return ValidationResult(
+        is_valid=True,
+        issues=[],
+        summary={"message": "Test validation result"},
+        metadata={"script_name": "xgboost_training.py"}
+    )
+
+@pytest.fixture
+def mock_script_analysis():
+    """Set up mock script analysis fixture."""
+    return {
+        'imports': ['xgboost', 'pandas', 'json'],
+        'functions': ['main', 'load_data', 'train_model'],
+        'file_operations': ['/opt/ml/model/model.xgb', '/opt/ml/input/data/config/hyperparameters.json'],
+        'patterns': {
+            'training_loop': ['xgb.train'],
+            'model_saving': ['model.save_model'],
+            'hyperparameter_loading': ['hyperparameters.json']
+        }
+    }
+
+class TestTrainingStepEnhancer:
     """Test training step enhancer functionality."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.enhancer = TrainingStepEnhancer()
-        
-        # Mock validation result
-        self.mock_validation_result = ValidationResult(
-            is_valid=True,
-            issues=[],
-            summary={"message": "Test validation result"},
-            metadata={"script_name": "xgboost_training.py"}
-        )
-        
-        # Mock script analysis
-        self.mock_script_analysis = {
-            'imports': ['xgboost', 'pandas', 'json'],
-            'functions': ['main', 'load_data', 'train_model'],
-            'file_operations': ['/opt/ml/model/model.xgb', '/opt/ml/input/data/config/hyperparameters.json'],
-            'patterns': {
-                'training_loop': ['xgb.train'],
-                'model_saving': ['model.save_model'],
-                'hyperparameter_loading': ['hyperparameters.json']
-            }
-        }
-
-    def test_training_enhancer_initialization(self):
+    def test_training_enhancer_initialization(self, enhancer):
         """Test training enhancer initialization."""
-        self.assertEqual(self.enhancer.step_type, "Training")
-        self.assertIn("xgboost_training.py", self.enhancer.reference_examples)
-        self.assertIn("pytorch_training.py", self.enhancer.reference_examples)
-        self.assertIn("builder_xgboost_training_step.py", self.enhancer.reference_examples)
+        assert enhancer.step_type == "Training"
+        assert "xgboost_training.py" in enhancer.reference_examples
+        assert "pytorch_training.py" in enhancer.reference_examples
+        assert "builder_xgboost_training_step.py" in enhancer.reference_examples
         
         # Check framework validators
-        self.assertIn("xgboost", self.enhancer.framework_validators)
-        self.assertIn("pytorch", self.enhancer.framework_validators)
+        assert "xgboost" in enhancer.framework_validators
+        assert "pytorch" in enhancer.framework_validators
 
     @patch.object(TrainingStepEnhancer, '_get_script_analysis')
-    def test_enhance_validation_xgboost_training(self, mock_get_script_analysis):
+    def test_enhance_validation_xgboost_training(self, mock_get_script_analysis, enhancer, mock_validation_result, mock_script_analysis):
         """Test validation enhancement for XGBoost training script."""
         # Setup
-        mock_get_script_analysis.return_value = self.mock_script_analysis
+        mock_get_script_analysis.return_value = mock_script_analysis
         
         # Execute
-        result = self.enhancer.enhance_validation(self.mock_validation_result, "xgboost_training.py")
+        result = enhancer.enhance_validation(mock_validation_result, "xgboost_training.py")
         
         # Verify
-        self.assertIsInstance(result, ValidationResult)
+        assert isinstance(result, ValidationResult)
         mock_get_script_analysis.assert_called_once_with("xgboost_training.py")
 
     @patch.object(TrainingStepEnhancer, '_get_script_analysis')
-    def test_enhance_validation_pytorch_training(self, mock_get_script_analysis):
+    def test_enhance_validation_pytorch_training(self, mock_get_script_analysis, enhancer, mock_validation_result):
         """Test validation enhancement for PyTorch training script."""
         # Setup
         pytorch_analysis = {
@@ -80,10 +85,10 @@ class TestTrainingStepEnhancer(unittest.TestCase):
         mock_get_script_analysis.return_value = pytorch_analysis
         
         # Execute
-        result = self.enhancer.enhance_validation(self.mock_validation_result, "pytorch_training.py")
+        result = enhancer.enhance_validation(mock_validation_result, "pytorch_training.py")
         
         # Verify
-        self.assertIsInstance(result, ValidationResult)
+        assert isinstance(result, ValidationResult)
         mock_get_script_analysis.assert_called_once_with("pytorch_training.py")
 
     @patch.object(TrainingStepEnhancer, '_validate_training_builder')
@@ -93,17 +98,18 @@ class TestTrainingStepEnhancer(unittest.TestCase):
     @patch.object(TrainingStepEnhancer, '_get_script_analysis')
     def test_enhance_validation_calls_all_validation_levels(self, mock_get_script_analysis, 
                                                            mock_validate_script, mock_validate_specs,
-                                                           mock_validate_deps, mock_validate_builder):
+                                                           mock_validate_deps, mock_validate_builder,
+                                                           enhancer, mock_validation_result, mock_script_analysis):
         """Test that enhance_validation calls all validation levels."""
         # Setup
-        mock_get_script_analysis.return_value = self.mock_script_analysis
+        mock_get_script_analysis.return_value = mock_script_analysis
         mock_validate_script.return_value = []
         mock_validate_specs.return_value = []
         mock_validate_deps.return_value = []
         mock_validate_builder.return_value = []
         
         # Execute
-        result = self.enhancer.enhance_validation(self.mock_validation_result, "xgboost_training.py")
+        result = enhancer.enhance_validation(mock_validation_result, "xgboost_training.py")
         
         # Verify all validation levels were called
         mock_validate_script.assert_called_once()
@@ -116,7 +122,8 @@ class TestTrainingStepEnhancer(unittest.TestCase):
     @patch.object(TrainingStepEnhancer, '_has_model_saving_patterns')
     @patch.object(TrainingStepEnhancer, '_has_hyperparameter_loading_patterns')
     def test_validate_training_script_patterns_missing_patterns(self, mock_has_hyperparams, 
-                                                               mock_has_model_saving, mock_has_training_loop):
+                                                               mock_has_model_saving, mock_has_training_loop,
+                                                               enhancer, mock_script_analysis):
         """Test validation when training patterns are missing."""
         # Setup - simulate missing patterns
         mock_has_training_loop.return_value = False
@@ -124,21 +131,22 @@ class TestTrainingStepEnhancer(unittest.TestCase):
         mock_has_hyperparams.return_value = False
         
         # Execute
-        issues = self.enhancer._validate_training_script_patterns(self.mock_script_analysis, 'xgboost', 'test_script.py')
+        issues = enhancer._validate_training_script_patterns(mock_script_analysis, 'xgboost', 'test_script.py')
         
         # Verify issues were created for missing patterns
-        self.assertGreaterEqual(len(issues), 3)
+        assert len(issues) >= 3
         
         issue_categories = [issue.get('category') for issue in issues]
-        self.assertIn("missing_training_loop", issue_categories)
-        self.assertIn("missing_model_saving", issue_categories)
-        self.assertIn("missing_hyperparameter_loading", issue_categories)
+        assert "missing_training_loop" in issue_categories
+        assert "missing_model_saving" in issue_categories
+        assert "missing_hyperparameter_loading" in issue_categories
 
     @patch.object(TrainingStepEnhancer, '_has_training_loop_patterns')
     @patch.object(TrainingStepEnhancer, '_has_model_saving_patterns')
     @patch.object(TrainingStepEnhancer, '_has_hyperparameter_loading_patterns')
     def test_validate_training_script_patterns_all_present(self, mock_has_hyperparams, 
-                                                          mock_has_model_saving, mock_has_training_loop):
+                                                          mock_has_model_saving, mock_has_training_loop,
+                                                          enhancer, mock_script_analysis):
         """Test validation when all training patterns are present."""
         # Setup - simulate all patterns present
         mock_has_training_loop.return_value = True
@@ -146,21 +154,21 @@ class TestTrainingStepEnhancer(unittest.TestCase):
         mock_has_hyperparams.return_value = True
         
         # Execute
-        issues = self.enhancer._validate_training_script_patterns(self.mock_script_analysis, 'xgboost', 'test_script.py')
+        issues = enhancer._validate_training_script_patterns(mock_script_analysis, 'xgboost', 'test_script.py')
         
         # Verify fewer issues were created (some patterns might still be missing)
-        self.assertLessEqual(len(issues), 2)  # Allow for some issues but fewer than when all patterns are missing
+        assert len(issues) <= 2  # Allow for some issues but fewer than when all patterns are missing
 
-    def test_has_training_loop_patterns_xgboost(self):
+    def test_has_training_loop_patterns_xgboost(self, enhancer):
         """Test detection of XGBoost training loop patterns."""
         script_analysis = {
             'functions': ['xgb.train', 'model.fit', 'train_model']
         }
         
-        result = self.enhancer._has_training_loop_patterns(script_analysis)
-        self.assertTrue(result)
+        result = enhancer._has_training_loop_patterns(script_analysis)
+        assert result is True
 
-    def test_has_training_loop_patterns_missing(self):
+    def test_has_training_loop_patterns_missing(self, enhancer):
         """Test detection when training loop patterns are missing."""
         script_analysis = {
             'patterns': {
@@ -168,20 +176,20 @@ class TestTrainingStepEnhancer(unittest.TestCase):
             }
         }
         
-        result = self.enhancer._has_training_loop_patterns(script_analysis)
-        self.assertFalse(result)
+        result = enhancer._has_training_loop_patterns(script_analysis)
+        assert result is False
 
-    def test_has_model_saving_patterns_present(self):
+    def test_has_model_saving_patterns_present(self, enhancer):
         """Test detection of model saving patterns."""
         script_analysis = {
             'functions': ['save', 'dump', 'torch.save'],
             'path_references': ['/opt/ml/model']
         }
         
-        result = self.enhancer._has_model_saving_patterns(script_analysis)
-        self.assertTrue(result)
+        result = enhancer._has_model_saving_patterns(script_analysis)
+        assert result is True
 
-    def test_has_model_saving_patterns_missing(self):
+    def test_has_model_saving_patterns_missing(self, enhancer):
         """Test detection when model saving patterns are missing."""
         script_analysis = {
             'patterns': {
@@ -189,20 +197,20 @@ class TestTrainingStepEnhancer(unittest.TestCase):
             }
         }
         
-        result = self.enhancer._has_model_saving_patterns(script_analysis)
-        self.assertFalse(result)
+        result = enhancer._has_model_saving_patterns(script_analysis)
+        assert result is False
 
-    def test_has_hyperparameter_loading_patterns_present(self):
+    def test_has_hyperparameter_loading_patterns_present(self, enhancer):
         """Test detection of hyperparameter loading patterns."""
         script_analysis = {
             'functions': ['hyperparameters', 'config', 'params'],
             'path_references': ['/opt/ml/input/data/config']
         }
         
-        result = self.enhancer._has_hyperparameter_loading_patterns(script_analysis)
-        self.assertTrue(result)
+        result = enhancer._has_hyperparameter_loading_patterns(script_analysis)
+        assert result is True
 
-    def test_has_hyperparameter_loading_patterns_missing(self):
+    def test_has_hyperparameter_loading_patterns_missing(self, enhancer):
         """Test detection when hyperparameter loading patterns are missing."""
         script_analysis = {
             'patterns': {
@@ -210,12 +218,12 @@ class TestTrainingStepEnhancer(unittest.TestCase):
             }
         }
         
-        result = self.enhancer._has_hyperparameter_loading_patterns(script_analysis)
-        self.assertFalse(result)
+        result = enhancer._has_hyperparameter_loading_patterns(script_analysis)
+        assert result is False
 
-    def test_create_training_issue(self):
+    def test_create_training_issue(self, enhancer):
         """Test creation of training-specific issues."""
-        issue = self.enhancer._create_step_type_issue(
+        issue = enhancer._create_step_type_issue(
             "test_category",
             "Test message",
             "Test suggestion",
@@ -223,18 +231,18 @@ class TestTrainingStepEnhancer(unittest.TestCase):
             {"test": "details"}
         )
         
-        self.assertIsInstance(issue, dict)
-        self.assertEqual(issue["category"], "test_category")
-        self.assertEqual(issue["message"], "Test message")
-        self.assertEqual(issue["recommendation"], "Test suggestion")
-        self.assertEqual(issue["step_type"], "Training")
-        self.assertEqual(issue["severity"], "WARNING")
+        assert isinstance(issue, dict)
+        assert issue["category"] == "test_category"
+        assert issue["message"] == "Test message"
+        assert issue["recommendation"] == "Test suggestion"
+        assert issue["step_type"] == "Training"
+        assert issue["severity"] == "WARNING"
 
     @patch.object(TrainingStepEnhancer, '_get_script_analysis')
-    def test_framework_specific_validation_xgboost(self, mock_get_script_analysis):
+    def test_framework_specific_validation_xgboost(self, mock_get_script_analysis, enhancer, mock_script_analysis):
         """Test framework-specific validation for XGBoost."""
         # Setup
-        mock_get_script_analysis.return_value = self.mock_script_analysis
+        mock_get_script_analysis.return_value = mock_script_analysis
         
         # Mock XGBoost validator
         mock_xgb_validator = Mock()
@@ -248,16 +256,16 @@ class TestTrainingStepEnhancer(unittest.TestCase):
                 framework="xgboost"
             )
         ]
-        self.enhancer.framework_validators["xgboost"] = mock_xgb_validator
+        enhancer.framework_validators["xgboost"] = mock_xgb_validator
         
         # Execute
-        issues = self.enhancer._validate_training_script_patterns(self.mock_script_analysis, 'xgboost', 'test_script.py')
+        issues = enhancer._validate_training_script_patterns(mock_script_analysis, 'xgboost', 'test_script.py')
         
         # Verify that issues were created (framework-specific validation is handled differently)
-        self.assertIsInstance(issues, list)
+        assert isinstance(issues, list)
 
     @patch.object(TrainingStepEnhancer, '_get_script_analysis')
-    def test_framework_specific_validation_pytorch(self, mock_get_script_analysis):
+    def test_framework_specific_validation_pytorch(self, mock_get_script_analysis, enhancer):
         """Test framework-specific validation for PyTorch."""
         # Setup
         pytorch_analysis = {
@@ -282,72 +290,72 @@ class TestTrainingStepEnhancer(unittest.TestCase):
                 framework="pytorch"
             )
         ]
-        self.enhancer.framework_validators["pytorch"] = mock_pytorch_validator
+        enhancer.framework_validators["pytorch"] = mock_pytorch_validator
         
         # Execute
-        issues = self.enhancer._validate_training_script_patterns(pytorch_analysis, 'pytorch', 'test_script.py')
+        issues = enhancer._validate_training_script_patterns(pytorch_analysis, 'pytorch', 'test_script.py')
         
         # Verify that issues were created (framework-specific validation is handled differently)
-        self.assertIsInstance(issues, list)
+        assert isinstance(issues, list)
 
-    def test_framework_specific_validation_unknown_framework(self):
+    def test_framework_specific_validation_unknown_framework(self, enhancer, mock_script_analysis):
         """Test framework-specific validation for unknown framework."""
         # Execute with unknown framework
-        issues = self.enhancer._validate_training_script_patterns(self.mock_script_analysis, 'unknown_framework', 'test_script.py')
+        issues = enhancer._validate_training_script_patterns(mock_script_analysis, 'unknown_framework', 'test_script.py')
         
         # Should not crash and should not include framework-specific issues
         framework_issues = [issue for issue in issues if hasattr(issue, 'framework') and issue.framework == 'unknown_framework']
-        self.assertEqual(len(framework_issues), 0)
+        assert len(framework_issues) == 0
 
     @patch.object(TrainingStepEnhancer, '_get_script_analysis')
-    def test_get_script_analysis_integration(self, mock_get_script_analysis):
+    def test_get_script_analysis_integration(self, mock_get_script_analysis, enhancer, mock_script_analysis):
         """Test integration with script analysis."""
         # Setup
-        mock_get_script_analysis.return_value = self.mock_script_analysis
+        mock_get_script_analysis.return_value = mock_script_analysis
         
         # Execute
-        result = self.enhancer._get_script_analysis("test_script.py")
+        result = enhancer._get_script_analysis("test_script.py")
         
         # Verify
-        self.assertEqual(result, self.mock_script_analysis)
+        assert result == mock_script_analysis
         mock_get_script_analysis.assert_called_once_with("test_script.py")
 
-    def test_validate_training_specifications_placeholder(self):
+    def test_validate_training_specifications_placeholder(self, enhancer):
         """Test training specifications validation (placeholder)."""
         # This is a placeholder test for the specifications validation
         # The actual implementation would depend on the specification system
-        issues = self.enhancer._validate_training_specifications("xgboost_training.py")
+        issues = enhancer._validate_training_specifications("xgboost_training.py")
         
         # Should return a list (empty or with issues)
-        self.assertIsInstance(issues, list)
+        assert isinstance(issues, list)
 
-    def test_validate_training_dependencies_placeholder(self):
+    def test_validate_training_dependencies_placeholder(self, enhancer):
         """Test training dependencies validation (placeholder)."""
         # This is a placeholder test for the dependencies validation
         # The actual implementation would depend on the dependency system
-        issues = self.enhancer._validate_training_dependencies("xgboost_training.py", "xgboost")
+        issues = enhancer._validate_training_dependencies("xgboost_training.py", "xgboost")
         
         # Should return a list (empty or with issues)
-        self.assertIsInstance(issues, list)
+        assert isinstance(issues, list)
 
-    def test_validate_training_builder_placeholder(self):
+    def test_validate_training_builder_placeholder(self, enhancer):
         """Test training builder validation (placeholder)."""
         # This is a placeholder test for the builder validation
         # The actual implementation would depend on the builder system
-        issues = self.enhancer._validate_training_builder("xgboost_training.py")
+        issues = enhancer._validate_training_builder("xgboost_training.py")
         
         # Should return a list (empty or with issues)
-        self.assertIsInstance(issues, list)
+        assert isinstance(issues, list)
 
-    def test_enhancer_inheritance(self):
+    def test_enhancer_inheritance(self, enhancer):
         """Test that TrainingStepEnhancer properly inherits from BaseStepEnhancer."""
         from cursus.validation.alignment.step_type_enhancers.base_enhancer import BaseStepEnhancer
         
-        self.assertIsInstance(self.enhancer, BaseStepEnhancer)
-        self.assertTrue(hasattr(self.enhancer, 'enhance_validation'))
-        self.assertTrue(hasattr(self.enhancer, '_merge_results'))
+        assert isinstance(enhancer, BaseStepEnhancer)
+        assert hasattr(enhancer, 'enhance_validation')
+        assert hasattr(enhancer, '_merge_results')
 
-    def test_reference_examples_completeness(self):
+    def test_reference_examples_completeness(self, enhancer):
         """Test that reference examples are comprehensive."""
         expected_examples = [
             "xgboost_training.py",
@@ -356,15 +364,15 @@ class TestTrainingStepEnhancer(unittest.TestCase):
         ]
         
         for example in expected_examples:
-            self.assertIn(example, self.enhancer.reference_examples)
+            assert example in enhancer.reference_examples
 
-    def test_framework_validators_completeness(self):
+    def test_framework_validators_completeness(self, enhancer):
         """Test that framework validators are set up for expected frameworks."""
         expected_frameworks = ["xgboost", "pytorch"]
         
         for framework in expected_frameworks:
-            self.assertIn(framework, self.enhancer.framework_validators)
-            self.assertIsNotNone(self.enhancer.framework_validators[framework])
+            assert framework in enhancer.framework_validators
+            assert enhancer.framework_validators[framework] is not None
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

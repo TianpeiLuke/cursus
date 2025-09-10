@@ -6,7 +6,7 @@ specification files from Python modules with robust sys.path management and
 job type awareness.
 """
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 import sys
@@ -17,136 +17,150 @@ from typing import Dict, List, Any, Optional
 from cursus.validation.alignment.loaders.specification_loader import SpecificationLoader
 
 
-class TestSpecificationLoader(unittest.TestCase):
+@pytest.fixture
+def temp_dir():
+    """Set up temporary directory fixture."""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    import shutil
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+@pytest.fixture
+def specs_dir(temp_dir):
+    """Set up specs directory fixture."""
+    specs_dir = Path(temp_dir) / "specs"
+    specs_dir.mkdir(exist_ok=True)
+    return specs_dir
+
+@pytest.fixture
+def loader(specs_dir):
+    """Set up SpecificationLoader fixture."""
+    return SpecificationLoader(str(specs_dir))
+
+@pytest.fixture
+def sample_spec_files(specs_dir):
+    """Set up sample specification files fixture."""
+    spec_files = [
+        "model_training_spec.py",
+        "model_training_validation_spec.py",
+        "data_preprocessing_spec.py",
+        "__init__.py"  # Should be ignored
+    ]
+    
+    # Create sample spec files
+    for spec_file in spec_files:
+        (specs_dir / spec_file).touch()
+    
+    return spec_files
+
+@pytest.fixture
+def sample_spec_obj():
+    """Set up sample StepSpecification object fixture."""
+    spec_obj = Mock()
+    spec_obj.step_type = "ModelTraining"
+    spec_obj.node_type = Mock()
+    spec_obj.node_type.value = "ProcessingJob"
+    
+    # Mock dependencies
+    mock_dep = Mock()
+    mock_dep.logical_name = "training_data"
+    mock_dep.dependency_type = Mock()
+    mock_dep.dependency_type.value = "InputData"
+    mock_dep.required = True
+    mock_dep.compatible_sources = ["S3"]
+    mock_dep.data_type = "tabular"
+    mock_dep.description = "Training dataset"
+    
+    spec_obj.dependencies = {"training_data": mock_dep}
+    
+    # Mock outputs
+    mock_output = Mock()
+    mock_output.logical_name = "model"
+    mock_output.output_type = Mock()
+    mock_output.output_type.value = "Model"
+    mock_output.property_path = "/opt/ml/model"
+    mock_output.data_type = "model"
+    mock_output.description = "Trained model"
+    
+    spec_obj.outputs = {"model": mock_output}
+    return spec_obj
+
+class TestSpecificationLoader:
     """Test cases for SpecificationLoader class."""
-    
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.specs_dir = Path(self.temp_dir) / "specs"
-        self.specs_dir.mkdir(exist_ok=True)
-        
-        self.loader = SpecificationLoader(str(self.specs_dir))
-        
-        # Sample specification files
-        self.sample_spec_files = [
-            "model_training_spec.py",
-            "model_training_validation_spec.py",
-            "data_preprocessing_spec.py",
-            "__init__.py"  # Should be ignored
-        ]
-        
-        # Create sample spec files
-        for spec_file in self.sample_spec_files:
-            (self.specs_dir / spec_file).touch()
-        
-        # Sample StepSpecification object
-        self.sample_spec_obj = Mock()
-        self.sample_spec_obj.step_type = "ModelTraining"
-        self.sample_spec_obj.node_type = Mock()
-        self.sample_spec_obj.node_type.value = "ProcessingJob"
-        
-        # Mock dependencies
-        mock_dep = Mock()
-        mock_dep.logical_name = "training_data"
-        mock_dep.dependency_type = Mock()
-        mock_dep.dependency_type.value = "InputData"
-        mock_dep.required = True
-        mock_dep.compatible_sources = ["S3"]
-        mock_dep.data_type = "tabular"
-        mock_dep.description = "Training dataset"
-        
-        self.sample_spec_obj.dependencies = {"training_data": mock_dep}
-        
-        # Mock outputs
-        mock_output = Mock()
-        mock_output.logical_name = "model"
-        mock_output.output_type = Mock()
-        mock_output.output_type.value = "Model"
-        mock_output.property_path = "/opt/ml/model"
-        mock_output.data_type = "model"
-        mock_output.description = "Trained model"
-        
-        self.sample_spec_obj.outputs = {"model": mock_output}
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def test_init(self):
         """Test SpecificationLoader initialization."""
         loader = SpecificationLoader("/path/to/specs")
         
-        self.assertEqual(loader.specs_dir, Path("/path/to/specs"))
-        self.assertIsNotNone(loader.file_resolver)
+        assert loader.specs_dir == Path("/path/to/specs")
+        assert loader.file_resolver is not None
     
-    def test_find_specification_files_direct_matching(self):
+    def test_find_specification_files_direct_matching(self, loader, sample_spec_files, specs_dir):
         """Test finding specification files using direct matching."""
-        spec_files = self.loader.find_specification_files("model_training")
+        spec_files = loader.find_specification_files("model_training")
         
         # Should find both the main spec and the validation variant
         expected_files = [
-            self.specs_dir / "model_training_spec.py",
-            self.specs_dir / "model_training_validation_spec.py"
+            specs_dir / "model_training_spec.py",
+            specs_dir / "model_training_validation_spec.py"
         ]
         
-        self.assertEqual(len(spec_files), 2)
+        assert len(spec_files) == 2
         for expected_file in expected_files:
-            self.assertIn(expected_file, spec_files)
+            assert expected_file in spec_files
     
-    def test_find_specification_files_no_direct_match(self):
+    def test_find_specification_files_no_direct_match(self, loader, specs_dir):
         """Test finding specification files when no direct match exists."""
         # Mock the file resolver fallback
-        with patch.object(self.loader.file_resolver, 'find_spec_file') as mock_find:
-            mock_find.return_value = str(self.specs_dir / "model_training_spec.py")
+        with patch.object(loader.file_resolver, 'find_spec_file') as mock_find:
+            mock_find.return_value = str(specs_dir / "model_training_spec.py")
             
-            spec_files = self.loader.find_specification_files("nonexistent_spec")
+            spec_files = loader.find_specification_files("nonexistent_spec")
             
             assert len(spec_files) >= 1
             assert Path(mock_find.return_value) in spec_files
     
-    def test_find_specification_files_no_match(self):
+    def test_find_specification_files_no_match(self, loader):
         """Test finding specification files when no match exists."""
-        with patch.object(self.loader.file_resolver, 'find_spec_file') as mock_find:
+        with patch.object(loader.file_resolver, 'find_spec_file') as mock_find:
             mock_find.return_value = None
             
-            spec_files = self.loader.find_specification_files("nonexistent_spec")
+            spec_files = loader.find_specification_files("nonexistent_spec")
             
             assert spec_files == []
     
-    def test_extract_job_type_from_spec_file_default(self):
+    def test_extract_job_type_from_spec_file_default(self, loader):
         """Test extracting job type from spec file with default pattern."""
         spec_file = Path("model_training_spec.py")
-        job_type = self.loader.extract_job_type_from_spec_file(spec_file)
+        job_type = loader.extract_job_type_from_spec_file(spec_file)
         
         # For files without specific job type patterns, it should return "training" as default
         assert job_type == "training"
     
-    def test_extract_job_type_from_spec_file_with_job_type(self):
+    def test_extract_job_type_from_spec_file_with_job_type(self, loader):
         """Test extracting job type from spec file with job type pattern."""
         spec_file = Path("model_training_validation_spec.py")
-        job_type = self.loader.extract_job_type_from_spec_file(spec_file)
+        job_type = loader.extract_job_type_from_spec_file(spec_file)
         
         assert job_type == "validation"
     
-    def test_extract_job_type_from_spec_file_training(self):
+    def test_extract_job_type_from_spec_file_training(self, loader):
         """Test extracting training job type from spec file."""
         spec_file = Path("data_preprocessing_training_spec.py")
-        job_type = self.loader.extract_job_type_from_spec_file(spec_file)
+        job_type = loader.extract_job_type_from_spec_file(spec_file)
         
         assert job_type == "training"
     
-    def test_extract_job_type_from_spec_file_calibration(self):
+    def test_extract_job_type_from_spec_file_calibration(self, loader):
         """Test extracting calibration job type from spec file."""
         spec_file = Path("model_evaluation_calibration_spec.py")
-        job_type = self.loader.extract_job_type_from_spec_file(spec_file)
+        job_type = loader.extract_job_type_from_spec_file(spec_file)
         
         assert job_type == "calibration"
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_specification_from_python_success(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_specification_from_python_success(self, mock_module_from_spec, mock_spec_from_file, loader, sample_spec_obj):
         """Test successful specification loading from Python file."""
         # Mock the module loading
         mock_spec = Mock()
@@ -156,13 +170,13 @@ class TestSpecificationLoader(unittest.TestCase):
         
         # Create a proper mock module that doesn't have _mock_methods
         mock_module = type('MockModule', (), {})()
-        mock_module.MODEL_TRAINING_SPEC = self.sample_spec_obj
+        mock_module.MODEL_TRAINING_SPEC = sample_spec_obj
         mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['MODEL_TRAINING_SPEC']):
-            with patch.object(self.loader.file_resolver, 'find_spec_constant_name', return_value='MODEL_TRAINING_SPEC'):
+            with patch.object(loader.file_resolver, 'find_spec_constant_name', return_value='MODEL_TRAINING_SPEC'):
                 spec_path = Path("model_training_spec.py")
-                result = self.loader.load_specification_from_python(spec_path, "model_training", "default")
+                result = loader.load_specification_from_python(spec_path, "model_training", "default")
                 
                 # Verify the result structure
                 assert result['step_type'] == "ModelTraining"
@@ -171,20 +185,20 @@ class TestSpecificationLoader(unittest.TestCase):
                 assert 'outputs' in result
     
     @patch('importlib.util.spec_from_file_location')
-    def test_load_specification_from_python_no_spec(self, mock_spec_from_file):
+    def test_load_specification_from_python_no_spec(self, mock_spec_from_file, loader):
         """Test specification loading when spec creation fails."""
         mock_spec_from_file.return_value = None
         
         spec_path = Path("test_spec.py")
         
-        with self.assertRaises(ValueError) as exc_info:
-            self.loader.load_specification_from_python(spec_path, "test", "default")
+        with pytest.raises(ValueError) as exc_info:
+            loader.load_specification_from_python(spec_path, "test", "default")
         
-        self.assertIn("Could not load specification module", str(exc_info.exception))
+        assert "Could not load specification module" in str(exc_info.value)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_specification_from_python_no_spec_object(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_specification_from_python_no_spec_object(self, mock_module_from_spec, mock_spec_from_file, loader):
         """Test specification loading when no specification object is found."""
         # Mock the module loading
         mock_spec = Mock()
@@ -198,17 +212,17 @@ class TestSpecificationLoader(unittest.TestCase):
         mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['other_attr']):
-            with patch.object(self.loader.file_resolver, 'find_spec_constant_name', return_value=None):
+            with patch.object(loader.file_resolver, 'find_spec_constant_name', return_value=None):
                 spec_path = Path("test_spec.py")
                 
-                with self.assertRaises(ValueError) as exc_info:
-                    self.loader.load_specification_from_python(spec_path, "test", "default")
+                with pytest.raises(ValueError) as exc_info:
+                    loader.load_specification_from_python(spec_path, "test", "default")
                 
-                self.assertIn("No specification constant found", str(exc_info.exception))
+                assert "No specification constant found" in str(exc_info.value)
     
     @patch('importlib.util.spec_from_file_location')
     @patch('importlib.util.module_from_spec')
-    def test_load_specification_from_python_sys_path_management(self, mock_module_from_spec, mock_spec_from_file):
+    def test_load_specification_from_python_sys_path_management(self, mock_module_from_spec, mock_spec_from_file, loader, sample_spec_obj):
         """Test that sys.path is properly managed during specification loading."""
         original_path = sys.path.copy()
         
@@ -220,13 +234,13 @@ class TestSpecificationLoader(unittest.TestCase):
         
         # Create a proper mock module that doesn't have _mock_methods
         mock_module = type('MockModule', (), {})()
-        mock_module.TEST_SPEC = self.sample_spec_obj
+        mock_module.TEST_SPEC = sample_spec_obj
         mock_module_from_spec.return_value = mock_module
         
         with patch('builtins.dir', return_value=['TEST_SPEC']):
-            with patch.object(self.loader.file_resolver, 'find_spec_constant_name', return_value='TEST_SPEC'):
+            with patch.object(loader.file_resolver, 'find_spec_constant_name', return_value='TEST_SPEC'):
                 spec_path = Path("test_spec.py")
-                self.loader.load_specification_from_python(spec_path, "test", "default")
+                loader.load_specification_from_python(spec_path, "test", "default")
                 
                 # Verify sys.path is restored
                 assert sys.path == original_path
