@@ -2,20 +2,22 @@
 Test suite for script contract argument validation.
 """
 
-import unittest
+import pytest
 import tempfile
 import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+import shutil
 
 from cursus.validation.alignment.script_contract_alignment import (
     ScriptContractAlignmentTester
 )
 
-class TestArgumentValidation(unittest.TestCase):
+class TestArgumentValidation:
     """Test argument validation in script contract alignment."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.scripts_dir = Path(self.temp_dir) / "scripts"
@@ -28,10 +30,10 @@ class TestArgumentValidation(unittest.TestCase):
             str(self.scripts_dir),
             str(self.contracts_dir)
         )
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
-        import shutil
+        
+        yield
+        
+        # Clean up test fixtures
         shutil.rmtree(self.temp_dir)
     
     def test_argument_validation_success(self):
@@ -102,10 +104,10 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             
             result = self.tester.validate_script("test_script")
             
-            self.assertTrue(result['passed'])
+            assert result['passed']
             # Should have no argument-related issues due to proper argparse normalization
             arg_issues = [issue for issue in result['issues'] if issue['category'] == 'arguments']
-            self.assertEqual(len(arg_issues), 0, f"Unexpected argument issues: {arg_issues}")
+            assert len(arg_issues) == 0, f"Unexpected argument issues: {arg_issues}"
     
     def test_missing_required_argument(self):
         """Test validation when script is missing required argument."""
@@ -165,12 +167,12 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             
             result = self.tester.validate_script("test_script")
             
-            self.assertFalse(result['passed'])
+            assert not result['passed']
             
             # Check for missing argument issue
             missing_arg_issues = [issue for issue in result['issues'] 
                                  if issue['category'] == 'arguments' and 'not defined in script' in issue['message']]
-            self.assertGreater(len(missing_arg_issues), 0)
+            assert len(missing_arg_issues) > 0
     
     def test_extra_argument_in_script(self):
         """Test validation when script has extra argument not in contract."""
@@ -236,12 +238,12 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             result = self.tester.validate_script("test_script")
             
             # Should pass but have warnings
-            self.assertTrue(result['passed'])
+            assert result['passed']
             
             # Check for extra argument warning
             extra_arg_issues = [issue for issue in result['issues'] 
                                if issue['category'] == 'arguments' and 'not in contract' in issue['message']]
-            self.assertGreater(len(extra_arg_issues), 0)
+            assert len(extra_arg_issues) > 0
     
     def test_argument_type_mismatch(self):
         """Test validation when argument types don't match."""
@@ -307,7 +309,7 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         # Check for type mismatch warning
         type_issues = [issue for issue in issues 
                       if issue['category'] == 'arguments' and 'type mismatch' in issue['message']]
-        self.assertGreater(len(type_issues), 0)
+        assert len(type_issues) > 0
     
     def test_argparse_hyphen_to_underscore_normalization(self):
         """
@@ -372,8 +374,7 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         issues = self.tester.script_validator.validate_argument_usage(mock_analysis, mock_contract, "currency_conversion", set())
         
         # Should have NO issues - the fix should handle argparse normalization correctly
-        self.assertEqual(len(issues), 0, 
-                        f"Expected no issues with argparse normalization, but found: {[issue['message'] for issue in issues]}")
+        assert len(issues) == 0, f"Expected no issues with argparse normalization, but found: {[issue['message'] for issue in issues]}"
         
         print("✅ Argparse hyphen-to-underscore normalization test passed!")
         print("   Contract 'job-type' correctly matches script 'args.job_type'")
@@ -415,13 +416,12 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         
         # Should find exactly 1 missing argument issue
         missing_arg_issues = [issue for issue in issues if 'not defined in script' in issue['message']]
-        self.assertEqual(len(missing_arg_issues), 1, 
-                        f"Expected 1 missing argument issue, found {len(missing_arg_issues)}")
+        assert len(missing_arg_issues) == 1, f"Expected 1 missing argument issue, found {len(missing_arg_issues)}"
         
         # Check that the error message includes both CLI and Python names
         issue = missing_arg_issues[0]
-        self.assertIn('marketplace-id-col', issue['message'])  # CLI name
-        self.assertIn('marketplace_id_col', issue['message'])  # Python attribute name
+        assert 'marketplace-id-col' in issue['message']  # CLI name
+        assert 'marketplace_id_col' in issue['message']  # Python attribute name
         
         print("✅ Missing argument detection with argparse normalization works correctly!")
     
@@ -460,15 +460,15 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         
         # Should find exactly 1 extra argument issue
         extra_arg_issues = [issue for issue in issues if 'not in contract' in issue['message']]
-        self.assertEqual(len(extra_arg_issues), 1, 
-                        f"Expected 1 extra argument issue, found {len(extra_arg_issues)}")
+        assert len(extra_arg_issues) == 1, f"Expected 1 extra argument issue, found {len(extra_arg_issues)}"
         
         # Check that the error message includes both CLI and Python names
         issue = extra_arg_issues[0]
-        self.assertIn('--extra-param', issue['message'])  # CLI name
-        self.assertIn('extra_param', issue['message'])  # Python attribute name
+        assert '--extra-param' in issue['message']  # CLI name
+        assert 'extra_param' in issue['message']  # Python attribute name
         
         print("✅ Extra argument detection with argparse normalization works correctly!")
 
+
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

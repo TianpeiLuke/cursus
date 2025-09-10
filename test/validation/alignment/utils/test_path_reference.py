@@ -2,11 +2,11 @@
 Test suite for PathReference model.
 """
 
-import unittest
+import pytest
 
 from cursus.validation.alignment.alignment_utils import PathReference
 
-class TestPathReference(unittest.TestCase):
+class TestPathReference:
     """Test PathReference model."""
     
     def test_path_reference_creation(self):
@@ -18,11 +18,11 @@ class TestPathReference(unittest.TestCase):
             is_hardcoded=True
         )
         
-        self.assertEqual(path_ref.path, "/opt/ml/input/data")
-        self.assertEqual(path_ref.line_number, 10)
-        self.assertEqual(path_ref.context, "with open('/opt/ml/input/data/file.csv', 'r') as f:")
-        self.assertTrue(path_ref.is_hardcoded)
-        self.assertIsNone(path_ref.construction_method)
+        assert path_ref.path == "/opt/ml/input/data"
+        assert path_ref.line_number == 10
+        assert path_ref.context == "with open('/opt/ml/input/data/file.csv', 'r') as f:"
+        assert path_ref.is_hardcoded is True
+        assert path_ref.construction_method is None
     
     def test_path_reference_with_construction_method(self):
         """Test PathReference creation with construction method."""
@@ -34,8 +34,8 @@ class TestPathReference(unittest.TestCase):
             construction_method="os.path.join"
         )
         
-        self.assertEqual(path_ref.construction_method, "os.path.join")
-        self.assertFalse(path_ref.is_hardcoded)
+        assert path_ref.construction_method == "os.path.join"
+        assert path_ref.is_hardcoded is False
     
     def test_path_reference_dynamic_path(self):
         """Test PathReference for dynamic path construction."""
@@ -47,8 +47,8 @@ class TestPathReference(unittest.TestCase):
             construction_method="environment_variable"
         )
         
-        self.assertFalse(path_ref.is_hardcoded)
-        self.assertEqual(path_ref.construction_method, "environment_variable")
+        assert path_ref.is_hardcoded is False
+        assert path_ref.construction_method == "environment_variable"
     
     def test_path_reference_defaults(self):
         """Test PathReference default values."""
@@ -58,8 +58,8 @@ class TestPathReference(unittest.TestCase):
             context="path = '/some/path'"
         )
         
-        self.assertTrue(path_ref.is_hardcoded)  # Default is True
-        self.assertIsNone(path_ref.construction_method)
+        assert path_ref.is_hardcoded is True  # Default is True
+        assert path_ref.construction_method is None
     
     def test_path_reference_string_representation(self):
         """Test PathReference string representation."""
@@ -71,8 +71,8 @@ class TestPathReference(unittest.TestCase):
         )
         
         str_repr = str(path_ref)
-        self.assertIn("/test/path", str_repr)
-        self.assertIn("20", str_repr)
+        assert "/test/path" in str_repr
+        assert "20" in str_repr
     
     def test_path_reference_serialization(self):
         """Test PathReference serialization to dict."""
@@ -86,21 +86,22 @@ class TestPathReference(unittest.TestCase):
         
         path_dict = path_ref.model_dump()
         
-        self.assertEqual(path_dict["path"], "/opt/ml/processing/input/data.csv")
-        self.assertEqual(path_dict["line_number"], 42)
-        self.assertEqual(path_dict["context"], "data = pd.read_csv('/opt/ml/processing/input/data.csv')")
-        self.assertTrue(path_dict["is_hardcoded"])
-        self.assertEqual(path_dict["construction_method"], "literal")
+        assert path_dict["path"] == "/opt/ml/processing/input/data.csv"
+        assert path_dict["line_number"] == 42
+        assert path_dict["context"] == "data = pd.read_csv('/opt/ml/processing/input/data.csv')"
+        assert path_dict["is_hardcoded"] is True
+        assert path_dict["construction_method"] == "literal"
     
     def test_path_reference_validation(self):
         """Test PathReference validation with invalid data."""
         # Test with missing required fields
         from pydantic import ValidationError
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             PathReference(
                 path="/test/path"
                 # Missing required line_number and context
             )
 
+
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

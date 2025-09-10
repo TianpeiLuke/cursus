@@ -7,16 +7,17 @@ Tests the three path validation scenarios:
 3. Contract directory path + Script uses directory path → Direct match
 """
 
-import unittest
+import pytest
 from unittest.mock import MagicMock, patch
 from typing import Dict, Any, List
 
 from cursus.validation.alignment.validators.script_contract_validator import ScriptContractValidator
 
-class TestScriptContractValidator(unittest.TestCase):
+class TestScriptContractValidator:
     """Test ScriptContractValidator with enhanced path validation logic."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.validator = ScriptContractValidator()
     
@@ -62,7 +63,7 @@ class TestScriptContractValidator(unittest.TestCase):
         
         # Should have no ERROR issues - direct match should work
         error_issues = [issue for issue in issues if issue['severity'] == 'ERROR']
-        self.assertEqual(len(error_issues), 0, f"Unexpected errors: {error_issues}")
+        assert len(error_issues) == 0, f"Unexpected errors: {error_issues}"
     
     def test_scenario_2_parent_child_relationship(self):
         """Test Scenario 2: Contract file path + Script uses directory path → Parent-child relationship."""
@@ -93,11 +94,11 @@ class TestScriptContractValidator(unittest.TestCase):
         # Should have an INFO message about correct parent-child usage
         info_issues = [issue for issue in issues 
                       if issue['severity'] == 'INFO' and 'correctly uses parent directory' in issue['message']]
-        self.assertGreater(len(info_issues), 0, "Should have INFO message about correct parent-child usage")
+        assert len(info_issues) > 0, "Should have INFO message about correct parent-child usage"
         
         # Should have no ERROR issues
         error_issues = [issue for issue in issues if issue['severity'] == 'ERROR']
-        self.assertEqual(len(error_issues), 0, f"Unexpected errors: {error_issues}")
+        assert len(error_issues) == 0, f"Unexpected errors: {error_issues}"
     
     def test_scenario_3_direct_directory_to_directory_match(self):
         """Test Scenario 3: Contract directory path + Script uses directory path → Direct match."""
@@ -123,7 +124,7 @@ class TestScriptContractValidator(unittest.TestCase):
         
         # Should have no ERROR issues - direct directory match should work
         error_issues = [issue for issue in issues if issue['severity'] == 'ERROR']
-        self.assertEqual(len(error_issues), 0, f"Unexpected errors: {error_issues}")
+        assert len(error_issues) == 0, f"Unexpected errors: {error_issues}"
     
     def test_undeclared_sagemaker_path_error(self):
         """Test that undeclared SageMaker paths generate ERROR issues."""
@@ -145,7 +146,7 @@ class TestScriptContractValidator(unittest.TestCase):
         # Should have ERROR for undeclared SageMaker path
         error_issues = [issue for issue in issues 
                        if issue['severity'] == 'ERROR' and 'undeclared SageMaker path' in issue['message']]
-        self.assertGreater(len(error_issues), 0, "Should have ERROR for undeclared SageMaker path")
+        assert len(error_issues) > 0, "Should have ERROR for undeclared SageMaker path"
     
     def test_unused_contract_path_warning(self):
         """Test that unused contract paths generate WARNING issues."""
@@ -169,7 +170,7 @@ class TestScriptContractValidator(unittest.TestCase):
         # Should have WARNING for unused contract path
         warning_issues = [issue for issue in issues 
                          if issue['severity'] == 'WARNING' and 'not used in script' in issue['message']]
-        self.assertGreater(len(warning_issues), 0, "Should have WARNING for unused contract path")
+        assert len(warning_issues) > 0, "Should have WARNING for unused contract path"
     
     def test_is_file_path_detection(self):
         """Test the _is_file_path helper method."""
@@ -183,8 +184,7 @@ class TestScriptContractValidator(unittest.TestCase):
         ]
         
         for path in file_paths:
-            with self.subTest(path=path):
-                self.assertTrue(self.validator._is_file_path(path), f"{path} should be detected as file")
+            assert self.validator._is_file_path(path), f"{path} should be detected as file"
         
         # Directory paths (should return False)
         directory_paths = [
@@ -196,8 +196,7 @@ class TestScriptContractValidator(unittest.TestCase):
         ]
         
         for path in directory_paths:
-            with self.subTest(path=path):
-                self.assertFalse(self.validator._is_file_path(path), f"{path} should be detected as directory")
+            assert not self.validator._is_file_path(path), f"{path} should be detected as directory"
     
     def test_script_constructs_file_path_detection(self):
         """Test the _script_constructs_file_path helper method."""
@@ -215,7 +214,7 @@ class TestScriptContractValidator(unittest.TestCase):
         result = self.validator._script_constructs_file_path(
             analysis, '/opt/ml/input/data/config', 'hyperparameters.json'
         )
-        self.assertTrue(result, "Should detect file path construction")
+        assert result, "Should detect file path construction"
         
         # Analysis without construction pattern
         analysis_no_construction = {
@@ -227,7 +226,7 @@ class TestScriptContractValidator(unittest.TestCase):
         result = self.validator._script_constructs_file_path(
             analysis_no_construction, '/opt/ml/input/data/config', 'hyperparameters.json'
         )
-        self.assertFalse(result, "Should not detect file path construction without pattern")
+        assert not result, "Should not detect file path construction without pattern"
     
     def test_resolve_logical_name_from_contract(self):
         """Test the _resolve_logical_name_from_contract helper method."""
@@ -248,25 +247,14 @@ class TestScriptContractValidator(unittest.TestCase):
         }
         
         # Should resolve logical names correctly
-        self.assertEqual(
-            self.validator._resolve_logical_name_from_contract('/opt/ml/input/data/train.csv', contract),
-            'training_data'
-        )
+        assert self.validator._resolve_logical_name_from_contract('/opt/ml/input/data/train.csv', contract) == 'training_data'
         
-        self.assertEqual(
-            self.validator._resolve_logical_name_from_contract('/opt/ml/input/data/config/hyperparameters.json', contract),
-            'config'
-        )
+        assert self.validator._resolve_logical_name_from_contract('/opt/ml/input/data/config/hyperparameters.json', contract) == 'config'
         
-        self.assertEqual(
-            self.validator._resolve_logical_name_from_contract('/opt/ml/model', contract),
-            'model'
-        )
+        assert self.validator._resolve_logical_name_from_contract('/opt/ml/model', contract) == 'model'
         
         # Should return None for paths not in contract
-        self.assertIsNone(
-            self.validator._resolve_logical_name_from_contract('/opt/ml/unknown/path', contract)
-        )
+        assert self.validator._resolve_logical_name_from_contract('/opt/ml/unknown/path', contract) is None
     
     def test_resolve_parent_logical_name_from_contract(self):
         """Test the _resolve_parent_logical_name_from_contract helper method."""
@@ -284,20 +272,12 @@ class TestScriptContractValidator(unittest.TestCase):
         }
         
         # Should resolve parent logical names correctly
-        self.assertEqual(
-            self.validator._resolve_parent_logical_name_from_contract('/opt/ml/input/data/config', contract),
-            'config'
-        )
+        assert self.validator._resolve_parent_logical_name_from_contract('/opt/ml/input/data/config', contract) == 'config'
         
-        self.assertEqual(
-            self.validator._resolve_parent_logical_name_from_contract('/opt/ml/model', contract),
-            'model_file'
-        )
+        assert self.validator._resolve_parent_logical_name_from_contract('/opt/ml/model', contract) == 'model_file'
         
         # Should return None for paths that are not parents of contract paths
-        self.assertIsNone(
-            self.validator._resolve_parent_logical_name_from_contract('/opt/ml/unknown', contract)
-        )
+        assert self.validator._resolve_parent_logical_name_from_contract('/opt/ml/unknown', contract) is None
     
     def test_enhanced_file_operations_detection(self):
         """Test the _detect_file_operations_from_paths helper method."""
@@ -332,8 +312,8 @@ class TestScriptContractValidator(unittest.TestCase):
         )
         
         # Should detect read and write operations based on context and contract matching
-        self.assertIn('/opt/ml/input/data.csv', script_reads)
-        self.assertIn('/opt/ml/output/results.json', script_writes)
+        assert '/opt/ml/input/data.csv' in script_reads
+        assert '/opt/ml/output/results.json' in script_writes
     
     def test_xgboost_training_scenario(self):
         """Test the specific XGBoost training scenario that was causing false positives."""
@@ -376,19 +356,19 @@ class TestScriptContractValidator(unittest.TestCase):
         # Should have INFO message about correct parent-child usage
         info_issues = [issue for issue in issues 
                       if issue['severity'] == 'INFO' and 'correctly uses parent directory' in issue['message']]
-        self.assertGreater(len(info_issues), 0, "Should have INFO message about correct parent-child usage")
+        assert len(info_issues) > 0, "Should have INFO message about correct parent-child usage"
         
         # Should have NO ERROR issues (this was the false positive we fixed)
         error_issues = [issue for issue in issues if issue['severity'] == 'ERROR']
-        self.assertEqual(len(error_issues), 0, f"Should have no ERROR issues, but got: {error_issues}")
+        assert len(error_issues) == 0, f"Should have no ERROR issues, but got: {error_issues}"
         
         # Verify the specific INFO message content
         parent_child_issue = next((issue for issue in info_issues 
                                  if 'correctly uses parent directory' in issue['message']), None)
-        self.assertIsNotNone(parent_child_issue)
-        self.assertIn('/opt/ml/input/data/config', parent_child_issue['message'])
-        self.assertIn('/opt/ml/input/data/config/hyperparameters.json', parent_child_issue['message'])
-        self.assertEqual(parent_child_issue['details']['construction_method'], 'os.path.join')
+        assert parent_child_issue is not None
+        assert '/opt/ml/input/data/config' in parent_child_issue['message']
+        assert '/opt/ml/input/data/config/hyperparameters.json' in parent_child_issue['message']
+        assert parent_child_issue['details']['construction_method'] == 'os.path.join'
     
     def test_step_type_specific_validation_training(self):
         """Test step type-specific validation for training steps."""
@@ -410,7 +390,7 @@ class TestScriptContractValidator(unittest.TestCase):
         
         # Should have recommendations for training-specific paths
         training_issues = [issue for issue in issues if issue['category'] == 'training_contract_validation']
-        self.assertGreater(len(training_issues), 0, "Should have training-specific validation issues")
+        assert len(training_issues) > 0, "Should have training-specific validation issues"
     
     def test_step_type_specific_validation_processing(self):
         """Test step type-specific validation for processing steps."""
@@ -429,7 +409,8 @@ class TestScriptContractValidator(unittest.TestCase):
         
         # Should have recommendations for processing-specific paths
         processing_issues = [issue for issue in issues if issue['category'] == 'processing_contract_validation']
-        self.assertGreater(len(processing_issues), 0, "Should have processing-specific validation issues")
+        assert len(processing_issues) > 0, "Should have processing-specific validation issues"
+
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

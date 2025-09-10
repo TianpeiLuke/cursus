@@ -2,20 +2,22 @@
 Test suite for script contract path validation.
 """
 
-import unittest
+import pytest
 import tempfile
 import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+import shutil
 
 from cursus.validation.alignment.script_contract_alignment import (
     ScriptContractAlignmentTester
 )
 
-class TestScriptContractPathValidation(unittest.TestCase):
+class TestScriptContractPathValidation:
     """Test path validation in script contract alignment."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.scripts_dir = Path(self.temp_dir) / "scripts"
@@ -28,10 +30,10 @@ class TestScriptContractPathValidation(unittest.TestCase):
             str(self.scripts_dir),
             str(self.contracts_dir)
         )
-    
-    def tearDown(self):
-        """Clean up test fixtures."""
-        import shutil
+        
+        yield
+        
+        # Clean up test fixtures
         shutil.rmtree(self.temp_dir)
     
     def test_script_contract_path_validation_success(self):
@@ -131,13 +133,13 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             
             result = self.tester.validate_script("test_script")
             
-            self.assertTrue(result['passed'], f"Validation failed with issues: {result.get('issues', [])}")
+            assert result['passed'], f"Validation failed with issues: {result.get('issues', [])}"
             # Should have no critical or error issues
             critical_or_error_issues = [
                 issue for issue in result.get('issues', [])
                 if issue.get('severity') in ['CRITICAL', 'ERROR']
             ]
-            self.assertEqual(len(critical_or_error_issues), 0)
+            assert len(critical_or_error_issues) == 0
     
     def test_script_contract_path_validation_undeclared_path(self):
         """Test validation with undeclared path usage."""
@@ -190,13 +192,13 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
             
             result = self.tester.validate_script("test_script")
             
-            self.assertFalse(result['passed'])
-            self.assertGreater(len(result['issues']), 0)
+            assert not result['passed']
+            assert len(result['issues']) > 0
             
             # Check for undeclared path issue
             path_issues = [issue for issue in result['issues'] 
                           if issue['category'] == 'path_usage' and 'undeclared' in issue['message']]
-            self.assertGreater(len(path_issues), 0)
+            assert len(path_issues) > 0
     
     def test_missing_script_file(self):
         """Test validation when script file is missing."""
@@ -213,13 +215,13 @@ TEST_SCRIPT_CONTRACT = TestScriptContract()
         
         result = self.tester.validate_script("missing_script")
         
-        self.assertFalse(result['passed'])
-        self.assertGreater(len(result['issues']), 0)
+        assert not result['passed']
+        assert len(result['issues']) > 0
         
         # Check for missing file issue
         missing_file_issues = [issue for issue in result['issues'] 
                               if issue['category'] == 'missing_file']
-        self.assertGreater(len(missing_file_issues), 0)
+        assert len(missing_file_issues) > 0
     
     def test_missing_contract_file(self):
         """Test validation when contract file is missing."""
@@ -232,13 +234,13 @@ print("Hello, world!")
         
         result = self.tester.validate_script("no_contract")
         
-        self.assertFalse(result['passed'])
-        self.assertGreater(len(result['issues']), 0)
+        assert not result['passed']
+        assert len(result['issues']) > 0
         
         # Check for missing contract issue
         missing_contract_issues = [issue for issue in result['issues'] 
                                   if issue['category'] == 'missing_contract']
-        self.assertGreater(len(missing_contract_issues), 0)
+        assert len(missing_contract_issues) > 0
     
     def test_enhanced_file_operations_detection(self):
         """Test that enhanced file operations are properly detected and tracked."""
@@ -327,11 +329,12 @@ ENHANCED_OPS_CONTRACT = EnhancedOpsContract()
             result = self.tester.validate_script("enhanced_ops")
             
             # Should pass since all operations match contract paths
-            self.assertTrue(result['passed'], f"Enhanced operations validation failed: {result.get('issues', [])}")
+            assert result['passed'], f"Enhanced operations validation failed: {result.get('issues', [])}"
             
             # Verify that enhanced methods were tracked
             # This is implicit in the successful validation - the enhanced detection
             # allows the validator to properly match file operations to contract paths
 
+
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main([__file__])

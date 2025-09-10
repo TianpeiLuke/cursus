@@ -7,7 +7,7 @@ the ScriptContractAlignmentTester to ensure scripts follow
 testability refactoring patterns.
 """
 
-import unittest
+import pytest
 import ast
 import sys
 from pathlib import Path
@@ -15,10 +15,11 @@ from pathlib import Path
 from cursus.validation.alignment.testability_validator import TestabilityPatternValidator
 from cursus.validation.alignment.alignment_utils import SeverityLevel
 
-class TestTestabilityPatternValidator(unittest.TestCase):
+class TestTestabilityPatternValidator:
     """Test the TestabilityPatternValidator class."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.validator = TestabilityPatternValidator()
     
@@ -80,19 +81,18 @@ if __name__ == "__main__":
         
         # Should have at least one INFO issue indicating compliance
         info_issues = [issue for issue in issues if issue.level == SeverityLevel.INFO]
-        self.assertGreater(len(info_issues), 0, "Should have INFO issues indicating good testability")
+        assert len(info_issues) > 0, "Should have INFO issues indicating good testability"
         
         # Should not have any CRITICAL issues, but may have ERROR issues for main call pattern
         critical_issues = [issue for issue in issues if issue.level == SeverityLevel.CRITICAL]
-        self.assertEqual(len(critical_issues), 0, f"Should not have CRITICAL issues, but found: {[i.message for i in critical_issues]}")
+        assert len(critical_issues) == 0, f"Should not have CRITICAL issues, but found: {[i.message for i in critical_issues]}"
         
         # Check that if there are ERROR issues, they are about main function call pattern
         error_issues = [issue for issue in issues if issue.level == SeverityLevel.ERROR]
         if error_issues:
             # All error issues should be about main function call pattern, which is acceptable
             for issue in error_issues:
-                self.assertIn("main function", issue.message.lower(), 
-                             f"Unexpected error issue: {issue.message}")
+                assert "main function" in issue.message.lower(), f"Unexpected error issue: {issue.message}"
     
     def test_poor_testability_pattern(self):
         """Test script with poor testability patterns."""
@@ -128,11 +128,11 @@ if __name__ == "__main__":
         
         # Should have WARNING issues for poor testability (main signature)
         warning_issues = [issue for issue in issues if issue.level == SeverityLevel.WARNING]
-        self.assertGreater(len(warning_issues), 0, "Should have WARNING issues for poor testability")
+        assert len(warning_issues) > 0, "Should have WARNING issues for poor testability"
         
         # Check for specific testability issues
         issue_categories = [issue.category for issue in issues]
-        self.assertIn("testability_main_signature", issue_categories, "Should detect main function signature issues")
+        assert "testability_main_signature" in issue_categories, "Should detect main function signature issues"
     
     def test_no_main_function(self):
         """Test script without main function."""
@@ -155,7 +155,7 @@ if __name__ == "__main__":
         # Should have WARNING about missing main function
         warning_issues = [issue for issue in issues if issue.level == SeverityLevel.WARNING]
         main_function_warnings = [issue for issue in warning_issues if "main function" in issue.message.lower()]
-        self.assertGreater(len(main_function_warnings), 0, "Should warn about missing main function")
+        assert len(main_function_warnings) > 0, "Should warn about missing main function"
     
     def test_partial_testability_parameters(self):
         """Test script with partial testability parameters."""
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         # Should have WARNING about missing testability parameters
         warning_issues = [issue for issue in issues if issue.level == SeverityLevel.WARNING]
         signature_warnings = [issue for issue in warning_issues if "missing testability parameters" in issue.message.lower()]
-        self.assertGreater(len(signature_warnings), 0, "Should warn about missing testability parameters")
+        assert len(signature_warnings) > 0, "Should warn about missing testability parameters"
     
     def test_helper_function_env_access(self):
         """Test detection of environment access in helper functions."""
@@ -216,7 +216,7 @@ if __name__ == "__main__":
         # Should have WARNING about helper function environment access
         warning_issues = [issue for issue in issues if issue.level == SeverityLevel.WARNING]
         helper_warnings = [issue for issue in warning_issues if "helper function" in issue.message.lower()]
-        self.assertGreater(len(helper_warnings), 0, "Should warn about helper function environment access")
+        assert len(helper_warnings) > 0, "Should warn about helper function environment access"
     
     def test_container_detection(self):
         """Test detection of container detection patterns."""
@@ -244,7 +244,7 @@ if __name__ == "__main__":
         # Should NOT have INFO issue about missing container detection
         info_issues = [issue for issue in issues if issue.level == SeverityLevel.INFO]
         container_missing_issues = [issue for issue in info_issues if "container detection" in issue.message.lower()]
-        self.assertEqual(len(container_missing_issues), 0, "Should not warn about missing container detection when present")
+        assert len(container_missing_issues) == 0, "Should not warn about missing container detection when present"
     
     def test_main_block_without_main_call(self):
         """Test main block that doesn't call main function."""
@@ -266,12 +266,14 @@ if __name__ == "__main__":
         # Should have ERROR about main block not calling main function
         error_issues = [issue for issue in issues if issue.level == SeverityLevel.ERROR]
         main_call_errors = [issue for issue in error_issues if "does not call main function" in issue.message.lower()]
-        self.assertGreater(len(main_call_errors), 0, "Should error when main block doesn't call main function")
+        assert len(main_call_errors) > 0, "Should error when main block doesn't call main function"
 
-class TestTestabilityIntegration(unittest.TestCase):
+
+class TestTestabilityIntegration:
     """Test integration of testability validation with ScriptContractAlignmentTester."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         # We'll test the integration conceptually since we need actual files
         pass
@@ -280,14 +282,14 @@ class TestTestabilityIntegration(unittest.TestCase):
         """Test that TestabilityPatternValidator can be imported."""
         from cursus.validation.alignment import TestabilityPatternValidator
         validator = TestabilityPatternValidator()
-        self.assertIsNotNone(validator)
-        self.assertTrue(hasattr(validator, 'validate_script_testability'))
+        assert validator is not None
+        assert hasattr(validator, 'validate_script_testability')
     
     def test_testability_parameters_defined(self):
         """Test that testability parameters are properly defined."""
         validator = TestabilityPatternValidator()
         expected_params = {'input_paths', 'output_paths', 'environ_vars', 'job_args'}
-        self.assertEqual(validator.testability_parameters, expected_params)
+        assert validator.testability_parameters == expected_params
     
     def test_severity_levels_mapping(self):
         """Test that severity levels are properly mapped."""
@@ -304,13 +306,15 @@ def main():
         
         # All issues should have valid severity levels
         for issue in issues:
-            self.assertIsInstance(issue.level, SeverityLevel)
-            self.assertIn(issue.level, [SeverityLevel.INFO, SeverityLevel.WARNING, SeverityLevel.ERROR, SeverityLevel.CRITICAL])
+            assert isinstance(issue.level, SeverityLevel)
+            assert issue.level in [SeverityLevel.INFO, SeverityLevel.WARNING, SeverityLevel.ERROR, SeverityLevel.CRITICAL]
 
-class TestTestabilityValidationCategories(unittest.TestCase):
+
+class TestTestabilityValidationCategories:
     """Test specific testability validation categories."""
     
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
         self.validator = TestabilityPatternValidator()
     
@@ -354,8 +358,9 @@ if __name__ == "__main__":
         
         # Should have at least some of the expected categories
         overlap = found_categories.intersection(expected_categories)
-        self.assertGreater(len(overlap), 0, f"Should find testability categories, found: {found_categories}")
+        assert len(overlap) > 0, f"Should find testability categories, found: {found_categories}"
+
 
 if __name__ == '__main__':
     # Run the tests
-    unittest.main(verbosity=2)
+    pytest.main([__file__, '-v'])
