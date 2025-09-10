@@ -2,125 +2,152 @@
 Comprehensive test runner for all validation tests.
 
 This script discovers and runs all test files in the validation directory
-and its subdirectories, providing a complete summary.
+and its subdirectories using pytest, providing a complete summary.
 """
 
-# Import conftest to ensure path setup
 import sys
 import os
+import subprocess
 from pathlib import Path
+import argparse
 
-# Import conftest to trigger path setup
-sys.path.insert(0, str(Path(__file__).parent.parent))
-import conftest
-
-import unittest
-import importlib
-
-def discover_test_modules(base_path):
-    """Discover all test modules in the validation directory tree."""
-    test_modules = []
+def discover_test_files(base_path):
+    """Discover all test files in the validation directory tree."""
+    test_files = []
     base_path = Path(base_path)
     
-    # Walk through all subdirectories
+    # Walk through all subdirectories to find test files
     for test_file in base_path.rglob("test_*.py"):
-        # Convert file path to module path relative to the test directory
-        try:
-            relative_path = test_file.relative_to(base_path.parent)  # Relative to test/ directory
-            module_path = str(relative_path.with_suffix('')).replace(os.sep, '.')
-            test_modules.append((module_path, str(test_file)))
-        except ValueError:
-            # Skip files that aren't under the test directory
-            continue
+        # Skip __pycache__ and other non-test directories
+        if "__pycache__" not in str(test_file):
+            test_files.append(str(test_file))
     
-    return test_modules
+    return sorted(test_files)
 
-def run_all_validation_tests():
-    """Run all validation test modules."""
+def run_all_validation_tests(verbosity=1, collect_only=False, markers=None, pattern=None):
+    """Run all validation test files using pytest."""
     
-    # Discover all test modules
+    # Discover all test files
     validation_path = Path(__file__).parent
-    test_modules = discover_test_modules(validation_path)
+    test_files = discover_test_files(validation_path)
     
-    # Create a test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
+    print("🔍 Discovering validation test files...")
+    print(f"Found {len(test_files)} test files")
     
-    print("🔍 Discovering and loading validation test modules...")
-    print(f"Found {len(test_modules)} test files")
-    
-    loaded_count = 0
-    failed_count = 0
-    
-    # Load tests from each module
-    for module_name, file_path in sorted(test_modules):
-        try:
-            module = importlib.import_module(module_name)
-            module_suite = loader.loadTestsFromModule(module)
-            if module_suite.countTestCases() > 0:
-                suite.addTest(module_suite)
-                print(f"  ✅ Loaded {module_name} ({module_suite.countTestCases()} tests)")
-                loaded_count += 1
-            else:
-                print(f"  ⚠️  {module_name} (no tests found)")
-        except ImportError as e:
-            print(f"  ❌ Failed to load {module_name}: {e}")
-            failed_count += 1
-        except Exception as e:
-            print(f"  ❌ Error loading {module_name}: {e}")
-            failed_count += 1
-    
-    print(f"\n📈 Discovery Summary:")
-    print(f"  Total test files found: {len(test_modules)}")
-    print(f"  Successfully loaded: {loaded_count}")
-    print(f"  Failed to load: {failed_count}")
-    print(f"  Total test cases: {suite.countTestCases()}")
-    
-    if suite.countTestCases() == 0:
-        print("\n⚠️  No tests to run!")
+    if collect_only:
+        print("\n📋 Test files found:")
+        for test_file in test_files:
+            rel_path = Path(test_file).relative_to(validation_path)
+            print(f"  📄 {rel_path}")
         return True
     
-    # Run the tests
-    print(f"\n🚀 Running {suite.countTestCases()} validation tests...")
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
+    # Build pytest command
+    pytest_args = [
+        sys.executable, "-m", "pytest",
+        str(validation_path),  # Run tests in validation directory
+        "--tb=short",  # Short traceback format
+        "--no-header",  # No pytest header
+        "--color=yes",  # Colored output
+    ]
     
-    # Print summary
-    print(f"\n📊 Test Execution Summary:")
-    print(f"  Tests run: {result.testsRun}")
-    print(f"  Failures: {len(result.failures)}")
-    print(f"  Errors: {len(result.errors)}")
-    print(f"  Skipped: {len(result.skipped) if hasattr(result, 'skipped') else 0}")
+    # Add verbosity
+    if verbosity == 0:
+        pytest_args.append("-q")  # Quiet
+    elif verbosity == 2:
+        pytest_args.append("-v")  # Verbose
+    elif verbosity == 3:
+        pytest_args.extend(["-v", "-s"])  # Very verbose with output
     
-    if result.failures:
-        print(f"\n❌ Failures ({len(result.failures)}):")
-        for i, (test, traceback) in enumerate(result.failures, 1):
-            print(f"  {i}. {test}")
-            # Print first few lines of traceback for brevity
-            lines = traceback.strip().split('\n')
-            for line in lines[-3:]:  # Show last 3 lines
-                print(f"     {line}")
-            print()
+    # Add markers filter if specified
+    if markers:
+        pytest_args.extend(["-m", markers])
     
-    if result.errors:
-        print(f"\n💥 Errors ({len(result.errors)}):")
-        for i, (test, traceback) in enumerate(result.errors, 1):
-            print(f"  {i}. {test}")
-            # Print first few lines of traceback for brevity
-            lines = traceback.strip().split('\n')
-            for line in lines[-3:]:  # Show last 3 lines
-                print(f"     {line}")
-            print()
+    # Add pattern filter if specified
+    if pattern:
+        pytest_args.extend(["-k", pattern])
     
-    # Return success status
-    success = len(result.failures) == 0 and len(result.errors) == 0
-    if success:
-        print(f"\n✅ All tests passed!")
-    else:
-        print(f"\n❌ Some tests failed!")
+    # Add coverage if available
+    try:
+        import pytest_cov
+        pytest_args.extend([
+            "--cov=cursus.validation",
+            "--cov-report=term-missing",
+            "--cov-report=html:htmlcov/validation"
+        ])
+        print("📊 Coverage reporting enabled")
+    except ImportError:
+        print("⚠️  pytest-cov not available, skipping coverage")
     
-    return success
+    print(f"\n🚀 Running validation tests with pytest...")
+    print(f"Command: {' '.join(pytest_args)}")
+    
+    # Run pytest
+    try:
+        result = subprocess.run(pytest_args, cwd=validation_path.parent.parent)
+        return result.returncode == 0
+    except Exception as e:
+        print(f"❌ Error running pytest: {e}")
+        return False
+
+def main():
+    """Main entry point with argument parsing."""
+    parser = argparse.ArgumentParser(
+        description="Run all validation tests using pytest",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python run_all_validation_tests.py                    # Run all tests
+  python run_all_validation_tests.py -v 2               # Verbose output
+  python run_all_validation_tests.py --collect-only     # Just list tests
+  python run_all_validation_tests.py -m "not slow"      # Skip slow tests
+  python run_all_validation_tests.py -k "alignment"     # Run alignment tests only
+        """
+    )
+    
+    parser.add_argument(
+        '-v', '--verbosity',
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=1,
+        help='Test output verbosity level (0=quiet, 1=normal, 2=verbose, 3=very verbose)'
+    )
+    
+    parser.add_argument(
+        '--collect-only',
+        action='store_true',
+        help='Only collect and display test files, do not run tests'
+    )
+    
+    parser.add_argument(
+        '-m', '--markers',
+        help='Run tests matching given mark expression (e.g., "not slow")'
+    )
+    
+    parser.add_argument(
+        '-k', '--pattern',
+        help='Run tests matching given substring expression'
+    )
+    
+    args = parser.parse_args()
+    
+    print("🧪 Validation Test Runner (pytest-based)")
+    print("=" * 60)
+    
+    success = run_all_validation_tests(
+        verbosity=args.verbosity,
+        collect_only=args.collect_only,
+        markers=args.markers,
+        pattern=args.pattern
+    )
+    
+    if not args.collect_only:
+        print("\n" + "=" * 60)
+        if success:
+            print("✅ All validation tests completed successfully!")
+        else:
+            print("❌ Some validation tests failed!")
+    
+    sys.exit(0 if success else 1)
 
 if __name__ == '__main__':
-    success = run_all_validation_tests()
-    sys.exit(0 if success else 1)
+    main()
