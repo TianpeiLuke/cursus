@@ -9,18 +9,20 @@ import importlib
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass
 
+from pydantic import BaseModel, Field
 from ...core.base.contract_base import ScriptContract
 
 
-@dataclass
-class ContractDiscoveryResult:
+class ContractDiscoveryResult(BaseModel):
     """Result of contract discovery operation"""
-    contract: Optional[ScriptContract]
-    contract_name: str
-    discovery_method: str
-    error_message: Optional[str] = None
+    contract: Optional[ScriptContract] = Field(None, description="Discovered contract object")
+    contract_name: str = Field(..., description="Name of the contract")
+    discovery_method: str = Field(..., description="Method used to discover the contract")
+    error_message: Optional[str] = Field(None, description="Error message if discovery failed")
+    
+    class Config:
+        arbitrary_types_allowed = True  # Allow ScriptContract objects
 
 
 class ContractDiscoveryManager:
@@ -179,8 +181,8 @@ class ContractDiscoveryManager:
                     
                     attr_obj = getattr(contracts_module, attr_name)
                     if isinstance(attr_obj, ScriptContract):
-                        # Check if this contract matches our script
-                        if self._is_contract_match(attr_name, script_name, canonical_name):
+                        # Check if this contract matches our script using entry_point validation
+                        if self._is_contract_match(attr_obj, script_name, canonical_name):
                             return ContractDiscoveryResult(
                                 contract=attr_obj,
                                 contract_name=attr_name,
@@ -211,8 +213,29 @@ class ContractDiscoveryManager:
             error_message="Fuzzy search not implemented"
         )
     
-    def _is_contract_match(self, contract_name: str, script_name: str, canonical_name: Optional[str] = None) -> bool:
-        """Check if a contract name matches the given script"""
+    def _is_contract_match(self, contract_obj: ScriptContract, script_name: str, canonical_name: Optional[str] = None) -> bool:
+        """
+        Check if a contract matches the given script using entry_point field.
+        
+        This is the most reliable way to validate contract-script matching
+        as specified in the design documents.
+        """
+        # Primary validation: check entry_point field
+        if hasattr(contract_obj, 'entry_point') and contract_obj.entry_point:
+            expected_entry_point = f"{script_name}.py"
+            if contract_obj.entry_point == expected_entry_point:
+                print(f"Contract matches script via entry_point: {contract_obj.entry_point}")
+                return True
+            else:
+                print(f"Contract entry_point mismatch: expected {expected_entry_point}, got {contract_obj.entry_point}")
+                return False
+        
+        # Fallback: if no entry_point field, use name-based matching
+        print(f"Contract has no entry_point field, falling back to name-based matching")
+        return self._fallback_name_matching(contract_obj.__class__.__name__, script_name, canonical_name)
+    
+    def _fallback_name_matching(self, contract_name: str, script_name: str, canonical_name: Optional[str] = None) -> bool:
+        """Fallback name-based matching when entry_point is not available"""
         
         contract_lower = contract_name.lower()
         script_lower = script_name.lower()

@@ -590,6 +590,7 @@ if not script_files_found:
 ## References
 
 ### Foundation Documents
+- **[Contract Discovery Manager Design](contract_discovery_manager_design.md)**: Intelligent contract discovery and loading system that enhances spec building with real contract data
 - **[Registry Single Source of Truth](registry_single_source_of_truth.md)**: Registry design patterns that provide the foundation for step name resolution and workspace-aware registry management
 - **[Step Specification](step_specification.md)**: Step specification system that defines the canonical naming patterns and job type handling used in node resolution
 - **[Pipeline DAG](pipeline_dag.md)**: Pipeline DAG structure and node management that provides the mathematical framework for pipeline topology
