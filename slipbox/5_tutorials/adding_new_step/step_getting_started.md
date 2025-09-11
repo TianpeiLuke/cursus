@@ -39,12 +39,63 @@ By the end of this tutorial, you'll have created a complete **Feature Selection 
 
 ## What You'll Build
 
-We'll create a **Feature Selection Step** that:
+We'll create a **Feature Selection Step** that answers the key requirements from the developer planning process:
+
+### 1. Step Requirements and Description
+**What does this step accomplish?**
+- Automatically selects the most important features from preprocessed tabular data to improve model performance and reduce training time
+- Supports multiple configurable selection methods (mutual information, correlation, tree-based)
+- Provides feature importance rankings and visualization data for analysis
+
+**Business Logic Implementation:**
+- Loads preprocessed training data from input directory
+- Applies configurable feature selection algorithms
+- Selects top N features based on importance scores with optional minimum threshold filtering
+- Outputs reduced feature dataset and comprehensive importance analysis
+- Supports both binary and multiclass classification scenarios
+
+**Specific Functional Requirements:**
+- Input: Preprocessed tabular data (CSV/Parquet format) with target column
+- Output: Selected features dataset + feature importance scores and rankings
+- Methods: Mutual information, correlation analysis, tree-based importance
+- Configuration: Number of features, selection method, importance thresholds, random seed
+- Error handling: Comprehensive validation with informative error messages
+- Logging: CloudWatch-compatible logging for monitoring and debugging
+
+**Pipeline Position:**
+- **Located after:** `TabularPreprocessing` step (consumes preprocessed tabular data)
+- **Located before:** `XGBoostTraining` step (provides reduced feature set for training)
+- **Pipeline flow:** `TabularPreprocessing` → `FeatureSelection` → `XGBoostTraining`
+- **Integration point:** Fits seamlessly into existing ML pipelines between data preprocessing and model training phases
+
+### 2. SageMaker Step Type Categorization
+**Step Type:** `Processing`
+- This is a data transformation step that processes input data and produces transformed output
+- Uses SageMaker ProcessingStep with SKLearnProcessor for scikit-learn based feature selection
+- Not a training step (doesn't create models) or transform step (doesn't do batch inference)
+- Fits the Processing pattern for data preprocessing and feature engineering
+
+### 3. Plan Documentation Location
+**Implementation Plan:** This tutorial serves as the comprehensive implementation plan
+- Located at: `slipbox/5_tutorials/adding_new_step/step_getting_started.md`
+- Covers complete end-to-end development process from requirements to pipeline integration
+- Includes validation, testing, and deployment guidance
+
+### 4. Relevant Design Patterns
+**Primary Design Patterns Referenced:**
+- **Processing Step Builder Patterns** - Input validation, S3 path handling, container path mapping
+- **Three-Tier Configuration Design** - Essential/System/Derived field categorization
+- **Specification-Driven Design** - Input/output specifications drive implementation
+- **Contract-First Approach** - Script contracts define container interface before implementation
+- **Unified Main Function Interface** - Standardized script interface for testability
+
+**Key Features:**
 - Takes preprocessed tabular data as input
 - Applies feature selection using various methods (mutual information, correlation, tree-based)
 - Outputs selected features and importance rankings
 - Integrates with existing preprocessing and training steps
 - Follows all Cursus standardization and alignment rules
+- Supports workspace-aware development for both shared and isolated environments
 
 ## Tutorial Structure
 
@@ -139,7 +190,7 @@ FEATURE_SELECTION_CONTRACT = ScriptContract(
     required_env_vars=[
         "SELECTION_METHOD",
         "N_FEATURES", 
-        "TARGET_COLUMN"
+        "LABEL_FIELD"
     ],
     optional_env_vars={
         "MIN_IMPORTANCE": "0.01",
@@ -204,6 +255,11 @@ Let's validate our contract design against Cursus standards:
 - Use UPPER_CASE with underscores ✓
 - Clear, descriptive names ✓
 - Required vs optional clearly defined ✓
+
+**✅ Dependency Resolution Alignment:**
+- Input logical names (`input_data`, `config`) designed for semantic matching with `TabularPreprocessing` outputs
+- Output logical names (`selected_features`, `feature_importance`) designed for consumption by `XGBoostTraining` step
+- Names chosen to score highly in semantic similarity matching (see `src/cursus/core/deps/semantic_matcher.py`)
 
 ## Phase 3: Processing Script Creation (25 minutes)
 
@@ -533,6 +589,9 @@ if __name__ == "__main__":
         
         # Parse command line arguments
         parser = argparse.ArgumentParser(description="Feature Selection processing script")
+        parser.add_argument("--job_type", type=str, required=True, 
+                            choices=["training", "validation", "testing", "calibration"],
+                            help="One of ['training','validation','testing','calibration']")
         parser.add_argument('--debug', action='store_true', help='Enable debug mode')
         args = parser.parse_args()
         
@@ -708,6 +767,12 @@ Let's validate our specification against Cursus alignment rules:
 - Compatible sources include preprocessing steps ✓
 - Semantic keywords enable automatic dependency resolution ✓
 
+**✅ Dependency Resolution Integration:**
+- `compatible_sources` includes `["TabularPreprocessing", "ProcessingStep", "CradleDataLoading"]` for automatic upstream matching
+- `semantic_keywords` like `["data", "processed", "tabular", "features", "preprocessing"]` enable high-scoring semantic matches (see `src/cursus/core/deps/dependency_resolver.py`)
+- Output aliases `["features", "reduced_features", "feature_subset", "processed_features"]` provide multiple matching opportunities for downstream steps
+- Dependency resolver will score compatibility based on type matching (40%), semantic similarity (25%), source compatibility (10%), and keyword matching (5%)
+
 ## Phase 5: Configuration Class Creation (20 minutes)
 
 ### Step 5.1: Create the Configuration Class
@@ -717,86 +782,262 @@ We'll implement the three-tier configuration design with proper field categoriza
 **File:** `src/cursus/steps/configs/config_feature_selection.py`
 
 ```python
-from pydantic import BaseModel, Field, field_validator, PrivateAttr
-from typing import Dict, Any, Optional
-from ...core.base.config_base import BasePipelineConfig
+"""
+Feature Selection Step Configuration with Self-Contained Derivation Logic
 
-class FeatureSelectionConfig(BasePipelineConfig):
+This module implements the configuration class for SageMaker Processing steps
+for feature selection, using a self-contained design where each field
+is properly categorized according to the three-tier design:
+1. Essential User Inputs (Tier 1) - Required fields that must be provided by users
+2. System Fields (Tier 2) - Fields with reasonable defaults that can be overridden
+3. Derived Fields (Tier 3) - Fields calculated from other fields, private with read-only properties
+"""
+
+from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr
+from typing import Dict, Optional, Any, TYPE_CHECKING
+from pathlib import Path
+import logging
+
+from .config_processing_step_base import ProcessingStepConfigBase
+
+# Import contract
+from ..contracts.feature_selection_contract import FEATURE_SELECTION_CONTRACT
+
+# Import for type hints only
+if TYPE_CHECKING:
+    from ...core.base.contract_base import ScriptContract
+
+logger = logging.getLogger(__name__)
+
+
+class FeatureSelectionConfig(ProcessingStepConfigBase):
     """
-    Configuration for Feature Selection step using three-tier field classification.
+    Configuration for the Feature Selection step with three-tier field categorization.
+    Inherits from ProcessingStepConfigBase.
     
-    Tier 1: Essential fields (required user inputs)
-    Tier 2: System fields (with defaults, can be overridden)
-    Tier 3: Derived fields (private with property access)
+    Fields are categorized into:
+    - Tier 1: Essential User Inputs - Required from users
+    - Tier 2: System Fields - Default values that can be overridden
+    - Tier 3: Derived Fields - Private with read-only property access
     """
+
+    # ===== Essential User Inputs (Tier 1) =====
+    # These are fields that users must explicitly provide
     
-    # Tier 1: Essential user inputs (required, no defaults)
-    selection_method: str = Field(..., description="Method for feature selection (mutual_info, correlation, tree_based)")
-    n_features: int = Field(..., ge=1, description="Number of features to select")
-    target_column: str = Field(..., description="Name of the target/label column")
+    selection_method: str = Field(
+        description="Feature selection method: 'mutual_info', 'correlation', or 'tree_based'"
+    )
     
-    # Tier 2: System inputs with defaults (can be overridden)
-    min_importance: float = Field(default=0.01, ge=0.0, description="Minimum importance threshold for features")
-    instance_type: str = Field(default="ml.m5.xlarge", description="SageMaker instance type")
-    instance_count: int = Field(default=1, ge=1, description="Number of instances")
-    volume_size_gb: int = Field(default=30, ge=1, description="EBS volume size in GB")
-    max_runtime_seconds: int = Field(default=3600, ge=1, description="Maximum runtime in seconds")
-    debug_mode: bool = Field(default=False, description="Enable debug mode")
-    random_seed: int = Field(default=42, description="Random seed for reproducibility")
+    n_features: int = Field(
+        ge=1,
+        description="Number of top features to select"
+    )
     
-    # Tier 3: Derived fields (private with property access)
-    _script_path: Optional[str] = PrivateAttr(default=None)
-    _output_path: Optional[str] = PrivateAttr(default=None)
+    target_column: str = Field(
+        description="Name of the target/label column in the dataset"
+    )
     
-    @field_validator('selection_method')
+    # ===== System Fields with Defaults (Tier 2) =====
+    # These are fields with reasonable defaults that users can override
+    
+    processing_entry_point: str = Field(
+        default="feature_selection.py",
+        description="Relative path (within processing_source_dir) to the feature selection script."
+    )
+    
+    job_type: str = Field(
+        default='training',
+        description="One of ['training','validation','testing','calibration']"
+    )
+    
+    min_importance: float = Field(
+        default=0.01,
+        ge=0.0,
+        le=1.0,
+        description="Minimum importance threshold for feature filtering"
+    )
+    
+    random_seed: int = Field(
+        default=42,
+        description="Random seed for reproducible results"
+    )
+    
+    debug_mode: bool = Field(
+        default=False,
+        description="Enable debug logging mode"
+    )
+    
+    # ===== Derived Fields (Tier 3) =====
+    # These are fields calculated from other fields
+    # They are private with public read-only property access
+    
+    _full_script_path: Optional[str] = PrivateAttr(default=None)
+
+    class Config(ProcessingStepConfigBase.Config):
+        arbitrary_types_allowed = True
+        validate_assignment = True
+    
+    # ===== Properties for Derived Fields =====
+    
+    @property
+    def full_script_path(self) -> Optional[str]:
+        """
+        Get full path to the feature selection script.
+        
+        Returns:
+            Full path to the script
+        """
+        if self._full_script_path is None:
+            # Get effective source directory
+            source_dir = self.effective_source_dir
+            if source_dir is None:
+                return None
+                
+            # Combine with entry point
+            if source_dir.startswith('s3://'):
+                self._full_script_path = f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
+            else:
+                self._full_script_path = str(Path(source_dir) / self.processing_entry_point)
+                
+        return self._full_script_path
+
+    # ===== Validators =====
+    
+    @field_validator("selection_method")
     @classmethod
     def validate_selection_method(cls, v: str) -> str:
-        """Validate selection method is supported."""
-        valid_methods = ["mutual_info", "correlation", "tree_based"]
-        if v not in valid_methods:
-            raise ValueError(f"Selection method must be one of: {valid_methods}")
+        """
+        Ensure selection_method is one of the supported methods.
+        """
+        allowed = {"mutual_info", "correlation", "tree_based"}
+        if v not in allowed:
+            raise ValueError(f"selection_method must be one of {allowed}, got '{v}'")
         return v
     
-    @field_validator('instance_type')
+    @field_validator("target_column")
     @classmethod
-    def validate_instance_type(cls, v: str) -> str:
-        """Validate SageMaker instance type."""
-        valid_instances = [
-            "ml.m5.large", "ml.m5.xlarge", "ml.m5.2xlarge", "ml.m5.4xlarge",
-            "ml.c5.large", "ml.c5.xlarge", "ml.c5.2xlarge", "ml.c5.4xlarge"
-        ]
-        if v not in valid_instances:
-            raise ValueError(f"Invalid instance type: {v}. Must be one of: {valid_instances}")
+    def validate_target_column(cls, v: str) -> str:
+        """
+        Ensure target_column is a non-empty string.
+        """
+        if not v or not v.strip():
+            raise ValueError("target_column must be a non-empty string")
         return v
     
-    # Public properties for derived fields
-    @property
-    def script_path(self) -> str:
-        """Get script path."""
-        if self._script_path is None:
-            self._script_path = "feature_selection.py"
-        return self._script_path
+    @field_validator("processing_entry_point")
+    @classmethod
+    def validate_entry_point_relative(cls, v: Optional[str]) -> Optional[str]:
+        """
+        Ensure processing_entry_point is a non‐empty relative path.
+        """
+        if v is None or not v.strip():
+            raise ValueError("processing_entry_point must be a non‐empty relative path")
+        if Path(v).is_absolute() or v.startswith("/") or v.startswith("s3://"):
+            raise ValueError("processing_entry_point must be a relative path within source directory")
+        return v
+
+    @field_validator("n_features")
+    @classmethod
+    def validate_n_features(cls, v: int) -> int:
+        """
+        Ensure n_features is a positive integer.
+        """
+        if v <= 0:
+            raise ValueError(f"n_features must be a positive integer, got {v}")
+        return v
+
+    @field_validator("job_type")
+    @classmethod
+    def validate_job_type(cls, v: str) -> str:
+        """
+        Ensure job_type is one of the allowed values.
+        """
+        allowed = {"training", "validation", "testing", "calibration"}
+        if v not in allowed:
+            raise ValueError(f"job_type must be one of {allowed}, got '{v}'")
+        return v
+        
+    # Initialize derived fields at creation time
+    @model_validator(mode="after")
+    def initialize_derived_fields(self) -> "FeatureSelectionConfig":
+        """Initialize all derived fields once after validation."""
+        # Call parent validator first
+        super().initialize_derived_fields()
+        
+        # Initialize full script path if possible
+        source_dir = self.effective_source_dir
+        if source_dir is not None:
+            if source_dir.startswith('s3://'):
+                self._full_script_path = f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
+            else:
+                self._full_script_path = str(Path(source_dir) / self.processing_entry_point)
+            
+        return self
+
+    # ===== Script Contract =====
+        
+    def get_script_contract(self) -> 'ScriptContract':
+        """
+        Get script contract for this configuration.
+        
+        Returns:
+            The feature selection script contract
+        """
+        return FEATURE_SELECTION_CONTRACT
+        
+    def get_script_path(self, default_path: str = None) -> str:
+        """
+        Get script path with priority order:
+        1. Use full_script_path property if available
+        2. Use default_path if provided
+        
+        Returns:
+            Script path or default_path if no entry point can be determined
+        """
+        if self.full_script_path:
+            return self.full_script_path
+        return default_path
     
-    @property
-    def output_path(self) -> str:
-        """Get output path."""
-        if self._output_path is None:
-            self._output_path = f"{self.pipeline_s3_loc}/feature_selection/{self.region}"
-        return self._output_path
+    # ===== Overrides for Inheritance =====
     
-    # Custom model_dump method to include derived properties
+    def get_public_init_fields(self) -> Dict[str, Any]:
+        """
+        Override get_public_init_fields to include feature selection specific fields.
+        
+        Returns:
+            Dict[str, Any]: Dictionary of field names to values for child initialization
+        """
+        # Get fields from parent class
+        base_fields = super().get_public_init_fields()
+        
+        # Add feature selection specific fields
+        selection_fields = {
+            'selection_method': self.selection_method,
+            'n_features': self.n_features,
+            'target_column': self.target_column,
+            'processing_entry_point': self.processing_entry_point,
+            'min_importance': self.min_importance,
+            'random_seed': self.random_seed,
+            'debug_mode': self.debug_mode,
+        }
+        
+        # Combine fields (selection fields take precedence if overlap)
+        init_fields = {**base_fields, **selection_fields}
+        
+        return init_fields
+        
+    # ===== Serialization =====
+    
     def model_dump(self, **kwargs) -> Dict[str, Any]:
         """Override model_dump to include derived properties."""
+        # Get base fields first
         data = super().model_dump(**kwargs)
-        # Add derived properties to output
-        data["script_path"] = self.script_path
-        data["output_path"] = self.output_path
+        
+        # Add derived properties
+        if self.full_script_path:
+            data["full_script_path"] = self.full_script_path
+            
         return data
-    
-    def get_script_contract(self):
-        """Return the script contract for this step."""
-        from ..contracts.feature_selection_contract import FEATURE_SELECTION_CONTRACT
-        return FEATURE_SELECTION_CONTRACT
 ```
 
 ### Step 5.2: Configuration Design Validation
@@ -981,6 +1222,24 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
                 
         return processing_outputs
 
+    def _get_job_arguments(self) -> List[str]:
+        """
+        Constructs the list of command-line arguments to be passed to the processing script.
+        
+        This implementation uses job_type from the configuration, following the same pattern
+        as tabular preprocessing. This allows different feature selection jobs to use 
+        different job_type values based on their configuration.
+        
+        Returns:
+            A list of strings representing the command-line arguments.
+        """
+        # Get job_type from configuration
+        job_type = self.config.job_type
+        self.log_info("Setting job_type argument to: %s", job_type)
+        
+        # Return job_type argument as expected by the script
+        return ["--job_type", job_type]
+
     def create_step(self, **kwargs) -> ProcessingStep:
         """Create the ProcessingStep."""
         # Extract parameters
@@ -1007,6 +1266,7 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
         processor = self._create_processor()
         proc_inputs = self._get_inputs(inputs)
         proc_outputs = self._get_outputs(outputs)
+        job_args = self._get_job_arguments()
         
         # Get step name and script path
         step_name = self._get_step_name()
@@ -1019,6 +1279,7 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
             inputs=proc_inputs,
             outputs=proc_outputs,
             code=script_path,
+            job_arguments=job_args,
             depends_on=dependencies,
             cache_config=self._get_cache_config(enable_caching)
         )
