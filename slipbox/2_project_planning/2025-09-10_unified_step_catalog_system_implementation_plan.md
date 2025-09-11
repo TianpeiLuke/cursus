@@ -174,9 +174,9 @@ class UnifiedContractDiscovery:
 - ✅ Maintain 100% backward compatibility
 - ✅ No performance degradation (improvement is bonus)
 
-### 1.3 Enhanced Step Index (ESSENTIAL)
+### 1.3 Unified Step Index (ESSENTIAL)
 
-**Goal**: Sophisticated indexing system that bridges file paths to rich data structures
+**Goal**: Unified indexing system with progressive complexity that bridges file paths to rich data structures
 **Target Redundancy**: 18-20% (justified for multi-layered indexing patterns)
 
 **Enhanced Data Models**:
@@ -338,24 +338,26 @@ class IndexEntry(BaseModel):
     }
 ```
 
-**Multi-Layered Index Architecture**:
+**Unified Index Architecture**:
 ```python
 # src/cursus/step_catalog/core/index_engine.py
-class EnhancedStepIndex:
-    """Sophisticated indexing system bridging file paths to data structures."""
+class StepIndex:
+    """Unified indexing system with progressive complexity."""
     
-    def __init__(self, workspace_root: Path):
+    def __init__(self, workspace_root: Path, enable_advanced_features: bool = False):
         self.workspace_root = workspace_root
+        self.enable_advanced_features = enable_advanced_features
         
-        # Multi-layered index structures
-        self._file_to_metadata: Dict[Path, FileMetadata] = {}
-        self._step_to_components: Dict[str, ComponentSet] = {}
+        # Core indexing (always present)
+        self._step_to_components: Dict[str, StepInfo] = {}
         self._file_to_step: Dict[Path, str] = {}
-        self._workspace_to_steps: Dict[str, Set[str]] = {}
         
-        # Index metadata
-        self._index_timestamp: Optional[datetime] = None
-        self._dirty_files: Set[Path] = set()
+        # Advanced features (optional)
+        if enable_advanced_features:
+            self._file_to_metadata: Dict[Path, FileMetadata] = {}
+            self._workspace_to_steps: Dict[str, Set[str]] = {}
+            self._index_timestamp: Optional[datetime] = None
+            self._dirty_files: Set[Path] = set()
         
     def build_index(self) -> None:
         """Build comprehensive index with file-to-structure bridging."""
@@ -509,7 +511,7 @@ class IndexPersistence:
         self.cache_dir = cache_dir
         self.index_file = cache_dir / "step_catalog_index.json"
         
-    def save_index(self, index: EnhancedStepIndex) -> None:
+    def save_index(self, index: StepIndex) -> None:
         """Persist index to disk for fast startup."""
         index_data = {
             'timestamp': index._index_timestamp.isoformat(),
@@ -531,7 +533,7 @@ class IndexPersistence:
         with open(self.index_file, 'w') as f:
             json.dump(index_data, f, indent=2)
     
-    def load_index(self, workspace_root: Path) -> Optional[EnhancedStepIndex]:
+    def load_index(self, workspace_root: Path) -> Optional[StepIndex]:
         """Load persisted index if valid."""
         if not self.index_file.exists():
             return None
@@ -540,7 +542,7 @@ class IndexPersistence:
             with open(self.index_file, 'r') as f:
                 index_data = json.load(f)
             
-            index = EnhancedStepIndex(workspace_root)
+            index = StepIndex(workspace_root, enable_advanced_features=True)
             
             # Restore index state
             index._index_timestamp = datetime.fromisoformat(index_data['timestamp'])
@@ -596,7 +598,7 @@ class CatalogManager:
     
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
-        self.index_engine = SimpleStepIndex(workspace_root)
+        self.index_engine = StepIndex(workspace_root)
         self.contract_discovery = UnifiedContractDiscovery(workspace_root)
         self.component_cache = ComponentCache()
         

@@ -327,16 +327,16 @@ class IndexEngine:
 #### **Core Data Structures**
 
 ```python
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Literal, Dict, Any
 
 class FileMetadata(BaseModel):
     """Simplified metadata for indexed files."""
-    path: Path
-    file_type: Literal['script', 'contract', 'config', 'spec', 'builder']
-    modified_time: datetime
+    path: Path = Field(..., description="Path to the component file")
+    file_type: Literal['script', 'contract', 'config', 'spec', 'builder'] = Field(..., description="Type of component file")
+    modified_time: datetime = Field(..., description="Last modification time of the file")
     
     model_config = {
         "arbitrary_types_allowed": True,
@@ -345,20 +345,19 @@ class FileMetadata(BaseModel):
 
 class StepInfo(BaseModel):
     """Complete step information combining registry data with file metadata."""
-    step_name: str
-    workspace_id: str
-    registry_data: Dict[str, Any]  # From cursus.registry.step_names
-    file_components: Dict[str, Optional[FileMetadata]]  # Discovered files
+    step_name: str = Field(..., description="Name of the step")
+    workspace_id: str = Field(..., description="ID of the workspace containing this step")
+    registry_data: Dict[str, Any] = Field(..., description="Registry data from cursus.registry.step_names")
+    file_components: Dict[str, Optional[FileMetadata]] = Field(..., description="Discovered component files")
     
     # Job type variant support (based on job_type_variant_analysis.md)
-    base_step_name: Optional[str] = None  # e.g., "CradleDataLoading" 
-    job_type: Optional[str] = None        # e.g., "training", "calibration", etc.
+    base_step_name: Optional[str] = Field(None, description="Base step name for job type variants (e.g., 'CradleDataLoading')")
+    job_type: Optional[str] = Field(None, description="Job type variant (e.g., 'training', 'calibration', etc.)")
     
     model_config = {
         "arbitrary_types_allowed": True
     }
     
-    @computed_field
     @property
     def is_complete(self) -> bool:
         """Check if step has minimum required components based on SageMaker step type."""
@@ -395,7 +394,6 @@ class StepInfo(BaseModel):
                 self.file_components.get('config') is not None
             )
     
-    @computed_field
     @property
     def all_files(self) -> List[Path]:
         """Get all file paths for this step."""
@@ -405,55 +403,46 @@ class StepInfo(BaseModel):
                 files.append(component.path)
         return files
     
-    @computed_field
     @property
     def config_class(self) -> str:
         """Get config class name from registry."""
         return self.registry_data.get('config_class', '')
     
-    @computed_field
     @property
     def builder_step_name(self) -> str:
         """Get builder step name from registry."""
         return self.registry_data.get('builder_step_name', '')
     
-    @computed_field
     @property
     def sagemaker_step_type(self) -> str:
         """Get SageMaker step type from registry."""
         return self.registry_data.get('sagemaker_step_type', '')
     
-    @computed_field
     @property
     def description(self) -> str:
         """Get step description from registry."""
         return self.registry_data.get('description', '')
     
-    @computed_field
     @property
     def requires_script(self) -> bool:
         """Check if this step type requires a script."""
         return self.sagemaker_step_type in ['Processing', 'Training']
     
-    @computed_field
     @property
     def requires_contract(self) -> bool:
         """Check if this step type requires a contract."""
         return self.sagemaker_step_type in ['Processing', 'Training']
     
-    @computed_field
     @property
     def is_job_type_variant(self) -> bool:
         """Check if this is a job_type variant of a base step."""
         return self.job_type is not None
     
-    @computed_field
     @property
     def base_step_key(self) -> str:
         """Get the base step key for component sharing."""
         return self.base_step_name or self.step_name
     
-    @computed_field
     @property
     def variant_key(self) -> str:
         """Get the unique variant key matching PipelineDAG node names."""
@@ -462,7 +451,6 @@ class StepInfo(BaseModel):
             return f"{base_name}_{self.job_type}"
         return self.step_name
     
-    @computed_field
     @property
     def pipeline_node_name(self) -> str:
         """Get the node name as used in PipelineDAG."""
@@ -482,13 +470,37 @@ class IndexEntry(BaseModel):
         "frozen": True
     }
 
-@dataclass
 class StepIndex:
-    """Searchable index of all steps and components."""
-    step_map: Dict[str, StepInfo]  # step_name -> StepInfo
-    component_map: Dict[Path, str]  # file_path -> step_name
-    workspace_map: Dict[str, List[str]]  # workspace_id -> step_names
-    name_variants: Dict[str, str]  # variant_name -> canonical_name
+    """Unified indexing system with progressive complexity."""
+    
+    def __init__(self, workspace_root: Path, enable_advanced_features: bool = False):
+        self.workspace_root = workspace_root
+        self.enable_advanced_features = enable_advanced_features
+        
+        # Core indexing (always present)
+        self.step_map: Dict[str, StepInfo] = {}
+        self.component_map: Dict[Path, str] = {}
+        
+        # Advanced features (optional)
+        if enable_advanced_features:
+            self.workspace_map: Dict[str, List[str]] = {}
+            self.name_variants: Dict[str, str] = {}
+            self._index_timestamp: Optional[datetime] = None
+    
+    def build_index(self, incremental: bool = False) -> None:
+        """Build index with optional incremental updates."""
+        if incremental and self.enable_advanced_features:
+            self._incremental_update()
+        else:
+            self._full_rebuild()
+    
+    def get_step_info(self, step_name: str) -> Optional[StepInfo]:
+        """Get step information - O(1) lookup."""
+        return self.step_map.get(step_name)
+    
+    def find_step_by_file(self, file_path: Path) -> Optional[str]:
+        """Find step name by file path - O(1) reverse lookup."""
+        return self.component_map.get(file_path)
 
 # Component type enumeration
 from enum import Enum
@@ -505,22 +517,20 @@ class ComponentType(Enum):
 #### **Search and Query Models**
 
 ```python
-@dataclass
-class StepSearchResult:
+class StepSearchResult(BaseModel):
     """Result from step search operation."""
-    step_name: str
-    workspace_id: str
-    match_score: float
-    match_reason: str
-    components_available: List[ComponentType]
+    step_name: str = Field(..., description="Name of the found step")
+    workspace_id: str = Field(..., description="ID of the workspace containing the step")
+    match_score: float = Field(..., ge=0.0, le=1.0, description="Match score between 0.0 and 1.0")
+    match_reason: str = Field(..., description="Reason for the match")
+    components_available: List[ComponentType] = Field(..., description="List of available component types")
     
-@dataclass
-class QueryOptions:
+class QueryOptions(BaseModel):
     """Options for step queries."""
-    workspace_filter: Optional[str] = None
-    component_filter: Optional[List[ComponentType]] = None
-    include_metadata: bool = True
-    fuzzy_matching: bool = True
+    workspace_filter: Optional[str] = Field(None, description="Filter by workspace ID")
+    component_filter: Optional[List[ComponentType]] = Field(None, description="Filter by component types")
+    include_metadata: bool = Field(True, description="Whether to include metadata in results")
+    fuzzy_matching: bool = Field(True, description="Whether to enable fuzzy matching")
 ```
 
 ## Implementation Strategy
