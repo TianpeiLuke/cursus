@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2025-09-10
+
+### Enhanced
+- **Testing Infrastructure Modernization** - Comprehensive migration from unittest to pytest framework
+  - **Pytest Migration** - Converted all test modules from unittest to pytest across validation, workspace, and core components
+  - **Test Framework Standardization** - Standardized testing patterns and improved test organization
+  - **Enhanced Test Coverage** - Improved test coverage analysis and reporting capabilities
+  - **Test Execution Reliability** - Fixed pytest import errors and improved test isolation
+
+- **Documentation System Improvements** - Major enhancements to documentation infrastructure
+  - **Sphinx Documentation** - Automated documentation generation using Sphinx with API references
+  - **API Reference Documentation** - Comprehensive API reference documentation with improved structure
+  - **Workspace Documentation** - Enhanced documentation for workspace-aware system architecture
+  - **Developer Guide Updates** - Updated developer guides with current system architecture and best practices
+
+- **Step Catalog System Development** - New unified step catalog architecture
+  - **Unified Step Catalog** - Design and implementation of unified step catalog system
+  - **Step Catalog Integration** - Enhanced integration between step catalog and existing pipeline components
+  - **Catalog System Design** - Comprehensive design documentation for step catalog architecture
+
+- **Validation System Enhancements** - Continued improvements to validation framework
+  - **Validation Runtime Testing** - Enhanced runtime validation testing with improved reliability
+  - **Contract Discovery** - Improved contract discovery and path retrieval mechanisms
+  - **Pipeline Testing Specifications** - Enhanced PipelineTestingSpecBuilder to support DAG-to-specification tracking
+  - **Validation Alignment** - Continued refinement of validation alignment algorithms
+
+### Added
+- **Docker Integration** - New Docker containers for different ML frameworks
+  - **PyTorch BSM Extension** - Docker container for PyTorch-based BSM models with training and inference
+  - **XGBoost A-to-Z** - Complete XGBoost pipeline Docker container with training, evaluation, and inference
+  - **XGBoost PDA** - Specialized XGBoost container for PDA (Predictive Data Analytics) workflows
+
+- **Enhanced Testing Infrastructure** - Expanded testing capabilities
+  - **Runtime Script Tester** - Improved runtime script testing with better error handling
+  - **Validation System Analysis** - New analysis tools for validation system performance and accuracy
+  - **Test Coverage Tools** - Enhanced test coverage analysis and reporting tools
+
+- **Documentation Enhancements** - Comprehensive documentation improvements
+  - **CLI Documentation** - Complete command-line interface documentation
+  - **Registry System Documentation** - Detailed documentation for registry system architecture
+  - **DAG Documentation** - Enhanced documentation for DAG compilation and execution
+
+### Fixed
+- **Import System Improvements** - Comprehensive fixes to import-related issues
+  - **Relative Import Migration** - Continued migration to relative imports for better modularity
+  - **Import Error Resolution** - Fixed various import errors across test and core modules
+  - **Test Import Stability** - Improved stability of test imports and execution
+
+- **Test Infrastructure Fixes** - Major improvements to test execution reliability
+  - **Pytest Configuration** - Fixed pytest configuration issues and import errors
+  - **Test Isolation** - Improved test isolation by removing problematic `__init__.py` files
+  - **Test Execution Consistency** - Enhanced consistency in test execution across different environments
+
+- **Validation System Fixes** - Continued improvements to validation accuracy
+  - **Runtime Validation** - Fixed issues in runtime validation testing
+  - **Syntax Error Resolution** - Fixed syntax errors in validation components
+  - **Test Error Resolution** - Systematic resolution of test errors and failures
+
+### Technical Details
+- **Testing Framework** - Complete migration from unittest to pytest with improved test patterns and execution
+- **Documentation System** - Sphinx-based documentation generation with comprehensive API references
+- **Step Catalog Architecture** - New unified step catalog system with enhanced integration capabilities
+- **Docker Infrastructure** - Complete Docker containers for PyTorch and XGBoost ML workflows
+- **Import System** - Continued improvements to relative import system for better modularity
+
+### Quality Assurance
+- **Test Framework Modernization** - Modern pytest-based testing infrastructure with improved reliability
+- **Documentation Quality** - Enhanced documentation quality with automated generation and API references
+- **Validation System Reliability** - Continued improvements to validation system accuracy and performance
+- **Code Organization** - Better code organization with improved import structure and modularity
+
+### Performance Improvements
+- **Test Execution Speed** - Improved test execution performance with pytest framework
+- **Documentation Generation** - Faster documentation generation with Sphinx automation
+- **Import Performance** - Enhanced import performance with relative import system
+- **Validation Performance** - Optimized validation system performance with improved algorithms
+
 ## [1.2.3] - 2025-09-06
 
 ### Enhanced
