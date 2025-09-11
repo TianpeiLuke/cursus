@@ -751,9 +751,296 @@ Enhanced Discovery Results
 - **Workspace Inheritance**: Hierarchical workspace structures with catalog inheritance
 - **Dynamic Workspaces**: Automatically created workspaces based on project needs
 
-## Conclusion
+## Validation Framework Integration Analysis
 
-The integration of the Step Catalog System with the existing Registry System and Workspace-Aware System creates a comprehensive component discovery and management ecosystem that significantly enhances Cursus's capabilities for both single-workspace and multi-workspace development scenarios.
+### Cross-Reference with Validation Framework Categories
+
+Based on the comprehensive **[Validation Framework Analysis: Alignment and Builders](./validation_alignment_builders_analysis.md)**, the Step Catalog System must integrate with the sophisticated validation ecosystem that ensures code quality and architectural compliance across the cursus pipeline.
+
+#### **Validation Framework Architecture Overview**
+
+The validation framework consists of two major modules with 8 functional categories:
+
+**Alignment Module (`src/cursus/validation/alignment`)**: 4-level validation pyramid
+- Level 1: Script ↔ Contract Alignment
+- Level 2: Contract ↔ Specification Alignment  
+- Level 3: Specification ↔ Dependencies Alignment
+- Level 4: Builder ↔ Configuration Alignment
+
+**Builders Module (`src/cursus/validation/builders`)**: Universal step builder testing
+- Multi-level testing (Interface, Specification, Step Creation, Integration)
+- Step type-specific testing variants
+- Quality scoring and rating system
+
+### Integration Points with Step Catalog System
+
+#### **1. Core Orchestration and Coordination Integration**
+
+**Validation Framework Components:**
+- `alignment/unified_alignment_tester.py` - Main alignment validation coordinator
+- `builders/universal_test.py` - Main builder validation coordinator
+
+**Step Catalog Integration:**
+```python
+class ValidationAwareCatalogManager(CatalogManager):
+    """Catalog manager with integrated validation capabilities."""
+    
+    def __init__(self, workspace_root: Path):
+        super().__init__(workspace_root)
+        # Integration with validation framework
+        self.alignment_tester = UnifiedAlignmentTester()
+        self.builder_tester = UniversalStepBuilderTest
+        
+    def get_validated_step_info(self, step_name: str) -> ValidatedStepInfo:
+        """Get step information with validation results."""
+        step_info = self.get_step_info(step_name)
+        
+        # Run alignment validation
+        alignment_results = self.alignment_tester.validate_specific_script(step_name)
+        
+        # Run builder validation if builder exists
+        builder_results = None
+        if step_info.components.builder:
+            builder_class = self._load_builder_class(step_info.components.builder)
+            tester = self.builder_tester(builder_class)
+            builder_results = tester.run_all_tests_with_scoring()
+        
+        return ValidatedStepInfo(
+            step_info=step_info,
+            alignment_validation=alignment_results,
+            builder_validation=builder_results,
+            overall_quality_score=self._calculate_quality_score(alignment_results, builder_results)
+        )
+```
+
+#### **2. Level-Specific Validation Integration**
+
+**Validation Framework Components:**
+- `alignment/script_contract_alignment.py` - Level 1 validation
+- `alignment/contract_spec_alignment.py` - Level 2 validation
+- `alignment/spec_dependency_alignment.py` - Level 3 validation
+- `alignment/builder_config_alignment.py` - Level 4 validation
+
+**Step Catalog Integration:**
+```python
+class ComponentValidationIntegration:
+    """Integrates component discovery with validation framework."""
+    
+    def __init__(self, catalog_manager: CatalogManager):
+        self.catalog_manager = catalog_manager
+        self.level1_tester = ScriptContractAlignmentTester()
+        self.level2_tester = ContractSpecificationAlignmentTester()
+        self.level3_tester = SpecificationDependencyAlignmentTester()
+        self.level4_tester = BuilderConfigurationAlignmentTester()
+    
+    def discover_with_validation_context(self, step_name: str) -> ComponentDiscoveryResult:
+        """Discover components with validation context."""
+        step_info = self.catalog_manager.get_step_info(step_name)
+        
+        validation_context = {
+            'level1_status': 'unknown',
+            'level2_status': 'unknown', 
+            'level3_status': 'unknown',
+            'level4_status': 'unknown'
+        }
+        
+        # Check each validation level
+        if step_info.components.script and step_info.components.contract:
+            level1_result = self.level1_tester.validate_script(step_name)
+            validation_context['level1_status'] = 'passing' if level1_result.get('passed') else 'failing'
+        
+        if step_info.components.contract and step_info.components.spec:
+            level2_result = self.level2_tester.validate_contract(step_name)
+            validation_context['level2_status'] = 'passing' if level2_result.get('passed') else 'failing'
+        
+        # Add validation context to discovery result
+        return ComponentDiscoveryResult(
+            step_info=step_info,
+            validation_context=validation_context,
+            quality_indicators=self._generate_quality_indicators(validation_context)
+        )
+```
+
+#### **3. Step Type-Specific Specialization Integration**
+
+**Validation Framework Components:**
+- `alignment/step_type_detection.py` - Step type identification
+- `builders/sagemaker_step_type_validator.py` - SageMaker step type validation
+- `builders/variants/processing_*.py` - Processing step specializations
+- `builders/variants/training_*.py` - Training step specializations
+
+**Step Catalog Integration:**
+```python
+class StepTypeAwareCatalogSearch:
+    """Step catalog search with step type awareness."""
+    
+    def __init__(self, catalog_manager: CatalogManager):
+        self.catalog_manager = catalog_manager
+        self.step_type_detector = StepTypeDetector()
+        self.sagemaker_validator = SageMakerStepTypeValidator
+    
+    def search_by_step_type(self, step_type: str, query_options: QueryOptions) -> List[StepSearchResult]:
+        """Search steps filtered by SageMaker step type."""
+        all_steps = self.catalog_manager.list_available_steps()
+        
+        type_filtered_steps = []
+        for step_name in all_steps:
+            step_info = self.catalog_manager.get_step_info(step_name)
+            
+            # Detect step type using validation framework
+            detected_type = self.step_type_detector.detect_step_type_from_registry(step_name)
+            
+            if detected_type == step_type:
+                # Get step type-specific validation results
+                if step_info.components.builder:
+                    builder_class = self._load_builder_class(step_info.components.builder)
+                    validator = self.sagemaker_validator(builder_class)
+                    step_type_info = validator.get_step_type_info()
+                    
+                    search_result = StepSearchResult(
+                        step_name=step_name,
+                        workspace_id=step_info.workspace_id,
+                        match_score=1.0,
+                        match_reason=f"step_type_{step_type}",
+                        components_available=list(step_info.components.keys()),
+                        step_type_info=step_type_info
+                    )
+                    type_filtered_steps.append(search_result)
+        
+        return type_filtered_steps
+```
+
+#### **4. Reporting and Analysis Integration**
+
+**Validation Framework Components:**
+- `alignment/alignment_reporter.py` - Alignment validation reporting
+- `builders/scoring.py` - Builder validation scoring system
+
+**Step Catalog Integration:**
+```python
+class CatalogValidationReporting:
+    """Integrated reporting for catalog and validation systems."""
+    
+    def __init__(self, catalog_manager: CatalogManager):
+        self.catalog_manager = catalog_manager
+        self.alignment_reporter = AlignmentReport()
+        self.builder_scorer = StepBuilderScorer
+    
+    def generate_catalog_quality_report(self, workspace_id: Optional[str] = None) -> CatalogQualityReport:
+        """Generate comprehensive quality report for catalog components."""
+        steps = self.catalog_manager.list_available_steps(workspace_id)
+        
+        quality_metrics = {
+            'total_steps': len(steps),
+            'validated_steps': 0,
+            'alignment_scores': {},
+            'builder_scores': {},
+            'component_completeness': {}
+        }
+        
+        for step_name in steps:
+            step_info = self.catalog_manager.get_step_info(step_name)
+            
+            # Component completeness analysis
+            completeness = self._analyze_component_completeness(step_info)
+            quality_metrics['component_completeness'][step_name] = completeness
+            
+            # Alignment validation scoring
+            if self._has_required_components_for_alignment(step_info):
+                alignment_tester = UnifiedAlignmentTester()
+                alignment_results = alignment_tester.validate_specific_script(step_name)
+                
+                if 'scoring' in alignment_results:
+                    quality_metrics['alignment_scores'][step_name] = alignment_results['scoring']
+                    quality_metrics['validated_steps'] += 1
+            
+            # Builder validation scoring
+            if step_info.components.builder:
+                builder_class = self._load_builder_class(step_info.components.builder)
+                scorer = self.builder_scorer(builder_class.run_all_tests())
+                quality_metrics['builder_scores'][step_name] = scorer.generate_report()
+        
+        return CatalogQualityReport(
+            workspace_id=workspace_id,
+            metrics=quality_metrics,
+            recommendations=self._generate_quality_recommendations(quality_metrics)
+        )
+```
+
+#### **5. Discovery and Registry Integration Enhancement**
+
+**Validation Framework Components:**
+- `alignment/file_resolver.py` - File discovery and resolution
+- `builders/registry_discovery.py` - Registry-based step builder discovery
+
+**Step Catalog Integration:**
+```python
+class ValidatedComponentDiscovery:
+    """Component discovery enhanced with validation framework capabilities."""
+    
+    def __init__(self, catalog_manager: CatalogManager):
+        self.catalog_manager = catalog_manager
+        self.file_resolver = FileResolver()
+        self.registry_discovery = RegistryStepDiscovery()
+    
+    def discover_with_validation_metadata(self, step_name: str) -> EnhancedComponentSet:
+        """Discover components with validation metadata."""
+        # Use catalog for basic discovery
+        step_info = self.catalog_manager.get_step_info(step_name)
+        
+        # Enhance with validation framework metadata
+        enhanced_components = EnhancedComponentSet()
+        
+        for component_type, component_info in step_info.components.items():
+            if component_info:
+                # Add validation metadata using alignment framework
+                validation_metadata = self._get_validation_metadata(
+                    component_info, component_type, step_name
+                )
+                
+                enhanced_component = EnhancedComponentInfo(
+                    **component_info.__dict__,
+                    validation_metadata=validation_metadata,
+                    quality_indicators=self._get_quality_indicators(component_info)
+                )
+                setattr(enhanced_components, component_type, enhanced_component)
+        
+        return enhanced_components
+    
+    def _get_validation_metadata(self, component_info: ComponentInfo, 
+                                component_type: str, step_name: str) -> Dict[str, Any]:
+        """Extract validation metadata for component."""
+        metadata = {}
+        
+        if component_type == 'contract':
+            # Use alignment framework contract analysis
+            contract_analyzer = ContractAnalyzer()
+            metadata.update(contract_analyzer.analyze_contract(component_info.file_path))
+        
+        elif component_type == 'builder':
+            # Use builder validation framework
+            builder_class = self._load_builder_class(component_info)
+            builder_validator = SageMakerStepTypeValidator(builder_class)
+            metadata.update(builder_validator.get_step_type_info())
+        
+        return metadata
+```
+
+### Enhanced Integration Architecture
+
+```python
+class UnifiedValidationCatalogEcosystem:
+    """Unified ecosystem integrating catalog, validation, registry, and workspace systems."""
+    
+    def __init__(self, workspace_root: Path):
+        # Core systems
+        self.catalog_manager = ValidationAwareCatalogManager(workspace_root)
+        self.registry_manager = UnifiedRegistryManager()
+        self.workspace_manager = WorkspaceManager(workspace_root)
+        
+        # Validation integration
+        self.alignment_tester = UnifiedAlignmentTester()
+        self.builder_test
 
 ### Key Integration Achievements
 
