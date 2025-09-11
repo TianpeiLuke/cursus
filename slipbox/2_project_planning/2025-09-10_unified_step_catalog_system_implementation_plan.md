@@ -174,39 +174,412 @@ class UnifiedContractDiscovery:
 - ✅ Maintain 100% backward compatibility
 - ✅ No performance degradation (improvement is bonus)
 
-### 1.3 Simple Step Index (ESSENTIAL)
+### 1.3 Enhanced Step Index (ESSENTIAL)
 
-**Goal**: Basic step indexing to replace repeated file scans
-**Target Redundancy**: 15% (minimal viable implementation)
+**Goal**: Sophisticated indexing system that bridges file paths to rich data structures
+**Target Redundancy**: 18-20% (justified for multi-layered indexing patterns)
 
-**Implementation**:
+**Enhanced Data Models**:
+```python
+# src/cursus/step_catalog/models/step_info.py
+from pydantic import BaseModel, Field, computed_field
+from pathlib import Path
+from datetime import datetime
+from typing import Optional, List, Literal, Dict, Any
+
+class FileMetadata(BaseModel):
+    """Simplified metadata for indexed files."""
+    path: Path
+    file_type: Literal['script', 'contract', 'config', 'spec', 'builder']
+    modified_time: datetime
+    
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "frozen": True
+    }
+
+class StepInfo(BaseModel):
+    """Complete step information combining registry data with file metadata."""
+    step_name: str
+    workspace_id: str
+    registry_data: Dict[str, Any]  # From cursus.registry.step_names
+    file_components: Dict[str, Optional[FileMetadata]]  # Discovered files
+    
+    # Job type variant support (based on job_type_variant_analysis.md)
+    base_step_name: Optional[str] = None  # e.g., "CradleDataLoading" 
+    job_type: Optional[str] = None        # e.g., "training", "calibration", etc.
+    
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
+    
+    @computed_field
+    @property
+    def is_complete(self) -> bool:
+        """Check if step has minimum required components based on SageMaker step type."""
+        # All steps require: builder, config, spec (these are always present in registry)
+        # Only Processing and Training steps require scripts and contracts
+        sagemaker_type = self.sagemaker_step_type
+        
+        if sagemaker_type in ['Processing', 'Training']:
+            # Processing and Training steps need scripts and contracts
+            return (
+                self.file_components.get('script') is not None and 
+                self.file_components.get('contract') is not None and
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None and
+                self.file_components.get('spec') is not None
+            )
+        elif sagemaker_type in ['CreateModel', 'RegisterModel', 'Transform']:
+            # CreateModel, RegisterModel, Transform steps don't need scripts/contracts
+            return (
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None and
+                self.file_components.get('spec') is not None
+            )
+        elif sagemaker_type in ['Base', 'Utility']:
+            # Base and Utility steps have minimal requirements
+            return (
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None
+            )
+        else:
+            # Custom steps - check for basic components
+            return (
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None
+            )
+    
+    @computed_field
+    @property
+    def all_files(self) -> List[Path]:
+        """Get all file paths for this step."""
+        files = []
+        for component in self.file_components.values():
+            if component:
+                files.append(component.path)
+        return files
+    
+    @computed_field
+    @property
+    def config_class(self) -> str:
+        """Get config class name from registry."""
+        return self.registry_data.get('config_class', '')
+    
+    @computed_field
+    @property
+    def builder_step_name(self) -> str:
+        """Get builder step name from registry."""
+        return self.registry_data.get('builder_step_name', '')
+    
+    @computed_field
+    @property
+    def sagemaker_step_type(self) -> str:
+        """Get SageMaker step type from registry."""
+        return self.registry_data.get('sagemaker_step_type', '')
+    
+    @computed_field
+    @property
+    def description(self) -> str:
+        """Get step description from registry."""
+        return self.registry_data.get('description', '')
+    
+    @computed_field
+    @property
+    def requires_script(self) -> bool:
+        """Check if this step type requires a script."""
+        return self.sagemaker_step_type in ['Processing', 'Training']
+    
+    @computed_field
+    @property
+    def requires_contract(self) -> bool:
+        """Check if this step type requires a contract."""
+        return self.sagemaker_step_type in ['Processing', 'Training']
+    
+    @computed_field
+    @property
+    def is_job_type_variant(self) -> bool:
+        """Check if this is a job_type variant of a base step."""
+        return self.job_type is not None
+    
+    @computed_field
+    @property
+    def base_step_key(self) -> str:
+        """Get the base step key for component sharing."""
+        return self.base_step_name or self.step_name
+    
+    @computed_field
+    @property
+    def variant_key(self) -> str:
+        """Get the unique variant key matching PipelineDAG node names."""
+        if self.job_type:
+            base_name = self.base_step_name or self.step_name
+            return f"{base_name}_{self.job_type}"
+        return self.step_name
+    
+    @computed_field
+    @property
+    def pipeline_node_name(self) -> str:
+        """Get the node name as used in PipelineDAG."""
+        return self.variant_key  # Same as variant_key for consistency
+
+class IndexEntry(BaseModel):
+    """Single index entry bridging file path to semantic meaning."""
+    file_path: Path
+    step_name: str
+    component_type: Literal['script', 'contract', 'config', 'spec', 'builder']
+    workspace_id: str
+    metadata: FileMetadata
+    last_indexed: datetime
+    
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "frozen": True
+    }
+```
+
+**Multi-Layered Index Architecture**:
 ```python
 # src/cursus/step_catalog/core/index_engine.py
-class SimpleStepIndex:
-    """Minimal step indexing - essential functionality only."""
+class EnhancedStepIndex:
+    """Sophisticated indexing system bridging file paths to data structures."""
     
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
-        self._step_map: Dict[str, Path] = {}  # step_name -> script_path
-        self._component_map: Dict[Path, str] = {}  # file_path -> step_name
-    
+        
+        # Multi-layered index structures
+        self._file_to_metadata: Dict[Path, FileMetadata] = {}
+        self._step_to_components: Dict[str, ComponentSet] = {}
+        self._file_to_step: Dict[Path, str] = {}
+        self._workspace_to_steps: Dict[str, Set[str]] = {}
+        
+        # Index metadata
+        self._index_timestamp: Optional[datetime] = None
+        self._dirty_files: Set[Path] = set()
+        
     def build_index(self) -> None:
-        """Build basic index - file scanning only."""
-        # Simple directory traversal, no complex features
+        """Build comprehensive index with file-to-structure bridging."""
+        self._index_timestamp = datetime.now()
+        self._scan_workspace_structure()
+        self._build_component_relationships()
+        self._validate_component_completeness()
         
-    def get_step_script(self, step_name: str) -> Optional[Path]:
-        """Get step script path - most common use case."""
-        return self._step_map.get(step_name)
+    def _scan_workspace_structure(self) -> None:
+        """Scan file system and create file metadata entries."""
+        for file_path in self._discover_step_files():
+            metadata = self._create_file_metadata(file_path)
+            self._file_to_metadata[file_path] = metadata
+            
+            # Extract semantic information from file path
+            step_name, component_type, workspace_id = self._extract_semantic_info(file_path)
+            
+            # Create index entry bridging file path to semantic meaning
+            self._file_to_step[file_path] = step_name
+            
+            # Update workspace index
+            if workspace_id not in self._workspace_to_steps:
+                self._workspace_to_steps[workspace_id] = set()
+            self._workspace_to_steps[workspace_id].add(step_name)
+    
+    def _build_component_relationships(self) -> None:
+        """Build step-to-components relationships by bridging registry and file system."""
+        from cursus.registry.step_names import get_step_names
         
+        # Get registry data for current workspace
+        workspace_registry = get_step_names(self._current_workspace_id)
+        
+        # Create StepInfo objects that bridge registry data with discovered files
+        for step_name, registry_data in workspace_registry.items():
+            workspace_id = self._current_workspace_id or 'core'
+            
+            # Initialize file components dictionary
+            file_components = {
+                'script': None,
+                'contract': None,
+                'config': None,
+                'spec': None,
+                'builder': None
+            }
+            
+            # Map discovered files to this step
+            for file_path, discovered_step_name in self._file_to_step.items():
+                if discovered_step_name == step_name:
+                    metadata = self._file_to_metadata[file_path]
+                    file_components[metadata.file_type] = metadata
+            
+            # Create StepInfo that bridges registry and file system
+            step_info = StepInfo(
+                step_name=step_name,
+                workspace_id=workspace_id,
+                registry_data=registry_data,
+                file_components=file_components
+            )
+            
+            self._step_to_components[step_name] = step_info
+    
+    def _create_file_metadata(self, file_path: Path) -> FileMetadata:
+        """Create simplified metadata for a file."""
+        stat = file_path.stat()
+        file_type = self._determine_file_type(file_path)
+        
+        return FileMetadata(
+            path=file_path,
+            file_type=file_type,
+            modified_time=datetime.fromtimestamp(stat.st_mtime)
+        )
+    
+    def get_step_components(self, step_name: str) -> Optional[ComponentSet]:
+        """Get complete component set for a step - O(1) lookup."""
+        return self._step_to_components.get(step_name)
+    
+    def get_file_metadata(self, file_path: Path) -> Optional[FileMetadata]:
+        """Get rich metadata for a file - O(1) lookup."""
+        return self._file_to_metadata.get(file_path)
+    
     def find_step_by_file(self, file_path: Path) -> Optional[str]:
-        """Reverse lookup - second most common use case."""
-        return self._component_map.get(file_path)
+        """Find step name by file path - O(1) reverse lookup."""
+        return self._file_to_step.get(file_path)
+    
+    def get_workspace_steps(self, workspace_id: str) -> Set[str]:
+        """Get all steps in a workspace - O(1) workspace filtering."""
+        return self._workspace_to_steps.get(workspace_id, set())
+    
+    def is_index_stale(self) -> bool:
+        """Check if index needs rebuilding based on file changes."""
+        if not self._index_timestamp:
+            return True
+            
+        # Check if any tracked files have been modified
+        for file_path, metadata in self._file_to_metadata.items():
+            if not file_path.exists():
+                return True
+            
+            current_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+            if current_mtime > metadata.modified_time:
+                return True
+                
+        return False
+    
+    def incremental_update(self, changed_files: List[Path]) -> None:
+        """Incrementally update index for changed files."""
+        for file_path in changed_files:
+            if file_path.exists():
+                # Update existing file
+                new_metadata = self._create_file_metadata(file_path)
+                old_metadata = self._file_to_metadata.get(file_path)
+                
+                self._file_to_metadata[file_path] = new_metadata
+                
+                # Update component relationships if needed
+                step_name = self._file_to_step.get(file_path)
+                if step_name and step_name in self._step_to_components:
+                    self._update_component_set(step_name, file_path, new_metadata)
+            else:
+                # Remove deleted file
+                self._remove_file_from_index(file_path)
+    
+    def get_index_statistics(self) -> Dict[str, Any]:
+        """Get comprehensive index statistics."""
+        total_files = len(self._file_to_metadata)
+        total_steps = len(self._step_to_components)
+        complete_steps = sum(1 for cs in self._step_to_components.values() if cs.is_complete)
+        
+        workspace_stats = {
+            ws_id: len(steps) for ws_id, steps in self._workspace_to_steps.items()
+        }
+        
+        return {
+            'total_files': total_files,
+            'total_steps': total_steps,
+            'complete_steps': complete_steps,
+            'completion_rate': complete_steps / total_steps if total_steps > 0 else 0,
+            'workspace_distribution': workspace_stats,
+            'index_timestamp': self._index_timestamp,
+            'memory_usage_mb': self._estimate_memory_usage()
+        }
+```
+
+**Index Persistence and Recovery**:
+```python
+# src/cursus/step_catalog/core/index_persistence.py
+class IndexPersistence:
+    """Handle index persistence and recovery."""
+    
+    def __init__(self, cache_dir: Path):
+        self.cache_dir = cache_dir
+        self.index_file = cache_dir / "step_catalog_index.json"
+        
+    def save_index(self, index: EnhancedStepIndex) -> None:
+        """Persist index to disk for fast startup."""
+        index_data = {
+            'timestamp': index._index_timestamp.isoformat(),
+            'file_metadata': {
+                str(path): self._serialize_metadata(metadata)
+                for path, metadata in index._file_to_metadata.items()
+            },
+            'step_components': {
+                step_name: self._serialize_component_set(component_set)
+                for step_name, component_set in index._step_to_components.items()
+            },
+            'workspace_steps': {
+                ws_id: list(steps) 
+                for ws_id, steps in index._workspace_to_steps.items()
+            }
+        }
+        
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.index_file, 'w') as f:
+            json.dump(index_data, f, indent=2)
+    
+    def load_index(self, workspace_root: Path) -> Optional[EnhancedStepIndex]:
+        """Load persisted index if valid."""
+        if not self.index_file.exists():
+            return None
+            
+        try:
+            with open(self.index_file, 'r') as f:
+                index_data = json.load(f)
+            
+            index = EnhancedStepIndex(workspace_root)
+            
+            # Restore index state
+            index._index_timestamp = datetime.fromisoformat(index_data['timestamp'])
+            
+            # Restore file metadata
+            for path_str, metadata_data in index_data['file_metadata'].items():
+                path = Path(path_str)
+                metadata = self._deserialize_metadata(metadata_data)
+                index._file_to_metadata[path] = metadata
+                
+            # Restore component sets
+            for step_name, component_data in index_data['step_components'].items():
+                component_set = self._deserialize_component_set(component_data)
+                index._step_to_components[step_name] = component_set
+                
+            # Restore workspace mapping
+            for ws_id, steps_list in index_data['workspace_steps'].items():
+                index._workspace_to_steps[ws_id] = set(steps_list)
+                
+            # Rebuild file-to-step mapping
+            for step_name, component_set in index._step_to_components.items():
+                for file_path in component_set.all_files:
+                    index._file_to_step[file_path] = step_name
+            
+            return index
+            
+        except Exception as e:
+            # If loading fails, return None to trigger rebuild
+            return None
 ```
 
 **Success Criteria**:
-- ✅ Index all steps in <10 seconds (simple requirement)
-- ✅ Support basic lookup operations
-- ✅ No persistence required initially (keep it simple)
+- ✅ Bridge file paths to rich data structures with O(1) lookups
+- ✅ Support multi-layered indexing (file→metadata, step→components, workspace→steps)
+- ✅ Index all steps in <10 seconds with full metadata extraction
+- ✅ Incremental updates for changed files in <1 second
+- ✅ Index persistence for fast startup (<2 seconds to load)
+- ✅ Memory usage <50MB for 1000 steps with full metadata
+- ✅ Support workspace filtering and component completeness validation
 
 ## Phase 2: Core System (4 weeks)
 
@@ -383,6 +756,164 @@ class ContractDiscoveryEngineAdapter:
 - `src/cursus/workspace/discovery/workspace_discovery_manager.py` → Integrated
 - `src/cursus/registry/step_discovery.py` → Integrated
 - Multiple discovery utilities across different modules
+
+### Comprehensive Dependency Analysis
+
+Based on comprehensive search analysis, the following files require updates during migration:
+
+#### **Contract Discovery Dependencies** (35 files identified)
+
+**Primary Contract Discovery Files**:
+- `src/cursus/validation/alignment/discovery/contract_discovery.py` → **TO BE CONSOLIDATED** - Contains ContractDiscoveryEngine class
+- `src/cursus/validation/runtime/contract_discovery.py` → **TO BE CONSOLIDATED** - Contains ContractDiscoveryManager class
+
+**Direct Import Dependencies**:
+- `src/cursus/validation/alignment/discovery/__init__.py` → **Critical**: Exports ContractDiscoveryEngine
+- `src/cursus/validation/runtime/__init__.py` → **Critical**: Exports ContractDiscoveryManager and ContractDiscoveryResult
+- `src/cursus/validation/alignment/contract_spec_alignment.py` → **Critical**: Direct ContractDiscoveryEngine import and usage
+- `src/cursus/validation/runtime/runtime_spec_builder.py` → **Critical**: Direct ContractDiscoveryManager import and initialization
+
+**Usage Dependencies**:
+- `src/cursus/validation/alignment/orchestration/validation_orchestrator.py` → Uses contract_discovery attribute for contract file discovery
+- `src/cursus/validation/runtime/workspace_aware_spec_builder.py` → References ContractDiscoveryManager in documentation
+
+#### **Workspace Discovery Dependencies** (24 files identified)
+
+**Primary Workspace Discovery File**:
+- `src/cursus/workspace/core/discovery.py` → **TO BE CONSOLIDATED** - Contains WorkspaceDiscoveryManager class definition
+
+**Critical Integration Points**:
+- `src/cursus/workspace/api.py` → **Critical**: Direct WorkspaceDiscoveryManager import and lazy loading in discovery property
+- `src/cursus/workspace/core/manager.py` → **Critical**: Direct WorkspaceDiscoveryManager import and initialization as discovery_manager
+- `src/cursus/workspace/core/__init__.py` → **Critical**: Direct WorkspaceDiscoveryManager export in module interface
+- `src/cursus/workspace/core/registry.py` → Optional WorkspaceDiscoveryManager parameter in constructor
+
+**Usage Dependencies**:
+- `src/cursus/validation/runtime/workspace_aware_spec_builder.py` → **High Impact**: Multi-workspace script discovery via WorkspaceDiscoveryManager
+- `src/cursus/workspace/validation/workspace_test_manager.py` → WorkspaceDiscoveryManager integration for test component discovery
+- `src/cursus/workspace/validation/workspace_file_resolver.py` → Consolidated discovery logic from WorkspaceDiscoveryManager
+- `src/cursus/workspace/validation/cross_workspace_validator.py` → Phase 1 WorkspaceDiscoveryManager usage for component discovery
+
+#### **File Resolver Dependencies** (50 files identified)
+
+**Primary File Resolver Files**:
+- `src/cursus/validation/alignment/file_resolver.py` → **TO BE CONSOLIDATED** - Contains FlexibleFileResolver class
+- `src/cursus/workspace/validation/workspace_file_resolver.py` → **TO BE INTEGRATED** - Extends FlexibleFileResolver for workspace support
+
+**High-Impact Dependencies**:
+- `src/cursus/validation/alignment/alignment_utils.py` → **Critical**: Exports FlexibleFileResolver
+- `src/cursus/validation/alignment/contract_spec_alignment.py` → **Critical**: Direct FlexibleFileResolver import and initialization
+- `src/cursus/validation/alignment/script_contract_alignment.py` → **Critical**: FlexibleFileResolver usage for file discovery
+- `src/cursus/validation/alignment/builder_config_alignment.py` → **Critical**: FlexibleFileResolver for builder and config discovery
+
+**Loader and Pattern Dependencies**:
+- `src/cursus/validation/alignment/loaders/specification_loader.py` → FlexibleFileResolver for specification file discovery
+- `src/cursus/validation/alignment/patterns/file_resolver.py` → HybridFileResolver using FlexibleFileResolver
+- `src/cursus/validation/alignment/orchestration/validation_orchestrator.py` → FlexibleFileResolver for contract file discovery
+
+#### **Migration Impact Classification**
+
+**🔴 Critical Impact Files** (Require immediate attention):
+```python
+# Core module exports - breaking changes
+src/cursus/validation/alignment/discovery/__init__.py
+src/cursus/validation/runtime/__init__.py
+src/cursus/workspace/core/__init__.py
+src/cursus/validation/alignment/alignment_utils.py
+
+# Direct class usage - functional changes
+src/cursus/validation/alignment/contract_spec_alignment.py
+src/cursus/validation/runtime/runtime_spec_builder.py
+src/cursus/workspace/api.py
+src/cursus/workspace/core/manager.py
+```
+
+**🟡 High Impact Files** (Require careful migration):
+```python
+# Multi-system integration points
+src/cursus/validation/runtime/workspace_aware_spec_builder.py
+src/cursus/validation/alignment/script_contract_alignment.py
+src/cursus/validation/alignment/builder_config_alignment.py
+src/cursus/workspace/validation/workspace_file_resolver.py
+```
+
+**🟢 Medium Impact Files** (Standard migration):
+```python
+# Usage through established interfaces
+src/cursus/validation/alignment/orchestration/validation_orchestrator.py
+src/cursus/validation/alignment/loaders/specification_loader.py
+src/cursus/workspace/validation/workspace_test_manager.py
+src/cursus/workspace/validation/cross_workspace_validator.py
+```
+
+#### **Updated Import Statement Migration**
+
+**Contract Discovery Migration**:
+```python
+# OLD IMPORTS (to be replaced)
+from cursus.validation.alignment.discovery.contract_discovery import ContractDiscoveryEngine
+from cursus.validation.runtime.contract_discovery import ContractDiscoveryManager, ContractDiscoveryResult
+
+# NEW IMPORTS (unified system)
+from cursus.step_catalog.discovery.contract_discovery import UnifiedContractDiscovery, ContractDiscoveryResult
+```
+
+**Workspace Discovery Migration**:
+```python
+# OLD IMPORTS (to be replaced)
+from cursus.workspace.core.discovery import WorkspaceDiscoveryManager
+
+# NEW IMPORTS (unified system)
+from cursus.step_catalog.workspace.workspace_manager import WorkspaceAwareCatalogManager
+```
+
+**File Resolver Migration**:
+```python
+# OLD IMPORTS (to be replaced)
+from cursus.validation.alignment.file_resolver import FlexibleFileResolver
+from cursus.validation.alignment.alignment_utils import FlexibleFileResolver
+
+# NEW IMPORTS (unified system)
+from cursus.step_catalog.discovery.file_discoverer import UnifiedFileDiscoverer
+```
+
+#### **Backward Compatibility Strategy**
+
+**Phase 1: Parallel Operation** (Maintain old interfaces):
+```python
+# Legacy adapter in old locations
+# src/cursus/validation/alignment/discovery/contract_discovery.py
+from cursus.step_catalog.adapters.legacy_adapters import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
+
+# src/cursus/validation/runtime/contract_discovery.py  
+from cursus.step_catalog.adapters.legacy_adapters import ContractDiscoveryManagerAdapter as ContractDiscoveryManager
+from cursus.step_catalog.discovery.contract_discovery import ContractDiscoveryResult
+
+# src/cursus/workspace/core/discovery.py
+from cursus.step_catalog.adapters.legacy_adapters import WorkspaceDiscoveryManagerAdapter as WorkspaceDiscoveryManager
+```
+
+**Phase 2: Deprecation Warnings**:
+```python
+# Add deprecation warnings to old imports
+import warnings
+
+def __getattr__(name):
+    if name == 'ContractDiscoveryEngine':
+        warnings.warn(
+            "ContractDiscoveryEngine is deprecated. Use cursus.step_catalog.discovery.contract_discovery.UnifiedContractDiscovery instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        from cursus.step_catalog.adapters.legacy_adapters import ContractDiscoveryEngineAdapter
+        return ContractDiscoveryEngineAdapter
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+```
+
+**Phase 3: Complete Migration**:
+- Remove old files after all dependencies updated
+- Clean up legacy adapters
+- Update all import statements to new unified system
 
 ### Migration Safety Measures
 
