@@ -515,19 +515,37 @@ class RuntimeTester:
     
     
     def _find_script_path(self, script_name: str) -> str:
-        """Simple script discovery - ESSENTIAL UTILITY"""
-        possible_paths = [
+        """
+        Script discovery with workspace_dir prioritization - ESSENTIAL UTILITY
+        
+        Priority order:
+        1. workspace_dir/{script_name}.py
+        2. workspace_dir/scripts/{script_name}.py  
+        3. Original fallback locations
+        """
+        # Priority 1 & 2: Local workspace searches
+        workspace_paths = [
+            self.workspace_dir / f"{script_name}.py",
+            self.workspace_dir / "scripts" / f"{script_name}.py"
+        ]
+        
+        for path in workspace_paths:
+            if path.exists():
+                return str(path)
+        
+        # Priority 3: Original fallback locations (for backward compatibility)
+        fallback_paths = [
             f"src/cursus/steps/scripts/{script_name}.py",
             f"scripts/{script_name}.py",
             f"dockers/xgboost_atoz/scripts/{script_name}.py",
             f"dockers/pytorch_bsm_ext/scripts/{script_name}.py"
         ]
         
-        for path in possible_paths:
+        for path in fallback_paths:
             if Path(path).exists():
                 return path
         
-        raise FileNotFoundError(f"Script not found: {script_name}")
+        raise FileNotFoundError(f"Script not found: {script_name}. Searched in workspace_dir ({self.workspace_dir}) and fallback locations.")
     
     
     def _is_temp_or_system_file(self, file_path: Path) -> bool:
