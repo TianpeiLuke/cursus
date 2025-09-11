@@ -1,3 +1,28 @@
+---
+tags:
+  - code
+  - registry
+  - registry_api_reference
+  - step_registration
+  - component_discovery
+keywords:
+  - registry API
+  - step registration
+  - component discovery
+  - workspace awareness
+  - unified registry
+  - step builders
+  - validation
+  - export import
+topics:
+  - registry system
+  - step management
+  - component discovery
+  - workspace integration
+language: python
+date of note: 2025-09-11
+---
+
 # Registry API Reference
 
 Complete reference for the Cursus Registry System API, covering all functions, classes, and methods for step registration, discovery, and management.

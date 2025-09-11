@@ -1,11 +1,10 @@
 ---
 tags:
+  - code
+  - sagemaker_pipeline_api
+  - pipeline_compiler
+  - dag_compiler
   - api_reference
-  - sagemaker
-  - pipeline
-  - cursus
-  - documentation
-  - implementation
 keywords:
   - SageMaker pipeline API
   - MODS pipeline API

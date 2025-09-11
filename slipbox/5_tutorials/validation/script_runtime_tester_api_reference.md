@@ -1,10 +1,10 @@
 ---
 tags:
-  - test
-  - validation
-  - runtime
+  - code
+  - script_runtime_tester
+  - runtime_validation
+  - pipeline_testing
   - api_reference
-  - documentation
 keywords:
   - script runtime tester API
   - pipeline runtime testing API

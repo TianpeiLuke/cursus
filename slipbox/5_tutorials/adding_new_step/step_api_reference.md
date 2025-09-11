@@ -1,10 +1,10 @@
 ---
 tags:
-  - api_reference
+  - code
   - step_development
-  - cursus
-  - pipeline_development
-  - documentation
+  - api_reference
+  - pipeline_step_creation
+  - cursus_components
 keywords:
   - step development API
   - cursus step API
@@ -12,6 +12,8 @@ keywords:
   - step specification API
   - step builder API
   - configuration API
+  - pipeline integration
+  - component alignment
 topics:
   - Step development API reference
   - Cursus core components

@@ -1,3 +1,28 @@
+---
+tags:
+  - entry_point
+  - tutorial
+  - registry
+  - step_registration
+  - documentation
+keywords:
+  - registry system
+  - step registration
+  - step discovery
+  - workspace awareness
+  - unified registry
+  - builder registry
+  - step names registry
+  - registry tutorials
+topics:
+  - registry system
+  - step management
+  - workspace integration
+  - tutorial documentation
+language: python
+date of note: 2025-09-06
+---
+
 # Registry Tutorials
 
 Comprehensive tutorials and documentation for the Cursus Registry System.
