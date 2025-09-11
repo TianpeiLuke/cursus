@@ -26,7 +26,6 @@ import traceback
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Union, Tuple
 from pathlib import Path
-from dataclasses import dataclass, field
 from enum import Enum
 import tempfile
 import subprocess
@@ -52,27 +51,36 @@ class UsabilityScore(Enum):
     POOR = "poor"          # 0-49%
 
 
-@dataclass
-class OnboardingStep:
+class OnboardingStep(BaseModel):
     """Individual onboarding step."""
-    step_name: str
-    description: str
-    expected_duration: float  # seconds
-    actual_duration: Optional[float] = None
-    success: bool = False
-    error_message: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    model_config = ConfigDict(
+        extra='forbid',
+        validate_assignment=True
+    )
+    
+    step_name: str = Field(..., description="Name of the onboarding step")
+    description: str = Field(..., description="Description of what this step does")
+    expected_duration: float = Field(..., description="Expected duration in seconds")
+    actual_duration: Optional[float] = Field(None, description="Actual duration in seconds")
+    success: bool = Field(False, description="Whether the step succeeded")
+    error_message: Optional[str] = Field(None, description="Error message if step failed")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Additional step details")
 
 
-@dataclass
-class OnboardingResult:
+class OnboardingResult(BaseModel):
     """Result of developer onboarding test."""
-    total_duration: float
-    success_rate: float
-    steps: List[OnboardingStep]
-    status: OnboardingStatus
-    recommendations: List[str] = field(default_factory=list)
-    timestamp: datetime = field(default_factory=datetime.now)
+    model_config = ConfigDict(
+        extra='forbid',
+        validate_assignment=True,
+        arbitrary_types_allowed=True
+    )
+    
+    total_duration: float = Field(..., description="Total duration of onboarding test")
+    success_rate: float = Field(..., description="Success rate as percentage")
+    steps: List[OnboardingStep] = Field(..., description="List of onboarding steps")
+    status: OnboardingStatus = Field(..., description="Overall onboarding status")
+    recommendations: List[str] = Field(default_factory=list, description="List of recommendations")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp of the test")
 
 
 class APIUsabilityTest(BaseModel):

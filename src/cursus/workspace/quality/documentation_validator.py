@@ -13,8 +13,8 @@ import re
 import ast
 from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
-from dataclasses import dataclass
 from enum import Enum
+from pydantic import BaseModel, Field
 
 from ..validation.base_validation_result import BaseValidationResult
 
@@ -29,15 +29,14 @@ class DocumentationType(Enum):
     DOCSTRING = "docstring"
 
 
-@dataclass
-class DocumentationMetrics:
+class DocumentationMetrics(BaseModel):
     """Metrics for documentation quality assessment."""
-    completeness_score: float  # 0.0 - 1.0
-    clarity_score: float       # 0.0 - 1.0
-    accuracy_score: float      # 0.0 - 1.0
-    coverage_score: float      # 0.0 - 1.0
-    consistency_score: float   # 0.0 - 1.0
-    accessibility_score: float # 0.0 - 1.0
+    completeness_score: float = Field(..., ge=0.0, le=1.0, description="Completeness score (0.0 - 1.0)")
+    clarity_score: float = Field(..., ge=0.0, le=1.0, description="Clarity score (0.0 - 1.0)")
+    accuracy_score: float = Field(..., ge=0.0, le=1.0, description="Accuracy score (0.0 - 1.0)")
+    coverage_score: float = Field(..., ge=0.0, le=1.0, description="Coverage score (0.0 - 1.0)")
+    consistency_score: float = Field(..., ge=0.0, le=1.0, description="Consistency score (0.0 - 1.0)")
+    accessibility_score: float = Field(..., ge=0.0, le=1.0, description="Accessibility score (0.0 - 1.0)")
     
     @property
     def overall_score(self) -> float:

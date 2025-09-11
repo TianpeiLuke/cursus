@@ -25,7 +25,6 @@ import traceback
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Union, Tuple
 from pathlib import Path
-from dataclasses import dataclass, field
 from enum import Enum
 import json
 
@@ -54,28 +53,38 @@ class QualityDimension(Enum):
     USABILITY_DEVELOPER_EXPERIENCE = "usability_developer_experience"
 
 
-@dataclass
-class QualityMetric:
+class QualityMetric(BaseModel):
     """Individual quality metric measurement."""
-    name: str
-    value: float
-    threshold: float
-    status: QualityStatus
-    dimension: QualityDimension
-    timestamp: datetime = field(default_factory=datetime.now)
-    details: Dict[str, Any] = field(default_factory=dict)
+    model_config = ConfigDict(
+        extra='forbid',
+        validate_assignment=True,
+        arbitrary_types_allowed=True
+    )
+    
+    name: str = Field(..., description="Name of the quality metric")
+    value: float = Field(..., description="Measured value of the metric")
+    threshold: float = Field(..., description="Threshold value for the metric")
+    status: QualityStatus = Field(..., description="Quality status based on value vs threshold")
+    dimension: QualityDimension = Field(..., description="Quality dimension this metric belongs to")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp of measurement")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Additional metric details")
 
 
-@dataclass
-class QualityGateResult:
+class QualityGateResult(BaseModel):
     """Result of quality gate validation."""
-    gate_name: str
-    passed: bool
-    score: float
-    threshold: float
-    metrics: List[QualityMetric] = field(default_factory=list)
-    timestamp: datetime = field(default_factory=datetime.now)
-    details: Dict[str, Any] = field(default_factory=dict)
+    model_config = ConfigDict(
+        extra='forbid',
+        validate_assignment=True,
+        arbitrary_types_allowed=True
+    )
+    
+    gate_name: str = Field(..., description="Name of the quality gate")
+    passed: bool = Field(..., description="Whether the gate passed")
+    score: float = Field(..., description="Score achieved by the gate")
+    threshold: float = Field(..., description="Threshold required to pass the gate")
+    metrics: List[QualityMetric] = Field(default_factory=list, description="Metrics associated with this gate")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp of gate validation")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Additional gate details")
 
 
 class QualityReport(BaseModel):

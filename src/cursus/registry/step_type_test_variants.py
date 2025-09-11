@@ -10,18 +10,17 @@ step type gets specialized validation through dedicated test variant classes.
 """
 
 from typing import Dict, List, Type, Any, Optional
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class StepTypeRequirements:
+class StepTypeRequirements(BaseModel):
     """Requirements specification for a SageMaker step type."""
-    required_methods: List[str]
-    optional_methods: List[str]
-    required_attributes: List[str]
-    step_class: str
-    sagemaker_objects: List[str]
-    validation_rules: Optional[Dict[str, Any]] = None
+    required_methods: List[str] = Field(..., description="List of required methods for this step type")
+    optional_methods: List[str] = Field(..., description="List of optional methods for this step type")
+    required_attributes: List[str] = Field(..., description="List of required attributes for this step type")
+    step_class: str = Field(..., description="SageMaker step class name")
+    sagemaker_objects: List[str] = Field(..., description="List of SageMaker objects used by this step type")
+    validation_rules: Optional[Dict[str, Any]] = Field(None, description="Validation rules for this step type")
 
 
 # Step type requirements mapping

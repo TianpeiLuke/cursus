@@ -182,16 +182,49 @@ so that development productivity doesn't degrade.
 - ✅ **Developer complaints** about difficulty finding existing components
 - ✅ **Code duplication** caused by inability to discover existing solutions
 - ✅ **Performance issues** from repeated file system scans
+- ✅ **Job type variant patterns** documented in existing PipelineDAG implementations
 
 **Theoretical vs. Real Problems**:
 - ✅ **Real**: Multi-workspace component discovery (validated by 16+ existing systems)
 - ✅ **Real**: Efficient indexing for growing catalogs (performance issues documented)
 - ✅ **Real**: Consistent APIs across discovery systems (developer complaints documented)
+- ✅ **Real**: Job type variant support (validated by existing PipelineDAG node naming patterns)
 - ❌ **Theoretical**: Complex conflict resolution between workspaces (no evidence of conflicts)
 - ❌ **Theoretical**: Advanced semantic search capabilities (no user requests)
 - ❌ **Theoretical**: Real-time collaboration features (no validated demand)
 - ❌ **Theoretical**: Machine learning recommendations (speculative feature)
 - ❌ **Theoretical**: Complex relationship mapping (over-engineering for simple needs)
+
+### Job Type Variant Requirements
+
+**US5: Job Type Variant Discovery**
+```
+As a developer working with PipelineDAG, I want to discover step variants by job_type
+(training, calibration, validation, testing), so that I can build pipelines with
+appropriate data flows for different purposes.
+```
+
+**Acceptance Criteria**:
+- Support job_type variants following `{BaseStepName}_{job_type}` pattern
+- Share base components (script, contract, config, builder) across job_type variants
+- Differentiate specifications by job_type while maintaining component reuse
+- Enable PipelineDAG node name resolution (e.g., "CradleDataLoading_training")
+- Support component sharing patterns where multiple specs use same base components
+
+**Job Type Variant Pattern**:
+```
+Base Step: "CradleDataLoading"
+├── Script: cradle_data_loading.py (shared across all job_types)
+├── Contract: cradle_data_loading_contract.py (shared across all job_types)  
+├── Config: config_cradle_data_loading_step.py (shared across all job_types)
+├── Builder: CradleDataLoadingStepBuilder (shared across all job_types)
+└── Specs: (job_type variants)
+    ├── cradle_data_loading_spec.py (base/default)
+    ├── cradle_data_loading_training_spec.py (job_type="training")
+    ├── cradle_data_loading_validation_spec.py (job_type="validation")
+    ├── cradle_data_loading_testing_spec.py (job_type="testing")
+    └── cradle_data_loading_calibration_spec.py (job_type="calibration")
+```
 
 ## System Architecture
 
@@ -228,17 +261,27 @@ so that development productivity doesn't degrade.
 class StepCatalog:
     """Unified interface for step component discovery and retrieval."""
     
-    def get_step_info(self, step_name: str) -> StepInfo:
-        """Get complete information about a step."""
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> StepInfo:
+        """Get complete information about a step, optionally with job_type variant."""
         
     def find_step_by_component(self, component_path: str) -> Optional[str]:
         """Find step name from any component file."""
         
-    def list_available_steps(self, workspace_id: Optional[str] = None) -> List[str]:
-        """List all available steps, optionally filtered by workspace."""
+    def list_available_steps(self, workspace_id: Optional[str] = None, 
+                           job_type: Optional[str] = None) -> List[str]:
+        """List all available steps, optionally filtered by workspace and job_type."""
         
-    def search_steps(self, query: str) -> List[StepSearchResult]:
-        """Search steps by name, description, or functionality."""
+    def search_steps(self, query: str, job_type: Optional[str] = None) -> List[StepSearchResult]:
+        """Search steps by name, description, or functionality, optionally filtered by job_type."""
+    
+    def get_job_type_variants(self, base_step_name: str) -> List[str]:
+        """Get all job_type variants for a base step name."""
+        
+    def resolve_pipeline_node(self, node_name: str) -> Optional[StepInfo]:
+        """Resolve PipelineDAG node name to StepInfo (handles job_type variants)."""
+        
+    def get_shared_components(self, base_step_name: str) -> Dict[str, Optional[FileMetadata]]:
+        """Get components shared across all job_type variants of a base step."""
 ```
 
 #### **2. Catalog Manager**
@@ -275,7 +318,7 @@ class IndexEngine:
     def update_index(self, changed_files: List[Path]) -> None:
         """Incrementally update index for changed files."""
         
-    def find_components_by_step(self, step_name: str) -> ComponentSet:
+    def find_components_by_step(self, step_name: str) -> StepInfo:
         """Find all components for a given step name."""
 ```
 
@@ -284,33 +327,161 @@ class IndexEngine:
 #### **Core Data Structures**
 
 ```python
-@dataclass
-class StepInfo:
-    """Complete information about a step and its components."""
+from pydantic import BaseModel, Field, computed_field
+from pathlib import Path
+from datetime import datetime
+from typing import Optional, List, Literal, Dict, Any
+
+class FileMetadata(BaseModel):
+    """Simplified metadata for indexed files."""
+    path: Path
+    file_type: Literal['script', 'contract', 'config', 'spec', 'builder']
+    modified_time: datetime
+    
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "frozen": True
+    }
+
+class StepInfo(BaseModel):
+    """Complete step information combining registry data with file metadata."""
     step_name: str
     workspace_id: str
-    components: ComponentSet
-    metadata: StepMetadata
-    dependencies: List[str]
+    registry_data: Dict[str, Any]  # From cursus.registry.step_names
+    file_components: Dict[str, Optional[FileMetadata]]  # Discovered files
     
-@dataclass 
-class ComponentSet:
-    """Set of all components for a step."""
-    script: Optional[ComponentInfo] = None
-    contract: Optional[ComponentInfo] = None
-    spec: Optional[ComponentInfo] = None
-    builder: Optional[ComponentInfo] = None
-    config: Optional[ComponentInfo] = None
+    # Job type variant support (based on job_type_variant_analysis.md)
+    base_step_name: Optional[str] = None  # e.g., "CradleDataLoading" 
+    job_type: Optional[str] = None        # e.g., "training", "calibration", etc.
     
-@dataclass
-class ComponentInfo:
-    """Information about a specific component."""
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
+    
+    @computed_field
+    @property
+    def is_complete(self) -> bool:
+        """Check if step has minimum required components based on SageMaker step type."""
+        # All steps require: builder, config, spec (these are always present in registry)
+        # Only Processing and Training steps require scripts and contracts
+        sagemaker_type = self.sagemaker_step_type
+        
+        if sagemaker_type in ['Processing', 'Training']:
+            # Processing and Training steps need scripts and contracts
+            return (
+                self.file_components.get('script') is not None and 
+                self.file_components.get('contract') is not None and
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None and
+                self.file_components.get('spec') is not None
+            )
+        elif sagemaker_type in ['CreateModel', 'RegisterModel', 'Transform']:
+            # CreateModel, RegisterModel, Transform steps don't need scripts/contracts
+            return (
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None and
+                self.file_components.get('spec') is not None
+            )
+        elif sagemaker_type in ['Base', 'Utility']:
+            # Base and Utility steps have minimal requirements
+            return (
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None
+            )
+        else:
+            # Custom steps - check for basic components
+            return (
+                self.file_components.get('builder') is not None and
+                self.file_components.get('config') is not None
+            )
+    
+    @computed_field
+    @property
+    def all_files(self) -> List[Path]:
+        """Get all file paths for this step."""
+        files = []
+        for component in self.file_components.values():
+            if component:
+                files.append(component.path)
+        return files
+    
+    @computed_field
+    @property
+    def config_class(self) -> str:
+        """Get config class name from registry."""
+        return self.registry_data.get('config_class', '')
+    
+    @computed_field
+    @property
+    def builder_step_name(self) -> str:
+        """Get builder step name from registry."""
+        return self.registry_data.get('builder_step_name', '')
+    
+    @computed_field
+    @property
+    def sagemaker_step_type(self) -> str:
+        """Get SageMaker step type from registry."""
+        return self.registry_data.get('sagemaker_step_type', '')
+    
+    @computed_field
+    @property
+    def description(self) -> str:
+        """Get step description from registry."""
+        return self.registry_data.get('description', '')
+    
+    @computed_field
+    @property
+    def requires_script(self) -> bool:
+        """Check if this step type requires a script."""
+        return self.sagemaker_step_type in ['Processing', 'Training']
+    
+    @computed_field
+    @property
+    def requires_contract(self) -> bool:
+        """Check if this step type requires a contract."""
+        return self.sagemaker_step_type in ['Processing', 'Training']
+    
+    @computed_field
+    @property
+    def is_job_type_variant(self) -> bool:
+        """Check if this is a job_type variant of a base step."""
+        return self.job_type is not None
+    
+    @computed_field
+    @property
+    def base_step_key(self) -> str:
+        """Get the base step key for component sharing."""
+        return self.base_step_name or self.step_name
+    
+    @computed_field
+    @property
+    def variant_key(self) -> str:
+        """Get the unique variant key matching PipelineDAG node names."""
+        if self.job_type:
+            base_name = self.base_step_name or self.step_name
+            return f"{base_name}_{self.job_type}"
+        return self.step_name
+    
+    @computed_field
+    @property
+    def pipeline_node_name(self) -> str:
+        """Get the node name as used in PipelineDAG."""
+        return self.variant_key  # Same as variant_key for consistency
+
+class IndexEntry(BaseModel):
+    """Single index entry bridging file path to semantic meaning."""
     file_path: Path
+    step_name: str
+    component_type: Literal['script', 'contract', 'config', 'spec', 'builder']
     workspace_id: str
-    component_type: ComponentType
-    metadata: Dict[str, Any]
-    last_modified: datetime
+    metadata: FileMetadata
+    last_indexed: datetime
     
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "frozen": True
+    }
+
 @dataclass
 class StepIndex:
     """Searchable index of all steps and components."""
@@ -318,6 +489,17 @@ class StepIndex:
     component_map: Dict[Path, str]  # file_path -> step_name
     workspace_map: Dict[str, List[str]]  # workspace_id -> step_names
     name_variants: Dict[str, str]  # variant_name -> canonical_name
+
+# Component type enumeration
+from enum import Enum
+
+class ComponentType(Enum):
+    """Enumeration of step component types."""
+    SCRIPT = "script"
+    CONTRACT = "contract"
+    SPEC = "spec"
+    BUILDER = "builder"
+    CONFIG = "config"
 ```
 
 #### **Search and Query Models**
@@ -448,7 +630,7 @@ class WorkspaceManager:
         self.developer_workspaces = self._discover_developer_workspaces()
         self.shared_workspace = self._discover_shared_workspace()
     
-    def find_step_components(self, step_name: str) -> ComponentSet:
+    def find_step_components(self, step_name: str) -> StepInfo:
         """Find components with workspace precedence."""
         # Developer workspace first, then shared workspace fallback
         

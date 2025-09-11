@@ -5,10 +5,10 @@ This module provides classes for validating DAG-config compatibility
 and previewing resolution results before pipeline generation.
 """
 
-from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
 import logging
 import re
+from pydantic import BaseModel, Field
 
 # Import registry components needed for step type resolution
 from ...registry.step_names import CONFIG_STEP_REGISTRY
@@ -17,15 +17,14 @@ from ...registry.builder_registry import StepBuilderRegistry
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ValidationResult:
+class ValidationResult(BaseModel):
     """Result of DAG-config compatibility validation."""
-    is_valid: bool
-    missing_configs: List[str]
-    unresolvable_builders: List[str]
-    config_errors: Dict[str, List[str]]
-    dependency_issues: List[str]
-    warnings: List[str]
+    is_valid: bool = Field(..., description="Whether the validation passed")
+    missing_configs: List[str] = Field(default_factory=list, description="List of missing configuration names")
+    unresolvable_builders: List[str] = Field(default_factory=list, description="List of unresolvable builder names")
+    config_errors: Dict[str, List[str]] = Field(default_factory=dict, description="Configuration errors by config name")
+    dependency_issues: List[str] = Field(default_factory=list, description="List of dependency issues")
+    warnings: List[str] = Field(default_factory=list, description="List of validation warnings")
     
     def summary(self) -> str:
         """Human-readable validation summary."""
@@ -110,14 +109,13 @@ class ValidationResult:
         return "\n".join(lines)
 
 
-@dataclass
-class ResolutionPreview:
+class ResolutionPreview(BaseModel):
     """Preview of how DAG nodes will be resolved."""
-    node_config_map: Dict[str, str]  # node -> config type
-    config_builder_map: Dict[str, str]  # config type -> builder type
-    resolution_confidence: Dict[str, float]  # confidence scores
-    ambiguous_resolutions: List[str]
-    recommendations: List[str]
+    node_config_map: Dict[str, str] = Field(..., description="Mapping from node to config type")
+    config_builder_map: Dict[str, str] = Field(..., description="Mapping from config type to builder type")
+    resolution_confidence: Dict[str, float] = Field(..., description="Confidence scores for resolutions")
+    ambiguous_resolutions: List[str] = Field(default_factory=list, description="List of ambiguous resolutions")
+    recommendations: List[str] = Field(default_factory=list, description="List of recommendations")
     
     def display(self) -> str:
         """Display-friendly resolution preview."""
@@ -153,15 +151,14 @@ class ResolutionPreview:
         return "\n".join(lines)
 
 
-@dataclass
-class ConversionReport:
+class ConversionReport(BaseModel):
     """Report generated after successful pipeline conversion."""
-    pipeline_name: str
-    steps: List[str]
-    resolution_details: Dict[str, Dict[str, Any]]
-    avg_confidence: float
-    warnings: List[str]
-    metadata: Dict[str, Any]
+    pipeline_name: str = Field(..., description="Name of the generated pipeline")
+    steps: List[str] = Field(..., description="List of step names in the pipeline")
+    resolution_details: Dict[str, Dict[str, Any]] = Field(..., description="Detailed resolution information for each step")
+    avg_confidence: float = Field(..., description="Average confidence score across all resolutions")
+    warnings: List[str] = Field(default_factory=list, description="List of warnings generated during conversion")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata about the conversion")
     
     def summary(self) -> str:
         """Summary of conversion results."""
