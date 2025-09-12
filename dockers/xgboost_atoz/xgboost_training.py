@@ -180,12 +180,17 @@ def load_and_validate_config(hparam_path: str) -> dict:
             "tab_field_list",
             "cat_field_list",
             "label_name",
-            "is_binary",
-            "num_classes",
+            "multiclass_categories",
         ]
         for key in required_keys:
             if key not in config:
                 raise ValueError(f"Missing required key in config: {key}")
+
+        if "num_classes" not in config:
+            config['num_classes'] = len(config['multiclass_categories'])
+
+        if 'is_binary' not in config:
+            config['is_binary'] = (config['num_classes'] == 2)
 
         # Validate class_weights if present
         if "class_weights" in config:
