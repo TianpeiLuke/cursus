@@ -62,8 +62,6 @@ def install_requirements_single(package: str = "numpy") -> None:
 
 # Install required packages
 required_packages = [
-    "scikit-learn>=0.23.2,<1.0.0",
-    "pandas>=1.2.0,<2.0.0",
     "pydantic>=2.0.0,<3.0.0",
 ]
 
@@ -87,10 +85,12 @@ from sklearn.metrics import (
 )
 import xgboost as xgb
 import matplotlib.pyplot as plt
+import time
+from datetime import datetime
+from typing import Dict, Any, Optional, List, Tuple, Union
+
 import logging
 import tarfile
-import time
-
 
 # Setup logging first
 logging.basicConfig(
@@ -100,14 +100,16 @@ logger = logging.getLogger(__name__)
 
 # Define constants for paths
 SOURCECODE_DIR = "/opt/ml/processing/input/code"  # This is correct
-MODEL_DIR = "/opt/ml/processing/input/model"  # This is correct
-DATA_DIR = "/opt/ml/processing/input/eval_data"  # Changed from 'data' to 'eval_data'
-EVAL_OUTPUT_DIR = "/opt/ml/processing/output/eval"  # This is correct
-METRICS_OUTPUT_DIR = "/opt/ml/processing/output/metrics"  # This is correct
-
 # Add the code directories to Python path
 sys.path.append(SOURCECODE_DIR)
 logger.info(f"Added {SOURCECODE_DIR} to Python path")
+# Container path constants - aligned with script contract
+CONTAINER_PATHS = {
+    "MODEL_DIR": "/opt/ml/processing/input/model",
+    "EVAL_DATA_DIR": "/opt/ml/processing/input/eval_data",
+    "OUTPUT_EVAL_DIR": "/opt/ml/processing/output/eval",
+    "OUTPUT_METRICS_DIR": "/opt/ml/processing/output/metrics",
+}
 
 # Now import from the processing package
 try:
@@ -130,10 +132,10 @@ def validate_environment():
     # Validate directories
     required_dirs = {
         "sourcecode": SOURCECODE_DIR,
-        "model": MODEL_DIR,
-        "eval_data": DATA_DIR,
-        "output_eval": EVAL_OUTPUT_DIR,
-        "output_metrics": METRICS_OUTPUT_DIR,
+        "model": CONTAINER_PATHS["MODEL_DIR"],
+        "eval_data": CONTAINER_PATHS["EVAL_DATA_DIR"],
+        "output_eval": CONTAINER_PATHS["OUTPUT_EVAL_DIR"],
+        "output_metrics": CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
     }
 
     for name, path in required_dirs.items():
@@ -161,8 +163,7 @@ def decompress_model_artifacts(model_dir: str):
     else:
         logger.info("No model.tar.gz found. Assuming artifacts are directly available.")
 
-
-def load_model_artifacts(model_dir):
+def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
     """
     Load the trained XGBoost model and all preprocessing artifacts from the specified directory.
     Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.
@@ -170,6 +171,7 @@ def load_model_artifacts(model_dir):
     logger.info(f"Loading model artifacts from {model_dir}")
 
     # Decompress the model tarball if it exists.
+    logger.info("Decompress the model tarball if it exists")
     decompress_model_artifacts(model_dir)
 
     model = xgb.Booster()
@@ -192,35 +194,54 @@ def load_model_artifacts(model_dir):
     return model, risk_tables, impute_dict, feature_columns, hyperparams
 
 
-def preprocess_eval_data(df, feature_columns, risk_tables, impute_dict):
+def preprocess_eval_data(df: pd.DataFrame, feature_columns: List[str], risk_tables: Dict[str, Any], impute_dict: Dict[str, Any]) -> pd.DataFrame:
     """
     Apply risk table mapping and numerical imputation to the evaluation DataFrame.
     Ensures all features are numeric and columns are ordered as required by the model.
+    Preserves any non-feature columns like id and label.
     """
+    # Make a copy of the input dataframe to avoid modifying the original
+    result_df = df.copy()
+    
+    # Get available feature columns (features that exist in the input data)
+    available_features = [col for col in feature_columns if col in df.columns]
+    logger.info(f"Found {len(available_features)} out of {len(feature_columns)} expected feature columns")
+    
+    # Process only feature columns
     logger.info("Starting risk table mapping for categorical features")
     for feature, risk_table in risk_tables.items():
-        if feature in df.columns:
+        if feature in available_features:
             logger.info(f"Applying risk table mapping for feature: {feature}")
             proc = RiskTableMappingProcessor(
                 column_name=feature, label_name="label", risk_tables=risk_table
             )
-            df[feature] = proc.transform(df[feature])
+            result_df[feature] = proc.transform(df[feature])
     logger.info("Risk table mapping complete")
+    
+    # For numerical imputation, only process features, not all columns
     logger.info("Starting numerical imputation")
+    feature_df = result_df[available_features].copy()
     imputer = NumericalVariableImputationProcessor(imputation_dict=impute_dict)
-    df = imputer.transform(df)
+    imputed_df = imputer.transform(feature_df)
+    # Update only the feature columns in the result dataframe
+    for col in available_features:
+        if col in imputed_df:
+            result_df[col] = imputed_df[col]
     logger.info("Numerical imputation complete")
-    logger.info("Ensuring all features are numeric and reordering columns")
-    df[feature_columns] = (
-        df[feature_columns].apply(pd.to_numeric, errors="coerce").fillna(0)
+    
+    # Convert feature columns to numeric, leaving other columns unchanged
+    logger.info("Ensuring feature columns are numeric")
+    result_df[available_features] = (
+        result_df[available_features].apply(pd.to_numeric, errors="coerce").fillna(0)
     )
-    df = df.copy()
-    df = df[[col for col in feature_columns if col in df.columns]]
-    logger.info(f"Preprocessed eval data shape: {df.shape}")
-    return df
+    
+    logger.info(f"Preprocessed data shape: {result_df.shape} (preserving all original columns)")
+    
+    # Return the result with all original columns preserved
+    return result_df
 
 
-def log_metrics_summary(metrics, is_binary=True):
+def log_metrics_summary(metrics: Dict[str, Union[int, float, str]], is_binary: bool = True) -> None:
     """
     Log a nicely formatted summary of metrics for easy visibility in logs.
 
@@ -264,11 +285,13 @@ def log_metrics_summary(metrics, is_binary=True):
             f"METRIC_KEY: Macro AUC-ROC         = {metrics.get('auc_roc_macro', 'N/A'):.4f}"
         )
         logger.info(
-            f"METRIC_KEY: Weighted AUC-ROC      = {metrics.get('auc_roc_weighted', 'N/A'):.4f}"
+            f"METRIC_KEY: Micro AUC-ROC         = {metrics.get('auc_roc_micro', 'N/A'):.4f}"
         )
-        logger.info(
-            f"METRIC_KEY: Macro Average Precision = {metrics.get('average_precision_macro', 'N/A'):.4f}"
-        )
+        ap_macro = metrics.get("average_precision_macro", "N/A")
+        if isinstance(ap_macro, (int, float)):
+            logger.info(f"METRIC_KEY: Macro Average Precision = {ap_macro:.4f}")
+        else:
+            logger.info(f"METRIC_KEY: Macro Average Precision = {ap_macro}")
         logger.info(
             f"METRIC_KEY: Macro F1              = {metrics.get('f1_score_macro', 'N/A'):.4f}"
         )
@@ -280,7 +303,7 @@ def log_metrics_summary(metrics, is_binary=True):
     logger.info("=" * 80)
 
 
-def compute_metrics_binary(y_true, y_prob):
+def compute_metrics_binary(y_true: np.ndarray, y_prob: np.ndarray) -> Dict[str, float]:
     """
     Compute binary classification metrics: AUC-ROC, average precision, and F1 score.
     """
@@ -311,7 +334,7 @@ def compute_metrics_binary(y_true, y_prob):
     return metrics
 
 
-def compute_metrics_multiclass(y_true, y_prob, n_classes):
+def compute_metrics_multiclass(y_true: np.ndarray, y_prob: np.ndarray, n_classes: int) -> Dict[str, Union[int, float]]:
     """
     Compute multiclass metrics: one-vs-rest AUC-ROC, average precision, F1 for each class,
     and micro/macro averages for all metrics.
@@ -330,12 +353,11 @@ def compute_metrics_multiclass(y_true, y_prob, n_classes):
         metrics[f"f1_score_class_{i}"] = f1_score(y_true_bin, y_score > 0.5)
 
     # Micro and macro averages
-    # For multiclass ROC AUC, only 'macro' and 'weighted' averages are supported for multi_class="ovr"
+    metrics["auc_roc_micro"] = roc_auc_score(
+        y_true, y_prob, multi_class="ovr", average="micro"
+    )
     metrics["auc_roc_macro"] = roc_auc_score(
         y_true, y_prob, multi_class="ovr", average="macro"
-    )
-    metrics["auc_roc_weighted"] = roc_auc_score(
-        y_true, y_prob, multi_class="ovr", average="weighted"
     )
     metrics["average_precision_micro"] = average_precision_score(
         y_true, y_prob, average="micro"
@@ -356,14 +378,14 @@ def compute_metrics_multiclass(y_true, y_prob, n_classes):
 
     # Log basic summary and detailed formatted metrics
     logger.info(
-        f"Multiclass metrics computed: Macro AUC={metrics['auc_roc_macro']:.4f}, Weighted AUC={metrics['auc_roc_weighted']:.4f}"
+        f"Multiclass metrics computed: Macro AUC={metrics['auc_roc_macro']:.4f}, Micro AUC={metrics['auc_roc_micro']:.4f}"
     )
     log_metrics_summary(metrics, is_binary=False)
 
     return metrics
 
 
-def load_eval_data(eval_data_dir):
+def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
     """
     Load the first .csv or .parquet file found in the evaluation data directory.
     Returns a pandas DataFrame.
@@ -389,7 +411,7 @@ def load_eval_data(eval_data_dir):
     return df
 
 
-def get_id_label_columns(df, id_field, label_field):
+def get_id_label_columns(df: pd.DataFrame, id_field: str, label_field: str) -> Tuple[str, str]:
     """
     Determine the ID and label columns in the DataFrame.
     Falls back to the first and second columns if not found.
@@ -400,7 +422,7 @@ def get_id_label_columns(df, id_field, label_field):
     return id_col, label_col
 
 
-def save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir):
+def save_predictions(ids: np.ndarray, y_true: np.ndarray, y_prob: np.ndarray, id_col: str, label_col: str, output_eval_dir: str) -> None:
     """
     Save predictions to a CSV file, including id, true label, and class probabilities.
     """
@@ -414,7 +436,7 @@ def save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir):
     logger.info(f"Saved predictions to {out_path}")
 
 
-def save_metrics(metrics, output_metrics_dir):
+def save_metrics(metrics: Dict[str, Union[int, float, str]], output_metrics_dir: str) -> None:
     """
     Save computed metrics as a JSON file.
     """
@@ -438,9 +460,7 @@ def save_metrics(metrics, output_metrics_dir):
                 f.write(f"F1 Score:          {metrics['f1_score']:.4f}\n")
         else:  # Multiclass classification
             f.write(f"AUC-ROC (Macro):   {metrics.get('auc_roc_macro', 'N/A'):.4f}\n")
-            f.write(
-                f"AUC-ROC (Weighted): {metrics.get('auc_roc_weighted', 'N/A'):.4f}\n"
-            )
+            f.write(f"AUC-ROC (Micro):   {metrics.get('auc_roc_micro', 'N/A'):.4f}\n")
             f.write(f"F1 Score (Macro):  {metrics.get('f1_score_macro', 'N/A'):.4f}\n")
 
         f.write("=" * 50 + "\n\n")
@@ -457,7 +477,7 @@ def save_metrics(metrics, output_metrics_dir):
     logger.info(f"Saved metrics summary to {summary_path}")
 
 
-def plot_and_save_roc_curve(y_true, y_score, output_dir, prefix=""):
+def plot_and_save_roc_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
     """
     Plot ROC curve and save as JPG.
     """
@@ -476,7 +496,7 @@ def plot_and_save_roc_curve(y_true, y_score, output_dir, prefix=""):
     logger.info(f"Saved ROC curve to {out_path}")
 
 
-def plot_and_save_pr_curve(y_true, y_score, output_dir, prefix=""):
+def plot_and_save_pr_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
     """
     Plot Precision-Recall curve and save as JPG.
     """
@@ -495,15 +515,15 @@ def plot_and_save_pr_curve(y_true, y_score, output_dir, prefix=""):
 
 
 def evaluate_model(
-    model,
-    df,
-    feature_columns,
-    id_col,
-    label_col,
-    hyperparams,
-    output_eval_dir,
-    output_metrics_dir,
-):
+    model: xgb.Booster,
+    df: pd.DataFrame,
+    feature_columns: List[str],
+    id_col: str,
+    label_col: str,
+    hyperparams: Dict[str, Any],
+    output_eval_dir: str,
+    output_metrics_dir: str,
+) -> None:
     """
     Run model prediction and evaluation, then save predictions and metrics.
     Also generate and save ROC and PR curves as JPG.
@@ -516,12 +536,11 @@ def evaluate_model(
     dmatrix = xgb.DMatrix(X)
     y_prob = model.predict(dmatrix)
     logger.info(f"Model prediction shape: {y_prob.shape}")
-
     if len(y_prob.shape) == 1:
         y_prob = np.column_stack([1 - y_prob, y_prob])
         logger.info("Converted binary prediction to two-column probabilities")
 
-    # FIX: Determine the classification type from the model's saved hyperparameters,
+    # Determine the classification type from the model's saved hyperparameters,
     # which is the definitive source of truth.
     is_binary_model = hyperparams.get("is_binary", True)
 
@@ -555,59 +574,135 @@ def evaluate_model(
     logger.info("Evaluation complete")
 
 
-def main():
+def create_health_check_file(output_path: str) -> str:
+    """Create a health check file to signal script completion."""
+    health_path = output_path
+    with open(health_path, "w") as f:
+        f.write(f"healthy: {datetime.now().isoformat()}")
+    return health_path
+
+
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: argparse.Namespace,
+) -> None:
     """
     Main entry point for XGBoost model evaluation script.
     Loads model and data, runs evaluation, and saves results.
+
+    Args:
+        input_paths (Dict[str, str]): Dictionary of input paths
+        output_paths (Dict[str, str]): Dictionary of output paths
+        environ_vars (Dict[str, str]): Dictionary of environment variables
+        job_args (argparse.Namespace): Command line arguments
     """
+    # Extract paths from parameters - using contract-defined logical names
+    model_dir = input_paths.get("model_input", input_paths.get("model_dir"))
+    eval_data_dir = input_paths.get("processed_data", input_paths.get("eval_data_dir"))
+    output_eval_dir = output_paths.get(
+        "eval_output", output_paths.get("output_eval_dir")
+    )
+    output_metrics_dir = output_paths.get(
+        "metrics_output", output_paths.get("output_metrics_dir")
+    )
+
+    # Extract environment variables
+    id_field = environ_vars.get("ID_FIELD", "id")
+    label_field = environ_vars.get("LABEL_FIELD", "label")
+
+    # Log job info
+    job_type = job_args.job_type
+    logger.info(f"Running model evaluation with job_type: {job_type}")
+
+    # Ensure output directories exist
+    os.makedirs(output_eval_dir, exist_ok=True)
+    os.makedirs(output_metrics_dir, exist_ok=True)
+
+    logger.info("Starting model evaluation script")
+
+    # Load model artifacts
+    model, risk_tables, impute_dict, feature_columns, hyperparams = (
+        load_model_artifacts(model_dir)
+    )
+
+    # Load and preprocess data
+    df = load_eval_data(eval_data_dir)
+    
+    # Get ID and label columns before preprocessing
+    id_col, label_col = get_id_label_columns(df, id_field, label_field)
+    
+    # Process the data - our updated preprocess_eval_data preserves all columns including id and label
+    df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
+    
+    # No need to filter or re-add id and label columns since they're already preserved
+    logger.info(f"Final evaluation DataFrame shape: {df.shape}")
+
+    # Get the available features (those that exist in the DataFrame)
+    available_features = [col for col in feature_columns if col in df.columns]
+    
+    # Evaluate model using the final DataFrame with both features and ID/label columns
+    evaluate_model(
+        model,
+        df,
+        available_features,  # Only use available feature columns for prediction
+        id_col,
+        label_col,
+        hyperparams,
+        output_eval_dir,
+        output_metrics_dir,
+    )
+
+    logger.info("Model evaluation script complete")
+
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_type", type=str, required=True)
     args = parser.parse_args()
 
-    logger.info(f"Starting model evaluation for job type: {args.job_type}")
+    # Set up paths using contract-defined paths only
+    input_paths = {
+        "model_input": CONTAINER_PATHS["MODEL_DIR"],
+        "processed_data": CONTAINER_PATHS["EVAL_DATA_DIR"],
+    }
 
-    # Validate environment setup
+    output_paths = {
+        "eval_output": CONTAINER_PATHS["OUTPUT_EVAL_DIR"],
+        "metrics_output": CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
+    }
+
+    # Collect environment variables - ID_FIELD and LABEL_FIELD are required per contract
+    environ_vars = {
+        "ID_FIELD": os.environ.get("ID_FIELD", "id"),  # Fallback for testing
+        "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),  # Fallback for testing
+    }
+
     validate_environment()
 
-    ID_FIELD = os.environ.get("ID_FIELD", "id")
-    LABEL_FIELD = os.environ.get("LABEL_FIELD", "label")
-
     try:
-        logger.info("Loading model artifacts")
-        model, risk_tables, impute_dict, feature_columns, hyperparams = (
-            load_model_artifacts(MODEL_DIR)
-        )
+        # Call main function with testability parameters
+        main(input_paths, output_paths, environ_vars, args)
 
-        logger.info("Loading and preprocessing evaluation data")
-        df = load_eval_data(
-            DATA_DIR
-        )  # This now points to /opt/ml/processing/input/eval_data
-        df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
-        df = df[[col for col in feature_columns if col in df.columns]]
+        # Signal success
+        success_path = os.path.join(output_paths["metrics_output"], "_SUCCESS")
+        Path(success_path).touch()
+        logger.info(f"Created success marker: {success_path}")
 
-        logger.info("Running model evaluation")
-        id_col, label_col = get_id_label_columns(df, ID_FIELD, LABEL_FIELD)
-        evaluate_model(
-            model,
-            df,
-            feature_columns,
-            id_col,
-            label_col,
-            hyperparams,
-            EVAL_OUTPUT_DIR,
-            METRICS_OUTPUT_DIR,
-        )
+        # Create health check file
+        health_path = os.path.join(output_paths["metrics_output"], "_HEALTH")
+        create_health_check_file(health_path)
+        logger.info(f"Created health check file: {health_path}")
 
-        logger.info("Model evaluation completed successfully")
-
+        sys.exit(0)
     except Exception as e:
-        logger.error(f"Error during model evaluation: {e}", exc_info=True)
-        raise
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logger.error(f"Fatal error in main: {e}", exc_info=True)
+        # Log error and create failure marker
+        logger.exception(f"Script failed with error: {e}")
+        failure_path = os.path.join(
+            output_paths.get("metrics_output", "/tmp"), "_FAILURE"
+        )
+        os.makedirs(os.path.dirname(failure_path), exist_ok=True)
+        with open(failure_path, "w") as f:
+            f.write(f"Error: {str(e)}")
         sys.exit(1)

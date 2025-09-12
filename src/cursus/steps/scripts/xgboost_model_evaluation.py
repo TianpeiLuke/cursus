@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import time
 import sys
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple, Union
 
 from ...processing.risk_table_processor import RiskTableMappingProcessor
 from ...processing.numerical_imputation_processor import (
@@ -42,7 +42,7 @@ CONTAINER_PATHS = {
 }
 
 
-def load_model_artifacts(model_dir):
+def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
     """
     Load the trained XGBoost model and all preprocessing artifacts from the specified directory.
     Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.
@@ -68,35 +68,54 @@ def load_model_artifacts(model_dir):
     return model, risk_tables, impute_dict, feature_columns, hyperparams
 
 
-def preprocess_eval_data(df, feature_columns, risk_tables, impute_dict):
+def preprocess_eval_data(df: pd.DataFrame, feature_columns: List[str], risk_tables: Dict[str, Any], impute_dict: Dict[str, Any]) -> pd.DataFrame:
     """
     Apply risk table mapping and numerical imputation to the evaluation DataFrame.
     Ensures all features are numeric and columns are ordered as required by the model.
+    Preserves any non-feature columns like id and label.
     """
+    # Make a copy of the input dataframe to avoid modifying the original
+    result_df = df.copy()
+    
+    # Get available feature columns (features that exist in the input data)
+    available_features = [col for col in feature_columns if col in df.columns]
+    logger.info(f"Found {len(available_features)} out of {len(feature_columns)} expected feature columns")
+    
+    # Process only feature columns
     logger.info("Starting risk table mapping for categorical features")
     for feature, risk_table in risk_tables.items():
-        if feature in df.columns:
+        if feature in available_features:
             logger.info(f"Applying risk table mapping for feature: {feature}")
             proc = RiskTableMappingProcessor(
                 column_name=feature, label_name="label", risk_tables=risk_table
             )
-            df[feature] = proc.transform(df[feature])
+            result_df[feature] = proc.transform(df[feature])
     logger.info("Risk table mapping complete")
+    
+    # For numerical imputation, only process features, not all columns
     logger.info("Starting numerical imputation")
+    feature_df = result_df[available_features].copy()
     imputer = NumericalVariableImputationProcessor(imputation_dict=impute_dict)
-    df = imputer.transform(df)
+    imputed_df = imputer.transform(feature_df)
+    # Update only the feature columns in the result dataframe
+    for col in available_features:
+        if col in imputed_df:
+            result_df[col] = imputed_df[col]
     logger.info("Numerical imputation complete")
-    logger.info("Ensuring all features are numeric and reordering columns")
-    df[feature_columns] = (
-        df[feature_columns].apply(pd.to_numeric, errors="coerce").fillna(0)
+    
+    # Convert feature columns to numeric, leaving other columns unchanged
+    logger.info("Ensuring feature columns are numeric")
+    result_df[available_features] = (
+        result_df[available_features].apply(pd.to_numeric, errors="coerce").fillna(0)
     )
-    df = df.copy()
-    df = df[[col for col in feature_columns if col in df.columns]]
-    logger.info(f"Preprocessed eval data shape: {df.shape}")
-    return df
+    
+    logger.info(f"Preprocessed data shape: {result_df.shape} (preserving all original columns)")
+    
+    # Return the result with all original columns preserved
+    return result_df
 
 
-def log_metrics_summary(metrics, is_binary=True):
+def log_metrics_summary(metrics: Dict[str, Union[int, float, str]], is_binary: bool = True) -> None:
     """
     Log a nicely formatted summary of metrics for easy visibility in logs.
 
@@ -158,7 +177,7 @@ def log_metrics_summary(metrics, is_binary=True):
     logger.info("=" * 80)
 
 
-def compute_metrics_binary(y_true, y_prob):
+def compute_metrics_binary(y_true: np.ndarray, y_prob: np.ndarray) -> Dict[str, float]:
     """
     Compute binary classification metrics: AUC-ROC, average precision, and F1 score.
     """
@@ -189,7 +208,7 @@ def compute_metrics_binary(y_true, y_prob):
     return metrics
 
 
-def compute_metrics_multiclass(y_true, y_prob, n_classes):
+def compute_metrics_multiclass(y_true: np.ndarray, y_prob: np.ndarray, n_classes: int) -> Dict[str, Union[int, float]]:
     """
     Compute multiclass metrics: one-vs-rest AUC-ROC, average precision, F1 for each class,
     and micro/macro averages for all metrics.
@@ -240,7 +259,7 @@ def compute_metrics_multiclass(y_true, y_prob, n_classes):
     return metrics
 
 
-def load_eval_data(eval_data_dir):
+def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
     """
     Load the first .csv or .parquet file found in the evaluation data directory.
     Returns a pandas DataFrame.
@@ -266,7 +285,7 @@ def load_eval_data(eval_data_dir):
     return df
 
 
-def get_id_label_columns(df, id_field, label_field):
+def get_id_label_columns(df: pd.DataFrame, id_field: str, label_field: str) -> Tuple[str, str]:
     """
     Determine the ID and label columns in the DataFrame.
     Falls back to the first and second columns if not found.
@@ -277,7 +296,7 @@ def get_id_label_columns(df, id_field, label_field):
     return id_col, label_col
 
 
-def save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir):
+def save_predictions(ids: np.ndarray, y_true: np.ndarray, y_prob: np.ndarray, id_col: str, label_col: str, output_eval_dir: str) -> None:
     """
     Save predictions to a CSV file, including id, true label, and class probabilities.
     """
@@ -291,7 +310,7 @@ def save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir):
     logger.info(f"Saved predictions to {out_path}")
 
 
-def save_metrics(metrics, output_metrics_dir):
+def save_metrics(metrics: Dict[str, Union[int, float, str]], output_metrics_dir: str) -> None:
     """
     Save computed metrics as a JSON file.
     """
@@ -332,7 +351,7 @@ def save_metrics(metrics, output_metrics_dir):
     logger.info(f"Saved metrics summary to {summary_path}")
 
 
-def plot_and_save_roc_curve(y_true, y_score, output_dir, prefix=""):
+def plot_and_save_roc_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
     """
     Plot ROC curve and save as JPG.
     """
@@ -351,7 +370,7 @@ def plot_and_save_roc_curve(y_true, y_score, output_dir, prefix=""):
     logger.info(f"Saved ROC curve to {out_path}")
 
 
-def plot_and_save_pr_curve(y_true, y_score, output_dir, prefix=""):
+def plot_and_save_pr_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
     """
     Plot Precision-Recall curve and save as JPG.
     """
@@ -370,15 +389,15 @@ def plot_and_save_pr_curve(y_true, y_score, output_dir, prefix=""):
 
 
 def evaluate_model(
-    model,
-    df,
-    feature_columns,
-    id_col,
-    label_col,
-    hyperparams,
-    output_eval_dir,
-    output_metrics_dir,
-):
+    model: xgb.Booster,
+    df: pd.DataFrame,
+    feature_columns: List[str],
+    id_col: str,
+    label_col: str,
+    hyperparams: Dict[str, Any],
+    output_eval_dir: str,
+    output_metrics_dir: str,
+) -> None:
     """
     Run model prediction and evaluation, then save predictions and metrics.
     Also generate and save ROC and PR curves as JPG.
@@ -484,17 +503,24 @@ def main(
 
     # Load and preprocess data
     df = load_eval_data(eval_data_dir)
-    df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
-    df = df[[col for col in feature_columns if col in df.columns]]
-
-    # Get ID and label columns
+    
+    # Get ID and label columns before preprocessing
     id_col, label_col = get_id_label_columns(df, id_field, label_field)
+    
+    # Process the data - our updated preprocess_eval_data preserves all columns including id and label
+    df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
+    
+    # No need to filter or re-add id and label columns since they're already preserved
+    logger.info(f"Final evaluation DataFrame shape: {df.shape}")
 
-    # Evaluate model
+    # Get the available features (those that exist in the DataFrame)
+    available_features = [col for col in feature_columns if col in df.columns]
+    
+    # Evaluate model using the final DataFrame with both features and ID/label columns
     evaluate_model(
         model,
         df,
-        feature_columns,
+        available_features,  # Only use available feature columns for prediction
         id_col,
         label_col,
         hyperparams,

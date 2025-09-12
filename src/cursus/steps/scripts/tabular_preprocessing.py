@@ -10,7 +10,7 @@ import logging
 import sys
 import traceback
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional, Callable, Any
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 import numpy as np
@@ -32,7 +32,7 @@ def _detect_separator_from_sample(sample_lines: str) -> str:
         return ","
 
 
-def peek_json_format(file_path: Path, open_func=open) -> str:
+def peek_json_format(file_path: Path, open_func: Callable = open) -> str:
     """Check if the JSON file is in JSON Lines or regular format."""
     try:
         with open_func(str(file_path), "rt") as f:
@@ -130,7 +130,7 @@ def main(
     output_paths: Dict[str, str],
     environ_vars: Dict[str, str],
     job_args: argparse.Namespace,
-    logger=None,
+    logger: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
     Main logic for preprocessing data, refactored for testability.
