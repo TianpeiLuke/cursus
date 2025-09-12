@@ -1168,9 +1168,9 @@ def main(
             # Add calibrated scores to dataframe and save
             df["calibrated_" + config.score_field] = y_prob_calibrated
             output_path = os.path.join(
-                config.output_calibrated_data_path, "calibrated_data.parquet"
+                config.output_calibrated_data_path, "calibrated_data.csv"
             )
-            df.to_parquet(output_path, index=False)
+            df.to_csv(output_path, index=False)
 
             # Write summary
             summary = {
@@ -1304,9 +1304,9 @@ def main(
                 df[f"calibrated_{col_name}"] = y_prob_calibrated[:, i]
 
             output_path = os.path.join(
-                config.output_calibrated_data_path, "calibrated_data.parquet"
+                config.output_calibrated_data_path, "calibrated_data.csv"
             )
-            df.to_parquet(output_path, index=False)
+            df.to_csv(output_path, index=False)
 
             # Write summary
             summary = {
