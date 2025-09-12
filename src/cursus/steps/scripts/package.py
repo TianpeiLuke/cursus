@@ -308,21 +308,26 @@ def main(
         if calibration_path and calibration_path.exists():
             logger.info("\n=== Processing Calibration Model ===")
             
+            # Create calibration subdirectory to match inference script expectations
+            calibration_directory = working_directory / "calibration"
+            ensure_directory(calibration_directory)
+            
             # The calibration_path should contain the calibration artifacts from model_calibration script
             # This includes: calibration_model.pkl (binary) or calibration_models/ (multi-class)
             # and calibration_summary.json
-            # Copy calibration artifacts directly to working_directory alongside other model artifacts
-            logger.info("Copying calibration artifacts to working directory...")
+            # Copy calibration artifacts to working_directory/calibration/ to match inference expectations
+            logger.info("Copying calibration artifacts to calibration subdirectory...")
             files_copied = 0
             total_size = 0
             for item in calibration_path.rglob("*"):
                 if item.is_file():
-                    dest_path = working_directory / item.relative_to(calibration_path)
+                    dest_path = calibration_directory / item.relative_to(calibration_path)
                     if copy_file_robust(item, dest_path):
                         files_copied += 1
                         total_size += item.stat().st_size / 1024 / 1024
             
             logger.info(f"Copied {files_copied} calibration files, total size: {total_size:.2f}MB")
+            list_directory_contents(calibration_directory, "Calibration directory")
         else:
             logger.info("\n=== No Calibration Model Provided ===")
             logger.info("Skipping calibration model processing (optional)")
