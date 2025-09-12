@@ -1086,7 +1086,6 @@ def main(
     output_paths: dict,
     environ_vars: dict,
     job_args: argparse.Namespace = None,
-    config: CalibrationConfig = None,
 ) -> dict:
     """Main entry point for the calibration script.
 
@@ -1095,43 +1094,44 @@ def main(
         output_paths: Dictionary of output paths with logical names
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments (optional)
-        config: Configuration object (optional, created from environ_vars if not provided)
 
     Returns:
         Dictionary with metrics and results
     """
     try:
-        # Use provided config or create from environment variables
-        if config is None:
-            config = CalibrationConfig(
-                input_data_path=input_paths.get(
-                    "eval_data", "/opt/ml/processing/input/eval_data"
-                ),
-                output_calibration_path=output_paths.get(
-                    "calibration", "/opt/ml/processing/output/calibration"
-                ),
-                output_metrics_path=output_paths.get(
-                    "metrics", "/opt/ml/processing/output/metrics"
-                ),
-                output_calibrated_data_path=output_paths.get(
-                    "calibrated_data", "/opt/ml/processing/output/calibrated_data"
-                ),
-                calibration_method=environ_vars.get("CALIBRATION_METHOD", "gam"),
-                label_field=environ_vars.get("LABEL_FIELD", "label"),
-                score_field=environ_vars.get("SCORE_FIELD", "prob_class_1"),
-                is_binary=environ_vars.get("IS_BINARY", "True").lower() == "true",
-                monotonic_constraint=environ_vars.get(
-                    "MONOTONIC_CONSTRAINT", "True"
-                ).lower()
-                == "true",
-                gam_splines=int(environ_vars.get("GAM_SPLINES", "10")),
-                error_threshold=float(environ_vars.get("ERROR_THRESHOLD", "0.05")),
-                num_classes=int(environ_vars.get("NUM_CLASSES", "2")),
-                score_field_prefix=environ_vars.get(
-                    "SCORE_FIELD_PREFIX", "prob_class_"
-                ),
-                multiclass_categories=environ_vars.get("MULTICLASS_CATEGORIES"),
-            )
+        # Parse multiclass categories from environment variable
+        multiclass_categories = None
+        multiclass_cats_str = environ_vars.get("MULTICLASS_CATEGORIES")
+        if multiclass_cats_str:
+            try:
+                import ast
+                multiclass_categories = ast.literal_eval(multiclass_cats_str)
+            except (ValueError, SyntaxError):
+                # Fallback to simple comma-separated parsing
+                multiclass_categories = [cat.strip() for cat in multiclass_cats_str.split(",")]
+
+        # Create config from environment variables and input/output paths
+        config = CalibrationConfig(
+            input_data_path=input_paths.get("evaluation_data"),
+            output_calibration_path=output_paths.get("calibration_output"),
+            output_metrics_path=output_paths.get("metrics_output"),
+            output_calibrated_data_path=output_paths.get("calibrated_data"),
+            calibration_method=environ_vars.get("CALIBRATION_METHOD", "gam"),
+            label_field=environ_vars.get("LABEL_FIELD", "label"),
+            score_field=environ_vars.get("SCORE_FIELD", "prob_class_1"),
+            is_binary=environ_vars.get("IS_BINARY", "True").lower() == "true",
+            monotonic_constraint=environ_vars.get(
+                "MONOTONIC_CONSTRAINT", "True"
+            ).lower()
+            == "true",
+            gam_splines=int(environ_vars.get("GAM_SPLINES", "10")),
+            error_threshold=float(environ_vars.get("ERROR_THRESHOLD", "0.05")),
+            num_classes=int(environ_vars.get("NUM_CLASSES", "2")),
+            score_field_prefix=environ_vars.get(
+                "SCORE_FIELD_PREFIX", "prob_class_"
+            ),
+            multiclass_categories=multiclass_categories,
+        )
 
         logger.info("Starting model calibration")
         logger.info(
@@ -1477,11 +1477,11 @@ if __name__ == "__main__":
     }
 
     # Set up input and output paths
-    input_paths = {"eval_data": INPUT_DATA_PATH}
+    input_paths = {"evaluation_data": INPUT_DATA_PATH}
 
     output_paths = {
-        "calibration": OUTPUT_CALIBRATION_PATH,
-        "metrics": OUTPUT_METRICS_PATH,
+        "calibration_output": OUTPUT_CALIBRATION_PATH,
+        "metrics_output": OUTPUT_METRICS_PATH,
         "calibrated_data": OUTPUT_CALIBRATED_DATA_PATH,
     }
 

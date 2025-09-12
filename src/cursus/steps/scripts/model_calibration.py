@@ -1024,11 +1024,22 @@ def main(
         Dictionary with metrics and results
     """
     try:
+        # Parse multiclass categories from environment variable
+        multiclass_categories = None
+        multiclass_cats_str = environ_vars.get("MULTICLASS_CATEGORIES")
+        if multiclass_cats_str:
+            try:
+                import ast
+                multiclass_categories = ast.literal_eval(multiclass_cats_str)
+            except (ValueError, SyntaxError):
+                # Fallback to simple comma-separated parsing
+                multiclass_categories = [cat.strip() for cat in multiclass_cats_str.split(",")]
+
         # Create config from environment variables and input/output paths
         config = CalibrationConfig(
-            input_data_path=input_paths.get("eval_data"),
-            output_calibration_path=output_paths.get("calibration"),
-            output_metrics_path=output_paths.get("metrics"),
+            input_data_path=input_paths.get("evaluation_data"),
+            output_calibration_path=output_paths.get("calibration_output"),
+            output_metrics_path=output_paths.get("metrics_output"),
             output_calibrated_data_path=output_paths.get("calibrated_data"),
             calibration_method=environ_vars.get("CALIBRATION_METHOD", "gam"),
             label_field=environ_vars.get("LABEL_FIELD", "label"),
@@ -1044,7 +1055,7 @@ def main(
             score_field_prefix=environ_vars.get(
                 "SCORE_FIELD_PREFIX", "prob_class_"
             ),
-            multiclass_categories=environ_vars.get("MULTICLASS_CATEGORIES"),
+            multiclass_categories=multiclass_categories,
         )
 
         logger.info("Starting model calibration")
@@ -1391,11 +1402,11 @@ if __name__ == "__main__":
     }
 
     # Set up input and output paths
-    input_paths = {"eval_data": INPUT_DATA_PATH}
+    input_paths = {"evaluation_data": INPUT_DATA_PATH}
 
     output_paths = {
-        "calibration": OUTPUT_CALIBRATION_PATH,
-        "metrics": OUTPUT_METRICS_PATH,
+        "calibration_output": OUTPUT_CALIBRATION_PATH,
+        "metrics_output": OUTPUT_METRICS_PATH,
         "calibrated_data": OUTPUT_CALIBRATED_DATA_PATH,
     }
 
