@@ -35,8 +35,7 @@ class TestWorkspaceAPI:
         """Test developer workspace setup."""
         # Test basic workspace setup
         result = api.setup_developer_workspace(
-            developer_id="test_developer",
-            template="basic"
+            developer_id="test_developer", template="basic"
         )
         assert isinstance(result, WorkspaceSetupResult)
         assert isinstance(result.success, bool)
@@ -47,7 +46,7 @@ class TestWorkspaceAPI:
         # Test workspace validation
         report = api.validate_workspace(temp_workspace)
         assert isinstance(report, ValidationReport)
-        assert hasattr(report, 'status')
+        assert hasattr(report, "status")
 
     def test_list_workspaces(self, api):
         """Test workspace listing."""
@@ -59,8 +58,7 @@ class TestWorkspaceAPI:
         """Test workspace artifact promotion."""
         # Test artifact promotion
         result = api.promote_workspace_artifacts(
-            workspace_path=temp_workspace,
-            target_environment="staging"
+            workspace_path=temp_workspace, target_environment="staging"
         )
         assert result is not None
 
@@ -68,16 +66,14 @@ class TestWorkspaceAPI:
         """Test system health reporting."""
         # Test system health
         from cursus.workspace.api import HealthReport
+
         health = api.get_system_health()
         assert isinstance(health, HealthReport)
-        assert hasattr(health, 'overall_status')
-        assert hasattr(health, 'workspace_reports')
+        assert hasattr(health, "overall_status")
+        assert hasattr(health, "workspace_reports")
 
     def test_cleanup_workspaces(self, api):
         """Test workspace cleanup."""
         # Test workspace cleanup
-        cleanup_result = api.cleanup_workspaces(
-            inactive_days=30,
-            dry_run=True
-        )
+        cleanup_result = api.cleanup_workspaces(inactive_days=30, dry_run=True)
         assert cleanup_result is not None

@@ -11,6 +11,7 @@ from unittest.mock import patch, MagicMock
 from cursus.api.dag.base_dag import PipelineDAG
 from cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
 
+
 class TestFillExecutionDocument:
     """Tests for the fill_execution_document method in DynamicPipelineTemplate."""
 
@@ -26,7 +27,7 @@ class TestFillExecutionDocument:
         self.dag.add_edge("CradleDataLoading-Training", "XGBoostTraining")
         self.dag.add_edge("XGBoostTraining", "Registration-NA")
         self.dag.add_edge("CradleDataLoading-Calibration", "Registration-NA")
-        
+
         # Create template execution document
         self.execution_document = {
             "PIPELINE_STEP_CONFIGS": {
@@ -42,20 +43,20 @@ class TestFillExecutionDocument:
                                         "orgId": "PLACEHOLDER",
                                         "region": "NA",
                                         "useHourlyEdxDataSet": False,
-                                        "outputSchema": []
-                                    }
+                                        "outputSchema": [],
+                                    },
                                 }
                             ],
                             "startDate": "PLACEHOLDER",
-                            "endDate": "PLACEHOLDER"
+                            "endDate": "PLACEHOLDER",
                         },
                         "transformSpecification": {
                             "transformSQL": "PLACEHOLDER",
                             "jobSplitOptions": {
                                 "splitJob": False,
                                 "daysPerSplit": 1,
-                                "mergeSql": "PLACEHOLDER"
-                            }
+                                "mergeSql": "PLACEHOLDER",
+                            },
                         },
                         "outputSpecification": {
                             "outputSchema": [],
@@ -63,19 +64,16 @@ class TestFillExecutionDocument:
                             "outputFormat": "PARQUET",
                             "outputSaveMode": "ERRORIFEXISTS",
                             "outputFileCount": 0,
-                            "keepDotInOutputSchema": True
+                            "keepDotInOutputSchema": True,
                         },
                         "cradleJobSpecification": {
                             "clusterType": "LARGE",
                             "cradleAccount": "PLACEHOLDER",
                             "extraSparkJobArguments": "",
-                            "jobRetryCount": 0
-                        }
+                            "jobRetryCount": 0,
+                        },
                     },
-                    "STEP_TYPE": [
-                        "WORKFLOW_INPUT",
-                        "CradleDataLoadingStep"
-                    ]
+                    "STEP_TYPE": ["WORKFLOW_INPUT", "CradleDataLoadingStep"],
                 },
                 "CradleDataLoading-Calibration": {
                     "STEP_CONFIG": {
@@ -89,20 +87,20 @@ class TestFillExecutionDocument:
                                         "orgId": "PLACEHOLDER",
                                         "region": "NA",
                                         "useHourlyEdxDataSet": False,
-                                        "outputSchema": []
-                                    }
+                                        "outputSchema": [],
+                                    },
                                 }
                             ],
                             "startDate": "PLACEHOLDER",
-                            "endDate": "PLACEHOLDER"
+                            "endDate": "PLACEHOLDER",
                         },
                         "transformSpecification": {
                             "transformSQL": "PLACEHOLDER",
                             "jobSplitOptions": {
                                 "splitJob": False,
                                 "daysPerSplit": 1,
-                                "mergeSql": "PLACEHOLDER"
-                            }
+                                "mergeSql": "PLACEHOLDER",
+                            },
                         },
                         "outputSpecification": {
                             "outputSchema": [],
@@ -110,24 +108,18 @@ class TestFillExecutionDocument:
                             "outputFormat": "PARQUET",
                             "outputSaveMode": "ERRORIFEXISTS",
                             "outputFileCount": 0,
-                            "keepDotInOutputSchema": True
+                            "keepDotInOutputSchema": True,
                         },
                         "cradleJobSpecification": {
                             "clusterType": "LARGE",
                             "cradleAccount": "PLACEHOLDER",
                             "extraSparkJobArguments": "",
-                            "jobRetryCount": 0
-                        }
+                            "jobRetryCount": 0,
+                        },
                     },
-                    "STEP_TYPE": [
-                        "WORKFLOW_INPUT",
-                        "CradleDataLoadingStep"
-                    ]
+                    "STEP_TYPE": ["WORKFLOW_INPUT", "CradleDataLoadingStep"],
                 },
-                "XGBoostTraining": {
-                    "STEP_CONFIG": {},
-                    "STEP_TYPE": "TRAINING_STEP"
-                },
+                "XGBoostTraining": {"STEP_CONFIG": {}, "STEP_TYPE": "TRAINING_STEP"},
                 "Registration-NA": {
                     "STEP_CONFIG": {
                         "model_domain": "The domain to register your model in (this is where you will find your model on DAWS)",
@@ -141,17 +133,17 @@ class TestFillExecutionDocument:
                         "source_model_inference_image_arn": "The image arn for your trained model to be registered. This can be found by calling model.image_uri on a created model or estimator.model_uri/estimator.image_uri on an Estimator object.",
                         "source_model_region": "Optional: The region your model was trained in and the model artifacts are located in. Default is 'us-east-1'",
                         "source_model_environment_variable_map": "Optional: You can provide a dictionary of environment variables to be associated with your model. Ex) {'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'}",
-                        "load_testing_info_map": "Optional: You can provide a dictionary of load testing parameters. All the parameters listed are required if providing the load testing map. Ex) {'samplePayloadS3Bucket': 'mods-personal-bucket', 'samplePayloadS3Key': 'sample_payload.csv', 'expectedTPS': '2000', 'maxLatencyInMillisecond': '50', 'instanceTypeList': ['ml.m5.xlarge', 'ml.m5d.2xlarge']}"
+                        "load_testing_info_map": "Optional: You can provide a dictionary of load testing parameters. All the parameters listed are required if providing the load testing map. Ex) {'samplePayloadS3Bucket': 'mods-personal-bucket', 'samplePayloadS3Key': 'sample_payload.csv', 'expectedTPS': '2000', 'maxLatencyInMillisecond': '50', 'instanceTypeList': ['ml.m5.xlarge', 'ml.m5d.2xlarge']}",
                     },
                     "STEP_TYPE": [
                         "PROCESSING_STEP",
-                        "MimsModelRegistrationProcessingStep"
-                    ]
-                }
+                        "MimsModelRegistrationProcessingStep",
+                    ],
+                },
             },
-            "PIPELINE_ADDITIONAL_PARAMS": {}
+            "PIPELINE_ADDITIONAL_PARAMS": {},
         }
-        
+
         # Create mock pipeline metadata
         self.cradle_requests = {
             "CradleDataLoading-Training": {
@@ -166,24 +158,21 @@ class TestFillExecutionDocument:
                                 "region": "NA",
                                 "useHourlyEdxDataSet": False,
                                 "outputSchema": [
-                                    {
-                                        "fieldName": "objectId",
-                                        "fieldType": "STRING"
-                                    }
-                                ]
-                            }
+                                    {"fieldName": "objectId", "fieldType": "STRING"}
+                                ],
+                            },
                         }
                     ],
                     "startDate": "2025-07-01T00:00:00",
-                    "endDate": "2025-07-31T00:00:00"
+                    "endDate": "2025-07-31T00:00:00",
                 },
                 "transformSpecification": {
                     "transformSQL": "SELECT * FROM RAW_MDS",
                     "jobSplitOptions": {
                         "splitJob": False,
                         "daysPerSplit": 1,
-                        "mergeSql": "SELECT * FROM INPUT"
-                    }
+                        "mergeSql": "SELECT * FROM INPUT",
+                    },
                 },
                 "outputSpecification": {
                     "outputSchema": ["objectId"],
@@ -191,14 +180,14 @@ class TestFillExecutionDocument:
                     "outputFormat": "PARQUET",
                     "outputSaveMode": "ERRORIFEXISTS",
                     "outputFileCount": 0,
-                    "keepDotInOutputSchema": True
+                    "keepDotInOutputSchema": True,
                 },
                 "cradleJobSpecification": {
                     "clusterType": "LARGE",
                     "cradleAccount": "TEST-ACCOUNT",
                     "extraSparkJobArguments": "",
-                    "jobRetryCount": 0
-                }
+                    "jobRetryCount": 0,
+                },
             },
             "CradleDataLoading-Calibration": {
                 "dataSources": {
@@ -212,24 +201,21 @@ class TestFillExecutionDocument:
                                 "region": "NA",
                                 "useHourlyEdxDataSet": False,
                                 "outputSchema": [
-                                    {
-                                        "fieldName": "objectId",
-                                        "fieldType": "STRING"
-                                    }
-                                ]
-                            }
+                                    {"fieldName": "objectId", "fieldType": "STRING"}
+                                ],
+                            },
                         }
                     ],
                     "startDate": "2025-06-01T00:00:00",
-                    "endDate": "2025-06-30T00:00:00"
+                    "endDate": "2025-06-30T00:00:00",
                 },
                 "transformSpecification": {
                     "transformSQL": "SELECT * FROM RAW_MDS_CALIB",
                     "jobSplitOptions": {
                         "splitJob": False,
                         "daysPerSplit": 1,
-                        "mergeSql": "SELECT * FROM INPUT"
-                    }
+                        "mergeSql": "SELECT * FROM INPUT",
+                    },
                 },
                 "outputSpecification": {
                     "outputSchema": ["objectId"],
@@ -237,25 +223,34 @@ class TestFillExecutionDocument:
                     "outputFormat": "PARQUET",
                     "outputSaveMode": "ERRORIFEXISTS",
                     "outputFileCount": 0,
-                    "keepDotInOutputSchema": True
+                    "keepDotInOutputSchema": True,
                 },
                 "cradleJobSpecification": {
                     "clusterType": "LARGE",
                     "cradleAccount": "TEST-ACCOUNT",
                     "extraSparkJobArguments": "",
-                    "jobRetryCount": 0
-                }
-            }
+                    "jobRetryCount": 0,
+                },
+            },
         }
-        
+
         self.registration_configs = {
             "Registration-NA": {
                 "model_domain": "fraud",
                 "model_objective": "buyer-abuse",
-                "source_model_inference_content_types": ["application/json", "text/csv"],
+                "source_model_inference_content_types": [
+                    "application/json",
+                    "text/csv",
+                ],
                 "source_model_inference_response_types": ["application/json"],
-                "source_model_inference_input_variable_list": {"BUYER_ID": "TEXT", "ORDER_ID": "TEXT"},
-                "source_model_inference_output_variable_list": {"RISK_SCORE": "NUMERIC", "VERDICT": "TEXT"},
+                "source_model_inference_input_variable_list": {
+                    "BUYER_ID": "TEXT",
+                    "ORDER_ID": "TEXT",
+                },
+                "source_model_inference_output_variable_list": {
+                    "RISK_SCORE": "NUMERIC",
+                    "VERDICT": "TEXT",
+                },
                 "model_registration_region": "NA",
                 "model_owner": "test-team-id",
                 "source_model_inference_image_arn": "test-image-uri:latest",
@@ -272,13 +267,13 @@ class TestFillExecutionDocument:
                     "expected_tps": "100",
                     "max_latency_in_millisecond": "100",
                     "instance_type_list": ["ml.m5.xlarge"],
-                    "max_acceptable_error_rate": "0.01"
-                }
+                    "max_acceptable_error_rate": "0.01",
+                },
             }
         }
-        
+
         self.model_name = "test-model"
-        
+
         yield
 
     def mock_template(self, mock_dag=None, mock_config_path=None):
@@ -288,15 +283,15 @@ class TestFillExecutionDocument:
             mock_dag = self.dag
         if not mock_config_path:
             mock_config_path = "mock_config.json"
-            
+
         # Create a mocked template
         template = MagicMock(spec=DynamicPipelineTemplate)
         template.pipeline_metadata = {
-            'cradle_loading_requests': self.cradle_requests,
-            'registration_configs': self.registration_configs,
-            'model_name': self.model_name
+            "cradle_loading_requests": self.cradle_requests,
+            "registration_configs": self.registration_configs,
+            "model_name": self.model_name,
         }
-        
+
         # Create mock configs - important for the test
         mock_registration_cfg = MagicMock()
         mock_registration_cfg.__class__.__name__ = "RegistrationConfig"
@@ -304,126 +299,169 @@ class TestFillExecutionDocument:
         mock_payload_cfg.__class__.__name__ = "PayloadConfig"
         mock_package_cfg = MagicMock()
         mock_package_cfg.__class__.__name__ = "PackageConfig"
-        
+
         # Set configs attribute
         template.configs = {
             "registration": mock_registration_cfg,
             "payload": mock_payload_cfg,
-            "package": mock_package_cfg
+            "package": mock_package_cfg,
         }
-        
+
         # Set up necessary methods for the test
-        template.fill_execution_document = DynamicPipelineTemplate.fill_execution_document.__get__(template)
-        template._fill_cradle_configurations = DynamicPipelineTemplate._fill_cradle_configurations.__get__(template)
-        template._fill_registration_configurations = DynamicPipelineTemplate._fill_registration_configurations.__get__(template)
-        template._find_registration_step_nodes = MagicMock(return_value=["Registration-NA"])
+        template.fill_execution_document = (
+            DynamicPipelineTemplate.fill_execution_document.__get__(template)
+        )
+        template._fill_cradle_configurations = (
+            DynamicPipelineTemplate._fill_cradle_configurations.__get__(template)
+        )
+        template._fill_registration_configurations = (
+            DynamicPipelineTemplate._fill_registration_configurations.__get__(template)
+        )
+        template._find_registration_step_nodes = MagicMock(
+            return_value=["Registration-NA"]
+        )
         template._create_config_map = MagicMock(return_value={})
         template._has_required_registration_fields = MagicMock(return_value=True)
-        
+
         template.logger = MagicMock()
-        
+
         return template
-        
+
     def test_fill_execution_document(self):
         """Test fill_execution_document populates the execution document with metadata."""
         # Create a mocked template
         template = self.mock_template()
-        
+
         # Call the method under test
         result = template.fill_execution_document(self.execution_document)
-        
+
         # Verify Cradle data loading configurations were populated
         cradle_step_1 = result["PIPELINE_STEP_CONFIGS"]["CradleDataLoading-Training"]
         cradle_step_2 = result["PIPELINE_STEP_CONFIGS"]["CradleDataLoading-Calibration"]
-        
+
         # Verify Training configuration
-        assert cradle_step_1["STEP_CONFIG"]["dataSources"]["dataSources"][0]["dataSourceName"] == "RAW_MDS"
-        assert cradle_step_1["STEP_CONFIG"]["dataSources"]["startDate"] == "2025-07-01T00:00:00"
-        assert cradle_step_1["STEP_CONFIG"]["outputSpecification"]["outputPath"] == "s3://test-bucket/output/training"
-        
+        assert (
+            cradle_step_1["STEP_CONFIG"]["dataSources"]["dataSources"][0][
+                "dataSourceName"
+            ]
+            == "RAW_MDS"
+        )
+        assert (
+            cradle_step_1["STEP_CONFIG"]["dataSources"]["startDate"]
+            == "2025-07-01T00:00:00"
+        )
+        assert (
+            cradle_step_1["STEP_CONFIG"]["outputSpecification"]["outputPath"]
+            == "s3://test-bucket/output/training"
+        )
+
         # Verify Calibration configuration
-        assert cradle_step_2["STEP_CONFIG"]["dataSources"]["dataSources"][0]["dataSourceName"] == "RAW_MDS_CALIB"
-        assert cradle_step_2["STEP_CONFIG"]["dataSources"]["startDate"] == "2025-06-01T00:00:00"
-        assert cradle_step_2["STEP_CONFIG"]["outputSpecification"]["outputPath"] == "s3://test-bucket/output/calibration"
-        
+        assert (
+            cradle_step_2["STEP_CONFIG"]["dataSources"]["dataSources"][0][
+                "dataSourceName"
+            ]
+            == "RAW_MDS_CALIB"
+        )
+        assert (
+            cradle_step_2["STEP_CONFIG"]["dataSources"]["startDate"]
+            == "2025-06-01T00:00:00"
+        )
+        assert (
+            cradle_step_2["STEP_CONFIG"]["outputSpecification"]["outputPath"]
+            == "s3://test-bucket/output/calibration"
+        )
+
         # Verify Registration configuration was populated
         reg_step = result["PIPELINE_STEP_CONFIGS"]["Registration-NA"]
-        
+
         assert reg_step["STEP_CONFIG"]["model_domain"] == "fraud"
         assert reg_step["STEP_CONFIG"]["model_objective"] == "buyer-abuse"
         assert reg_step["STEP_CONFIG"]["model_registration_region"] == "NA"
         assert reg_step["STEP_CONFIG"]["model_owner"] == "test-team-id"
-        assert reg_step["STEP_CONFIG"]["source_model_inference_image_arn"] == "test-image-uri:latest"
-        
+        assert (
+            reg_step["STEP_CONFIG"]["source_model_inference_image_arn"]
+            == "test-image-uri:latest"
+        )
+
         # Verify environment variables
-        assert reg_step["STEP_CONFIG"]["source_model_environment_variable_map"]["SAGEMAKER_PROGRAM"] == "inference.py"
-        
+        assert (
+            reg_step["STEP_CONFIG"]["source_model_environment_variable_map"][
+                "SAGEMAKER_PROGRAM"
+            ]
+            == "inference.py"
+        )
+
         # Verify load testing info
-        assert reg_step["STEP_CONFIG"]["load_testing_info_map"]["instance_type_list"] == ["ml.m5.xlarge"]
-    
+        assert reg_step["STEP_CONFIG"]["load_testing_info_map"][
+            "instance_type_list"
+        ] == ["ml.m5.xlarge"]
+
     def test_fill_execution_document_with_missing_sections(self):
         """Test fill_execution_document handles missing sections gracefully."""
         # Create execution document with missing PIPELINE_STEP_CONFIGS
-        incomplete_doc = {
-            "PIPELINE_ADDITIONAL_PARAMS": {}
-        }
-        
+        incomplete_doc = {"PIPELINE_ADDITIONAL_PARAMS": {}}
+
         # Create a mocked template
         template = self.mock_template()
-        
+
         # Call the method under test
         result = template.fill_execution_document(incomplete_doc)
-        
+
         # Verify warning was logged
-        template.logger.warning.assert_called_with("Execution document missing 'PIPELINE_STEP_CONFIGS' key")
-        
+        template.logger.warning.assert_called_with(
+            "Execution document missing 'PIPELINE_STEP_CONFIGS' key"
+        )
+
         # Verify document was returned unchanged
         assert result == incomplete_doc
-    
+
     def test_fill_execution_document_with_missing_steps(self):
         """Test fill_execution_document handles missing step entries gracefully."""
         # Create execution document with missing steps
         incomplete_doc = {
             "PIPELINE_STEP_CONFIGS": {
-                "XGBoostTraining": {
-                    "STEP_CONFIG": {},
-                    "STEP_TYPE": "TRAINING_STEP"
-                }
+                "XGBoostTraining": {"STEP_CONFIG": {}, "STEP_TYPE": "TRAINING_STEP"}
             },
-            "PIPELINE_ADDITIONAL_PARAMS": {}
+            "PIPELINE_ADDITIONAL_PARAMS": {},
         }
-        
+
         # Create a mocked template
         template = self.mock_template()
-        
+
         # Call the method under test
         result = template.fill_execution_document(incomplete_doc)
-        
+
         # Verify warnings were logged for missing steps
-        template.logger.warning.assert_any_call("Cradle step 'CradleDataLoading-Training' not found in execution document")
-        template.logger.warning.assert_any_call("Cradle step 'CradleDataLoading-Calibration' not found in execution document")
-        
+        template.logger.warning.assert_any_call(
+            "Cradle step 'CradleDataLoading-Training' not found in execution document"
+        )
+        template.logger.warning.assert_any_call(
+            "Cradle step 'CradleDataLoading-Calibration' not found in execution document"
+        )
+
         # Verify document still has XGBoostTraining
         assert "XGBoostTraining" in result["PIPELINE_STEP_CONFIGS"]
-        
+
     def test_find_registration_step_nodes(self):
         """Test _find_registration_step_nodes finds registration steps correctly."""
         # Use the mock template instead of creating a real one
         template = self.mock_template()
-        
+
         # Set up the config map to return
         mock_registration_cfg = MagicMock()
         mock_registration_cfg.__class__.__name__ = "RegistrationConfig"
         config_map = {
             "CradleDataLoading-Training": MagicMock(),
             "XGBoostTraining": MagicMock(),
-            "Registration-NA": mock_registration_cfg
+            "Registration-NA": mock_registration_cfg,
         }
         template._create_config_map.return_value = config_map
-            
+
         # Call the method under test - use the real method
-        template._find_registration_step_nodes = DynamicPipelineTemplate._find_registration_step_nodes.__get__(template)
+        template._find_registration_step_nodes = (
+            DynamicPipelineTemplate._find_registration_step_nodes.__get__(template)
+        )
         nodes = template._find_registration_step_nodes()
-        
+
         # Verify result
         assert "Registration-NA" in nodes

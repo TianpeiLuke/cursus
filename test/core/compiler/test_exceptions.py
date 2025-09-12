@@ -11,7 +11,7 @@ from cursus.core.compiler.exceptions import (
     ConfigurationError,
     AmbiguityError,
     ValidationError,
-    ResolutionError
+    ResolutionError,
 )
 
 
@@ -36,18 +36,18 @@ class TestPipelineAPIExceptions:
         """Test ConfigurationError with missing and available configs."""
         missing_configs = ["data_loading", "preprocessing"]
         available_configs = ["training", "evaluation"]
-        
+
         error = ConfigurationError(
             "Missing configurations",
             missing_configs=missing_configs,
-            available_configs=available_configs
+            available_configs=available_configs,
         )
-        
+
         error_str = str(error)
         assert "Missing configurations" in error_str
         assert "Missing configurations: ['data_loading', 'preprocessing']" in error_str
         assert "Available configurations: ['training', 'evaluation']" in error_str
-        
+
         assert error.missing_configs == missing_configs
         assert error.available_configs == available_configs
 
@@ -61,31 +61,27 @@ class TestPipelineAPIExceptions:
 
     def test_ambiguity_error_with_tuple_candidates(self):
         """Test AmbiguityError with tuple format candidates."""
+
         # Mock config objects
         class MockConfig:
             def __init__(self, job_type):
                 self.job_type = job_type
-        
+
         config1 = MockConfig("training")
         config2 = MockConfig("evaluation")
-        
-        candidates = [
-            (config1, 0.85, "semantic"),
-            (config2, 0.82, "pattern")
-        ]
-        
+
+        candidates = [(config1, 0.85, "semantic"), (config2, 0.82, "pattern")]
+
         error = AmbiguityError(
-            "Ambiguous match for node",
-            node_name="preprocessing",
-            candidates=candidates
+            "Ambiguous match for node", node_name="preprocessing", candidates=candidates
         )
-        
+
         error_str = str(error)
         assert "Ambiguous match for node" in error_str
         assert "Candidates for node 'preprocessing':" in error_str
         assert "MockConfig (job_type='training', confidence=0.85)" in error_str
         assert "MockConfig (job_type='evaluation', confidence=0.82)" in error_str
-        
+
         assert error.node_name == "preprocessing"
         assert error.candidates == candidates
 
@@ -95,26 +91,29 @@ class TestPipelineAPIExceptions:
             {
                 "config_type": "XGBoostTrainingConfig",
                 "confidence": 0.85,
-                "job_type": "training"
+                "job_type": "training",
             },
             {
-                "config_type": "XGBoostModelEvalConfig", 
+                "config_type": "XGBoostModelEvalConfig",
                 "confidence": 0.82,
-                "job_type": "evaluation"
-            }
+                "job_type": "evaluation",
+            },
         ]
-        
+
         error = AmbiguityError(
-            "Multiple matches found",
-            node_name="model_step",
-            candidates=candidates
+            "Multiple matches found", node_name="model_step", candidates=candidates
         )
-        
+
         error_str = str(error)
         assert "Multiple matches found" in error_str
         assert "Candidates for node 'model_step':" in error_str
-        assert "XGBoostTrainingConfig (job_type='training', confidence=0.85)" in error_str
-        assert "XGBoostModelEvalConfig (job_type='evaluation', confidence=0.82)" in error_str
+        assert (
+            "XGBoostTrainingConfig (job_type='training', confidence=0.85)" in error_str
+        )
+        assert (
+            "XGBoostModelEvalConfig (job_type='evaluation', confidence=0.82)"
+            in error_str
+        )
 
     def test_validation_error_basic(self):
         """Test ValidationError with basic message."""
@@ -127,15 +126,17 @@ class TestPipelineAPIExceptions:
         """Test ValidationError with detailed validation errors."""
         validation_errors = {
             "missing_fields": ["required_param", "output_path"],
-            "invalid_values": ["batch_size must be positive", "learning_rate out of range"],
-            "dependency_issues": ["input_data not found"]
+            "invalid_values": [
+                "batch_size must be positive",
+                "learning_rate out of range",
+            ],
+            "dependency_issues": ["input_data not found"],
         }
-        
+
         error = ValidationError(
-            "Configuration validation failed",
-            validation_errors=validation_errors
+            "Configuration validation failed", validation_errors=validation_errors
         )
-        
+
         error_str = str(error)
         assert "Configuration validation failed" in error_str
         assert "Validation errors:" in error_str
@@ -147,7 +148,7 @@ class TestPipelineAPIExceptions:
         assert "- learning_rate out of range" in error_str
         assert "dependency_issues:" in error_str
         assert "- input_data not found" in error_str
-        
+
         assert error.validation_errors == validation_errors
 
     def test_resolution_error_basic(self):
@@ -164,15 +165,15 @@ class TestPipelineAPIExceptions:
         suggestions = [
             "Add configuration for data_loading node",
             "Check node naming conventions",
-            "Ensure job_type attributes are set correctly"
+            "Ensure job_type attributes are set correctly",
         ]
-        
+
         error = ResolutionError(
             "Failed to resolve DAG nodes",
             failed_nodes=failed_nodes,
-            suggestions=suggestions
+            suggestions=suggestions,
         )
-        
+
         error_str = str(error)
         assert "Failed to resolve DAG nodes" in error_str
         assert "Failed to resolve nodes: ['data_loading', 'preprocessing']" in error_str
@@ -180,7 +181,7 @@ class TestPipelineAPIExceptions:
         assert "- Add configuration for data_loading node" in error_str
         assert "- Check node naming conventions" in error_str
         assert "- Ensure job_type attributes are set correctly" in error_str
-        
+
         assert error.failed_nodes == failed_nodes
         assert error.suggestions == suggestions
 
@@ -190,9 +191,9 @@ class TestPipelineAPIExceptions:
             ConfigurationError("test"),
             AmbiguityError("test"),
             ValidationError("test"),
-            ResolutionError("test")
+            ResolutionError("test"),
         ]
-        
+
         for exc in exceptions:
             assert isinstance(exc, PipelineAPIError)
             assert isinstance(exc, Exception)

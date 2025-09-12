@@ -13,8 +13,8 @@ from .registry_validator import RegistryValidator
 
 __all__ = [
     "CatalogRegistry",
-    "ConnectionTraverser", 
+    "ConnectionTraverser",
     "TagBasedDiscovery",
     "PipelineRecommendationEngine",
-    "RegistryValidator"
+    "RegistryValidator",
 ]

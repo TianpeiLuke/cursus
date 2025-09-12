@@ -13,11 +13,7 @@ The processors are organized by functionality:
 """
 
 # Import base processor classes
-from .processors import (
-    Processor,
-    ComposedProcessor,
-    IdentityProcessor
-)
+from .processors import Processor, ComposedProcessor, IdentityProcessor
 
 # Import specific processors
 from .categorical_label_processor import CategoricalLabelProcessor
@@ -66,26 +62,25 @@ except ImportError:
 # Export all available processors
 __all__ = [
     # Base classes
-    'Processor',
-    'ComposedProcessor', 
-    'IdentityProcessor',
-    
+    "Processor",
+    "ComposedProcessor",
+    "IdentityProcessor",
     # Core processors
-    'CategoricalLabelProcessor',
-    'MultiClassLabelProcessor',
-    'NumericalVariableImputationProcessor',
-    'NumericalBinningProcessor',
+    "CategoricalLabelProcessor",
+    "MultiClassLabelProcessor",
+    "NumericalVariableImputationProcessor",
+    "NumericalBinningProcessor",
 ]
 
 # Add optional processors to __all__ if they're available
 _optional_processors = [
-    ('BertTokenizeProcessor', BertTokenizeProcessor),
-    ('GensimTokenizeProcessor', GensimTokenizeProcessor),
-    ('BSMProcessor', BSMProcessor),
-    ('CSProcessor', CSProcessor),
-    ('RiskTableProcessor', RiskTableProcessor),
-    ('BSMDataLoader', BSMDataLoader),
-    ('BSMDatasets', BSMDatasets),
+    ("BertTokenizeProcessor", BertTokenizeProcessor),
+    ("GensimTokenizeProcessor", GensimTokenizeProcessor),
+    ("BSMProcessor", BSMProcessor),
+    ("CSProcessor", CSProcessor),
+    ("RiskTableProcessor", RiskTableProcessor),
+    ("BSMDataLoader", BSMDataLoader),
+    ("BSMDatasets", BSMDatasets),
 ]
 
 for name, processor_class in _optional_processors:

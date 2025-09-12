@@ -56,14 +56,16 @@ from pathlib import Path
 from .config_merger import ConfigMerger
 from .config_class_store import ConfigClassStore
 from .type_aware_config_serializer import (
-    TypeAwareConfigSerializer, 
+    TypeAwareConfigSerializer,
     serialize_config as _serialize_config,
-    deserialize_config as _deserialize_config
+    deserialize_config as _deserialize_config,
 )
 from .config_field_categorizer import ConfigFieldCategorizer
 from .circular_reference_tracker import CircularReferenceTracker
+
 # Three-tier architecture components
 from .tier_registry import ConfigFieldTierRegistry
+
 # Import below modules when they are available
 # from .default_values_provider import DefaultValuesProvider
 # from .field_derivation_engine import FieldDerivationEngine
@@ -77,16 +79,15 @@ from .tier_registry import ConfigFieldTierRegistry
 
 __all__ = [
     # Original exports
-    'merge_and_save_configs', 
-    'load_configs',
-    'serialize_config',
-    'deserialize_config',
-    'ConfigClassStore',  # Export for use as a decorator
-    'register_config_class',  # Convenient alias for the decorator
-    'CircularReferenceTracker',  # For advanced circular reference handling
-    
+    "merge_and_save_configs",
+    "load_configs",
+    "serialize_config",
+    "deserialize_config",
+    "ConfigClassStore",  # Export for use as a decorator
+    "register_config_class",  # Convenient alias for the decorator
+    "CircularReferenceTracker",  # For advanced circular reference handling
     # Three-tier architecture components
-    'ConfigFieldTierRegistry',
+    "ConfigFieldTierRegistry",
     # The following modules are not currently available
     # 'DefaultValuesProvider',
     # 'FieldDerivationEngine',
@@ -102,16 +103,16 @@ logger = logging.getLogger(__name__)
 
 
 def merge_and_save_configs(
-    config_list: List[Any], 
-    output_file: str, 
-    processing_step_config_base_class: Optional[type] = None
+    config_list: List[Any],
+    output_file: str,
+    processing_step_config_base_class: Optional[type] = None,
 ) -> Dict[str, Any]:
     """
     Merge and save multiple configs to a single JSON file.
-    
+
     This function uses the ConfigFieldCategorizer to analyze fields across all configurations,
     organizing them into shared and specific sections based on values and usage patterns.
-    
+
     The output follows the simplified structure:
     ```
     {
@@ -141,15 +142,15 @@ def merge_and_save_configs(
       }
     }
     ```
-    
+
     Args:
         config_list: List of configuration objects to merge and save
         output_file: Path to the output JSON file
         processing_step_config_base_class: Optional base class to identify processing step configs
-        
+
     Returns:
         dict: The merged configuration
-        
+
     Raises:
         ValueError: If config_list is empty or contains invalid configs
         IOError: If there's an issue writing to the output file
@@ -158,18 +159,18 @@ def merge_and_save_configs(
     # Validate inputs
     if not config_list:
         raise ValueError("Config list cannot be empty")
-        
+
     try:
         # Create directory if it doesn't exist
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Create merger and save configs
         logger.info(f"Merging and saving {len(config_list)} configs to {output_file}")
         merger = ConfigMerger(config_list, processing_step_config_base_class)
         merged = merger.save(output_file)
         logger.info(f"Successfully saved merged configs to {output_file}")
-        
+
         return merged
     except Exception as e:
         logger.error(f"Error merging and saving configs: {str(e)}")
@@ -177,22 +178,21 @@ def merge_and_save_configs(
 
 
 def load_configs(
-    input_file: str, 
-    config_classes: Optional[Dict[str, Type]] = None
+    input_file: str, config_classes: Optional[Dict[str, Type]] = None
 ) -> Dict[str, Any]:
     """
     Load multiple configs from a JSON file.
-    
+
     This function loads configurations from a JSON file that was previously saved using
     merge_and_save_configs. It reconstructs the configuration objects based on the
     type information stored in the file, using the simplified structure with shared
     and specific fields.
-    
+
     Args:
         input_file: Path to the input JSON file
         config_classes: Optional dictionary mapping class names to class types
                        If not provided, all classes registered with ConfigClassStore will be used
-        
+
     Returns:
         dict: A dictionary with the following structure:
             {
@@ -203,7 +203,7 @@ def load_configs(
                     ...
                 }
             }
-        
+
     Raises:
         FileNotFoundError: If the input file doesn't exist
         json.JSONDecodeError: If the input file is not valid JSON
@@ -214,19 +214,23 @@ def load_configs(
     if not os.path.exists(input_file):
         logger.error(f"Input file not found: {input_file}")
         raise FileNotFoundError(f"Input file not found: {input_file}")
-        
+
     try:
         # Get config classes from store or use provided ones
         all_config_classes = config_classes or ConfigClassStore.get_all_classes()
-        
+
         if not all_config_classes:
-            logger.warning("No config classes provided or registered with ConfigClassStore")
-            
+            logger.warning(
+                "No config classes provided or registered with ConfigClassStore"
+            )
+
         # Use the ConfigMerger's load method which handles deserialization
         logger.info(f"Loading configs from {input_file}")
         loaded_configs = ConfigMerger.load(input_file, all_config_classes)
-        logger.info(f"Successfully loaded configs from {input_file} with {len(loaded_configs.get('specific', {}))} specific configs")
-        
+        logger.info(
+            f"Successfully loaded configs from {input_file} with {len(loaded_configs.get('specific', {}))} specific configs"
+        )
+
         return loaded_configs
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in input file: {str(e)}")
@@ -242,17 +246,17 @@ def load_configs(
 def serialize_config(config: Any) -> Dict[str, Any]:
     """
     Serialize a configuration object to a JSON-serializable dictionary.
-    
+
     This function serializes a configuration object, preserving its type information
     and special fields. It embeds metadata including the step name derived from
     attributes like 'job_type', 'data_type', and 'mode'.
-    
+
     Args:
         config: The configuration object to serialize
-        
+
     Returns:
         dict: A serialized representation of the config
-        
+
     Raises:
         TypeError: If the config is not serializable
     """
@@ -260,32 +264,36 @@ def serialize_config(config: Any) -> Dict[str, Any]:
         return _serialize_config(config)
     except Exception as e:
         logger.error(f"Error serializing config: {str(e)}")
-        raise TypeError(f"Failed to serialize config of type {type(config).__name__}: {str(e)}")
+        raise TypeError(
+            f"Failed to serialize config of type {type(config).__name__}: {str(e)}"
+        )
 
 
-def deserialize_config(data: Dict[str, Any], config_classes: Optional[Dict[str, Type]] = None) -> Any:
+def deserialize_config(
+    data: Dict[str, Any], config_classes: Optional[Dict[str, Type]] = None
+) -> Any:
     """
     Deserialize a dictionary back into a configuration object.
-    
+
     This function deserializes a dictionary into a configuration object based on
     type information embedded in the dictionary. If the dictionary contains the
     __model_type__ and __model_module__ fields, it will attempt to reconstruct
     the original object type.
-    
+
     Args:
         data: The serialized dictionary
         config_classes: Optional dictionary mapping class names to class types
                        If not provided, all classes registered with ConfigClassStore will be used
-        
+
     Returns:
         Any: The deserialized configuration object
-        
+
     Raises:
         TypeError: If the data cannot be deserialized to the specified type
     """
     # Get config classes from store or use provided ones
     all_config_classes = config_classes or ConfigClassStore.get_all_classes()
-    
+
     try:
         serializer = TypeAwareConfigSerializer(all_config_classes)
         return serializer.deserialize(data)
@@ -298,12 +306,12 @@ def deserialize_config(data: Dict[str, Any], config_classes: Optional[Dict[str, 
 def register_config_class(cls):
     """
     Register a configuration class with the ConfigClassStore.
-    
+
     This is a convenient alias for ConfigClassStore.register decorator.
-    
+
     Args:
         cls: The class to register
-        
+
     Returns:
         The class, allowing this to be used as a decorator
     """

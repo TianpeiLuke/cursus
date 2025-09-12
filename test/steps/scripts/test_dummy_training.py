@@ -14,8 +14,9 @@ from cursus.steps.scripts.dummy_training import (
     create_tarfile,
     copy_file,
     process_model_with_hyperparameters,
-    main
+    main,
 )
+
 
 class TestDummyTrainingHelpers(unittest.TestCase):
     """Unit tests for helper functions in the dummy training script."""
@@ -32,13 +33,13 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Helper to create a dummy tar.gz file with specified content."""
         temp_content_dir = self.temp_dir / "temp_content"
         temp_content_dir.mkdir()
-        
+
         # Create files in temp directory
         for filename, content in files_content.items():
             file_path = temp_content_dir / filename
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content)
-        
+
         # Create tar file
         with tarfile.open(tar_path, "w:gz") as tar:
             for item in temp_content_dir.rglob("*"):
@@ -51,7 +52,7 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         # Create a valid tar.gz file
         tar_path = self.temp_dir / "model.tar.gz"
         self._create_dummy_tar(tar_path, {"model.pth": "dummy model content"})
-        
+
         # Should return True without raising exception
         result = validate_model(tar_path)
         self.assertTrue(result)
@@ -60,10 +61,10 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Test model validation with invalid file extension."""
         invalid_path = self.temp_dir / "model.txt"
         invalid_path.write_text("not a tar file")
-        
+
         with self.assertRaises(ValueError) as context:
             validate_model(invalid_path)
-        
+
         self.assertIn("Expected a .tar.gz file", str(context.exception))
         self.assertIn("INVALID_FORMAT", str(context.exception))
 
@@ -71,10 +72,10 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Test model validation with invalid tar file."""
         invalid_tar = self.temp_dir / "model.tar.gz"
         invalid_tar.write_text("not a valid tar file")
-        
+
         with self.assertRaises(ValueError) as context:
             validate_model(invalid_tar)
-        
+
         self.assertIn("not a valid tar archive", str(context.exception))
         self.assertIn("INVALID_ARCHIVE", str(context.exception))
 
@@ -82,9 +83,9 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Test that ensure_directory creates a new directory."""
         new_dir = self.temp_dir / "new_directory"
         self.assertFalse(new_dir.exists())
-        
+
         result = ensure_directory(new_dir)
-        
+
         self.assertTrue(result)
         self.assertTrue(new_dir.exists())
         self.assertTrue(new_dir.is_dir())
@@ -93,9 +94,9 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Test that ensure_directory works with existing directory."""
         existing_dir = self.temp_dir / "existing"
         existing_dir.mkdir()
-        
+
         result = ensure_directory(existing_dir)
-        
+
         self.assertTrue(result)
         self.assertTrue(existing_dir.exists())
 
@@ -103,11 +104,11 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Test successful file copying."""
         src_file = self.temp_dir / "source.txt"
         dst_file = self.temp_dir / "dest" / "destination.txt"
-        
+
         src_file.write_text("test content")
-        
+
         copy_file(src_file, dst_file)
-        
+
         self.assertTrue(dst_file.exists())
         self.assertEqual(dst_file.read_text(), "test content")
 
@@ -115,7 +116,7 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Test copying nonexistent source file raises FileNotFoundError."""
         src_file = self.temp_dir / "nonexistent.txt"
         dst_file = self.temp_dir / "destination.txt"
-        
+
         with self.assertRaises(FileNotFoundError):
             copy_file(src_file, dst_file)
 
@@ -124,27 +125,26 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         # Create a tar file
         tar_path = self.temp_dir / "test.tar.gz"
         extract_path = self.temp_dir / "extracted"
-        
-        files_content = {
-            "file1.txt": "content1",
-            "subdir/file2.txt": "content2"
-        }
+
+        files_content = {"file1.txt": "content1", "subdir/file2.txt": "content2"}
         self._create_dummy_tar(tar_path, files_content)
-        
+
         # Extract the tar file
         extract_tarfile(tar_path, extract_path)
-        
+
         # Verify extraction
         self.assertTrue((extract_path / "file1.txt").exists())
         self.assertTrue((extract_path / "subdir" / "file2.txt").exists())
         self.assertEqual((extract_path / "file1.txt").read_text(), "content1")
-        self.assertEqual((extract_path / "subdir" / "file2.txt").read_text(), "content2")
+        self.assertEqual(
+            (extract_path / "subdir" / "file2.txt").read_text(), "content2"
+        )
 
     def test_extract_tarfile_nonexistent_file(self):
         """Test extracting nonexistent tar file raises FileNotFoundError."""
         tar_path = self.temp_dir / "nonexistent.tar.gz"
         extract_path = self.temp_dir / "extracted"
-        
+
         with self.assertRaises(FileNotFoundError):
             extract_tarfile(tar_path, extract_path)
 
@@ -156,14 +156,14 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         (source_dir / "file1.txt").write_text("content1")
         (source_dir / "subdir").mkdir()
         (source_dir / "subdir" / "file2.txt").write_text("content2")
-        
+
         # Create tar file
         tar_path = self.temp_dir / "output.tar.gz"
         create_tarfile(tar_path, source_dir)
-        
+
         # Verify tar file was created and contains expected files
         self.assertTrue(tar_path.exists())
-        
+
         with tarfile.open(tar_path, "r:gz") as tar:
             members = tar.getnames()
             self.assertIn("file1.txt", members)
@@ -174,35 +174,37 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         # Create input model tar
         model_path = self.temp_dir / "input_model.tar.gz"
         self._create_dummy_tar(model_path, {"model.pth": "model content"})
-        
+
         # Create hyperparameters file
         hyperparams_path = self.temp_dir / "hyperparameters.json"
         hyperparams_data = {"learning_rate": 0.01, "epochs": 100}
         hyperparams_path.write_text(json.dumps(hyperparams_data))
-        
+
         # Create output directory
         output_dir = self.temp_dir / "output"
-        
+
         # Process model
         result_path = process_model_with_hyperparameters(
             model_path, hyperparams_path, output_dir
         )
-        
+
         # Verify output
         expected_output = output_dir / "model.tar.gz"
         self.assertEqual(result_path, expected_output)
         self.assertTrue(expected_output.exists())
-        
+
         # Verify contents of output tar
         extract_dir = self.temp_dir / "verify_extract"
         with tarfile.open(expected_output, "r:gz") as tar:
             tar.extractall(extract_dir)
-        
+
         self.assertTrue((extract_dir / "model.pth").exists())
         self.assertTrue((extract_dir / "hyperparameters.json").exists())
-        
+
         # Verify hyperparameters content
-        extracted_hyperparams = json.loads((extract_dir / "hyperparameters.json").read_text())
+        extracted_hyperparams = json.loads(
+            (extract_dir / "hyperparameters.json").read_text()
+        )
         self.assertEqual(extracted_hyperparams, hyperparams_data)
 
     def test_process_model_with_hyperparameters_missing_model(self):
@@ -211,7 +213,7 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         hyperparams_path = self.temp_dir / "hyperparameters.json"
         hyperparams_path.write_text('{"test": "value"}')
         output_dir = self.temp_dir / "output"
-        
+
         with self.assertRaises(FileNotFoundError):
             process_model_with_hyperparameters(model_path, hyperparams_path, output_dir)
 
@@ -219,12 +221,13 @@ class TestDummyTrainingHelpers(unittest.TestCase):
         """Test processing with missing hyperparameters file."""
         model_path = self.temp_dir / "model.tar.gz"
         self._create_dummy_tar(model_path, {"model.pth": "content"})
-        
+
         hyperparams_path = self.temp_dir / "nonexistent_hyperparams.json"
         output_dir = self.temp_dir / "output"
-        
+
         with self.assertRaises(FileNotFoundError):
             process_model_with_hyperparameters(model_path, hyperparams_path, output_dir)
+
 
 class TestDummyTrainingMain(unittest.TestCase):
     """Tests for the main function of the dummy training script."""
@@ -232,7 +235,7 @@ class TestDummyTrainingMain(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.temp_dir = Path(tempfile.mkdtemp())
-        
+
         # Set up mock paths
         self.model_path = self.temp_dir / "model.tar.gz"
         self.hyperparams_path = self.temp_dir / "hyperparameters.json"
@@ -246,13 +249,13 @@ class TestDummyTrainingMain(unittest.TestCase):
         """Helper to create a dummy tar.gz file with specified content."""
         temp_content_dir = self.temp_dir / "temp_content"
         temp_content_dir.mkdir(exist_ok=True)
-        
+
         # Create files in temp directory
         for filename, content in files_content.items():
             file_path = temp_content_dir / filename
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content)
-        
+
         # Create tar file
         with tarfile.open(tar_path, "w:gz") as tar:
             for item in temp_content_dir.rglob("*"):
@@ -266,23 +269,21 @@ class TestDummyTrainingMain(unittest.TestCase):
         self._create_dummy_tar(self.model_path, {"model.pth": "model content"})
         hyperparams_data = {"learning_rate": 0.01, "epochs": 100}
         self.hyperparams_path.write_text(json.dumps(hyperparams_data))
-        
+
         # Set up input and output paths
         input_paths = {
             "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path)
+            "hyperparams_input": str(self.hyperparams_path),
         }
-        output_paths = {
-            "model_output": str(self.output_dir)
-        }
+        output_paths = {"model_output": str(self.output_dir)}
         environ_vars = {}
-        
+
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
-        
+
         # Verify success (should return Path object, not exit code)
         self.assertIsInstance(result, Path)
-        
+
         # Verify output file exists
         output_file = self.output_dir / "model.tar.gz"
         self.assertTrue(output_file.exists())
@@ -292,23 +293,21 @@ class TestDummyTrainingMain(unittest.TestCase):
         # Create only model file (no hyperparameters)
         self._create_dummy_tar(self.model_path, {"model.pth": "model content"})
         # Don't create hyperparameters file
-        
+
         # Set up input and output paths (hyperparams_input points to non-existent file)
         input_paths = {
             "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path)  # This file doesn't exist
+            "hyperparams_input": str(self.hyperparams_path),  # This file doesn't exist
         }
-        output_paths = {
-            "model_output": str(self.output_dir)
-        }
+        output_paths = {"model_output": str(self.output_dir)}
         environ_vars = {}
-        
+
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
-        
+
         # Verify success (should return Path object)
         self.assertIsInstance(result, Path)
-        
+
         # Verify output file exists
         output_file = self.output_dir / "model.tar.gz"
         self.assertTrue(output_file.exists())
@@ -318,20 +317,18 @@ class TestDummyTrainingMain(unittest.TestCase):
         # Don't create model file
         # Create hyperparameters file
         self.hyperparams_path.write_text('{"test": "value"}')
-        
+
         # Set up input and output paths
         input_paths = {
             "model_input": str(self.model_path),  # This file doesn't exist
-            "hyperparams_input": str(self.hyperparams_path)
+            "hyperparams_input": str(self.hyperparams_path),
         }
-        output_paths = {
-            "model_output": str(self.output_dir)
-        }
+        output_paths = {"model_output": str(self.output_dir)}
         environ_vars = {}
-        
+
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
-        
+
         # Verify failure with appropriate exit code
         self.assertEqual(result, 1)  # FileNotFoundError
 
@@ -339,48 +336,45 @@ class TestDummyTrainingMain(unittest.TestCase):
         """Test main function with invalid model file."""
         # Create invalid model file (not a tar)
         self.model_path.write_text("not a tar file")
-        
+
         # Set up input and output paths
         input_paths = {
             "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path)
+            "hyperparams_input": str(self.hyperparams_path),
         }
-        output_paths = {
-            "model_output": str(self.output_dir)
-        }
+        output_paths = {"model_output": str(self.output_dir)}
         environ_vars = {}
-        
+
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
-        
+
         # Verify failure with appropriate exit code
         self.assertEqual(result, 2)  # ValueError
 
-    @patch('cursus.steps.scripts.dummy_training.process_model_with_hyperparameters')
+    @patch("cursus.steps.scripts.dummy_training.process_model_with_hyperparameters")
     def test_main_unexpected_error(self, mock_process):
         """Test main function with unexpected error."""
         # Create input files
         self._create_dummy_tar(self.model_path, {"model.pth": "content"})
         self.hyperparams_path.write_text('{"test": "value"}')
-        
+
         # Mock process function to raise unexpected error
         mock_process.side_effect = RuntimeError("Unexpected error")
-        
+
         # Set up input and output paths
         input_paths = {
             "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path)
+            "hyperparams_input": str(self.hyperparams_path),
         }
-        output_paths = {
-            "model_output": str(self.output_dir)
-        }
+        output_paths = {"model_output": str(self.output_dir)}
         environ_vars = {}
-        
+
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
-        
+
         # Verify failure with appropriate exit code
         self.assertEqual(result, 3)  # RuntimeError
 
-if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+
+if __name__ == "__main__":
+    unittest.main(argv=["first-arg-is-ignored"], exit=False)

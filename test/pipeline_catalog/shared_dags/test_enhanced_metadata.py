@@ -14,31 +14,27 @@ This file serves as an entry point that imports tests from focused modules:
 from .test_enhanced_metadata_models import (
     TestComplexityLevel,
     TestPipelineFramework,
-    TestZettelkastenMetadata
+    TestZettelkastenMetadata,
 )
 
 from .test_enhanced_metadata_core import (
     TestEnhancedDAGMetadata,
     TestDAGMetadataAdapter,
-    TestValidateEnhancedDAGMetadata
+    TestValidateEnhancedDAGMetadata,
 )
 
-from .test_enhanced_metadata_integration import (
-    TestEnhancedDAGMetadataIntegration
-)
+from .test_enhanced_metadata_integration import TestEnhancedDAGMetadataIntegration
 
 # Re-export all test classes for pytest discovery
 __all__ = [
     # Model tests
     "TestComplexityLevel",
-    "TestPipelineFramework", 
+    "TestPipelineFramework",
     "TestZettelkastenMetadata",
-    
     # Core functionality tests
     "TestEnhancedDAGMetadata",
     "TestDAGMetadataAdapter",
     "TestValidateEnhancedDAGMetadata",
-    
     # Integration tests
-    "TestEnhancedDAGMetadataIntegration"
+    "TestEnhancedDAGMetadataIntegration",
 ]

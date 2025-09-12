@@ -8,7 +8,4 @@ architectural patterns and filter false positives in validation results.
 from .pattern_recognizer import PatternRecognizer
 from .file_resolver import HybridFileResolver
 
-__all__ = [
-    'PatternRecognizer',
-    'HybridFileResolver'
-]
+__all__ = ["PatternRecognizer", "HybridFileResolver"]

@@ -9,97 +9,80 @@ from ...core.base.config_base import BasePipelineConfig
 
 class XGBoostModelStepConfig(BasePipelineConfig):
     """Configuration specific to the SageMaker XGBoost Model creation (for inference)."""
+
     # Renamed from inference_instance_type for consistency with builder
     instance_type: str = Field(
-        default='ml.m5.large', 
-        description="Instance type for inference endpoint/transform job."
+        default="ml.m5.large",
+        description="Instance type for inference endpoint/transform job.",
     )
     # Renamed from inference_entry_point for consistency with builder
     entry_point: str = Field(
-        default='inference.py', 
-        description="Entry point script for inference."
+        default="inference.py", description="Entry point script for inference."
     )
     framework_version: str = Field(
-        default='1.5-1',  # Updated default to XGBoost version
-        description="XGBoost framework version"
+        default="1.5-1",  # Updated default to XGBoost version
+        description="XGBoost framework version",
     )
     # source_dir is inherited from BasePipelineConfig
-    
+
     # Python version for the SageMaker XGBoost container
     py_version: str = Field(
-        default="py3",
-        description="Python version for the SageMaker XGBoost container."
+        default="py3", description="Python version for the SageMaker XGBoost container."
     )
-    
+
     # Accelerator type for inference
     accelerator_type: Optional[str] = Field(
-        default=None, 
-        description="Accelerator type for inference endpoint."
+        default=None, description="Accelerator type for inference endpoint."
     )
-    
+
     # Model name
     model_name: Optional[str] = Field(
-        default=None, 
-        description="Name for the SageMaker model."
+        default=None, description="Name for the SageMaker model."
     )
-    
+
     # Tags for the model
     tags: Optional[List[Dict[str, str]]] = Field(
-        default=None, 
-        description="Tags for the model."
+        default=None, description="Tags for the model."
     )
-    
 
     # Endpoint / Container specific settings
     initial_instance_count: int = Field(
-        default=1, 
-        ge=1, 
-        description="Initial instance count for endpoint (used by EndpointConfig)."
+        default=1,
+        ge=1,
+        description="Initial instance count for endpoint (used by EndpointConfig).",
     )
     container_startup_health_check_timeout: int = Field(
-        default=300, 
-        ge=60, 
-        description="Container startup health check timeout (seconds)."
+        default=300,
+        ge=60,
+        description="Container startup health check timeout (seconds).",
     )
     container_memory_limit: int = Field(
-        default=6144, 
-        ge=1024, 
-        description="Container memory limit (MB)."
+        default=6144, ge=1024, description="Container memory limit (MB)."
     )
     data_download_timeout: int = Field(
-        default=900, 
-        ge=60, 
-        description="Model data download timeout (seconds)."
+        default=900, ge=60, description="Model data download timeout (seconds)."
     )
     inference_memory_limit: int = Field(
-        default=6144, 
-        ge=1024, 
-        description="Inference memory limit (MB)."
+        default=6144, ge=1024, description="Inference memory limit (MB)."
     )
     max_concurrent_invocations: int = Field(
-        default=10, 
-        ge=1, 
-        description="Max concurrent invocations per instance."
+        default=10, ge=1, description="Max concurrent invocations per instance."
     )
     max_payload_size: int = Field(
-        default=6, 
-        ge=1, 
-        le=100, 
-        description="Max payload size (MB) for inference."
+        default=6, ge=1, le=100, description="Max payload size (MB) for inference."
     )
 
     class Config(BasePipelineConfig.Config):
         pass
-    
-    @model_validator(mode='after')
-    def validate_configuration(self) -> 'XGBoostModelStepConfig':
+
+    @model_validator(mode="after")
+    def validate_configuration(self) -> "XGBoostModelStepConfig":
         """Validate the complete configuration"""
         self._validate_memory_constraints()
         self._validate_timeouts()
         self._validate_entry_point()
         self._validate_framework_version()
         return self
-
 
     def _validate_memory_constraints(self) -> None:
         """Validate memory-related constraints"""
@@ -108,7 +91,7 @@ class XGBoostModelStepConfig(BasePipelineConfig):
                 f"Inference memory limit ({self.inference_memory_limit}MB) cannot exceed "
                 f"container memory limit ({self.container_memory_limit}MB)"
             )
-            
+
     def _validate_timeouts(self) -> None:
         """Validate timeout-related configurations"""
         if self.container_startup_health_check_timeout > self.data_download_timeout:
@@ -118,40 +101,51 @@ class XGBoostModelStepConfig(BasePipelineConfig):
 
     def _validate_entry_point(self) -> None:
         """Validate entry point script"""
-        if self.source_dir and not self.source_dir.startswith('s3://'):
+        if self.source_dir and not self.source_dir.startswith("s3://"):
             entry_point_path = Path(self.source_dir) / self.entry_point
             if not entry_point_path.exists():
-                raise ValueError(f"Inference entry point script not found: {entry_point_path}")
+                raise ValueError(
+                    f"Inference entry point script not found: {entry_point_path}"
+                )
 
     def _validate_framework_version(self) -> None:
         """Validate XGBoost framework version"""
-        valid_versions = ['1.5-1', '1.3-1', '1.2-2', '1.2-1']  # Add more versions as needed
+        valid_versions = [
+            "1.5-1",
+            "1.3-1",
+            "1.2-2",
+            "1.2-1",
+        ]  # Add more versions as needed
         if self.framework_version not in valid_versions:
             raise ValueError(
                 f"Invalid XGBoost framework version: {self.framework_version}. "
                 f"Must be one of {valid_versions}"
             )
-    
-    @field_validator('inference_memory_limit')
+
+    @field_validator("inference_memory_limit")
     @classmethod
     def validate_memory_limits(cls, v: int, info) -> int:
-        container_memory_limit = info.data.get('container_memory_limit')
+        container_memory_limit = info.data.get("container_memory_limit")
         if container_memory_limit and v > container_memory_limit:
-            raise ValueError("Inference memory limit cannot exceed container memory limit")
+            raise ValueError(
+                "Inference memory limit cannot exceed container memory limit"
+            )
         return v
 
-    @field_validator('instance_type')
+    @field_validator("instance_type")
     @classmethod
     def _validate_sagemaker_inference_instance_type(cls, v: str) -> str:
-        if not v.startswith('ml.'):
-            raise ValueError(f"Invalid inference instance type: {v}. Must start with 'ml.'")
+        if not v.startswith("ml."):
+            raise ValueError(
+                f"Invalid inference instance type: {v}. Must start with 'ml.'"
+            )
         return v
 
     def get_model_name(self) -> str:
         """Generate a unique model name if not provided"""
         if self.model_name:
             return self.model_name
-            
+
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         return f"xgb-{self.pipeline_name}-model-{timestamp}"
 

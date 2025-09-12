@@ -68,7 +68,12 @@ from lightning_models.pl_model_plots import (
     pr_metric_plot,
 )
 from lightning_models.dist_utils import get_rank, is_main_process
-from pydantic import BaseModel, Field, ValidationError, field_validator  # For Config Validation
+from pydantic import (
+    BaseModel,
+    Field,
+    ValidationError,
+    field_validator,
+)  # For Config Validation
 
 
 # ================== Model, Data and Hyperparameter Folder =================
@@ -96,7 +101,6 @@ if is_main_process():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.propagate = False
-
 
 
 def log_once(logger, message, level=logging.INFO):
@@ -157,20 +161,25 @@ class Config(BaseModel):
     test_filename: Optional[str] = None
     embed_size: Optional[int] = None  # Added for type consistency
     model_path: str = "/opt/ml/model"  # Add model_path with a default value
-    categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = None  # Add this line
+    categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = (
+        None  # Add this line
+    )
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
-    
-    
+
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
         if self.is_binary and self.num_classes != 2:
             raise ValueError("For binary classification, num_classes must be 2.")
         if not self.is_binary:
             if self.num_classes < 2:
-                raise ValueError("For multiclass classification, num_classes must be >= 2.")
+                raise ValueError(
+                    "For multiclass classification, num_classes must be >= 2."
+                )
             if not self.multiclass_categories:
-                raise ValueError("multiclass_categories must be provided for multiclass classification.")
+                raise ValueError(
+                    "multiclass_categories must be provided for multiclass classification."
+                )
             if len(self.multiclass_categories) != self.num_classes:
                 raise ValueError(
                     f"num_classes={self.num_classes} does not match "
@@ -181,14 +190,17 @@ class Config(BaseModel):
         else:
             # Optional: Warn if multiclass_categories is defined when binary
             if self.multiclass_categories and len(self.multiclass_categories) != 2:
-                raise ValueError("For binary classification, multiclass_categories must contain exactly 2 items.")
-                
+                raise ValueError(
+                    "For binary classification, multiclass_categories must contain exactly 2 items."
+                )
+
         # New: validate class_weights length
         if self.class_weights and len(self.class_weights) != self.num_classes:
             raise ValueError(
                 f"class_weights must have the same number of elements as num_classes "
                 f"(expected {self.num_classes}, got {len(self.class_weights)})."
             )
+
 
 # ------------------- Improved Hyperparameter Parser ----------------------
 def safe_cast(val):
@@ -281,7 +293,9 @@ def load_parse_hyperparameters(hparam_path: str) -> Dict:
                 try:
                     converted = converters[key](value)
                 except Exception as e:
-                    logger.warning(f"Conversion error for key {key} with value {value}: {e}")
+                    logger.warning(
+                        f"Conversion error for key {key} with value {value}: {e}"
+                    )
                     converted = value
                 hyperparameters[key] = converted
                 print(f"{key}: {converted} ({type(converted)})")
@@ -299,13 +313,17 @@ def find_first_data_file(
         cleaned_fname = fname.strip().lower()
         if any(cleaned_fname.endswith(ext) for ext in extensions):
             return fname
-    raise FileNotFoundError(f"No supported data file (.tsv, .csv, .parquet) found in {data_dir}")
+    raise FileNotFoundError(
+        f"No supported data file (.tsv, .csv, .parquet) found in {data_dir}"
+    )
 
 
 # ----------------- Dataset Loading -------------------------
 def load_data_module(file_dir, filename, config: Config) -> BSMDataset:
     log_once(logger, f"Loading BSM dataset from {filename} in folder {file_dir}")
-    bsm_dataset = BSMDataset(config=config.model_dump(), file_dir=file_dir, filename=filename)  # Pass as dict
+    bsm_dataset = BSMDataset(
+        config=config.model_dump(), file_dir=file_dir, filename=filename
+    )  # Pass as dict
     log_once(logger, f"Filling missing values in dataset {filename}")
     bsm_dataset.fill_missing_value(
         label_name=config.label_name, column_cat_name=config.cat_field_list
@@ -314,7 +332,9 @@ def load_data_module(file_dir, filename, config: Config) -> BSMDataset:
 
 
 # ----------------- Updated Data Preprocessing Pipeline ------------------
-def data_preprocess_pipeline(config: Config) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+def data_preprocess_pipeline(
+    config: Config,
+) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
     if not config.tokenizer:
         config.tokenizer = "bert-base-multilingual-cased"
     log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
@@ -324,11 +344,12 @@ def data_preprocess_pipeline(config: Config) -> Tuple[AutoTokenizer, Dict[str, P
         >> HTMLNormalizerProcessor()
         >> EmojiRemoverProcessor()
         >> TextNormalizationProcessor()
-        >> DialogueChunkerProcessor(tokenizer=tokenizer, 
-                                    max_tokens=config.max_sen_len,
-                                    truncate=config.chunk_trancate,
-                                    max_total_chunks=config.max_total_chunks
-                                   )
+        >> DialogueChunkerProcessor(
+            tokenizer=tokenizer,
+            max_tokens=config.max_sen_len,
+            truncate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+        )
         >> TokenizationProcessor(
             tokenizer,
             add_special_tokens=True,
@@ -395,7 +416,9 @@ def setup_training_environment(config: Config) -> torch.device:
 
 
 # ----------------- Data Loading and Preprocessing ------------------
-def load_and_preprocess_data(config: Config) -> Tuple[List[BSMDataset], AutoTokenizer, Dict]:
+def load_and_preprocess_data(
+    config: Config,
+) -> Tuple[List[BSMDataset], AutoTokenizer, Dict]:
     """
     Loads and preprocesses the train/val/test datasets according to the provided config.
 
@@ -405,47 +428,43 @@ def load_and_preprocess_data(config: Config) -> Tuple[List[BSMDataset], AutoToke
     train_filename = config.train_filename or find_first_data_file(train_path)
     val_filename = config.val_filename or find_first_data_file(val_path)
     test_filename = config.test_filename or find_first_data_file(test_path)
-    log_once(
-        logger,
-        "================================================"
-    )
+    log_once(logger, "================================================")
     log_once(logger, f"Train folder: {train_path} | File: {train_filename}")
     log_once(logger, f"Validation folder: {val_path} | File: {val_filename}")
     log_once(logger, f"Test folder: {test_path} | File: {test_filename}")
-    log_once(
-        logger,
-        "================================================"
-    )
+    log_once(logger, "================================================")
     if not os.path.exists(checkpoint_path):
         print(f"Creating checkpoint folder {checkpoint_path}")
         os.makedirs(checkpoint_path)
-        
+
     # === Load raw datasets ===
     train_bsm_dataset = load_data_module(train_path, train_filename, config)
     val_bsm_dataset = load_data_module(val_path, val_filename, config)
     test_bsm_dataset = load_data_module(test_path, test_filename, config)
-    
+
     # === Build tokenizer and preprocessing pipelines ===
     tokenizer, pipelines = data_preprocess_pipeline(config)
     train_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
     val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
     test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
-    
+
     # === Build categorical feature encoders (tabular side) ===
     categorical_processors = build_categorical_label_pipelines(
         config, [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset]
     )
-    
+
     # === Add multiclass label processor if needed ===
     if not config.is_binary and config.num_classes > 2:
         if config.multiclass_categories:
-            label_processor = MultiClassLabelProcessor(label_list=config.multiclass_categories, strict=True)
+            label_processor = MultiClassLabelProcessor(
+                label_list=config.multiclass_categories, strict=True
+            )
         else:
             label_processor = MultiClassLabelProcessor()
         train_bsm_dataset.add_pipeline(config.label_name, label_processor)
         val_bsm_dataset.add_pipeline(config.label_name, label_processor)
         test_bsm_dataset.add_pipeline(config.label_name, label_processor)
-        
+
         # Save mappings into config for use in inference/export
         config.label_to_id = label_processor.label_to_id
         config.id_to_label = label_processor.id_to_label
@@ -453,8 +472,8 @@ def load_and_preprocess_data(config: Config) -> Tuple[List[BSMDataset], AutoToke
         print(config.id_to_label)
     else:
         config.label_to_id = None
-        config.id_to_label = None        
-    
+        config.id_to_label = None
+
     for field, processor in categorical_processors.items():
         train_bsm_dataset.add_pipeline(field, processor)
         val_bsm_dataset.add_pipeline(field, processor)
@@ -467,17 +486,15 @@ def load_and_preprocess_data(config: Config) -> Tuple[List[BSMDataset], AutoToke
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, 
-    tokenizer: AutoTokenizer,
-    datasets: List[BSMDataset]
+    config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     bsm_collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key, 
-        attention_mask_key=config.text_attention_mask_key
+        input_ids_key=config.text_input_ids_key,
+        attention_mask_key=config.text_attention_mask_key,
     )  # Pass key names
-    
+
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets
-    
+
     train_dataloader = DataLoader(
         train_bsm_dataset,
         collate_fn=bsm_collate_batch,
@@ -494,7 +511,9 @@ def build_model_and_optimizer(
     log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
     embedding_model = AutoModel.from_pretrained(config.tokenizer)
     embedding_mat = embedding_model.embeddings.word_embeddings.weight
-    log_once(logger, f"Embedding shape: [{embedding_mat.shape[0]}, {embedding_mat.shape[1]}]")
+    log_once(
+        logger, f"Embedding shape: [{embedding_mat.shape[0]}, {embedding_mat.shape[1]}]"
+    )
     config.embed_size = embedding_mat.shape[1]
     vocab_size = tokenizer.vocab_size
     log_once(logger, f"Vocabulary Size: {vocab_size}")
@@ -565,10 +584,18 @@ def evaluate_and_log_results(
 ) -> None:
     log_once(logger, "Inference Starts ...")
     val_predict_labels, val_true_labels = model_inference(
-        model, val_dataloader, accelerator="gpu", device="auto", model_log_path=checkpoint_path
+        model,
+        val_dataloader,
+        accelerator="gpu",
+        device="auto",
+        model_log_path=checkpoint_path,
     )
     test_predict_labels, test_true_labels = model_inference(
-        model, test_dataloader, accelerator="gpu", device="auto", model_log_path=checkpoint_path
+        model,
+        test_dataloader,
+        accelerator="gpu",
+        device="auto",
+        model_log_path=checkpoint_path,
     )
     log_once(logger, "Inference Complete.")
     if is_main_process():
@@ -599,9 +626,9 @@ def evaluate_and_log_results(
         log_once(logger, "Saving metric plots...")
         writer = SummaryWriter(log_dir=os.path.join(output_path, "tensorboard_eval"))
         roc_metric_plot(
-            y_pred=test_predict_labels,  
+            y_pred=test_predict_labels,
             y_true=test_true_labels,
-            y_val_pred=val_predict_labels,  
+            y_val_pred=val_predict_labels,
             y_val_true=val_true_labels,
             path=output_path,
             task=task,
@@ -610,9 +637,9 @@ def evaluate_and_log_results(
             global_step=trainer.global_step,
         )
         pr_metric_plot(
-            y_pred=test_predict_labels,  
+            y_pred=test_predict_labels,
             y_true=test_true_labels,
-            y_val_pred=val_predict_labels, 
+            y_val_pred=val_predict_labels,
             y_val_true=val_true_labels,
             path=output_path,
             task=task,
@@ -630,8 +657,8 @@ def evaluate_and_log_results(
 def main(config: Config):
     device = setup_training_environment(config)
     datasets, tokenizer, config = load_and_preprocess_data(config)
-    model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = build_model_and_optimizer(
-        config, tokenizer, datasets
+    model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
+        build_model_and_optimizer(config, tokenizer, datasets)
     )
     # update tab dimension
     config.input_tab_dim = len(config.tab_field_list)
@@ -650,7 +677,9 @@ def main(config: Config):
     if config.load_ckpt:
         best_model_path = trainer.checkpoint_callback.best_model_path
         log_once(logger, f"Load best model from checkpoint {best_model_path}")
-        model = load_checkpoint(best_model_path, model_class=config.model_class, device_l="cpu")
+        model = load_checkpoint(
+            best_model_path, model_class=config.model_class, device_l="cpu"
+        )
     if is_main_process():
         model_filename = os.path.join(model_path, "model.pth")
         logger.info(f"Saving model to {model_filename}")
@@ -664,11 +693,11 @@ def main(config: Config):
             tokenizer.vocab,
             model_class=config.model_class,
         )
-        
+
         # ------------------ ONNX Export ------------------
         onnx_path = os.path.join(model_path, "model.onnx")
         logger.info(f"Saving model as ONNX to {onnx_path}")
-        export_model_to_onnx(model, trainer, val_dataloader, onnx_path)       
+        export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
     evaluate_and_log_results(model, val_dataloader, test_dataloader, config, trainer)
     sys.exit(0)

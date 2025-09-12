@@ -31,7 +31,7 @@ class TestTemplateManager:
     def test_template_manager_initialization(self, template_manager):
         """Test that TemplateManager initializes correctly."""
         assert isinstance(template_manager, TemplateManager)
-        assert hasattr(template_manager, 'get_template')
+        assert hasattr(template_manager, "get_template")
 
     def test_get_template(self, template_manager):
         """Test template retrieval."""
@@ -52,7 +52,7 @@ class TestTemplateManager:
         # Create a test workspace directory
         workspace_path = Path(temp_dir) / "test_workspace"
         workspace_path.mkdir()
-        
+
         # Test applying a template
         result = template_manager.apply_template("basic", workspace_path)
         assert isinstance(result, bool)
@@ -61,7 +61,7 @@ class TestTemplateManager:
         """Test that built-in templates are available."""
         templates = template_manager.list_templates()
         template_names = [t.name for t in templates] if templates else []
-        
+
         # Check for expected built-in templates
         expected_templates = ["basic", "ml_pipeline", "data_processing"]
         for template_name in expected_templates:
@@ -78,10 +78,9 @@ class TestWorkspaceTemplate:
         """Test WorkspaceTemplate creation."""
         # Test creating a basic template
         from cursus.workspace.templates import TemplateType
+
         template = WorkspaceTemplate(
-            name="test_template",
-            description="Test template",
-            type=TemplateType.BASIC
+            name="test_template", description="Test template", type=TemplateType.BASIC
         )
         assert template.name == "test_template"
         assert template.description == "Test template"

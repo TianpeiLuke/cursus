@@ -14,8 +14,10 @@ from sklearn.model_selection import train_test_split
 
 # --- Helper Functions ---
 
+
 def _is_gzipped(path: str) -> bool:
     return path.lower().endswith(".gz")
+
 
 def _detect_separator_from_sample(sample_lines: str) -> str:
     """Use csv.Sniffer to detect a delimiter, defaulting to comma."""
@@ -24,6 +26,7 @@ def _detect_separator_from_sample(sample_lines: str) -> str:
         return dialect.delimiter
     except Exception:
         return ","
+
 
 def peek_json_format(file_path: Path, open_func=open) -> str:
     """Check if the JSON file is in JSON Lines or regular format."""
@@ -44,6 +47,7 @@ def peek_json_format(file_path: Path, open_func=open) -> str:
     except (json.JSONDecodeError, ValueError) as e:
         raise RuntimeError(f"Error checking JSON format for {file_path}: {e}")
 
+
 def _read_json_file(file_path: Path) -> pd.DataFrame:
     """Read a JSON or JSON Lines file into a DataFrame."""
     open_func = gzip.open if _is_gzipped(str(file_path)) else open
@@ -54,6 +58,7 @@ def _read_json_file(file_path: Path) -> pd.DataFrame:
         with open_func(str(file_path), "rt") as f:
             data = json.load(f)
         return pd.json_normalize(data if isinstance(data, list) else [data])
+
 
 def _read_file_to_df(file_path: Path) -> pd.DataFrame:
     """Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame."""
@@ -68,7 +73,9 @@ def _read_file_to_df(file_path: Path) -> pd.DataFrame:
             return _read_json_file(file_path)
         elif inner_ext.endswith(".parquet"):
             with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-                with gzip.open(str(file_path), "rb") as f_in, open(tmp.name, "wb") as f_out:
+                with gzip.open(str(file_path), "rb") as f_in, open(
+                    tmp.name, "wb"
+                ) as f_out:
                     shutil.copyfileobj(f_in, f_out)
                 df = pd.read_parquet(tmp.name)
             os.unlink(tmp.name)
@@ -86,14 +93,20 @@ def _read_file_to_df(file_path: Path) -> pd.DataFrame:
     else:
         raise ValueError(f"Unsupported file type: {file_path}")
 
+
 def combine_shards(input_dir: str) -> pd.DataFrame:
     """Detect and combine all supported data shards in a directory."""
     input_path = Path(input_dir)
     if not input_path.is_dir():
         raise RuntimeError(f"Input directory does not exist: {input_dir}")
     patterns = [
-        "part-*.csv", "part-*.csv.gz", "part-*.json", "part-*.json.gz",
-        "part-*.parquet", "part-*.snappy.parquet", "part-*.parquet.gz"
+        "part-*.csv",
+        "part-*.csv.gz",
+        "part-*.json",
+        "part-*.json.gz",
+        "part-*.parquet",
+        "part-*.snappy.parquet",
+        "part-*.parquet.gz",
     ]
     all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
     if not all_shards:
@@ -104,9 +117,18 @@ def combine_shards(input_dir: str) -> pd.DataFrame:
     except Exception as e:
         raise RuntimeError(f"Failed to read or concatenate shards: {e}")
 
+
 # --- Main Processing Logic ---
 
-def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: float, input_base_dir: str, output_dir: str):
+
+def main(
+    job_type: str,
+    label_field: str,
+    train_ratio: float,
+    test_val_ratio: float,
+    input_base_dir: str,
+    output_dir: str,
+):
     """
     Main logic for preprocessing data, now refactored for testability.
     """
@@ -123,22 +145,31 @@ def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: fl
     # 3. Process columns and labels
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
     if label_field not in df.columns:
-        raise RuntimeError(f"Label field '{label_field}' not found in columns: {df.columns.tolist()}")
+        raise RuntimeError(
+            f"Label field '{label_field}' not found in columns: {df.columns.tolist()}"
+        )
 
     if not pd.api.types.is_numeric_dtype(df[label_field]):
         unique_labels = sorted(df[label_field].dropna().unique())
         label_map = {val: idx for idx, val in enumerate(unique_labels)}
         df[label_field] = df[label_field].map(label_map)
-    
+
     df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype("Int64")
     df.dropna(subset=[label_field], inplace=True)
     df[label_field] = df[label_field].astype(int)
     print(f"[INFO] Data shape after cleaning labels: {df.shape}")
-    
+
     # 4. Split data if training, otherwise use the job_type as the single split
     if job_type == "training":
-        train_df, holdout_df = train_test_split(df, train_size=train_ratio, random_state=42, stratify=df[label_field])
-        test_df, val_df = train_test_split(holdout_df, test_size=test_val_ratio, random_state=42, stratify=holdout_df[label_field])
+        train_df, holdout_df = train_test_split(
+            df, train_size=train_ratio, random_state=42, stratify=df[label_field]
+        )
+        test_df, val_df = train_test_split(
+            holdout_df,
+            test_size=test_val_ratio,
+            random_state=42,
+            stratify=holdout_df[label_field],
+        )
         splits = {"train": train_df, "test": test_df, "val": val_df}
     else:
         splits = {job_type: df}
@@ -147,7 +178,7 @@ def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: fl
     for split_name, split_df in splits.items():
         subfolder = output_path / split_name
         subfolder.mkdir(exist_ok=True)
-        
+
         full_path = subfolder / f"{split_name}_full_data.csv"
         split_df.to_csv(full_path, index=False)
         print(f"[INFO] Saved {full_path} (shape={split_df.shape})")
@@ -161,7 +192,12 @@ def main(job_type: str, label_field: str, train_ratio: float, test_val_ratio: fl
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--job_type", type=str, required=True, help="One of ['training','validation','testing']")
+    parser.add_argument(
+        "--job_type",
+        type=str,
+        required=True,
+        help="One of ['training','validation','testing']",
+    )
     args = parser.parse_args()
 
     # Read configuration from environment variables
@@ -170,7 +206,7 @@ if __name__ == "__main__":
         raise RuntimeError("LABEL_FIELD environment variable must be set.")
     TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
     TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
-    
+
     # Define standard SageMaker paths
     INPUT_BASE_DIR = "/opt/ml/processing/input"
     OUTPUT_DIR = "/opt/ml/processing/output"

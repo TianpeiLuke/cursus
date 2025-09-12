@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def get_currency_code(
     marketplace_id: Union[int, float],
     marketplace_info: Dict[str, Dict[str, str]],
-    default_currency: str
+    default_currency: str,
 ) -> str:
     """Get currency code for a given marketplace ID."""
     try:
@@ -35,7 +35,7 @@ def combine_currency_codes(
     currency_col: Optional[str],
     marketplace_info: Dict[str, Dict[str, str]],
     default_currency: str,
-    skip_invalid_currencies: bool
+    skip_invalid_currencies: bool,
 ) -> Tuple[pd.DataFrame, str]:
     """Combine currency codes from marketplace ID and existing currency column."""
     df["currency_code_from_marketplace_id"] = df[marketplace_id_col].apply(
@@ -43,7 +43,9 @@ def combine_currency_codes(
     )
 
     if currency_col and currency_col in df.columns:
-        df[currency_col] = df[currency_col].combine_first(df["currency_code_from_marketplace_id"])
+        df[currency_col] = df[currency_col].combine_first(
+            df["currency_code_from_marketplace_id"]
+        )
         final_currency_col = currency_col
     else:
         final_currency_col = "currency_code_from_marketplace_id"
@@ -71,19 +73,24 @@ def parallel_currency_conversion(
     currency_col: str,
     currency_conversion_vars: List[str],
     currency_conversion_dict: Dict[str, float],
-    n_workers: int = 50
+    n_workers: int = 50,
 ) -> pd.DataFrame:
     """Perform parallel currency conversion on multiple variables."""
-    exchange_rate_series = df[currency_col].apply(lambda x: currency_conversion_dict.get(x, 1.0))
+    exchange_rate_series = df[currency_col].apply(
+        lambda x: currency_conversion_dict.get(x, 1.0)
+    )
     processes = min(cpu_count(), len(currency_conversion_vars), n_workers)
-    
+
     with Pool(processes=processes) as pool:
         results = pool.map(
             currency_conversion_single_variable,
-            [(df[[var]], var, exchange_rate_series) for var in currency_conversion_vars]
+            [
+                (df[[var]], var, exchange_rate_series)
+                for var in currency_conversion_vars
+            ],
         )
         df[currency_conversion_vars] = pd.concat(results, axis=1)
-    
+
     return df
 
 
@@ -96,7 +103,7 @@ def process_currency_conversion(
     currency_col: Optional[str] = None,
     default_currency: str = "USD",
     skip_invalid_currencies: bool = False,
-    n_workers: int = 50
+    n_workers: int = 50,
 ) -> pd.DataFrame:
     """Process currency conversion."""
     # Drop rows with missing marketplace IDs
@@ -109,7 +116,7 @@ def process_currency_conversion(
         currency_col,
         marketplace_info,
         default_currency,
-        skip_invalid_currencies
+        skip_invalid_currencies,
     )
 
     # Filter variables that exist in the DataFrame
@@ -124,7 +131,7 @@ def process_currency_conversion(
             final_currency_col,
             currency_conversion_vars,
             currency_conversion_dict,
-            n_workers
+            n_workers,
         )
         logger.info("Currency conversion completed")
     else:
@@ -133,7 +140,12 @@ def process_currency_conversion(
     return df
 
 
-def main(args: argparse.Namespace, currency_vars: List[str], currency_dict: Dict[str, float], marketplace_info: Dict[str, Any]):
+def main(
+    args: argparse.Namespace,
+    currency_vars: List[str],
+    currency_dict: Dict[str, float],
+    marketplace_info: Dict[str, Any],
+):
     """
     Main function to execute the currency conversion logic.
     Refactored for improved testability.
@@ -143,7 +155,7 @@ def main(args: argparse.Namespace, currency_vars: List[str], currency_dict: Dict
     input_base = Path("/opt/ml/processing/input/data")
     output_base = Path("/opt/ml/processing/output")
     output_base.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info(f"Running currency conversion in mode={mode}, job_type={job_type}")
 
     def apply_conversion(df: pd.DataFrame) -> pd.DataFrame:
@@ -179,16 +191,20 @@ def main(args: argparse.Namespace, currency_vars: List[str], currency_dict: Dict
             df_conv,
             train_size=args.train_ratio,
             random_state=42,
-            stratify=df_conv[os.environ["LABEL_FIELD"]]
+            stratify=df_conv[os.environ["LABEL_FIELD"]],
         )
         test_df, val_df = train_test_split(
             holdout_df,
             test_size=args.test_val_ratio,
             random_state=42,
-            stratify=holdout_df[os.environ["LABEL_FIELD"]]
+            stratify=holdout_df[os.environ["LABEL_FIELD"]],
         )
 
-        for split_name, split_df in [("train", train_df), ("test", test_df), ("val", val_df)]:
+        for split_name, split_df in [
+            ("train", train_df),
+            ("test", test_df),
+            ("val", val_df),
+        ]:
             out_dir = output_base / split_name
             out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -225,7 +241,9 @@ def main(args: argparse.Namespace, currency_vars: List[str], currency_dict: Dict
             # write processed
             proc_out = out_dir / f"{sp}_processed_data.csv"
             df_conv.to_csv(proc_out, index=False)
-            logger.info(f"Converted processed for '{sp}' → {proc_out} (shape={df_conv.shape})")
+            logger.info(
+                f"Converted processed for '{sp}' → {proc_out} (shape={df_conv.shape})"
+            )
 
             # if you want full_data converted as well
             if full_in_path.exists():
@@ -233,7 +251,9 @@ def main(args: argparse.Namespace, currency_vars: List[str], currency_dict: Dict
                 df_full_conv = apply_conversion(df_full)
                 full_out = out_dir / f"{sp}_full_data.csv"
                 df_full_conv.to_csv(full_out, index=False)
-                logger.info(f"Converted full for '{sp}' → {full_out} (shape={df_full_conv.shape})")
+                logger.info(
+                    f"Converted full for '{sp}' → {full_out} (shape={df_full_conv.shape})"
+                )
 
     logger.info("Currency conversion step complete.")
 
@@ -245,7 +265,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         choices=["training", "validation", "testing", "calibration"],
-        help="One of ['training','validation','testing','calibration']"
+        help="One of ['training','validation','testing','calibration']",
     )
     parser.add_argument(
         "--mode",
@@ -255,24 +275,32 @@ if __name__ == "__main__":
         help=(
             "per_split: apply conversion separately on each existing split folder; "
             "split_after_conversion: combine all data, convert, then re-split"
-        )
+        ),
     )
-    parser.add_argument("--train-ratio", type=float, default=float(os.environ.get("TRAIN_RATIO", 0.7)))
-    parser.add_argument("--test-val-ratio", type=float, default=float(os.environ.get("TEST_VAL_RATIO", 0.5)))
+    parser.add_argument(
+        "--train-ratio", type=float, default=float(os.environ.get("TRAIN_RATIO", 0.7))
+    )
+    parser.add_argument(
+        "--test-val-ratio",
+        type=float,
+        default=float(os.environ.get("TEST_VAL_RATIO", 0.5)),
+    )
     parser.add_argument("--n-workers", type=int, default=50)
     parser.add_argument("--marketplace-id-col", required=True)
     parser.add_argument("--currency-col", default=None)
     parser.add_argument("--default-currency", default="USD")
     parser.add_argument("--skip-invalid-currencies", action="store_true")
-    parser.add_argument("--enable-conversion", type=lambda x: x.lower()=="true", default=True)
+    parser.add_argument(
+        "--enable-conversion", type=lambda x: x.lower() == "true", default=True
+    )
     args = parser.parse_args()
-    
+
     # load JSON env vars
     currency_vars = json.loads(os.environ["CURRENCY_CONVERSION_VARS"])
     currency_dict = json.loads(os.environ["CURRENCY_CONVERSION_DICT"])
     marketplace_info = json.loads(os.environ["MARKETPLACE_INFO"])
-    
+
     logging.basicConfig(level=logging.INFO)
-    
+
     # Execute the main logic by calling the new main function
     main(args, currency_vars, currency_dict, marketplace_info)

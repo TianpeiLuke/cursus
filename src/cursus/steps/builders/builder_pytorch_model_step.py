@@ -32,7 +32,7 @@ class PyTorchModelStepBuilder(StepBuilderBase):
         role: Optional[str] = None,
         notebook_root: Optional[Path] = None,
         registry_manager: Optional["RegistryManager"] = None,
-        dependency_resolver: Optional["UnifiedDependencyResolver"] = None
+        dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
         """
         Initializes the builder with a specific configuration for the model step.
@@ -50,11 +50,11 @@ class PyTorchModelStepBuilder(StepBuilderBase):
             raise ValueError(
                 "PyTorchModelStepBuilder requires a PyTorchModelStepConfig instance."
             )
-        
+
         # Validate specification availability
         if PYTORCH_MODEL_SPEC is None:
             raise ValueError("PyTorch model specification not available")
-            
+
         super().__init__(
             config=config,
             spec=PYTORCH_MODEL_SPEC,  # Add specification
@@ -62,7 +62,7 @@ class PyTorchModelStepBuilder(StepBuilderBase):
             role=role,
             notebook_root=notebook_root,
             registry_manager=registry_manager,
-            dependency_resolver=dependency_resolver
+            dependency_resolver=dependency_resolver,
         )
         self.config: PyTorchModelStepConfig = config
 
@@ -75,18 +75,19 @@ class PyTorchModelStepBuilder(StepBuilderBase):
             ValueError: If any required configuration is missing or invalid.
         """
         self.log_info("Validating PyTorchModelStepConfig...")
-        
+
         # Validate required attributes
-        required_attrs = [
-            'instance_type',
-            'entry_point',
-            'source_dir'
-        ]
-        
+        required_attrs = ["instance_type", "entry_point", "source_dir"]
+
         for attr in required_attrs:
-            if not hasattr(self.config, attr) or getattr(self.config, attr) in [None, ""]:
-                raise ValueError(f"PyTorchModelStepConfig missing required attribute: {attr}")
-        
+            if not hasattr(self.config, attr) or getattr(self.config, attr) in [
+                None,
+                "",
+            ]:
+                raise ValueError(
+                    f"PyTorchModelStepConfig missing required attribute: {attr}"
+                )
+
         self.log_info("PyTorchModelStepConfig validation succeeded.")
 
     def _get_image_uri(self) -> str:
@@ -94,16 +95,18 @@ class PyTorchModelStepBuilder(StepBuilderBase):
         Generate the appropriate SageMaker PyTorch container image URI.
         Uses the SageMaker SDK's built-in image_uris.retrieve function.
         Forces the region to us-east-1 regardless of the configured region.
-        
+
         Returns:
             A string containing the image URI for the PyTorch container.
         """
         # Get region from configuration but enforce us-east-1
         region = getattr(self.config, "aws_region", "us-east-1")
         if region != "us-east-1":
-            self.log_info(f"Region '{region}' specified, but forcing to 'us-east-1' due to environment limitations")
+            self.log_info(
+                f"Region '{region}' specified, but forcing to 'us-east-1' due to environment limitations"
+            )
         region = "us-east-1"
-        
+
         # Retrieve the image URI using SageMaker SDK
         image_uri = image_uris.retrieve(
             framework="pytorch",
@@ -111,9 +114,9 @@ class PyTorchModelStepBuilder(StepBuilderBase):
             version=self.config.framework_version,
             py_version=self.config.py_version,
             instance_type=self.config.instance_type,
-            image_scope="inference"
+            image_scope="inference",
         )
-        
+
         self.log_info(f"Generated PyTorch image URI: {image_uri}")
         return image_uri
 
@@ -131,7 +134,7 @@ class PyTorchModelStepBuilder(StepBuilderBase):
         """
         # Generate the image URI automatically
         image_uri = self._get_image_uri()
-            
+
         return PyTorchModel(
             model_data=model_data,
             role=self.role,
@@ -154,39 +157,39 @@ class PyTorchModelStepBuilder(StepBuilderBase):
         """
         # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
-        
+
         # Add environment variables from config if they exist
         if hasattr(self.config, "env") and self.config.env:
             env_vars.update(self.config.env)
-            
+
         self.log_info("Model environment variables: %s", env_vars)
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
         Use specification dependencies to get model_data.
-        
+
         Args:
             inputs: Dictionary of available inputs
-            
+
         Returns:
             Dictionary containing processed inputs for model creation
         """
         # Spec defines: model_data dependency from PyTorchTraining, ProcessingStep, ModelArtifactsStep
         model_data_key = "model_data"  # From spec.dependencies
-        
+
         if model_data_key not in inputs:
             raise ValueError(f"Required input '{model_data_key}' not found")
-            
+
         return {model_data_key: inputs[model_data_key]}
-    
+
     def _get_outputs(self, outputs: Dict[str, Any]) -> str:
         """
         Use specification outputs - returns model name.
-        
+
         Args:
             outputs: Dictionary to store outputs (not used for CreateModelStep)
-            
+
         Returns:
             None - CreateModelStep handles outputs automatically
         """
@@ -194,7 +197,7 @@ class PyTorchModelStepBuilder(StepBuilderBase):
         # For CreateModelStep, we don't need to return specific outputs
         # The step automatically provides ModelName property
         return None
-    
+
     def create_step(self, **kwargs) -> CreateModelStep:
         """
         Creates the final, fully configured SageMaker ModelStep for the pipeline.
@@ -207,24 +210,24 @@ class PyTorchModelStepBuilder(StepBuilderBase):
                 - model_data: Direct parameter for model artifacts S3 URI (for backward compatibility)
                 - dependencies: Optional list of steps that this step depends on.
                 - enable_caching: Whether to enable caching for this step.
-                
+
         Returns:
             A configured ModelStep instance.
         """
         # Extract common parameters
-        inputs_raw = kwargs.get('inputs', {})
-        model_data = kwargs.get('model_data')
-        dependencies = kwargs.get('dependencies', [])
-        enable_caching = kwargs.get('enable_caching', True)
-        
+        inputs_raw = kwargs.get("inputs", {})
+        model_data = kwargs.get("model_data")
+        dependencies = kwargs.get("dependencies", [])
+        enable_caching = kwargs.get("enable_caching", True)
+
         self.log_info("Creating PyTorch ModelStep...")
-        
+
         # Get the step name using standardized automatic step type detection
         step_name = self._get_step_name()
-        
+
         # Handle inputs
         inputs = {}
-        
+
         # If dependencies are provided, extract inputs from them using the resolver
         if dependencies:
             try:
@@ -232,43 +235,45 @@ class PyTorchModelStepBuilder(StepBuilderBase):
                 inputs.update(extracted_inputs)
             except Exception as e:
                 self.log_warning("Failed to extract inputs from dependencies: %s", e)
-                
+
         # Add explicitly provided inputs (overriding any extracted ones)
         inputs.update(inputs_raw)
-        
+
         # Add direct parameters if provided (for backward compatibility)
         if model_data is not None:
             inputs["model_data"] = model_data
-            
+
         # Use specification-driven input processing
         model_inputs = self._get_inputs(inputs)
-        model_data_value = model_inputs['model_data']
+        model_data_value = model_inputs["model_data"]
 
         # Create the model
         model = self._create_model(model_data_value)
-        
+
         # Create the model step
         try:
             # Note: CreateModelStep does not support cache_config parameter
             # Log warning if caching was requested
             if enable_caching:
-                self.log_warning("CreateModelStep does not support caching - ignoring enable_caching=True")
-            
+                self.log_warning(
+                    "CreateModelStep does not support caching - ignoring enable_caching=True"
+                )
+
             model_step = CreateModelStep(
                 name=step_name,
                 model=model,  # Pass model directly instead of step_args
-                depends_on=dependencies
+                depends_on=dependencies,
                 # Note: cache_config parameter removed - not supported by CreateModelStep
             )
-            
+
             # Attach specification to the step for future reference
-            setattr(model_step, '_spec', self.spec)
-            
+            setattr(model_step, "_spec", self.spec)
+
             # Log successful creation
             self.log_info("Created ModelStep with name: %s", model_step.name)
-            
+
             return model_step
-            
+
         except Exception as e:
             self.log_warning("Error creating PyTorch ModelStep: %s", str(e))
             raise ValueError(f"Failed to create PyTorchModelStep: {str(e)}") from e

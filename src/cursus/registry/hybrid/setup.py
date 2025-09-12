@@ -2,53 +2,56 @@
 Workspace registry initialization utilities.
 Simplified implementation following redundancy evaluation guide principles.
 """
+
 from pathlib import Path
 from typing import Optional, Dict, Any
 import os
 
 
-def create_workspace_registry(workspace_path: str, developer_id: str, template: str = "standard") -> str:
+def create_workspace_registry(
+    workspace_path: str, developer_id: str, template: str = "standard"
+) -> str:
     """Create simple workspace registry structure for a developer.
-    
+
     Args:
         workspace_path: Path to the developer workspace
         developer_id: Unique identifier for the developer
         template: Registry template type (standard/minimal)
-        
+
     Returns:
         Path to the created registry file
-        
+
     Raises:
         ValueError: If developer_id is invalid or workspace creation fails
     """
     # Validate developer ID
     if not developer_id or not developer_id.strip():
         raise ValueError("Developer ID cannot be empty")
-    
-    if not developer_id.replace('_', '').replace('-', '').isalnum():
+
+    if not developer_id.replace("_", "").replace("-", "").isalnum():
         raise ValueError(f"Developer ID '{developer_id}' contains invalid characters")
-    
+
     workspace_dir = Path(workspace_path)
     registry_dir = workspace_dir / "src" / "cursus_dev" / "registry"
-    
+
     # Create registry directory
     registry_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create __init__.py
     init_file = registry_dir / "__init__.py"
     init_file.write_text('"""Local registry for workspace."""\n')
-    
+
     # Create workspace_registry.py from template
     registry_file = registry_dir / "workspace_registry.py"
     template_content = _get_registry_template(developer_id, template)
     registry_file.write_text(template_content)
-    
+
     return str(registry_file)
 
 
 def _get_registry_template(developer_id: str, template: str) -> str:
     """Get simplified registry template content.
-    
+
     Following redundancy evaluation guide - removed complex metadata
     that addresses theoretical conflicts without validated demand.
     """
@@ -135,32 +138,34 @@ WORKSPACE_METADATA = {{
 def create_workspace_structure(workspace_path: str) -> None:
     """Create complete workspace directory structure."""
     workspace_dir = Path(workspace_path)
-    
+
     directories = [
         "src/cursus_dev/steps/builders",
-        "src/cursus_dev/steps/configs", 
+        "src/cursus_dev/steps/configs",
         "src/cursus_dev/steps/contracts",
         "src/cursus_dev/steps/scripts",
         "src/cursus_dev/steps/specs",
         "src/cursus_dev/registry",
         "test/unit",
-        "test/integration", 
+        "test/integration",
         "validation_reports",
         "examples",
-        "docs"
+        "docs",
     ]
-    
+
     for dir_path in directories:
         full_path = workspace_dir / dir_path
         full_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Create __init__.py files for Python packages
         if "src/cursus_dev" in dir_path:
             init_file = full_path / "__init__.py"
             init_file.write_text('"""Package initialization."""\n')
 
 
-def create_workspace_documentation(workspace_dir: Path, developer_id: str, registry_file: str) -> Path:
+def create_workspace_documentation(
+    workspace_dir: Path, developer_id: str, registry_file: str
+) -> Path:
     """Create comprehensive workspace documentation."""
     readme_file = workspace_dir / "README.md"
     readme_content = f"""# Developer Workspace: {developer_id}
@@ -256,7 +261,7 @@ For questions or issues:
 2. Validate your setup: `python -m cursus.cli.registry validate-registry --workspace {developer_id}`
 3. Contact the development team for assistance
 """
-    
+
     readme_file.write_text(readme_content)
     return readme_file
 
@@ -264,10 +269,11 @@ For questions or issues:
 def create_example_implementations(workspace_dir: Path, developer_id: str) -> None:
     """Create example step implementations for reference."""
     examples_dir = workspace_dir / "examples"
-    
+
     # Create example config
     example_config = examples_dir / "example_custom_step_config.py"
-    example_config.write_text(f'''"""
+    example_config.write_text(
+        f'''"""
 Example custom step configuration for {developer_id} workspace.
 """
 from cursus.core.base.config_base import BasePipelineConfig
@@ -288,11 +294,13 @@ class ExampleCustomStepConfig(BasePipelineConfig):
         """Pydantic configuration."""
         extra = "forbid"
         validate_assignment = True
-''')
-    
+'''
+    )
+
     # Create example builder
     example_builder = examples_dir / "example_custom_step_builder.py"
-    example_builder.write_text(f'''"""
+    example_builder.write_text(
+        f'''"""
 Example custom step builder for {developer_id} workspace.
 """
 from cursus.core.base.builder_base import StepBuilderBase
@@ -309,31 +317,32 @@ class ExampleCustomStepBuilder(StepBuilderBase):
         """Build the custom processing step."""
         # Implementation here
         pass
-''')
+'''
+    )
 
 
 def validate_workspace_setup(workspace_path: str, developer_id: str) -> None:
     """Validate that workspace setup is correct."""
     workspace_dir = Path(workspace_path)
-    
+
     # Check required directories exist
     required_dirs = [
         "src/cursus_dev/registry",
         "src/cursus_dev/steps/builders",
         "src/cursus_dev/steps/configs",
-        "test"
+        "test",
     ]
-    
+
     for dir_path in required_dirs:
         full_path = workspace_dir / dir_path
         if not full_path.exists():
             raise ValueError(f"Required directory missing: {dir_path}")
-    
+
     # Check registry file exists and is valid
     registry_file = workspace_dir / "src/cursus_dev/registry/workspace_registry.py"
     if not registry_file.exists():
         raise ValueError("Registry file not created")
-    
+
     # Basic validation that registry file can be read
     try:
         content = registry_file.read_text()
@@ -343,33 +352,39 @@ def validate_workspace_setup(workspace_path: str, developer_id: str) -> None:
         raise ValueError(f"Registry validation failed: {e}")
 
 
-def copy_registry_from_developer(workspace_path: str, developer_id: str, source_developer: str) -> str:
+def copy_registry_from_developer(
+    workspace_path: str, developer_id: str, source_developer: str
+) -> str:
     """Copy registry configuration from existing developer workspace."""
-    source_path = Path(f"developer_workspaces/developers/{source_developer}/src/cursus_dev/registry/workspace_registry.py")
-    
+    source_path = Path(
+        f"developer_workspaces/developers/{source_developer}/src/cursus_dev/registry/workspace_registry.py"
+    )
+
     if not source_path.exists():
         raise ValueError(f"Source developer '{source_developer}' has no registry file")
-    
+
     # Read source registry content
     try:
-        with open(source_path, 'r', encoding='utf-8') as f:
+        with open(source_path, "r", encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
         raise ValueError(f"Failed to read source registry: {e}")
-    
+
     # Replace developer ID references in content
     content = content.replace(f'"{source_developer}"', f'"{developer_id}"')
     content = content.replace(f"'{source_developer}'", f"'{developer_id}'")
-    content = content.replace(f"developer_id: {source_developer}", f"developer_id: {developer_id}")
-    
+    content = content.replace(
+        f"developer_id: {source_developer}", f"developer_id: {developer_id}"
+    )
+
     # Create target directory and write content
     target_path = Path(workspace_path) / "src/cursus_dev/registry/workspace_registry.py"
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     try:
-        with open(target_path, 'w', encoding='utf-8') as f:
+        with open(target_path, "w", encoding="utf-8") as f:
             f.write(content)
     except Exception as e:
         raise ValueError(f"Failed to write target registry: {e}")
-    
+
     return str(target_path)

@@ -13,7 +13,9 @@ from typing import Dict, Any
 # Define workspace directory structure
 # workspace_dir points to src/cursus (the main workspace)
 current_file = Path(__file__).resolve()
-workspace_dir = current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps" 
+workspace_dir = (
+    current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps"
+)
 
 # Define component directories within the workspace
 scripts_dir = str(workspace_dir / "scripts")
@@ -24,164 +26,175 @@ configs_dir = str(workspace_dir / "configs")
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
+
 def main():
     """Run alignment validation for package script."""
     print("🔍 Package Script Alignment Validation")
     print("=" * 60)
-    
+
     # Initialize the tester
     tester = UnifiedAlignmentTester(
         scripts_dir=scripts_dir,
         contracts_dir=contracts_dir,
         specs_dir=specs_dir,
         builders_dir=builders_dir,
-        configs_dir=configs_dir
+        configs_dir=configs_dir,
     )
-    
+
     # Run validation for package script
     script_name = "package"
-    
+
     try:
         results = tester.validate_specific_script(script_name)
-        
+
         # Print detailed results
         print(f"\n📊 VALIDATION RESULTS FOR: {script_name}")
         print("=" * 60)
-        
-        status = results.get('overall_status', 'UNKNOWN')
-        status_emoji = '✅' if status == 'PASSING' else '❌' if status == 'FAILING' else '⚠️'
+
+        status = results.get("overall_status", "UNKNOWN")
+        status_emoji = (
+            "✅" if status == "PASSING" else "❌" if status == "FAILING" else "⚠️"
+        )
         print(f"{status_emoji} Overall Status: {status}")
-        
-        for level_num, level_name in enumerate([
-            "Script ↔ Contract",
-            "Contract ↔ Specification", 
-            "Specification ↔ Dependencies",
-            "Builder ↔ Configuration"
-        ], 1):
+
+        for level_num, level_name in enumerate(
+            [
+                "Script ↔ Contract",
+                "Contract ↔ Specification",
+                "Specification ↔ Dependencies",
+                "Builder ↔ Configuration",
+            ],
+            1,
+        ):
             level_key = f"level{level_num}"
             level_result = results.get(level_key, {})
-            level_passed = level_result.get('passed', False)
-            level_issues = level_result.get('issues', [])
-            
-            status_emoji = '✅' if level_passed else '❌'
+            level_passed = level_result.get("passed", False)
+            level_issues = level_result.get("issues", [])
+
+            status_emoji = "✅" if level_passed else "❌"
             print(f"\n{status_emoji} Level {level_num}: {level_name}")
             print(f"   Status: {'PASS' if level_passed else 'FAIL'}")
             print(f"   Issues: {len(level_issues)}")
-            
+
             # Print issues with details
             for issue in level_issues:
-                severity = issue.get('severity', 'ERROR')
-                message = issue.get('message', 'No message')
-                category = issue.get('category', 'unknown')
-                recommendation = issue.get('recommendation', '')
-                
+                severity = issue.get("severity", "ERROR")
+                message = issue.get("message", "No message")
+                category = issue.get("category", "unknown")
+                recommendation = issue.get("recommendation", "")
+
                 print(f"   • {severity} [{category}]: {message}")
                 if recommendation:
                     print(f"     💡 Recommendation: {recommendation}")
-        
+
         # Save reports
         output_dir = Path(__file__).parent / "reports" / "individual"
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Save JSON report
         import json
         from datetime import datetime
-        
+
         # Add metadata
-        results['metadata'] = {
-            'script_name': script_name,
-            'validation_timestamp': datetime.now().isoformat(),
-            'validator_version': '1.0.0',
-            'script_path': str(workspace_dir / 'scripts'/ f"{script_name}.py")
+        results["metadata"] = {
+            "script_name": script_name,
+            "validation_timestamp": datetime.now().isoformat(),
+            "validator_version": "1.0.0",
+            "script_path": str(workspace_dir / "scripts" / f"{script_name}.py"),
         }
-        
+
         json_file = output_dir / f"{script_name}_validation_report.json"
-        with open(json_file, 'w', encoding='utf-8') as f:
+        with open(json_file, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, default=str)
-        
+
         print(f"\n📄 JSON Report saved: {json_file}")
-        
+
         # Generate and save HTML report
         try:
             html_content = generate_html_report(script_name, results)
             html_file = output_dir / f"{script_name}_validation_report.html"
-            
-            with open(html_file, 'w', encoding='utf-8') as f:
+
+            with open(html_file, "w", encoding="utf-8") as f:
                 f.write(html_content)
-            
+
             print(f"🌐 HTML Report saved: {html_file}")
-            
+
         except Exception as e:
             print(f"⚠️  Warning: Could not generate HTML report: {e}")
-        
+
         print("=" * 60)
-        
+
         # Return status for potential automation
-        return 0 if status == 'PASSING' else 1
-        
+        return 0 if status == "PASSING" else 1
+
     except Exception as e:
         print(f"❌ ERROR during validation: {e}")
         import traceback
+
         traceback.print_exc()
         return 2
 
+
 def generate_html_report(script_name: str, results: dict) -> str:
     """Generate HTML report for the validation results."""
-    status = results.get('overall_status', 'UNKNOWN')
-    status_class = 'passing' if status == 'PASSING' else 'failing'
-    timestamp = results.get('metadata', {}).get('validation_timestamp', 'Unknown')
-    
+    status = results.get("overall_status", "UNKNOWN")
+    status_class = "passing" if status == "PASSING" else "failing"
+    timestamp = results.get("metadata", {}).get("validation_timestamp", "Unknown")
+
     # Count issues by severity
     total_issues = 0
     critical_issues = 0
     error_issues = 0
     warning_issues = 0
-    
+
     for level_num in range(1, 5):
         level_key = f"level{level_num}"
         level_result = results.get(level_key, {})
-        issues = level_result.get('issues', [])
+        issues = level_result.get("issues", [])
         total_issues += len(issues)
-        
+
         for issue in issues:
-            severity = issue.get('severity', 'ERROR')
-            if severity == 'CRITICAL':
+            severity = issue.get("severity", "ERROR")
+            if severity == "CRITICAL":
                 critical_issues += 1
-            elif severity == 'ERROR':
+            elif severity == "ERROR":
                 error_issues += 1
-            elif severity == 'WARNING':
+            elif severity == "WARNING":
                 warning_issues += 1
-    
+
     # Generate level sections
     level_sections = ""
-    for level_num, level_name in enumerate([
-        "Level 1: Script ↔ Contract",
-        "Level 2: Contract ↔ Specification",
-        "Level 3: Specification ↔ Dependencies", 
-        "Level 4: Builder ↔ Configuration"
-    ], 1):
+    for level_num, level_name in enumerate(
+        [
+            "Level 1: Script ↔ Contract",
+            "Level 2: Contract ↔ Specification",
+            "Level 3: Specification ↔ Dependencies",
+            "Level 4: Builder ↔ Configuration",
+        ],
+        1,
+    ):
         level_key = f"level{level_num}"
         level_result = results.get(level_key, {})
-        level_passed = level_result.get('passed', False)
-        level_issues = level_result.get('issues', [])
-        
+        level_passed = level_result.get("passed", False)
+        level_issues = level_result.get("issues", [])
+
         result_class = "test-passed" if level_passed else "test-failed"
         status_text = "PASSED" if level_passed else "FAILED"
-        
+
         issues_html = ""
         for issue in level_issues:
-            severity = issue.get('severity', 'ERROR').lower()
-            message = issue.get('message', 'No message')
-            category = issue.get('category', 'unknown')
-            recommendation = issue.get('recommendation', '')
-            
+            severity = issue.get("severity", "ERROR").lower()
+            message = issue.get("message", "No message")
+            category = issue.get("category", "unknown")
+            recommendation = issue.get("recommendation", "")
+
             issues_html += f"""
             <div class="issue {severity}">
                 <strong>{issue.get('severity', 'ERROR')} [{category}]:</strong> {message}
                 {f'<br><em>💡 Recommendation: {recommendation}</em>' if recommendation else ''}
             </div>
             """
-        
+
         level_sections += f"""
         <div class="test-result {result_class}">
             <h4>{level_name}</h4>
@@ -190,7 +203,7 @@ def generate_html_report(script_name: str, results: dict) -> str:
             {issues_html}
         </div>
         """
-    
+
     html_template = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -263,8 +276,9 @@ def generate_html_report(script_name: str, results: dict) -> str:
     </div>
 </body>
 </html>"""
-    
+
     return html_template
+
 
 if __name__ == "__main__":
     sys.exit(main())

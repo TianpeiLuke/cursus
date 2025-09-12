@@ -7,12 +7,14 @@ recommendation engine.
 
 import pytest
 from cursus.pipeline_catalog.utils.recommendation_engine import (
-    RecommendationResult, CompositionRecommendation
+    RecommendationResult,
+    CompositionRecommendation,
 )
+
 
 class TestRecommendationResult:
     """Test suite for RecommendationResult model."""
-    
+
     def test_recommendation_result_creation(self):
         """Test creating RecommendationResult instance."""
         result = RecommendationResult(
@@ -23,9 +25,9 @@ class TestRecommendationResult:
             connection_path=["source", "test_pipeline"],
             tag_overlap=0.8,
             framework="xgboost",
-            complexity="simple"
+            complexity="simple",
         )
-        
+
         assert result.pipeline_id == "test_pipeline"
         assert result.title == "Test Pipeline"
         assert result.score == 2.5
@@ -34,16 +36,16 @@ class TestRecommendationResult:
         assert result.tag_overlap == 0.8
         assert result.framework == "xgboost"
         assert result.complexity == "simple"
-    
+
     def test_recommendation_result_minimal(self):
         """Test creating RecommendationResult with minimal fields."""
         result = RecommendationResult(
             pipeline_id="minimal_pipeline",
             title="Minimal Pipeline",
             score=1.0,
-            reasoning="Basic match"
+            reasoning="Basic match",
         )
-        
+
         assert result.pipeline_id == "minimal_pipeline"
         assert result.title == "Minimal Pipeline"
         assert result.score == 1.0
@@ -53,9 +55,10 @@ class TestRecommendationResult:
         assert result.framework is None
         assert result.complexity is None
 
+
 class TestCompositionRecommendation:
     """Test suite for CompositionRecommendation model."""
-    
+
     def test_composition_recommendation_creation(self):
         """Test creating CompositionRecommendation instance."""
         composition = CompositionRecommendation(
@@ -63,10 +66,14 @@ class TestCompositionRecommendation:
             composition_type="sequential",
             description="Sequential ML workflow",
             estimated_complexity="standard",
-            total_score=4.5
+            total_score=4.5,
         )
-        
-        assert composition.pipeline_sequence == ["pipeline_a", "pipeline_b", "pipeline_c"]
+
+        assert composition.pipeline_sequence == [
+            "pipeline_a",
+            "pipeline_b",
+            "pipeline_c",
+        ]
         assert composition.composition_type == "sequential"
         assert composition.description == "Sequential ML workflow"
         assert composition.estimated_complexity == "standard"

@@ -11,7 +11,7 @@ from .edge_types import (
     DependencyEdge,
     ConditionalEdge,
     ParallelEdge,
-    EdgeCollection
+    EdgeCollection,
 )
 from .enhanced_dag import EnhancedPipelineDAG
 from .workspace_dag import WorkspaceAwareDAG
@@ -21,10 +21,9 @@ __all__ = [
     "PipelineDAG",
     "EnhancedPipelineDAG",
     "WorkspaceAwareDAG",
-    
     # Edge types and management
     "EdgeType",
-    "DependencyEdge", 
+    "DependencyEdge",
     "ConditionalEdge",
     "ParallelEdge",
     "EdgeCollection",

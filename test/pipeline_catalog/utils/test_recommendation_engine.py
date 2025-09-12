@@ -13,23 +13,21 @@ The tests have been split into focused modules:
 # Import all test classes from split modules to maintain test discovery
 from .test_recommendation_engine_models import (
     TestRecommendationResult,
-    TestCompositionRecommendation
+    TestCompositionRecommendation,
 )
 
-from .test_recommendation_engine_core import (
-    TestPipelineRecommendationEngineCore
-)
+from .test_recommendation_engine_core import TestPipelineRecommendationEngineCore
 
 from .test_recommendation_engine_integration import (
     TestPipelineRecommendationEngineCompositions,
-    TestPipelineRecommendationEngineIntegration
+    TestPipelineRecommendationEngineIntegration,
 )
 
 # Re-export all test classes for pytest discovery
 __all__ = [
-    'TestRecommendationResult',
-    'TestCompositionRecommendation',
-    'TestPipelineRecommendationEngineCore',
-    'TestPipelineRecommendationEngineCompositions',
-    'TestPipelineRecommendationEngineIntegration'
+    "TestRecommendationResult",
+    "TestCompositionRecommendation",
+    "TestPipelineRecommendationEngineCore",
+    "TestPipelineRecommendationEngineCompositions",
+    "TestPipelineRecommendationEngineIntegration",
 ]

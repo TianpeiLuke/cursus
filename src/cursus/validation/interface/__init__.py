@@ -9,6 +9,6 @@ required interfaces correctly.
 from .interface_standard_validator import InterfaceStandardValidator, InterfaceViolation
 
 __all__ = [
-    'InterfaceStandardValidator',
-    'InterfaceViolation',
+    "InterfaceStandardValidator",
+    "InterfaceViolation",
 ]

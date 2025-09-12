@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class TemplateType(Enum):
     """Available workspace template types."""
+
     BASIC = "basic"
     ML_PIPELINE = "ml_pipeline"
     DATA_PROCESSING = "data_processing"
@@ -25,41 +26,47 @@ class TemplateType(Enum):
 
 class WorkspaceTemplate(BaseModel):
     """Workspace template configuration."""
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True
-    )
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
+
     name: str = Field(..., min_length=1, description="Template name")
     type: TemplateType
     description: str = Field("", description="Template description")
-    directories: List[str] = Field(default_factory=list, description="Directories to create")
-    files: Dict[str, str] = Field(default_factory=dict, description="Files to create with content")
-    dependencies: List[str] = Field(default_factory=list, description="Required dependencies")
-    config_overrides: Dict[str, Any] = Field(default_factory=dict, description="Default configuration")
+    directories: List[str] = Field(
+        default_factory=list, description="Directories to create"
+    )
+    files: Dict[str, str] = Field(
+        default_factory=dict, description="Files to create with content"
+    )
+    dependencies: List[str] = Field(
+        default_factory=list, description="Required dependencies"
+    )
+    config_overrides: Dict[str, Any] = Field(
+        default_factory=dict, description="Default configuration"
+    )
     created_at: Optional[str] = Field(None, description="Template creation timestamp")
     version: str = Field("1.0.0", description="Template version")
 
 
 class TemplateManager:
     """Manages workspace templates."""
-    
+
     def __init__(self, templates_dir: Optional[Path] = None):
         """
         Initialize template manager.
-        
+
         Args:
             templates_dir: Directory containing template definitions
         """
         self.templates_dir = templates_dir or Path(__file__).parent / "templates"
         self.templates_dir.mkdir(exist_ok=True)
-        
+
         # Initialize built-in templates
         self._initialize_builtin_templates()
-    
+
     def _initialize_builtin_templates(self):
         """Initialize built-in workspace templates."""
-        
+
         # Basic template
         basic_template = WorkspaceTemplate(
             name="basic",
@@ -67,11 +74,11 @@ class TemplateManager:
             description="Basic workspace with standard directory structure",
             directories=[
                 "builders",
-                "configs", 
+                "configs",
                 "contracts",
                 "specs",
                 "scripts",
-                "tests"
+                "tests",
             ],
             files={
                 "README.md": self._get_basic_readme(),
@@ -82,11 +89,11 @@ class TemplateManager:
                 "specs/__init__.py": "",
                 "scripts/__init__.py": "",
                 "tests/__init__.py": "",
-                "tests/test_example.py": self._get_basic_test_example()
+                "tests/test_example.py": self._get_basic_test_example(),
             },
-            created_at=datetime.now().isoformat()
+            created_at=datetime.now().isoformat(),
         )
-        
+
         # ML Pipeline template
         ml_template = WorkspaceTemplate(
             name="ml_pipeline",
@@ -95,7 +102,7 @@ class TemplateManager:
             directories=[
                 "builders",
                 "configs",
-                "contracts", 
+                "contracts",
                 "specs",
                 "scripts",
                 "data",
@@ -104,7 +111,7 @@ class TemplateManager:
                 "data/features",
                 "models",
                 "notebooks",
-                "tests"
+                "tests",
             ],
             files={
                 "README.md": self._get_ml_readme(),
@@ -117,17 +124,12 @@ class TemplateManager:
                 "tests/__init__.py": "",
                 "notebooks/exploration.ipynb": self._get_ml_notebook(),
                 "data/README.md": self._get_data_readme(),
-                "models/README.md": self._get_models_readme()
+                "models/README.md": self._get_models_readme(),
             },
-            dependencies=[
-                "pandas",
-                "numpy", 
-                "scikit-learn",
-                "jupyter"
-            ],
-            created_at=datetime.now().isoformat()
+            dependencies=["pandas", "numpy", "scikit-learn", "jupyter"],
+            created_at=datetime.now().isoformat(),
         )
-        
+
         # Data Processing template
         data_template = WorkspaceTemplate(
             name="data_processing",
@@ -137,14 +139,14 @@ class TemplateManager:
                 "builders",
                 "configs",
                 "contracts",
-                "specs", 
+                "specs",
                 "scripts",
                 "data",
                 "data/raw",
                 "data/processed",
                 "data/output",
                 "schemas",
-                "tests"
+                "tests",
             ],
             files={
                 "README.md": self._get_data_processing_readme(),
@@ -156,68 +158,64 @@ class TemplateManager:
                 "scripts/__init__.py": "",
                 "tests/__init__.py": "",
                 "schemas/README.md": self._get_schemas_readme(),
-                "data/README.md": self._get_data_readme()
+                "data/README.md": self._get_data_readme(),
             },
-            dependencies=[
-                "pandas",
-                "pydantic",
-                "jsonschema"
-            ],
-            created_at=datetime.now().isoformat()
+            dependencies=["pandas", "pydantic", "jsonschema"],
+            created_at=datetime.now().isoformat(),
         )
-        
+
         # Save built-in templates
         self._save_template(basic_template)
         self._save_template(ml_template)
         self._save_template(data_template)
-    
+
     def get_template(self, name: str) -> Optional[WorkspaceTemplate]:
         """
         Get a template by name.
-        
+
         Args:
             name: Template name
-            
+
         Returns:
             WorkspaceTemplate if found, None otherwise
         """
         template_file = self.templates_dir / f"{name}.yaml"
         if not template_file.exists():
             return None
-        
+
         try:
-            with open(template_file, 'r') as f:
+            with open(template_file, "r") as f:
                 template_data = yaml.safe_load(f)
             return WorkspaceTemplate(**template_data)
         except Exception:
             return None
-    
+
     def list_templates(self) -> List[WorkspaceTemplate]:
         """
         List all available templates.
-        
+
         Returns:
             List of available templates
         """
         templates = []
-        
+
         for template_file in self.templates_dir.glob("*.yaml"):
             try:
-                with open(template_file, 'r') as f:
+                with open(template_file, "r") as f:
                     template_data = yaml.safe_load(f)
                 templates.append(WorkspaceTemplate(**template_data))
             except Exception:
                 continue
-        
+
         return templates
-    
+
     def create_template(self, template: WorkspaceTemplate) -> bool:
         """
         Create a new template.
-        
+
         Args:
             template: Template to create
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -227,48 +225,48 @@ class TemplateManager:
             return True
         except Exception:
             return False
-    
+
     def apply_template(self, template_name: str, workspace_path: Path) -> bool:
         """
         Apply a template to a workspace.
-        
+
         Args:
             template_name: Name of template to apply
             workspace_path: Path to workspace directory
-            
+
         Returns:
             True if successful, False otherwise
         """
         template = self.get_template(template_name)
         if not template:
             return False
-        
+
         try:
             # Create directories
             for directory in template.directories:
                 dir_path = workspace_path / directory
                 dir_path.mkdir(parents=True, exist_ok=True)
-            
+
             # Create files
             for file_path, content in template.files.items():
                 full_path = workspace_path / file_path
                 full_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                with open(full_path, 'w') as f:
+
+                with open(full_path, "w") as f:
                     f.write(content)
-            
+
             return True
-            
+
         except Exception:
             return False
-    
+
     def _save_template(self, template: WorkspaceTemplate):
         """Save template to disk."""
         template_file = self.templates_dir / f"{template.name}.yaml"
-        
-        with open(template_file, 'w') as f:
+
+        with open(template_file, "w") as f:
             yaml.dump(template.model_dump(), f, default_flow_style=False)
-    
+
     def _get_basic_readme(self) -> str:
         """Get basic README content."""
         return """# Developer Workspace
@@ -311,7 +309,7 @@ python -m pytest tests/
 4. Test your pipeline scripts
 5. Promote to staging when ready
 """
-    
+
     def _get_basic_gitignore(self) -> str:
         """Get basic .gitignore content."""
         return """# Python
@@ -374,7 +372,7 @@ models/*.h5
 .coverage
 htmlcov/
 """
-    
+
     def _get_basic_test_example(self) -> str:
         """Get basic test example."""
         return '''"""Example test file for workspace components."""
@@ -405,7 +403,7 @@ def test_example_component():
     # Add your component tests here
     assert True  # Placeholder
 '''
-    
+
     def _get_ml_readme(self) -> str:
         """Get ML pipeline README content."""
         return """# ML Pipeline Workspace
@@ -463,10 +461,12 @@ Common ML pipeline steps you might implement:
 4. Validate model performance
 5. Document experiments and results
 """
-    
+
     def _get_ml_gitignore(self) -> str:
         """Get ML-specific .gitignore content."""
-        return self._get_basic_gitignore() + """
+        return (
+            self._get_basic_gitignore()
+            + """
 # ML specific
 *.pkl
 *.joblib
@@ -493,7 +493,8 @@ models/*.h5
 models/*.onnx
 models/checkpoints/
 """
-    
+        )
+
     def _get_ml_notebook(self) -> str:
         """Get ML exploration notebook content."""
         return """{
@@ -579,7 +580,7 @@ models/checkpoints/
  "nbformat": 4,
  "nbformat_minor": 4
 }"""
-    
+
     def _get_data_processing_readme(self) -> str:
         """Get data processing README content."""
         return """# Data Processing Workspace
@@ -635,7 +636,7 @@ Common data processing steps you might implement:
 4. Validate data quality
 5. Monitor pipeline performance
 """
-    
+
     def _get_data_readme(self) -> str:
         """Get data directory README content."""
         return """# Data Directory
@@ -671,7 +672,7 @@ Prefer standard, interoperable formats:
 - Parquet for large datasets
 - Document any custom formats
 """
-    
+
     def _get_models_readme(self) -> str:
         """Get models directory README content."""
         return """# Models Directory
@@ -709,7 +710,7 @@ Consider using a model registry for:
 - Deployment management
 - Collaboration and sharing
 """
-    
+
     def _get_schemas_readme(self) -> str:
         """Get schemas directory README content."""
         return """# Schemas Directory

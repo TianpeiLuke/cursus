@@ -18,7 +18,7 @@ from .builder_registry import (
     StepBuilderRegistry,
     get_global_registry,
     register_global_builder,
-    list_global_step_types
+    list_global_step_types,
 )
 
 from .step_names import (
@@ -27,7 +27,6 @@ from .step_names import (
     CONFIG_STEP_REGISTRY,
     BUILDER_STEP_NAMES,
     SPEC_STEP_TYPES,
-    
     # Helper functions (now workspace-aware)
     get_config_class_name,
     get_builder_step_name,
@@ -39,34 +38,29 @@ from .step_names import (
     validate_spec_type,
     get_step_description,
     list_all_step_info,
-    
     # SageMaker integration functions (now workspace-aware)
     get_sagemaker_step_type,
     get_steps_by_sagemaker_type,
     get_all_sagemaker_step_types,
     validate_sagemaker_step_type,
     get_sagemaker_step_type_mapping,
-    
     # Advanced functions (now workspace-aware)
     get_canonical_name_from_file_name,
     validate_file_name,
-    
     # NEW: Workspace context management
     set_workspace_context,
     get_workspace_context,
     clear_workspace_context,
     workspace_context,
-    
     # NEW: Workspace-aware registry functions
     get_step_names,
     get_config_step_registry,
     get_builder_step_names,
     get_spec_step_types,
-    
     # NEW: Workspace management functions
     list_available_workspaces,
     get_workspace_step_count,
-    has_workspace_conflicts
+    has_workspace_conflicts,
 )
 
 from .hyperparameter_registry import (
@@ -75,7 +69,7 @@ from .hyperparameter_registry import (
     get_hyperparameter_class_by_model_type,
     get_module_path,
     get_all_hyperparameter_info,
-    validate_hyperparameter_class
+    validate_hyperparameter_class,
 )
 
 # NEW: Hybrid registry components (optional import)
@@ -90,23 +84,23 @@ try:
         RegistryType,
         ResolutionMode,
         ResolutionStrategy,
-        ConflictType
+        ConflictType,
     )
-    
+
     # Add hybrid components to exports
     _HYBRID_EXPORTS = [
         "UnifiedRegistryManager",
         "StepDefinition",
-        "ResolutionContext", 
+        "ResolutionContext",
         "StepResolutionResult",
         "RegistryValidationResult",
         "ConflictAnalysis",
         "RegistryType",
         "ResolutionMode",
         "ResolutionStrategy",
-        "ConflictType"
+        "ConflictType",
     ]
-    
+
 except ImportError:
     # Hybrid registry not available - continue with core functionality
     _HYBRID_EXPORTS = []
@@ -114,13 +108,11 @@ except ImportError:
 __all__ = [
     # Exceptions
     "RegistryError",
-    
     # Builder registry
     "StepBuilderRegistry",
     "get_global_registry",
     "register_global_builder",
     "list_global_step_types",
-    
     # Core step names and registry (backward compatible)
     "STEP_NAMES",
     "CONFIG_STEP_REGISTRY",
@@ -143,86 +135,82 @@ __all__ = [
     "get_sagemaker_step_type_mapping",
     "get_canonical_name_from_file_name",
     "validate_file_name",
-    
     # NEW: Workspace context management
     "set_workspace_context",
-    "get_workspace_context", 
+    "get_workspace_context",
     "clear_workspace_context",
     "workspace_context",
-    
     # NEW: Workspace-aware registry functions
     "get_step_names",
     "get_config_step_registry",
-    "get_builder_step_names", 
+    "get_builder_step_names",
     "get_spec_step_types",
-    
     # NEW: Workspace management functions
     "list_available_workspaces",
     "get_workspace_step_count",
     "has_workspace_conflicts",
-    
     # Hyperparameter registry
     "HYPERPARAMETER_REGISTRY",
     "get_all_hyperparameter_classes",
     "get_hyperparameter_class_by_model_type",
     "get_module_path",
     "get_all_hyperparameter_info",
-    "validate_hyperparameter_class"
+    "validate_hyperparameter_class",
 ] + _HYBRID_EXPORTS
+
 
 # Convenience functions for common workspace operations
 def switch_to_workspace(workspace_id: str):
     """
     Switch to a specific workspace context.
-    
+
     Args:
         workspace_id: Workspace identifier to switch to
-        
+
     Example:
         switch_to_workspace("developer_1")
         step_names = STEP_NAMES  # Now uses developer_1 context
     """
     set_workspace_context(workspace_id)
 
+
 def switch_to_core():
     """
     Switch back to core registry (no workspace context).
-    
+
     Example:
         switch_to_core()
         step_names = STEP_NAMES  # Now uses core registry only
     """
     clear_workspace_context()
 
+
 def get_registry_info(workspace_id: str = None) -> dict:
     """
     Get comprehensive registry information for a workspace or core.
-    
+
     Args:
         workspace_id: Optional workspace identifier
-        
+
     Returns:
         Dictionary with registry information
     """
     current_workspace = workspace_id or get_workspace_context()
-    
+
     info = {
         "workspace_id": current_workspace,
         "step_count": len(get_step_names(current_workspace)),
         "available_steps": sorted(get_all_step_names(current_workspace)),
         "sagemaker_types": get_all_sagemaker_step_types(current_workspace),
-        "has_conflicts": has_workspace_conflicts() if current_workspace else False
+        "has_conflicts": has_workspace_conflicts() if current_workspace else False,
     }
-    
+
     if current_workspace:
         info["workspace_step_count"] = get_workspace_step_count(current_workspace)
         info["available_workspaces"] = list_available_workspaces()
-    
+
     return info
 
+
 # Add convenience functions to exports
-__all__.extend([
-    "switch_to_workspace",
-    "switch_to_core", 
-    "get_registry_info"
-])
+__all__.extend(["switch_to_workspace", "switch_to_core", "get_registry_info"])

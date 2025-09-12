@@ -9,34 +9,27 @@ from ...core.base.contract_base import ScriptContract
 
 MODEL_CALIBRATION_CONTRACT = ScriptContract(
     entry_point="model_calibration.py",
-    expected_input_paths={
-        "evaluation_data": "/opt/ml/processing/input/eval_data"
-    },
+    expected_input_paths={"evaluation_data": "/opt/ml/processing/input/eval_data"},
     expected_output_paths={
         "calibration_output": "/opt/ml/processing/output/calibration",
         "metrics_output": "/opt/ml/processing/output/metrics",
-        "calibrated_data": "/opt/ml/processing/output/calibrated_data"
+        "calibrated_data": "/opt/ml/processing/output/calibrated_data",
     },
-    required_env_vars=[
-        "CALIBRATION_METHOD",
-        "LABEL_FIELD", 
-        "SCORE_FIELD",
-        "IS_BINARY"
-    ],
+    required_env_vars=["CALIBRATION_METHOD", "LABEL_FIELD", "SCORE_FIELD", "IS_BINARY"],
     optional_env_vars={
         "MONOTONIC_CONSTRAINT": "True",
         "GAM_SPLINES": "10",
         "ERROR_THRESHOLD": "0.05",
         "NUM_CLASSES": "2",
         "SCORE_FIELD_PREFIX": "prob_class_",
-        "MULTICLASS_CATEGORIES": "[0, 1]"
+        "MULTICLASS_CATEGORIES": "[0, 1]",
     },
     framework_requirements={
         "scikit-learn": ">=0.23.2,<1.0.0",
         "pandas": ">=1.2.0,<2.0.0",
         "numpy": ">=1.20.0",
         "pygam": ">=0.8.0",
-        "matplotlib": ">=3.3.0"
+        "matplotlib": ">=3.3.0",
     },
     description="""Contract for model calibration processing step.
     
@@ -64,5 +57,5 @@ MODEL_CALIBRATION_CONTRACT = ScriptContract(
     - NUM_CLASSES: Number of classes for multi-class classification (optional, default=2)
     - SCORE_FIELD_PREFIX: Prefix for probability columns in multi-class scenario (optional)
     - MULTICLASS_CATEGORIES: JSON string of class names/values for multi-class (optional)
-    """
+    """,
 )

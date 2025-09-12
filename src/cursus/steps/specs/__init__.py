@@ -45,7 +45,9 @@ from .registration_spec import REGISTRATION_SPEC
 
 # Preprocessing specifications
 from .tabular_preprocessing_spec import TABULAR_PREPROCESSING_SPEC
-from .tabular_preprocessing_calibration_spec import TABULAR_PREPROCESSING_CALIBRATION_SPEC
+from .tabular_preprocessing_calibration_spec import (
+    TABULAR_PREPROCESSING_CALIBRATION_SPEC,
+)
 from .tabular_preprocessing_testing_spec import TABULAR_PREPROCESSING_TESTING_SPEC
 from .tabular_preprocessing_training_spec import TABULAR_PREPROCESSING_TRAINING_SPEC
 from .tabular_preprocessing_validation_spec import TABULAR_PREPROCESSING_VALIDATION_SPEC
@@ -62,45 +64,37 @@ __all__ = [
     "BATCH_TRANSFORM_TESTING_SPEC",
     "BATCH_TRANSFORM_TRAINING_SPEC",
     "BATCH_TRANSFORM_VALIDATION_SPEC",
-    
     # Currency Conversion specifications
     "CURRENCY_CONVERSION_CALIBRATION_SPEC",
     "CURRENCY_CONVERSION_TESTING_SPEC",
     "CURRENCY_CONVERSION_TRAINING_SPEC",
     "CURRENCY_CONVERSION_VALIDATION_SPEC",
-    
     # Data Loading specifications
     "DATA_LOADING_SPEC",
     "DATA_LOADING_CALIBRATION_SPEC",
     "DATA_LOADING_TESTING_SPEC",
     "DATA_LOADING_TRAINING_SPEC",
     "DATA_LOADING_VALIDATION_SPEC",
-    
     # Training specifications
     "DUMMY_TRAINING_SPEC",
     "PYTORCH_TRAINING_SPEC",
     "XGBOOST_TRAINING_SPEC",
-    
     # Model specifications
     "PYTORCH_MODEL_SPEC",
     "XGBOOST_MODEL_SPEC",
-    
     # Model operations specifications
     "MODEL_CALIBRATION_SPEC",
     "MODEL_EVAL_SPEC",
-    
     # Packaging and deployment specifications
     "PACKAGE_SPEC",
     "PAYLOAD_SPEC",
     "REGISTRATION_SPEC",
-    
     # Preprocessing specifications
     "TABULAR_PREPROCESSING_SPEC",
     "TABULAR_PREPROCESSING_CALIBRATION_SPEC",
     "TABULAR_PREPROCESSING_TESTING_SPEC",
     "TABULAR_PREPROCESSING_TRAINING_SPEC",
     "TABULAR_PREPROCESSING_VALIDATION_SPEC",
-    
     # Risk Table Mapping specifications
     "RISK_TABLE_MAPPING_CALIBRATION_SPEC",
     "RISK_TABLE_MAPPING_TESTING_SPEC",

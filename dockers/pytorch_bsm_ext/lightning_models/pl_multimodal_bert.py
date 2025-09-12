@@ -24,6 +24,7 @@ from .dist_utils import all_gather, get_rank
 from .pl_tab_ae import TabAE  # Or TabularEmbeddingModule
 from .pl_bert import TextBertBase
 from .pl_model_plots import compute_metrics
+
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # <-- THIS LINE IS MISSING
@@ -37,7 +38,10 @@ logger.propagate = False
 
 
 class MultimodalBert(pl.LightningModule):
-    def __init__(self, config: Dict[str, Union[int, float, str, bool, List[str], torch.FloatTensor]]):
+    def __init__(
+        self,
+        config: Dict[str, Union[int, float, str, bool, List[str], torch.FloatTensor]],
+    ):
         super().__init__()
         self.config = config
         self.model_class = "multimodal_bert"
@@ -47,19 +51,23 @@ class MultimodalBert(pl.LightningModule):
         self.label_name = config["label_name"]
         # Use configurable key names for text input
         self.text_input_ids_key = config.get("text_input_ids_key", "input_ids")
-        self.text_attention_mask_key = config.get("text_attention_mask_key", "attention_mask")
+        self.text_attention_mask_key = config.get(
+            "text_attention_mask_key", "attention_mask"
+        )
         self.text_name = config["text_name"] + "_processed_" + self.text_input_ids_key
-        self.text_attention_mask = config["text_name"] + "_processed_" + self.text_attention_mask_key
+        self.text_attention_mask = (
+            config["text_name"] + "_processed_" + self.text_attention_mask_key
+        )
         self.tab_field_list = config.get("tab_field_list", None)
 
         self.is_binary = config.get("is_binary", True)
         self.task = "binary" if self.is_binary else "multiclass"
         self.num_classes = 2 if self.is_binary else config.get("num_classes", 2)
         self.metric_choices = config.get("metric_choices", ["accuracy", "f1_score"])
-        
+
         # ===== transformed label (multiclass case) =======
         if not self.is_binary and self.num_classes > 2:
-            self.label_name_transformed = self.label_name + '_processed'
+            self.label_name_transformed = self.label_name + "_processed"
         else:
             self.label_name_transformed = self.label_name
 
@@ -76,7 +84,9 @@ class MultimodalBert(pl.LightningModule):
         self.test_has_label = False
 
         # === Sub-networks ===
-        self.tab_subnetwork = TabAE(config) if self.tab_field_list else None  # Or TabularEmbeddingModule
+        self.tab_subnetwork = (
+            TabAE(config) if self.tab_field_list else None
+        )  # Or TabularEmbeddingModule
         tab_dim = self.tab_subnetwork.output_tab_dim if self.tab_subnetwork else 0
 
         self.text_subnetwork = TextBertBase(config)
@@ -108,7 +118,9 @@ class MultimodalBert(pl.LightningModule):
         Forward pass with batch input.
         Expects pre-tokenized inputs and tabular data as a dictionary.
         """
-        tab_data = self.tab_subnetwork.combine_tab_data(batch) if self.tab_subnetwork else None
+        tab_data = (
+            self.tab_subnetwork.combine_tab_data(batch) if self.tab_subnetwork else None
+        )
         return self._forward_impl(batch, tab_data)
 
     def _forward_impl(self, batch, tab_data) -> torch.Tensor:
@@ -132,11 +144,19 @@ class MultimodalBert(pl.LightningModule):
         no_decay = ["bias", "LayerNorm.weight"]
         params = [
             {
-                "params": [p for n, p in self.named_parameters() if not any(nd in n for nd in no_decay)],
+                "params": [
+                    p
+                    for n, p in self.named_parameters()
+                    if not any(nd in n for nd in no_decay)
+                ],
                 "weight_decay": self.weight_decay,
             },
             {
-                "params": [p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)],
+                "params": [
+                    p
+                    for n, p in self.named_parameters()
+                    if any(nd in n for nd in no_decay)
+                ],
                 "weight_decay": 0.0,
             },
         ]
@@ -147,29 +167,38 @@ class MultimodalBert(pl.LightningModule):
                 optimizer, self.warmup_steps, self.trainer.estimated_stepping_batches
             )
             if self.run_scheduler
-            else get_constant_schedule_with_warmup(optimizer, num_warmup_steps=self.warmup_steps)
+            else get_constant_schedule_with_warmup(
+                optimizer, num_warmup_steps=self.warmup_steps
+            )
         )
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
+        }
 
     def run_epoch(self, batch, stage):
-        #labels = batch.get(self.label_name) if stage != "pred" else None
+        # labels = batch.get(self.label_name) if stage != "pred" else None
         labels = batch.get(self.label_name_transformed) if stage != "pred" else None
 
         if labels is not None:
             if not isinstance(labels, torch.Tensor):
                 labels = torch.tensor(labels, device=self.device)
-                
+
             # Important: CrossEntropyLoss always expects LongTensor (class index)
             if self.is_binary:
                 labels = labels.long()  # Binary: Expects LongTensor (class indices)
-            else:    
+            else:
                 # Multiclass: Check if labels are one-hot encoded
                 if labels.dim() > 1:  # Assuming one-hot is 2D
                     labels = labels.argmax(dim=1).long()  # Convert one-hot to indices
                 else:
-                    labels = labels.long()  # Multiclass: Expects LongTensor (class indices)
+                    labels = (
+                        labels.long()
+                    )  # Multiclass: Expects LongTensor (class indices)
 
-        tab_data = self.tab_subnetwork.combine_tab_data(batch) if self.tab_subnetwork else None
+        tab_data = (
+            self.tab_subnetwork.combine_tab_data(batch) if self.tab_subnetwork else None
+        )
 
         logits = self._forward_impl(batch, tab_data)
         loss = self.loss_op(logits, labels) if stage != "pred" else None
@@ -199,7 +228,12 @@ class MultimodalBert(pl.LightningModule):
         preds = torch.tensor(sum(all_gather(self.pred_lst), []))
         labels = torch.tensor(sum(all_gather(self.label_lst), []))
         metrics = compute_metrics(
-            preds.to(device), labels.to(device), self.metric_choices, self.task, self.num_classes, "val"
+            preds.to(device),
+            labels.to(device),
+            self.metric_choices,
+            self.task,
+            self.num_classes,
+            "val",
         )
         self.log_dict(metrics, prog_bar=True)
 
@@ -220,9 +254,10 @@ class MultimodalBert(pl.LightningModule):
         self.pred_lst.clear()
         self.label_lst.clear()
         timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        self.test_output_folder = Path(self.model_path) / f"{self.model_class}-{timestamp}"
+        self.test_output_folder = (
+            Path(self.model_path) / f"{self.model_class}-{timestamp}"
+        )
         self.test_output_folder.mkdir(parents=True, exist_ok=True)
-
 
     def on_test_epoch_end(self):
         import pandas as pd
@@ -232,9 +267,11 @@ class MultimodalBert(pl.LightningModule):
         if self.is_binary:
             results["prob"] = self.pred_lst  # Keep "prob" for binary
         else:
-            results["prob"] = [json.dumps(p) for p in self.pred_lst] # convert the [num_class] list into a string
-        
-        #results = {"prob": self.pred_lst}
+            results["prob"] = [
+                json.dumps(p) for p in self.pred_lst
+            ]  # convert the [num_class] list into a string
+
+        # results = {"prob": self.pred_lst}
         if self.test_has_label:
             results["label"] = self.label_lst
         if self.id_name:
@@ -244,7 +281,6 @@ class MultimodalBert(pl.LightningModule):
         test_file = self.test_output_folder / f"test_result_rank{self.global_rank}.tsv"
         df.to_csv(test_file, sep="\t", index=False)
         print(f"[Rank {self.global_rank}] Saved test results to {test_file}")
-        
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         mode = "test" if self.label_name in batch else "pred"
@@ -252,7 +288,11 @@ class MultimodalBert(pl.LightningModule):
         return (preds, labels) if mode == "test" else preds
 
     # === Export ===
-    def export_to_onnx(self, save_path: Union[str, Path], sample_batch: Dict[str, Union[torch.Tensor, List]]):
+    def export_to_onnx(
+        self,
+        save_path: Union[str, Path],
+        sample_batch: Dict[str, Union[torch.Tensor, List]],
+    ):
         class MultimodalBertONNXWrapper(nn.Module):
             def __init__(self, model: MultimodalBert):
                 super().__init__()
@@ -261,14 +301,19 @@ class MultimodalBert(pl.LightningModule):
                 self.mask_key = model.text_attention_mask
                 self.tab_keys = model.tab_field_list or []
 
-            def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, *tab_tensors: torch.Tensor):
+            def forward(
+                self,
+                input_ids: torch.Tensor,
+                attention_mask: torch.Tensor,
+                *tab_tensors: torch.Tensor,
+            ):
                 batch = {
                     self.text_key: input_ids,
                     self.mask_key: attention_mask,
                 }
                 for name, tensor in zip(self.tab_keys, tab_tensors):
                     batch[name] = tensor
-                #output probability scores instead of logits
+                # output probability scores instead of logits
                 logits = self.model(batch)
                 return nn.functional.softmax(logits, dim=1)
 
@@ -287,8 +332,12 @@ class MultimodalBert(pl.LightningModule):
         input_ids_tensor = sample_batch.get(self.text_name)
         attention_mask_tensor = sample_batch.get(self.text_attention_mask)
 
-        if not isinstance(input_ids_tensor, torch.Tensor) or not isinstance(attention_mask_tensor, torch.Tensor):
-            raise ValueError("Both input_ids and attention_mask must be torch.Tensor in sample_batch.")
+        if not isinstance(input_ids_tensor, torch.Tensor) or not isinstance(
+            attention_mask_tensor, torch.Tensor
+        ):
+            raise ValueError(
+                "Both input_ids and attention_mask must be torch.Tensor in sample_batch."
+            )
 
         input_ids_tensor = input_ids_tensor.to("cpu")
         attention_mask_tensor = attention_mask_tensor.to("cpu")
@@ -306,18 +355,32 @@ class MultimodalBert(pl.LightningModule):
                 if isinstance(value, torch.Tensor):
                     value = value.to("cpu").float()
                     if value.shape[0] != batch_size:
-                        raise ValueError(f"Tensor for field '{field}' has batch size {value.shape[0]} but expected {batch_size}")
+                        raise ValueError(
+                            f"Tensor for field '{field}' has batch size {value.shape[0]} but expected {batch_size}"
+                        )
                     input_tensors.append(value)
-                elif isinstance(value, list) and all(isinstance(x, (int, float)) for x in value):
-                    tensor_val = torch.tensor(value, dtype=torch.float32).view(batch_size, -1).to("cpu")
+                elif isinstance(value, list) and all(
+                    isinstance(x, (int, float)) for x in value
+                ):
+                    tensor_val = (
+                        torch.tensor(value, dtype=torch.float32)
+                        .view(batch_size, -1)
+                        .to("cpu")
+                    )
                     input_tensors.append(tensor_val)
                 else:
-                    logger.warning(f"Field '{field}' has unsupported type ({type(value)}); replacing with zeros.")
-                    input_tensors.append(torch.zeros((batch_size, 1), dtype=torch.float32).to("cpu"))
+                    logger.warning(
+                        f"Field '{field}' has unsupported type ({type(value)}); replacing with zeros."
+                    )
+                    input_tensors.append(
+                        torch.zeros((batch_size, 1), dtype=torch.float32).to("cpu")
+                    )
 
         # Final check
         for name, tensor in zip(input_names, input_tensors):
-            assert tensor.shape[0] == batch_size, f"Inconsistent batch size for input '{name}': {tensor.shape}"
+            assert (
+                tensor.shape[0] == batch_size
+            ), f"Inconsistent batch size for input '{name}': {tensor.shape}"
 
         dynamic_axes = {}
         for name, tensor in zip(input_names, input_tensors):
@@ -327,7 +390,7 @@ class MultimodalBert(pl.LightningModule):
             for i in range(1, tensor.dim()):
                 axes[i] = f"dim_{i}"
             dynamic_axes[name] = axes
-            
+
         try:
             torch.onnx.export(
                 wrapper,
@@ -344,9 +407,11 @@ class MultimodalBert(pl.LightningModule):
         except Exception as e:
             logger.warning(f"ONNX export failed: {e}")
 
-
-
-    def export_to_torchscript(self, save_path: Union[str, Path], sample_batch: Dict[str, Union[torch.Tensor, List]]):
+    def export_to_torchscript(
+        self,
+        save_path: Union[str, Path],
+        sample_batch: Dict[str, Union[torch.Tensor, List]],
+    ):
         self.eval()
 
         # Clean the sample batch: remove list of strings, convert list of numbers to tensors
@@ -369,7 +434,9 @@ class MultimodalBert(pl.LightningModule):
 
         # Trace the forward method using the cleaned sample batch
         try:
-            scripted_model = torch.jit.trace(model_to_export, (sample_batch_tensorized,))
+            scripted_model = torch.jit.trace(
+                model_to_export, (sample_batch_tensorized,)
+            )
         except Exception as e:
             logger.warning(f"Trace failed: {e}. Trying script...")
             scripted_model = torch.jit.script(model_to_export)

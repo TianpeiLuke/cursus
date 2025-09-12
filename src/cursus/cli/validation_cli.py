@@ -11,8 +11,14 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from ..validation.naming.naming_standard_validator import NamingStandardValidator, NamingViolation
-from ..validation.interface.interface_standard_validator import InterfaceStandardValidator, InterfaceViolation
+from ..validation.naming.naming_standard_validator import (
+    NamingStandardValidator,
+    NamingViolation,
+)
+from ..validation.interface.interface_standard_validator import (
+    InterfaceStandardValidator,
+    InterfaceViolation,
+)
 
 
 def print_violations(violations: List, verbose: bool = False) -> None:
@@ -20,11 +26,15 @@ def print_violations(violations: List, verbose: bool = False) -> None:
     if not violations:
         print("✅ No violations found!")
         return
-    
-    violation_type = "naming" if violations and isinstance(violations[0], NamingViolation) else "interface"
+
+    violation_type = (
+        "naming"
+        if violations and isinstance(violations[0], NamingViolation)
+        else "interface"
+    )
     print(f"❌ Found {len(violations)} {violation_type} violations:")
     print()
-    
+
     # Group violations by component
     violations_by_component = {}
     for violation in violations:
@@ -32,7 +42,7 @@ def print_violations(violations: List, verbose: bool = False) -> None:
         if component not in violations_by_component:
             violations_by_component[component] = []
         violations_by_component[component].append(violation)
-    
+
     for component, component_violations in violations_by_component.items():
         print(f"📁 {component}:")
         for violation in component_violations:
@@ -57,7 +67,7 @@ def validate_registry(verbose: bool = False) -> int:
     print("🔍 Validating registry entries...")
     validator = NamingStandardValidator()
     violations = validator.validate_all_registry_entries()
-    
+
     print_violations(violations, verbose)
     return len(violations)
 
@@ -67,7 +77,7 @@ def validate_file_name(filename: str, file_type: str, verbose: bool = False) -> 
     print(f"🔍 Validating file name: {filename} (type: {file_type})")
     validator = NamingStandardValidator()
     violations = validator.validate_file_naming(filename, file_type)
-    
+
     print_violations(violations, verbose)
     return len(violations)
 
@@ -77,7 +87,7 @@ def validate_step_name(step_name: str, verbose: bool = False) -> int:
     print(f"🔍 Validating step name: {step_name}")
     validator = NamingStandardValidator()
     violations = validator._validate_canonical_step_name(step_name, "CLI")
-    
+
     print_violations(violations, verbose)
     return len(violations)
 
@@ -87,7 +97,7 @@ def validate_logical_name(logical_name: str, verbose: bool = False) -> int:
     print(f"🔍 Validating logical name: {logical_name}")
     validator = NamingStandardValidator()
     violations = validator._validate_logical_name(logical_name, "CLI")
-    
+
     print_violations(violations, verbose)
     return len(violations)
 
@@ -95,19 +105,19 @@ def validate_logical_name(logical_name: str, verbose: bool = False) -> int:
 def validate_interface(class_path: str, verbose: bool = False) -> int:
     """Validate step builder interface compliance."""
     print(f"🔍 Validating interface compliance for: {class_path}")
-    
+
     try:
         # Import the class dynamically
-        module_path, class_name = class_path.rsplit('.', 1)
+        module_path, class_name = class_path.rsplit(".", 1)
         module = __import__(module_path, fromlist=[class_name])
         builder_class = getattr(module, class_name)
-        
+
         validator = InterfaceStandardValidator()
         violations = validator.validate_step_builder_interface(builder_class)
-        
+
         print_violations(violations, verbose)
         return len(violations)
-        
+
     except ImportError as e:
         print(f"❌ Could not import {class_path}: {e}")
         return 1
@@ -118,6 +128,7 @@ def validate_interface(class_path: str, verbose: bool = False) -> int:
         print(f"❌ Error validating interface: {e}")
         if verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 
@@ -143,70 +154,62 @@ Examples:
   
   # Validate step builder interface compliance
   python -m cursus.cli.validation_cli interface src.cursus.steps.processing.builder_xgboost_training_step.XGBoostTrainingStepBuilder
-        """
+        """,
     )
-    
+
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
-        help="Show detailed output including suggestions"
+        help="Show detailed output including suggestions",
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
+
     # Registry validation
     registry_parser = subparsers.add_parser(
-        "registry",
-        help="Validate all registry entries"
+        "registry", help="Validate all registry entries"
     )
-    
+
     # File name validation
-    file_parser = subparsers.add_parser(
-        "file",
-        help="Validate a file name"
-    )
+    file_parser = subparsers.add_parser("file", help="Validate a file name")
     file_parser.add_argument("filename", help="File name to validate")
     file_parser.add_argument(
         "file_type",
         choices=["builder", "config", "spec", "contract"],
-        help="Type of file"
+        help="Type of file",
     )
-    
+
     # Step name validation
-    step_parser = subparsers.add_parser(
-        "step",
-        help="Validate a canonical step name"
-    )
+    step_parser = subparsers.add_parser("step", help="Validate a canonical step name")
     step_parser.add_argument("step_name", help="Step name to validate")
-    
+
     # Logical name validation
-    logical_parser = subparsers.add_parser(
-        "logical",
-        help="Validate a logical name"
-    )
+    logical_parser = subparsers.add_parser("logical", help="Validate a logical name")
     logical_parser.add_argument("logical_name", help="Logical name to validate")
-    
+
     # Interface validation
     interface_parser = subparsers.add_parser(
-        "interface",
-        help="Validate step builder interface compliance"
+        "interface", help="Validate step builder interface compliance"
     )
     interface_parser.add_argument(
-        "class_path", 
-        help="Full class path (e.g., src.cursus.steps.processing.builder_xgboost_training_step.XGBoostTrainingStepBuilder)"
+        "class_path",
+        help="Full class path (e.g., src.cursus.steps.processing.builder_xgboost_training_step.XGBoostTrainingStepBuilder)",
     )
-    
+
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         return 1
-    
+
     try:
         if args.command == "registry":
             violation_count = validate_registry(args.verbose)
         elif args.command == "file":
-            violation_count = validate_file_name(args.filename, args.file_type, args.verbose)
+            violation_count = validate_file_name(
+                args.filename, args.file_type, args.verbose
+            )
         elif args.command == "step":
             violation_count = validate_step_name(args.step_name, args.verbose)
         elif args.command == "logical":
@@ -216,20 +219,31 @@ Examples:
         else:
             parser.print_help()
             return 1
-        
+
         if violation_count > 0:
-            validation_type = "interface compliance" if args.command == "interface" else "naming standards"
-            print(f"\n⚠️  Found {violation_count} violation(s). Please fix them to comply with {validation_type}.")
+            validation_type = (
+                "interface compliance"
+                if args.command == "interface"
+                else "naming standards"
+            )
+            print(
+                f"\n⚠️  Found {violation_count} violation(s). Please fix them to comply with {validation_type}."
+            )
             return 1
         else:
-            compliance_type = "interface compliance" if args.command == "interface" else "naming conventions"
+            compliance_type = (
+                "interface compliance"
+                if args.command == "interface"
+                else "naming conventions"
+            )
             print(f"\n✅ All {compliance_type} checks passed!")
             return 0
-            
+
     except Exception as e:
         print(f"❌ Error during validation: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 

@@ -14,8 +14,8 @@ CRADLE_DATA_LOADING_CONTRACT = ScriptContract(
     },
     expected_output_paths={
         "SIGNATURE": "/opt/ml/processing/output/signature",
-        "METADATA": "/opt/ml/processing/output/metadata", 
-        "DATA": "/opt/ml/processing/output/place_holder"  # Placeholder since actual data goes to S3
+        "METADATA": "/opt/ml/processing/output/metadata",
+        "DATA": "/opt/ml/processing/output/place_holder",  # Placeholder since actual data goes to S3
     },
     expected_arguments={
         # No expected arguments - using standard paths from contract
@@ -23,12 +23,10 @@ CRADLE_DATA_LOADING_CONTRACT = ScriptContract(
     required_env_vars=[
         # No strictly required environment variables
     ],
-    optional_env_vars={
-        "OUTPUT_PATH": ""  # Optional override for data output path
-    },
+    optional_env_vars={"OUTPUT_PATH": ""},  # Optional override for data output path
     framework_requirements={
         "python": ">=3.7",
-        "secure_ai_sandbox_python_lib": "*"  # Core dependency for Cradle integration
+        "secure_ai_sandbox_python_lib": "*",  # Core dependency for Cradle integration
     },
     description="""
     Cradle data loading script that:
@@ -61,5 +59,5 @@ CRADLE_DATA_LOADING_CONTRACT = ScriptContract(
     This script is designed to interface with Amazon's internal Cradle data service
     to securely download and prepare data for machine learning pipelines.
     As a source node, this step doesn't have any dependencies on other steps.
-    """
+    """,
 )

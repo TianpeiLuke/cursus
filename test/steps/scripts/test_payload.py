@@ -23,11 +23,12 @@ from cursus.steps.scripts.payload import (
     generate_json_payload,
     generate_sample_payloads,
     save_payloads,
-    main as payload_main
+    main as payload_main,
 )
 
 # Disable logging for cleaner test output
 logging.disable(logging.CRITICAL)
+
 
 class TestMimsPayloadHelpers(unittest.TestCase):
     """Unit tests for the individual helper functions in the payload script."""
@@ -40,7 +41,7 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         self.payload_sample_dir = self.output_dir / "payload_sample"
         self.payload_metadata_dir = self.output_dir / "payload_metadata"
         self.working_dir = self.base_dir / "work"
-        
+
         # Create the directory structure
         self.input_model_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -55,20 +56,20 @@ class TestMimsPayloadHelpers(unittest.TestCase):
     def _create_hyperparameters_tarball(self, hyperparams):
         """Helper to create a model.tar.gz with hyperparameters."""
         model_tar_path = self.input_model_dir / "model.tar.gz"
-        
+
         # Create a temporary directory to hold files for the tarball
         temp_dir = self.base_dir / "temp_tar_contents"
         temp_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Write hyperparameters to a JSON file
         hyperparams_path = temp_dir / "hyperparameters.json"
-        with open(hyperparams_path, 'w') as f:
+        with open(hyperparams_path, "w") as f:
             json.dump(hyperparams, f)
-        
+
         # Create the tarball
         with tarfile.open(model_tar_path, "w:gz") as tar:
             tar.add(hyperparams_path, arcname="hyperparameters.json")
-        
+
         return model_tar_path
 
     def test_create_model_variable_list(self):
@@ -76,11 +77,11 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         full_field_list = ["id", "feature1", "feature2", "category1", "label"]
         tab_field_list = ["feature1", "feature2"]
         cat_field_list = ["category1"]
-        
+
         var_list = create_model_variable_list(
             full_field_list, tab_field_list, cat_field_list, "label", "id"
         )
-        
+
         # Check that the variable list has the correct structure and types
         self.assertEqual(len(var_list), 3)  # 3 fields excluding id and label
         self.assertEqual(var_list[0][0], "feature1")
@@ -100,16 +101,20 @@ class TestMimsPayloadHelpers(unittest.TestCase):
             "label_name": "label",
             "id_name": "id",
             "pipeline_name": "test_pipeline",
-            "pipeline_version": "1.0.0"
+            "pipeline_version": "1.0.0",
         }
         self._create_hyperparameters_tarball(test_hyperparams)
-        
+
         # Extract the hyperparameters using the new function signature
-        hyperparams = extract_hyperparameters_from_tarball(self.input_model_dir, self.working_dir)
-        
+        hyperparams = extract_hyperparameters_from_tarball(
+            self.input_model_dir, self.working_dir
+        )
+
         # Verify the extracted hyperparameters
         self.assertEqual(hyperparams["pipeline_name"], "test_pipeline")
-        self.assertEqual(hyperparams["full_field_list"], ["id", "feature1", "category1", "label"])
+        self.assertEqual(
+            hyperparams["full_field_list"], ["id", "feature1", "category1", "label"]
+        )
         self.assertEqual(hyperparams["tab_field_list"], ["feature1"])
 
     def test_get_environment_content_types(self):
@@ -118,7 +123,7 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         environ_vars = {}
         content_types = get_environment_content_types(environ_vars)
         self.assertEqual(content_types, ["application/json"])
-        
+
         # Test custom value
         environ_vars = {"CONTENT_TYPES": "text/csv,application/json"}
         content_types = get_environment_content_types(environ_vars)
@@ -130,12 +135,12 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         environ_vars = {}
         value = get_environment_default_numeric_value(environ_vars)
         self.assertEqual(value, 0.0)
-        
+
         # Test custom value
         environ_vars = {"DEFAULT_NUMERIC_VALUE": "42.5"}
         value = get_environment_default_numeric_value(environ_vars)
         self.assertEqual(value, 42.5)
-        
+
         # Test invalid value
         environ_vars = {"DEFAULT_NUMERIC_VALUE": "not_a_number"}
         value = get_environment_default_numeric_value(environ_vars)
@@ -147,7 +152,7 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         environ_vars = {}
         value = get_environment_default_text_value(environ_vars)
         self.assertEqual(value, "DEFAULT_TEXT")
-        
+
         # Test custom value
         environ_vars = {"DEFAULT_TEXT_VALUE": "CUSTOM_TEXT"}
         value = get_environment_default_text_value(environ_vars)
@@ -159,12 +164,12 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         environ_vars = {}
         special_fields = get_environment_special_fields(environ_vars)
         self.assertEqual(special_fields, {})
-        
+
         # Test with special fields
         environ_vars = {
             "SPECIAL_FIELD_email": "user@example.com",
             "SPECIAL_FIELD_timestamp": "{timestamp}",
-            "REGULAR_FIELD": "should_be_ignored"
+            "REGULAR_FIELD": "should_be_ignored",
         }
         special_fields = get_environment_special_fields(environ_vars)
         self.assertEqual(len(special_fields), 2)
@@ -177,25 +182,31 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         # Test numeric field
         value = get_field_default_value("feature1", "NUMERIC", 42.0, "DEFAULT_TEXT", {})
         self.assertEqual(value, "42.0")
-        
+
         # Test text field
         value = get_field_default_value("category1", "TEXT", 42.0, "DEFAULT_TEXT", {})
         self.assertEqual(value, "DEFAULT_TEXT")
-        
+
         # Test text field with special value
         special_fields = {"category1": "SPECIAL_VALUE"}
-        value = get_field_default_value("category1", "TEXT", 42.0, "DEFAULT_TEXT", special_fields)
+        value = get_field_default_value(
+            "category1", "TEXT", 42.0, "DEFAULT_TEXT", special_fields
+        )
         self.assertEqual(value, "SPECIAL_VALUE")
-        
+
         # Test text field with timestamp template
         special_fields = {"category1": "Date: {timestamp}"}
-        value = get_field_default_value("category1", "TEXT", 42.0, "DEFAULT_TEXT", special_fields)
+        value = get_field_default_value(
+            "category1", "TEXT", 42.0, "DEFAULT_TEXT", special_fields
+        )
         self.assertTrue(value.startswith("Date: "))
         self.assertGreater(len(value), 6)  # Should have timestamp appended
-        
+
         # Test invalid variable type
         with self.assertRaises(ValueError):
-            get_field_default_value("feature1", "INVALID_TYPE", 42.0, "DEFAULT_TEXT", {})
+            get_field_default_value(
+                "feature1", "INVALID_TYPE", 42.0, "DEFAULT_TEXT", {}
+            )
 
     def test_generate_csv_payload(self):
         """Test generating CSV format payload."""
@@ -203,22 +214,14 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         input_vars = [
             ["feature1", "NUMERIC"],
             ["feature2", "NUMERIC"],
-            ["category1", "TEXT"]
+            ["category1", "TEXT"],
         ]
-        csv_payload = generate_csv_payload(
-            input_vars, 42.0, "DEFAULT_TEXT", {}
-        )
+        csv_payload = generate_csv_payload(input_vars, 42.0, "DEFAULT_TEXT", {})
         self.assertEqual(csv_payload, "42.0,42.0,DEFAULT_TEXT")
-        
+
         # Test with dictionary format
-        input_vars = {
-            "feature1": "NUMERIC",
-            "feature2": "NUMERIC",
-            "category1": "TEXT"
-        }
-        csv_payload = generate_csv_payload(
-            input_vars, 42.0, "DEFAULT_TEXT", {}
-        )
+        input_vars = {"feature1": "NUMERIC", "feature2": "NUMERIC", "category1": "TEXT"}
+        csv_payload = generate_csv_payload(input_vars, 42.0, "DEFAULT_TEXT", {})
         # Order might vary in dictionary, so check parts
         self.assertIn("42.0", csv_payload)
         self.assertIn("DEFAULT_TEXT", csv_payload)
@@ -230,25 +233,17 @@ class TestMimsPayloadHelpers(unittest.TestCase):
         input_vars = [
             ["feature1", "NUMERIC"],
             ["feature2", "NUMERIC"],
-            ["category1", "TEXT"]
+            ["category1", "TEXT"],
         ]
-        json_payload = generate_json_payload(
-            input_vars, 42.0, "DEFAULT_TEXT", {}
-        )
+        json_payload = generate_json_payload(input_vars, 42.0, "DEFAULT_TEXT", {})
         payload_dict = json.loads(json_payload)
         self.assertEqual(payload_dict["feature1"], "42.0")
         self.assertEqual(payload_dict["feature2"], "42.0")
         self.assertEqual(payload_dict["category1"], "DEFAULT_TEXT")
-        
+
         # Test with dictionary format
-        input_vars = {
-            "feature1": "NUMERIC",
-            "feature2": "NUMERIC",
-            "category1": "TEXT"
-        }
-        json_payload = generate_json_payload(
-            input_vars, 42.0, "DEFAULT_TEXT", {}
-        )
+        input_vars = {"feature1": "NUMERIC", "feature2": "NUMERIC", "category1": "TEXT"}
+        json_payload = generate_json_payload(input_vars, 42.0, "DEFAULT_TEXT", {})
         payload_dict = json.loads(json_payload)
         self.assertEqual(payload_dict["feature1"], "42.0")
         self.assertEqual(payload_dict["feature2"], "42.0")
@@ -256,28 +251,27 @@ class TestMimsPayloadHelpers(unittest.TestCase):
 
     def test_generate_sample_payloads(self):
         """Test generating sample payloads for different content types."""
-        input_vars = [
-            ["feature1", "NUMERIC"],
-            ["category1", "TEXT"]
-        ]
+        input_vars = [["feature1", "NUMERIC"], ["category1", "TEXT"]]
         content_types = ["text/csv", "application/json"]
-        
+
         payloads = generate_sample_payloads(
             input_vars, content_types, 42.0, "DEFAULT_TEXT", {}
         )
-        
+
         self.assertEqual(len(payloads), 2)
-        
+
         # Check CSV payload
         csv_payload = next(p for p in payloads if p["content_type"] == "text/csv")
         self.assertEqual(csv_payload["payload"], "42.0,DEFAULT_TEXT")
-        
+
         # Check JSON payload
-        json_payload = next(p for p in payloads if p["content_type"] == "application/json")
+        json_payload = next(
+            p for p in payloads if p["content_type"] == "application/json"
+        )
         payload_dict = json.loads(json_payload["payload"])
         self.assertEqual(payload_dict["feature1"], "42.0")
         self.assertEqual(payload_dict["category1"], "DEFAULT_TEXT")
-        
+
         # Test with unsupported content type
         with self.assertRaises(ValueError):
             generate_sample_payloads(
@@ -286,40 +280,33 @@ class TestMimsPayloadHelpers(unittest.TestCase):
 
     def test_save_payloads(self):
         """Test saving payloads to files."""
-        input_vars = [
-            ["feature1", "NUMERIC"],
-            ["category1", "TEXT"]
-        ]
+        input_vars = [["feature1", "NUMERIC"], ["category1", "TEXT"]]
         content_types = ["text/csv", "application/json"]
-        
+
         file_paths = save_payloads(
-            self.payload_sample_dir,
-            input_vars,
-            content_types,
-            42.0,
-            "DEFAULT_TEXT",
-            {}
+            self.payload_sample_dir, input_vars, content_types, 42.0, "DEFAULT_TEXT", {}
         )
-        
+
         self.assertEqual(len(file_paths), 2)
-        
+
         # Check that files were created
         csv_file = next(p for p in file_paths if "text_csv" in p)
         json_file = next(p for p in file_paths if "application_json" in p)
-        
+
         self.assertTrue(os.path.exists(csv_file))
         self.assertTrue(os.path.exists(json_file))
-        
+
         # Check file contents
-        with open(csv_file, 'r') as f:
+        with open(csv_file, "r") as f:
             csv_content = f.read()
             self.assertEqual(csv_content, "42.0,DEFAULT_TEXT")
-        
-        with open(json_file, 'r') as f:
+
+        with open(json_file, "r") as f:
             json_content = f.read()
             payload_dict = json.loads(json_content)
             self.assertEqual(payload_dict["feature1"], "42.0")
             self.assertEqual(payload_dict["category1"], "DEFAULT_TEXT")
+
 
 class TestMimsPayloadMainFlow(unittest.TestCase):
     """Integration-style tests for the main() function of the payload script."""
@@ -327,14 +314,14 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
     def setUp(self):
         """Set up a temporary directory structure mimicking the SageMaker environment."""
         self.base_dir = Path(tempfile.mkdtemp())
-        
+
         # Define mock paths within the temporary directory
         self.input_model_dir = self.base_dir / "input" / "model"
         self.output_dir = self.base_dir / "output"
         self.payload_sample_dir = self.output_dir / "payload_sample"
         self.payload_metadata_dir = self.output_dir / "payload_metadata"
         self.working_dir = self.base_dir / "work"
-        
+
         # Create the directory structure
         self.input_model_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -346,20 +333,20 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
     def _create_hyperparameters_tarball(self, hyperparams):
         """Helper to create a model.tar.gz with hyperparameters."""
         model_tar_path = self.input_model_dir / "model.tar.gz"
-        
+
         # Create a temporary directory to hold files for the tarball
         temp_dir = self.base_dir / "temp_tar_contents"
         temp_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Write hyperparameters to a JSON file
         hyperparams_path = temp_dir / "hyperparameters.json"
-        with open(hyperparams_path, 'w') as f:
+        with open(hyperparams_path, "w") as f:
             json.dump(hyperparams, f)
-        
+
         # Create the tarball
         with tarfile.open(model_tar_path, "w:gz") as tar:
             tar.add(hyperparams_path, arcname="hyperparameters.json")
-        
+
         return model_tar_path
 
     def test_main_flow(self):
@@ -373,40 +360,36 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
             "id_name": "id",
             "pipeline_name": "test_pipeline",
             "pipeline_version": "1.0.0",
-            "model_registration_objective": "test_objective"
+            "model_registration_objective": "test_objective",
         }
         self._create_hyperparameters_tarball(test_hyperparams)
-        
+
         # Set up input and output paths
-        input_paths = {
-            "model_input": str(self.input_model_dir)
-        }
-        output_paths = {
-            "output_dir": str(self.output_dir)
-        }
+        input_paths = {"model_input": str(self.input_model_dir)}
+        output_paths = {"output_dir": str(self.output_dir)}
         environ_vars = {
             "CONTENT_TYPES": "text/csv,application/json",
             "DEFAULT_NUMERIC_VALUE": "42.0",
             "DEFAULT_TEXT_VALUE": "TEST_TEXT",
             "SPECIAL_FIELD_category1": "SPECIAL_CATEGORY",
-            "WORKING_DIRECTORY": str(self.working_dir)
+            "WORKING_DIRECTORY": str(self.working_dir),
         }
-        
+
         # Run the main function
         result = payload_main(input_paths, output_paths, environ_vars)
-        
+
         # The script creates payload_sample_dir in the working directory, not output directory
         actual_payload_sample_dir = self.working_dir / "payload_sample"
-        
+
         # Check that output directories were created
         self.assertTrue(os.path.exists(actual_payload_sample_dir))
-        
+
         # Check that payload files were created
         csv_files = list(actual_payload_sample_dir.glob("*csv*"))
         json_files = list(actual_payload_sample_dir.glob("*json*"))
         self.assertGreaterEqual(len(csv_files), 1)
         self.assertGreaterEqual(len(json_files), 1)
-        
+
         # Check that payload archive was created
         archive_path = self.output_dir / "payload.tar.gz"
         self.assertTrue(os.path.exists(archive_path))
@@ -415,18 +398,12 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
     def test_main_flow_missing_model_tarball(self):
         """Test the main flow when the model.tar.gz file is missing."""
         # Don't create the model.tar.gz file
-        
+
         # Set up input and output paths
-        input_paths = {
-            "model_input": str(self.input_model_dir)
-        }
-        output_paths = {
-            "output_dir": str(self.output_dir)
-        }
-        environ_vars = {
-            "WORKING_DIRECTORY": str(self.working_dir)
-        }
-        
+        input_paths = {"model_input": str(self.input_model_dir)}
+        output_paths = {"output_dir": str(self.output_dir)}
+        environ_vars = {"WORKING_DIRECTORY": str(self.working_dir)}
+
         # Run the main function and expect an exception
         with self.assertRaises(FileNotFoundError):
             payload_main(input_paths, output_paths, environ_vars)
@@ -440,21 +417,16 @@ class TestMimsPayloadMainFlow(unittest.TestCase):
             empty_file = self.base_dir / "empty.txt"
             empty_file.touch()
             tar.add(empty_file, arcname="empty.txt")
-        
+
         # Set up input and output paths
-        input_paths = {
-            "model_input": str(self.input_model_dir)
-        }
-        output_paths = {
-            "output_dir": str(self.output_dir)
-        }
-        environ_vars = {
-            "WORKING_DIRECTORY": str(self.working_dir)
-        }
-        
+        input_paths = {"model_input": str(self.input_model_dir)}
+        output_paths = {"output_dir": str(self.output_dir)}
+        environ_vars = {"WORKING_DIRECTORY": str(self.working_dir)}
+
         # Run the main function and expect an exception
         with self.assertRaises(FileNotFoundError):
             payload_main(input_paths, output_paths, environ_vars)
 
-if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+
+if __name__ == "__main__":
+    unittest.main(argv=["first-arg-is-ignored"], exit=False)

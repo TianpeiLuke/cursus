@@ -18,8 +18,10 @@ from cursus.steps.scripts.tabular_preprocessing import (
     main as preprocess_main,
 )
 
+
 class TestTabularPreprocessHelpers(unittest.TestCase):
     """Unit tests for the helper functions in the preprocessing script."""
+
     def setUp(self):
         """Set up a temporary directory to act as a mock filesystem."""
         self.temp_dir = tempfile.mkdtemp()
@@ -30,12 +32,12 @@ class TestTabularPreprocessHelpers(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     # --- Helper methods to create test files ---
-    def _create_csv_shard(self, filename, data, gzipped=False, delimiter=','):
+    def _create_csv_shard(self, filename, data, gzipped=False, delimiter=","):
         """Helper to create a CSV/TSV shard file."""
         path = self.temp_path / filename
         df = pd.DataFrame(data)
         if gzipped:
-            with gzip.open(path, 'wt', newline='') as f:
+            with gzip.open(path, "wt", newline="") as f:
                 df.to_csv(f, index=False, sep=delimiter)
         else:
             df.to_csv(path, index=False, sep=delimiter)
@@ -45,12 +47,12 @@ class TestTabularPreprocessHelpers(unittest.TestCase):
         """Helper to create a JSON shard file."""
         path = self.temp_path / filename
         open_func = gzip.open if gzipped else open
-        mode = 'wt'
+        mode = "wt"
         with open_func(path, mode) as f:
             if lines:
                 if data:
                     for record in data:
-                        f.write(json.dumps(record) + '\n')
+                        f.write(json.dumps(record) + "\n")
             else:
                 json.dump(data, f)
         return path
@@ -77,10 +79,12 @@ class TestTabularPreprocessHelpers(unittest.TestCase):
 
     def test_read_json_single_object(self):
         """Test reading a JSON file with a single top-level object."""
-        json_path = self._create_json_shard("single.json", {"a": 1, "b": "c"}, lines=False)
+        json_path = self._create_json_shard(
+            "single.json", {"a": 1, "b": "c"}, lines=False
+        )
         df = _read_file_to_df(json_path)
         self.assertEqual(df.shape, (1, 2))
-        self.assertEqual(df.iloc[0]['b'], 'c')
+        self.assertEqual(df.iloc[0]["b"], "c")
 
     def test_peek_json_format_empty_file(self):
         """Test peek_json_format with an empty file raises an error."""
@@ -89,119 +93,125 @@ class TestTabularPreprocessHelpers(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Empty file"):
             peek_json_format(empty_path)
 
+
 class TestMainFunction(unittest.TestCase):
     """Tests for the main preprocessing logic."""
+
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.input_base_dir = os.path.join(self.temp_dir, 'input')
-        self.input_data_dir = os.path.join(self.input_base_dir, 'data')
-        self.output_dir = os.path.join(self.temp_dir, 'output')
+        self.input_base_dir = os.path.join(self.temp_dir, "input")
+        self.input_data_dir = os.path.join(self.input_base_dir, "data")
+        self.output_dir = os.path.join(self.temp_dir, "output")
         os.makedirs(self.input_data_dir, exist_ok=True)
-        
+
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
     def test_main_training_split(self):
         """Test the main logic for a 'training' job_type, verifying the three-way split."""
-        df = pd.DataFrame({
-            "feature1": np.random.rand(100),
-            "feature2__DOT__val": np.random.rand(100),
-            "label": np.random.choice(['A', 'B'], 100)
-        })
-        df.to_csv(os.path.join(self.input_data_dir, 'part-00000.csv'), index=False)
-        
+        df = pd.DataFrame(
+            {
+                "feature1": np.random.rand(100),
+                "feature2__DOT__val": np.random.rand(100),
+                "label": np.random.choice(["A", "B"], 100),
+            }
+        )
+        df.to_csv(os.path.join(self.input_data_dir, "part-00000.csv"), index=False)
+
         # Create job_args mock
         from argparse import Namespace
-        job_args = Namespace(job_type='training')
-        
+
+        job_args = Namespace(job_type="training")
+
         # Set up input and output paths
-        input_paths = {
-            "data_input": self.input_data_dir
-        }
-        output_paths = {
-            "data_output": self.output_dir
-        }
+        input_paths = {"data_input": self.input_data_dir}
+        output_paths = {"data_output": self.output_dir}
         environ_vars = {
             "LABEL_FIELD": "label",
             "TRAIN_RATIO": "0.6",
-            "TEST_VAL_RATIO": "0.5"
+            "TEST_VAL_RATIO": "0.5",
         }
-        
+
         result = preprocess_main(input_paths, output_paths, environ_vars, job_args)
-        
+
         # Verify outputs
-        train_df = pd.read_csv(os.path.join(self.output_dir, 'train', 'train_processed_data.csv'))
-        test_df = pd.read_csv(os.path.join(self.output_dir, 'test', 'test_processed_data.csv'))
-        val_df = pd.read_csv(os.path.join(self.output_dir, 'val', 'val_processed_data.csv'))
+        train_df = pd.read_csv(
+            os.path.join(self.output_dir, "train", "train_processed_data.csv")
+        )
+        test_df = pd.read_csv(
+            os.path.join(self.output_dir, "test", "test_processed_data.csv")
+        )
+        val_df = pd.read_csv(
+            os.path.join(self.output_dir, "val", "val_processed_data.csv")
+        )
 
         self.assertEqual(len(train_df), 60)
         self.assertEqual(len(test_df), 20)
         self.assertEqual(len(val_df), 20)
         self.assertIn("feature2.val", train_df.columns)
-        self.assertTrue(pd.api.types.is_integer_dtype(train_df['label']))
-        
+        self.assertTrue(pd.api.types.is_integer_dtype(train_df["label"]))
+
         # Verify return value
-        self.assertIn('train', result)
-        self.assertIn('test', result)
-        self.assertIn('val', result)
+        self.assertIn("train", result)
+        self.assertIn("test", result)
+        self.assertIn("val", result)
 
     def test_main_validation_mode(self):
         """Test main logic for a non-training job_type, ensuring no split occurs."""
         df = pd.DataFrame({"feature1": range(100), "label": range(100)})
-        df.to_csv(os.path.join(self.input_data_dir, 'part-00000.csv'), index=False)
-        
+        df.to_csv(os.path.join(self.input_data_dir, "part-00000.csv"), index=False)
+
         # Create job_args mock
         from argparse import Namespace
-        job_args = Namespace(job_type='validation')
-        
+
+        job_args = Namespace(job_type="validation")
+
         # Set up input and output paths
-        input_paths = {
-            "data_input": self.input_data_dir
-        }
-        output_paths = {
-            "data_output": self.output_dir
-        }
+        input_paths = {"data_input": self.input_data_dir}
+        output_paths = {"data_output": self.output_dir}
         environ_vars = {
             "LABEL_FIELD": "label",
             "TRAIN_RATIO": "0.8",
-            "TEST_VAL_RATIO": "0.5"
+            "TEST_VAL_RATIO": "0.5",
         }
-        
+
         result = preprocess_main(input_paths, output_paths, environ_vars, job_args)
-        
-        self.assertTrue(os.path.exists(os.path.join(self.output_dir, 'validation')))
-        self.assertFalse(os.path.exists(os.path.join(self.output_dir, 'train')))
-        val_df = pd.read_csv(os.path.join(self.output_dir, 'validation', 'validation_processed_data.csv'))
+
+        self.assertTrue(os.path.exists(os.path.join(self.output_dir, "validation")))
+        self.assertFalse(os.path.exists(os.path.join(self.output_dir, "train")))
+        val_df = pd.read_csv(
+            os.path.join(self.output_dir, "validation", "validation_processed_data.csv")
+        )
         self.assertEqual(len(val_df), 100)
-        
+
         # Verify return value
-        self.assertIn('validation', result)
+        self.assertIn("validation", result)
         self.assertEqual(len(result), 1)
-    
+
     def test_main_label_not_found_error(self):
         """Test that main raises a RuntimeError if the label field is not found."""
-        df = pd.DataFrame({"feature1": [1,2]})
-        df.to_csv(os.path.join(self.input_data_dir, 'part-00000.csv'), index=False)
+        df = pd.DataFrame({"feature1": [1, 2]})
+        df.to_csv(os.path.join(self.input_data_dir, "part-00000.csv"), index=False)
 
         # Create job_args mock
         from argparse import Namespace
-        job_args = Namespace(job_type='training')
-        
+
+        job_args = Namespace(job_type="training")
+
         # Set up input and output paths
-        input_paths = {
-            "data_input": self.input_data_dir
-        }
-        output_paths = {
-            "data_output": self.output_dir
-        }
+        input_paths = {"data_input": self.input_data_dir}
+        output_paths = {"data_output": self.output_dir}
         environ_vars = {
             "LABEL_FIELD": "wrong_label",
             "TRAIN_RATIO": "0.8",
-            "TEST_VAL_RATIO": "0.5"
+            "TEST_VAL_RATIO": "0.5",
         }
 
-        with self.assertRaisesRegex(RuntimeError, "Label field 'wrong_label' not found"):
+        with self.assertRaisesRegex(
+            RuntimeError, "Label field 'wrong_label' not found"
+        ):
             preprocess_main(input_paths, output_paths, environ_vars, job_args)
 
-if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+
+if __name__ == "__main__":
+    unittest.main(argv=["first-arg-is-ignored"], exit=False)

@@ -22,71 +22,79 @@ if TYPE_CHECKING:
     from .specification_base import DependencySpec, OutputSpec, StepSpecification
     from .builder_base import StepBuilderBase
 
+
 def get_base_pipeline_config():
     """Lazy import for BasePipelineConfig to avoid circular imports."""
     from .config_base import BasePipelineConfig
+
     return BasePipelineConfig
+
 
 def get_dependency_spec():
     """Lazy import for DependencySpec to avoid circular imports."""
     from .specification_base import DependencySpec
+
     return DependencySpec
+
 
 def get_output_spec():
     """Lazy import for OutputSpec to avoid circular imports."""
     from .specification_base import OutputSpec
+
     return OutputSpec
+
 
 def get_step_specification():
     """Lazy import for StepSpecification to avoid circular imports."""
     from .specification_base import StepSpecification
+
     return StepSpecification
+
 
 def get_step_builder_base():
     """Lazy import for StepBuilderBase to avoid circular imports."""
     from .builder_base import StepBuilderBase
+
     return StepBuilderBase
+
 
 # For backward compatibility, provide the classes via lazy loading
 def __getattr__(name):
     """Provide lazy loading for backward compatibility."""
-    if name == 'BasePipelineConfig':
+    if name == "BasePipelineConfig":
         return get_base_pipeline_config()
-    elif name == 'DependencySpec':
+    elif name == "DependencySpec":
         return get_dependency_spec()
-    elif name == 'OutputSpec':
+    elif name == "OutputSpec":
         return get_output_spec()
-    elif name == 'StepSpecification':
+    elif name == "StepSpecification":
         return get_step_specification()
-    elif name == 'StepBuilderBase':
+    elif name == "StepBuilderBase":
         return get_step_builder_base()
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
+
 __all__ = [
     # Enums (always available)
-    'DependencyType',
-    'NodeType',
-    
+    "DependencyType",
+    "NodeType",
     # Contract classes (always available)
-    'ScriptContract',
-    'ValidationResult', 
-    'ScriptAnalyzer',
-    
+    "ScriptContract",
+    "ValidationResult",
+    "ScriptAnalyzer",
     # Hyperparameters (always available)
-    'ModelHyperparameters',
-    
+    "ModelHyperparameters",
     # Lazy-loaded classes (available via __getattr__)
-    'BasePipelineConfig',
-    'DependencySpec',
-    'OutputSpec',
-    'StepSpecification',
-    'StepBuilderBase',
-    
+    "BasePipelineConfig",
+    "DependencySpec",
+    "OutputSpec",
+    "StepSpecification",
+    "StepBuilderBase",
     # Lazy import functions
-    'get_base_pipeline_config',
-    'get_dependency_spec',
-    'get_output_spec',
-    'get_step_specification',
-    'get_step_builder_base',
+    "get_base_pipeline_config",
+    "get_dependency_spec",
+    "get_output_spec",
+    "get_step_specification",
+    "get_step_builder_base",
 ]

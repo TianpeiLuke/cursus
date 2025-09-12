@@ -7,10 +7,11 @@ before and after tests, ensuring proper isolation between test cases.
 
 import pytest
 
+
 def reset_all_global_state():
     """
     Reset all global state for testing.
-    
+
     This function resets the state of all global singletons used in the pipeline_deps
     module, ensuring that tests start with a clean state.
     """
@@ -18,11 +19,12 @@ def reset_all_global_state():
     # are now created per-test and don't require global state reset
     pass
 
+
 @pytest.fixture(autouse=True)
 def isolated_test_setup():
     """
     Pytest fixture that automatically resets global state before and after each test.
-    
+
     This fixture ensures that tests are properly isolated from each other by
     resetting all global state before and after each test execution.
     """
@@ -31,6 +33,7 @@ def isolated_test_setup():
     yield
     # Teardown: reset global state after test
     reset_all_global_state()
+
 
 # Example usage:
 """

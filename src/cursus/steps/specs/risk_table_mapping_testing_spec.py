@@ -5,13 +5,22 @@ This module defines the declarative specification for risk table mapping steps
 specifically for testing data, including their dependencies and outputs.
 """
 
-from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
+from ...core.base.specification_base import (
+    StepSpecification,
+    DependencySpec,
+    OutputSpec,
+    DependencyType,
+    NodeType,
+)
 from ...registry.step_names import get_spec_step_type_with_job_type
+
 
 # Import the contract at runtime to avoid circular imports
 def _get_risk_table_mapping_contract():
     from ..contracts.risk_table_mapping_contract import RISK_TABLE_MAPPING_CONTRACT
+
     return RISK_TABLE_MAPPING_CONTRACT
+
 
 # Risk Table Mapping Testing Step Specification
 RISK_TABLE_MAPPING_TESTING_SPEC = StepSpecification(
@@ -24,9 +33,16 @@ RISK_TABLE_MAPPING_TESTING_SPEC = StepSpecification(
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["TabularPreprocessing", "ProcessingStep"],
-            semantic_keywords=["testing", "test", "data", "input", "preprocessed", "tabular"],
+            semantic_keywords=[
+                "testing",
+                "test",
+                "data",
+                "input",
+                "preprocessed",
+                "tabular",
+            ],
             data_type="S3Uri",
-            description="Preprocessed testing data from tabular preprocessing step"
+            description="Preprocessed testing data from tabular preprocessing step",
         ),
         # Hyperparameters are optional as they can be generated internally
         DependencySpec(
@@ -34,22 +50,38 @@ RISK_TABLE_MAPPING_TESTING_SPEC = StepSpecification(
             dependency_type=DependencyType.HYPERPARAMETERS,
             required=False,
             compatible_sources=[
-                "HyperparameterPrep", "ProcessingStep", "ConfigurationStep",
-                "DataPrep", "ModelTraining", "FeatureEngineering", "DataQuality"
+                "HyperparameterPrep",
+                "ProcessingStep",
+                "ConfigurationStep",
+                "DataPrep",
+                "ModelTraining",
+                "FeatureEngineering",
+                "DataQuality",
             ],
-            semantic_keywords=["config", "params", "hyperparameters", "settings", "hyperparams"],
+            semantic_keywords=[
+                "config",
+                "params",
+                "hyperparameters",
+                "settings",
+                "hyperparams",
+            ],
             data_type="S3Uri",
-            description="Optional external hyperparameters configuration file (will be overridden by internal generation)"
+            description="Optional external hyperparameters configuration file (will be overridden by internal generation)",
         ),
         DependencySpec(
             logical_name="risk_tables",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["RiskTableMapping_Training"],
-            semantic_keywords=["risk_tables", "bin_mapping", "categorical_mappings", "model_artifacts"],
+            semantic_keywords=[
+                "risk_tables",
+                "bin_mapping",
+                "categorical_mappings",
+                "model_artifacts",
+            ],
             data_type="S3Uri",
-            description="Risk tables and imputation models from training step"
-        )
+            description="Risk tables and imputation models from training step",
+        ),
     ],
     outputs=[
         OutputSpec(
@@ -58,7 +90,7 @@ RISK_TABLE_MAPPING_TESTING_SPEC = StepSpecification(
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",
-            description="Processed testing data with risk table mappings applied"
+            description="Processed testing data with risk table mappings applied",
         ),
         OutputSpec(
             logical_name="risk_tables",
@@ -66,7 +98,7 @@ RISK_TABLE_MAPPING_TESTING_SPEC = StepSpecification(
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['risk_tables'].S3Output.S3Uri",
             data_type="S3Uri",
-            description="Risk tables and imputation models (passthrough from training)"
-        )
-    ]
+            description="Risk tables and imputation models (passthrough from training)",
+        ),
+    ],
 )

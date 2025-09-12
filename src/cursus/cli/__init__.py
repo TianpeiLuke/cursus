@@ -12,14 +12,13 @@ from .runtime_testing_cli import main as runtime_testing_main
 from .validation_cli import main as validation_main
 from .workspace_cli import main as workspace_main
 
-__all__ = [
-    "main"
-]
+__all__ = ["main"]
+
 
 def main():
     """Main CLI entry point - dispatcher for all Cursus CLI tools."""
     parser = argparse.ArgumentParser(
-        prog='cursus.cli',
+        prog="cursus.cli",
         description="Cursus CLI - Pipeline development and validation tools",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -40,50 +39,55 @@ Examples:
 
 For help with a specific command:
   python -m cursus.cli <command> --help
-        """
+        """,
     )
-    
+
     parser.add_argument(
-        'command',
+        "command",
         choices=[
-            'alignment', 'builder-test', 'catalog', 
-            'registry', 'runtime-testing', 'validation', 'workspace'
+            "alignment",
+            "builder-test",
+            "catalog",
+            "registry",
+            "runtime-testing",
+            "validation",
+            "workspace",
         ],
-        help='CLI command to run'
+        help="CLI command to run",
     )
-    
+
     parser.add_argument(
-        'args',
+        "args",
         nargs=argparse.REMAINDER,
-        help='Arguments to pass to the selected command'
+        help="Arguments to pass to the selected command",
     )
-    
+
     # Parse only the first argument to get the command
     if len(sys.argv) < 2:
         parser.print_help()
         return 1
-    
+
     args = parser.parse_args()
-    
+
     # Modify sys.argv to pass remaining arguments to the selected CLI
     original_argv = sys.argv[:]
-    sys.argv = [f'cursus.cli.{args.command}'] + args.args
-    
+    sys.argv = [f"cursus.cli.{args.command}"] + args.args
+
     try:
         # Route to appropriate CLI module
-        if args.command == 'alignment':
+        if args.command == "alignment":
             return alignment_main()
-        elif args.command == 'builder-test':
+        elif args.command == "builder-test":
             return builder_test_main()
-        elif args.command == 'catalog':
+        elif args.command == "catalog":
             return catalog_main()
-        elif args.command == 'registry':
+        elif args.command == "registry":
             return registry_main()
-        elif args.command == 'runtime-testing':
+        elif args.command == "runtime-testing":
             return runtime_testing_main()
-        elif args.command == 'validation':
+        elif args.command == "validation":
             return validation_main()
-        elif args.command == 'workspace':
+        elif args.command == "workspace":
             return workspace_main()
         else:
             parser.print_help()

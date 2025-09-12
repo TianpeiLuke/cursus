@@ -9,38 +9,31 @@ from ...core.base.contract_base import ScriptContract
 
 CURRENCY_CONVERSION_CONTRACT = ScriptContract(
     entry_point="currency_conversion.py",
-    expected_input_paths={
-        "data_input": "/opt/ml/processing/input/data"
-    },
-    expected_output_paths={
-        "converted_data": "/opt/ml/processing/output"
-    },
+    expected_input_paths={"data_input": "/opt/ml/processing/input/data"},
+    expected_output_paths={"converted_data": "/opt/ml/processing/output"},
     expected_arguments={
         "job-type": "training",  # Type of job (training, validation, testing, calibration)
-        "mode": "per_split",     # Conversion mode (per_split or split_after_conversion)
-        "train-ratio": "0.7",    # Training data ratio (when mode=split_after_conversion)
-        "test-val-ratio": "0.5", # Test/validation split ratio (when mode=split_after_conversion)
+        "mode": "per_split",  # Conversion mode (per_split or split_after_conversion)
+        "train-ratio": "0.7",  # Training data ratio (when mode=split_after_conversion)
+        "test-val-ratio": "0.5",  # Test/validation split ratio (when mode=split_after_conversion)
         "marketplace-id-col": "marketplace_id",  # Column containing marketplace IDs
-        "currency-col": "",      # Optional existing currency column (empty string for optional)
+        "currency-col": "",  # Optional existing currency column (empty string for optional)
         "default-currency": "USD",  # Default currency code
         "skip-invalid-currencies": "false",  # Skip rows with invalid currencies
         "enable-conversion": "true",  # Enable/disable conversion
-        "n-workers": "50"        # Number of parallel workers
+        "n-workers": "50",  # Number of parallel workers
     },
     required_env_vars=[
         "CURRENCY_CONVERSION_VARS",
-        "CURRENCY_CONVERSION_DICT", 
+        "CURRENCY_CONVERSION_DICT",
         "MARKETPLACE_INFO",
-        "LABEL_FIELD"
+        "LABEL_FIELD",
     ],
-    optional_env_vars={
-        "TRAIN_RATIO": "0.7",
-        "TEST_VAL_RATIO": "0.5"
-    },
+    optional_env_vars={"TRAIN_RATIO": "0.7", "TEST_VAL_RATIO": "0.5"},
     framework_requirements={
         "pandas": ">=1.3.0",
         "numpy": ">=1.21.0",
-        "scikit-learn": ">=1.0.0"
+        "scikit-learn": ">=1.0.0",
     },
     description="""
     Currency conversion script that:
@@ -75,5 +68,5 @@ CURRENCY_CONVERSION_CONTRACT = ScriptContract(
     - --skip-invalid-currencies: Skip rows with invalid currencies
     - --enable-conversion: Enable/disable conversion (default: true)
     - --n-workers: Number of parallel workers (default: 50)
-    """
+    """,
 )

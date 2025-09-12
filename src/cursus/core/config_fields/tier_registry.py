@@ -54,7 +54,6 @@ class ConfigFieldTierRegistry:
         "author": 1,
         "region": 1,
         "bucket": 1,
-        
         # System Inputs (Tier 2)
         "metric_choices": 2,
         "device": 2,
@@ -90,81 +89,82 @@ class ConfigFieldTierRegistry:
         "special_field_values": 2,
         "source_model_inference_content_types": 2,
         "source_model_inference_response_types": 2,
-        
         # All other fields default to Tier 3 (derived)
     }
-    
+
     @classmethod
     def get_tier(cls, field_name: str) -> int:
         """
         Get tier classification for a field.
-        
+
         Args:
             field_name: The name of the field to get the tier for
-            
+
         Returns:
             int: Tier classification (1, 2, or 3)
         """
         return cls.DEFAULT_TIER_REGISTRY.get(field_name, 3)  # Default to Tier 3
-        
+
     @classmethod
     def register_field(cls, field_name: str, tier: int) -> None:
         """
         Register a field with a specific tier.
-        
+
         Args:
             field_name: The name of the field to register
             tier: The tier to assign (1, 2, or 3)
-            
+
         Raises:
             ValueError: If tier is not 1, 2, or 3
         """
         if tier not in [1, 2, 3]:
             raise ValueError(f"Tier must be 1, 2, or 3, got {tier}")
-            
+
         cls.DEFAULT_TIER_REGISTRY[field_name] = tier
-        
+
     @classmethod
     def register_fields(cls, tier_mapping: Dict[str, int]) -> None:
         """
         Register multiple fields with their tiers.
-        
+
         Args:
             tier_mapping: Dictionary mapping field names to tier classifications
-            
+
         Raises:
             ValueError: If any tier is not 1, 2, or 3
         """
         for field_name, tier in tier_mapping.items():
             if tier not in [1, 2, 3]:
-                raise ValueError(f"Tier must be 1, 2, or 3, got {tier} for field {field_name}")
-                
+                raise ValueError(
+                    f"Tier must be 1, 2, or 3, got {tier} for field {field_name}"
+                )
+
         cls.DEFAULT_TIER_REGISTRY.update(tier_mapping)
-        
+
     @classmethod
     def get_fields_by_tier(cls, tier: int) -> Set[str]:
         """
         Get all fields assigned to a specific tier.
-        
+
         Args:
             tier: Tier classification (1, 2, or 3)
-            
+
         Returns:
             Set[str]: Set of field names assigned to the specified tier
-            
+
         Raises:
             ValueError: If tier is not 1, 2, or 3
         """
         if tier not in [1, 2, 3]:
             raise ValueError(f"Tier must be 1, 2, or 3, got {tier}")
-            
+
         return {field for field, t in cls.DEFAULT_TIER_REGISTRY.items() if t == tier}
-        
+
     @classmethod
     def reset_to_defaults(cls) -> None:
         """
         Reset the registry to default tier classifications.
-        
+
         This method is primarily intended for testing purposes.
         """
         # Make a deep copy of the original defaults

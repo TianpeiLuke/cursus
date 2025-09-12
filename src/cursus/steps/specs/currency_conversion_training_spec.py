@@ -5,13 +5,22 @@ This module defines the declarative specification for currency conversion steps
 specifically for training data, including their dependencies and outputs.
 """
 
-from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
+from ...core.base.specification_base import (
+    StepSpecification,
+    DependencySpec,
+    OutputSpec,
+    DependencyType,
+    NodeType,
+)
 from ...registry.step_names import get_spec_step_type_with_job_type
+
 
 # Import the contract at runtime to avoid circular imports
 def _get_currency_conversion_contract():
     from ..contracts.currency_conversion_contract import CURRENCY_CONVERSION_CONTRACT
+
     return CURRENCY_CONVERSION_CONTRACT
+
 
 # Currency Conversion Training Step Specification
 CURRENCY_CONVERSION_TRAINING_SPEC = StepSpecification(
@@ -23,10 +32,23 @@ CURRENCY_CONVERSION_TRAINING_SPEC = StepSpecification(
             logical_name="data_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
-            compatible_sources=["TabularPreprocessing", "ProcessingStep", "CradleDataLoading"],
-            semantic_keywords=["training", "train", "data", "processed", "tabular", "currency", "monetary", "conversion"],
+            compatible_sources=[
+                "TabularPreprocessing",
+                "ProcessingStep",
+                "CradleDataLoading",
+            ],
+            semantic_keywords=[
+                "training",
+                "train",
+                "data",
+                "processed",
+                "tabular",
+                "currency",
+                "monetary",
+                "conversion",
+            ],
             data_type="S3Uri",
-            description="Processed training data requiring currency conversion"
+            description="Processed training data requiring currency conversion",
         )
     ],
     outputs=[
@@ -35,7 +57,7 @@ CURRENCY_CONVERSION_TRAINING_SPEC = StepSpecification(
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
             data_type="S3Uri",
-            description="Currency-converted training data with standardized monetary values"
+            description="Currency-converted training data with standardized monetary values",
         )
-    ]
+    ],
 )

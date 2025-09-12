@@ -7,7 +7,4 @@ This package contains specialized analyzers for different aspects of the alignme
 from .config_analyzer import ConfigurationAnalyzer
 from .builder_analyzer import BuilderCodeAnalyzer
 
-__all__ = [
-    'ConfigurationAnalyzer',
-    'BuilderCodeAnalyzer'
-]
+__all__ = ["ConfigurationAnalyzer", "BuilderCodeAnalyzer"]

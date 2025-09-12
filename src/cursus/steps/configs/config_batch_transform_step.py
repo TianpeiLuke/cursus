@@ -11,64 +11,60 @@ class BatchTransformStepConfig(BasePipelineConfig):
     Inherits all the BasePipelineConfig attributes (bucket, region, etc.)
     and adds just what's needed to drive a TransformStep.
     """
-    
 
     # 1) Which slice are we scoring?
     job_type: str = Field(
         ...,
-        description="One of 'training','testing','validation','calibration' to indicate which slice to transform"
+        description="One of 'training','testing','validation','calibration' to indicate which slice to transform",
     )
 
     # Note: Input/output locations are now defined in step specs and provided through dependencies
 
     # 3) Compute sizing
     transform_instance_type: str = Field(
-        default="ml.m5.large",
-        description="Instance type for the BatchTransform job"
+        default="ml.m5.large", description="Instance type for the BatchTransform job"
     )
     transform_instance_count: int = Field(
-        default=1, ge=1,
-        description="Number of instances for the BatchTransform job"
+        default=1, ge=1, description="Number of instances for the BatchTransform job"
     )
 
     # 4) Content negotiation & splitting
     content_type: str = Field(
-        default="text/csv",
-        description="MIME type of the input data"
+        default="text/csv", description="MIME type of the input data"
     )
     accept: str = Field(
         default="text/csv",
-        description="Response MIME type so output_fn knows how to format"
+        description="Response MIME type so output_fn knows how to format",
     )
     split_type: str = Field(
         default="Line",
-        description="How to split the input file (must match your container’s input_fn)"
+        description="How to split the input file (must match your container’s input_fn)",
     )
     assemble_with: Optional[str] = Field(
         default="Line",
-        description="How to re‐assemble input+output when join_source='Input'"
+        description="How to re‐assemble input+output when join_source='Input'",
     )
 
     # 5) Optional JMESPath filters
     input_filter: Optional[str] = Field(
         default="$[1:]",
-        description="JMESPath filter on each input record (e.g. '$[1:]')"
+        description="JMESPath filter on each input record (e.g. '$[1:]')",
     )
     output_filter: Optional[str] = Field(
         default="$[-1]",
-        description="JMESPath filter on each joined record (e.g. '$[-1]')"
+        description="JMESPath filter on each joined record (e.g. '$[-1]')",
     )
 
     # 6) Join strategy
     join_source: str = Field(
-        default="Input",
-        description="Whether to join on the 'Input' or 'Output' stream"
+        default="Input", description="Whether to join on the 'Input' or 'Output' stream"
     )
 
     # Note: input_names and output_names have been removed in favor of script contracts
 
     class Config(BasePipelineConfig.Config):
         """inherit all your BasePipelineConfig config settings"""
+
         pass
 
     @field_validator("job_type")
@@ -86,14 +82,16 @@ class BatchTransformStepConfig(BasePipelineConfig):
             raise ValueError(f"invalid instance type '{v}', must start with 'ml.'")
         return v
 
-    @model_validator(mode='after')
-    def validate_config(self) -> 'BatchTransformStepConfig':
+    @model_validator(mode="after")
+    def validate_config(self) -> "BatchTransformStepConfig":
         """Validate join and assemble configurations."""
         split = self.split_type
         assemble = self.assemble_with
         join = self.join_source
         if join == "Input" and assemble and assemble != split:
-            raise ValueError("when join_source='Input', assemble_with must equal split_type")
+            raise ValueError(
+                "when join_source='Input', assemble_with must equal split_type"
+            )
         return self
 
     # Note: set_default_names validator has been removed along with input_names and output_names

@@ -9,8 +9,4 @@ from .script_analyzer import ScriptAnalyzer
 from .path_extractor import PathExtractor
 from .import_analyzer import ImportAnalyzer
 
-__all__ = [
-    'ScriptAnalyzer',
-    'PathExtractor', 
-    'ImportAnalyzer'
-]
+__all__ = ["ScriptAnalyzer", "PathExtractor", "ImportAnalyzer"]

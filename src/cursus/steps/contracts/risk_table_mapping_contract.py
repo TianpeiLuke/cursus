@@ -12,11 +12,11 @@ RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     expected_input_paths={
         "data_input": "/opt/ml/processing/input/data",
         "hyperparameters_s3_uri": "/opt/ml/processing/input/config",
-        "risk_tables": "/opt/ml/processing/input/risk_tables"  # Optional for non-training modes
+        "risk_tables": "/opt/ml/processing/input/risk_tables",  # Optional for non-training modes
     },
     expected_output_paths={
         "processed_data": "/opt/ml/processing/output",
-        "risk_tables": "/opt/ml/processing/output"  # Shared path with processed_data
+        "risk_tables": "/opt/ml/processing/output",  # Shared path with processed_data
     },
     expected_arguments={
         # No expected arguments - job_type comes from config
@@ -30,7 +30,7 @@ RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     framework_requirements={
         "pandas": ">=1.3.0",
         "numpy": ">=1.21.0",
-        "scikit-learn": ">=1.0.0"
+        "scikit-learn": ">=1.0.0",
     },
     description="""
     Risk table mapping script that:
@@ -71,5 +71,5 @@ RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     - Loads pre-trained risk tables and imputation models
     - Transforms data using loaded artifacts
     - Maintains the same output structure as training mode
-    """
+    """,
 )

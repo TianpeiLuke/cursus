@@ -9,8 +9,9 @@ from unittest.mock import Mock, patch, MagicMock
 from cursus.validation.alignment.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
-    get_step_type_context
+    get_step_type_context,
 )
+
 
 class TestStepTypeDetection:
     """Test step type detection functionality."""
@@ -19,7 +20,7 @@ class TestStepTypeDetection:
         """Test step type detection for training script."""
         # Test the fallback behavior when registry is not available
         result = detect_step_type_from_registry("xgboost_training")
-        
+
         # The actual implementation returns "Training" for training scripts
         assert result == "Training"
 
@@ -27,7 +28,7 @@ class TestStepTypeDetection:
         """Test step type detection for processing script."""
         # Test the fallback behavior when registry is not available
         result = detect_step_type_from_registry("tabular_preprocessing")
-        
+
         # Should return "Processing" as fallback when registry import fails
         assert result == "Processing"
 
@@ -35,66 +36,66 @@ class TestStepTypeDetection:
         """Test step type detection fallback for unknown script."""
         # Execute - this should fallback to "Processing" when import fails
         result = detect_step_type_from_registry("unknown_script")
-        
+
         # Verify - should return "Processing" as fallback
         assert result == "Processing"
 
     def test_detect_framework_from_imports_xgboost(self):
         """Test framework detection from XGBoost imports."""
-        imports = ['xgboost', 'pandas', 'numpy']
-        
+        imports = ["xgboost", "pandas", "numpy"]
+
         result = detect_framework_from_imports(imports)
-        
-        assert result == 'xgboost'
+
+        assert result == "xgboost"
 
     def test_detect_framework_from_imports_pytorch(self):
         """Test framework detection from PyTorch imports."""
-        imports = ['torch', 'torch.nn', 'torch.optim']
-        
+        imports = ["torch", "torch.nn", "torch.optim"]
+
         result = detect_framework_from_imports(imports)
-        
-        assert result == 'pytorch'
+
+        assert result == "pytorch"
 
     def test_detect_framework_from_imports_sklearn(self):
         """Test framework detection from sklearn imports."""
-        imports = ['sklearn', 'sklearn.ensemble', 'pandas']
-        
+        imports = ["sklearn", "sklearn.ensemble", "pandas"]
+
         result = detect_framework_from_imports(imports)
-        
-        assert result == 'sklearn'
+
+        assert result == "sklearn"
 
     def test_detect_framework_from_imports_pandas(self):
         """Test framework detection from pandas imports."""
-        imports = ['pandas', 'numpy']
-        
+        imports = ["pandas", "numpy"]
+
         result = detect_framework_from_imports(imports)
-        
-        assert result == 'pandas'
+
+        assert result == "pandas"
 
     def test_detect_framework_from_imports_unknown(self):
         """Test framework detection for unknown imports."""
-        imports = ['os', 'sys', 'json']
-        
+        imports = ["os", "sys", "json"]
+
         result = detect_framework_from_imports(imports)
-        
+
         assert result is None
 
     def test_detect_framework_from_imports_empty(self):
         """Test framework detection with empty imports."""
         imports = []
-        
+
         result = detect_framework_from_imports(imports)
-        
+
         assert result is None
 
     def test_detect_framework_from_imports_multiple_frameworks(self):
         """Test framework detection with multiple frameworks."""
-        imports = ['xgboost', 'torch', 'sklearn']
-        
+        imports = ["xgboost", "torch", "sklearn"]
+
         result = detect_framework_from_imports(imports)
-        
+
         # Should return the first detected framework (priority order)
-        assert result in ['xgboost', 'torch', 'sklearn']
+        assert result in ["xgboost", "torch", "sklearn"]
 
     def test_get_step_type_context(self):
         """Test getting step type context."""
@@ -105,48 +106,48 @@ def main():
     model = xgb.train(params, dtrain)
     model.save_model('/opt/ml/model/model.xgb')
 """
-        
+
         # Execute
         context = get_step_type_context(script_name, script_content)
-        
+
         # Verify
-        assert context['script_name'] == script_name
-        assert 'registry_step_type' in context
-        assert 'pattern_step_type' in context
-        assert 'final_step_type' in context
-        assert 'confidence' in context
+        assert context["script_name"] == script_name
+        assert "registry_step_type" in context
+        assert "pattern_step_type" in context
+        assert "final_step_type" in context
+        assert "confidence" in context
 
     def test_get_step_type_context_no_content(self):
         """Test getting step type context without script content."""
         script_name = "unknown_script"
-        
+
         # Execute
         context = get_step_type_context(script_name)
-        
+
         # Verify
-        assert context['script_name'] == script_name
-        assert 'registry_step_type' in context
-        assert 'pattern_step_type' in context
-        assert 'final_step_type' in context
-        assert 'confidence' in context
+        assert context["script_name"] == script_name
+        assert "registry_step_type" in context
+        assert "pattern_step_type" in context
+        assert "final_step_type" in context
+        assert "confidence" in context
         # Should have Processing as default
-        assert context['final_step_type'] == 'Processing'
+        assert context["final_step_type"] == "Processing"
 
     def test_framework_detection_case_insensitive(self):
         """Test that framework detection is case insensitive."""
-        imports = ['XGBoost', 'PANDAS', 'NUMPY']
-        
+        imports = ["XGBoost", "PANDAS", "NUMPY"]
+
         result = detect_framework_from_imports(imports)
-        
+
         # Should still detect xgboost despite case differences
-        assert result == 'xgboost'
+        assert result == "xgboost"
 
     def test_framework_detection_partial_matches(self):
         """Test framework detection with partial import names."""
-        imports = ['xgb', 'pd', 'np']
-        
+        imports = ["xgb", "pd", "np"]
+
         result = detect_framework_from_imports(imports)
-        
+
         # Should handle common abbreviations
         # This depends on implementation - might return None if not handled
         assert isinstance(result, (str, type(None)))
@@ -155,7 +156,7 @@ def main():
         """Test step type detection with file extension."""
         # Test with .py extension
         result = detect_step_type_from_registry("xgboost_training.py")
-        
+
         # Should handle file extensions gracefully
         assert isinstance(result, (str, type(None)))
 
@@ -164,7 +165,7 @@ def main():
         # Test with empty string
         result = detect_step_type_from_registry("")
         assert isinstance(result, (str, type(None)))
-        
+
         # Test with None
         result = detect_step_type_from_registry(None)
         assert isinstance(result, (str, type(None)))
@@ -172,12 +173,13 @@ def main():
     def test_framework_detection_priority_order(self):
         """Test that framework detection follows priority order."""
         # Test with multiple frameworks - should prioritize based on implementation
-        imports = ['pandas', 'xgboost', 'torch']
-        
-        result = detect_framework_from_imports(imports)
-        
-        # Should return one of the frameworks based on priority
-        assert result in ['xgboost', 'torch', 'pandas']
+        imports = ["pandas", "xgboost", "torch"]
 
-if __name__ == '__main__':
+        result = detect_framework_from_imports(imports)
+
+        # Should return one of the frameworks based on priority
+        assert result in ["xgboost", "torch", "pandas"]
+
+
+if __name__ == "__main__":
     pytest.main([__file__])

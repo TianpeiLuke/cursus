@@ -16,7 +16,7 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     },
     expected_output_paths={
         "model_output": "/opt/ml/model",
-        "data_output": "/opt/ml/output/data"
+        "data_output": "/opt/ml/output/data",
     },
     expected_arguments={
         # No expected arguments - using standard paths from contract
@@ -24,9 +24,7 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     required_env_vars=[
         # No strictly required environment variables - script uses hyperparameters.json
     ],
-    optional_env_vars={
-        "SM_CHECKPOINT_DIR": "/opt/ml/checkpoints"
-    },
+    optional_env_vars={"SM_CHECKPOINT_DIR": "/opt/ml/checkpoints"},
     framework_requirements={
         "torch": "==2.1.2",
         "torchvision": "==0.16.2",
@@ -45,7 +43,7 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
         "pydantic": "==2.11.2",
         "onnx": "==1.15.0",
         "onnxruntime": "==1.17.0",
-        "flask": "==3.0.2"
+        "flask": "==3.0.2",
     },
     description="""
     PyTorch Lightning training script for multimodal BSM (Business Seller Messaging) models that:
@@ -92,5 +90,5 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     - multimodal_cross_attn: Cross-attention multimodal
     - bert: Text-only BERT classification
     - lstm: Text-only LSTM classification
-    """
+    """,
 )

@@ -19,11 +19,12 @@ class MultiClassLabelProcessor(Processor):
         one_hot (bool): If True, output one-hot encoded labels.
     """
 
-    def __init__(self, 
-                 label_list: Optional[List[str]] = None, 
-                 one_hot: bool = False,
-                 strict: bool = False
-                ):
+    def __init__(
+        self,
+        label_list: Optional[List[str]] = None,
+        one_hot: bool = False,
+        strict: bool = False,
+    ):
         super().__init__()
         self.processor_name = "multiclass_label_processor"
         self.label_to_id: Dict[str, int] = {}
@@ -32,8 +33,10 @@ class MultiClassLabelProcessor(Processor):
         self.strict = strict
 
         if label_list:
-            self.label_to_id = {str(label): i for i, label in enumerate(label_list)} #{label: i for i, label in enumerate(label_list)}
-            self.id_to_label = list(map(str, label_list)) #label_list
+            self.label_to_id = {
+                str(label): i for i, label in enumerate(label_list)
+            }  # {label: i for i, label in enumerate(label_list)}
+            self.id_to_label = list(map(str, label_list))  # label_list
 
     def process(self, labels: Union[str, List[str]]) -> torch.Tensor:
         """

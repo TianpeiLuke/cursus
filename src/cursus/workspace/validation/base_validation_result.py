@@ -10,4 +10,4 @@ that is used across the workspace validation system.
 
 from .unified_result_structures import BaseValidationResult
 
-__all__ = ['BaseValidationResult']
+__all__ = ["BaseValidationResult"]

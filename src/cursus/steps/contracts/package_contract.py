@@ -12,11 +12,9 @@ PACKAGE_CONTRACT = ScriptContract(
     expected_input_paths={
         "model_input": "/opt/ml/processing/input/model",
         "inference_scripts_input": "/opt/ml/processing/input/script",
-        "calibration_model": "/opt/ml/processing/input/calibration"
+        "calibration_model": "/opt/ml/processing/input/calibration",
     },
-    expected_output_paths={
-        "packaged_model": "/opt/ml/processing/output"
-    },
+    expected_output_paths={"packaged_model": "/opt/ml/processing/output"},
     expected_arguments={
         # No expected arguments - using standard paths from contract
     },
@@ -43,5 +41,5 @@ PACKAGE_CONTRACT = ScriptContract(
     
     Output Structure:
     - /opt/ml/processing/output/model.tar.gz: Packaged model ready for deployment
-    """
+    """,
 )

@@ -9,30 +9,22 @@ from ...core.base.contract_base import ScriptContract
 
 TABULAR_PREPROCESS_CONTRACT = ScriptContract(
     entry_point="tabular_preprocessing.py",
-    expected_input_paths={
-        "DATA": "/opt/ml/processing/input/data"
-    },
-    expected_output_paths={
-        "processed_data": "/opt/ml/processing/output"
-    },
+    expected_input_paths={"DATA": "/opt/ml/processing/input/data"},
+    expected_output_paths={"processed_data": "/opt/ml/processing/output"},
     expected_arguments={
         # No expected arguments - job_type comes from config
     },
-    required_env_vars=[
-        "LABEL_FIELD",
-        "TRAIN_RATIO", 
-        "TEST_VAL_RATIO"
-    ],
+    required_env_vars=["LABEL_FIELD", "TRAIN_RATIO", "TEST_VAL_RATIO"],
     optional_env_vars={
         "CATEGORICAL_COLUMNS": "",
         "NUMERICAL_COLUMNS": "",
         "TEXT_COLUMNS": "",
-        "DATE_COLUMNS": ""
+        "DATE_COLUMNS": "",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
         "numpy": ">=1.21.0",
-        "scikit-learn": ">=1.0.0"
+        "scikit-learn": ">=1.0.0",
     },
     description="""
     Tabular preprocessing script that:
@@ -52,5 +44,5 @@ TABULAR_PREPROCESS_CONTRACT = ScriptContract(
     - Processes labels (converts categorical to numeric if needed)
     - Splits data based on job_type (training creates train/test/val splits)
     - Outputs processed files to split subdirectories under /opt/ml/processing/output
-    """
+    """,
 )

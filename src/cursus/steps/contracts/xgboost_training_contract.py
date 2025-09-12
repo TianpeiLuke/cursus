@@ -11,11 +11,11 @@ XGBOOST_TRAIN_CONTRACT = TrainingScriptContract(
     entry_point="xgboost_training.py",
     expected_input_paths={
         "input_path": "/opt/ml/input/data",
-        "hyperparameters_s3_uri": "/opt/ml/input/data/config/hyperparameters.json"
+        "hyperparameters_s3_uri": "/opt/ml/input/data/config/hyperparameters.json",
     },
     expected_output_paths={
         "model_output": "/opt/ml/model",
-        "evaluation_output": "/opt/ml/output/data"
+        "evaluation_output": "/opt/ml/output/data",
     },
     expected_arguments={
         # No expected arguments - using standard paths from contract
@@ -35,7 +35,7 @@ XGBOOST_TRAIN_CONTRACT = TrainingScriptContract(
         "pydantic": ">=2.0.0,<3.0.0",
         "typing-extensions": ">=4.2.0",
         "matplotlib": ">=3.0.0",
-        "numpy": ">=1.19.0"
+        "numpy": ">=1.19.0",
     },
     description="""
     XGBoost training script for tabular data classification that:
@@ -101,5 +101,5 @@ XGBOOST_TRAIN_CONTRACT = TrainingScriptContract(
     - Uses mean imputation strategy for missing numerical values
     - Fits imputation on training data only
     - Applies same imputation to validation and test sets
-    """
+    """,
 )

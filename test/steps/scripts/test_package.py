@@ -16,11 +16,12 @@ from cursus.steps.scripts.package import (
     copy_scripts,
     extract_tarfile,
     create_tarfile,
-    main as package_main
+    main as package_main,
 )
 
 # Disable logging for cleaner test output
 logging.disable(logging.CRITICAL)
+
 
 class TestMimsPackagingHelpers(unittest.TestCase):
     """Unit tests for the individual helper functions in the packaging script."""
@@ -77,10 +78,11 @@ class TestMimsPackagingHelpers(unittest.TestCase):
 
         # Extract the tarball
         extract_tarfile(output_tar_path, extract_dir)
-        
+
         # Verify the extracted contents
         self.assertTrue((extract_dir / "file1.txt").exists())
         self.assertTrue((extract_dir / "code" / "inference.py").exists())
+
 
 class TestMimsPackagingMainFlow(unittest.TestCase):
     """
@@ -92,7 +94,7 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
     def setUp(self):
         """Set up a temporary directory structure mimicking the SageMaker environment."""
         self.base_dir = Path(tempfile.mkdtemp())
-        
+
         # Define mock paths within the temporary directory
         self.model_path = self.base_dir / "input" / "model"
         self.script_path = self.base_dir / "input" / "script"
@@ -120,30 +122,28 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
         dummy_model_content_path = self.base_dir / "temp_model" / "model.pth"
         self._create_dummy_file(dummy_model_content_path, "pytorch-model-data")
         self._create_dummy_file(self.script_path / "inference.py", "import torch")
-        
+
         # Create a tarball containing the model file
         input_tar_path = self.model_path / "model.tar.gz"
         with tarfile.open(input_tar_path, "w:gz") as tar:
             tar.add(dummy_model_content_path, arcname="model.pth")
-        
+
         # --- Act ---
         # Set up input and output paths for the new main function signature
         input_paths = {
             "model_input": str(self.model_path),
-            "script_input": str(self.script_path)
+            "script_input": str(self.script_path),
         }
-        output_paths = {
-            "output_dir": str(self.output_path)
-        }
-        environ_vars = {
-            "WORKING_DIRECTORY": str(self.working_dir)
-        }
-        
+        output_paths = {"output_dir": str(self.output_path)}
+        environ_vars = {"WORKING_DIRECTORY": str(self.working_dir)}
+
         result = package_main(input_paths, output_paths, environ_vars)
 
         # --- Assert ---
         final_output_tar = self.output_path / "model.tar.gz"
-        self.assertTrue(final_output_tar.exists(), "Final model.tar.gz was not created.")
+        self.assertTrue(
+            final_output_tar.exists(), "Final model.tar.gz was not created."
+        )
         self.assertEqual(result, final_output_tar)
 
         with tarfile.open(final_output_tar, "r:gz") as tar:
@@ -158,22 +158,22 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
         """
         # --- Arrange ---
         # Create dummy input files directly in the mocked input directories
-        self._create_dummy_file(self.model_path / "xgboost_model.bst", "xgboost-model-data")
-        self._create_dummy_file(self.script_path / "requirements.txt", "pandas\nscikit-learn")
+        self._create_dummy_file(
+            self.model_path / "xgboost_model.bst", "xgboost-model-data"
+        )
+        self._create_dummy_file(
+            self.script_path / "requirements.txt", "pandas\nscikit-learn"
+        )
 
         # --- Act ---
         # Set up input and output paths for the new main function signature
         input_paths = {
             "model_input": str(self.model_path),
-            "script_input": str(self.script_path)
+            "script_input": str(self.script_path),
         }
-        output_paths = {
-            "output_dir": str(self.output_path)
-        }
-        environ_vars = {
-            "WORKING_DIRECTORY": str(self.working_dir)
-        }
-        
+        output_paths = {"output_dir": str(self.output_path)}
+        environ_vars = {"WORKING_DIRECTORY": str(self.working_dir)}
+
         result = package_main(input_paths, output_paths, environ_vars)
 
         # --- Assert ---
@@ -186,5 +186,6 @@ class TestMimsPackagingMainFlow(unittest.TestCase):
             self.assertIn("xgboost_model.bst", members)
             self.assertIn("code/requirements.txt", members)
 
-if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+
+if __name__ == "__main__":
+    unittest.main(argv=["first-arg-is-ignored"], exit=False)

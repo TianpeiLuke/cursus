@@ -15,25 +15,23 @@ from .test_registry_validator_models import (
     TestValidationSeverity,
     TestValidationIssue,
     TestSpecializedValidationIssues,
-    TestValidationReport
+    TestValidationReport,
 )
 
-from .test_registry_validator_core import (
-    TestRegistryValidatorCore
-)
+from .test_registry_validator_core import TestRegistryValidatorCore
 
 from .test_registry_validator_integration import (
     TestRegistryValidatorZettelkasten,
-    TestRegistryValidatorIntegration
+    TestRegistryValidatorIntegration,
 )
 
 # Re-export all test classes for pytest discovery
 __all__ = [
-    'TestValidationSeverity',
-    'TestValidationIssue', 
-    'TestSpecializedValidationIssues',
-    'TestValidationReport',
-    'TestRegistryValidatorCore',
-    'TestRegistryValidatorZettelkasten',
-    'TestRegistryValidatorIntegration'
+    "TestValidationSeverity",
+    "TestValidationIssue",
+    "TestSpecializedValidationIssues",
+    "TestValidationReport",
+    "TestRegistryValidatorCore",
+    "TestRegistryValidatorZettelkasten",
+    "TestRegistryValidatorIntegration",
 ]

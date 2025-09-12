@@ -13,18 +13,23 @@ from ...registry.exceptions import RegistryError
 
 class PipelineAPIError(Exception):
     """Base exception for all Pipeline API errors."""
+
     pass
 
 
 class ConfigurationError(PipelineAPIError):
     """Raised when configuration-related errors occur."""
-    
-    def __init__(self, message: str, missing_configs: Optional[List[str]] = None, 
-                 available_configs: Optional[List[str]] = None):
+
+    def __init__(
+        self,
+        message: str,
+        missing_configs: Optional[List[str]] = None,
+        available_configs: Optional[List[str]] = None,
+    ):
         super().__init__(message)
         self.missing_configs = missing_configs or []
         self.available_configs = available_configs or []
-        
+
     def __str__(self) -> str:
         msg = super().__str__()
         if self.missing_configs:
@@ -33,18 +38,23 @@ class ConfigurationError(PipelineAPIError):
             msg += f"\nAvailable configurations: {self.available_configs}"
         return msg
 
+
 # RegistryError moved to pipeline_registry.exceptions
 
 
 class AmbiguityError(PipelineAPIError):
     """Raised when multiple configurations could match a DAG node."""
-    
-    def __init__(self, message: str, node_name: Optional[str] = None, 
-                 candidates: Optional[List[Any]] = None):
+
+    def __init__(
+        self,
+        message: str,
+        node_name: Optional[str] = None,
+        candidates: Optional[List[Any]] = None,
+    ):
         super().__init__(message)
         self.node_name = node_name
         self.candidates = candidates or []
-        
+
     def __str__(self) -> str:
         msg = super().__str__()
         if self.candidates:
@@ -55,24 +65,26 @@ class AmbiguityError(PipelineAPIError):
                     config = candidate[0]
                     confidence = candidate[1]
                     config_type = type(config).__name__
-                    job_type = getattr(config, 'job_type', 'N/A')
+                    job_type = getattr(config, "job_type", "N/A")
                     msg += f"\n  - {config_type} (job_type='{job_type}', confidence={confidence:.2f})"
                 elif isinstance(candidate, dict):
                     # Handle dictionary format
-                    config_type = candidate.get('config_type', 'Unknown')
-                    confidence = candidate.get('confidence', 0.0)
-                    job_type = candidate.get('job_type', 'N/A')
+                    config_type = candidate.get("config_type", "Unknown")
+                    confidence = candidate.get("confidence", 0.0)
+                    job_type = candidate.get("job_type", "N/A")
                     msg += f"\n  - {config_type} (job_type='{job_type}', confidence={confidence:.2f})"
         return msg
 
 
 class ValidationError(PipelineAPIError):
     """Raised when DAG-config validation fails."""
-    
-    def __init__(self, message: str, validation_errors: Optional[Dict[str, List[str]]] = None):
+
+    def __init__(
+        self, message: str, validation_errors: Optional[Dict[str, List[str]]] = None
+    ):
         super().__init__(message)
         self.validation_errors = validation_errors or {}
-        
+
     def __str__(self) -> str:
         msg = super().__str__()
         if self.validation_errors:
@@ -86,13 +98,17 @@ class ValidationError(PipelineAPIError):
 
 class ResolutionError(PipelineAPIError):
     """Raised when DAG node resolution fails."""
-    
-    def __init__(self, message: str, failed_nodes: Optional[List[str]] = None,
-                 suggestions: Optional[List[str]] = None):
+
+    def __init__(
+        self,
+        message: str,
+        failed_nodes: Optional[List[str]] = None,
+        suggestions: Optional[List[str]] = None,
+    ):
         super().__init__(message)
         self.failed_nodes = failed_nodes or []
         self.suggestions = suggestions or []
-        
+
     def __str__(self) -> str:
         msg = super().__str__()
         if self.failed_nodes:

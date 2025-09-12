@@ -5,17 +5,26 @@ This module defines the declarative specification for MIMS model registration st
 including their dependencies and outputs based on the actual implementation.
 """
 
-from ...core.base.specification_base import StepSpecification, DependencySpec, OutputSpec, DependencyType, NodeType
+from ...core.base.specification_base import (
+    StepSpecification,
+    DependencySpec,
+    OutputSpec,
+    DependencyType,
+    NodeType,
+)
 from ...registry.step_names import get_spec_step_type
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..contracts.mims_registration_contract import MIMS_REGISTRATION_CONTRACT
 
+
 # Import the contract at runtime to avoid circular imports
 def _get_mims_registration_contract():
     from ..contracts.mims_registration_contract import MIMS_REGISTRATION_CONTRACT
+
     return MIMS_REGISTRATION_CONTRACT
+
 
 # Model Registration Step Specification
 REGISTRATION_SPEC = StepSpecification(
@@ -30,7 +39,7 @@ REGISTRATION_SPEC = StepSpecification(
             compatible_sources=["PackagingStep", "Package", "ProcessingStep"],
             semantic_keywords=["model", "package", "packaged", "artifacts", "tar"],
             data_type="S3Uri",
-            description="Packaged model artifacts for registration"
+            description="Packaged model artifacts for registration",
         ),
         DependencySpec(
             logical_name="GeneratedPayloadSamples",
@@ -39,12 +48,12 @@ REGISTRATION_SPEC = StepSpecification(
             compatible_sources=["PayloadTestStep", "PayloadStep", "ProcessingStep"],
             semantic_keywords=["payload", "samples", "test", "generated", "inference"],
             data_type="S3Uri",
-            description="Generated payload samples for model testing"
-        )
+            description="Generated payload samples for model testing",
+        ),
     ],
     outputs=[
         # Note: MIMS Registration step doesn't produce accessible outputs
         # It registers the model as a side effect but doesn't create
         # output properties that can be referenced by subsequent steps
-    ]
+    ],
 )

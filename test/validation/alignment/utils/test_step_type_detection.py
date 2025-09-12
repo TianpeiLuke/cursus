@@ -10,110 +10,123 @@ from cursus.validation.alignment.alignment_utils import (
     detect_framework_from_imports,
     detect_step_type_from_script_patterns,
     get_step_type_context,
-    ImportStatement
+    ImportStatement,
 )
+
 
 class TestStepTypeDetection:
     """Test step type detection functions."""
-    
+
     def test_detect_step_type_from_registry_training(self):
         """Test step type detection for training scripts."""
         # Mock the entire import since it's done inside the function
         mock_module = Mock()
         mock_module.get_canonical_name_from_file_name.return_value = "xgboost_training"
         mock_module.get_sagemaker_step_type.return_value = "Training"
-        
-        with patch.dict('sys.modules', {'cursus.steps.registry.step_names': mock_module}):
+
+        with patch.dict(
+            "sys.modules", {"cursus.steps.registry.step_names": mock_module}
+        ):
             step_type = detect_step_type_from_registry("xgboost_training")
             assert step_type == "Training"
-    
+
     def test_detect_step_type_from_registry_processing(self):
         """Test step type detection for processing scripts."""
         mock_module = Mock()
-        mock_module.get_canonical_name_from_file_name.return_value = "tabular_preprocessing"
+        mock_module.get_canonical_name_from_file_name.return_value = (
+            "tabular_preprocessing"
+        )
         mock_module.get_sagemaker_step_type.return_value = "Processing"
-        
-        with patch.dict('sys.modules', {'cursus.steps.registry.step_names': mock_module}):
+
+        with patch.dict(
+            "sys.modules", {"cursus.steps.registry.step_names": mock_module}
+        ):
             step_type = detect_step_type_from_registry("tabular_preprocessing")
             assert step_type == "Processing"
-    
+
     def test_detect_step_type_from_registry_unknown(self):
         """Test step type detection for unknown scripts."""
         # Test fallback to Processing when registry fails
         step_type = detect_step_type_from_registry("unknown_script")
         assert step_type == "Processing"  # Default fallback
-    
+
     def test_detect_framework_from_imports_xgboost(self):
         """Test framework detection for XGBoost imports."""
         imports = [
             ImportStatement(module_name="xgboost", import_alias="xgb", line_number=1),
-            ImportStatement(module_name="pandas", import_alias="pd", line_number=2)
+            ImportStatement(module_name="pandas", import_alias="pd", line_number=2),
         ]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "xgboost"
-    
+
     def test_detect_framework_from_imports_pytorch(self):
         """Test framework detection for PyTorch imports."""
         imports = [
             ImportStatement(module_name="torch", import_alias=None, line_number=1),
             ImportStatement(module_name="torch.nn", import_alias="nn", line_number=2),
-            ImportStatement(module_name="torch.optim", import_alias=None, line_number=3)
+            ImportStatement(
+                module_name="torch.optim", import_alias=None, line_number=3
+            ),
         ]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "pytorch"
-    
+
     def test_detect_framework_from_imports_sklearn(self):
         """Test framework detection for sklearn imports."""
         imports = [
-            ImportStatement(module_name="sklearn.ensemble", import_alias=None, line_number=1),
-            ImportStatement(module_name="sklearn.model_selection", import_alias=None, line_number=2)
+            ImportStatement(
+                module_name="sklearn.ensemble", import_alias=None, line_number=1
+            ),
+            ImportStatement(
+                module_name="sklearn.model_selection", import_alias=None, line_number=2
+            ),
         ]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "sklearn"
-    
+
     def test_detect_framework_from_imports_pandas(self):
         """Test framework detection for pandas imports."""
         imports = [
             ImportStatement(module_name="pandas", import_alias="pd", line_number=1),
-            ImportStatement(module_name="numpy", import_alias="np", line_number=2)
+            ImportStatement(module_name="numpy", import_alias="np", line_number=2),
         ]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "pandas"
-    
+
     def test_detect_framework_from_imports_string_list(self):
         """Test framework detection with string list input."""
         imports = ["xgboost", "pandas", "numpy"]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "xgboost"
-    
+
     def test_detect_framework_from_imports_mixed_priority(self):
         """Test framework detection with mixed imports - priority order."""
         imports = [
             ImportStatement(module_name="pandas", import_alias="pd", line_number=1),
             ImportStatement(module_name="xgboost", import_alias="xgb", line_number=2),
-            ImportStatement(module_name="torch", import_alias=None, line_number=3)
+            ImportStatement(module_name="torch", import_alias=None, line_number=3),
         ]
-        
+
         # XGBoost should have higher priority than pandas
         framework = detect_framework_from_imports(imports)
         assert framework == "xgboost"
-    
+
     def test_detect_framework_from_imports_no_ml_framework(self):
         """Test framework detection with no ML framework imports."""
         imports = [
             ImportStatement(module_name="os", import_alias=None, line_number=1),
             ImportStatement(module_name="json", import_alias=None, line_number=2),
-            ImportStatement(module_name="boto3", import_alias=None, line_number=3)
+            ImportStatement(module_name="boto3", import_alias=None, line_number=3),
         ]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework is None
-    
+
     def test_detect_step_type_from_script_patterns_training(self):
         """Test step type detection from script patterns - training."""
         script_content = """
@@ -133,10 +146,10 @@ def main():
     # Save model
     model.save_model('/opt/ml/model/model.xgb')
         """
-        
+
         step_type = detect_step_type_from_script_patterns(script_content)
         assert step_type == "Training"
-    
+
     def test_detect_step_type_from_script_patterns_processing(self):
         """Test step type detection from script patterns - processing."""
         script_content = """
@@ -155,10 +168,10 @@ def main():
     output_path = os.environ.get('SM_CHANNEL_OUTPUT')
     processed_data.to_csv(f'{output_path}/processed.csv', index=False)
         """
-        
+
         step_type = detect_step_type_from_script_patterns(script_content)
         assert step_type == "Processing"
-    
+
     def test_detect_step_type_from_script_patterns_unknown(self):
         """Test step type detection from script patterns - unknown."""
         script_content = """
@@ -171,116 +184,118 @@ def main():
     data = {'key': 'value'}
     print(json.dumps(data))
         """
-        
+
         step_type = detect_step_type_from_script_patterns(script_content)
         assert step_type is None
-    
+
     def test_get_step_type_context_training(self):
         """Test getting step type context for training."""
         context = get_step_type_context("training_script")
-        
+
         assert "script_name" in context
         assert "registry_step_type" in context
         assert "pattern_step_type" in context
         assert "final_step_type" in context
         assert "confidence" in context
-        
+
         # Check that context is returned
         assert context["script_name"] == "training_script"
         assert context["final_step_type"] is not None
-    
+
     def test_get_step_type_context_processing(self):
         """Test getting step type context for processing."""
         context = get_step_type_context("processing_script")
-        
+
         assert "script_name" in context
         assert "final_step_type" in context
         assert context["script_name"] == "processing_script"
         assert context["final_step_type"] is not None
-    
+
     def test_get_step_type_context_createmodel(self):
         """Test getting step type context for CreateModel."""
         context = get_step_type_context("createmodel_script")
-        
+
         assert "script_name" in context
         assert "final_step_type" in context
         assert context["script_name"] == "createmodel_script"
-    
+
     def test_get_step_type_context_transform(self):
         """Test getting step type context for Transform."""
         context = get_step_type_context("transform_script")
-        
+
         assert "script_name" in context
         assert "final_step_type" in context
         assert context["script_name"] == "transform_script"
-    
+
     def test_get_step_type_context_registermodel(self):
         """Test getting step type context for RegisterModel."""
         context = get_step_type_context("registermodel_script")
-        
+
         assert "script_name" in context
         assert "final_step_type" in context
         assert context["script_name"] == "registermodel_script"
-    
+
     def test_get_step_type_context_utility(self):
         """Test getting step type context for Utility."""
         context = get_step_type_context("utility_script")
-        
+
         assert "script_name" in context
         assert "final_step_type" in context
         assert context["script_name"] == "utility_script"
-    
+
     def test_get_step_type_context_unknown(self):
         """Test getting step type context for unknown step type."""
         context = get_step_type_context("UnknownStepType")
-        
+
         # Should return context with default values
         assert "script_name" in context
         assert "final_step_type" in context
         assert context["script_name"] == "UnknownStepType"
         assert context["final_step_type"] == "Processing"  # Default fallback
 
+
 class TestImportStatementHandling:
     """Test handling of different import statement formats."""
-    
+
     def test_detect_framework_with_import_objects(self):
         """Test framework detection with ImportStatement objects."""
         imports = [
             ImportStatement(module_name="xgboost", import_alias="xgb", line_number=1),
-            ImportStatement(module_name="pandas", import_alias="pd", line_number=2)
+            ImportStatement(module_name="pandas", import_alias="pd", line_number=2),
         ]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "xgboost"
-    
+
     def test_detect_framework_with_string_list(self):
         """Test framework detection with string list."""
         imports = ["torch", "torch.nn", "torch.optim"]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "pytorch"
-    
+
     def test_detect_framework_with_mixed_types(self):
         """Test framework detection with mixed import types."""
         imports = [
             "pandas",
             ImportStatement(module_name="xgboost", import_alias="xgb", line_number=2),
-            "numpy"
+            "numpy",
         ]
-        
+
         framework = detect_framework_from_imports(imports)
         assert framework == "xgboost"
-    
+
     def test_detect_framework_empty_imports(self):
         """Test framework detection with empty imports."""
         framework = detect_framework_from_imports([])
         assert framework is None
-    
+
     def test_detect_framework_none_imports(self):
         """Test framework detection with None imports."""
         # This should handle None gracefully
         with pytest.raises(TypeError):
             detect_framework_from_imports(None)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     pytest.main([__file__])

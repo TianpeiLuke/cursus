@@ -13,7 +13,9 @@ from typing import List
 # Define workspace directory structure
 # workspace_dir points to src/cursus (the main workspace)
 current_file = Path(__file__).resolve()
-workspace_dir = current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps" 
+workspace_dir = (
+    current_file.parent.parent.parent.parent.parent / "src" / "cursus" / "steps"
+)
 
 # Define component directories within the workspace
 scripts_dir = str(workspace_dir / "scripts")
@@ -22,26 +24,28 @@ specs_dir = str(workspace_dir / "specs")
 builders_dir = str(workspace_dir / "builders")
 configs_dir = str(workspace_dir / "configs")
 
+
 def discover_scripts() -> List[str]:
     """Discover all Python scripts in the scripts directory."""
     scripts_path = Path(scripts_dir)
-    
+
     if not scripts_path.exists():
         print(f"⚠️  Scripts directory not found: {scripts_path}")
         return []
-    
+
     scripts = []
     for script_file in scripts_path.glob("*.py"):
         if script_file.name != "__init__.py":
             script_name = script_file.stem
             scripts.append(script_name)
-    
+
     return sorted(scripts)
+
 
 def generate_validation_script(script_name: str) -> str:
     """Generate a validation script for the given script name."""
-    script_title = script_name.replace('_', ' ').title()
-    
+    script_title = script_name.replace("_", " ").title()
+
     template = f'''#!/usr/bin/env python3
 """
 Individual Alignment Validation Script for {script_name}
@@ -313,43 +317,47 @@ def generate_html_report(script_name: str, results: dict) -> str:
 if __name__ == "__main__":
     sys.exit(main())
 '''
-    
+
     return template
+
 
 def main():
     """Generate validation scripts for all discovered scripts."""
     print("🚀 Generating Individual Validation Scripts")
     print("=" * 60)
-    
+
     # Discover all scripts
     scripts = discover_scripts()
     print(f"📋 Discovered {len(scripts)} scripts: {', '.join(scripts)}")
-    
+
     # Create output directory
     output_dir = Path(__file__).parent
-    
+
     generated_count = 0
-    
+
     # Generate validation script for each discovered script
     for script_name in scripts:
         try:
             script_content = generate_validation_script(script_name)
             script_file = output_dir / f"validate_{script_name}.py"
-            
-            with open(script_file, 'w', encoding='utf-8') as f:
+
+            with open(script_file, "w", encoding="utf-8") as f:
                 f.write(script_content)
-            
+
             # Make the script executable
             script_file.chmod(0o755)
-            
+
             print(f"✅ Generated: {script_file}")
             generated_count += 1
-            
+
         except Exception as e:
             print(f"❌ Failed to generate script for {script_name}: {e}")
-    
-    print(f"\n🎯 Successfully generated {generated_count}/{len(scripts)} validation scripts")
+
+    print(
+        f"\n🎯 Successfully generated {generated_count}/{len(scripts)} validation scripts"
+    )
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

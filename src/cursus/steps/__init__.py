@@ -24,10 +24,10 @@ from .scripts import __all__ as scripts_all
 from .specs import __all__ as specs_all
 
 __all__ = (
-    builders_all +
-    configs_all +
-    contracts_all +
-    hyperparams_all +
-    scripts_all +
-    specs_all
+    builders_all
+    + configs_all
+    + contracts_all
+    + hyperparams_all
+    + scripts_all
+    + specs_all
 )

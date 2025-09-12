@@ -59,10 +59,10 @@ logger = logging.getLogger(__name__)
 def create_dag() -> PipelineDAG:
     """
     Create a DAG for training a PyTorch model.
-    
+
     This function now uses the shared DAG definition to ensure consistency
     between regular and MODS pipeline variants.
-    
+
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
     """
@@ -74,7 +74,7 @@ def create_dag() -> PipelineDAG:
 def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
     """
     Get enhanced DAG metadata with Zettelkasten integration for pytorch_training_basic.
-    
+
     Returns:
         EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
     """
@@ -83,7 +83,11 @@ def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
         atomic_id="pytorch_training_basic",
         title="PyTorch Basic Training Pipeline",
         single_responsibility="PyTorch model training with basic configuration",
-        input_interface=["Training dataset path", "validation dataset path", "model hyperparameters"],
+        input_interface=[
+            "Training dataset path",
+            "validation dataset path",
+            "model hyperparameters",
+        ],
         output_interface=["Trained PyTorch model artifact", "evaluation metrics"],
         side_effects="Creates model artifacts and evaluation reports in S3",
         independence_level="fully_self_contained",
@@ -115,11 +119,11 @@ def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
         use_cases=[
             "Image classification with CNNs",
             "Text classification with transformers",
-            "Regression with neural networks"
+            "Regression with neural networks",
         ],
-        skill_level="beginner"
+        skill_level="beginner",
     )
-    
+
     # Create enhanced metadata using the new pattern
     enhanced_metadata = EnhancedDAGMetadata(
         dag_id="pytorch_training_basic",
@@ -129,33 +133,37 @@ def get_enhanced_dag_metadata() -> EnhancedDAGMetadata:
         framework="pytorch",
         node_count=6,
         edge_count=5,
-        zettelkasten_metadata=zettelkasten_metadata
+        zettelkasten_metadata=zettelkasten_metadata,
     )
-    
+
     return enhanced_metadata
 
 
 def sync_to_registry() -> bool:
     """
     Synchronize this pipeline's metadata to the catalog registry.
-    
+
     Returns:
         bool: True if synchronization was successful, False otherwise
     """
     try:
         registry = CatalogRegistry()
         enhanced_metadata = get_enhanced_dag_metadata()
-        
+
         # Add or update the pipeline node using the enhanced metadata
         success = registry.add_or_update_enhanced_node(enhanced_metadata)
-        
+
         if success:
-            logger.info(f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
+            logger.info(
+                f"Successfully synchronized {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry"
+            )
         else:
-            logger.warning(f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry")
-            
+            logger.warning(
+                f"Failed to synchronize {enhanced_metadata.zettelkasten_metadata.atomic_id} to registry"
+            )
+
         return success
-        
+
     except Exception as e:
         logger.error(f"Error synchronizing to registry: {e}")
         return False
@@ -167,11 +175,11 @@ def create_pipeline(
     role: str,
     pipeline_name: Optional[str] = None,
     pipeline_description: Optional[str] = None,
-    preview_resolution: bool = True
+    preview_resolution: bool = True,
 ) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler, Any]:
     """
     Create a SageMaker Pipeline from the DAG for PyTorch training.
-    
+
     Args:
         config_path: Path to the configuration file
         session: SageMaker pipeline session
@@ -179,7 +187,7 @@ def create_pipeline(
         pipeline_name: Custom name for the pipeline (optional)
         pipeline_description: Description for the pipeline (optional)
         preview_resolution: Whether to preview node resolution before compilation
-        
+
     Returns:
         Tuple containing:
             - Pipeline: The created SageMaker pipeline
@@ -188,20 +196,18 @@ def create_pipeline(
             - Any: The pipeline template instance for further operations
     """
     dag = create_dag()
-    
+
     # Create compiler with the configuration
     dag_compiler = PipelineDAGCompiler(
-        config_path=config_path,
-        sagemaker_session=session,
-        role=role
+        config_path=config_path, sagemaker_session=session, role=role
     )
-    
+
     # Set optional pipeline properties
     if pipeline_name:
         dag_compiler.pipeline_name = pipeline_name
     if pipeline_description:
         dag_compiler.pipeline_description = pipeline_description
-    
+
     # Preview resolution if requested
     if preview_resolution:
         preview = dag_compiler.preview_resolution(dag)
@@ -209,46 +215,44 @@ def create_pipeline(
         for node, config_type in preview.node_config_map.items():
             confidence = preview.resolution_confidence.get(node, 0.0)
             logger.info(f"  {node} → {config_type} (confidence: {confidence:.2f})")
-        
+
         # Log recommendations if any
         if preview.recommendations:
             logger.info("Recommendations:")
             for recommendation in preview.recommendations:
                 logger.info(f"  - {recommendation}")
-    
+
     # Compile the DAG into a pipeline
     pipeline, report = dag_compiler.compile_with_report(dag=dag)
-    
+
     # Get the pipeline template instance for further operations
     pipeline_template = dag_compiler.get_last_template()
     if pipeline_template is None:
         logger.warning("Pipeline template instance not found after compilation")
     else:
         logger.info("Pipeline template instance retrieved for further operations")
-    
+
     # Log compilation details
     logger.info(f"Pipeline '{pipeline.name}' created successfully")
     logger.info(f"Average resolution confidence: {report.avg_confidence:.2f}")
-    
+
     # Sync to registry after successful pipeline creation
     sync_to_registry()
-    
+
     return pipeline, report, dag_compiler, pipeline_template
 
 
 def fill_execution_document(
-    pipeline: Pipeline,
-    document: Dict[str, Any],
-    dag_compiler: PipelineDAGCompiler
+    pipeline: Pipeline, document: Dict[str, Any], dag_compiler: PipelineDAGCompiler
 ) -> Dict[str, Any]:
     """
     Fill an execution document for the pipeline with all necessary parameters.
-    
+
     Args:
         pipeline: The compiled SageMaker pipeline
         document: Initial parameter document with user-provided values
         dag_compiler: The DAG compiler used to create the pipeline
-    
+
     Returns:
         Dict: Complete execution document ready for pipeline execution
     """
@@ -261,15 +265,25 @@ if __name__ == "__main__":
     # Example usage
     import argparse
     from sagemaker import Session
-    
+
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Create a PyTorch training pipeline')
-    parser.add_argument('--config-path', type=str, help='Path to the configuration file')
-    parser.add_argument('--upsert', action='store_true', help='Upsert the pipeline after creation')
-    parser.add_argument('--execute', action='store_true', help='Execute the pipeline after creation')
-    parser.add_argument('--sync-registry', action='store_true', help='Sync pipeline metadata to registry')
+    parser = argparse.ArgumentParser(description="Create a PyTorch training pipeline")
+    parser.add_argument(
+        "--config-path", type=str, help="Path to the configuration file"
+    )
+    parser.add_argument(
+        "--upsert", action="store_true", help="Upsert the pipeline after creation"
+    )
+    parser.add_argument(
+        "--execute", action="store_true", help="Execute the pipeline after creation"
+    )
+    parser.add_argument(
+        "--sync-registry",
+        action="store_true",
+        help="Sync pipeline metadata to registry",
+    )
     args = parser.parse_args()
-    
+
     # Sync to registry if requested
     if args.sync_registry:
         success = sync_to_registry()
@@ -278,46 +292,46 @@ if __name__ == "__main__":
         else:
             print("Failed to synchronize pipeline metadata to registry")
         exit(0)
-    
+
     # Initialize session
     sagemaker_session = Session()
     role = sagemaker_session.get_caller_identity_arn()
     pipeline_session = PipelineSession()
-    
+
     # Use provided config path or fallback to default
     config_path = args.config_path
     if not config_path:
         config_dir = Path.cwd().parent / "pipeline_config"
         config_path = os.path.join(config_dir, "config_pytorch.json")
-        
+
         if not os.path.exists(config_path):
             raise FileNotFoundError(f"Default config file not found: {config_path}")
-    
+
     # Create the pipeline
     pipeline, report, dag_compiler, pipeline_template = create_pipeline(
         config_path=config_path,
         session=pipeline_session,
         role=role,
         pipeline_name="PyTorch-Basic-Training",
-        pipeline_description="PyTorch training pipeline with model evaluation"
+        pipeline_description="PyTorch training pipeline with model evaluation",
     )
-    
+
     # Fill execution document if needed
     if args.execute:
         execution_doc = fill_execution_document(
             pipeline=pipeline,
             document={
                 "training_dataset": "my-training-dataset",
-                "validation_dataset": "my-validation-dataset"
+                "validation_dataset": "my-validation-dataset",
             },
-            dag_compiler=dag_compiler
+            dag_compiler=dag_compiler,
         )
-    
+
     # Upsert if requested
     if args.upsert or args.execute:
         pipeline.upsert()
         logger.info(f"Pipeline '{pipeline.name}' upserted successfully")
-        
+
     # Execute if requested
     if args.execute:
         execution = pipeline.start(execution_input=execution_doc)

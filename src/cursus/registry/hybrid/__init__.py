@@ -17,7 +17,7 @@ from .models import (
     ResolutionContext,
     StepResolutionResult,
     RegistryValidationResult,
-    ConflictAnalysis
+    ConflictAnalysis,
 )
 
 # Registry Management
@@ -25,7 +25,7 @@ from .manager import (
     UnifiedRegistryManager,
     CoreStepRegistry,
     LocalStepRegistry,
-    HybridRegistryManager
+    HybridRegistryManager,
 )
 
 # Shared Utilities
@@ -36,7 +36,7 @@ from .utils import (
     convert_registry_dict,
     validate_registry_data,
     format_step_not_found_error,
-    format_registry_load_error
+    format_registry_load_error,
 )
 
 __all__ = [
@@ -46,13 +46,11 @@ __all__ = [
     "StepResolutionResult",
     "RegistryValidationResult",
     "ConflictAnalysis",
-    
     # Registry Management
     "UnifiedRegistryManager",
     "CoreStepRegistry",
     "LocalStepRegistry",
     "HybridRegistryManager",
-    
     # Shared Utilities
     "load_registry_module",
     "from_legacy_format",
@@ -60,5 +58,5 @@ __all__ = [
     "convert_registry_dict",
     "validate_registry_data",
     "format_step_not_found_error",
-    "format_registry_load_error"
+    "format_registry_load_error",
 ]

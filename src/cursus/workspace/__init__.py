@@ -41,13 +41,10 @@ from .api import (
     PromotionResult,
     HealthReport,
     CleanupReport,
-    WorkspaceInfo
+    WorkspaceInfo,
 )
 
-from .templates import (
-    WorkspaceTemplate,
-    TemplateManager
-)
+from .templates import WorkspaceTemplate, TemplateManager
 
 # PHASE 1 CLEANUP: Removed commented-out utility imports
 # These functions will be implemented when needed or removed if not required
@@ -60,25 +57,21 @@ from . import validation
 __all__ = [
     # Core API
     "WorkspaceAPI",
-    
     # Result and data classes
     "WorkspaceSetupResult",
-    "ValidationReport", 
+    "ValidationReport",
     "PromotionResult",
     "HealthReport",
     "CleanupReport",
     "WorkspaceInfo",
-    
     # Template system
     "WorkspaceTemplate",
     "TemplateManager",
-    
     # PHASE 1 CLEANUP: Removed commented-out utility function exports
     # These will be added when implemented or removed if not needed
-    
     # Consolidated layers (Phase 5)
     "core",
-    "validation"
+    "validation",
 ]
 
 # Default configuration
@@ -88,8 +81,9 @@ DEFAULT_CONFIG = {
     "enable_validation": True,
     "enable_isolation": True,
     "cache_components": True,
-    "log_level": "INFO"
+    "log_level": "INFO",
 }
+
 
 def get_default_config():
     """Get default configuration for workspace API."""

@@ -13,7 +13,7 @@ from .core_models import (
     AlignmentIssue,
     StepTypeAwareAlignmentIssue,
     create_alignment_issue,
-    create_step_type_aware_alignment_issue
+    create_step_type_aware_alignment_issue,
 )
 
 # Script analysis models
@@ -23,26 +23,21 @@ from .script_analysis_models import (
     ImportStatement,
     ArgumentDefinition,
     PathConstruction,
-    FileOperation
+    FileOperation,
 )
 
 # Dependency classification
-from .dependency_classifier import (
-    DependencyPattern,
-    DependencyPatternClassifier
-)
+from .dependency_classifier import DependencyPattern, DependencyPatternClassifier
 
 # File resolution
-from .file_resolver import (
-    FlexibleFileResolver
-)
+from .file_resolver import FlexibleFileResolver
 
 # Step type detection
 from .step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
     detect_step_type_from_script_patterns,
-    get_step_type_context
+    get_step_type_context,
 )
 
 # Utility functions
@@ -54,47 +49,42 @@ from .utils import (
     group_issues_by_severity,
     get_highest_severity,
     validate_environment_setup,
-    get_validation_summary_stats
+    get_validation_summary_stats,
 )
 
 # Re-export everything for backward compatibility
 __all__ = [
     # Core models
-    'SeverityLevel',
-    'AlignmentLevel', 
-    'AlignmentIssue',
-    'StepTypeAwareAlignmentIssue',
-    'create_alignment_issue',
-    'create_step_type_aware_alignment_issue',
-    
+    "SeverityLevel",
+    "AlignmentLevel",
+    "AlignmentIssue",
+    "StepTypeAwareAlignmentIssue",
+    "create_alignment_issue",
+    "create_step_type_aware_alignment_issue",
     # Script analysis models
-    'PathReference',
-    'EnvVarAccess',
-    'ImportStatement',
-    'ArgumentDefinition',
-    'PathConstruction',
-    'FileOperation',
-    
+    "PathReference",
+    "EnvVarAccess",
+    "ImportStatement",
+    "ArgumentDefinition",
+    "PathConstruction",
+    "FileOperation",
     # Dependency classification
-    'DependencyPattern',
-    'DependencyPatternClassifier',
-    
+    "DependencyPattern",
+    "DependencyPatternClassifier",
     # File resolution
-    'FlexibleFileResolver',
-    
+    "FlexibleFileResolver",
     # Step type detection
-    'detect_step_type_from_registry',
-    'detect_framework_from_imports',
-    'detect_step_type_from_script_patterns',
-    'get_step_type_context',
-    
+    "detect_step_type_from_registry",
+    "detect_framework_from_imports",
+    "detect_step_type_from_script_patterns",
+    "get_step_type_context",
     # Utility functions
-    'normalize_path',
-    'extract_logical_name_from_path',
-    'is_sagemaker_path',
-    'format_alignment_issue',
-    'group_issues_by_severity',
-    'get_highest_severity',
-    'validate_environment_setup',
-    'get_validation_summary_stats'
+    "normalize_path",
+    "extract_logical_name_from_path",
+    "is_sagemaker_path",
+    "format_alignment_issue",
+    "group_issues_by_severity",
+    "get_highest_severity",
+    "validate_environment_setup",
+    "get_validation_summary_stats",
 ]

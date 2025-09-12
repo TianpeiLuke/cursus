@@ -9,12 +9,8 @@ from ...core.base.contract_base import ScriptContract
 
 PAYLOAD_CONTRACT = ScriptContract(
     entry_point="payload.py",
-    expected_input_paths={
-        "model_input": "/opt/ml/processing/input/model"
-    },
-    expected_output_paths={
-        "payload_sample": "/opt/ml/processing/output"
-    },
+    expected_input_paths={"model_input": "/opt/ml/processing/input/model"},
+    expected_output_paths={"payload_sample": "/opt/ml/processing/output"},
     expected_arguments={
         # No expected arguments - using standard paths from contract
     },
@@ -58,5 +54,5 @@ PAYLOAD_CONTRACT = ScriptContract(
     
     Arguments:
     - mode: Operating mode for the script (default: "standard")
-    """
+    """,
 )

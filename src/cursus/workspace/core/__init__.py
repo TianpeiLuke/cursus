@@ -17,14 +17,14 @@ from .config import WorkspaceStepDefinition, WorkspacePipelineDefinition
 from .registry import WorkspaceComponentRegistry
 
 __all__ = [
-    'WorkspaceManager',
-    'WorkspaceLifecycleManager', 
-    'WorkspaceDiscoveryManager',
-    'WorkspaceIntegrationManager',
-    'WorkspaceIsolationManager',
-    'WorkspacePipelineAssembler',
-    'WorkspaceDAGCompiler',
-    'WorkspaceStepDefinition',
-    'WorkspacePipelineDefinition',
-    'WorkspaceComponentRegistry'
+    "WorkspaceManager",
+    "WorkspaceLifecycleManager",
+    "WorkspaceDiscoveryManager",
+    "WorkspaceIntegrationManager",
+    "WorkspaceIsolationManager",
+    "WorkspacePipelineAssembler",
+    "WorkspaceDAGCompiler",
+    "WorkspaceStepDefinition",
+    "WorkspacePipelineDefinition",
+    "WorkspaceComponentRegistry",
 ]

@@ -11,7 +11,7 @@ MIMS_REGISTRATION_CONTRACT = ScriptContract(
     entry_point="script.py",
     expected_input_paths={
         "PackagedModel": "/opt/ml/processing/input/model",
-        "GeneratedPayloadSamples": "/opt/ml/processing/mims_payload"
+        "GeneratedPayloadSamples": "/opt/ml/processing/mims_payload",
     },
     expected_output_paths={
         # No output paths as this is a registration step with side effects only
@@ -23,9 +23,7 @@ MIMS_REGISTRATION_CONTRACT = ScriptContract(
         # Environment variables required for registration
         "MODS_WORKFLOW_EXECUTION_ID"
     ],
-    optional_env_vars={
-        "PERFORMANCE_METADATA_PATH": ""
-    },
+    optional_env_vars={"PERFORMANCE_METADATA_PATH": ""},
     framework_requirements={
         "python": ">=3.7"
         # Uses secure_ai_sandbox_python_lib libraries and standard modules
@@ -59,5 +57,5 @@ MIMS_REGISTRATION_CONTRACT = ScriptContract(
     - Cleans up temporary S3 resources
     
     This script does not generate output files but registers the model as a side effect.
-    """
+    """,
 )

@@ -8,5 +8,5 @@ standardization rules across all pipeline components.
 from .naming_standard_validator import NamingStandardValidator
 
 __all__ = [
-    'NamingStandardValidator',
+    "NamingStandardValidator",
 ]

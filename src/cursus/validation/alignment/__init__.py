@@ -20,13 +20,13 @@ from .builder_config_alignment import BuilderConfigurationAlignmentTester
 from .testability_validator import TestabilityPatternValidator
 
 __all__ = [
-    'UnifiedAlignmentTester',
-    'AlignmentReport',
-    'ValidationResult', 
-    'AlignmentIssue',
-    'ScriptContractAlignmentTester',
-    'ContractSpecificationAlignmentTester',
-    'SpecificationDependencyAlignmentTester',
-    'BuilderConfigurationAlignmentTester',
-    'TestabilityPatternValidator'
+    "UnifiedAlignmentTester",
+    "AlignmentReport",
+    "ValidationResult",
+    "AlignmentIssue",
+    "ScriptContractAlignmentTester",
+    "ContractSpecificationAlignmentTester",
+    "SpecificationDependencyAlignmentTester",
+    "BuilderConfigurationAlignmentTester",
+    "TestabilityPatternValidator",
 ]

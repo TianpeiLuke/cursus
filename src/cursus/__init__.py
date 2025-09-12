@@ -37,7 +37,7 @@ except ImportError:
     # Fallback: read directly from VERSION file or use defaults
     import os
     from pathlib import Path
-    
+
     def _get_fallback_version():
         """Get version from VERSION file as fallback."""
         current_dir = Path(__file__).parent
@@ -49,17 +49,17 @@ except ImportError:
             # Try one level up
             current_dir.parent / "VERSION",
         ]
-        
+
         for version_file in version_file_paths:
             try:
                 if version_file.exists():
                     return version_file.read_text().strip()
             except (OSError, IOError):
                 continue
-        
+
         # Final fallback
         return "1.2.3"
-    
+
     __version__ = _get_fallback_version()
     __title__ = "cursus"
     __description__ = "Automatic SageMaker Pipeline Generation from DAG Specifications"
@@ -73,46 +73,60 @@ try:
 except ImportError as e:
     # Graceful degradation if dependencies are missing
     import warnings
+
     warnings.warn(f"Some Cursus features may not be available: {e}")
-    
+
     def compile_dag(*args, **kwargs):
-        raise ImportError("Core Cursus dependencies not available. Please install with: pip install cursus[all]")
-    
+        raise ImportError(
+            "Core Cursus dependencies not available. Please install with: pip install cursus[all]"
+        )
+
     def compile_dag_to_pipeline(*args, **kwargs):
-        raise ImportError("Core Cursus dependencies not available. Please install with: pip install cursus[all]")
-    
+        raise ImportError(
+            "Core Cursus dependencies not available. Please install with: pip install cursus[all]"
+        )
+
     class PipelineDAGCompiler:
         def __init__(self, *args, **kwargs):
-            raise ImportError("Core Cursus dependencies not available. Please install with: pip install cursus[all]")
+            raise ImportError(
+                "Core Cursus dependencies not available. Please install with: pip install cursus[all]"
+            )
+
 
 # Core data structures
 try:
     from .api.dag import PipelineDAG, EnhancedPipelineDAG
 except ImportError:
+
     class PipelineDAG:
         def __init__(self, *args, **kwargs):
-            raise ImportError("DAG functionality not available. Please install with: pip install cursus[all]")
-    
+            raise ImportError(
+                "DAG functionality not available. Please install with: pip install cursus[all]"
+            )
+
     class EnhancedPipelineDAG:
         def __init__(self, *args, **kwargs):
-            raise ImportError("Enhanced DAG functionality not available. Please install with: pip install cursus[all]")
+            raise ImportError(
+                "Enhanced DAG functionality not available. Please install with: pip install cursus[all]"
+            )
+
 
 # Convenience function for quick pipeline creation
 def create_pipeline_from_dag(dag, pipeline_name=None, **kwargs):
     """
     Create a SageMaker pipeline from a DAG specification.
-    
+
     This is a convenience function that combines DAG compilation and pipeline creation
     in a single call with sensible defaults.
-    
+
     Args:
         dag: PipelineDAG instance or DAG specification
         pipeline_name: Optional name for the pipeline
         **kwargs: Additional arguments passed to the compiler
-        
+
     Returns:
         SageMaker Pipeline instance ready for execution
-        
+
     Example:
         >>> dag = PipelineDAG()
         >>> # ... configure your DAG
@@ -121,19 +135,18 @@ def create_pipeline_from_dag(dag, pipeline_name=None, **kwargs):
     """
     return compile_dag_to_pipeline(dag, pipeline_name=pipeline_name, **kwargs)
 
+
 # Public API
 __all__ = [
     # Version info
     "__version__",
-    "__title__", 
+    "__title__",
     "__description__",
     "__author__",
-    
     # Main API functions
     "compile_dag",
     "compile_dag_to_pipeline",
     "create_pipeline_from_dag",
-    
     # Core classes
     "PipelineDAGCompiler",
     "PipelineDAG",
@@ -149,5 +162,12 @@ __package_info__ = {
     "author": __author__,
     "license": "MIT",
     "python_requires": ">=3.8",
-    "keywords": ["sagemaker", "pipeline", "dag", "machine-learning", "aws", "automation"],
+    "keywords": [
+        "sagemaker",
+        "pipeline",
+        "dag",
+        "machine-learning",
+        "aws",
+        "automation",
+    ],
 }

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 class PathReference(BaseModel):
     """
     Represents a path reference found in script analysis.
-    
+
     Attributes:
         path: The path string found
         line_number: Line number where the path was found
@@ -20,6 +20,7 @@ class PathReference(BaseModel):
         is_hardcoded: Whether this is a hardcoded path
         construction_method: How the path is constructed (e.g., 'os.path.join')
     """
+
     path: str
     line_number: int
     context: str
@@ -30,7 +31,7 @@ class PathReference(BaseModel):
 class EnvVarAccess(BaseModel):
     """
     Represents environment variable access found in script analysis.
-    
+
     Attributes:
         variable_name: Name of the environment variable
         line_number: Line number where the access was found
@@ -39,6 +40,7 @@ class EnvVarAccess(BaseModel):
         has_default: Whether a default value is provided
         default_value: The default value if provided
     """
+
     variable_name: str
     line_number: int
     context: str
@@ -50,7 +52,7 @@ class EnvVarAccess(BaseModel):
 class ImportStatement(BaseModel):
     """
     Represents an import statement found in script analysis.
-    
+
     Attributes:
         module_name: Name of the imported module
         import_alias: Alias used for the import (if any)
@@ -58,6 +60,7 @@ class ImportStatement(BaseModel):
         is_from_import: Whether this is a 'from X import Y' statement
         imported_items: List of specific items imported (for from imports)
     """
+
     module_name: str
     import_alias: Optional[str]
     line_number: int
@@ -68,7 +71,7 @@ class ImportStatement(BaseModel):
 class ArgumentDefinition(BaseModel):
     """
     Represents a command-line argument definition found in script analysis.
-    
+
     Attributes:
         argument_name: Name of the argument (without dashes)
         line_number: Line number where the argument was defined
@@ -78,6 +81,7 @@ class ArgumentDefinition(BaseModel):
         argument_type: Type of the argument (str, int, etc.)
         choices: Valid choices for the argument (if any)
     """
+
     argument_name: str
     line_number: int
     is_required: bool = False
@@ -90,7 +94,7 @@ class ArgumentDefinition(BaseModel):
 class PathConstruction(BaseModel):
     """
     Represents a dynamic path construction found in script analysis.
-    
+
     Attributes:
         base_path: The base path being constructed from
         construction_parts: Parts used in the construction
@@ -98,6 +102,7 @@ class PathConstruction(BaseModel):
         context: Surrounding code context
         method: Method used for construction (e.g., 'os.path.join', 'pathlib')
     """
+
     base_path: str
     construction_parts: List[str]
     line_number: int
@@ -108,7 +113,7 @@ class PathConstruction(BaseModel):
 class FileOperation(BaseModel):
     """
     Represents a file operation found in script analysis.
-    
+
     Attributes:
         file_path: Path to the file being operated on
         operation_type: Type of operation (read, write, append, etc.)
@@ -117,6 +122,7 @@ class FileOperation(BaseModel):
         mode: File mode used (if specified)
         method: Method used for the operation (e.g., 'open', 'tarfile.open', 'pandas.read_csv')
     """
+
     file_path: str
     operation_type: str
     line_number: int

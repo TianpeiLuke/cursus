@@ -12,12 +12,18 @@ import sys
 from pathlib import Path
 import shutil
 
-from cursus.validation.alignment.script_contract_alignment import ScriptContractAlignmentTester
-from cursus.validation.alignment.static_analysis.builder_analyzer import BuilderArgumentExtractor, extract_builder_arguments
+from cursus.validation.alignment.script_contract_alignment import (
+    ScriptContractAlignmentTester,
+)
+from cursus.validation.alignment.static_analysis.builder_analyzer import (
+    BuilderArgumentExtractor,
+    extract_builder_arguments,
+)
+
 
 class TestEnhancedArgumentValidation:
     """Test enhanced argument validation with builder integration."""
-    
+
     @pytest.fixture
     def test_dirs(self):
         """Set up test environment with temporary directories."""
@@ -25,23 +31,23 @@ class TestEnhancedArgumentValidation:
         scripts_dir = temp_dir / "scripts"
         contracts_dir = temp_dir / "contracts"
         builders_dir = temp_dir / "builders"
-        
+
         for dir_path in [scripts_dir, contracts_dir, builders_dir]:
             dir_path.mkdir(exist_ok=True)
-        
+
         yield {
-            'temp_dir': temp_dir,
-            'scripts_dir': scripts_dir,
-            'contracts_dir': contracts_dir,
-            'builders_dir': builders_dir
+            "temp_dir": temp_dir,
+            "scripts_dir": scripts_dir,
+            "contracts_dir": contracts_dir,
+            "builders_dir": builders_dir,
         }
-        
+
         # Clean up temporary directories
         try:
             shutil.rmtree(temp_dir)
         except:
             pass
-    
+
     def test_builder_argument_extraction(self, test_dirs):
         """Test that builder argument extraction works correctly."""
         # Create a sample builder with _get_job_arguments method
@@ -67,17 +73,17 @@ class SampleBuilder:
         
         return args
 '''
-        
-        builder_file = test_dirs['builders_dir'] / "builder_sample_step.py"
+
+        builder_file = test_dirs["builders_dir"] / "builder_sample_step.py"
         builder_file.write_text(builder_content)
-        
+
         # Test argument extraction
         extractor = BuilderArgumentExtractor(str(builder_file))
         arguments = extractor.extract_job_arguments()
-        
+
         expected_args = {"job-type", "mode", "marketplace-id-col", "currency-col"}
         assert arguments == expected_args
-    
+
     def test_enhanced_validation_with_builder_args(self, test_dirs):
         """Test that validation correctly handles builder-provided arguments."""
         # Create a script that defines arguments provided by builder
@@ -106,7 +112,7 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-        
+
         # Create a contract that doesn't include builder-provided arguments
         contract_content = '''"""
 Contract for sample script.
@@ -124,7 +130,7 @@ SAMPLE_CONTRACT = ScriptContract(
     optional_env_vars={}
 )
 '''
-        
+
         # Create a builder that provides the arguments
         builder_content = '''"""
 Sample builder that provides config-driven arguments.
@@ -143,38 +149,41 @@ class SampleBuilder:
             "--currency-col", self.config.currency_col
         ]
 '''
-        
+
         # Write test files
-        (test_dirs['scripts_dir'] / "sample.py").write_text(script_content)
-        (test_dirs['contracts_dir'] / "sample_contract.py").write_text(contract_content)
-        (test_dirs['builders_dir'] / "builder_sample_step.py").write_text(builder_content)
-        
+        (test_dirs["scripts_dir"] / "sample.py").write_text(script_content)
+        (test_dirs["contracts_dir"] / "sample_contract.py").write_text(contract_content)
+        (test_dirs["builders_dir"] / "builder_sample_step.py").write_text(
+            builder_content
+        )
+
         # Test validation with builder integration
         tester = ScriptContractAlignmentTester(
-            str(test_dirs['scripts_dir']),
-            str(test_dirs['contracts_dir']),
-            str(test_dirs['builders_dir'])
+            str(test_dirs["scripts_dir"]),
+            str(test_dirs["contracts_dir"]),
+            str(test_dirs["builders_dir"]),
         )
-        
+
         result = tester.validate_script("sample")
-        
+
         # Check that validation passes or has only INFO issues for builder-provided args
-        issues = result.get('issues', [])
-        
+        issues = result.get("issues", [])
+
         # Filter for argument-related issues
-        arg_issues = [issue for issue in issues if issue.get('category') == 'arguments']
-        
+        arg_issues = [issue for issue in issues if issue.get("category") == "arguments"]
+
         # Should have INFO issues for builder-provided arguments, not WARNING/ERROR
         builder_arg_issues = [
-            issue for issue in arg_issues 
-            if issue.get('details', {}).get('source') == 'builder'
+            issue
+            for issue in arg_issues
+            if issue.get("details", {}).get("source") == "builder"
         ]
-        
+
         # Verify that builder-provided arguments are marked as INFO, not errors
         for issue in builder_arg_issues:
-            assert issue.get('severity') == 'INFO'
-            assert 'provided by builder' in issue.get('message', '')
-    
+            assert issue.get("severity") == "INFO"
+            assert "provided by builder" in issue.get("message", "")
+
     def test_orphaned_arguments_still_flagged(self, test_dirs):
         """Test that arguments not in contract or builder are still flagged as issues."""
         # Create a script with an argument not provided by builder or contract
@@ -196,7 +205,7 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-        
+
         # Create contract and builder that don't provide the orphaned argument
         contract_content = '''"""
 Contract for orphaned test.
@@ -223,7 +232,7 @@ ORPHANED_CONTRACT = MockScriptContract(
     optional_env_vars={}
 )
 '''
-        
+
         builder_content = '''"""
 Builder that only provides job-type.
 """
@@ -235,42 +244,49 @@ class OrphanedBuilder:
     def _get_job_arguments(self):
         return ["--job-type", self.config.job_type]
 '''
-        
+
         # Write test files
-        (test_dirs['scripts_dir'] / "orphaned.py").write_text(script_content)
-        (test_dirs['contracts_dir'] / "orphaned_contract.py").write_text(contract_content)
-        (test_dirs['builders_dir'] / "builder_orphaned_step.py").write_text(builder_content)
-        
+        (test_dirs["scripts_dir"] / "orphaned.py").write_text(script_content)
+        (test_dirs["contracts_dir"] / "orphaned_contract.py").write_text(
+            contract_content
+        )
+        (test_dirs["builders_dir"] / "builder_orphaned_step.py").write_text(
+            builder_content
+        )
+
         # Test validation
         tester = ScriptContractAlignmentTester(
-            str(test_dirs['scripts_dir']),
-            str(test_dirs['contracts_dir']),
-            str(test_dirs['builders_dir'])
+            str(test_dirs["scripts_dir"]),
+            str(test_dirs["contracts_dir"]),
+            str(test_dirs["builders_dir"]),
         )
-        
+
         result = tester.validate_script("orphaned")
-        
+
         # Check that orphaned argument is still flagged as WARNING
-        issues = result.get('issues', [])
-        arg_issues = [issue for issue in issues if issue.get('category') == 'arguments']
-        
+        issues = result.get("issues", [])
+        arg_issues = [issue for issue in issues if issue.get("category") == "arguments"]
+
         orphaned_issues = [
-            issue for issue in arg_issues 
-            if 'orphaned-arg' in issue.get('message', '') and 
-            issue.get('severity') == 'WARNING'
+            issue
+            for issue in arg_issues
+            if "orphaned-arg" in issue.get("message", "")
+            and issue.get("severity") == "WARNING"
         ]
-        
-        assert len(orphaned_issues) > 0, "Orphaned argument should be flagged as WARNING"
-    
+
+        assert (
+            len(orphaned_issues) > 0
+        ), "Orphaned argument should be flagged as WARNING"
+
     def test_builder_registry_mapping(self, test_dirs):
         """Test that builder registry correctly maps scripts to builders."""
         # Create multiple builders with different naming patterns
         builders = {
             "builder_currency_conversion_step.py": "currency_conversion",
-            "builder_tabular_preprocessing_step.py": "tabular_preprocessing", 
-            "builder_model_calibration_step.py": "model_calibration"
+            "builder_tabular_preprocessing_step.py": "tabular_preprocessing",
+            "builder_model_calibration_step.py": "model_calibration",
         }
-        
+
         for builder_file, expected_script in builders.items():
             builder_content = f'''"""
 Builder for {expected_script}.
@@ -280,12 +296,15 @@ class {expected_script.title().replace('_', '')}Builder:
     def _get_job_arguments(self):
         return ["--job-type", "test"]
 '''
-            (test_dirs['builders_dir'] / builder_file).write_text(builder_content)
-        
+            (test_dirs["builders_dir"] / builder_file).write_text(builder_content)
+
         # Test extraction for each script
         for expected_script in builders.values():
-            args = extract_builder_arguments(expected_script, str(test_dirs['builders_dir']))
+            args = extract_builder_arguments(
+                expected_script, str(test_dirs["builders_dir"])
+            )
             assert args == {"job-type"}
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     pytest.main([__file__])
