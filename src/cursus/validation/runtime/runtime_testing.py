@@ -195,13 +195,18 @@ class RuntimeTester:
         self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
     ) -> DataCompatibilityResult:
         """
-        Enhanced data compatibility testing with semantic path matching
+        Enhanced data compatibility testing with intelligent path matching
 
-        Uses semantic matching to intelligently connect output paths of spec_a 
-        to input paths of spec_b, eliminating hardcoded assumptions about logical names.
+        Uses logical name matching when available, falls back to semantic matching.
+        This provides the best of both worlds - sophisticated matching when possible,
+        with graceful degradation for backward compatibility.
         """
-
-        # Use semantic path matching as the primary approach
+        
+        # Use logical name matching if available (preferred approach)
+        if self.enable_logical_matching:
+            return self._test_data_compatibility_with_logical_matching(spec_a, spec_b)
+        
+        # Fall back to semantic matching for backward compatibility
         return self._test_data_compatibility_with_semantic_matching(spec_a, spec_b)
 
     def _test_data_compatibility_with_semantic_matching(
@@ -384,7 +389,7 @@ class RuntimeTester:
     def _test_data_compatibility_with_logical_matching(
         self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
     ) -> DataCompatibilityResult:
-        """Enhanced data compatibility testing with logical name matching"""
+        """Enhanced data compatibility testing using the logical_name_matching system"""
 
         try:
             # Execute script A using its ScriptExecutionSpec
@@ -401,17 +406,10 @@ class RuntimeTester:
                     ],
                 )
 
-            # Find valid output files using semantic matching to get the best output path
-            path_matches = self._find_semantic_path_matches(spec_a, spec_b)
-            if path_matches:
-                # Use the best matching output path
-                best_output_name = path_matches[0][0]  # First match has highest score
-                output_dir_a = Path(spec_a.output_paths[best_output_name])
-            else:
-                # Fallback to first available output path
-                first_output_name = next(iter(spec_a.output_paths.keys()))
-                output_dir_a = Path(spec_a.output_paths[first_output_name])
-            
+            # Find output files from script A
+            # Use first available output path as starting point
+            first_output_name = next(iter(spec_a.output_paths.keys()))
+            output_dir_a = Path(spec_a.output_paths[first_output_name])
             output_files = self._find_valid_output_files(output_dir_a)
 
             if not output_files:
@@ -424,58 +422,28 @@ class RuntimeTester:
                     ],
                 )
 
-            # Convert to enhanced specs for logical name matching
+            # Convert to enhanced specs and delegate to logical name matching system
             enhanced_spec_a = self._convert_to_enhanced_spec(spec_a)
             enhanced_spec_b = self._convert_to_enhanced_spec(spec_b)
 
-            # Find logical name matches using PathMatcher
-            path_matches = self.path_matcher.find_path_matches(
-                enhanced_spec_a, enhanced_spec_b
+            # Use the sophisticated logical name matching system
+            enhanced_result = self.logical_name_tester.test_data_compatibility_with_logical_matching(
+                enhanced_spec_a, enhanced_spec_b, output_files
             )
 
-            if not path_matches:
-                # No logical matches found, fall back to semantic matching
-                return self._test_data_compatibility_with_semantic_matching(spec_a, spec_b)
-
-            # Create modified spec_b with matched paths
-            modified_spec_b = self._create_modified_spec_with_matches(
-                spec_b, path_matches, output_files
-            )
-
-            # Execute script B with matched inputs
-            main_params_b = self.builder.get_script_main_params(modified_spec_b)
-            script_b_result = self.test_script_with_spec(modified_spec_b, main_params_b)
-
-            # Generate matching report
-            matching_report = self._generate_matching_report(path_matches)
-
-            # Return enhanced results with matching information
+            # Convert enhanced result back to standard DataCompatibilityResult for API consistency
             return DataCompatibilityResult(
-                script_a=spec_a.script_name,
-                script_b=spec_b.script_name,
-                compatible=script_b_result.success,
-                compatibility_issues=(
-                    [] if script_b_result.success else [script_b_result.error_message]
-                ),
-                data_format_a=(
-                    self._detect_file_format(output_files[0])
-                    if output_files
-                    else "unknown"
-                ),
-                data_format_b=(
-                    self._detect_file_format(output_files[0])
-                    if script_b_result.success and output_files
-                    else "unknown"
-                ),
+                script_a=enhanced_result.script_a,
+                script_b=enhanced_result.script_b,
+                compatible=enhanced_result.compatible,
+                compatibility_issues=enhanced_result.compatibility_issues,
+                data_format_a=enhanced_result.data_format_a,
+                data_format_b=enhanced_result.data_format_b,
             )
 
         except Exception as e:
-            return DataCompatibilityResult(
-                script_a=spec_a.script_name,
-                script_b=spec_b.script_name,
-                compatible=False,
-                compatibility_issues=[f"Enhanced compatibility test failed: {str(e)}"],
-            )
+            # Fall back to semantic matching if logical matching fails
+            return self._test_data_compatibility_with_semantic_matching(spec_a, spec_b)
 
     def test_pipeline_flow_with_spec(
         self, pipeline_spec: PipelineTestingSpec

@@ -6,25 +6,26 @@ tags:
   - quick_start
   - tutorial
 keywords:
-  - script runtime tester
+  - runtime testing
   - pipeline runtime testing
   - script validation
   - data compatibility testing
   - pipeline flow testing
+  - logical name matching
 topics:
-  - script runtime testing
+  - runtime testing
   - validation tutorial
   - pipeline testing workflow
   - script execution validation
 language: python
-date of note: 2025-09-09
+date of note: 2025-09-12
 ---
 
-# Script Runtime Tester Quick Start Guide
+# Runtime Testing Quick Start Guide
 
 ## Overview
 
-This 15-minute tutorial will get you up and running with the Cursus Script Runtime Tester. You'll learn how to validate script functionality, test data compatibility between scripts, and verify complete pipeline flows with actual script execution.
+This 20-minute tutorial will get you up and running with the Cursus Runtime Testing system. You'll learn how to validate script functionality, test data compatibility between scripts, and verify complete pipeline flows using real scripts and contracts from the Cursus framework.
 
 ## Prerequisites
 
@@ -66,66 +67,103 @@ Workspace directory: ./test_workspace
 For more control, you can use the RuntimeTestingConfiguration:
 
 ```python
-from cursus.validation.runtime import RuntimeTester, RuntimeTestingConfiguration
+from cursus.validation.runtime import RuntimeTester, RuntimeTestingConfiguration, PipelineTestingSpec
+from cursus.api.dag.base_dag import PipelineDAG
 
-# Create configuration with custom settings
+# First create a pipeline specification
+dag = PipelineDAG()
+dag.add_node("preprocessing")
+dag.add_node("training")
+dag.add_edge("preprocessing", "training")
+
+pipeline_spec = PipelineTestingSpec(
+    dag=dag,
+    script_specs={},  # Will be filled later
+    test_workspace_root="./test_workspace"
+)
+
+# Create configuration with pipeline spec
 config = RuntimeTestingConfiguration(
-    pipeline_spec=None,  # Will be set later
+    pipeline_spec=pipeline_spec,
     test_individual_scripts=True,
     test_data_compatibility=True,
     test_pipeline_flow=True,
+    enable_enhanced_features=True,
+    enable_logical_matching=True,
     use_workspace_aware=False
 )
 
-# Initialize with configuration (when you have a pipeline spec)
-# tester = RuntimeTester(config)
+# Initialize with configuration
+tester = RuntimeTester(config)
 
-# For now, use simple initialization
+# Or use simple initialization (backward compatible)
 tester = RuntimeTester("./test_workspace")
 ```
 
-## Step 2: Create Script Execution Specifications (3 minutes)
+## Step 2: Create Script Execution Specifications Using Real Contracts (4 minutes)
 
-The modern approach uses ScriptExecutionSpec to define how scripts should be executed. The enhanced system now supports **contract-aware specification building** that automatically uses real script contracts instead of generic defaults:
+Let's create specifications for real scripts using their actual contracts:
 
 ```python
-from cursus.validation.runtime import ScriptExecutionSpec, PipelineTestingSpecBuilder
+from cursus.validation.runtime import ScriptExecutionSpec
+import tempfile
 
-# Create builder with contract-aware capabilities
-builder = PipelineTestingSpecBuilder("./test_workspace")
+# Create a temporary workspace for testing
+workspace_dir = tempfile.mkdtemp()
 
-# Option 1: Contract-aware specification (RECOMMENDED)
-# This automatically discovers and uses the actual script contract
-script_spec = builder.create_contract_aware_spec(
+# Create specification for tabular preprocessing script
+# This uses the actual contract from src/cursus/steps/contracts/tabular_preprocess_contract.py
+preprocessing_spec = ScriptExecutionSpec(
     script_name="tabular_preprocessing",
-    step_name="preprocessing_step"
-)
-
-print("📋 Created contract-aware script execution specification:")
-print(f"Script: {script_spec.script_name}")
-print(f"Input paths: {script_spec.input_paths}")
-print(f"Output paths: {script_spec.output_paths}")
-print(f"Environment variables: {script_spec.environ_vars}")
-
-# Option 2: Manual specification (for custom testing)
-manual_spec = ScriptExecutionSpec(
-    script_name="tabular_preprocessing",
-    step_name="preprocessing_step",
-    input_paths={"DATA": "./test_data/input/data"},
-    output_paths={"processed_data": "./test_output/processed"},
+    step_name="TabularPreprocessing_training",
+    input_paths={
+        "data_input": f"{workspace_dir}/input/data"  # Maps to contract's "DATA" input
+    },
+    output_paths={
+        "data_output": f"{workspace_dir}/preprocessing/output"  # Maps to contract's "processed_data" output
+    },
     environ_vars={
+        # Required environment variables from the contract
         "LABEL_FIELD": "target",
         "TRAIN_RATIO": "0.7",
-        "TEST_VAL_RATIO": "0.15",
-        "CATEGORICAL_COLUMNS": "category1,category2",
-        "NUMERICAL_COLUMNS": "feature1,feature2,feature3"
+        "TEST_VAL_RATIO": "0.15"
     },
-    job_args={"job_type": "training"}
+    job_args={
+        "job_type": "training"  # Required argument for the script
+    }
 )
 
-# Get main function parameters
-main_params = builder.get_script_main_params(script_spec)
-print(f"Main parameters ready: {list(main_params.keys())}")
+print("📋 Created tabular preprocessing specification:")
+print(f"Script: {preprocessing_spec.script_name}")
+print(f"Input paths: {preprocessing_spec.input_paths}")
+print(f"Output paths: {preprocessing_spec.output_paths}")
+print(f"Environment variables: {preprocessing_spec.environ_vars}")
+
+# Create specification for XGBoost training script
+# This uses the actual contract from src/cursus/steps/contracts/xgboost_training_contract.py
+xgboost_spec = ScriptExecutionSpec(
+    script_name="xgboost_training",
+    step_name="XGBoostTraining_training",
+    input_paths={
+        # Maps to contract's expected input paths
+        "input_path": f"{workspace_dir}/training/input",
+        "hyperparameters_s3_uri": f"{workspace_dir}/config/hyperparameters.json"
+    },
+    output_paths={
+        # Maps to contract's expected output paths
+        "model_output": f"{workspace_dir}/model",
+        "evaluation_output": f"{workspace_dir}/evaluation"
+    },
+    environ_vars={
+        # XGBoost training uses hyperparameters.json instead of env vars
+    },
+    job_args={}
+)
+
+print("\n📋 Created XGBoost training specification:")
+print(f"Script: {xgboost_spec.script_name}")
+print(f"Input paths: {xgboost_spec.input_paths}")
+print(f"Output paths: {xgboost_spec.output_paths}")
 ```
 
 **What this creates:**
@@ -140,9 +178,17 @@ print(f"Main parameters ready: {list(main_params.keys())}")
 Let's test a single script using the specification:
 
 ```python
+from cursus.validation.runtime import PipelineTestingSpecBuilder
+
+# Initialize the builder to get main parameters
+builder = PipelineTestingSpecBuilder(workspace_dir)
+
+# Get main parameters for the preprocessing script
+main_params = builder.get_script_main_params(preprocessing_spec)
+
 # Test script with specification
-print(f"🔍 Testing script: {script_spec.script_name}")
-result = tester.test_script_with_spec(script_spec, main_params)
+print(f"🔍 Testing script: {preprocessing_spec.script_name}")
+result = tester.test_script_with_spec(preprocessing_spec, main_params)
 
 # Check results
 if result.success:
@@ -175,7 +221,7 @@ Specifications can be saved for reuse:
 
 ```python
 # Save specification to file
-saved_path = script_spec.save_to_file(str(builder.specs_dir))
+saved_path = preprocessing_spec.save_to_file(str(builder.specs_dir))
 print(f"💾 Saved specification to: {saved_path}")
 
 # Load specification from file
@@ -210,10 +256,10 @@ training_spec = ScriptExecutionSpec(
     job_args={"job_type": "training"}
 )
 
-print(f"🔗 Testing data compatibility: {script_spec.script_name} -> {training_spec.script_name}")
+print(f"🔗 Testing data compatibility: {preprocessing_spec.script_name} -> {training_spec.script_name}")
 
 # Test compatibility using specifications
-compat_result = tester.test_data_compatibility_with_specs(script_spec, training_spec)
+compat_result = tester.test_data_compatibility_with_specs(preprocessing_spec, training_spec)
 
 if compat_result.compatible:
     print("✅ Scripts are data compatible!")
@@ -438,14 +484,14 @@ if tester_enhanced.enable_logical_matching:
     print("🧠 Logical name matching is available")
     
     # Get path matches between specifications
-    path_matches = tester_enhanced.get_path_matches(script_spec, training_spec)
+    path_matches = tester_enhanced.get_path_matches(preprocessing_spec, xgboost_spec)
     print(f"Found {len(path_matches)} logical name matches")
     
     # Generate matching report
-    matching_report = tester_enhanced.generate_matching_report(script_spec, training_spec)
+    matching_report = tester_enhanced.generate_matching_report(preprocessing_spec, xgboost_spec)
     print(f"Matching report: {matching_report}")
     
-    # Validate pipeline logical names
+    # Validate pipeline logical names (using pipeline_spec from Step 6)
     validation_results = tester_enhanced.validate_pipeline_logical_names(pipeline_spec)
     print(f"Pipeline validation: {validation_results['overall_valid']}")
 else:
@@ -554,6 +600,244 @@ pre_commit_validation()
 ```
 
 ## Troubleshooting
+
+### Issue: Script Import/Dependency Errors
+
+The most common issue when testing scripts is missing dependencies. Each script may have different package requirements than the cursus framework itself.
+
+#### Common Script Dependency Error
+```python
+result = tester.test_script_with_spec(preprocessing_spec, main_params)
+if not result.success:
+    print(f"❌ Script failed: {result.error_message}")
+    
+# Common error messages:
+# "ModuleNotFoundError: No module named 'pandas'"
+# "ModuleNotFoundError: No module named 'xgboost'" 
+# "ModuleNotFoundError: No module named 'sklearn'"
+# "ModuleNotFoundError: No module named 'boto3'"
+```
+
+#### Diagnosing Script Dependencies
+```python
+def check_script_dependencies(script_name):
+    """Check what dependencies a script needs."""
+    import ast
+    from pathlib import Path
+    
+    # Find the script file
+    tester = RuntimeTester("./test_workspace")
+    try:
+        script_path = tester._find_script_path(script_name)
+        print(f"📄 Analyzing script: {script_path}")
+    except FileNotFoundError:
+        print(f"❌ Script not found: {script_name}")
+        return
+    
+    # Parse the script to find imports
+    try:
+        with open(script_path, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        imports = []
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.append(alias.name.split('.')[0])
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    imports.append(node.module.split('.')[0])
+        
+        # Remove duplicates and standard library modules
+        unique_imports = list(set(imports))
+        
+        # Common third-party packages that scripts often need
+        common_packages = {
+            'pandas': 'pip install pandas',
+            'numpy': 'pip install numpy', 
+            'xgboost': 'pip install xgboost',
+            'sklearn': 'pip install scikit-learn',
+            'boto3': 'pip install boto3',
+            'sagemaker': 'pip install sagemaker',
+            'torch': 'pip install torch',
+            'tensorflow': 'pip install tensorflow',
+            'matplotlib': 'pip install matplotlib',
+            'seaborn': 'pip install seaborn',
+            'joblib': 'pip install joblib',
+            'pickle': 'Built-in module',
+            'json': 'Built-in module',
+            'os': 'Built-in module',
+            'sys': 'Built-in module',
+            'pathlib': 'Built-in module'
+        }
+        
+        print(f"📦 Found imports in {script_name}:")
+        missing_packages = []
+        
+        for imp in sorted(unique_imports):
+            try:
+                __import__(imp)
+                status = "✅ Available"
+            except ImportError:
+                status = "❌ Missing"
+                missing_packages.append(imp)
+            
+            install_cmd = common_packages.get(imp, f'pip install {imp}')
+            print(f"  {imp}: {status} ({install_cmd})")
+        
+        if missing_packages:
+            print(f"\n💡 Install missing packages:")
+            for pkg in missing_packages:
+                install_cmd = common_packages.get(pkg, f'pip install {pkg}')
+                if 'pip install' in install_cmd:
+                    print(f"  {install_cmd}")
+        else:
+            print("✅ All dependencies appear to be available")
+            
+    except Exception as e:
+        print(f"❌ Error analyzing script: {e}")
+
+# Check dependencies for common scripts
+check_script_dependencies("tabular_preprocessing")
+check_script_dependencies("xgboost_training")
+```
+
+#### Installing Script Dependencies
+```python
+def install_common_script_dependencies():
+    """Install common dependencies needed by cursus scripts."""
+    import subprocess
+    import sys
+    
+    # Common packages needed by cursus scripts
+    common_packages = [
+        'pandas>=1.3.0',
+        'numpy>=1.20.0',
+        'xgboost>=1.5.0',
+        'scikit-learn>=1.0.0',
+        'boto3>=1.20.0',
+        'sagemaker>=2.100.0',
+        'joblib>=1.1.0'
+    ]
+    
+    print("📦 Installing common script dependencies...")
+    
+    for package in common_packages:
+        try:
+            print(f"Installing {package}...")
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+            print(f"✅ {package} installed successfully")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Failed to install {package}: {e}")
+        except Exception as e:
+            print(f"❌ Error installing {package}: {e}")
+    
+    print("✅ Dependency installation complete")
+
+# Uncomment to install common dependencies
+# install_common_script_dependencies()
+```
+
+#### Testing with Dependency Isolation
+```python
+def test_with_dependency_check(script_spec, main_params):
+    """Test script with dependency checking."""
+    tester = RuntimeTester("./test_workspace")
+    
+    print(f"🔍 Testing {script_spec.script_name} with dependency checking...")
+    
+    # First attempt
+    result = tester.test_script_with_spec(script_spec, main_params)
+    
+    if result.success:
+        print("✅ Script executed successfully")
+        return result
+    
+    # Check if it's an import error
+    if "ModuleNotFoundError" in result.error_message or "ImportError" in result.error_message:
+        print("❌ Script failed due to missing dependencies:")
+        print(f"Error: {result.error_message}")
+        
+        # Extract missing module name
+        import re
+        match = re.search(r"No module named '([^']+)'", result.error_message)
+        if match:
+            missing_module = match.group(1)
+            print(f"💡 Missing module: {missing_module}")
+            
+            # Suggest installation
+            common_installs = {
+                'pandas': 'pip install pandas',
+                'numpy': 'pip install numpy',
+                'xgboost': 'pip install xgboost',
+                'sklearn': 'pip install scikit-learn',
+                'boto3': 'pip install boto3',
+                'sagemaker': 'pip install sagemaker'
+            }
+            
+            install_cmd = common_installs.get(missing_module, f'pip install {missing_module}')
+            print(f"💡 Install with: {install_cmd}")
+            
+            # Check if it's available in a different name
+            alternative_names = {
+                'sklearn': 'scikit-learn',
+                'cv2': 'opencv-python',
+                'PIL': 'Pillow'
+            }
+            
+            if missing_module in alternative_names:
+                alt_install = f"pip install {alternative_names[missing_module]}"
+                print(f"💡 Alternative install: {alt_install}")
+    else:
+        print(f"❌ Script failed for other reasons: {result.error_message}")
+    
+    return result
+
+# Test with dependency checking
+result = test_with_dependency_check(preprocessing_spec, main_params)
+```
+
+#### Creating a Requirements File for Scripts
+```python
+def create_script_requirements():
+    """Create requirements.txt for script dependencies."""
+    
+    # Common script dependencies (adjust based on your scripts)
+    script_requirements = [
+        "# Core data processing",
+        "pandas>=1.3.0",
+        "numpy>=1.20.0",
+        "",
+        "# Machine learning",
+        "xgboost>=1.5.0", 
+        "scikit-learn>=1.0.0",
+        "joblib>=1.1.0",
+        "",
+        "# AWS integration",
+        "boto3>=1.20.0",
+        "sagemaker>=2.100.0",
+        "",
+        "# Visualization (optional)",
+        "matplotlib>=3.5.0",
+        "seaborn>=0.11.0",
+        "",
+        "# Deep learning (optional)",
+        "torch>=1.10.0",
+        "tensorflow>=2.8.0"
+    ]
+    
+    requirements_path = Path("script_requirements.txt")
+    with open(requirements_path, 'w') as f:
+        f.write('\n'.join(script_requirements))
+    
+    print(f"📄 Created {requirements_path}")
+    print("💡 Install with: pip install -r script_requirements.txt")
+
+# Create requirements file
+create_script_requirements()
+```
 
 ### Issue: "Script not found"
 ```python

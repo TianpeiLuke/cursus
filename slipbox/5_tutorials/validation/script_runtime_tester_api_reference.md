@@ -6,25 +6,26 @@ tags:
   - pipeline_testing
   - api_reference
 keywords:
-  - script runtime tester API
+  - runtime testing API
   - pipeline runtime testing API
   - script execution validation
   - data compatibility testing API
   - pipeline flow testing API
+  - logical name matching API
 topics:
-  - script runtime testing API
-  - runtime validation API reference
+  - runtime testing API
+  - validation API reference
   - script execution validation methods
   - pipeline testing API
 language: python
-date of note: 2025-09-09
+date of note: 2025-09-12
 ---
 
-# Script Runtime Tester API Reference
+# Runtime Testing API Reference
 
 ## Overview
 
-The Script Runtime Tester API provides comprehensive validation of pipeline scripts through actual execution. This reference documents the complete API for testing script functionality, data compatibility, and pipeline flows with practical examples and usage patterns.
+The Runtime Testing API provides comprehensive validation of pipeline scripts through actual execution with intelligent logical name matching. This reference documents the complete API for testing script functionality, data compatibility, and pipeline flows using real scripts and contracts from the Cursus framework.
 
 ## Core API Classes
 
@@ -50,8 +51,11 @@ config = RuntimeTestingConfiguration(
 )
 tester = RuntimeTester(config)
 
-# Initialize with logical name matching enabled
+# Initialize with logical name matching enabled (default: True)
 tester = RuntimeTester("./test_workspace", enable_logical_matching=True, semantic_threshold=0.7)
+
+print(f"Logical matching enabled: {tester.enable_logical_matching}")
+print(f"Workspace directory: {tester.workspace_dir}")
 ```
 
 **Constructor Parameters:**
@@ -107,33 +111,54 @@ def test_script_with_spec(
 
 **Returns:** `ScriptTestResult` with execution details
 
-**Example:**
+**Example with Real Tabular Preprocessing Script:**
 ```python
 from cursus.validation.runtime import ScriptExecutionSpec, PipelineTestingSpecBuilder
+import tempfile
 
-# Create custom execution specification
+# Create specification for actual tabular_preprocessing.py script
+# This script is located at src/cursus/steps/scripts/tabular_preprocessing.py
+workspace_dir = tempfile.mkdtemp()
+
 spec = ScriptExecutionSpec(
     script_name="tabular_preprocessing",
-    step_name="preprocessing_step",
-    input_paths={"data_input": "./test_data/raw_data.csv"},
-    output_paths={"data_output": "./test_output/processed"},
-    environ_vars={"LABEL_FIELD": "target", "FEATURE_COLS": "feature1,feature2"},
-    job_args={"job_type": "preprocessing", "batch_size": 1000}
+    step_name="TabularPreprocessing_training",
+    input_paths={
+        "data_input": f"{workspace_dir}/input/data"  # Maps to script's expected input
+    },
+    output_paths={
+        "data_output": f"{workspace_dir}/output"  # Maps to script's expected output
+    },
+    environ_vars={
+        # Required environment variables from the actual script
+        "LABEL_FIELD": "target",
+        "TRAIN_RATIO": "0.7",
+        "TEST_VAL_RATIO": "0.15"
+    },
+    job_args={
+        "job_type": "training"  # Required argument for the actual script
+    }
 )
 
 # Get main function parameters
-builder = PipelineTestingSpecBuilder("./test_workspace")
+builder = PipelineTestingSpecBuilder(workspace_dir)
 main_params = builder.get_script_main_params(spec)
 
 # Test with specification
 result = tester.test_script_with_spec(spec, main_params)
 
 if result.success:
-    print("✅ Script test with custom spec passed!")
+    print("✅ Tabular preprocessing script test passed!")
     print(f"Execution time: {result.execution_time:.3f}s")
     print(f"Has main function: {result.has_main_function}")
+    print("Script successfully processed data and created train/test/val splits")
 else:
     print(f"❌ Script test failed: {result.error_message}")
+    # Common issues with tabular_preprocessing.py:
+    if "LABEL_FIELD" in result.error_message:
+        print("💡 Ensure LABEL_FIELD environment variable is set")
+    elif "input/data" in result.error_message:
+        print("💡 Create input data directory with sample CSV/Parquet files")
 ```
 
 ### test_data_compatibility_with_specs()
@@ -393,14 +418,11 @@ try:
 except ValueError as e:
     print(f"❌ Validation failed: {e}")
 
-# Create contract-aware specification (NEW)
-contract_aware_spec = builder.create_contract_aware_spec(
-    script_name="tabular_preprocessing",
-    step_name="preprocessing_step"
-)
-print(f"✅ Created contract-aware spec: {contract_aware_spec.script_name}")
-print(f"Input paths from contract: {contract_aware_spec.input_paths}")
-print(f"Environment variables from contract: {contract_aware_spec.environ_vars}")
+# Resolve script execution spec from DAG node (uses contract discovery internally)
+resolved_spec = builder.resolve_script_execution_spec_from_node("TabularPreprocessing_training")
+print(f"✅ Resolved DAG node to script: {resolved_spec.script_name}")
+print(f"Input paths from contract: {resolved_spec.input_paths}")
+print(f"Environment variables from contract: {resolved_spec.environ_vars}")
 
 # Update a specific script spec
 updated_spec = builder.update_script_spec(
@@ -432,7 +454,6 @@ print(f"✅ Resolved DAG node 'XGBoostTraining' to script: {resolved_spec.script
 
 **Enhanced PipelineTestingSpecBuilder Methods:**
 - `build_from_dag(dag, validate=True)`: Build PipelineTestingSpec from DAG with intelligent resolution
-- `create_contract_aware_spec(script_name, step_name)`: Create specification using script contracts
 - `resolve_script_execution_spec_from_node(node_name)`: Resolve DAG node to script specification
 - `save_script_spec(spec)`: Save ScriptExecutionSpec to local file
 - `update_script_spec(node_name, **updates)`: Update specific fields in a spec
@@ -455,34 +476,33 @@ print(f"✅ Resolved DAG node 'XGBoostTraining' to script: {resolved_spec.script
 from cursus.validation.runtime import ContractDiscoveryManager
 
 # Initialize contract discovery manager
-contract_manager = ContractDiscoveryManager()
+contract_manager = ContractDiscoveryManager("./test_workspace")
 
 # Discover contract for a specific script
 discovery_result = contract_manager.discover_contract("tabular_preprocessing")
 
-if discovery_result.contract_found:
+if discovery_result.contract is not None:
     print(f"✅ Contract discovered for tabular_preprocessing:")
-    print(f"  Contract class: {discovery_result.contract_class.__name__}")
+    print(f"  Contract name: {discovery_result.contract_name}")
     print(f"  Discovery method: {discovery_result.discovery_method}")
-    print(f"  Entry point validated: {discovery_result.entry_point_valid}")
     
-    # Access contract instance
-    contract_instance = discovery_result.contract_instance
-    print(f"  Input paths: {contract_instance.input_paths}")
-    print(f"  Output paths: {contract_instance.output_paths}")
-    print(f"  Environment variables: {contract_instance.environ_vars}")
+    # Access contract object
+    contract = discovery_result.contract
+    print(f"  Contract type: {type(contract).__name__}")
+    
+    # Get contract-aware paths with local adaptation
+    input_paths = contract_manager.get_contract_input_paths(contract, "tabular_preprocessing")
+    output_paths = contract_manager.get_contract_output_paths(contract, "tabular_preprocessing")
+    environ_vars = contract_manager.get_contract_environ_vars(contract)
+    job_args = contract_manager.get_contract_job_args(contract, "tabular_preprocessing")
+    
+    print(f"  Adapted input paths: {input_paths}")
+    print(f"  Adapted output paths: {output_paths}")
+    print(f"  Environment variables: {environ_vars}")
+    print(f"  Job arguments: {job_args}")
 else:
     print("ℹ️ No contract found, using fallback defaults")
-    print(f"  Attempted methods: {discovery_result.attempted_methods}")
-    print(f"  Error details: {discovery_result.error_details}")
-
-# Get contract-aware paths with local adaptation
-if discovery_result.contract_found:
-    adapted_input_paths = contract_manager._adapt_paths_for_local_testing(
-        discovery_result.contract_instance.input_paths,
-        "tabular_preprocessing"
-    )
-    print(f"  Adapted input paths: {adapted_input_paths}")
+    print(f"  Error message: {discovery_result.error_message}")
 ```
 
 **ContractDiscoveryManager Methods:**
@@ -494,13 +514,10 @@ if discovery_result.contract_found:
 - `_adapt_paths_for_local_testing(paths, script_name)`: Convert SageMaker paths to local paths
 
 **ContractDiscoveryResult Fields:**
-- `contract_found`: Boolean indicating if contract was discovered
-- `contract_class`: The discovered contract class (if found)
-- `contract_instance`: Instantiated contract object (if found)
-- `discovery_method`: Method used for successful discovery
-- `entry_point_valid`: Whether entry_point validation passed
-- `attempted_methods`: List of discovery methods attempted
-- `error_details`: Dictionary of errors encountered during discovery
+- `contract`: Optional[ScriptContract] - The discovered contract object (None if not found)
+- `contract_name`: str - Name of the contract
+- `discovery_method`: str - Method used for discovery attempt
+- `error_message`: Optional[str] - Error message if discovery failed
 
 **Discovery Strategy:**
 1. **Direct Import**: Try to import contract directly from `cursus.steps.contracts.{script_name}`
@@ -526,29 +543,25 @@ from cursus.validation.runtime import ContractDiscoveryResult
 discovery_result = contract_manager.discover_contract("tabular_preprocessing")
 
 # Access discovery results
-print(f"Contract found: {discovery_result.contract_found}")
-if discovery_result.contract_found:
-    print(f"Contract class: {discovery_result.contract_class}")
+print(f"Contract found: {discovery_result.contract is not None}")
+if discovery_result.contract is not None:
+    print(f"Contract name: {discovery_result.contract_name}")
     print(f"Discovery method: {discovery_result.discovery_method}")
-    print(f"Entry point valid: {discovery_result.entry_point_valid}")
     
-    # Use contract instance
-    contract = discovery_result.contract_instance
-    print(f"Input paths: {contract.input_paths}")
-    print(f"Output paths: {contract.output_paths}")
+    # Use contract object
+    contract = discovery_result.contract
+    print(f"Contract type: {type(contract).__name__}")
 else:
-    print(f"Attempted methods: {discovery_result.attempted_methods}")
-    print(f"Error details: {discovery_result.error_details}")
+    print(f"Contract name: {discovery_result.contract_name}")
+    print(f"Discovery method: {discovery_result.discovery_method}")
+    print(f"Error message: {discovery_result.error_message}")
 ```
 
 **ContractDiscoveryResult Fields:**
-- `contract_found`: Boolean indicating successful discovery
-- `contract_class`: The discovered contract class (Optional)
-- `contract_instance`: Instantiated contract object (Optional)
-- `discovery_method`: String indicating successful discovery method
-- `entry_point_valid`: Boolean indicating entry_point validation result
-- `attempted_methods`: List of discovery methods that were attempted
-- `error_details`: Dictionary mapping method names to error messages
+- `contract`: Optional[ScriptContract] - The discovered contract object (None if not found)
+- `contract_name`: str - Name of the contract
+- `discovery_method`: str - Method used for discovery attempt
+- `error_message`: Optional[str] - Error message if discovery failed
 
 ### ScriptTestResult
 
@@ -723,13 +736,13 @@ if tester.enable_logical_matching:
 
 ### Topological Pipeline Execution
 
-**test_pipeline_flow_with_topological_order()**
+**test_pipeline_flow_with_topological_execution()**
 
 **NEW**: Enhanced pipeline testing with topological execution ordering that mimics actual pipeline execution flow.
 
 **Signature:**
 ```python
-def test_pipeline_flow_with_topological_order(
+def test_pipeline_flow_with_topological_execution(
     self,
     pipeline_spec: PipelineTestingSpec
 ) -> Dict[str, Any]
@@ -767,7 +780,7 @@ pipeline_spec = PipelineTestingSpec(
 )
 
 # Test with topological ordering
-results = tester.test_pipeline_flow_with_topological_order(pipeline_spec)
+results = tester.test_pipeline_flow_with_topological_execution(pipeline_spec)
 
 if results["pipeline_success"]:
     print("✅ Topological pipeline test passed!")
@@ -860,27 +873,6 @@ for file_path in valid_files:
     print(f"  - {file_path.name} ({file_path.stat().st_size} bytes)")
 ```
 
-### _generate_sample_data()
-
-Generates sample data for testing purposes.
-
-**Signature:**
-```python
-def _generate_sample_data(self) -> Dict[str, Any]
-```
-
-**Returns:** Dictionary containing sample data for testing
-
-**Example:**
-```python
-# Generate sample data
-sample_data = tester._generate_sample_data()
-print(f"Sample data keys: {list(sample_data.keys())}")
-print(f"Sample data: {sample_data}")
-
-# Use sample data for testing
-# Note: This method is primarily used internally
-```
 
 ### _detect_file_format()
 
@@ -1153,7 +1145,6 @@ custom_pipeline_testing()
 | `validate_pipeline_logical_names()` | Validate pipeline logical names (if enabled) | `Dict[str, Any]` |
 | `_find_script_path()` | Find script file path | `str` |
 | `_find_valid_output_files()` | Find valid output files | `List[Path]` |
-| `_generate_sample_data()` | Generate sample test data | `Dict[str, Any]` |
 | `_detect_file_format()` | Detect file format | `str` |
 
 ### Builder Methods Summary
