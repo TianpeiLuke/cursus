@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Constants - default paths (will be overridden by parameters in main function)
 DEFAULT_MODEL_PATH = "/opt/ml/processing/input/model"
 DEFAULT_SCRIPT_PATH = "/opt/ml/processing/input/script"
+DEFAULT_CALIBRATION_PATH = "/opt/ml/processing/input/calibration"
 DEFAULT_OUTPUT_PATH = "/opt/ml/processing/output"
 DEFAULT_WORKING_DIRECTORY = "/tmp/mims_packaging_directory"
 
@@ -243,14 +244,19 @@ def main(
     # Extract paths from input parameters - required keys must be present
     if "model_input" not in input_paths:
         raise ValueError("Missing required input path: model_input")
-    if "script_input" not in input_paths:
-        raise ValueError("Missing required input path: script_input")
-    if "output_dir" not in output_paths:
-        raise ValueError("Missing required output path: output_dir")
+    if "inference_scripts_input" not in input_paths:
+        raise ValueError("Missing required input path: inference_scripts_input")
+    if "packaged_model" not in output_paths:
+        raise ValueError("Missing required output path: packaged_model")
 
     model_path = Path(input_paths["model_input"])
-    script_path = Path(input_paths["script_input"])
-    output_path = Path(output_paths["output_dir"])
+    script_path = Path(input_paths["inference_scripts_input"])
+    output_path = Path(output_paths["packaged_model"])
+    
+    # Optional calibration model input
+    calibration_path = None
+    if "calibration_model" in input_paths:
+        calibration_path = Path(input_paths["calibration_model"])
     working_directory = Path(
         environ_vars.get("WORKING_DIRECTORY", DEFAULT_WORKING_DIRECTORY)
     )
@@ -268,6 +274,10 @@ def main(
     logger.info(f"  Script path: {script_path}")
     logger.info(f"  Output path: {output_path}")
     logger.info(f"  Working directory: {working_directory}")
+    if calibration_path:
+        logger.info(f"  Calibration path: {calibration_path}")
+    else:
+        logger.info("  Calibration path: Not provided (optional)")
 
     try:
         # Ensure working and output directories exist
@@ -294,6 +304,29 @@ def main(
                 f"\nCopied {files_copied} files, total size: {total_size:.2f}MB"
             )
 
+        # Handle optional calibration model
+        if calibration_path and calibration_path.exists():
+            logger.info("\n=== Processing Calibration Model ===")
+            
+            # The calibration_path should contain the calibration artifacts from model_calibration script
+            # This includes: calibration_model.pkl (binary) or calibration_models/ (multi-class)
+            # and calibration_summary.json
+            # Copy calibration artifacts directly to working_directory alongside other model artifacts
+            logger.info("Copying calibration artifacts to working directory...")
+            files_copied = 0
+            total_size = 0
+            for item in calibration_path.rglob("*"):
+                if item.is_file():
+                    dest_path = working_directory / item.relative_to(calibration_path)
+                    if copy_file_robust(item, dest_path):
+                        files_copied += 1
+                        total_size += item.stat().st_size / 1024 / 1024
+            
+            logger.info(f"Copied {files_copied} calibration files, total size: {total_size:.2f}MB")
+        else:
+            logger.info("\n=== No Calibration Model Provided ===")
+            logger.info("Skipping calibration model processing (optional)")
+
         # Copy inference scripts to working_directory/code
         copy_scripts(script_path, code_directory)
 
@@ -318,13 +351,14 @@ def main(
 
 if __name__ == "__main__":
     try:
-        # Standard SageMaker paths
+        # Standard SageMaker paths - using contract logical names
         input_paths = {
             "model_input": DEFAULT_MODEL_PATH,
-            "script_input": DEFAULT_SCRIPT_PATH,
+            "inference_scripts_input": DEFAULT_SCRIPT_PATH,
+            "calibration_model": DEFAULT_CALIBRATION_PATH,
         }
 
-        output_paths = {"output_dir": DEFAULT_OUTPUT_PATH}
+        output_paths = {"packaged_model": DEFAULT_OUTPUT_PATH}
 
         # Environment variables dictionary
         environ_vars = {"WORKING_DIRECTORY": DEFAULT_WORKING_DIRECTORY}
