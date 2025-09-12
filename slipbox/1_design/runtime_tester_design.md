@@ -733,8 +733,8 @@ from cursus.registry.step_names import get_step_name_from_spec_type
 - **[Step Specification](step_specification.md)**: Step specification system that provides the logical name patterns and alias systems used in path matching
 
 ### Testing Framework Integration
-- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design.md)**: Master testing design that provides the overall architecture context and testing workflow patterns
-- **[Pipeline Runtime Testing System Design](pipeline_runtime_testing_system_design.md)**: Detailed system design that defines the comprehensive testing capabilities and integration patterns
+- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design_OUTDATED.md)**: ⚠️ **OUTDATED** - Master testing design that provides the overall architecture context and testing workflow patterns
+- **[Pipeline Runtime Testing System Design](pipeline_runtime_testing_system_design_OUTDATED.md)**: ⚠️ **OUTDATED** - Detailed system design that defines the comprehensive testing capabilities and integration patterns
 - **[Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md)**: Universal testing patterns that inform the script execution and validation strategies
 
 ### Semantic Matching and Dependency Resolution

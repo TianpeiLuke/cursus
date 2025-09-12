@@ -466,8 +466,8 @@ The PipelineDAGResolver works with several key data structures that have their o
 ### System Integration Documents
 
 - **[Pipeline Runtime Execution Layer Design](pipeline_runtime_execution_layer_design.md)**: High-level pipeline orchestration layer that uses PipelineDAGResolver for execution planning
-- **[Pipeline Runtime Core Engine Design](pipeline_runtime_core_engine_design.md)**: Core execution engine components that work with resolved execution plans
-- **[Pipeline Runtime System Integration Design](pipeline_runtime_system_integration_design.md)**: Integration with existing Cursus components including DAG analysis and dependency resolution
+- **[Pipeline Runtime Core Engine Design](pipeline_runtime_core_engine_design_OUTDATED.md)**: ⚠️ **OUTDATED** - Core execution engine components that work with resolved execution plans
+- **[Pipeline Runtime System Integration Design](pipeline_runtime_system_integration_design_OUTDATED.md)**: ⚠️ **OUTDATED** - Integration with existing Cursus components including DAG analysis and dependency resolution
 - **[Dependency Resolver](dependency_resolver.md)**: Dependency resolution system that complements DAG resolution with intelligent matching
 
 ### Registry and Builder Integration

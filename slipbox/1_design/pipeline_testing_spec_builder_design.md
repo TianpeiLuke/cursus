@@ -610,7 +610,7 @@ if not script_files_found:
 - **[Flexible File Resolver Design](flexible_file_resolver_design.md)**: File resolution patterns that inspire the fuzzy matching and fallback mechanisms
 
 ### Testing Framework Integration
-- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design.md)**: Master testing design that provides the overall architecture context for spec building
+- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design_OUTDATED.md)**: ⚠️ **OUTDATED** - Master testing design that provides the overall architecture context for spec building
 - **[Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md)**: Universal testing patterns that inform the builder's integration with testing workflows
 
 ## Conclusion

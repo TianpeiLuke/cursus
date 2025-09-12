@@ -725,7 +725,7 @@ class TestDataPreparation:
 
 ### **Parent Documents**
 - **[Pipeline Runtime Data Management Design](pipeline_runtime_data_management_design.md)**: Core data management layer
-- **[Pipeline Runtime Core Engine Design](pipeline_runtime_core_engine_design.md)**: Core execution engine
+- **[Pipeline Runtime Core Engine Design](pipeline_runtime_core_engine_design_OUTDATED.md)**: ⚠️ **OUTDATED** - Core execution engine
 
 ### **Related Documents**
 - **[Enhanced Property Reference](enhanced_property_reference.md)**: Property path handling system

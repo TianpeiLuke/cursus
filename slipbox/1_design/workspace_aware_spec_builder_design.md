@@ -610,7 +610,7 @@ builder = WorkspaceAwarePipelineTestingSpecBuilder(
 
 ### Foundation Documents
 - **[PipelineTestingSpecBuilder Design](pipeline_testing_spec_builder_design.md)**: Base builder design that provides the foundation for node-to-script resolution
-- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design.md)**: Overall testing architecture that defines the context for workspace-aware enhancements
+- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design_OUTDATED.md)**: ⚠️ **OUTDATED** - Overall testing architecture that defines the context for workspace-aware enhancements
 
 ### Workspace System Integration
 - **[Workspace Aware System Master Design](workspace_aware_system_master_design.md)**: Master workspace design that provides the architectural foundation for workspace discovery

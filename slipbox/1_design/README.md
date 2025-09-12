@@ -240,6 +240,48 @@ This alternative design approach focuses on minimizing user input by providing o
 
 ### 🧪 Testing & Validation Framework
 
+#### **[Pipeline Runtime Testing Semantic Matching Design](pipeline_runtime_testing_semantic_matching_design.md)** - Enhanced Semantic Matching System ⭐ **NEW**
+- **Purpose**: Eliminate hardcoded logical name assumptions through intelligent semantic path matching between script outputs and inputs
+- **Key Features**: SemanticMatcher integration, dynamic path resolution, robust fallback mechanisms, no sample data generation
+- **Benefits**: Works with any script logical name conventions, intelligent error reporting, 100% elimination of hardcoded assumptions
+- **Strategic Value**: Transforms runtime testing from brittle assumption-heavy system to flexible, intelligent validation platform
+
+#### **[Pipeline Runtime Testing Simplified Design](pipeline_runtime_testing_simplified_design.md)** - Core Runtime Testing Architecture
+- **Purpose**: Overall architecture for pipeline runtime testing with intelligent node-to-script resolution
+- **Key Features**: Registry-based resolution, file verification, dual identity management, topological execution
+- **Benefits**: Comprehensive pipeline validation, script functionality testing, data transfer consistency
+- **Strategic Value**: Foundation for reliable pipeline testing that scales from simple script validation to complex pipeline workflows
+
+#### **[Pipeline Testing Spec Builder Design](pipeline_testing_spec_builder_design.md)** - Node-to-Script Resolution System
+- **Purpose**: Build PipelineTestingSpec from PipelineDAG with intelligent node-to-script resolution
+- **Key Features**: Registry integration, workspace-aware file discovery, fuzzy matching, dual identity management
+- **Benefits**: Reliable node-to-script mapping, comprehensive error handling, workspace priority with core framework fallback
+- **Strategic Value**: Bridges gap between abstract DAG representations and concrete script implementations
+
+#### **[Runtime Tester Design](runtime_tester_design.md)** - Core Execution Engine
+- **Purpose**: Execute script testing and validation with enhanced data compatibility checking and logical name matching
+- **Key Features**: Individual script testing, enhanced file format support, logical name matching, topological pipeline execution
+- **Benefits**: Format-agnostic testing, intelligent path matching, comprehensive pipeline validation
+- **Strategic Value**: Comprehensive execution engine for reliable pipeline validation with semantic intelligence
+
+#### **[Script Execution Spec Design](script_execution_spec_design.md)** - Script Configuration Management
+- **Purpose**: Define script execution parameters and path specifications with dual identity management
+- **Key Features**: Dual identity (script_name vs step_name), path specifications with logical names, execution context management
+- **Benefits**: Clean separation of file and DAG node identities, comprehensive execution configuration, validation and error handling
+- **Strategic Value**: Foundation for reliable script configuration management enabling consistent execution across contexts
+
+#### **[Contract Discovery Manager Design](contract_discovery_manager_design.md)** - Intelligent Contract Discovery System
+- **Purpose**: Provide intelligent discovery and loading of script contracts for runtime testing, bridging declarative specifications and imperative implementations
+- **Key Features**: Multi-strategy discovery, entry point validation, path adaptation, caching and performance optimization
+- **Benefits**: Accurate testing with real contract data, local development support, standardization compliance, graceful degradation
+- **Strategic Value**: Enhances runtime testing system by using real contract specifications instead of generic placeholders
+
+#### **[Workspace Aware Spec Builder Design](workspace_aware_spec_builder_design.md)** - Multi-Workspace Specification Building
+- **Purpose**: Extend PipelineTestingSpecBuilder to support multi-developer collaborative environments with workspace-aware capabilities
+- **Key Features**: Workspace context management, cross-workspace compatibility validation, isolated development support
+- **Benefits**: Enables collaborative development while maintaining testing quality, workspace-specific configuration management
+- **Strategic Value**: Foundation for distributed development environments with comprehensive testing support
+
 #### **[Universal Step Builder Test](universal_step_builder_test.md)** - Comprehensive Step Builder Validation
 - **Purpose**: Standardized test suite for validating step builder implementation compliance
 - **Key Features**: Parameterized testing, comprehensive coverage, realistic mocking, self-contained execution
@@ -300,17 +342,79 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Efficient local testing, rapid development iteration, comprehensive test coverage without container overhead
 - **Strategic Value**: Enables thorough testing of script logic while maintaining container compatibility
 
-#### **[Script Integration Testing System Design](script_integration_testing_system_design.md)** - Comprehensive Pipeline Script Testing Framework
-- **Purpose**: Two-tier integrated testing system for validating both data flow compatibility between scripts and individual script functionality
-- **Key Features**: Pipeline data flow testing, script unit testing, S3 integration for real pipeline data, comprehensive CLI interface, YAML-based configuration
-- **Benefits**: Early detection of data compatibility issues, automated script functionality validation, testing with real production data, comprehensive reporting
-- **Strategic Value**: Addresses critical gaps in pipeline validation by ensuring both script integration and individual functionality work correctly in production environments
+#### **[Script Integration Testing System Design](script_integration_testing_system_design.md)** - ⚠️ **OUTDATED** - Legacy Pipeline Script Testing Framework
+- **Status**: **OUTDATED** - Superseded by semantic matching runtime testing system
+- **Original Purpose**: Two-tier integrated testing system for validating data flow compatibility and script functionality
+- **Current Alternative**: Use [Pipeline Runtime Testing Semantic Matching Design](pipeline_runtime_testing_semantic_matching_design.md) and [Runtime Tester Design](runtime_tester_design.md)
+- **Migration Note**: The concepts in this document have been evolved and integrated into the current semantic matching system which provides more intelligent and flexible testing capabilities
 
-#### **[Script Integration Testing System Design](script_integration_testing_system_design.md)** - Comprehensive Pipeline Script Testing Framework
-- **Purpose**: Two-tier integrated testing system for validating both data flow compatibility between scripts and individual script functionality
-- **Key Features**: Pipeline data flow testing, script unit testing, S3 integration for real pipeline data, comprehensive CLI interface, YAML-based configuration
-- **Benefits**: Early detection of data compatibility issues, automated script functionality validation, testing with real production data, comprehensive reporting
-- **Strategic Value**: Addresses critical gaps in pipeline validation by ensuring both script integration and individual functionality work correctly in production environments
+### ⚠️ **OUTDATED** Pipeline Runtime Testing Documents
+
+The following documents describe complex multi-layer architectures that were never implemented and have been superseded by the current semantic matching system:
+
+#### **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described 8-layer architecture that was never implemented
+- **Current Alternative**: Use [Pipeline Runtime Testing Semantic Matching Design](pipeline_runtime_testing_semantic_matching_design.md) and [Pipeline Runtime Testing Simplified Design](pipeline_runtime_testing_simplified_design.md)
+
+#### **[Pipeline Runtime Testing System Design](pipeline_runtime_testing_system_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described complex multi-tier system that was never implemented
+- **Current Alternative**: Use current semantic matching implementation in `src/cursus/validation/runtime/`
+
+#### **[Pipeline Runtime Core Engine Design](pipeline_runtime_core_engine_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described components that don't exist in current implementation
+- **Current Alternative**: Use [Runtime Tester Design](runtime_tester_design.md) for actual execution engine design
+
+#### **[Pipeline Runtime Execution Layer Design](pipeline_runtime_execution_layer_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described execution layer components that were never implemented
+- **Current Alternative**: Current implementation uses unified `RuntimeTester` approach
+
+#### **[Pipeline Runtime Data Management Design](pipeline_runtime_data_management_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described complex data management layer that was never implemented
+- **Current Alternative**: Current implementation handles data through semantic matching
+
+#### **[Pipeline Runtime System Integration Design](pipeline_runtime_system_integration_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described integration components that were never implemented
+- **Current Alternative**: Current implementation integrates directly with existing Cursus components
+
+#### **[Pipeline Runtime API Design](pipeline_runtime_api_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described complex API classes that were never implemented
+- **Current Alternative**: Current implementation uses simple `RuntimeTester` class
+
+#### **[Pipeline Runtime Jupyter Integration Design](pipeline_runtime_jupyter_integration_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described complex notebook interface classes that were never implemented
+- **Current Alternative**: Current implementation works directly in notebooks without special classes
+
+#### **[Pipeline Runtime Reporting Design](pipeline_runtime_reporting_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described complex reporting and visualization classes that were never implemented
+- **Current Alternative**: Current implementation provides simple result objects
+
+#### **[Pipeline Runtime Testing Modes Design](pipeline_runtime_testing_modes_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described complex testing mode orchestration that was never implemented
+- **Current Alternative**: Current implementation uses unified `RuntimeTester` approach
+
+#### **[Pipeline Runtime Usage Examples Design](pipeline_runtime_usage_examples_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described usage examples for classes that were never implemented
+- **Current Alternative**: Use current semantic matching implementation examples
+
+#### **[Pipeline Runtime Jupyter Examples](pipeline_runtime_jupyter_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described Jupyter notebook examples using classes that were never implemented
+- **Current Alternative**: Use current `RuntimeTester` directly in notebooks
+
+#### **[Pipeline Runtime Python API Examples](pipeline_runtime_python_api_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described Python API examples using classes that were never implemented
+- **Current Alternative**: Use current semantic matching implementation
+
+#### **[Pipeline Runtime CLI Examples](pipeline_runtime_cli_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described CLI examples for commands that were never implemented
+- **Current Alternative**: Use current implementation directly in Python
+
+#### **[Pipeline Runtime Configuration Examples](pipeline_runtime_configuration_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described configuration examples for systems that were never implemented
+- **Current Alternative**: Use current implementation configuration patterns
+
+#### **[Pipeline Runtime S3 Output Path Management Design](pipeline_runtime_s3_output_path_management_design_OUTDATED.md)** - ⚠️ **OUTDATED**
+- **Status**: **OUTDATED** - Described complex S3 path management classes that were never implemented
+- **Current Alternative**: Current implementation handles S3 paths through semantic matching without complex registry systems
 
 ### 🔍 Step Builder Pattern Analysis
 

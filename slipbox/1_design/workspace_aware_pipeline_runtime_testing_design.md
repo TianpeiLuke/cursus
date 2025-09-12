@@ -613,7 +613,7 @@ class WorkspaceTestingEnvironment(BaseModel):
 ## Related Design Documents
 
 ### Foundation Documents
-- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design.md)** - Base pipeline runtime testing system
+- **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design_OUTDATED.md)** - ⚠️ **OUTDATED** - Base pipeline runtime testing system
 - **[Workspace-Aware System Master Design](workspace_aware_system_master_design.md)** - Overall workspace-aware system architecture
 
 ### Integration Documents

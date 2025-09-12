@@ -143,17 +143,33 @@ class RuntimeTester:
                     has_main_function=True,
                 )
 
-            # Create test directories based on ScriptExecutionSpec
-            test_dir = Path(script_spec.output_paths["data_output"])
+            # Create test directories based on ScriptExecutionSpec - use first available output path
+            first_output_path = next(iter(script_spec.output_paths.values()))
+            test_dir = Path(first_output_path)
             test_dir.mkdir(parents=True, exist_ok=True)
 
-            # Use ScriptExecutionSpec input data path or generate sample data
-            input_data_path = script_spec.input_paths.get("data_input")
-            if not input_data_path or not Path(input_data_path).exists():
-                # Generate sample data for testing
-                sample_data = self._generate_sample_data()
-                input_data_path = test_dir / "input_data.csv"
-                pd.DataFrame(sample_data).to_csv(input_data_path, index=False)
+            # Validate that all required input paths exist - NO SAMPLE DATA GENERATION
+            missing_inputs = []
+            for logical_name, input_path in script_spec.input_paths.items():
+                if not Path(input_path).exists():
+                    missing_inputs.append(f"{logical_name}: {input_path}")
+
+            if missing_inputs:
+                error_details = [
+                    f"Script '{script_spec.script_name}' requires the following input data:",
+                    *[f"  - {item}" for item in missing_inputs],
+                    "",
+                    "Please ensure all required input data files exist before running the test.",
+                    "You can check the ScriptExecutionSpec to see what input paths are expected."
+                ]
+                
+                return ScriptTestResult(
+                    script_name=script_spec.script_name,
+                    success=False,
+                    error_message="\n".join(error_details),
+                    execution_time=time.time() - start_time,
+                    has_main_function=True,
+                )
 
             # EXECUTE THE MAIN FUNCTION with ScriptExecutionSpec parameters
             module.main(**main_params)
@@ -179,18 +195,191 @@ class RuntimeTester:
         self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
     ) -> DataCompatibilityResult:
         """
-        Phase 3: Enhanced data compatibility testing with intelligent path matching
+        Enhanced data compatibility testing with semantic path matching
 
-        This method now uses logical name matching when available, falling back to
-        the original file-based approach for backward compatibility.
+        Uses semantic matching to intelligently connect output paths of spec_a 
+        to input paths of spec_b, eliminating hardcoded assumptions about logical names.
         """
 
-        # Use enhanced logical name matching if available
-        if self.enable_logical_matching:
-            return self._test_data_compatibility_with_logical_matching(spec_a, spec_b)
+        # Use semantic path matching as the primary approach
+        return self._test_data_compatibility_with_semantic_matching(spec_a, spec_b)
 
-        # Fallback to original implementation for backward compatibility
-        return self._test_data_compatibility_original(spec_a, spec_b)
+    def _test_data_compatibility_with_semantic_matching(
+        self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
+    ) -> DataCompatibilityResult:
+        """
+        Test data compatibility using semantic path matching between output and input paths.
+        
+        This method uses the SemanticMatcher to intelligently connect spec_a's output paths
+        to spec_b's input paths, eliminating hardcoded assumptions about logical names.
+        """
+        try:
+            # Execute script A using its ScriptExecutionSpec
+            main_params_a = self.builder.get_script_main_params(spec_a)
+            script_a_result = self.test_script_with_spec(spec_a, main_params_a)
+
+            if not script_a_result.success:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=False,
+                    compatibility_issues=[
+                        f"Script A failed: {script_a_result.error_message}"
+                    ],
+                )
+
+            # Find semantic matches between A's outputs and B's inputs
+            path_matches = self._find_semantic_path_matches(spec_a, spec_b)
+
+            if not path_matches:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=False,
+                    compatibility_issues=[
+                        "No semantic matches found between output and input paths",
+                        f"Available outputs from {spec_a.script_name}: {list(spec_a.output_paths.keys())}",
+                        f"Available inputs for {spec_b.script_name}: {list(spec_b.input_paths.keys())}"
+                    ],
+                )
+
+            # Try each match until we find one that works
+            compatibility_issues = []
+            
+            for output_name, input_name, score in path_matches:
+                try:
+                    # Get actual output directory from spec_a
+                    output_dir_a = Path(spec_a.output_paths[output_name])
+                    output_files = self._find_valid_output_files(output_dir_a)
+
+                    if not output_files:
+                        compatibility_issues.append(
+                            f"No valid output files found in {output_name} ({output_dir_a})"
+                        )
+                        continue  # Try next match
+
+                    # Create modified spec_b with matched input path
+                    modified_input_paths = spec_b.input_paths.copy()
+                    modified_input_paths[input_name] = str(output_files[0])  # Use first valid output file
+
+                    modified_spec_b = ScriptExecutionSpec(
+                        script_name=spec_b.script_name,
+                        step_name=spec_b.step_name,
+                        script_path=spec_b.script_path,
+                        input_paths=modified_input_paths,
+                        output_paths=spec_b.output_paths,
+                        environ_vars=spec_b.environ_vars,
+                        job_args=spec_b.job_args,
+                    )
+
+                    # Test script B with matched input
+                    main_params_b = self.builder.get_script_main_params(modified_spec_b)
+                    script_b_result = self.test_script_with_spec(modified_spec_b, main_params_b)
+
+                    if script_b_result.success:
+                        return DataCompatibilityResult(
+                            script_a=spec_a.script_name,
+                            script_b=spec_b.script_name,
+                            compatible=True,
+                            compatibility_issues=[],
+                            data_format_a=self._detect_file_format(output_files[0]),
+                            data_format_b=self._detect_file_format(output_files[0]),
+                        )
+                    else:
+                        compatibility_issues.append(
+                            f"Match {output_name} -> {input_name} (score: {score:.3f}) failed: {script_b_result.error_message}"
+                        )
+
+                except Exception as match_error:
+                    compatibility_issues.append(
+                        f"Error testing match {output_name} -> {input_name}: {str(match_error)}"
+                    )
+                    continue  # Try next match
+
+            # If no matches worked
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=[
+                    f"No working path matches found. Tried {len(path_matches)} semantic matches."
+                ] + compatibility_issues,
+            )
+
+        except Exception as e:
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=[f"Semantic compatibility test failed: {str(e)}"],
+            )
+
+    def _find_semantic_path_matches(
+        self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
+    ) -> List[tuple]:
+        """
+        Find semantic matches between spec_a's output_paths and spec_b's input_paths.
+        
+        Returns:
+            List of (output_logical_name, input_logical_name, similarity_score) tuples
+            sorted by similarity score (highest first)
+        """
+        try:
+            from ...core.deps.semantic_matcher import SemanticMatcher
+        except ImportError:
+            # Fallback to simple string matching if SemanticMatcher is not available
+            return self._find_simple_path_matches(spec_a, spec_b)
+        
+        matcher = SemanticMatcher()
+        matches = []
+        
+        # Match each output of spec_a to each input of spec_b
+        for output_name in spec_a.output_paths.keys():
+            for input_name in spec_b.input_paths.keys():
+                score = matcher.calculate_similarity(output_name, input_name)
+                if score > 0.3:  # Minimum threshold for meaningful matches
+                    matches.append((output_name, input_name, score))
+        
+        # Sort by similarity score (highest first)
+        matches.sort(key=lambda x: x[2], reverse=True)
+        return matches
+
+    def _find_simple_path_matches(
+        self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
+    ) -> List[tuple]:
+        """
+        Fallback simple string matching when SemanticMatcher is not available.
+        
+        Returns:
+            List of (output_logical_name, input_logical_name, similarity_score) tuples
+        """
+        from difflib import SequenceMatcher
+        
+        matches = []
+        
+        # Match each output of spec_a to each input of spec_b
+        for output_name in spec_a.output_paths.keys():
+            for input_name in spec_b.input_paths.keys():
+                # Simple string similarity
+                score = SequenceMatcher(None, output_name.lower(), input_name.lower()).ratio()
+                
+                # Boost score for common semantic patterns
+                if "data" in output_name.lower() and "data" in input_name.lower():
+                    score += 0.2
+                if "model" in output_name.lower() and "model" in input_name.lower():
+                    score += 0.2
+                if "eval" in output_name.lower() and ("eval" in input_name.lower() or "data" in input_name.lower()):
+                    score += 0.2
+                
+                # Cap score at 1.0
+                score = min(score, 1.0)
+                
+                if score > 0.3:  # Minimum threshold
+                    matches.append((output_name, input_name, score))
+        
+        # Sort by similarity score (highest first)
+        matches.sort(key=lambda x: x[2], reverse=True)
+        return matches
 
     def _test_data_compatibility_with_logical_matching(
         self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
@@ -212,8 +401,17 @@ class RuntimeTester:
                     ],
                 )
 
-            # Find valid output files from script A (any format, excluding temp files)
-            output_dir_a = Path(spec_a.output_paths["data_output"])
+            # Find valid output files using semantic matching to get the best output path
+            path_matches = self._find_semantic_path_matches(spec_a, spec_b)
+            if path_matches:
+                # Use the best matching output path
+                best_output_name = path_matches[0][0]  # First match has highest score
+                output_dir_a = Path(spec_a.output_paths[best_output_name])
+            else:
+                # Fallback to first available output path
+                first_output_name = next(iter(spec_a.output_paths.keys()))
+                output_dir_a = Path(spec_a.output_paths[first_output_name])
+            
             output_files = self._find_valid_output_files(output_dir_a)
 
             if not output_files:
@@ -236,8 +434,8 @@ class RuntimeTester:
             )
 
             if not path_matches:
-                # No logical matches found, fall back to original file-based approach
-                return self._test_data_compatibility_original(spec_a, spec_b)
+                # No logical matches found, fall back to semantic matching
+                return self._test_data_compatibility_with_semantic_matching(spec_a, spec_b)
 
             # Create modified spec_b with matched paths
             modified_spec_b = self._create_modified_spec_with_matches(
@@ -277,126 +475,6 @@ class RuntimeTester:
                 script_b=spec_b.script_name,
                 compatible=False,
                 compatibility_issues=[f"Enhanced compatibility test failed: {str(e)}"],
-            )
-
-    def _test_data_compatibility_original(
-        self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec
-    ) -> DataCompatibilityResult:
-        """Original data compatibility testing implementation (backward compatibility)"""
-
-        try:
-            # Execute script A using its ScriptExecutionSpec
-            main_params_a = self.builder.get_script_main_params(spec_a)
-            script_a_result = self.test_script_with_spec(spec_a, main_params_a)
-
-            if not script_a_result.success:
-                return DataCompatibilityResult(
-                    script_a=spec_a.script_name,
-                    script_b=spec_b.script_name,
-                    compatible=False,
-                    compatibility_issues=[
-                        f"Script A failed: {script_a_result.error_message}"
-                    ],
-                )
-
-            # Check if script A produced valid output files (any format, excluding temp files)
-            output_dir_a = Path(spec_a.output_paths["data_output"])
-            output_files = self._find_valid_output_files(output_dir_a)
-
-            if not output_files:
-                return DataCompatibilityResult(
-                    script_a=spec_a.script_name,
-                    script_b=spec_b.script_name,
-                    compatible=False,
-                    compatibility_issues=[
-                        "Script A did not produce any valid output files"
-                    ],
-                )
-
-            # Try each output file from script A as input to script B
-            # Start with the most recently modified file (first in sorted list)
-            compatibility_issues = []
-            successful_tests = []
-
-            for output_file in output_files:
-                try:
-                    # Create a modified spec_b with script A's output as input
-                    modified_spec_b = ScriptExecutionSpec(
-                        script_name=spec_b.script_name,
-                        step_name=spec_b.step_name,
-                        script_path=spec_b.script_path,
-                        input_paths={
-                            "data_input": str(output_file)
-                        },  # Use script A's output
-                        output_paths=spec_b.output_paths,
-                        environ_vars=spec_b.environ_vars,
-                        job_args=spec_b.job_args,
-                    )
-
-                    # Test script B with script A's output
-                    main_params_b = self.builder.get_script_main_params(modified_spec_b)
-                    script_b_result = self.test_script_with_spec(
-                        modified_spec_b, main_params_b
-                    )
-
-                    if script_b_result.success:
-                        # Success! Record the working combination
-                        successful_tests.append(
-                            {
-                                "output_file": output_file.name,
-                                "format": output_file.suffix.lower() or "no_extension",
-                            }
-                        )
-                        break  # Found a working combination, no need to test others
-                    else:
-                        # Record the failure for this file
-                        compatibility_issues.append(
-                            f"Script B failed with output file '{output_file.name}' "
-                            f"({output_file.suffix or 'no extension'}): {script_b_result.error_message}"
-                        )
-
-                except Exception as file_test_error:
-                    compatibility_issues.append(
-                        f"Error testing with output file '{output_file.name}': {str(file_test_error)}"
-                    )
-
-            # Determine overall compatibility
-            is_compatible = len(successful_tests) > 0
-
-            # Prepare format information
-            if successful_tests:
-                working_file = successful_tests[0]
-                data_format_a = working_file["format"]
-                data_format_b = working_file[
-                    "format"
-                ]  # Assuming same format for successful transfer
-            else:
-                # Use the first output file's format for reporting
-                data_format_a = output_files[0].suffix.lower() or "unknown"
-                data_format_b = "unknown"
-
-            # If no files worked, add a summary message
-            if not is_compatible:
-                compatibility_issues.insert(
-                    0,
-                    f"Script B could not process any of the {len(output_files)} output files from Script A",
-                )
-
-            return DataCompatibilityResult(
-                script_a=spec_a.script_name,
-                script_b=spec_b.script_name,
-                compatible=is_compatible,
-                compatibility_issues=compatibility_issues,
-                data_format_a=data_format_a,
-                data_format_b=data_format_b,
-            )
-
-        except Exception as e:
-            return DataCompatibilityResult(
-                script_a=spec_a.script_name,
-                script_b=spec_b.script_name,
-                compatible=False,
-                compatibility_issues=[f"Compatibility test failed: {str(e)}"],
             )
 
     def test_pipeline_flow_with_spec(
@@ -718,13 +796,6 @@ class RuntimeTester:
 
         return valid_files
 
-    def _generate_sample_data(self) -> Dict:
-        """Generate simple sample data for testing"""
-        return {
-            "feature1": [1, 2, 3, 4, 5],
-            "feature2": [0.1, 0.2, 0.3, 0.4, 0.5],
-            "label": [0, 1, 0, 1, 0],
-        }
 
     # Phase 3: Helper Methods for Enhanced Functionality
 
@@ -900,8 +971,17 @@ class RuntimeTester:
                 ],
             )
 
-        # Find valid output files
-        output_dir_a = Path(spec_a.output_paths["data_output"])
+        # Find valid output files using semantic matching to get the best output path
+        path_matches = self._find_semantic_path_matches(spec_a, spec_b)
+        if path_matches:
+            # Use the best matching output path
+            best_output_name = path_matches[0][0]  # First match has highest score
+            output_dir_a = Path(spec_a.output_paths[best_output_name])
+        else:
+            # Fallback to first available output path
+            first_output_name = next(iter(spec_a.output_paths.keys()))
+            output_dir_a = Path(spec_a.output_paths[first_output_name])
+        
         output_files = self._find_valid_output_files(output_dir_a)
 
         if not output_files:
