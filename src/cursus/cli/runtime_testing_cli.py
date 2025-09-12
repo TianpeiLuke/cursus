@@ -6,7 +6,11 @@ import sys
 from pathlib import Path
 
 from ..validation.runtime.runtime_testing import RuntimeTester
-from ..validation.runtime.runtime_models import RuntimeTestingConfiguration
+from ..validation.runtime.runtime_models import (
+    RuntimeTestingConfiguration,
+    ScriptExecutionSpec,
+    PipelineTestingSpec,
+)
 from ..validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
 from ..api.dag.base_dag import PipelineDAG
 
@@ -42,8 +46,18 @@ def test_script(script_name: str, workspace_dir: str, output_format: str):
     """
 
     try:
+        # Initialize RuntimeTester and PipelineTestingSpecBuilder
         tester = RuntimeTester(workspace_dir)
-        result = tester.test_script(script_name)
+        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir)
+        
+        # Build ScriptExecutionSpec for the script using node resolution
+        script_spec = builder.resolve_script_execution_spec_from_node(script_name)
+        
+        # Get main function parameters
+        main_params = builder.get_script_main_params(script_spec)
+        
+        # Test the script
+        result = tester.test_script_with_spec(script_spec, main_params)
 
         if output_format == "json":
             click.echo(json.dumps(result.model_dump(), indent=2))
@@ -96,10 +110,32 @@ def test_pipeline(pipeline_config: str, workspace_dir: str, output_format: str):
             sys.exit(1)
 
         with open(config_path) as f:
-            config = json.load(f)
+            config_data = json.load(f)
 
+        # Initialize RuntimeTester and PipelineTestingSpecBuilder
         tester = RuntimeTester(workspace_dir)
-        results = tester.test_pipeline_flow(config)
+        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir)
+        
+        # Create PipelineDAG from config data
+        # Assuming config_data has 'nodes' and 'edges' fields
+        if 'nodes' not in config_data or 'edges' not in config_data:
+            click.echo("Pipeline config must contain 'nodes' and 'edges' fields", err=True)
+            sys.exit(1)
+            
+        dag = PipelineDAG()
+        for node in config_data['nodes']:
+            dag.add_node(node)
+        for edge in config_data['edges']:
+            if isinstance(edge, list) and len(edge) == 2:
+                dag.add_edge(edge[0], edge[1])
+            elif isinstance(edge, dict) and 'source' in edge and 'target' in edge:
+                dag.add_edge(edge['source'], edge['target'])
+        
+        # Build PipelineTestingSpec from DAG
+        pipeline_spec = builder.build_from_dag(dag, validate=False)
+        
+        # Test the pipeline
+        results = tester.test_pipeline_flow_with_spec(pipeline_spec)
 
         if output_format == "json":
             # Convert Pydantic models to dict for JSON serialization
@@ -118,6 +154,10 @@ def test_pipeline(pipeline_config: str, workspace_dir: str, output_format: str):
             for flow_name, result in results["data_flow_results"].items():
                 json_results["data_flow_results"][flow_name] = result.model_dump()
 
+            # Add execution order if available
+            if "execution_order" in results:
+                json_results["execution_order"] = results["execution_order"]
+
             click.echo(json.dumps(json_results, indent=2))
         else:
             # Text output
@@ -129,6 +169,10 @@ def test_pipeline(pipeline_config: str, workspace_dir: str, output_format: str):
                 fg=status_color,
                 bold=True,
             )
+
+            # Show execution order if available
+            if "execution_order" in results:
+                click.echo(f"Execution order: {' -> '.join(results['execution_order'])}")
 
             click.echo("\nScript Results:")
             for script_name, result in results["script_results"].items():
@@ -183,9 +227,16 @@ def test_compatibility(
     """
 
     try:
+        # Initialize RuntimeTester and PipelineTestingSpecBuilder
         tester = RuntimeTester(workspace_dir)
-        sample_data = tester._generate_sample_data()
-        result = tester.test_data_compatibility(script_a, script_b, sample_data)
+        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir)
+        
+        # Build ScriptExecutionSpecs for both scripts using node resolution
+        spec_a = builder.resolve_script_execution_spec_from_node(script_a)
+        spec_b = builder.resolve_script_execution_spec_from_node(script_b)
+        
+        # Test data compatibility using current API
+        result = tester.test_data_compatibility_with_specs(spec_a, spec_b)
 
         if output_format == "json":
             click.echo(json.dumps(result.model_dump(), indent=2))
@@ -196,6 +247,11 @@ def test_compatibility(
             click.secho(
                 "PASS" if result.compatible else "FAIL", fg=status_color, bold=True
             )
+
+            if result.data_format_a:
+                click.echo(f"Script A output format: {result.data_format_a}")
+            if result.data_format_b:
+                click.echo(f"Script B input format: {result.data_format_b}")
 
             if result.compatibility_issues:
                 click.echo("Issues:")
