@@ -348,73 +348,16 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Current Alternative**: Use [Pipeline Runtime Testing Semantic Matching Design](pipeline_runtime_testing_semantic_matching_design.md) and [Runtime Tester Design](runtime_tester_design.md)
 - **Migration Note**: The concepts in this document have been evolved and integrated into the current semantic matching system which provides more intelligent and flexible testing capabilities
 
-### ⚠️ **OUTDATED** Pipeline Runtime Testing Documents
+### 📚 **HISTORICAL REFERENCE** Pipeline Runtime Testing Documents
 
-The following documents describe complex multi-layer architectures that were never implemented and have been superseded by the current semantic matching system:
+#### **[Pipeline Runtime Testing - Consolidated Historical Design](pipeline_runtime_testing_consolidated_design_HISTORICAL.md)** - 📚 **HISTORICAL REFERENCE**
+- **Status**: **HISTORICAL REFERENCE** - Consolidated design concepts from 16+ theoretical documents that were never implemented
+- **Purpose**: Historical reference of theoretical pipeline runtime testing architectures with key design concepts extracted
+- **Key Concepts**: Direct function call execution, topological execution with data flow validation, synthetic data generation, S3 output path registry, progressive complexity API patterns, rich interactive notebook interfaces, multi-format report generation, seamless Cursus architecture integration
+- **Current Implementation**: Use semantic matching system in `src/cursus/validation/runtime/`
+- **Migration Path**: Replace theoretical concepts with working `RuntimeTester` implementation
 
-#### **[Pipeline Runtime Testing Master Design](pipeline_runtime_testing_master_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described 8-layer architecture that was never implemented
-- **Current Alternative**: Use [Pipeline Runtime Testing Semantic Matching Design](pipeline_runtime_testing_semantic_matching_design.md) and [Pipeline Runtime Testing Simplified Design](pipeline_runtime_testing_simplified_design.md)
-
-#### **[Pipeline Runtime Testing System Design](pipeline_runtime_testing_system_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described complex multi-tier system that was never implemented
-- **Current Alternative**: Use current semantic matching implementation in `src/cursus/validation/runtime/`
-
-#### **[Pipeline Runtime Core Engine Design](pipeline_runtime_core_engine_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described components that don't exist in current implementation
-- **Current Alternative**: Use [Runtime Tester Design](runtime_tester_design.md) for actual execution engine design
-
-#### **[Pipeline Runtime Execution Layer Design](pipeline_runtime_execution_layer_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described execution layer components that were never implemented
-- **Current Alternative**: Current implementation uses unified `RuntimeTester` approach
-
-#### **[Pipeline Runtime Data Management Design](pipeline_runtime_data_management_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described complex data management layer that was never implemented
-- **Current Alternative**: Current implementation handles data through semantic matching
-
-#### **[Pipeline Runtime System Integration Design](pipeline_runtime_system_integration_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described integration components that were never implemented
-- **Current Alternative**: Current implementation integrates directly with existing Cursus components
-
-#### **[Pipeline Runtime API Design](pipeline_runtime_api_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described complex API classes that were never implemented
-- **Current Alternative**: Current implementation uses simple `RuntimeTester` class
-
-#### **[Pipeline Runtime Jupyter Integration Design](pipeline_runtime_jupyter_integration_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described complex notebook interface classes that were never implemented
-- **Current Alternative**: Current implementation works directly in notebooks without special classes
-
-#### **[Pipeline Runtime Reporting Design](pipeline_runtime_reporting_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described complex reporting and visualization classes that were never implemented
-- **Current Alternative**: Current implementation provides simple result objects
-
-#### **[Pipeline Runtime Testing Modes Design](pipeline_runtime_testing_modes_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described complex testing mode orchestration that was never implemented
-- **Current Alternative**: Current implementation uses unified `RuntimeTester` approach
-
-#### **[Pipeline Runtime Usage Examples Design](pipeline_runtime_usage_examples_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described usage examples for classes that were never implemented
-- **Current Alternative**: Use current semantic matching implementation examples
-
-#### **[Pipeline Runtime Jupyter Examples](pipeline_runtime_jupyter_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described Jupyter notebook examples using classes that were never implemented
-- **Current Alternative**: Use current `RuntimeTester` directly in notebooks
-
-#### **[Pipeline Runtime Python API Examples](pipeline_runtime_python_api_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described Python API examples using classes that were never implemented
-- **Current Alternative**: Use current semantic matching implementation
-
-#### **[Pipeline Runtime CLI Examples](pipeline_runtime_cli_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described CLI examples for commands that were never implemented
-- **Current Alternative**: Use current implementation directly in Python
-
-#### **[Pipeline Runtime Configuration Examples](pipeline_runtime_configuration_examples_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described configuration examples for systems that were never implemented
-- **Current Alternative**: Use current implementation configuration patterns
-
-#### **[Pipeline Runtime S3 Output Path Management Design](pipeline_runtime_s3_output_path_management_design_OUTDATED.md)** - ⚠️ **OUTDATED**
-- **Status**: **OUTDATED** - Described complex S3 path management classes that were never implemented
-- **Current Alternative**: Current implementation handles S3 paths through semantic matching without complex registry systems
+**Note**: This consolidated document preserves valuable design concepts from complex theoretical architectures that were never implemented, while clearly directing users to the current working semantic matching system that actually solves the "data_output" key error.
 
 ### 🔍 Step Builder Pattern Analysis
 
