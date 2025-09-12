@@ -93,7 +93,7 @@ from typing import Dict, List, Any, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import joblib
+import pickle as pkl
 import matplotlib.pyplot as plt
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
@@ -1235,9 +1235,10 @@ def main(
 
             # Save calibrator model
             calibrator_path = os.path.join(
-                config.output_calibration_path, "calibration_model.joblib"
+                config.output_calibration_path, "calibration_model.pkl"
             )
-            joblib.dump(calibrator, calibrator_path)
+            with open(calibrator_path, "wb") as f:
+                pkl.dump(calibrator, f)
 
             # Add calibrated scores to dataframe and save
             df["calibrated_" + config.score_field] = y_prob_calibrated
@@ -1365,9 +1366,10 @@ def main(
             for i, calibrator in enumerate(calibrators):
                 class_name = config.multiclass_categories[i]
                 calibrator_path = os.path.join(
-                    calibrator_dir, f"calibration_model_class_{class_name}.joblib"
+                    calibrator_dir, f"calibration_model_class_{class_name}.pkl"
                 )
-                joblib.dump(calibrator, calibrator_path)
+                with open(calibrator_path, "wb") as f:
+                    pkl.dump(calibrator, f)
                 calibrator_paths[f"class_{class_name}"] = calibrator_path
 
             # Add calibrated scores to dataframe and save
