@@ -72,12 +72,13 @@ def install_requirements_single(package: str = "numpy") -> None:
 
 # Install required packages
 required_packages = [
+    "numpy==1.24.1",  # Pin this first (scikit-learn compatible)
+    "scipy==1.8.0",  # Pin this second (scikit-learn compatible)
     "scikit-learn==1.2.1",  # Match framework version
     "pandas==1.1.3",  # Match container requirement
-    "scipy==1.8.0",  # Match container requirement
-    "pydantic>=2.0.0,<3.0.0",  # This should be fine
     "matplotlib>=3.3.0,<3.7.0",  # Constrain to avoid numpy conflicts
-    "pygam>=0.8.0,<0.9.0",  # Constrain version
+    "progressbar2==4.2.0",  # Lower version to avoid forcing newer dependencies
+    "pygam==0.8.0",  # Use exact version to avoid pulling newer dependencies
 ]
 
 for package in required_packages:

@@ -1,9 +1,11 @@
 import shutil
 import tarfile
+import argparse
+import traceback
 from pathlib import Path
 import logging
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import sys
 
 # Configure logging with more detailed format
@@ -14,15 +16,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Constants
-MODEL_PATH = Path("/opt/ml/processing/input/model")
-SCRIPT_PATH = Path("/opt/ml/processing/input/script")
-CALIBRATION_PATH = Path(
-    "/opt/ml/processing/input/calibration"
-)  # New path for calibration model
-OUTPUT_PATH = Path("/opt/ml/processing/output")
-WORKING_DIRECTORY = Path("/tmp/mims_packaging_directory")
-CODE_DIRECTORY = WORKING_DIRECTORY / "code"
+# Constants - default paths (will be overridden by parameters in main function)
+DEFAULT_MODEL_PATH = "/opt/ml/processing/input/model"
+DEFAULT_SCRIPT_PATH = "/opt/ml/processing/input/script"
+DEFAULT_OUTPUT_PATH = "/opt/ml/processing/output"
+DEFAULT_WORKING_DIRECTORY = "/tmp/mims_packaging_directory"
 
 
 def ensure_directory(directory: Path):
@@ -189,83 +187,6 @@ def extract_tarfile(tar_path: Path, extract_path: Path):
         logger.error(f"Error during tar extraction: {str(e)}", exc_info=True)
 
 
-def include_calibration_model(working_dir: Path) -> bool:
-    """Check for and include calibration model in packaging if available.
-
-    Args:
-        working_dir: The working directory where model contents are being assembled
-
-    Returns:
-        bool: True if calibration model was found and included, False otherwise
-    """
-    logger.info(f"\n{'='*20} Checking for Calibration Model {'='*20}")
-
-    if not CALIBRATION_PATH.exists():
-        logger.info(
-            "No calibration input directory found. Continuing without calibration."
-        )
-        return False
-
-    list_directory_contents(CALIBRATION_PATH, "Calibration input directory")
-
-    # Check for binary calibration model file
-    calibration_model = CALIBRATION_PATH / "calibration_model.pkl"
-    if check_file_exists(calibration_model, "Binary calibration model"):
-        logger.info("Found binary calibration model")
-        # Create destination directory
-        calibration_dest_dir = working_dir / "calibration"
-        ensure_directory(calibration_dest_dir)
-
-        # Copy calibration model
-        dest_path = calibration_dest_dir / "calibration_model.pkl"
-        copy_file_robust(calibration_model, dest_path)
-
-        # Copy calibration summary if it exists
-        summary_file = CALIBRATION_PATH / "calibration_summary.json"
-        if check_file_exists(summary_file, "Calibration summary"):
-            summary_dest = calibration_dest_dir / "calibration_summary.json"
-            copy_file_robust(summary_file, summary_dest)
-
-        logger.info("Binary calibration model included in packaging")
-        return True
-
-    # Check for multiclass calibration models directory
-    calibration_dir = CALIBRATION_PATH / "calibration_models"
-    if calibration_dir.exists() and calibration_dir.is_dir():
-        logger.info("Found multiclass calibration models directory")
-
-        # Create destination directory
-        calibration_dest_dir = working_dir / "calibration"
-        ensure_directory(calibration_dest_dir)
-
-        # Copy calibration summary if it exists
-        summary_file = CALIBRATION_PATH / "calibration_summary.json"
-        if check_file_exists(summary_file, "Calibration summary"):
-            summary_dest = calibration_dest_dir / "calibration_summary.json"
-            copy_file_robust(summary_file, summary_dest)
-
-        # Create calibration models directory
-        models_dest_dir = calibration_dest_dir / "calibration_models"
-        ensure_directory(models_dest_dir)
-
-        # Copy all calibration models
-        files_copied = 0
-        total_size = 0
-        for model_file in calibration_dir.glob("*.pkl"):
-            dest_path = models_dest_dir / model_file.name
-            if copy_file_robust(model_file, dest_path):
-                files_copied += 1
-                total_size += model_file.stat().st_size / 1024 / 1024
-
-        logger.info(
-            f"Copied {files_copied} multiclass calibration models, total size: {total_size:.2f}MB"
-        )
-        return True
-
-    logger.info("No calibration model found. Continuing without calibration.")
-    return False
-
-
 def create_tarfile(output_tar_path: Path, source_dir: Path):
     """Create a tar file from the contents of a directory."""
     logger.info(f"\n{'='*20} Creating Tar File {'='*20}")
@@ -301,7 +222,40 @@ def create_tarfile(output_tar_path: Path, source_dir: Path):
         logger.error(f"Error creating tar file: {str(e)}", exc_info=True)
 
 
-def main():
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: Optional[argparse.Namespace] = None,
+) -> Path:
+    """
+    Main entry point for the packaging script.
+
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments (optional)
+
+    Returns:
+        Path to the packaged model.tar.gz output
+    """
+    # Extract paths from input parameters - required keys must be present
+    if "model_input" not in input_paths:
+        raise ValueError("Missing required input path: model_input")
+    if "script_input" not in input_paths:
+        raise ValueError("Missing required input path: script_input")
+    if "output_dir" not in output_paths:
+        raise ValueError("Missing required output path: output_dir")
+
+    model_path = Path(input_paths["model_input"])
+    script_path = Path(input_paths["script_input"])
+    output_path = Path(output_paths["output_dir"])
+    working_directory = Path(
+        environ_vars.get("WORKING_DIRECTORY", DEFAULT_WORKING_DIRECTORY)
+    )
+    code_directory = working_directory / "code"
+
     logger.info("\n=== Starting MIMS packaging process ===")
     logger.info(f"Python version: {sys.version}")
     logger.info(f"Working directory: {os.getcwd()}")
@@ -309,52 +263,81 @@ def main():
         f"Available disk space: {shutil.disk_usage('/').free / (1024*1024*1024):.2f}GB"
     )
 
-    # Ensure working and output directories exist
-    ensure_directory(WORKING_DIRECTORY)
-    ensure_directory(OUTPUT_PATH)
+    logger.info(f"\nUsing paths:")
+    logger.info(f"  Model path: {model_path}")
+    logger.info(f"  Script path: {script_path}")
+    logger.info(f"  Output path: {output_path}")
+    logger.info(f"  Working directory: {working_directory}")
 
-    # Extract input model.tar.gz if it exists
-    input_model_tar = MODEL_PATH / "model.tar.gz"
-    logger.info("\nChecking for input model.tar.gz...")
+    try:
+        # Ensure working and output directories exist
+        ensure_directory(working_directory)
+        ensure_directory(output_path)
 
-    if check_file_exists(input_model_tar, "Input model.tar.gz"):
-        extract_tarfile(input_model_tar, WORKING_DIRECTORY)
-    else:
-        logger.info("No model.tar.gz found. Copying all files from MODEL_PATH...")
-        files_copied = 0
-        total_size = 0
-        for item in MODEL_PATH.rglob("*"):
-            if item.is_file():
-                dest_path = WORKING_DIRECTORY / item.relative_to(MODEL_PATH)
-                if copy_file_robust(item, dest_path):
-                    files_copied += 1
-                    total_size += item.stat().st_size / 1024 / 1024
-        logger.info(f"\nCopied {files_copied} files, total size: {total_size:.2f}MB")
+        # Extract input model.tar.gz if it exists
+        input_model_tar = model_path / "model.tar.gz"
+        logger.info("\nChecking for input model.tar.gz...")
 
-    # Check for and include calibration model if available
-    include_calibration_model(WORKING_DIRECTORY)
+        if check_file_exists(input_model_tar, "Input model.tar.gz"):
+            extract_tarfile(input_model_tar, working_directory)
+        else:
+            logger.info("No model.tar.gz found. Copying all files from model_path...")
+            files_copied = 0
+            total_size = 0
+            for item in model_path.rglob("*"):
+                if item.is_file():
+                    dest_path = working_directory / item.relative_to(model_path)
+                    if copy_file_robust(item, dest_path):
+                        files_copied += 1
+                        total_size += item.stat().st_size / 1024 / 1024
+            logger.info(
+                f"\nCopied {files_copied} files, total size: {total_size:.2f}MB"
+            )
 
-    # Copy inference scripts to WORKING_DIRECTORY/code
-    copy_scripts(SCRIPT_PATH, CODE_DIRECTORY)
+        # Copy inference scripts to working_directory/code
+        copy_scripts(script_path, code_directory)
 
-    # Create the output model.tar.gz
-    output_tar_file = OUTPUT_PATH / "model.tar.gz"
-    create_tarfile(output_tar_file, WORKING_DIRECTORY)
+        # Create the output model.tar.gz
+        output_tar_file = output_path / "model.tar.gz"
+        create_tarfile(output_tar_file, working_directory)
 
-    # Final verification and summary
-    logger.info("\n=== Final State and Summary ===")
-    list_directory_contents(WORKING_DIRECTORY, "Working directory final content")
-    list_directory_contents(OUTPUT_PATH, "Output directory final content")
+        # Final verification and summary
+        logger.info("\n=== Final State and Summary ===")
+        list_directory_contents(working_directory, "Working directory final content")
+        list_directory_contents(output_path, "Output directory final content")
 
-    logger.info("\n=== MIMS packaging completed successfully ===")
+        logger.info("\n=== MIMS packaging completed successfully ===")
+
+        return output_tar_file
+
+    except Exception as e:
+        logger.error(f"Error in packaging process: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise
 
 
 if __name__ == "__main__":
     try:
-        main()
+        # Standard SageMaker paths
+        input_paths = {
+            "model_input": DEFAULT_MODEL_PATH,
+            "script_input": DEFAULT_SCRIPT_PATH,
+        }
+
+        output_paths = {"output_dir": DEFAULT_OUTPUT_PATH}
+
+        # Environment variables dictionary
+        environ_vars = {"WORKING_DIRECTORY": DEFAULT_WORKING_DIRECTORY}
+
+        # No command line arguments needed for this script
+        args = None
+
+        # Execute the main function
+        result = main(input_paths, output_paths, environ_vars, args)
+
+        logger.info(f"Packaging completed successfully. Output model at: {result}")
+        sys.exit(0)
     except Exception as e:
-        logger.error(
-            f"An unexpected error occurred during packaging: {str(e)}", exc_info=True
-        )
-        logger.error("Detailed traceback:", exc_info=True)
-        raise
+        logger.error(f"An unexpected error occurred during packaging: {str(e)}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)

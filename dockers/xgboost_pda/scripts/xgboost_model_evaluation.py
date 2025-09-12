@@ -1,75 +1,5 @@
+#!/usr/bin/env python
 import os
-import sys
-
-from subprocess import check_call
-import boto3
-
-
-def _get_secure_pypi_access_tokens() -> str:
-    os.environ["AWS_STS_REGIONAL_ENDPOINTS"] = "regional"
-    sts = boto3.client("sts", region_name="us-east-1")
-    caller_identity = sts.get_caller_identity()
-    assumed_role_object = sts.assume_role(
-        RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
-        + caller_identity["Account"],
-        RoleSessionName="SecurePypiReadRole",
-    )
-    credentials = assumed_role_object["Credentials"]
-    code_artifact_client = boto3.client(
-        "codeartifact",
-        aws_access_key_id=credentials["AccessKeyId"],
-        aws_secret_access_key=credentials["SecretAccessKey"],
-        aws_session_token=credentials["SessionToken"],
-        region_name="us-west-2",
-    )
-    token = code_artifact_client.get_authorization_token(
-        domain="amazon", domainOwner="149122183214"
-    )["authorizationToken"]
-
-    return token
-
-
-def install_requirements(path: str = "requirements.txt") -> None:
-    token = _get_secure_pypi_access_tokens()
-    check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--index-url",
-            f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/",
-            "-r",
-            path,
-        ]
-    )
-
-
-def install_requirements_single(package: str = "numpy") -> None:
-    token = _get_secure_pypi_access_tokens()
-    check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--index-url",
-            f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/",
-            package,
-        ]
-    )
-
-
-# Install required packages
-required_packages = [
-    "pydantic>=2.0.0,<3.0.0",
-]
-
-for package in required_packages:
-    install_requirements_single(package)
-print("***********************Package Installed*********************")
-
-
 import json
 import argparse
 import pandas as pd
@@ -86,23 +16,23 @@ from sklearn.metrics import (
 import xgboost as xgb
 import matplotlib.pyplot as plt
 import time
+import sys
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple, Union
+from typing import Dict, Any, Optional
+
+from ..processing.risk_table_processor import RiskTableMappingProcessor
+from ..processing.numerical_imputation_processor import (
+    NumericalVariableImputationProcessor,
+)
 
 import logging
-import tarfile
 
-# Setup logging first
+# Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
-# Define constants for paths
-SOURCECODE_DIR = "/opt/ml/processing/input/code"  # This is correct
-# Add the code directories to Python path
-sys.path.append(SOURCECODE_DIR)
-logger.info(f"Added {SOURCECODE_DIR} to Python path")
 # Container path constants - aligned with script contract
 CONTAINER_PATHS = {
     "MODEL_DIR": "/opt/ml/processing/input/model",
@@ -111,69 +41,13 @@ CONTAINER_PATHS = {
     "OUTPUT_METRICS_DIR": "/opt/ml/processing/output/metrics",
 }
 
-# Now import from the processing package
-try:
-    from processing.risk_table_processor import RiskTableMappingProcessor
-    from processing.numerical_imputation_processor import (
-        NumericalVariableImputationProcessor,
-    )
 
-    logger.info("Successfully imported processing modules")
-except ImportError as e:
-    logger.error(f"Failed to import processing modules: {e}")
-    logger.error(f"Current PYTHONPATH: {sys.path}")
-    raise
-
-
-def validate_environment():
-    """Validate the processing environment setup."""
-    logger.info("Validating processing environment")
-
-    # Validate directories
-    required_dirs = {
-        "sourcecode": SOURCECODE_DIR,
-        "model": CONTAINER_PATHS["MODEL_DIR"],
-        "eval_data": CONTAINER_PATHS["EVAL_DATA_DIR"],
-        "output_eval": CONTAINER_PATHS["OUTPUT_EVAL_DIR"],
-        "output_metrics": CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
-    }
-
-    for name, path in required_dirs.items():
-        if not os.path.exists(path):
-            raise RuntimeError(f"Required directory {name} ({path}) does not exist")
-        logger.info(f"Validated {name} directory: {path}")
-
-    # Validate processing package
-    processing_dir = os.path.join(SOURCECODE_DIR, "processing")
-    if not os.path.exists(processing_dir):
-        raise RuntimeError(f"Processing package not found in {processing_dir}")
-    logger.info(f"Validated processing package at {processing_dir}")
-
-
-def decompress_model_artifacts(model_dir: str):
-    """
-    Checks for a model.tar.gz file in the model directory and extracts it.
-    """
-    model_tar_path = Path(model_dir) / "model.tar.gz"
-    if model_tar_path.exists():
-        logger.info(f"Found model.tar.gz at {model_tar_path}. Extracting...")
-        with tarfile.open(model_tar_path, "r:gz") as tar:
-            tar.extractall(path=model_dir)
-        logger.info("Extraction complete.")
-    else:
-        logger.info("No model.tar.gz found. Assuming artifacts are directly available.")
-
-def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
+def load_model_artifacts(model_dir):
     """
     Load the trained XGBoost model and all preprocessing artifacts from the specified directory.
     Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.
     """
     logger.info(f"Loading model artifacts from {model_dir}")
-
-    # Decompress the model tarball if it exists.
-    logger.info("Decompress the model tarball if it exists")
-    decompress_model_artifacts(model_dir)
-
     model = xgb.Booster()
     model.load_model(os.path.join(model_dir, "xgboost_model.bst"))
     logger.info("Loaded xgboost_model.bst")
@@ -194,54 +68,35 @@ def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], D
     return model, risk_tables, impute_dict, feature_columns, hyperparams
 
 
-def preprocess_eval_data(df: pd.DataFrame, feature_columns: List[str], risk_tables: Dict[str, Any], impute_dict: Dict[str, Any]) -> pd.DataFrame:
+def preprocess_eval_data(df, feature_columns, risk_tables, impute_dict):
     """
     Apply risk table mapping and numerical imputation to the evaluation DataFrame.
     Ensures all features are numeric and columns are ordered as required by the model.
-    Preserves any non-feature columns like id and label.
     """
-    # Make a copy of the input dataframe to avoid modifying the original
-    result_df = df.copy()
-    
-    # Get available feature columns (features that exist in the input data)
-    available_features = [col for col in feature_columns if col in df.columns]
-    logger.info(f"Found {len(available_features)} out of {len(feature_columns)} expected feature columns")
-    
-    # Process only feature columns
     logger.info("Starting risk table mapping for categorical features")
     for feature, risk_table in risk_tables.items():
-        if feature in available_features:
+        if feature in df.columns:
             logger.info(f"Applying risk table mapping for feature: {feature}")
             proc = RiskTableMappingProcessor(
                 column_name=feature, label_name="label", risk_tables=risk_table
             )
-            result_df[feature] = proc.transform(df[feature])
+            df[feature] = proc.transform(df[feature])
     logger.info("Risk table mapping complete")
-    
-    # For numerical imputation, only process features, not all columns
     logger.info("Starting numerical imputation")
-    feature_df = result_df[available_features].copy()
     imputer = NumericalVariableImputationProcessor(imputation_dict=impute_dict)
-    imputed_df = imputer.transform(feature_df)
-    # Update only the feature columns in the result dataframe
-    for col in available_features:
-        if col in imputed_df:
-            result_df[col] = imputed_df[col]
+    df = imputer.transform(df)
     logger.info("Numerical imputation complete")
-    
-    # Convert feature columns to numeric, leaving other columns unchanged
-    logger.info("Ensuring feature columns are numeric")
-    result_df[available_features] = (
-        result_df[available_features].apply(pd.to_numeric, errors="coerce").fillna(0)
+    logger.info("Ensuring all features are numeric and reordering columns")
+    df[feature_columns] = (
+        df[feature_columns].apply(pd.to_numeric, errors="coerce").fillna(0)
     )
-    
-    logger.info(f"Preprocessed data shape: {result_df.shape} (preserving all original columns)")
-    
-    # Return the result with all original columns preserved
-    return result_df
+    df = df.copy()
+    df = df[[col for col in feature_columns if col in df.columns]]
+    logger.info(f"Preprocessed eval data shape: {df.shape}")
+    return df
 
 
-def log_metrics_summary(metrics: Dict[str, Union[int, float, str]], is_binary: bool = True) -> None:
+def log_metrics_summary(metrics, is_binary=True):
     """
     Log a nicely formatted summary of metrics for easy visibility in logs.
 
@@ -303,7 +158,7 @@ def log_metrics_summary(metrics: Dict[str, Union[int, float, str]], is_binary: b
     logger.info("=" * 80)
 
 
-def compute_metrics_binary(y_true: np.ndarray, y_prob: np.ndarray) -> Dict[str, float]:
+def compute_metrics_binary(y_true, y_prob):
     """
     Compute binary classification metrics: AUC-ROC, average precision, and F1 score.
     """
@@ -334,13 +189,16 @@ def compute_metrics_binary(y_true: np.ndarray, y_prob: np.ndarray) -> Dict[str, 
     return metrics
 
 
-def compute_metrics_multiclass(y_true: np.ndarray, y_prob: np.ndarray, n_classes: int) -> Dict[str, Union[int, float]]:
+def compute_metrics_multiclass(y_true, y_prob, n_classes):
     """
     Compute multiclass metrics: one-vs-rest AUC-ROC, average precision, F1 for each class,
     and micro/macro averages for all metrics.
     """
     logger.info("Computing multiclass metrics")
     metrics = {}
+
+    # Import label_binarize for converting multiclass labels to binary format
+    from sklearn.preprocessing import label_binarize
 
     # Per-class metrics
     for i in range(n_classes):
@@ -352,18 +210,21 @@ def compute_metrics_multiclass(y_true: np.ndarray, y_prob: np.ndarray, n_classes
         )
         metrics[f"f1_score_class_{i}"] = f1_score(y_true_bin, y_score > 0.5)
 
-    # Micro and macro averages
-    metrics["auc_roc_micro"] = roc_auc_score(
-        y_true, y_prob, multi_class="ovr", average="micro"
-    )
+    # Macro average for ROC AUC
     metrics["auc_roc_macro"] = roc_auc_score(
         y_true, y_prob, multi_class="ovr", average="macro"
     )
-    metrics["average_precision_micro"] = average_precision_score(
-        y_true, y_prob, average="micro"
-    )
+    metrics["auc_roc_micro"] = metrics["auc_roc_macro"]  # Use macro for micro too
+
+    # For average precision, we need to binarize y_true
+    y_true_bin = label_binarize(y_true, classes=range(n_classes))
+
+    # Now compute average precision with binarized labels
     metrics["average_precision_macro"] = average_precision_score(
-        y_true, y_prob, average="macro"
+        y_true_bin, y_prob, average="macro"
+    )
+    metrics["average_precision_micro"] = average_precision_score(
+        y_true_bin, y_prob, average="micro"
     )
 
     y_pred = np.argmax(y_prob, axis=1)
@@ -385,7 +246,7 @@ def compute_metrics_multiclass(y_true: np.ndarray, y_prob: np.ndarray, n_classes
     return metrics
 
 
-def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
+def load_eval_data(eval_data_dir):
     """
     Load the first .csv or .parquet file found in the evaluation data directory.
     Returns a pandas DataFrame.
@@ -411,7 +272,7 @@ def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
     return df
 
 
-def get_id_label_columns(df: pd.DataFrame, id_field: str, label_field: str) -> Tuple[str, str]:
+def get_id_label_columns(df, id_field, label_field):
     """
     Determine the ID and label columns in the DataFrame.
     Falls back to the first and second columns if not found.
@@ -422,7 +283,7 @@ def get_id_label_columns(df: pd.DataFrame, id_field: str, label_field: str) -> T
     return id_col, label_col
 
 
-def save_predictions(ids: np.ndarray, y_true: np.ndarray, y_prob: np.ndarray, id_col: str, label_col: str, output_eval_dir: str) -> None:
+def save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir):
     """
     Save predictions to a CSV file, including id, true label, and class probabilities.
     """
@@ -436,7 +297,7 @@ def save_predictions(ids: np.ndarray, y_true: np.ndarray, y_prob: np.ndarray, id
     logger.info(f"Saved predictions to {out_path}")
 
 
-def save_metrics(metrics: Dict[str, Union[int, float, str]], output_metrics_dir: str) -> None:
+def save_metrics(metrics, output_metrics_dir):
     """
     Save computed metrics as a JSON file.
     """
@@ -477,7 +338,7 @@ def save_metrics(metrics: Dict[str, Union[int, float, str]], output_metrics_dir:
     logger.info(f"Saved metrics summary to {summary_path}")
 
 
-def plot_and_save_roc_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
+def plot_and_save_roc_curve(y_true, y_score, output_dir, prefix=""):
     """
     Plot ROC curve and save as JPG.
     """
@@ -496,7 +357,7 @@ def plot_and_save_roc_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir:
     logger.info(f"Saved ROC curve to {out_path}")
 
 
-def plot_and_save_pr_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
+def plot_and_save_pr_curve(y_true, y_score, output_dir, prefix=""):
     """
     Plot Precision-Recall curve and save as JPG.
     """
@@ -515,15 +376,15 @@ def plot_and_save_pr_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: 
 
 
 def evaluate_model(
-    model: xgb.Booster,
-    df: pd.DataFrame,
-    feature_columns: List[str],
-    id_col: str,
-    label_col: str,
-    hyperparams: Dict[str, Any],
-    output_eval_dir: str,
-    output_metrics_dir: str,
-) -> None:
+    model,
+    df,
+    feature_columns,
+    id_col,
+    label_col,
+    hyperparams,
+    output_eval_dir,
+    output_metrics_dir,
+):
     """
     Run model prediction and evaluation, then save predictions and metrics.
     Also generate and save ROC and PR curves as JPG.
@@ -629,24 +490,17 @@ def main(
 
     # Load and preprocess data
     df = load_eval_data(eval_data_dir)
-    
-    # Get ID and label columns before preprocessing
-    id_col, label_col = get_id_label_columns(df, id_field, label_field)
-    
-    # Process the data - our updated preprocess_eval_data preserves all columns including id and label
     df = preprocess_eval_data(df, feature_columns, risk_tables, impute_dict)
-    
-    # No need to filter or re-add id and label columns since they're already preserved
-    logger.info(f"Final evaluation DataFrame shape: {df.shape}")
+    df = df[[col for col in feature_columns if col in df.columns]]
 
-    # Get the available features (those that exist in the DataFrame)
-    available_features = [col for col in feature_columns if col in df.columns]
-    
-    # Evaluate model using the final DataFrame with both features and ID/label columns
+    # Get ID and label columns
+    id_col, label_col = get_id_label_columns(df, id_field, label_field)
+
+    # Evaluate model
     evaluate_model(
         model,
         df,
-        available_features,  # Only use available feature columns for prediction
+        feature_columns,
         id_col,
         label_col,
         hyperparams,
@@ -678,8 +532,6 @@ if __name__ == "__main__":
         "ID_FIELD": os.environ.get("ID_FIELD", "id"),  # Fallback for testing
         "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),  # Fallback for testing
     }
-
-    validate_environment()
 
     try:
         # Call main function with testability parameters
