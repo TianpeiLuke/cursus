@@ -805,7 +805,13 @@ class RuntimeTester:
 
     def test_inference_pipeline(self, handler_spec: InferenceHandlerSpec) -> Dict[str, Any]:
         """Test complete inference pipeline (all 4 functions connected)."""
-        results = {"pipeline_success": True, "function_results": {}, "errors": []}
+        results = {
+            "pipeline_success": True, 
+            "function_results": {}, 
+            "errors": [],
+            "handler_name": handler_spec.handler_name,
+            "step_name": handler_spec.step_name
+        }
         
         try:
             # Extract packaged model to inference_inputs/
@@ -828,23 +834,55 @@ class RuntimeTester:
             model_artifacts = handler_module.model_fn(extraction_paths["extraction_root"])
             results["function_results"]["model_fn"] = {"success": True, "artifacts": model_artifacts}
             
+            # Initialize function result containers
+            input_fn_results = []
+            predict_fn_results = []
+            output_fn_results = []
+            end_to_end_results = []
+            
             # Step 2-4: Test pipeline with payload samples
             for sample in payload_samples:
-                # Step 2: input_fn
-                processed_input = handler_module.input_fn(sample["data"], sample["content_type"])
-                
-                # Step 3: predict_fn
-                predictions = handler_module.predict_fn(processed_input, model_artifacts)
-                
-                # Step 4: output_fn
-                for accept_type in handler_spec.supported_accept_types:
-                    response = handler_module.output_fn(predictions, accept_type)
+                try:
+                    # Step 2: input_fn
+                    processed_input = handler_module.input_fn(sample["data"], sample["content_type"])
+                    input_fn_results.append({"success": True, "sample": sample["sample_name"]})
                     
-            results["function_results"]["pipeline"] = {"success": True}
+                    # Step 3: predict_fn
+                    predictions = handler_module.predict_fn(processed_input, model_artifacts)
+                    predict_fn_results.append({"success": True, "sample": sample["sample_name"]})
+                    
+                    # Step 4: output_fn
+                    for accept_type in handler_spec.supported_accept_types:
+                        response = handler_module.output_fn(predictions, accept_type)
+                        output_fn_results.append({
+                            "success": True, 
+                            "sample": sample["sample_name"],
+                            "accept_type": accept_type
+                        })
+                    
+                    # End-to-end success for this sample
+                    end_to_end_results.append({"success": True, "sample": sample["sample_name"]})
+                    
+                except Exception as sample_error:
+                    # Record individual function failures
+                    input_fn_results.append({"success": False, "sample": sample["sample_name"], "error": str(sample_error)})
+                    predict_fn_results.append({"success": False, "sample": sample["sample_name"], "error": str(sample_error)})
+                    output_fn_results.append({"success": False, "sample": sample["sample_name"], "error": str(sample_error)})
+                    end_to_end_results.append({"success": False, "sample": sample["sample_name"], "error": str(sample_error)})
+                    
+                    results["pipeline_success"] = False
+                    results["errors"].append(f"Sample {sample['sample_name']} failed: {str(sample_error)}")
+            
+            # Store individual function results
+            results["function_results"]["input_fn"] = input_fn_results
+            results["function_results"]["predict_fn"] = predict_fn_results  
+            results["function_results"]["output_fn"] = output_fn_results
+            results["function_results"]["end_to_end"] = end_to_end_results
             
         except Exception as e:
             results["pipeline_success"] = False
-            results["errors"].append(str(e))
+            error_msg = f"Handler '{handler_spec.handler_name}' ({handler_spec.step_name}) failed: {str(e)}"
+            results["errors"].append(error_msg)
         finally:
             # Cleanup extraction directory
             self._cleanup_extraction_directory("inference_inputs")

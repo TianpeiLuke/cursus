@@ -67,14 +67,18 @@ class TestRealWorldIntegration:
         # Verify structure matches expectations
         assert tar_path.exists()
         
-        # Test extraction
+        # Test extraction with proper cleanup
         tester = RuntimeTester(temp_dir)
-        extraction_paths = tester._extract_packaged_model(str(tar_path), "test_extraction")
-        
-        extraction_root = Path(extraction_paths["extraction_root"])
-        assert (extraction_root / "xgboost_model.bst").exists()
-        assert (extraction_root / "code" / "inference.py").exists()
-        assert (extraction_root / "calibration" / "calibration_model.pkl").exists()
+        try:
+            extraction_paths = tester._extract_packaged_model(str(tar_path), "test_extraction")
+            
+            extraction_root = Path(extraction_paths["extraction_root"])
+            assert (extraction_root / "xgboost_model.bst").exists()
+            assert (extraction_root / "code" / "inference.py").exists()
+            assert (extraction_root / "calibration" / "calibration_model.pkl").exists()
+        finally:
+            # Ensure cleanup
+            tester._cleanup_extraction_directory("test_extraction")
 
     def test_payload_step_output_structure(self, temp_dir):
         """Test that payload step output structure matches expectations"""
@@ -271,21 +275,25 @@ def output_fn(prediction_output, accept="application/json"):
         
         # Test extraction with RuntimeTester
         tester = RuntimeTester(temp_dir)
-        extraction_paths = tester._extract_packaged_model(str(tar_path), "package_test")
-        
-        # Verify all expected files are present
-        extraction_root = Path(extraction_paths["extraction_root"])
-        expected_files = [
-            "xgboost_model.bst",
-            "risk_table_map.pkl", 
-            "impute_dict.pkl",
-            "feature_columns.txt",
-            "hyperparameters.json",
-            "code/inference.py"
-        ]
-        
-        for expected_file in expected_files:
-            assert (extraction_root / expected_file).exists(), f"Missing expected file: {expected_file}"
+        try:
+            extraction_paths = tester._extract_packaged_model(str(tar_path), "package_test")
+            
+            # Verify all expected files are present
+            extraction_root = Path(extraction_paths["extraction_root"])
+            expected_files = [
+                "xgboost_model.bst",
+                "risk_table_map.pkl", 
+                "impute_dict.pkl",
+                "feature_columns.txt",
+                "hyperparameters.json",
+                "code/inference.py"
+            ]
+            
+            for expected_file in expected_files:
+                assert (extraction_root / expected_file).exists(), f"Missing expected file: {expected_file}"
+        finally:
+            # Ensure cleanup
+            tester._cleanup_extraction_directory("package_test")
 
     def test_payload_step_contract_compatibility(self, temp_dir):
         """Test compatibility with payload step contract from src/cursus/steps/scripts/payload.py"""

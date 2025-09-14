@@ -356,17 +356,21 @@ class TestRuntimeTesterInferenceMethods:
         with tarfile.open(tar_path, "w:gz") as tar:
             tar.add(model_dir, arcname=".")
         
-        # Test extraction
-        extraction_paths = tester._extract_packaged_model(str(tar_path), "test_extraction")
-        
-        assert "extraction_root" in extraction_paths
-        assert "inference_code" in extraction_paths
-        assert "handler_file" in extraction_paths
-        
-        # Verify extracted files exist
-        extraction_root = Path(extraction_paths["extraction_root"])
-        assert (extraction_root / "model.pkl").exists()
-        assert (extraction_root / "code" / "inference.py").exists()
+        # Test extraction with proper cleanup
+        try:
+            extraction_paths = tester._extract_packaged_model(str(tar_path), "test_extraction")
+            
+            assert "extraction_root" in extraction_paths
+            assert "inference_code" in extraction_paths
+            assert "handler_file" in extraction_paths
+            
+            # Verify extracted files exist
+            extraction_root = Path(extraction_paths["extraction_root"])
+            assert (extraction_root / "model.pkl").exists()
+            assert (extraction_root / "code" / "inference.py").exists()
+        finally:
+            # Ensure cleanup
+            tester._cleanup_extraction_directory("test_extraction")
 
     def test_load_handler_module(self, tester, temp_dir):
         """Test inference handler module loading"""
