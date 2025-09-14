@@ -31,6 +31,13 @@ from .runtime_models import (
 )
 from .runtime_spec_builder import PipelineTestingSpecBuilder
 
+# Import inference testing models
+from .runtime_inference import (
+    InferenceHandlerSpec,
+    InferenceTestResult,
+    InferencePipelineTestingSpec,
+)
+
 # Import PipelineDAG for integration
 from ...api.dag.base_dag import PipelineDAG
 
@@ -764,6 +771,293 @@ class RuntimeTester:
 
         return valid_files
 
+    # Phase 2: Inference Testing Methods (4 Core Functionalities)
+
+    def test_inference_function(self, handler_module: Any, function_name: str, 
+                               test_params: Dict[str, Any]) -> Dict[str, Any]:
+        """Test individual inference function (model_fn, input_fn, predict_fn, output_fn)."""
+        start_time = time.time()
+        
+        try:
+            # Get function from module
+            func = getattr(handler_module, function_name)
+            
+            # Execute function with test parameters
+            result = func(**test_params)
+            
+            # Validate result based on function type
+            validation = self._validate_function_result(function_name, result, test_params)
+            
+            return {
+                "function_name": function_name,
+                "success": True,
+                "execution_time": time.time() - start_time,
+                "result": result,
+                "validation": validation
+            }
+        except Exception as e:
+            return {
+                "function_name": function_name,
+                "success": False,
+                "execution_time": time.time() - start_time,
+                "error": str(e)
+            }
+
+    def test_inference_pipeline(self, handler_spec: InferenceHandlerSpec) -> Dict[str, Any]:
+        """Test complete inference pipeline (all 4 functions connected)."""
+        results = {"pipeline_success": True, "function_results": {}, "errors": []}
+        
+        try:
+            # Extract packaged model to inference_inputs/
+            extraction_paths = self._extract_packaged_model(
+                handler_spec.packaged_model_path, 
+                "inference_inputs"
+            )
+            
+            # Load inference handler from extracted code/
+            handler_module = self._load_handler_module(
+                extraction_paths["handler_file"]
+            )
+            
+            # Load payload samples from payload_samples_path
+            payload_samples = self._load_payload_samples(
+                handler_spec.payload_samples_path
+            )
+            
+            # Step 1: Test model_fn with extraction root (model files at root level)
+            model_artifacts = handler_module.model_fn(extraction_paths["extraction_root"])
+            results["function_results"]["model_fn"] = {"success": True, "artifacts": model_artifacts}
+            
+            # Step 2-4: Test pipeline with payload samples
+            for sample in payload_samples:
+                # Step 2: input_fn
+                processed_input = handler_module.input_fn(sample["data"], sample["content_type"])
+                
+                # Step 3: predict_fn
+                predictions = handler_module.predict_fn(processed_input, model_artifacts)
+                
+                # Step 4: output_fn
+                for accept_type in handler_spec.supported_accept_types:
+                    response = handler_module.output_fn(predictions, accept_type)
+                    
+            results["function_results"]["pipeline"] = {"success": True}
+            
+        except Exception as e:
+            results["pipeline_success"] = False
+            results["errors"].append(str(e))
+        finally:
+            # Cleanup extraction directory
+            self._cleanup_extraction_directory("inference_inputs")
+        
+        return results
+
+    def test_script_to_inference_compatibility(self, script_spec: ScriptExecutionSpec,
+                                              handler_spec: InferenceHandlerSpec) -> Dict[str, Any]:
+        """Test data compatibility between script output and inference input."""
+        
+        # Execute script first
+        script_result = self.test_script_with_spec(script_spec, self.builder.get_script_main_params(script_spec))
+        
+        if not script_result.success:
+            return {"compatible": False, "error": "Script execution failed"}
+        
+        # Find script output files using semantic matching (like existing RuntimeTester)
+        # Use semantic matching to find the best output path for inference input
+        output_files = []
+        compatibility_issues = []
+        
+        # Try each output path from script_spec to find valid files
+        for output_name, output_path in script_spec.output_paths.items():
+            output_dir = Path(output_path)
+            files = self._find_valid_output_files(output_dir)
+            if files:
+                output_files.extend(files)
+                break  # Use first valid output path
+            else:
+                compatibility_issues.append(f"No valid files in output path '{output_name}': {output_path}")
+        
+        if not output_files:
+            return {
+                "compatible": False, 
+                "error": "No script output files found",
+                "details": compatibility_issues
+            }
+        
+        # Test if inference handler can process script output
+        try:
+            # Extract packaged model and load handler
+            extraction_paths = self._extract_packaged_model(
+                handler_spec.packaged_model_path, 
+                "inference_inputs"
+            )
+            handler_module = self._load_handler_module(extraction_paths["handler_file"])
+            
+            # Try each output file with different content types
+            for output_file in output_files:
+                try:
+                    with open(output_file, 'r') as f:
+                        script_output_data = f.read()
+                    
+                    # Test with different content types
+                    for content_type in handler_spec.supported_content_types:
+                        try:
+                            processed_input = handler_module.input_fn(script_output_data, content_type)
+                            return {
+                                "compatible": True, 
+                                "content_type": content_type,
+                                "output_file": str(output_file),
+                                "file_format": self._detect_file_format(output_file)
+                            }
+                        except Exception as content_error:
+                            compatibility_issues.append(
+                                f"Content type '{content_type}' failed for {output_file.name}: {str(content_error)}"
+                            )
+                            continue
+                            
+                except Exception as file_error:
+                    compatibility_issues.append(f"Failed to read {output_file.name}: {str(file_error)}")
+                    continue
+            
+            return {
+                "compatible": False, 
+                "error": "No compatible content type found for any output file",
+                "details": compatibility_issues
+            }
+            
+        except Exception as e:
+            return {"compatible": False, "error": str(e)}
+        finally:
+            self._cleanup_extraction_directory("inference_inputs")
+
+    def test_pipeline_with_inference(self, pipeline_spec: PipelineTestingSpec,
+                                    inference_handlers: Dict[str, InferenceHandlerSpec]) -> Dict[str, Any]:
+        """Test pipeline where inference handlers replace registration steps."""
+        
+        results = {"pipeline_success": True, "script_results": {}, "inference_results": {}, "errors": []}
+        
+        # Test scripts first
+        for node_name, script_spec in pipeline_spec.script_specs.items():
+            if node_name not in inference_handlers:  # Only test non-inference scripts
+                main_params = self.builder.get_script_main_params(script_spec)
+                script_result = self.test_script_with_spec(script_spec, main_params)
+                results["script_results"][node_name] = script_result
+                
+                if not script_result.success:
+                    results["pipeline_success"] = False
+                    results["errors"].append(f"Script {node_name} failed")
+        
+        # Test inference handlers
+        for node_name, handler_spec in inference_handlers.items():
+            handler_result = self.test_inference_pipeline(handler_spec)
+            results["inference_results"][node_name] = handler_result
+            
+            if not handler_result["pipeline_success"]:
+                results["pipeline_success"] = False
+                results["errors"].extend(handler_result["errors"])
+        
+        # Test data flow between scripts and inference handlers
+        for src_node, dst_node in pipeline_spec.dag.edges:
+            if src_node in pipeline_spec.script_specs and dst_node in inference_handlers:
+                compatibility = self.test_script_to_inference_compatibility(
+                    pipeline_spec.script_specs[src_node],
+                    inference_handlers[dst_node]
+                )
+                if not compatibility["compatible"]:
+                    results["pipeline_success"] = False
+                    results["errors"].append(f"Incompatible data flow: {src_node} -> {dst_node}")
+        
+        return results
+
+    # Helper methods for inference testing
+    def _extract_packaged_model(self, packaged_model_path: str, extraction_dir: str = "inference_inputs") -> Dict[str, str]:
+        """Extract model.tar.gz and return paths to key components."""
+        import tarfile
+        
+        extraction_path = Path(extraction_dir)
+        extraction_path.mkdir(parents=True, exist_ok=True)
+        
+        # Extract tar.gz to extraction directory
+        with tarfile.open(packaged_model_path, "r:gz") as tar:
+            tar.extractall(path=extraction_path)
+        
+        # Return key paths based on package step structure
+        paths = {
+            "extraction_root": str(extraction_path),
+            "inference_code": str(extraction_path / "code"),
+            "handler_file": str(extraction_path / "code" / "inference.py")  # Assuming standard name
+        }
+        
+        # Check for optional calibration
+        calibration_dir = extraction_path / "calibration"
+        if calibration_dir.exists():
+            paths["calibration_model"] = str(calibration_dir)
+        
+        return paths
+
+    def _load_handler_module(self, handler_file_path: str):
+        """Load inference handler module (similar to existing _find_script_path pattern)."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("inference_handler", handler_file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def _load_payload_samples(self, payload_samples_path: str) -> List[Dict[str, Any]]:
+        """Load test samples from payload samples directory."""
+        samples = []
+        payload_dir = Path(payload_samples_path)
+        
+        # Load CSV samples
+        csv_dir = payload_dir / "csv_samples"
+        if csv_dir.exists():
+            for csv_file in csv_dir.glob("*.csv"):
+                with open(csv_file, 'r') as f:
+                    samples.append({
+                        "sample_name": csv_file.stem,
+                        "content_type": "text/csv",
+                        "data": f.read().strip(),
+                        "file_path": str(csv_file)
+                    })
+        
+        # Load JSON samples
+        json_dir = payload_dir / "json_samples"
+        if json_dir.exists():
+            for json_file in json_dir.glob("*.json"):
+                with open(json_file, 'r') as f:
+                    samples.append({
+                        "sample_name": json_file.stem,
+                        "content_type": "application/json",
+                        "data": f.read().strip(),
+                        "file_path": str(json_file)
+                    })
+        
+        return samples
+
+    def _cleanup_extraction_directory(self, extraction_dir: str) -> None:
+        """Clean up extraction directory after testing."""
+        import shutil
+        extraction_path = Path(extraction_dir)
+        if extraction_path.exists():
+            shutil.rmtree(extraction_path)
+
+    def _validate_function_result(self, function_name: str, result: Any, test_params: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate function result based on function type (reuses existing validation patterns)."""
+        validation = {"function_type": function_name, "result_type": type(result).__name__}
+        
+        if function_name == "model_fn":
+            validation["has_model_artifacts"] = result is not None
+            validation["is_dict"] = isinstance(result, dict)
+        elif function_name == "input_fn":
+            validation["has_processed_input"] = result is not None
+            validation["input_type"] = type(result).__name__
+        elif function_name == "predict_fn":
+            validation["has_predictions"] = result is not None
+            validation["prediction_type"] = type(result).__name__
+        elif function_name == "output_fn":
+            validation["has_response"] = result is not None
+            validation["response_type"] = type(result).__name__
+        
+        return validation
 
     # Phase 3: Helper Methods for Enhanced Functionality
 

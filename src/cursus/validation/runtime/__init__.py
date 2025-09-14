@@ -32,6 +32,13 @@ from .logical_name_matching import (
     EnhancedDataCompatibilityResult,
 )
 
+# Inference handler testing components
+from .runtime_inference import (
+    InferenceHandlerSpec,
+    InferenceTestResult,
+    InferencePipelineTestingSpec,
+)
+
 # Main API exports - Simplified to user requirements only
 __all__ = [
     "RuntimeTester",
@@ -50,4 +57,8 @@ __all__ = [
     "TopologicalExecutor",
     "LogicalNameMatchingTester",
     "EnhancedDataCompatibilityResult",
+    # Inference handler testing exports
+    "InferenceHandlerSpec",
+    "InferenceTestResult",
+    "InferencePipelineTestingSpec",
 ]
