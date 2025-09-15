@@ -22,7 +22,7 @@ def detect_step_type_from_registry(script_name: str) -> str:
     """
     try:
         # Try the new hybrid registry system first
-        from src.cursus.registry.step_names import (
+        from ...registry.step_names import (
             get_sagemaker_step_type,
             get_canonical_name_from_file_name,
         )
@@ -32,7 +32,7 @@ def detect_step_type_from_registry(script_name: str) -> str:
     except (ValueError, ImportError, AttributeError):
         try:
             # Fallback to old import path for backward compatibility
-            from cursus.registry.step_names import (
+            from ...registry.step_names import (
                 get_sagemaker_step_type,
                 get_canonical_name_from_file_name,
             )
