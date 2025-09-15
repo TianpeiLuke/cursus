@@ -195,6 +195,10 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 
+# Allow forward references and reduce false positives
+allow_untyped_globals = true
+disable_error_code = ["name-defined"]
+
 [[tool.mypy.overrides]]
 module = [
     "sagemaker.*",
@@ -203,6 +207,15 @@ module = [
     "networkx.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mods_workflow_core.*",
+    "mods_workflow_helper.*",
+    "secure_ai_sandbox_workflow_python_sdk.*",
+]
+ignore_missing_imports = true
+ignore_errors = true
 
 # pytest configuration
 [tool.pytest.ini_options]

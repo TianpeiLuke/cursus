@@ -5,6 +5,8 @@ This module provides the main API functions for compiling PipelineDAG structures
 into executable SageMaker pipelines.
 """
 
+from __future__ import annotations
+
 from typing import Optional, Dict, Any, Tuple
 import logging
 from pathlib import Path

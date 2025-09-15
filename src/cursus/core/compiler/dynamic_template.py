@@ -5,6 +5,8 @@ This module provides a dynamic implementation of PipelineTemplateBase that can w
 with any PipelineDAG structure without requiring custom template classes.
 """
 
+from __future__ import annotations
+
 from typing import Dict, Type, Any, Optional, List, TYPE_CHECKING
 import logging
 
