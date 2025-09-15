@@ -202,38 +202,47 @@ Based on mypy analysis of `src/cursus/core/`, this document outlines a comprehen
 
 ### Priority 1 Files (Critical)
 
-#### `contract_base.py` (25+ errors)
+#### `contract_base.py` (25+ errors) ✅ **COMPLETED**
 **Issues**: None handling, incompatible assignments, unreachable code
-**Estimated Effort**: 6-8 hours
-**Key Fixes**:
-- Fix Optional parameter defaults (lines 77-80)
-- Implement proper None checks in methods
-- Fix Set[str] return type issues
-- Remove unreachable code blocks
+**Actual Effort**: 2 hours (Strategy 2+3 implementation)
+**Completed Fixes**:
+- ✅ Fixed Optional parameter defaults (lines 77-80): `missing_outputs: List[str] = None` → `missing_outputs: Optional[List[str]] = None`
+- ✅ Implemented Strategy 2+3 for lazy initialization: Early initialization with lazy loading flags
+- ✅ Fixed Set[str] return type issues via proper initialization patterns
+- ✅ Preserved all business logic - 27 tests pass, including caching behavior validation
+- **Remaining**: Unreachable code blocks (Phase 1.3)
 
-#### `dynamic_template.py` (20+ errors)
+#### `dynamic_template.py` (20+ errors) ✅ **PARTIALLY COMPLETED**
 **Issues**: Missing imports, type assignments, attribute access
-**Estimated Effort**: 6-8 hours (Reduced - mods imports now ignored)
-**Key Fixes**:
-- **Skip mods imports**: `mods_workflow_core.utils.constants` import error now ignored via configuration
-- Fix undefined name errors for cursus internal classes (`DynamicPipelineTemplate`, `PipelineAssembler`)
-- Add proper type annotations for complex variables
-- Fix incompatible type assignments
-- Focus on legitimate type safety issues, not external package dependencies
+**Actual Effort**: 2 hours (Strategy 2+3 implementation)
+**Completed Fixes**:
+- ✅ **Mods imports resolved**: `mods_workflow_core.utils.constants` import error ignored via pyproject.toml configuration
+- ✅ Implemented Strategy 2+3 for cached properties: `_resolved_config_map`, `_resolved_builder_map`
+- ✅ Fixed lazy initialization false positives with early initialization + loading flags
+- ✅ Preserved all business logic - 8 dynamic template tests pass
+- **Remaining**: Some type annotations and incompatible assignments (Phase 2-3)
 
-#### `config_base.py` (15+ errors)
+#### `config_base.py` (15+ errors) ✅ **PARTIALLY COMPLETED**
 **Issues**: Type annotations, Any returns, incompatible assignments
-**Estimated Effort**: 5-7 hours
-**Key Fixes**:
-- Add return type annotations
-- Replace Any returns with proper types
-- Fix Optional parameter handling
-- Add proper type annotations for methods
+**Actual Effort**: 0.5 hours (legitimate fix only)
+**Completed Fixes**:
+- ✅ Fixed Optional parameter handling: `default_path: str = None` → `default_path: Optional[str] = None`
+- ✅ Preserved all business logic - 18 config base tests pass
+- **Remaining**: Type annotations, Any returns, other incompatible assignments (Phase 2-3)
 
-#### `builder_base.py` (15+ errors)
+#### `registry_manager.py` (10+ errors) ✅ **PARTIALLY COMPLETED**
+**Issues**: Return type mismatches, incompatible assignments
+**Actual Effort**: 0.5 hours (legitimate fixes only)
+**Completed Fixes**:
+- ✅ Fixed return type issues: Added proper null checks instead of returning `Optional[SpecificationRegistry]`
+- ✅ Fixed incompatible default argument: `manager: RegistryManager` → `manager: Optional[RegistryManager] = None`
+- ✅ Preserved all business logic - 22 registry manager tests pass
+- **Remaining**: Other type annotations and assignments (Phase 2-3)
+
+#### `builder_base.py` (15+ errors) **PENDING**
 **Issues**: Type annotations, incompatible assignments, missing arguments
 **Estimated Effort**: 6-8 hours
-**Key Fixes**:
+**Key Fixes Needed**:
 - Add comprehensive type annotations
 - Fix incompatible assignment issues
 - Resolve missing argument errors
