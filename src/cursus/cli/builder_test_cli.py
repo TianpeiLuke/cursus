@@ -300,15 +300,24 @@ def import_builder_class(class_path: str) -> Type:
             module_path, class_name = class_path.rsplit(".", 1)
         else:
             # Assume it's just a class name in the current package
-            module_path = "cursus.steps.builders"
+            module_path = "..steps.builders"
             class_name = class_path
 
         # Handle src. prefix - remove it for installed package
         if module_path.startswith("src."):
             module_path = module_path[4:]  # Remove 'src.' prefix
+        
+        # Convert absolute cursus imports to relative imports when within the package
+        if module_path.startswith("cursus."):
+            module_path = "." + module_path[6:]  # Convert cursus.* to .*
 
         # Import the module
-        module = importlib.import_module(module_path)
+        if module_path.startswith(".."):
+            # For relative imports, we need to specify the package
+            module = importlib.import_module(module_path, package=__package__)
+        else:
+            # For absolute imports
+            module = importlib.import_module(module_path)
 
         # Get the class
         builder_class = getattr(module, class_name)
@@ -420,12 +429,11 @@ def list_available_builders() -> List[str]:
                 for name, obj in inspect.getmembers(module, inspect.isclass):
                     if (
                         name.endswith("StepBuilder")
-                        and obj.__module__
-                        == f"cursus.steps.builders.{module_name}"  # Ensure it's defined in this module
+                        and obj.__module__.endswith(f".steps.builders.{module_name}")  # Ensure it's defined in this module
                         and name != "StepBuilder"
                     ):  # Exclude base classes
 
-                        full_path = f"cursus.steps.builders.{module_name}.{name}"
+                        full_path = f"..steps.builders.{module_name}.{name}"
                         available_builders.append(full_path)
 
             except ImportError as e:
@@ -443,7 +451,7 @@ def list_available_builders() -> List[str]:
                             and node.name != "StepBuilder"
                         ):
                             full_path = (
-                                f"cursus.steps.builders.{module_name}.{node.name}"
+                                f"..steps.builders.{module_name}.{node.name}"
                             )
                             builders_with_missing_deps.append(full_path)
 
