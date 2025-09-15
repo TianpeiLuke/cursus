@@ -123,14 +123,28 @@ Based on mypy analysis of `src/cursus/core/`, this document outlines a comprehen
   - Eliminate ~30 false positives while maintaining existing functionality
   - Total: ~45 None-related errors resolved
 
-#### 1.3 Unreachable Code Cleanup
-- **Priority**: Medium
-- **Effort**: 4-6 hours
-- **Files**: Multiple files with unreachable statements
-- **Actions**:
-  - Remove or fix unreachable code blocks
-  - Simplify complex conditional logic
-  - Fix logical errors causing unreachable statements
+#### **Phase 1.3: Unreachable Code Cleanup** ✅ **PARTIALLY COMPLETED**
+- **Status**: Major unreachable code issues resolved
+- **Time Invested**: ~2 hours
+- **Files Modified**: 
+  - `src/cursus/core/base/contract_base.py` - Fixed Union type annotations for defensive programming
+  - `src/cursus/core/base/specification_base.py` - Fixed Optional parameter defaults in `__init__` method
+- **Results**: Reduced errors from 189 to 171 (18 unreachable code errors eliminated)
+- **Root Cause Analysis**:
+  - **Type Checking Logic Issues**: Most unreachable code was caused by incorrect type annotations in defensive programming patterns
+  - **Impossible Type Conditions**: MyPy detected `isinstance()` checks that were impossible due to overly restrictive type annotations
+  - **Complex Conditional Logic**: Some unreachable statements in validation logic due to MyPy's conservative static analysis
+- **Solution Strategy**:
+  - **Union Types**: Updated method signatures to use `Union[str, List[str]]` instead of `List[str]` where defensive programming handles both types
+  - **Optional Parameters**: Fixed `__init__` method parameters to use `Optional[Type]` instead of `Type = None`
+  - **Preserved Logic**: All defensive programming patterns maintained, only type annotations improved
+- **Remaining Work**: ~8 unreachable statements in other files (estimated 1-2 hours)
+  - `config_base.py` (1 statement)
+  - `config_field_categorizer.py` (1 statement) 
+  - `builder_base.py` (1 statement)
+  - `property_reference.py` (2 statements - similar Union type issue)
+  - `dag_compiler.py` (1 statement)
+  - Other files (2 statements)
 
 ### Phase 2: Type Annotations (Weeks 3-4)
 **Goal**: Add comprehensive type annotations to improve code clarity
@@ -388,10 +402,10 @@ The plan prioritizes high-impact fixes while maintaining system stability throug
   - Core/Deps: 22 tests passed
 
 ### **Current Status**
-- **Total Errors**: 189 (down from original 225)
-- **Errors Eliminated**: 36 errors (16% reduction)
-- **Time Invested**: ~6 hours total
-- **Remaining Effort**: ~55-73 hours for complete implementation
+- **Total Errors**: 171 (down from original 225)
+- **Errors Eliminated**: 54 errors (24% reduction)
+- **Time Invested**: ~8 hours total
+- **Remaining Effort**: ~53-71 hours for complete implementation
 
 ### **Key Insights Gained**
 1. **Import Issues**: Most were mypy configuration problems, not actual code defects

@@ -5,7 +5,7 @@ Defines the core ScriptContract class and validation framework for pipeline scri
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 from pathlib import Path
 import os
 import ast
@@ -27,7 +27,7 @@ class ValidationResult(BaseModel):
         return cls(is_valid=True)
 
     @classmethod
-    def error(cls, errors: List[str]) -> "ValidationResult":
+    def error(cls, errors: Union[str, List[str]]) -> "ValidationResult":
         """Create a failed validation result"""
         if isinstance(errors, str):
             errors = [errors]
@@ -73,7 +73,7 @@ class AlignmentResult(ValidationResult):
     @classmethod
     def error(
         cls,
-        errors: List[str],
+        errors: Union[str, List[str]],
         missing_outputs: Optional[List[str]] = None,
         missing_inputs: Optional[List[str]] = None,
         extra_outputs: Optional[List[str]] = None,

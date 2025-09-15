@@ -5,7 +5,7 @@ This module provides the core classes for defining step dependencies and outputs
 in a declarative, type-safe manner using Pydantic V2 BaseModel.
 """
 
-from typing import Dict, List, Optional, Any, Set, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, Set, TYPE_CHECKING, Union
 from abc import ABC, abstractmethod
 import logging
 
@@ -350,10 +350,10 @@ class StepSpecification(BaseModel):
 
     def __init__(
         self,
-        step_type: str = None,
-        dependencies: List[DependencySpec] = None,
-        outputs: List[OutputSpec] = None,
-        node_type: NodeType = None,
+        step_type: Optional[str] = None,
+        dependencies: Optional[List[DependencySpec]] = None,
+        outputs: Optional[List[OutputSpec]] = None,
+        node_type: Optional[NodeType] = None,
         **data,
     ):
         """

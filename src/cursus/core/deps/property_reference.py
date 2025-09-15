@@ -75,7 +75,7 @@ class PropertyReference(BaseModel):
         return self._get_property_value(step_instance.properties, path_parts)
 
     def _get_property_value(
-        self, obj: Any, path_parts: List[Union[str, Tuple[str, str]]]
+        self, obj: Any, path_parts: List[Union[str, Tuple[str, Union[str, int]]]]
     ) -> Any:
         """
         Navigate through the property path to get the final value.
@@ -115,7 +115,7 @@ class PropertyReference(BaseModel):
 
         return current_obj
 
-    def _parse_property_path(self, path: str) -> List[Union[str, Tuple[str, str]]]:
+    def _parse_property_path(self, path: str) -> List[Union[str, Tuple[str, Union[str, int]]]]:
         """
         Parse a property path into a sequence of access operations.
 

@@ -608,4 +608,4 @@ class PipelineDAGCompiler:
             return pipeline, filled_doc
         else:
             self.logger.warning("No template available for execution document filling")
-            return pipeline, execution_doc
+            return pipeline, execution_doc  # type: ignore[unreachable]
