@@ -390,7 +390,7 @@ class BasePipelineConfig(BaseModel):
                             f"Loaded workspace-specific config step registry for context: {workspace_context}"
                         )
                     else:
-                        logger.debug(  # type: ignore[unreachable]
+                        logger.debug(
                             "Loaded default config step registry from hybrid registry"
                         )
 
