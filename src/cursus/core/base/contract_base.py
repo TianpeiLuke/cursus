@@ -74,10 +74,10 @@ class AlignmentResult(ValidationResult):
     def error(
         cls,
         errors: List[str],
-        missing_outputs: List[str] = None,
-        missing_inputs: List[str] = None,
-        extra_outputs: List[str] = None,
-        extra_inputs: List[str] = None,
+        missing_outputs: Optional[List[str]] = None,
+        missing_inputs: Optional[List[str]] = None,
+        extra_outputs: Optional[List[str]] = None,
+        extra_inputs: Optional[List[str]] = None,
     ) -> "AlignmentResult":
         """Create a failed alignment result"""
         if isinstance(errors, str):
@@ -247,10 +247,16 @@ class ScriptAnalyzer:
     def __init__(self, script_path: str):
         self.script_path = script_path
         self._ast_tree = None
-        self._input_paths = None
-        self._output_paths = None
-        self._env_vars = None
-        self._arguments = None
+        # Strategy 2 + 3: Early initialization with lazy loading flags
+        self._input_paths: Set[str] = set()
+        self._output_paths: Set[str] = set()
+        self._env_vars: Set[str] = set()
+        self._arguments: Set[str] = set()
+        # Lazy loading flags to preserve original logic
+        self._input_paths_loaded = False
+        self._output_paths_loaded = False
+        self._env_vars_loaded = False
+        self._arguments_loaded = False
 
     @property
     def ast_tree(self):
@@ -263,9 +269,8 @@ class ScriptAnalyzer:
 
     def get_input_paths(self) -> Set[str]:
         """Extract input paths used by the script"""
-        if self._input_paths is None:
-            self._input_paths = set()
-
+        # Strategy 2 + 3: Use lazy loading flag to preserve original logic
+        if not self._input_paths_loaded:
             # Look for common input path patterns
             for node in ast.walk(self.ast_tree):
                 # Look for string literals that look like input paths
@@ -287,14 +292,15 @@ class ScriptAnalyzer:
                     ):
                         # This is a complex pattern, for now just look for string literals
                         pass
+            
+            self._input_paths_loaded = True
 
         return self._input_paths
 
     def get_output_paths(self) -> Set[str]:
         """Extract output paths used by the script"""
-        if self._output_paths is None:
-            self._output_paths = set()
-
+        # Strategy 2 + 3: Use lazy loading flag to preserve original logic
+        if not self._output_paths_loaded:
             # Look for common output path patterns
             for node in ast.walk(self.ast_tree):
                 # Look for string literals that look like output paths
@@ -304,14 +310,15 @@ class ScriptAnalyzer:
                 elif isinstance(node, ast.Constant) and isinstance(node.value, str):
                     if "/opt/ml/processing/output" in node.value:
                         self._output_paths.add(node.value)
+            
+            self._output_paths_loaded = True
 
         return self._output_paths
 
     def get_env_var_usage(self) -> Set[str]:
         """Extract environment variables accessed by the script"""
-        if self._env_vars is None:
-            self._env_vars = set()
-
+        # Strategy 2 + 3: Use lazy loading flag to preserve original logic
+        if not self._env_vars_loaded:
             # Look for os.environ access patterns
             for node in ast.walk(self.ast_tree):
                 # os.environ["VAR_NAME"]
@@ -367,14 +374,15 @@ class ScriptAnalyzer:
                         and isinstance(node.args[0].value, str)
                     ):
                         self._env_vars.add(node.args[0].value)
+            
+            self._env_vars_loaded = True
 
         return self._env_vars
 
     def get_argument_usage(self) -> Set[str]:
         """Extract command-line arguments used by the script"""
-        if self._arguments is None:
-            self._arguments = set()
-
+        # Strategy 2 + 3: Use lazy loading flag to preserve original logic
+        if not self._arguments_loaded:
             # Look for argparse patterns
             for node in ast.walk(self.ast_tree):
                 # Look for parser.add_argument calls
@@ -402,5 +410,7 @@ class ScriptAnalyzer:
                             self._arguments.add(arg_name[2:])
                         elif arg_name.startswith("-"):
                             self._arguments.add(arg_name[1:])
+            
+            self._arguments_loaded = True
 
         return self._arguments

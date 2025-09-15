@@ -108,10 +108,13 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         ):  # Only set if not already set (to avoid overwriting in instance reuse)
             cls.CONFIG_CLASSES = self._detect_config_classes()
 
-        # Store resolved mappings for later use
-        self._resolved_config_map = None
-        self._resolved_builder_map = None
+        # Strategy 2 + 3: Early initialization with lazy loading flags
+        self._resolved_config_map: Dict[str, BasePipelineConfig] = {}
+        self._resolved_builder_map: Dict[str, Type[StepBuilderBase]] = {}
         self._loaded_metadata = None  # Store metadata from loaded configs
+        # Lazy loading flags to preserve original logic
+        self._config_map_loaded = False
+        self._builder_map_loaded = False
 
         # Call parent constructor AFTER setting CONFIG_CLASSES
         super().__init__(
@@ -169,44 +172,48 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         Raises:
             ConfigurationError: If nodes cannot be resolved to configurations
         """
-        if self._resolved_config_map is not None:
-            return self._resolved_config_map
+        # Strategy 2 + 3: Use lazy loading flag to preserve original logic
+        if not self._config_map_loaded:
+            try:
+                dag_nodes = list(self._dag.nodes)
+                self.logger.info(f"Resolving {len(dag_nodes)} DAG nodes to configurations")
 
-        try:
-            dag_nodes = list(self._dag.nodes)
-            self.logger.info(f"Resolving {len(dag_nodes)} DAG nodes to configurations")
+                # Extract metadata from loaded configurations if available
+                if self._loaded_metadata is None and hasattr(self, "loaded_config_data"):
+                    if (
+                        isinstance(self.loaded_config_data, dict)
+                        and "metadata" in self.loaded_config_data
+                    ):
+                        self._loaded_metadata = self.loaded_config_data["metadata"]
+                        self.logger.info(f"Using metadata from loaded configuration")
 
-            # Extract metadata from loaded configurations if available
-            if self._loaded_metadata is None and hasattr(self, "loaded_config_data"):
-                if (
-                    isinstance(self.loaded_config_data, dict)
-                    and "metadata" in self.loaded_config_data
-                ):
-                    self._loaded_metadata = self.loaded_config_data["metadata"]
-                    self.logger.info(f"Using metadata from loaded configuration")
+                # Use the config resolver to map nodes to configs
+                resolved_map = self._config_resolver.resolve_config_map(
+                    dag_nodes=dag_nodes,
+                    available_configs=self.configs,
+                    metadata=self._loaded_metadata,
+                )
+                
+                # Update the early-initialized dict
+                self._resolved_config_map.update(resolved_map)
 
-            # Use the config resolver to map nodes to configs
-            self._resolved_config_map = self._config_resolver.resolve_config_map(
-                dag_nodes=dag_nodes,
-                available_configs=self.configs,
-                metadata=self._loaded_metadata,
-            )
+                self.logger.info(
+                    f"Successfully resolved all {len(self._resolved_config_map)} nodes"
+                )
 
-            self.logger.info(
-                f"Successfully resolved all {len(self._resolved_config_map)} nodes"
-            )
+                # Log resolution details
+                for node, config in self._resolved_config_map.items():
+                    config_type = type(config).__name__
+                    job_type = getattr(config, "job_type", "N/A")
+                    self.logger.debug(f"  {node} → {config_type} (job_type: {job_type})")
 
-            # Log resolution details
-            for node, config in self._resolved_config_map.items():
-                config_type = type(config).__name__
-                job_type = getattr(config, "job_type", "N/A")
-                self.logger.debug(f"  {node} → {config_type} (job_type: {job_type})")
+                self._config_map_loaded = True
 
-            return self._resolved_config_map
+            except Exception as e:
+                self.logger.error(f"Failed to resolve DAG nodes to configurations: {e}")
+                raise ConfigurationError(f"Configuration resolution failed: {e}")
 
-        except Exception as e:
-            self.logger.error(f"Failed to resolve DAG nodes to configurations: {e}")
-            raise ConfigurationError(f"Configuration resolution failed: {e}")
+        return self._resolved_config_map
 
     def _create_step_builder_map(self) -> Dict[str, Type[StepBuilderBase]]:
         """
@@ -221,49 +228,53 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         Raises:
             RegistryError: If step builders cannot be found for config types
         """
-        if self._resolved_builder_map is not None:
-            return self._resolved_builder_map
+        # Strategy 2 + 3: Use lazy loading flag to preserve original logic
+        if not self._builder_map_loaded:
+            try:
+                # Get the complete builder registry
+                builder_map = self._builder_registry.get_builder_map()
+                
+                # Update the early-initialized dict
+                self._resolved_builder_map.update(builder_map)
 
-        try:
-            # Get the complete builder registry
-            self._resolved_builder_map = self._builder_registry.get_builder_map()
-
-            self.logger.info(
-                f"Using {len(self._resolved_builder_map)} registered step builders"
-            )
-
-            # Validate that all required builders are available
-            config_map = self._create_config_map()
-            missing_builders = []
-
-            for node, config in config_map.items():
-                try:
-                    # Pass the node name to the registry for better resolution
-                    builder_class = self._builder_registry.get_builder_for_config(
-                        config, node_name=node
-                    )
-                    step_type = self._builder_registry._config_class_to_step_type(
-                        type(config).__name__,
-                        node_name=node,
-                        job_type=getattr(config, "job_type", None),
-                    )
-                    self.logger.debug(f"  {step_type} → {builder_class.__name__}")
-                except RegistryError as e:
-                    missing_builders.append(f"{node} ({type(config).__name__})")
-
-            if missing_builders:
-                available_builders = list(self._resolved_builder_map.keys())
-                raise RegistryError(
-                    f"Missing step builders for {len(missing_builders)} configurations",
-                    unresolvable_types=missing_builders,
-                    available_builders=available_builders,
+                self.logger.info(
+                    f"Using {len(self._resolved_builder_map)} registered step builders"
                 )
 
-            return self._resolved_builder_map
+                # Validate that all required builders are available
+                config_map = self._create_config_map()
+                missing_builders = []
 
-        except Exception as e:
-            self.logger.error(f"Failed to create step builder map: {e}")
-            raise RegistryError(f"Step builder mapping failed: {e}")
+                for node, config in config_map.items():
+                    try:
+                        # Pass the node name to the registry for better resolution
+                        builder_class = self._builder_registry.get_builder_for_config(
+                            config, node_name=node
+                        )
+                        step_type = self._builder_registry._config_class_to_step_type(
+                            type(config).__name__,
+                            node_name=node,
+                            job_type=getattr(config, "job_type", None),
+                        )
+                        self.logger.debug(f"  {step_type} → {builder_class.__name__}")
+                    except RegistryError as e:
+                        missing_builders.append(f"{node} ({type(config).__name__})")
+
+                if missing_builders:
+                    available_builders = list(self._resolved_builder_map.keys())
+                    raise RegistryError(
+                        f"Missing step builders for {len(missing_builders)} configurations",
+                        unresolvable_types=missing_builders,
+                        available_builders=available_builders,
+                    )
+
+                self._builder_map_loaded = True
+
+            except Exception as e:
+                self.logger.error(f"Failed to create step builder map: {e}")
+                raise RegistryError(f"Step builder mapping failed: {e}")
+
+        return self._resolved_builder_map
 
     def _validate_configuration(self) -> None:
         """

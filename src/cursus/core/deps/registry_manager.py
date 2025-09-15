@@ -120,7 +120,10 @@ class RegistryManager:
                 f"Created new workspace-aware registry for context '{workspace_aware_context}'"
             )
 
-        return self._registries.get(workspace_aware_context)
+        registry = self._registries.get(workspace_aware_context)
+        if registry is None:
+            raise ValueError(f"Registry not found for context '{workspace_aware_context}' and create_if_missing is False")
+        return registry
 
     def list_contexts(self) -> List[str]:
         """
@@ -174,7 +177,7 @@ class RegistryManager:
 
 
 def get_registry(
-    manager: RegistryManager, context_name: str = "default"
+    manager: Optional[RegistryManager] = None, context_name: str = "default"
 ) -> SpecificationRegistry:
     """
     Get the registry for a specific context.

@@ -305,7 +305,7 @@ class BasePipelineConfig(BaseModel):
         """
         return self.get_script_contract()
 
-    def get_script_path(self, default_path: str = None) -> str:
+    def get_script_path(self, default_path: Optional[str] = None) -> str:
         """
         Get script path, preferring contract-defined path if available.
 
