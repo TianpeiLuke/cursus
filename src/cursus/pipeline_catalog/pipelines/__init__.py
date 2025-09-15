@@ -50,7 +50,7 @@ def load_pipeline(pipeline_id: str) -> Any:
     """Dynamically load a pipeline module."""
     try:
         module = importlib.import_module(
-            f"src.cursus.pipeline_catalog.pipelines.{pipeline_id}"
+            f".{pipeline_id}", package=__name__
         )
         register_pipeline(pipeline_id, module)
         return module
