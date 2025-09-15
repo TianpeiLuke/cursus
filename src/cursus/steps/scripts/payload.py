@@ -41,7 +41,7 @@ class VariableType(str, Enum):
     TEXT = "TEXT"
 
 
-def ensure_directory(directory_path):
+def ensure_directory(directory_path) -> bool:
     """Ensure a directory exists, creating it if necessary."""
     try:
         if isinstance(directory_path, str):

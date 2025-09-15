@@ -24,7 +24,7 @@ DEFAULT_OUTPUT_PATH = "/opt/ml/processing/output"
 DEFAULT_WORKING_DIRECTORY = "/tmp/mims_packaging_directory"
 
 
-def ensure_directory(directory: Path):
+def ensure_directory(directory: Path) -> bool:
     """Ensure a directory exists, creating it if necessary."""
     try:
         directory.mkdir(parents=True, exist_ok=True)
@@ -56,7 +56,7 @@ def check_file_exists(path: Path, description: str) -> bool:
         return False
 
 
-def list_directory_contents(path: Path, description: str):
+def list_directory_contents(path: Path, description: str) -> None:
     """List and log the contents of a directory."""
     logger.info(f"\n{'='*20} Contents of {description} {'='*20}")
     logger.info(f"Path: {path}")
@@ -100,7 +100,7 @@ def list_directory_contents(path: Path, description: str):
         )
 
 
-def copy_file_robust(src: Path, dst: Path):
+def copy_file_robust(src: Path, dst: Path) -> bool:
     """Copy a file and log the operation, ensuring destination directory exists."""
     logger.info(f"\nAttempting to copy file:")
     logger.info(f"  From: {src}")
@@ -124,7 +124,7 @@ def copy_file_robust(src: Path, dst: Path):
         return False
 
 
-def copy_scripts(src_dir: Path, dst_dir: Path):
+def copy_scripts(src_dir: Path, dst_dir: Path) -> None:
     """Recursively copy scripts from source to destination."""
     logger.info(f"\n{'='*20} Copying Scripts {'='*20}")
     logger.info(f"From: {src_dir}")
@@ -158,7 +158,7 @@ def copy_scripts(src_dir: Path, dst_dir: Path):
     list_directory_contents(dst_dir, "Destination scripts directory")
 
 
-def extract_tarfile(tar_path: Path, extract_path: Path):
+def extract_tarfile(tar_path: Path, extract_path: Path) -> None:
     """Extract a tar file to the specified path."""
     logger.info(f"\n{'='*20} Extracting Tar File {'='*20}")
 
@@ -188,7 +188,7 @@ def extract_tarfile(tar_path: Path, extract_path: Path):
         logger.error(f"Error during tar extraction: {str(e)}", exc_info=True)
 
 
-def create_tarfile(output_tar_path: Path, source_dir: Path):
+def create_tarfile(output_tar_path: Path, source_dir: Path) -> None:
     """Create a tar file from the contents of a directory."""
     logger.info(f"\n{'='*20} Creating Tar File {'='*20}")
     logger.info(f"Output tar: {output_tar_path}")

@@ -74,7 +74,7 @@ def validate_model(input_path: Path) -> bool:
     return True
 
 
-def ensure_directory(directory: Path):
+def ensure_directory(directory: Path) -> bool:
     """Ensure a directory exists, creating it if necessary."""
     try:
         directory.mkdir(parents=True, exist_ok=True)
@@ -85,7 +85,7 @@ def ensure_directory(directory: Path):
         return False
 
 
-def extract_tarfile(tar_path: Path, extract_path: Path):
+def extract_tarfile(tar_path: Path, extract_path: Path) -> None:
     """Extract a tar file to the specified path."""
     logger.info(f"Extracting tar file: {tar_path} to {extract_path}")
 
@@ -114,7 +114,7 @@ def extract_tarfile(tar_path: Path, extract_path: Path):
         raise
 
 
-def create_tarfile(output_tar_path: Path, source_dir: Path):
+def create_tarfile(output_tar_path: Path, source_dir: Path) -> None:
     """Create a tar file from the contents of a directory."""
     logger.info(f"Creating tar file: {output_tar_path} from {source_dir}")
 
@@ -148,7 +148,7 @@ def create_tarfile(output_tar_path: Path, source_dir: Path):
         raise
 
 
-def copy_file(src: Path, dst: Path):
+def copy_file(src: Path, dst: Path) -> None:
     """Copy a file and ensure the destination directory exists."""
     logger.info(f"Copying file: {src} to {dst}")
 

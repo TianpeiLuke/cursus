@@ -93,7 +93,7 @@ class CalibrationConfig:
             self.multiclass_categories = [str(i) for i in range(num_classes)]
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls) -> 'CalibrationConfig':
         """Create configuration from environment variables."""
         # Parse multiclass categories from environment
         multiclass_categories = None
@@ -126,7 +126,7 @@ class CalibrationConfig:
         )
 
 
-def create_directories(config=None):
+def create_directories(config: Optional['CalibrationConfig'] = None) -> None:
     """Create output directories if they don't exist."""
     config = config or CalibrationConfig.from_env()
     os.makedirs(config.output_calibration_path, exist_ok=True)
@@ -134,7 +134,7 @@ def create_directories(config=None):
     os.makedirs(config.output_calibrated_data_path, exist_ok=True)
 
 
-def find_first_data_file(data_dir=None, config=None) -> str:
+def find_first_data_file(data_dir: Optional[str] = None, config: Optional['CalibrationConfig'] = None) -> str:
     """Find the first supported data file in directory.
 
     Args:
@@ -162,7 +162,7 @@ def find_first_data_file(data_dir=None, config=None) -> str:
     )
 
 
-def load_data(config=None):
+def load_data(config: Optional['CalibrationConfig'] = None) -> pd.DataFrame:
     """Load evaluation data with predictions.
 
     Args:
@@ -218,7 +218,7 @@ def load_data(config=None):
     return df
 
 
-def log_section(title):
+def log_section(title: str) -> None:
     """Log a section title with delimiters for better visibility."""
     delimiter = "=" * 80
     logger.info(delimiter)
@@ -226,7 +226,7 @@ def log_section(title):
     logger.info(delimiter)
 
 
-def extract_and_load_nested_tarball_data(config=None):
+def extract_and_load_nested_tarball_data(config: Optional['CalibrationConfig'] = None) -> pd.DataFrame:
     """Extract and load data from nested tar.gz files in SageMaker output structure.
 
     Handles SageMaker's specific output structure:
@@ -439,7 +439,7 @@ def extract_and_load_nested_tarball_data(config=None):
         shutil.rmtree(inner_temp_dir, ignore_errors=True)
 
 
-def load_and_prepare_data(config=None, job_type="calibration"):
+def load_and_prepare_data(config: Optional['CalibrationConfig'] = None, job_type: str = "calibration") -> Tuple[pd.DataFrame, np.ndarray, Optional[np.ndarray], Optional[np.ndarray]]:
     """Load evaluation data and prepare it for calibration based on classification type.
 
     Args:
@@ -508,7 +508,7 @@ def load_and_prepare_data(config=None, job_type="calibration"):
         return df, y_true, None, y_prob_matrix
 
 
-def train_gam_calibration(scores: np.ndarray, labels: np.ndarray, config=None):
+def train_gam_calibration(scores: np.ndarray, labels: np.ndarray, config: Optional['CalibrationConfig'] = None):
     """Train a GAM calibration model with optional monotonicity constraints.
 
     Args:
@@ -550,7 +550,7 @@ def train_gam_calibration(scores: np.ndarray, labels: np.ndarray, config=None):
     return gam
 
 
-def train_isotonic_calibration(scores: np.ndarray, labels: np.ndarray, config=None):
+def train_isotonic_calibration(scores: np.ndarray, labels: np.ndarray, config: Optional['CalibrationConfig'] = None) -> IsotonicRegression:
     """Train an isotonic regression calibration model.
 
     Args:
@@ -568,7 +568,7 @@ def train_isotonic_calibration(scores: np.ndarray, labels: np.ndarray, config=No
     return ir
 
 
-def train_platt_scaling(scores: np.ndarray, labels: np.ndarray, config=None):
+def train_platt_scaling(scores: np.ndarray, labels: np.ndarray, config: Optional['CalibrationConfig'] = None) -> LogisticRegression:
     """Train a Platt scaling (logistic regression) calibration model.
 
     Args:
@@ -587,7 +587,7 @@ def train_platt_scaling(scores: np.ndarray, labels: np.ndarray, config=None):
     return lr
 
 
-def train_multiclass_calibration(y_prob_matrix, y_true, method="isotonic", config=None):
+def train_multiclass_calibration(y_prob_matrix: np.ndarray, y_true: np.ndarray, method: str = "isotonic", config: Optional['CalibrationConfig'] = None) -> List[Any]:
     """Train calibration models for each class in one-vs-rest fashion.
 
     Args:
@@ -641,7 +641,7 @@ def train_multiclass_calibration(y_prob_matrix, y_true, method="isotonic", confi
     return calibrators
 
 
-def apply_multiclass_calibration(y_prob_matrix, calibrators, config=None):
+def apply_multiclass_calibration(y_prob_matrix: np.ndarray, calibrators: List[Any], config: Optional['CalibrationConfig'] = None) -> np.ndarray:
     """Apply calibration to each class probability and normalize.
 
     Args:
@@ -775,8 +775,8 @@ def compute_calibration_metrics(
 
 
 def compute_multiclass_calibration_metrics(
-    y_true, y_prob_matrix, n_bins=10, config=None
-):
+    y_true: np.ndarray, y_prob_matrix: np.ndarray, n_bins: int = 10, config: Optional['CalibrationConfig'] = None
+) -> Dict[str, Any]:
     """Compute calibration metrics for multi-class scenario.
 
     Args:

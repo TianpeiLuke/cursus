@@ -36,7 +36,7 @@ from ...processing.numerical_imputation_processor import (
 # -------------------------------------------------------------------------
 # Logging setup - Updated for CloudWatch compatibility
 # -------------------------------------------------------------------------
-def setup_logging():
+def setup_logging() -> logging.Logger:
     """Configure logging for CloudWatch compatibility"""
     # Remove any existing handlers
     root = logging.getLogger()
@@ -401,7 +401,7 @@ def save_artifacts(
 # -------------------------------------------------------------------------
 # New: inference + evaluation helpers
 # -------------------------------------------------------------------------
-def save_preds_and_metrics(ids, y_true, y_prob, id_col, label_col, out_dir, is_binary):
+def save_preds_and_metrics(ids, y_true, y_prob, id_col, label_col, out_dir, is_binary) -> None:
     os.makedirs(out_dir, exist_ok=True)
     # metrics
     metrics = {}
@@ -454,7 +454,7 @@ def save_preds_and_metrics(ids, y_true, y_prob, id_col, label_col, out_dir, is_b
     df.to_csv(os.path.join(out_dir, "predictions.csv"), index=False)
 
 
-def plot_curves(y_true, y_prob, out_dir, prefix, is_binary):
+def plot_curves(y_true, y_prob, out_dir, prefix, is_binary) -> None:
     os.makedirs(out_dir, exist_ok=True)
     if is_binary:
         score = y_prob[:, 1]
@@ -507,7 +507,7 @@ def plot_curves(y_true, y_prob, out_dir, prefix, is_binary):
                 plt.close()
 
 
-def evaluate_split(name, df, feats, model, cfg, prefix="/opt/ml/output/data"):
+def evaluate_split(name, df, feats, model, cfg, prefix="/opt/ml/output/data") -> None:
     is_bin = cfg.get("is_binary", True)
     label = cfg["label_name"]
     idi = cfg.get("id_name", "id")
