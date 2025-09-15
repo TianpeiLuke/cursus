@@ -35,7 +35,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Set, Tuple
 
-from ..pipeline_catalog.utils import (
+from ..pipeline_catalog.core import (
     CatalogRegistry,
     ConnectionTraverser,
     TagBasedDiscovery,

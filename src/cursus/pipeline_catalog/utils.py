@@ -10,11 +10,11 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 # Import all utility classes
-from .utils.catalog_registry import CatalogRegistry
-from .utils.connection_traverser import ConnectionTraverser
-from .utils.tag_discovery import TagBasedDiscovery
-from .utils.recommendation_engine import PipelineRecommendationEngine
-from .utils.registry_validator import RegistryValidator
+from .core.catalog_registry import CatalogRegistry
+from .core.connection_traverser import ConnectionTraverser
+from .core.tag_discovery import TagBasedDiscovery
+from .core.recommendation_engine import PipelineRecommendationEngine
+from .core.registry_validator import RegistryValidator
 from .shared_dags.registry_sync import DAGMetadataRegistrySync
 from .shared_dags.enhanced_metadata import EnhancedDAGMetadata
 
