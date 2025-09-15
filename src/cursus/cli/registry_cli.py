@@ -137,7 +137,7 @@ def init_workspace(
 def list_steps(workspace: Optional[str], conflicts_only: bool, include_source: bool):
     """List available steps in registry with optional workspace context."""
     try:
-        from cursus.registry import (
+        from ..registry import (
             get_all_step_names,
             get_workspace_context,
             has_workspace_conflicts,
@@ -149,7 +149,7 @@ def list_steps(workspace: Optional[str], conflicts_only: bool, include_source: b
         if conflicts_only:
             # Show only conflicting steps
             try:
-                from cursus.registry.hybrid.manager import UnifiedRegistryManager
+                from ..registry.hybrid.manager import UnifiedRegistryManager
 
                 manager = UnifiedRegistryManager()
                 conflicts = manager.get_step_conflicts()
@@ -178,7 +178,7 @@ def list_steps(workspace: Optional[str], conflicts_only: bool, include_source: b
 
             if include_source:
                 try:
-                    from cursus.registry.hybrid.manager import UnifiedRegistryManager
+                    from ..registry.hybrid.manager import UnifiedRegistryManager
 
                     manager = UnifiedRegistryManager()
                     all_steps = manager.list_all_steps(include_source=True)
@@ -214,7 +214,7 @@ def list_steps(workspace: Optional[str], conflicts_only: bool, include_source: b
 def validate_registry(workspace: Optional[str], check_conflicts: bool):
     """Validate registry configuration and check for issues."""
     try:
-        from cursus.registry import get_workspace_context, get_all_step_names
+        from ..registry import get_workspace_context, get_all_step_names
 
         effective_workspace = workspace or get_workspace_context()
 
@@ -231,7 +231,7 @@ def validate_registry(workspace: Optional[str], check_conflicts: bool):
         # Check for conflicts if requested
         if check_conflicts:
             try:
-                from cursus.registry.hybrid.manager import UnifiedRegistryManager
+                from ..registry.hybrid.manager import UnifiedRegistryManager
 
                 manager = UnifiedRegistryManager()
                 conflicts = manager.get_step_conflicts()
@@ -248,7 +248,7 @@ def validate_registry(workspace: Optional[str], check_conflicts: bool):
 
         # Registry status
         try:
-            from cursus.registry.hybrid.manager import UnifiedRegistryManager
+            from ..registry.hybrid.manager import UnifiedRegistryManager
 
             manager = UnifiedRegistryManager()
             status = manager.get_registry_status()
@@ -280,7 +280,7 @@ def validate_registry(workspace: Optional[str], check_conflicts: bool):
 def resolve_step(step_name: str, workspace: Optional[str], framework: Optional[str]):
     """Resolve a specific step name and show resolution details."""
     try:
-        from cursus.registry import get_workspace_context
+        from ..registry import get_workspace_context
 
         effective_workspace = workspace or get_workspace_context()
 
@@ -291,8 +291,8 @@ def resolve_step(step_name: str, workspace: Optional[str], framework: Optional[s
             click.echo(f"🔧 Preferred framework: {framework}")
 
         try:
-            from cursus.registry.hybrid.manager import UnifiedRegistryManager
-            from cursus.registry.hybrid.models import ResolutionContext
+            from ..registry.hybrid.manager import UnifiedRegistryManager
+            from ..registry.hybrid.models import ResolutionContext
 
             manager = UnifiedRegistryManager()
             context = ResolutionContext(
@@ -323,7 +323,7 @@ def resolve_step(step_name: str, workspace: Optional[str], framework: Optional[s
 
         except ImportError:
             # Fallback to basic resolution
-            from cursus.registry import get_config_class_name, get_builder_step_name
+            from ..registry import get_config_class_name, get_builder_step_name
 
             try:
                 config_class = get_config_class_name(step_name, effective_workspace)
@@ -684,7 +684,7 @@ Create the corresponding implementation files in `src/cursus_dev/steps/`.
 
 ### 4. Test Your Implementation
 ```python
-from cursus.registry import set_workspace_context, get_config_class_name
+from ..registry import set_workspace_context, get_config_class_name
 
 set_workspace_context("{workspace_id}")
 config_class = get_config_class_name("MyCustomStep")  # Uses your local registry
@@ -727,7 +727,7 @@ def _create_example_implementations(
         f'''"""
 Example custom step configuration for {workspace_id} workspace.
 """
-from cursus.core.base.config_base import BasePipelineConfig
+from ...core.base.config_base import BasePipelineConfig
 from pydantic import Field
 from typing import Optional
 

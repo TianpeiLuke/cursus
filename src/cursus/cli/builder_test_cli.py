@@ -396,9 +396,9 @@ def list_available_builders() -> List[str]:
         if not builders_dir.exists():
             # Fallback: try to find it in the installed package
             try:
-                import cursus.steps.builders
+                from ..steps import builders
 
-                builders_dir = Path(cursus.steps.builders.__file__).parent
+                builders_dir = Path(builders.__file__).parent
             except ImportError:
                 return ["Error: Could not locate builders directory"]
 
