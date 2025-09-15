@@ -1434,6 +1434,15 @@ def main(
             f"All outputs saved to: {config.output_calibration_path}, {config.output_metrics_path}, and {config.output_calibrated_data_path}"
         )
 
+        # Return results dictionary as promised by function signature
+        return {
+            "status": "success",
+            "mode": "binary" if config.is_binary else "multi-class",
+            "calibration_method": config.calibration_method,
+            "metrics_report": metrics_report,
+            "summary": summary
+        }
+
     except Exception as e:
         logger.error(f"Error in model calibration: {str(e)}")
         logger.error(traceback.format_exc())

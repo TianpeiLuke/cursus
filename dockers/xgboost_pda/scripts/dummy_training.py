@@ -274,19 +274,19 @@ def main(
 
     except FileNotFoundError as e:
         logger.error(f"File not found error: {e}")
-        return 1
+        raise
     except ValueError as e:
         logger.error(f"Validation error: {e}")
-        return 2
+        raise
     except RuntimeError as e:
         logger.error(f"Runtime error: {e}")
-        return 3
+        raise
     except Exception as e:
         logger.error(f"Unexpected error processing model: {e}")
         import traceback
 
         logger.error(traceback.format_exc())
-        return 4
+        raise
 
 
 if __name__ == "__main__":
