@@ -198,8 +198,9 @@ class ConfigClassDetector:
                 logger.warning("No config class names found in configuration file")
                 # Return all registered classes from ConfigClassStore
                 return {
-                    name: ConfigClassStore.get_class(name)
+                    name: class_type
                     for name in ConfigClassStore.registered_names()
+                    if (class_type := ConfigClassStore.get_class(name)) is not None
                 }
 
             # Get classes from ConfigClassStore
@@ -222,8 +223,9 @@ class ConfigClassDetector:
             logger.error(f"Error reading or parsing configuration file: {e}")
             # Return all registered classes from ConfigClassStore
             return {
-                name: ConfigClassStore.get_class(name)
+                name: class_type
                 for name in ConfigClassStore.registered_names()
+                if (class_type := ConfigClassStore.get_class(name)) is not None
             }
 
 

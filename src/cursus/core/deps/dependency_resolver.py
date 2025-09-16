@@ -5,7 +5,7 @@ This module provides the core dependency resolution logic that automatically
 matches step dependencies with compatible outputs from other steps.
 """
 
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Set, Optional, Tuple, Any
 import logging
 from ..base import StepSpecification, DependencySpec, OutputSpec, DependencyType
 from .property_reference import PropertyReference
@@ -139,7 +139,7 @@ class UnifiedDependencyResolver:
 
     def resolve_with_scoring(
         self, consumer_step: str, available_steps: List[str]
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Resolve dependencies with detailed compatibility scoring.
 
@@ -335,7 +335,7 @@ class UnifiedDependencyResolver:
 
     def _generate_resolution_details(
         self, consumer_step: str, available_steps: List[str]
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Generate detailed resolution context information.
 
@@ -604,7 +604,7 @@ class UnifiedDependencyResolver:
         matches = sum(1 for keyword in keywords if keyword.lower() in output_lower)
         return matches / len(keywords)
 
-    def get_resolution_report(self, available_steps: List[str]) -> Dict[str, any]:
+    def get_resolution_report(self, available_steps: List[str]) -> Dict[str, Any]:
         """
         Generate a detailed resolution report for debugging.
 
@@ -654,7 +654,9 @@ class UnifiedDependencyResolver:
                 step_report["error"] = str(e)
                 report["unresolved_dependencies"].append(step_name)
 
-            report["step_details"][step_name] = step_report
+            step_details = report.get("step_details")
+            if isinstance(step_details, dict):
+                step_details[step_name] = step_report
 
         # Generate summary
         total_deps = sum(
@@ -663,6 +665,7 @@ class UnifiedDependencyResolver:
         resolved_deps = sum(
             len(details.get("resolved_dependencies", {}))
             for details in report["step_details"].values()
+            if isinstance(details, dict)
         )
 
         report["resolution_summary"] = {

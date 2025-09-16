@@ -107,7 +107,7 @@ class PipelineTemplateBase(ABC):
         self._validate_configuration()
 
         # Initialize storage for pipeline metadata
-        self.pipeline_metadata = {}
+        self.pipeline_metadata: Dict[str, Any] = {}
 
         logger.info(f"Initialized template for: {self._get_pipeline_name()}")
 

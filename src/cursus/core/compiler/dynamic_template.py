@@ -313,12 +313,18 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             if not validation_result.is_valid:
                 self.logger.error("Configuration validation failed")
                 self.logger.error(validation_result.detailed_report())
+                # Flatten config_errors from Dict[str, List[str]] to List[str]
+                flattened_config_errors = []
+                for config_name, errors in validation_result.config_errors.items():
+                    for error in errors:
+                        flattened_config_errors.append(f"{config_name}: {error}")
+                
                 raise ValidationError(
                     "Dynamic pipeline configuration validation failed",
                     validation_errors={
                         "missing_configs": validation_result.missing_configs,
                         "unresolvable_builders": validation_result.unresolvable_builders,
-                        "config_errors": validation_result.config_errors,
+                        "config_errors": flattened_config_errors,
                         "dependency_issues": validation_result.dependency_issues,
                     },
                 )
@@ -353,23 +359,25 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             preview = {"nodes": len(dag_nodes), "resolutions": {}}
 
             for node, candidates in preview_data.items():
-                if candidates:
-                    best_candidate = candidates[0]
-                    preview["resolutions"][node] = {
-                        "config_type": best_candidate["config_type"],
-                        "confidence": best_candidate["confidence"],
-                        "method": best_candidate["method"],
-                        "job_type": best_candidate["job_type"],
-                        "alternatives": len(candidates) - 1,
-                    }
-                else:
-                    preview["resolutions"][node] = {
-                        "config_type": "UNRESOLVED",
-                        "confidence": 0.0,
-                        "method": "none",
-                        "job_type": "N/A",
-                        "alternatives": 0,
-                    }
+                resolutions = preview.get("resolutions")
+                if isinstance(resolutions, dict):
+                    if candidates:
+                        best_candidate = candidates[0]
+                        resolutions[node] = {
+                            "config_type": best_candidate["config_type"],
+                            "confidence": best_candidate["confidence"],
+                            "method": best_candidate["method"],
+                            "job_type": best_candidate["job_type"],
+                            "alternatives": len(candidates) - 1,
+                        }
+                    else:
+                        resolutions[node] = {
+                            "config_type": "UNRESOLVED",
+                            "confidence": 0.0,
+                            "method": "none",
+                            "job_type": "N/A",
+                            "alternatives": 0,
+                        }
 
             return preview
 

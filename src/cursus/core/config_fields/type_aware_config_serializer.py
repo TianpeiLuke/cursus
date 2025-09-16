@@ -50,6 +50,8 @@ class TypeAwareConfigSerializer:
         self.logger = logging.getLogger(__name__)
         # Use the CircularReferenceTracker for advanced circular reference detection
         self.ref_tracker = CircularReferenceTracker(max_depth=100)
+        # Type annotation for circular reference tracking during serialization
+        self._serializing_ids: Set[int] = set()
 
     def serialize(self, val: Any) -> Any:
         """
@@ -361,15 +363,15 @@ class TypeAwareConfigSerializer:
                 # Handle any expected_type with model_fields
                 if expected_type and hasattr(expected_type, "model_fields"):
                     # Add placeholder values for all required fields to ensure validation passes
-                    for field_name, field_info in expected_type.model_fields.items():
+                    for model_field_name, field_info in expected_type.model_fields.items():
                         if (
                             hasattr(field_info, "is_required")
                             and field_info.is_required()
                         ):
-                            if field_name not in circular_ref_dict:
+                            if model_field_name not in circular_ref_dict:
                                 # Only add if not already added by special handling above
-                                circular_ref_dict[field_name] = (
-                                    f"CIRCULAR_REF_{field_name}"
+                                circular_ref_dict[model_field_name] = (
+                                    f"CIRCULAR_REF_{model_field_name}"
                                 )
 
                 # Try to create a stub object using model_construct to bypass validation

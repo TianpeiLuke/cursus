@@ -285,9 +285,9 @@ class ValidationEngine:
         """
         missing_configs = []
         unresolvable_builders = []
-        config_errors = {}
-        dependency_issues = []
-        warnings = []
+        config_errors: Dict[str, List[str]] = {}
+        dependency_issues: List[str] = []
+        warnings: List[str] = []
 
         # Check for missing configurations
         for node in dag_nodes:
