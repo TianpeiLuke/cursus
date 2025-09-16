@@ -5,7 +5,7 @@ Defines the core ScriptContract class and validation framework for pipeline scri
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Set, Union, Any
 from pathlib import Path
 import os
 import ast

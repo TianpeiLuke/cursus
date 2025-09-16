@@ -137,7 +137,7 @@ def build_complete_config_classes() -> Dict[str, Type]:
     # Start with registered classes
     config_classes = ConfigClassStore.get_all_classes()
 
-    # TODO: Add logic to scan for classes in pipeline_steps, etc.
+    # TODO: Add logic to scan for classes in ...steps, etc.
     # This is a placeholder for future implementation
 
     return config_classes

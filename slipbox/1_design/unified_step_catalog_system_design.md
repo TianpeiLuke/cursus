@@ -195,9 +195,24 @@ so that development productivity doesn't degrade.
 - ❌ **Theoretical**: Machine learning recommendations (speculative feature)
 - ❌ **Theoretical**: Complex relationship mapping (over-engineering for simple needs)
 
+#### **US5: Configuration Class Auto-Discovery**
+```
+As a developer, I want the system to automatically discover and register configuration classes
+from both core and workspace directories, so that I don't have to manually register them
+and can focus on development instead of maintenance.
+```
+
+**Acceptance Criteria**:
+- Automatically scan `src/cursus/steps/configs` for core configuration classes
+- Automatically scan `development/projects/{project_id}/src/cursus_dev/steps/configs` for workspace configs
+- Use AST parsing to safely identify config classes without importing modules
+- Support workspace configs overriding core configs with same names
+- Integrate with existing `build_complete_config_classes()` function
+- Maintain backward compatibility with manual `@ConfigClassStore.register` decorators
+
 ### Job Type Variant Requirements
 
-**US5: Job Type Variant Discovery**
+**US6: Job Type Variant Discovery**
 ```
 As a developer working with PipelineDAG, I want to discover step variants by job_type
 (training, calibration, validation, testing), so that I can build pipelines with
@@ -282,7 +297,15 @@ class StepCatalog:
         
     def get_shared_components(self, base_step_name: str) -> Dict[str, Optional[FileMetadata]]:
         """Get components shared across all job_type variants of a base step."""
-```
+        
+    def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Auto-discover configuration classes from core and workspace directories."""
+        
+    def get_config_class_info(self, class_name: str) -> Optional[ConfigClassInfo]:
+        """Get detailed information about a discovered configuration class."""
+        
+    def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Build complete mapping integrating manual registration with auto-discovery."""
 
 #### **2. Catalog Manager**
 **Purpose**: Coordinate indexing, caching, and query processing
