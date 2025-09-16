@@ -220,7 +220,7 @@ class ConfigMerger:
             return
 
         # Check if any of these fields appear in specific sections instead
-        misplaced_fields = {}
+        misplaced_fields: Dict[str, List[str]] = {}
         for step_name, fields in merged["specific"].items():
             step_fields = set(fields.keys())
             for field in missing_from_shared:
@@ -318,7 +318,7 @@ class ConfigMerger:
         serializer = TypeAwareConfigSerializer(config_classes=config_classes)
 
         # Process each section into the simplified structure
-        result = {"shared": {}, "specific": {}}
+        result: Dict[str, Any] = {"shared": {}, "specific": {}}
 
         # Deserialize shared fields
         if "shared" in data:

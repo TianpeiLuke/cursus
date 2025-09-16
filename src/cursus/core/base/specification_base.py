@@ -90,7 +90,7 @@ class DependencySpec(BaseModel):
 
     @field_validator("dependency_type")
     @classmethod
-    def validate_dependency_type(cls, v) -> DependencyType:
+    def validate_dependency_type(cls, v: Any) -> DependencyType:
         """Validate dependency type is a valid enum value."""
         if isinstance(v, str):
             try:
@@ -206,7 +206,7 @@ class OutputSpec(BaseModel):
 
     @field_validator("output_type")
     @classmethod
-    def validate_output_type(cls, v) -> DependencyType:
+    def validate_output_type(cls, v: Any) -> DependencyType:
         """Validate output type is a valid enum value."""
         if isinstance(v, str):
             try:
@@ -354,8 +354,8 @@ class StepSpecification(BaseModel):
         dependencies: Optional[List[DependencySpec]] = None,
         outputs: Optional[List[OutputSpec]] = None,
         node_type: Optional[NodeType] = None,
-        **data,
-    ):
+        **data: Any,
+    ) -> None:
         """
         Initialize step specification with backward compatibility.
 
@@ -426,7 +426,7 @@ class StepSpecification(BaseModel):
 
     @field_validator("node_type", mode="before")
     @classmethod
-    def validate_node_type(cls, v) -> NodeType:
+    def validate_node_type(cls, v: Any) -> NodeType:
         """Validate node type is a valid enum value."""
         if isinstance(v, str):
             try:
@@ -666,7 +666,7 @@ class StepSpecification(BaseModel):
             return ValidationResult.success("No script contract defined")
         return self.script_contract.validate_implementation(script_path)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"StepSpecification(type='{self.step_type}', "
             f"dependencies={len(self.dependencies)}, "
@@ -674,7 +674,7 @@ class StepSpecification(BaseModel):
         )
 
     @classmethod
-    def model_validate(cls, obj, **kwargs):
+    def model_validate(cls, obj: Any, **kwargs: Any) -> "StepSpecification":
         """Custom model_validate to handle enum conversion."""
         if isinstance(obj, dict) and "node_type" in obj:
             # Convert string node_type to enum instance

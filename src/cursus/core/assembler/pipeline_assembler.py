@@ -5,7 +5,7 @@ This assembler leverages the specification-based dependency resolution system
 to intelligently connect steps and build complete SageMaker pipelines.
 """
 
-from typing import Dict, List, Any, Optional, Type, Set, Tuple
+from typing import Dict, List, Any, Optional, Type, Set, Tuple, DefaultDict
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.parameters import ParameterString
@@ -107,7 +107,7 @@ class PipelineAssembler:
         self.step_builders: Dict[str, StepBuilderBase] = {}
 
         # Store connections between steps
-        self.step_messages = defaultdict(dict)
+        self.step_messages: DefaultDict[str, Dict[str, Any]] = defaultdict(dict)
 
         # Validate inputs
         # Check that all nodes in the DAG have a corresponding config

@@ -59,7 +59,7 @@ else:
 logger = logging.getLogger(__name__)
 
 
-def safe_value_for_logging(value):
+def safe_value_for_logging(value: Any) -> str:
     """
     Safely format a value for logging, handling Pipeline variables appropriately.
 
@@ -160,7 +160,7 @@ class StepBuilderBase(ABC):
     }
 
     @property
-    def STEP_NAMES(self):
+    def STEP_NAMES(self) -> Dict[str, str]:
         """
         Lazy load step names with workspace context awareness.
 
@@ -482,7 +482,7 @@ class StepBuilderBase(ABC):
 
         return paths
 
-    def log_info(self, message, *args, **kwargs):
+    def log_info(self, message: str, *args: Any, **kwargs: Any) -> None:
         """
         Safely log info messages, handling Pipeline variables.
 
@@ -502,7 +502,7 @@ class StepBuilderBase(ABC):
                 f"Original logging failed ({e}), logging raw message: {message}"
             )
 
-    def log_debug(self, message, *args, **kwargs):
+    def log_debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Debug version of safe logging"""
         try:
             safe_args = [safe_value_for_logging(arg) for arg in args]
@@ -513,7 +513,7 @@ class StepBuilderBase(ABC):
                 f"Original logging failed ({e}), logging raw message: {message}"
             )
 
-    def log_warning(self, message, *args, **kwargs):
+    def log_warning(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Warning version of safe logging"""
         try:
             safe_args = [safe_value_for_logging(arg) for arg in args]
@@ -524,7 +524,7 @@ class StepBuilderBase(ABC):
                 f"Original logging failed ({e}), logging raw message: {message}"
             )
 
-    def log_error(self, message, *args, **kwargs):
+    def log_error(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Error version of safe logging"""
         try:
             safe_args = [safe_value_for_logging(arg) for arg in args]
@@ -561,7 +561,7 @@ class StepBuilderBase(ABC):
         Returns:
             Dict[str, str]: Environment variables for the processing job
         """
-        env_vars = {}
+        env_vars: Dict[str, str] = {}
 
         if not hasattr(self, "contract") or self.contract is None:
             self.log_warning(
@@ -778,7 +778,7 @@ class StepBuilderBase(ABC):
             self.log_debug("Created new registry manager")
         return self._registry_manager
 
-    def _get_registry(self):
+    def _get_registry(self) -> Any:
         """
         Get the appropriate registry for this step.
 
@@ -843,7 +843,7 @@ class StepBuilderBase(ABC):
         resolver.register_specification(step_name, self.spec)
 
         # Register dependencies and enhance them with metadata
-        available_steps = []
+        available_steps: List[str] = []
         self._enhance_dependency_steps_with_specs(
             resolver, dependency_steps, available_steps
         )

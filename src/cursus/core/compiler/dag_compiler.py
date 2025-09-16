@@ -35,7 +35,7 @@ def compile_dag_to_pipeline(
     sagemaker_session: Optional[PipelineSession] = None,
     role: Optional[str] = None,
     pipeline_name: Optional[str] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Pipeline:
     """
     Compile a PipelineDAG into a complete SageMaker Pipeline.
@@ -121,8 +121,8 @@ class PipelineDAGCompiler:
         role: Optional[str] = None,
         config_resolver: Optional[StepConfigResolver] = None,
         builder_registry: Optional[StepBuilderRegistry] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize compiler with configuration and session.
 
@@ -339,7 +339,7 @@ class PipelineDAGCompiler:
             )
 
     def compile(
-        self, dag: PipelineDAG, pipeline_name: Optional[str] = None, **kwargs
+        self, dag: PipelineDAG, pipeline_name: Optional[str] = None, **kwargs: Any
     ) -> Pipeline:
         """
         Compile DAG to pipeline with full control.
@@ -395,7 +395,7 @@ class PipelineDAGCompiler:
             raise PipelineAPIError(f"DAG compilation failed: {e}") from e
 
     def compile_with_report(
-        self, dag: PipelineDAG, pipeline_name: Optional[str] = None, **kwargs
+        self, dag: PipelineDAG, pipeline_name: Optional[str] = None, **kwargs: Any
     ) -> Tuple[Pipeline, ConversionReport]:
         """
         Compile DAG to pipeline and return detailed compilation report.
@@ -470,7 +470,7 @@ class PipelineDAGCompiler:
             self.logger.error(f"Failed to compile DAG with report: {e}")
             raise PipelineAPIError(f"DAG compilation with report failed: {e}") from e
 
-    def create_template(self, dag: PipelineDAG, **kwargs) -> "DynamicPipelineTemplate":
+    def create_template(self, dag: PipelineDAG, **kwargs: Any) -> "DynamicPipelineTemplate":
         """
         Create a pipeline template from the DAG without generating the pipeline.
 
@@ -582,7 +582,7 @@ class PipelineDAGCompiler:
         dag: PipelineDAG,
         execution_doc: Dict[str, Any],
         pipeline_name: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Tuple[Pipeline, Dict[str, Any]]:
         """
         Compile a DAG to pipeline and fill an execution document in one step.

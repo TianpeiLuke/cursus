@@ -446,7 +446,7 @@ class BasePipelineConfig(BaseModel):
             Dict with keys 'essential', 'system', and 'derived' mapping to lists of field names
         """
         # Initialize categories
-        categories = {
+        categories: Dict[str, List[str]] = {
             "essential": [],  # Tier 1: Required, public
             "system": [],  # Tier 2: Optional (has default), public
             "derived": [],  # Tier 3: Public properties

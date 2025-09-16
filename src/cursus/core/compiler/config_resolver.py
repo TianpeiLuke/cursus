@@ -60,8 +60,8 @@ class StepConfigResolver:
         """
         self.confidence_threshold = confidence_threshold
         self.logger = logging.getLogger(__name__)
-        self._metadata_mapping = {}  # Step name to config mapping from metadata
-        self._config_cache = {}  # Cache for parsed node names
+        self._metadata_mapping: Dict[str, str] = {}  # Step name to config mapping from metadata
+        self._config_cache: Dict[str, Any] = {}  # Cache for parsed node names
 
     def resolve_config_map(
         self,
@@ -322,7 +322,7 @@ class StepConfigResolver:
         Returns:
             List of (config, confidence, method) tuples
         """
-        matches = []
+        matches: List[Tuple[BasePipelineConfig, float, str]] = []
         node_lower = node_name.lower()
 
         # Extract potential job type from node name
@@ -392,7 +392,7 @@ class StepConfigResolver:
         Returns:
             List of (config, confidence, method) tuples
         """
-        matches = []
+        matches: List[Tuple[BasePipelineConfig, float, str]] = []
         node_lower = node_name.lower()
 
         # Find matching patterns

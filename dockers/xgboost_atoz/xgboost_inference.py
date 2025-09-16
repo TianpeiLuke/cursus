@@ -653,7 +653,8 @@ def generate_predictions(
     Returns:
         numpy array of predictions
     """
-    dtest = xgb.DMatrix(df[feature_columns].values)
+    dtest = xgb.DMatrix(df[feature_columns].values, 
+                        feature_names=feature_columns)
     predictions = model.predict(dtest)
 
     if not is_multiclass and len(predictions.shape) == 1:

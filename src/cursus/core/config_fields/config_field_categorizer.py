@@ -279,7 +279,7 @@ class ConfigFieldCategorizer:
             dict: Field categorization results
         """
         # Simplified structure with just shared and specific
-        categorization = {"shared": {}, "specific": defaultdict(dict)}
+        categorization: Dict[str, Any] = {"shared": {}, "specific": defaultdict(dict)}
 
         # Apply categorization rules to each field
         for field_name in self.field_info["sources"]:
