@@ -40,7 +40,7 @@ class SpecificationRegistry:
             raise ValueError("specification must be a StepSpecification instance")
 
         # Validate the specification (Pydantic handles most validation automatically)
-        errors = specification.validate()
+        errors = specification.validate_specification()
         if errors:
             raise ValueError(f"Invalid specification for '{step_name}': {errors}")
 

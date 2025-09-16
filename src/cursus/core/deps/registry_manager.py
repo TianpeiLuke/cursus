@@ -189,6 +189,8 @@ def get_registry(
     Returns:
         Context-specific registry
     """
+    if manager is None:
+        manager = RegistryManager()
     return manager.get_registry(context_name)
 
 

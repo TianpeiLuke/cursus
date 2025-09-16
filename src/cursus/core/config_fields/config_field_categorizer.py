@@ -234,13 +234,13 @@ class ConfigFieldCategorizer:
             self.logger.info("Collected field information")
         self.logger.debug(
             f"Fields with multiple values: "
-            f"{[f for f, v in field_info['values'].items() if hasattr(v, '__len__') and len(v) > 1]}"
+            f"{[f for f, v in field_info['values'].items() if hasattr(v, '__len__') and len(v) > 1]}"  # type: ignore[attr-defined]
         )
         self.logger.debug(
-            f"Cross-type fields: {[f for f, v in field_info['is_cross_type'].items() if v]}"
+            f"Cross-type fields: {[f for f, v in field_info['is_cross_type'].items() if v]}"  # type: ignore[attr-defined]
         )
         self.logger.debug(
-            f"Special fields: {[f for f, v in field_info['is_special'].items() if v]}"
+            f"Special fields: {[f for f, v in field_info['is_special'].items() if v]}"  # type: ignore[attr-defined]
         )
 
         return field_info

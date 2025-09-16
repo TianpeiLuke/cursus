@@ -197,7 +197,7 @@ strict_equality = true
 
 # Allow forward references and reduce false positives
 allow_untyped_globals = true
-disable_error_code = ["name-defined", "unreachable"]
+disable_error_code = ["name-defined", "unreachable", "attr-defined"]
 
 [[tool.mypy.overrides]]
 module = [

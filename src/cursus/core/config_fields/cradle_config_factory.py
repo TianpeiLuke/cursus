@@ -14,11 +14,7 @@ import os
 from pathlib import Path
 
 # Import base classes to ensure essential classes are always available
-try:
-    from ..base.config_base import BasePipelineConfig
-except ImportError:
-    # For testing environments or when running outside the main project
-    BasePipelineConfig: Optional[Type[Any]] = None
+from ..base.config_base import BasePipelineConfig
 
 from ...steps.configs.config_cradle_data_loading_step import (
     CradleDataLoadConfig,

@@ -662,17 +662,22 @@ class UnifiedDependencyResolver:
         total_deps = sum(
             len(spec.dependencies) for spec in self.registry._specifications.values()
         )
-        resolved_deps = sum(
-            len(details.get("resolved_dependencies", {}))
-            for details in report["step_details"].values()
-            if isinstance(details, dict)
-        )
+        
+        # Calculate resolved dependencies with explicit type handling
+        resolved_deps = 0
+        for details in report["step_details"].values():
+            if isinstance(details, dict):
+                resolved_deps += len(details.get("resolved_dependencies", {}))
+
+        # Get unresolved dependencies list with proper typing
+        unresolved_deps = report["unresolved_dependencies"]
+        steps_with_errors = len(unresolved_deps) if isinstance(unresolved_deps, list) else 0
 
         report["resolution_summary"] = {
             "total_dependencies": total_deps,
             "resolved_dependencies": resolved_deps,
             "resolution_rate": resolved_deps / total_deps if total_deps > 0 else 0.0,
-            "steps_with_errors": len(report["unresolved_dependencies"]) if hasattr(report["unresolved_dependencies"], '__len__') else 0,
+            "steps_with_errors": steps_with_errors,
         }
 
         return report

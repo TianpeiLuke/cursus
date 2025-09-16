@@ -588,7 +588,7 @@ class StepSpecification(BaseModel):
         """Get list of outputs of a specific type."""
         return [out for out in self.outputs.values() if out.output_type == output_type]
 
-    def validate(self) -> List[str]:
+    def validate_specification(self) -> List[str]:
         """Validate the specification for consistency (legacy method for backward compatibility)."""
         # This method is kept for backward compatibility
         # Pydantic V2 handles most validation automatically

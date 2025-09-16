@@ -869,6 +869,7 @@ class StepBuilderBase(ABC):
             available_steps: List to populate with step names
         """
         from .specification_base import StepSpecification, OutputSpec
+        from .enums import DependencyType
 
         for i, dep_step in enumerate(dependency_steps):
             # Get step name
@@ -903,6 +904,7 @@ class StepBuilderBase(ABC):
                             OutputSpec(
                                 logical_name="model",
                                 description="Model artifacts",
+                                output_type=DependencyType.MODEL_ARTIFACTS,
                                 property_path="properties.ModelArtifacts.S3ModelArtifacts",
                             )
                         ],
@@ -932,6 +934,7 @@ class StepBuilderBase(ABC):
                                     outputs[key] = OutputSpec(
                                         logical_name=key,
                                         description=f"Output {key}",
+                                        output_type=DependencyType.PROCESSING_OUTPUT,
                                         property_path=f"properties.ProcessingOutputConfig.Outputs['{key}'].S3Output.S3Uri",
                                     )
                         except (AttributeError, TypeError):
@@ -948,6 +951,7 @@ class StepBuilderBase(ABC):
                                     outputs[key] = OutputSpec(
                                         logical_name=key,
                                         description=f"Output at index {i}",
+                                        output_type=DependencyType.PROCESSING_OUTPUT,
                                         property_path=f"properties.ProcessingOutputConfig.Outputs[{i}].S3Output.S3Uri",
                                     )
                         except (IndexError, TypeError, AttributeError):
