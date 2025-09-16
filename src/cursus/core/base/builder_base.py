@@ -160,7 +160,7 @@ class StepBuilderBase(ABC):
     }
 
     @property
-    def STEP_NAMES(self) -> Dict[str, str]:
+    def STEP_NAMES(self) -> Dict[str, Any]:
         """
         Lazy load step names with workspace context awareness.
 
@@ -388,7 +388,7 @@ class StepBuilderBase(ABC):
 
         return canonical_name
 
-    def _generate_job_name(self, step_type: str = None) -> str:
+    def _generate_job_name(self, step_type: Optional[str] = None) -> str:
         """
         Generate a standardized job name for SageMaker processing/training jobs.
 
@@ -422,7 +422,7 @@ class StepBuilderBase(ABC):
         return self._sanitize_name_for_sagemaker(job_name)
 
     def get_property_path(
-        self, logical_name: str, format_args: Dict[str, Any] = None
+        self, logical_name: str, format_args: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """
         Get property path for an output using the specification.
@@ -531,7 +531,7 @@ class StepBuilderBase(ABC):
                 f"Original logging failed ({e}), logging raw message: {message}"
             )
 
-    def _get_cache_config(self, enable_caching: bool = True) -> Dict[str, Any]:
+    def _get_cache_config(self, enable_caching: bool = True) -> CacheConfig:
         """
         Get cache configuration for step.
         ProcessingStep.to_request() can call .config safely.

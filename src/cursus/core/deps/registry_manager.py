@@ -5,7 +5,7 @@ This module provides centralized management of multiple registry instances,
 ensuring complete isolation between different contexts (pipelines, environments, etc.).
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import logging
 from .specification_registry import SpecificationRegistry
 
@@ -32,7 +32,7 @@ class RegistryManager:
         """
         self._registries: Dict[str, SpecificationRegistry] = {}
         self._workspace_context = workspace_context
-        self._hybrid_manager = None
+        self._hybrid_manager: Optional[Any] = None
         logger.info(
             f"Initialized registry manager with workspace context: {workspace_context}"
         )
@@ -66,7 +66,7 @@ class RegistryManager:
 
     def get_registry(
         self, context_name: str = "default", create_if_missing: bool = True
-    ) -> Optional[SpecificationRegistry]:
+    ) -> SpecificationRegistry:
         """
         Get the registry for a specific context with workspace awareness.
 

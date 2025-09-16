@@ -182,9 +182,13 @@ class ConfigFieldCategorizer:
                 )
 
         # Log statistics about field collection
-        self.logger.info(
-            f"Collected information for {len(field_info['sources'])} unique fields"
-        )
+        sources = field_info['sources']
+        if hasattr(sources, '__len__'):
+            self.logger.info(
+                f"Collected information for {len(sources)} unique fields"
+            )
+        else:
+            self.logger.info("Collected field information")
         self.logger.debug(
             f"Fields with multiple values: "
             f"{[f for f, v in field_info['values'].items() if hasattr(v, '__len__') and len(v) > 1]}"

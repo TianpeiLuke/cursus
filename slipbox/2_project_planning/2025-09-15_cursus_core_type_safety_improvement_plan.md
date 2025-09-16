@@ -262,13 +262,17 @@ self._config_cache: Dict[str, Any] = {}
 - **Assessment Results**: Mix of legitimate issues and false positives requiring different approaches
 
 #### **Phase 3.1: Assignment Compatibility** ✅ **COMPLETED**
-- **Status**: Successfully completed for high-priority files
-- **Time Invested**: ~1 hour (efficient due to logic preservation focus)
+- **Status**: Successfully completed for high-priority files + additional remaining work
+- **Time Invested**: ~3 hours total (1 hour initial + 2 hours remaining work)
 - **Files Completed**:
   - `src/cursus/core/deps/semantic_matcher.py` - Fixed variable type and return type annotations
   - `src/cursus/core/base/config_base.py` - Fixed return type and method argument handling
-- **Results**: Reduced assignment compatibility errors from ~25 to 21 (4 errors eliminated)
-- **Implementation Approach**: Logic-preserving type annotation corrections only
+  - `src/cursus/core/config_fields/config_class_store.py` - Fixed Union return type for decorator pattern
+  - `src/cursus/core/base/contract_base.py` - Fixed Optional type annotation for lazy initialization
+  - `src/cursus/core/config_fields/config_class_detector.py` - Fixed import fallback pattern type annotation
+  - `src/cursus/core/config_fields/cradle_config_factory.py` - Fixed import fallback + return type issues
+- **Results**: Reduced assignment compatibility errors from ~25 to 16 (9 errors eliminated total)
+- **Implementation Approach**: Logic-preserving type annotation corrections + pattern-based fixes
 
 **Root Cause Analysis**:
 - **Variable Type Mismatches**: Variables initialized with wrong type annotations
@@ -616,10 +620,10 @@ The plan prioritizes high-impact fixes while maintaining system stability throug
   - Core/Deps: 22 tests passed
 
 ### **Current Status**
-- **Total Errors**: 126 (down from original 225)
-- **Errors Eliminated**: 99 errors (44% reduction)
-- **Time Invested**: ~16.5 hours total
-- **Remaining Effort**: ~43-61 hours for complete implementation
+- **Total Errors**: 121 (down from original 225)
+- **Errors Eliminated**: 104 errors (46% reduction)
+- **Time Invested**: ~18.5 hours total
+- **Remaining Effort**: ~41-59 hours for complete implementation
 
 ### **Key Insights Gained**
 1. **Import Issues**: Most were mypy configuration problems, not actual code defects
