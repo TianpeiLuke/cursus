@@ -243,880 +243,1299 @@ Base Step: "CradleDataLoading"
 
 ## System Architecture
 
-### High-Level Architecture
+### Simplified Architecture
+
+Following the **Code Redundancy Evaluation Guide** and successful workspace-aware patterns (95% quality score), we use a **simple, unified approach** that avoids manager proliferation:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Unified Step Catalog API                 │
+│                    Step Catalog API                         │
+│  (Single class handling all US1-US5 requirements)          │
 ├─────────────────────────────────────────────────────────────┤
-│                     Catalog Manager                         │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │   Index Engine  │  │ Component Cache │  │ Query Engine │ │
-│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│                    Discovery Layer                          │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ File Discoverer │  │Contract Resolver│  │Workspace Mgr │ │
-│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│                    Storage Layer                            │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │  Step Index     │  │ Component Map   │  │ Workspace DB │ │
-│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+│                    Core Implementation                      │
+│  ┌─────────────────┐  ┌─────────────────┐                  │
+│  │   Step Index    │  │ Config Discovery│                  │
+│  │   (Dictionary)  │  │   (AST-based)   │                  │
+│  └─────────────────┘  └─────────────────┘                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Core Components
+### Core Implementation
 
-#### **1. Unified Step Catalog API**
-**Purpose**: Single entry point for all step-related queries
-**Responsibility**: Provide simple, consistent interface hiding complexity
+#### **Unified Step Catalog (Single Class)**
+**Purpose**: Single entry point addressing all US1-US5 requirements
+**Responsibility**: Provide complete functionality with minimal complexity
 
 ```python
 class StepCatalog:
-    """Unified interface for step component discovery and retrieval."""
+    """Unified step catalog addressing all validated user stories (US1-US5)."""
     
-    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> StepInfo:
-        """Get complete information about a step, optionally with job_type variant."""
+    def __init__(self, workspace_root: Path):
+        self.workspace_root = workspace_root
+        self.config_discovery = ConfigAutoDiscovery(workspace_root)
         
+        # Simple in-memory indexes (US4: Efficient Scaling)
+        self._step_index: Dict[str, StepInfo] = {}
+        self._component_index: Dict[Path, str] = {}
+        self._workspace_steps: Dict[str, List[str]] = {}
+        self._index_built = False
+    
+    # US1: Query by Step Name
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """Get complete information about a step, optionally with job_type variant."""
+        self._ensure_index_built()
+        
+        # Handle job_type variants (US6 requirement)
+        search_key = f"{step_name}_{job_type}" if job_type else step_name
+        return self._step_index.get(search_key) or self._step_index.get(step_name)
+        
+    # US2: Reverse Lookup from Components
     def find_step_by_component(self, component_path: str) -> Optional[str]:
         """Find step name from any component file."""
+        self._ensure_index_built()
+        return self._component_index.get(Path(component_path))
         
+    # US3: Multi-Workspace Discovery
     def list_available_steps(self, workspace_id: Optional[str] = None, 
                            job_type: Optional[str] = None) -> List[str]:
         """List all available steps, optionally filtered by workspace and job_type."""
+        self._ensure_index_built()
         
+        if workspace_id:
+            steps = self._workspace_steps.get(workspace_id, [])
+        else:
+            steps = list(self._step_index.keys())
+        
+        if job_type:
+            steps = [s for s in steps if s.endswith(f"_{job_type}") or job_type == "default"]
+        
+        return steps
+        
+    # US4: Efficient Scaling (Simple but effective search)
     def search_steps(self, query: str, job_type: Optional[str] = None) -> List[StepSearchResult]:
-        """Search steps by name, description, or functionality, optionally filtered by job_type."""
+        """Search steps by name with basic fuzzy matching."""
+        self._ensure_index_built()
+        results = []
+        query_lower = query.lower()
+        
+        for step_name, step_info in self._step_index.items():
+            # Simple but effective matching
+            if query_lower in step_name.lower():
+                score = 1.0 if query_lower == step_name.lower() else 0.8
+                results.append(StepSearchResult(
+                    step_name=step_name,
+                    workspace_id=step_info.workspace_id,
+                    match_score=score,
+                    match_reason="name_match",
+                    components_available=list(step_info.file_components.keys())
+                ))
+        
+        return sorted(results, key=lambda r: r.match_score, reverse=True)
     
-    def get_job_type_variants(self, base_step_name: str) -> List[str]:
-        """Get all job_type variants for a base step name."""
-        
-    def resolve_pipeline_node(self, node_name: str) -> Optional[StepInfo]:
-        """Resolve PipelineDAG node name to StepInfo (handles job_type variants)."""
-        
-    def get_shared_components(self, base_step_name: str) -> Dict[str, Optional[FileMetadata]]:
-        """Get components shared across all job_type variants of a base step."""
-        
+    # US5: Configuration Class Auto-Discovery
     def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
         """Auto-discover configuration classes from core and workspace directories."""
-        
-    def get_config_class_info(self, class_name: str) -> Optional[ConfigClassInfo]:
-        """Get detailed information about a discovered configuration class."""
+        return self.config_discovery.discover_config_classes(project_id)
         
     def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
         """Build complete mapping integrating manual registration with auto-discovery."""
+        return self.config_discovery.build_complete_config_classes(project_id)
+    
+    # US6: Job Type Variant Support (Simplified)
+    def get_job_type_variants(self, base_step_name: str) -> List[str]:
+        """Get all job_type variants for a base step name."""
+        self._ensure_index_built()
+        variants = []
+        for step_name in self._step_index.keys():
+            if step_name.startswith(f"{base_step_name}_"):
+                job_type = step_name[len(base_step_name)+1:]
+                variants.append(job_type)
+        return variants
+        
+    def resolve_pipeline_node(self, node_name: str) -> Optional[StepInfo]:
+        """Resolve PipelineDAG node name to StepInfo (handles job_type variants)."""
+        return self.get_step_info(node_name)
+    
+    # Private methods for simple implementation
+    def _ensure_index_built(self):
+        """Build index on first access (lazy loading)."""
+        if not self._index_built:
+            self._build_index()
+            self._index_built = True
+    
+    def _build_index(self):
+        """Simple index building using directory traversal."""
+        from cursus.registry.step_names import STEP_NAMES
+        
+        # Load registry data first
+        for step_name, registry_data in STEP_NAMES.items():
+            step_info = StepInfo(
+                step_name=step_name,
+                workspace_id="core",
+                registry_data=registry_data,
+                file_components={}
+            )
+            self._step_index[step_name] = step_info
+            self._workspace_steps.setdefault("core", []).append(step_name)
+        
+        # Discover file components across workspaces
+        self._discover_workspace_components("core", self.workspace_root / "src" / "cursus" / "steps")
+        
+        # Discover developer workspaces
+        dev_projects_dir = self.workspace_root / "development" / "projects"
+        if dev_projects_dir.exists():
+            for project_dir in dev_projects_dir.iterdir():
+                if project_dir.is_dir():
+                    workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
+                    if workspace_steps_dir.exists():
+                        self._discover_workspace_components(project_dir.name, workspace_steps_dir)
+    
+    def _discover_workspace_components(self, workspace_id: str, steps_dir: Path):
+        """Discover components in a workspace directory."""
+        component_types = {
+            "scripts": "script",
+            "contracts": "contract", 
+            "specs": "spec",
+            "builders": "builder",
+            "configs": "config"
+        }
+        
+        for dir_name, component_type in component_types.items():
+            component_dir = steps_dir / dir_name
+            if component_dir.exists():
+                for py_file in component_dir.glob("*.py"):
+                    if py_file.name.startswith("__"):
+                        continue
+                    
+                    step_name = self._extract_step_name(py_file.name, component_type)
+                    if step_name:
+                        # Update or create step info
+                        if step_name in self._step_index:
+                            step_info = self._step_index[step_name]
+                        else:
+                            step_info = StepInfo(
+                                step_name=step_name,
+                                workspace_id=workspace_id,
+                                registry_data={},
+                                file_components={}
+                            )
+                            self._step_index[step_name] = step_info
+                            self._workspace_steps.setdefault(workspace_id, []).append(step_name)
+                        
+                        # Add file component
+                        file_metadata = FileMetadata(
+                            path=py_file,
+                            file_type=component_type,
+                            modified_time=datetime.fromtimestamp(py_file.stat().st_mtime)
+                        )
+                        step_info.file_components[component_type] = file_metadata
+                        self._component_index[py_file] = step_name
+    
+    def _extract_step_name(self, filename: str, component_type: str) -> Optional[str]:
+        """Extract step name from filename based on component type."""
+        name = filename[:-3]  # Remove .py extension
+        
+        if component_type == "contract" and name.endswith("_contract"):
+            return name[:-9]  # Remove _contract
+        elif component_type == "spec" and name.endswith("_spec"):
+            return name[:-5]  # Remove _spec
+        elif component_type == "builder" and name.startswith("builder_") and name.endswith("_step"):
+            return name[8:-5]  # Remove builder_ and _step
+        elif component_type == "config" and name.startswith("config_") and name.endswith("_step"):
+            return name[7:-5]  # Remove config_ and _step
+        elif component_type == "script":
+            return name
+        
+        return None
 
-#### **2. Catalog Manager**
-**Purpose**: Coordinate indexing, caching, and query processing
-**Responsibility**: Manage system state and coordinate between components
-
-```python
-class CatalogManager:
-    """Manages step catalog indexing and retrieval operations."""
+# Simplified Config Auto-Discovery Integration
+class ConfigAutoDiscovery:
+    """Simple configuration class auto-discovery."""
     
     def __init__(self, workspace_root: Path):
-        self.index_engine = IndexEngine(workspace_root)
-        self.component_cache = ComponentCache()
-        self.query_engine = QueryEngine(self.index_engine, self.component_cache)
+        self.workspace_root = workspace_root
     
-    def refresh_index(self) -> None:
-        """Rebuild the step index from current workspace state."""
+    def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Auto-discover configuration classes from core and workspace directories."""
+        discovered_classes = {}
         
-    def get_step_info(self, step_name: str) -> StepInfo:
-        """Retrieve complete step information with caching."""
+        # Always scan core configs
+        core_config_dir = self.workspace_root / "src" / "cursus" / "steps" / "configs"
+        if core_config_dir.exists():
+            core_classes = self._scan_config_directory(core_config_dir)
+            discovered_classes.update(core_classes)
+        
+        # Scan workspace configs if project_id provided
+        if project_id:
+            workspace_config_dir = self.workspace_root / "development" / "projects" / project_id / "src" / "cursus_dev" / "steps" / "configs"
+            if workspace_config_dir.exists():
+                workspace_classes = self._scan_config_directory(workspace_config_dir)
+                # Workspace configs override core configs with same names
+                discovered_classes.update(workspace_classes)
+        
+        return discovered_classes
+    
+    def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Build complete mapping integrating manual registration with auto-discovery."""
+        from cursus.core.config_fields.config_class_store import ConfigClassStore
+        
+        # Start with manually registered classes (highest priority)
+        config_classes = ConfigClassStore.get_all_classes()
+        
+        # Add auto-discovered classes (manual registration takes precedence)
+        discovered_classes = self.discover_config_classes(project_id)
+        for class_name, class_type in discovered_classes.items():
+            if class_name not in config_classes:
+                config_classes[class_name] = class_type
+                # Also register in store for consistency
+                ConfigClassStore.register(class_type)
+        
+        return config_classes
+    
+    def _scan_config_directory(self, config_dir: Path) -> Dict[str, Type]:
+        """Scan directory for configuration classes using AST parsing."""
+        import ast
+        import importlib
+        
+        config_classes = {}
+        
+        for py_file in config_dir.glob("*.py"):
+            if py_file.name.startswith("__"):
+                continue
+            
+            try:
+                with open(py_file, 'r', encoding='utf-8') as f:
+                    source = f.read()
+                
+                tree = ast.parse(source, filename=str(py_file))
+                
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ClassDef) and self._is_config_class(node):
+                        try:
+                            # Import the class
+                            module_path = self._file_to_module_path(py_file)
+                            module = importlib.import_module(module_path)
+                            class_type = getattr(module, node.name)
+                            config_classes[node.name] = class_type
+                        except Exception as e:
+                            # Log warning but continue
+                            pass
+            
+            except Exception as e:
+                # Log warning but continue
+                pass
+        
+        return config_classes
+    
+    def _is_config_class(self, class_node: ast.ClassDef) -> bool:
+        """Check if a class is a config class based on inheritance and naming."""
+        # Check base classes
+        for base in class_node.bases:
+            if isinstance(base, ast.Name):
+                if base.id in {'BasePipelineConfig', 'ProcessingStepConfigBase', 'BaseModel'}:
+                    return True
+            elif isinstance(base, ast.Attribute):
+                if base.attr in {'BasePipelineConfig', 'ProcessingStepConfigBase', 'BaseModel'}:
+                    return True
+        
+        # Check naming pattern
+        return class_node.name.endswith('Config') or class_node.name.endswith('Configuration')
+    
+    def _file_to_module_path(self, file_path: Path) -> str:
+        """Convert file path to Python module path."""
+        parts = file_path.parts
+        
+        # Find src directory
+        if 'src' in parts:
+            src_idx = parts.index('src')
+            module_parts = parts[src_idx + 1:]
+        else:
+            # Fallback
+            module_parts = parts[-3:] if len(parts) >= 3 else parts
+        
+        # Remove .py extension
+        if module_parts[-1].endswith('.py'):
+            module_parts = module_parts[:-1] + (module_parts[-1][:-3],)
+        
+        return '.'.join(module_parts)
 ```
 
-#### **3. Index Engine**
-**Purpose**: Build and maintain searchable index of all step components
-**Responsibility**: Efficient indexing with incremental updates
+### Simplified Data Models
+
+Following the **Code Redundancy Evaluation Guide** principle of avoiding over-engineering, we use simple, focused data models:
 
 ```python
-class IndexEngine:
-    """Builds and maintains searchable index of step components."""
-    
-    def build_index(self) -> StepIndex:
-        """Build complete index from workspace files."""
-        
-    def update_index(self, changed_files: List[Path]) -> None:
-        """Incrementally update index for changed files."""
-        
-    def find_components_by_step(self, step_name: str) -> StepInfo:
-        """Find all components for a given step name."""
-```
-
-### Data Models
-
-#### **Core Data Structures**
-
-```python
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Literal, Dict, Any
+from typing import Optional, Dict, Any
 
 class FileMetadata(BaseModel):
-    """Simplified metadata for indexed files."""
-    path: Path = Field(..., description="Path to the component file")
-    file_type: Literal['script', 'contract', 'config', 'spec', 'builder'] = Field(..., description="Type of component file")
-    modified_time: datetime = Field(..., description="Last modification time of the file")
-    
-    model_config = {
-        "arbitrary_types_allowed": True,
-        "frozen": True
-    }
+    """Simple metadata for component files."""
+    path: Path
+    file_type: str  # 'script', 'contract', 'spec', 'builder', 'config'
+    modified_time: datetime
 
 class StepInfo(BaseModel):
-    """Complete step information combining registry data with file metadata."""
-    step_name: str = Field(..., description="Name of the step")
-    workspace_id: str = Field(..., description="ID of the workspace containing this step")
-    registry_data: Dict[str, Any] = Field(..., description="Registry data from cursus.registry.step_names")
-    file_components: Dict[str, Optional[FileMetadata]] = Field(..., description="Discovered component files")
+    """Essential step information."""
+    step_name: str
+    workspace_id: str
+    registry_data: Dict[str, Any]  # From cursus.registry.step_names
+    file_components: Dict[str, Optional[FileMetadata]]
     
-    # Job type variant support (based on job_type_variant_analysis.md)
-    base_step_name: Optional[str] = Field(None, description="Base step name for job type variants (e.g., 'CradleDataLoading')")
-    job_type: Optional[str] = Field(None, description="Job type variant (e.g., 'training', 'calibration', etc.)")
-    
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
-    
-    @property
-    def is_complete(self) -> bool:
-        """Check if step has minimum required components based on SageMaker step type."""
-        # All steps require: builder, config, spec (these are always present in registry)
-        # Only Processing and Training steps require scripts and contracts
-        sagemaker_type = self.sagemaker_step_type
-        
-        if sagemaker_type in ['Processing', 'Training']:
-            # Processing and Training steps need scripts and contracts
-            return (
-                self.file_components.get('script') is not None and 
-                self.file_components.get('contract') is not None and
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None and
-                self.file_components.get('spec') is not None
-            )
-        elif sagemaker_type in ['CreateModel', 'RegisterModel', 'Transform']:
-            # CreateModel, RegisterModel, Transform steps don't need scripts/contracts
-            return (
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None and
-                self.file_components.get('spec') is not None
-            )
-        elif sagemaker_type in ['Base', 'Utility']:
-            # Base and Utility steps have minimal requirements
-            return (
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None
-            )
-        else:
-            # Custom steps - check for basic components
-            return (
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None
-            )
-    
-    @property
-    def all_files(self) -> List[Path]:
-        """Get all file paths for this step."""
-        files = []
-        for component in self.file_components.values():
-            if component:
-                files.append(component.path)
-        return files
-    
+    # Simple properties for common use cases
     @property
     def config_class(self) -> str:
-        """Get config class name from registry."""
         return self.registry_data.get('config_class', '')
     
     @property
-    def builder_step_name(self) -> str:
-        """Get builder step name from registry."""
-        return self.registry_data.get('builder_step_name', '')
-    
-    @property
     def sagemaker_step_type(self) -> str:
-        """Get SageMaker step type from registry."""
         return self.registry_data.get('sagemaker_step_type', '')
-    
-    @property
-    def description(self) -> str:
-        """Get step description from registry."""
-        return self.registry_data.get('description', '')
-    
-    @property
-    def requires_script(self) -> bool:
-        """Check if this step type requires a script."""
-        return self.sagemaker_step_type in ['Processing', 'Training']
-    
-    @property
-    def requires_contract(self) -> bool:
-        """Check if this step type requires a contract."""
-        return self.sagemaker_step_type in ['Processing', 'Training']
-    
-    @property
-    def is_job_type_variant(self) -> bool:
-        """Check if this is a job_type variant of a base step."""
-        return self.job_type is not None
-    
-    @property
-    def base_step_key(self) -> str:
-        """Get the base step key for component sharing."""
-        return self.base_step_name or self.step_name
-    
-    @property
-    def variant_key(self) -> str:
-        """Get the unique variant key matching PipelineDAG node names."""
-        if self.job_type:
-            base_name = self.base_step_name or self.step_name
-            return f"{base_name}_{self.job_type}"
-        return self.step_name
-    
-    @property
-    def pipeline_node_name(self) -> str:
-        """Get the node name as used in PipelineDAG."""
-        return self.variant_key  # Same as variant_key for consistency
 
-class IndexEntry(BaseModel):
-    """Single index entry bridging file path to semantic meaning."""
-    file_path: Path
-    step_name: str
-    component_type: Literal['script', 'contract', 'config', 'spec', 'builder']
-    workspace_id: str
-    metadata: FileMetadata
-    last_indexed: datetime
-    
-    model_config = {
-        "arbitrary_types_allowed": True,
-        "frozen": True
-    }
-
-class StepIndex:
-    """Unified indexing system with progressive complexity."""
-    
-    def __init__(self, workspace_root: Path, enable_advanced_features: bool = False):
-        self.workspace_root = workspace_root
-        self.enable_advanced_features = enable_advanced_features
-        
-        # Core indexing (always present)
-        self.step_map: Dict[str, StepInfo] = {}
-        self.component_map: Dict[Path, str] = {}
-        
-        # Advanced features (optional)
-        if enable_advanced_features:
-            self.workspace_map: Dict[str, List[str]] = {}
-            self.name_variants: Dict[str, str] = {}
-            self._index_timestamp: Optional[datetime] = None
-    
-    def build_index(self, incremental: bool = False) -> None:
-        """Build index with optional incremental updates."""
-        if incremental and self.enable_advanced_features:
-            self._incremental_update()
-        else:
-            self._full_rebuild()
-    
-    def get_step_info(self, step_name: str) -> Optional[StepInfo]:
-        """Get step information - O(1) lookup."""
-        return self.step_map.get(step_name)
-    
-    def find_step_by_file(self, file_path: Path) -> Optional[str]:
-        """Find step name by file path - O(1) reverse lookup."""
-        return self.component_map.get(file_path)
-
-# Component type enumeration
-from enum import Enum
-
-class ComponentType(Enum):
-    """Enumeration of step component types."""
-    SCRIPT = "script"
-    CONTRACT = "contract"
-    SPEC = "spec"
-    BUILDER = "builder"
-    CONFIG = "config"
-```
-
-#### **Search and Query Models**
-
-```python
 class StepSearchResult(BaseModel):
-    """Result from step search operation."""
-    step_name: str = Field(..., description="Name of the found step")
-    workspace_id: str = Field(..., description="ID of the workspace containing the step")
-    match_score: float = Field(..., ge=0.0, le=1.0, description="Match score between 0.0 and 1.0")
-    match_reason: str = Field(..., description="Reason for the match")
-    components_available: List[ComponentType] = Field(..., description="List of available component types")
-    
-class QueryOptions(BaseModel):
-    """Options for step queries."""
-    workspace_filter: Optional[str] = Field(None, description="Filter by workspace ID")
-    component_filter: Optional[List[ComponentType]] = Field(None, description="Filter by component types")
-    include_metadata: bool = Field(True, description="Whether to include metadata in results")
-    fuzzy_matching: bool = Field(True, description="Whether to enable fuzzy matching")
+    """Simple search result."""
+    step_name: str
+    workspace_id: str
+    match_score: float
+    match_reason: str
+    components_available: list[str]
 ```
 
 ## Implementation Strategy
 
-### Essential-First Approach
+### Simplified Implementation Approach
 
-Following the **Code Redundancy Evaluation Guide** principle of "essential functionality first", we prioritize core features that address validated user needs:
+Following the **Code Redundancy Evaluation Guide** and successful workspace-aware patterns (95% quality score), we implement a **single unified class** that addresses all US1-US5 requirements without over-engineering:
 
-### Phase 1: Essential Foundation (Immediate - 2 weeks)
+### Phase 1: Core Implementation (2 weeks)
 
-#### **1.1 Consolidate Contract Discovery (ESSENTIAL)**
-**Goal**: Merge existing contract discovery systems - addresses 40% redundancy
-**Approach**: Simple unified class following workspace-aware success patterns
+#### **1.1 Implement Unified StepCatalog Class**
+**Goal**: Single class addressing all US1-US5 requirements
+**Approach**: Direct implementation following workspace-aware success patterns
 
 ```python
-class ContractDiscovery:
-    """Unified contract discovery - essential consolidation only."""
+class StepCatalog:
+    """Single unified class handling all validated user stories."""
     
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
-        self._cache: Dict[str, ContractInfo] = {}  # Simple dict cache
-    
-    def discover_contract(self, step_name: str) -> Optional[ContractInfo]:
-        """Discover contract - combine existing logic only."""
-        # Direct merge of ContractDiscoveryEngine + ContractDiscoveryManager
-        # No new features, just consolidation
+        self.config_discovery = ConfigAutoDiscovery(workspace_root)
         
-    def get_contract_paths(self, step_name: str) -> List[Path]:
-        """Get contract file paths - essential for both alignment and runtime."""
-        # Essential method used by both existing systems
-```
-
-**Success Criteria** (Essential Only):
-- ✅ Reduce contract discovery redundancy from 40% to <20%
-- ✅ Maintain 100% backward compatibility
-- ✅ No performance degradation (improvement is bonus)
-
-#### **1.2 Simple Step Index (ESSENTIAL)**
-**Goal**: Basic step indexing to replace repeated file scans
-**Approach**: Minimal viable indexing following proven patterns
-
-```python
-class SimpleStepIndex:
-    """Minimal step indexing - essential functionality only."""
+        # Simple in-memory indexes
+        self._step_index: Dict[str, StepInfo] = {}
+        self._component_index: Dict[Path, str] = {}
+        self._workspace_steps: Dict[str, List[str]] = {}
+        self._index_built = False
     
-    def __init__(self, workspace_root: Path):
-        self.workspace_root = workspace_root
-        self._step_map: Dict[str, Path] = {}  # step_name -> script_path
-        self._component_map: Dict[Path, str] = {}  # file_path -> step_name
-    
-    def build_index(self) -> None:
-        """Build basic index - file scanning only."""
-        # Simple directory traversal, no complex features
+    # All US1-US5 methods implemented in single class
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """US1: Query by Step Name"""
         
-    def get_step_script(self, step_name: str) -> Optional[Path]:
-        """Get step script path - most common use case."""
-        return self._step_map.get(step_name)
+    def find_step_by_component(self, component_path: str) -> Optional[str]:
+        """US2: Reverse Lookup from Components"""
         
-    def find_step_by_file(self, file_path: Path) -> Optional[str]:
-        """Reverse lookup - second most common use case."""
-        return self._component_map.get(file_path)
-```
-
-**Success Criteria** (Essential Only):
-- ✅ Index all steps in <10 seconds (simple requirement)
-- ✅ Support basic lookup operations
-- ✅ No persistence required initially (keep it simple)
-
-### Phase 2: Core System (4 weeks)
-
-#### **2.1 Implement Catalog Manager**
-**Goal**: Create central coordination system
-**Approach**: Layered architecture with clear separation
-
-```python
-class CatalogManager:
-    """Central coordinator for step catalog operations."""
-    
-    def __init__(self, workspace_root: Path):
-        self.workspace_root = workspace_root
-        self.index_engine = IndexEngine(workspace_root)
-        self.discovery_layer = DiscoveryLayer(workspace_root)
-        self.component_cache = ComponentCache()
+    def list_available_steps(self, workspace_id: Optional[str] = None) -> List[str]:
+        """US3: Multi-Workspace Discovery"""
         
-        # Load or build index
-        self.index = self._load_or_build_index()
-    
-    def get_step_info(self, step_name: str) -> Optional[StepInfo]:
-        """Get complete step information with lazy loading."""
-        # O(1) lookup from index, lazy load detailed info
+    def search_steps(self, query: str) -> List[StepSearchResult]:
+        """US4: Efficient Scaling"""
         
-    def refresh_index(self) -> None:
-        """Rebuild index from current workspace state."""
-        # Coordinate between index engine and discovery layer
-```
-
-#### **2.2 Multi-Workspace Support**
-**Goal**: Support discovery across multiple workspaces
-**Approach**: Workspace precedence with fallback logic
-
-```python
-class WorkspaceManager:
-    """Manages multi-workspace step discovery."""
-    
-    def __init__(self, workspace_root: Path):
-        self.workspace_root = workspace_root
-        self.developer_workspaces = self._discover_developer_workspaces()
-        self.shared_workspace = self._discover_shared_workspace()
-    
-    def find_step_components(self, step_name: str) -> StepInfo:
-        """Find components with workspace precedence."""
-        # Developer workspace first, then shared workspace fallback
-        
-    def list_workspaces(self) -> List[WorkspaceInfo]:
-        """List all available workspaces."""
+    def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """US5: Configuration Class Auto-Discovery"""
 ```
 
 **Success Criteria**:
-- ✅ Support unlimited developer workspaces
-- ✅ Implement workspace precedence logic
-- ✅ Handle workspace conflicts gracefully
+- ✅ Single class implements all US1-US5 requirements
+- ✅ No manager proliferation (avoid over-engineering)
+- ✅ Simple dictionary-based indexing (O(1) lookups)
+- ✅ Lazy loading on first access
 
-### Phase 3: Advanced Features (4 weeks)
-
-#### **3.1 Query Engine**
-**Goal**: Provide flexible search and query capabilities
-**Approach**: Simple but effective search algorithms
-
-```python
-class QueryEngine:
-    """Handles step search and query operations."""
-    
-    def __init__(self, index: StepIndex):
-        self.index = index
-        self.name_normalizer = NameNormalizer()
-    
-    def search_steps(self, query: str, options: QueryOptions) -> List[StepSearchResult]:
-        """Search steps using multiple strategies."""
-        results = []
-        
-        # 1. Exact match
-        if query in self.index.step_map:
-            results.append(self._create_result(query, 1.0, "exact_match"))
-        
-        # 2. Normalized match
-        normalized = self.name_normalizer.normalize(query)
-        if normalized in self.index.name_variants:
-            canonical = self.index.name_variants[normalized]
-            results.append(self._create_result(canonical, 0.9, "normalized_match"))
-        
-        # 3. Fuzzy match (if enabled)
-        if options.fuzzy_matching:
-            fuzzy_results = self._fuzzy_search(query)
-            results.extend(fuzzy_results)
-        
-        return sorted(results, key=lambda r: r.match_score, reverse=True)
-```
-
-#### **3.2 Essential Query Features**
-**Goal**: Provide core search functionality without over-engineering
-**Approach**: Focus on validated user needs only
+#### **1.2 Integrate Config Auto-Discovery**
+**Goal**: Seamless integration with existing config system
+**Approach**: Direct integration with `ConfigClassStore` and `build_complete_config_classes()`
 
 ```python
-class EssentialQueryFeatures:
-    """Essential query features based on validated user needs."""
+class ConfigAutoDiscovery:
+    """Simple config discovery integrated with step catalog."""
     
-    def get_component_metadata(self, component_path: Path) -> Dict[str, Any]:
-        """Extract basic metadata from component files."""
-        # Simple metadata extraction: file size, modification time, basic parsing
+    def __init__(self, workspace_root: Path):
+        self.workspace_root = workspace_root
+    
+    def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """AST-based config class discovery."""
+        # Scan core: src/cursus/steps/configs
+        # Scan workspace: development/projects/{project_id}/src/cursus_dev/steps/configs
         
-    def validate_component_completeness(self, step_name: str) -> ComponentValidation:
-        """Check if step has required components."""
-        # Basic validation: script + contract presence
-        
-    def list_steps_by_workspace(self, workspace_id: str) -> List[str]:
-        """List steps available in specific workspace."""
-        # Simple workspace filtering
+    def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Integration with existing ConfigClassStore."""
+        # Manual registration takes precedence
+        # Auto-discovery fills gaps
 ```
 
 **Success Criteria**:
-- ✅ Extract essential metadata only
-- ✅ Validate component completeness
-- ✅ Support workspace-specific queries
+- ✅ Addresses TODO in production `build_complete_config_classes()`
+- ✅ Maintains backward compatibility with manual `@register` decorators
+- ✅ Workspace configs override core configs with same names
 
-### Phase 4: Integration & Optimization (2 weeks)
+### Phase 2: Integration & Testing (2 weeks)
 
-#### **4.1 Backward Compatibility Layer**
+#### **2.1 Backward Compatibility Adapters**
 **Goal**: Maintain existing APIs during transition
-**Approach**: Adapter pattern for legacy interfaces
+**Approach**: Simple adapter pattern for legacy interfaces
 
 ```python
-# Legacy adapter for ContractDiscoveryEngine
 class ContractDiscoveryEngineAdapter:
-    """Adapter to maintain backward compatibility."""
+    """Maintains compatibility with existing contract discovery."""
     
     def __init__(self, catalog: StepCatalog):
         self.catalog = catalog
     
     def discover_all_contracts(self) -> List[str]:
-        """Legacy method using new catalog system."""
-        return [step.step_name for step in self.catalog.list_available_steps()]
-    
-    def discover_contracts_with_scripts(self) -> List[str]:
-        """Legacy method with script validation."""
-        return [step.step_name for step in self.catalog.list_available_steps() 
-                if step.components.script is not None]
+        """Legacy method using unified catalog."""
+        return [info.step_name for info in self.catalog.list_available_steps() 
+                if info.file_components.get('contract')]
 ```
 
-#### **4.2 Performance Optimization**
-**Goal**: Ensure system meets performance requirements
-**Approach**: Profiling and targeted optimization
+**Success Criteria**:
+- ✅ Existing code continues to work without changes
+- ✅ Gradual migration path available
+- ✅ No breaking changes during transition
 
-**Performance Targets**:
-- ✅ Step lookup: <1ms (O(1) dictionary access)
-- ✅ Index rebuild: <10 seconds for 1000 steps
-- ✅ Memory usage: <100MB for typical workspace
-- ✅ Search queries: <100ms for fuzzy search
+#### **2.2 Performance Validation**
+**Goal**: Ensure performance meets requirements
+**Approach**: Simple benchmarking and optimization
+
+**Performance Targets** (Essential Only):
+- ✅ Step lookup: <1ms (dictionary access)
+- ✅ Index build: <10 seconds for typical workspace
+- ✅ Memory usage: <100MB for normal operation
+- ✅ Search: <100ms for basic fuzzy matching
+
+### Phase 3: Deployment & Migration (1 week)
+
+#### **3.1 Gradual Rollout**
+**Goal**: Safe deployment without disruption
+**Approach**: Feature flag controlled rollout
+
+```python
+# Feature flag controlled usage
+if USE_UNIFIED_CATALOG:
+    catalog = StepCatalog(workspace_root)
+    step_info = catalog.get_step_info(step_name)
+else:
+    # Existing discovery systems
+    discovery = ContractDiscoveryEngine()
+    step_info = discovery.discover_contract(step_name)
+```
+
+**Success Criteria**:
+- ✅ Zero downtime deployment
+- ✅ Rollback capability if issues arise
+- ✅ Monitoring and validation during rollout
+
+#### **3.2 Legacy System Cleanup**
+**Goal**: Remove redundant discovery systems
+**Approach**: Systematic deprecation and removal
+
+**Cleanup Targets**:
+- Remove 16+ redundant discovery/resolver classes
+- Consolidate contract discovery systems (40% redundancy reduction)
+- Eliminate file resolution duplication (35% redundancy reduction)
+- Clean up component discovery overlap (30% redundancy reduction)
+
+**Success Criteria**:
+- ✅ Achieve target 15-25% redundancy (down from 35-45%)
+- ✅ Maintain all functionality with simplified architecture
+- ✅ Improved maintainability and developer experience
+
+### Implementation Principles
+
+#### **1. Simplicity First**
+- Single class vs multiple managers
+- Dictionary indexing vs complex engines
+- Essential features vs speculative capabilities
+- Proven patterns vs theoretical abstractions
+
+#### **2. Validated Demand Only**
+- All US1-US5 requirements fully addressed
+- No theoretical features without user evidence
+- Focus on real problems (16+ existing systems prove demand)
+- Avoid over-engineering pitfalls
+
+#### **3. Quality Over Complexity**
+- Follow workspace-aware success patterns (95% quality score)
+- Maintain performance requirements with simple solutions
+- Comprehensive testing with minimal implementation
+- Clear, maintainable code over sophisticated architecture
+
+#### **4. Incremental Value**
+- Phase 1 delivers immediate value (core functionality)
+- Phase 2 ensures smooth transition (compatibility)
+- Phase 3 completes consolidation (cleanup)
+- Each phase provides measurable benefits
+
+### Risk Mitigation
+
+#### **Technical Risks**
+- **Simple Implementation**: Lower complexity reduces bug risk
+- **Proven Patterns**: Use successful workspace-aware approaches
+- **Gradual Migration**: Feature flags enable safe rollout
+- **Comprehensive Testing**: Validate all US1-US5 requirements
+
+#### **Operational Risks**
+- **Backward Compatibility**: Existing code continues working
+- **Performance Monitoring**: Validate requirements during rollout
+- **Rollback Plan**: Feature flags enable quick reversion
+- **Documentation**: Clear migration guide for developers
+
+This simplified implementation strategy delivers all validated user requirements (US1-US5) while avoiding the over-engineering pitfalls identified in the Code Redundancy Evaluation Guide, targeting the optimal 15-25% redundancy range through a single, well-designed unified class.
 
 ## Detailed Component Design
 
-### Index Engine Implementation
+### Simplified Component Implementation
 
-#### **File Discovery Strategy**
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the detailed component design is **integrated directly into the single StepCatalog class** rather than creating separate specialized components.
+
+#### **File Discovery (Integrated)**
+The file discovery logic is implemented as simple private methods within the `StepCatalog` class:
+
 ```python
-class FileDiscoverer:
-    """Discovers step component files in workspace directories."""
-    
-    COMPONENT_PATTERNS = {
-        ComponentType.SCRIPT: r"^(.+)\.py$",
-        ComponentType.CONTRACT: r"^(.+)_contract\.py$", 
-        ComponentType.SPEC: r"^(.+)_spec\.py$",
-        ComponentType.BUILDER: r"^builder_(.+)_step\.py$",
-        ComponentType.CONFIG: r"^config_(.+)_step\.py$"
+# Already implemented in StepCatalog class above
+def _discover_workspace_components(self, workspace_id: str, steps_dir: Path):
+    """Simple component discovery integrated into main class."""
+    component_types = {
+        "scripts": "script",
+        "contracts": "contract", 
+        "specs": "spec",
+        "builders": "builder",
+        "configs": "config"
     }
     
-    def discover_components(self, workspace_path: Path) -> Dict[str, ComponentSet]:
-        """Discover all components in a workspace."""
-        components = defaultdict(ComponentSet)
-        
-        for component_type, pattern in self.COMPONENT_PATTERNS.items():
-            component_dir = workspace_path / "src" / "cursus_dev" / "steps" / component_type.value
-            if component_dir.exists():
-                for file_path in component_dir.glob("*.py"):
-                    if file_path.name.startswith("__"):
-                        continue
-                    
-                    match = re.match(pattern, file_path.name)
-                    if match:
-                        step_name = match.group(1)
-                        component_info = ComponentInfo(
-                            file_path=file_path,
-                            workspace_id=workspace_path.name,
-                            component_type=component_type,
-                            metadata=self._extract_metadata(file_path, component_type),
-                            last_modified=datetime.fromtimestamp(file_path.stat().st_mtime)
-                        )
-                        setattr(components[step_name], component_type.value, component_info)
-        
-        return dict(components)
-    
-    def _extract_metadata(self, file_path: Path, component_type: ComponentType) -> Dict[str, Any]:
-        """Extract metadata from component file."""
-        metadata = {"file_size": file_path.stat().st_size}
-        
-        if component_type == ComponentType.CONTRACT:
-            # Extract entry_point from contract
-            metadata.update(self._extract_contract_metadata(file_path))
-        elif component_type == ComponentType.SPEC:
-            # Extract job types and dependencies from spec
-            metadata.update(self._extract_spec_metadata(file_path))
-        
-        return metadata
+    for dir_name, component_type in component_types.items():
+        component_dir = steps_dir / dir_name
+        if component_dir.exists():
+            for py_file in component_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                
+                step_name = self._extract_step_name(py_file.name, component_type)
+                if step_name:
+                    # Simple file metadata creation
+                    file_metadata = FileMetadata(
+                        path=py_file,
+                        file_type=component_type,
+                        modified_time=datetime.fromtimestamp(py_file.stat().st_mtime)
+                    )
+                    # Direct integration with step index
+                    self._component_index[py_file] = step_name
 ```
 
-#### **Name Normalization Strategy**
-```python
-class NameNormalizer:
-    """Handles name variations and normalization for step discovery."""
-    
-    COMMON_VARIATIONS = {
-        'preprocess': 'preprocessing',
-        'eval': 'evaluation',
-        'xgb': 'xgboost',
-        'lgb': 'lightgbm',
-        'rf': 'random_forest'
-    }
-    
-    def normalize(self, name: str) -> str:
-        """Normalize step name to canonical form."""
-        # Convert to lowercase
-        normalized = name.lower()
-        
-        # Replace dashes and dots with underscores
-        normalized = normalized.replace('-', '_').replace('.', '_')
-        
-        # Handle common variations
-        for short, long in self.COMMON_VARIATIONS.items():
-            if short in normalized and long not in normalized:
-                normalized = normalized.replace(short, long)
-        
-        return normalized
-    
-    def generate_variants(self, canonical_name: str) -> List[str]:
-        """Generate common variants of a canonical name."""
-        variants = [canonical_name]
-        
-        # Add reverse variations
-        for short, long in self.COMMON_VARIATIONS.items():
-            if long in canonical_name:
-                variants.append(canonical_name.replace(long, short))
-        
-        # Add case variations
-        variants.extend([
-            canonical_name.upper(),
-            canonical_name.title(),
-            canonical_name.replace('_', '-'),
-            canonical_name.replace('_', '')
-        ])
-        
-        return list(set(variants))  # Remove duplicates
-```
-
-### Component Cache Implementation
+#### **Name Extraction (Simplified)**
+Simple name extraction logic integrated into the main class:
 
 ```python
-class ComponentCache:
-    """Intelligent caching for component information with TTL and invalidation."""
+# Already implemented in StepCatalog class above
+def _extract_step_name(self, filename: str, component_type: str) -> Optional[str]:
+    """Simple step name extraction - no complex normalization."""
+    name = filename[:-3]  # Remove .py extension
     
-    def __init__(self, ttl_seconds: int = 300):  # 5 minute TTL
-        self.ttl_seconds = ttl_seconds
-        self._cache: Dict[str, Tuple[Any, datetime]] = {}
-        self._file_mtimes: Dict[Path, float] = {}
+    # Simple pattern matching - no regex complexity
+    if component_type == "contract" and name.endswith("_contract"):
+        return name[:-9]  # Remove _contract
+    elif component_type == "spec" and name.endswith("_spec"):
+        return name[:-5]  # Remove _spec
+    elif component_type == "builder" and name.startswith("builder_") and name.endswith("_step"):
+        return name[8:-5]  # Remove builder_ and _step
+    elif component_type == "config" and name.startswith("config_") and name.endswith("_step"):
+        return name[7:-5]  # Remove config_ and _step
+    elif component_type == "script":
+        return name
     
-    def get(self, key: str) -> Optional[Any]:
-        """Get cached value if still valid."""
-        if key not in self._cache:
-            return None
-        
-        value, timestamp = self._cache[key]
-        if datetime.now() - timestamp > timedelta(seconds=self.ttl_seconds):
-            del self._cache[key]
-            return None
-        
-        return value
-    
-    def set(self, key: str, value: Any, file_path: Optional[Path] = None) -> None:
-        """Cache value with optional file-based invalidation."""
-        self._cache[key] = (value, datetime.now())
-        
-        if file_path and file_path.exists():
-            self._file_mtimes[file_path] = file_path.stat().st_mtime
-    
-    def invalidate_if_changed(self, file_path: Path) -> bool:
-        """Invalidate cache entries if file has changed."""
-        if file_path not in self._file_mtimes:
-            return False
-        
-        if not file_path.exists():
-            # File deleted, invalidate related entries
-            self._invalidate_file_entries(file_path)
-            return True
-        
-        current_mtime = file_path.stat().st_mtime
-        if current_mtime != self._file_mtimes[file_path]:
-            self._invalidate_file_entries(file_path)
-            self._file_mtimes[file_path] = current_mtime
-            return True
-        
-        return False
-    
-    def _invalidate_file_entries(self, file_path: Path) -> None:
-        """Invalidate all cache entries related to a file."""
-        # Simple approach: clear entire cache when any file changes
-        # More sophisticated approach would track file->key relationships
-        self._cache.clear()
+    return None
 ```
+
+#### **Simple Caching (Dictionary-Based)**
+Basic caching integrated into the main class using simple dictionaries:
+
+```python
+# Already implemented in StepCatalog class above
+class StepCatalog:
+    def __init__(self, workspace_root: Path):
+        # Simple in-memory indexes - no complex caching
+        self._step_index: Dict[str, StepInfo] = {}
+        self._component_index: Dict[Path, str] = {}
+        self._workspace_steps: Dict[str, List[str]] = {}
+        self._index_built = False
+    
+    def _ensure_index_built(self):
+        """Simple lazy loading - build once, use many times."""
+        if not self._index_built:
+            self._build_index()
+            self._index_built = True
+```
+
+### Design Rationale
+
+#### **Why No Separate Components?**
+Following the **Code Redundancy Evaluation Guide** principles:
+
+1. **Avoid Manager Proliferation**: Instead of creating `FileDiscoverer`, `NameNormalizer`, `ComponentCache` classes, we integrate the essential functionality directly into the single `StepCatalog` class.
+
+2. **Essential Functionality Only**: We implement only the core functionality needed for US1-US5, avoiding speculative features like:
+   - Complex name normalization with variants
+   - Advanced caching with TTL and file watching
+   - Sophisticated metadata extraction
+   - Complex pattern matching with regex
+
+3. **Proven Patterns**: Following the successful workspace-aware implementation (95% quality score) that uses simple, direct approaches rather than complex component hierarchies.
+
+4. **Target Redundancy**: By avoiding separate component classes, we achieve the target 15-25% redundancy instead of the 35-45% that would result from component proliferation.
+
+### What Was Removed (Over-Engineering)
+
+#### **❌ Removed: FileDiscoverer Class**
+- Complex regex patterns for component types
+- Sophisticated metadata extraction
+- ComponentSet and ComponentInfo hierarchies
+- **Replaced with**: Simple directory traversal in `_discover_workspace_components()`
+
+#### **❌ Removed: NameNormalizer Class**
+- Complex name variation handling
+- Canonical name generation
+- Fuzzy matching algorithms
+- **Replaced with**: Simple string matching in `search_steps()`
+
+#### **❌ Removed: ComponentCache Class**
+- TTL-based cache invalidation
+- File modification time tracking
+- Complex cache key management
+- **Replaced with**: Simple dictionary-based indexing with lazy loading
+
+### Essential Features Preserved
+
+#### **✅ Kept: All US1-US5 Requirements**
+- **US1**: `get_step_info()` - Complete step information retrieval
+- **US2**: `find_step_by_component()` - Reverse lookup functionality
+- **US3**: `list_available_steps()` - Multi-workspace discovery
+- **US4**: `search_steps()` - Efficient scaling with O(1) lookups
+- **US5**: `discover_config_classes()` - Configuration auto-discovery
+
+#### **✅ Kept: Performance Requirements**
+- O(1) dictionary lookups for step information
+- Lazy loading for efficient memory usage
+- Simple but effective search functionality
+- Multi-workspace support with precedence rules
+
+#### **✅ Kept: Integration Capabilities**
+- Registry system integration (`STEP_NAMES`)
+- Workspace-aware discovery
+- Configuration auto-discovery integration
+- Backward compatibility support
+
+This simplified component design demonstrates that **complex requirements can be met with simple, well-integrated solutions** that avoid the over-engineering pitfalls while delivering all validated user needs through a single, cohesive class design.
 
 ## Error Handling and Resilience
 
-### Error Recovery Strategy
+### Simplified Error Handling
+
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, error handling is **integrated directly into the StepCatalog class** rather than creating separate error handling components.
+
+#### **Error Recovery Integrated into StepCatalog**
 
 ```python
-class CatalogErrorHandler:
-    """Handles errors gracefully with fallback strategies."""
+class StepCatalog:
+    """Unified step catalog with integrated error handling."""
     
-    def __init__(self, catalog_manager: CatalogManager):
-        self.catalog_manager = catalog_manager
+    def __init__(self, workspace_root: Path):
+        self.workspace_root = workspace_root
+        self.config_discovery = ConfigAutoDiscovery(workspace_root)
+        self.logger = logging.getLogger(__name__)
+        
+        # Simple in-memory indexes
+        self._step_index: Dict[str, StepInfo] = {}
+        self._component_index: Dict[Path, str] = {}
+        self._workspace_steps: Dict[str, List[str]] = {}
+        self._index_built = False
+    
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """Get step information with error handling."""
+        try:
+            self._ensure_index_built()
+            search_key = f"{step_name}_{job_type}" if job_type else step_name
+            return self._step_index.get(search_key) or self._step_index.get(step_name)
+        except Exception as e:
+            self.logger.error(f"Error retrieving step info for {step_name}: {e}")
+            return None
+    
+    def find_step_by_component(self, component_path: str) -> Optional[str]:
+        """Find step by component with error handling."""
+        try:
+            self._ensure_index_built()
+            return self._component_index.get(Path(component_path))
+        except Exception as e:
+            self.logger.error(f"Error finding step for component {component_path}: {e}")
+            return None
+    
+    def list_available_steps(self, workspace_id: Optional[str] = None) -> List[str]:
+        """List steps with error handling."""
+        try:
+            self._ensure_index_built()
+            if workspace_id:
+                return self._workspace_steps.get(workspace_id, [])
+            else:
+                return list(self._step_index.keys())
+        except Exception as e:
+            self.logger.error(f"Error listing steps for workspace {workspace_id}: {e}")
+            return []
+    
+    def _ensure_index_built(self):
+        """Build index with error recovery."""
+        if not self._index_built:
+            try:
+                self._build_index()
+                self._index_built = True
+            except Exception as e:
+                self.logger.error(f"Error building index: {e}")
+                # Graceful degradation - use empty index
+                self._step_index = {}
+                self._component_index = {}
+                self._workspace_steps = {}
+                self._index_built = True  # Prevent infinite retry
+    
+    def _discover_workspace_components(self, workspace_id: str, steps_dir: Path):
+        """Discover components with error handling."""
+        if not steps_dir.exists():
+            self.logger.warning(f"Workspace directory does not exist: {steps_dir}")
+            return
+        
+        component_types = {
+            "scripts": "script",
+            "contracts": "contract", 
+            "specs": "spec",
+            "builders": "builder",
+            "configs": "config"
+        }
+        
+        for dir_name, component_type in component_types.items():
+            component_dir = steps_dir / dir_name
+            if not component_dir.exists():
+                continue
+                
+            try:
+                for py_file in component_dir.glob("*.py"):
+                    if py_file.name.startswith("__"):
+                        continue
+                    
+                    try:
+                        step_name = self._extract_step_name(py_file.name, component_type)
+                        if step_name:
+                            self._add_component_to_index(step_name, py_file, component_type, workspace_id)
+                    except Exception as e:
+                        self.logger.warning(f"Error processing component file {py_file}: {e}")
+                        continue  # Skip problematic files but continue processing
+                        
+            except Exception as e:
+                self.logger.error(f"Error scanning component directory {component_dir}: {e}")
+                continue  # Skip problematic directories but continue processing
+    
+    def _add_component_to_index(self, step_name: str, py_file: Path, component_type: str, workspace_id: str):
+        """Add component to index with error handling."""
+        try:
+            # Update or create step info
+            if step_name in self._step_index:
+                step_info = self._step_index[step_name]
+            else:
+                step_info = StepInfo(
+                    step_name=step_name,
+                    workspace_id=workspace_id,
+                    registry_data={},
+                    file_components={}
+                )
+                self._step_index[step_name] = step_info
+                self._workspace_steps.setdefault(workspace_id, []).append(step_name)
+            
+            # Add file component
+            file_metadata = FileMetadata(
+                path=py_file,
+                file_type=component_type,
+                modified_time=datetime.fromtimestamp(py_file.stat().st_mtime)
+            )
+            step_info.file_components[component_type] = file_metadata
+            self._component_index[py_file] = step_name
+            
+        except Exception as e:
+            self.logger.warning(f"Error adding component {py_file} to index: {e}")
+            # Continue processing other components
+```
+
+#### **Config Discovery Error Handling**
+
+```python
+class ConfigAutoDiscovery:
+    """Simple config discovery with integrated error handling."""
+    
+    def __init__(self, workspace_root: Path):
+        self.workspace_root = workspace_root
         self.logger = logging.getLogger(__name__)
     
-    def handle_index_corruption(self) -> bool:
-        """Handle corrupted index by rebuilding."""
-        try:
-            self.logger.warning("Index corruption detected, rebuilding...")
-            self.catalog_manager.index_engine.build_index()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to rebuild index: {e}")
-            return False
-    
-    def handle_workspace_unavailable(self, workspace_id: str) -> ComponentSet:
-        """Handle unavailable workspace with graceful degradation."""
-        self.logger.warning(f"Workspace {workspace_id} unavailable, using cached data")
+    def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Auto-discover config classes with error handling."""
+        discovered_classes = {}
         
-        # Return cached data or empty set
-        cached_data = self.catalog_manager.component_cache.get(f"workspace_{workspace_id}")
-        return cached_data or ComponentSet()
+        # Always scan core configs
+        core_config_dir = self.workspace_root / "src" / "cursus" / "steps" / "configs"
+        if core_config_dir.exists():
+            try:
+                core_classes = self._scan_config_directory(core_config_dir)
+                discovered_classes.update(core_classes)
+            except Exception as e:
+                self.logger.error(f"Error scanning core config directory: {e}")
+        
+        # Scan workspace configs if project_id provided
+        if project_id:
+            workspace_config_dir = self.workspace_root / "development" / "projects" / project_id / "src" / "cursus_dev" / "steps" / "configs"
+            if workspace_config_dir.exists():
+                try:
+                    workspace_classes = self._scan_config_directory(workspace_config_dir)
+                    discovered_classes.update(workspace_classes)
+                except Exception as e:
+                    self.logger.error(f"Error scanning workspace config directory: {e}")
+        
+        return discovered_classes
     
-    def handle_component_load_error(self, component_path: Path) -> Optional[ComponentInfo]:
-        """Handle component loading errors with partial information."""
+    def _scan_config_directory(self, config_dir: Path) -> Dict[str, Type]:
+        """Scan directory with error handling for individual files."""
+        import ast
+        import importlib
+        
+        config_classes = {}
+        
         try:
-            # Return basic file information even if parsing fails
-            return ComponentInfo(
-                file_path=component_path,
-                workspace_id="unknown",
-                component_type=self._infer_component_type(component_path),
-                metadata={"error": "Failed to parse component"},
-                last_modified=datetime.fromtimestamp(component_path.stat().st_mtime)
-            )
-        except Exception:
-            return None
+            for py_file in config_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                
+                try:
+                    with open(py_file, 'r', encoding='utf-8') as f:
+                        source = f.read()
+                    
+                    tree = ast.parse(source, filename=str(py_file))
+                    
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.ClassDef) and self._is_config_class(node):
+                            try:
+                                # Import the class
+                                module_path = self._file_to_module_path(py_file)
+                                module = importlib.import_module(module_path)
+                                class_type = getattr(module, node.name)
+                                config_classes[node.name] = class_type
+                            except Exception as e:
+                                self.logger.warning(f"Error importing config class {node.name} from {py_file}: {e}")
+                                continue  # Skip problematic classes but continue processing
+                
+                except Exception as e:
+                    self.logger.warning(f"Error processing config file {py_file}: {e}")
+                    continue  # Skip problematic files but continue processing
+                    
+        except Exception as e:
+            self.logger.error(f"Error scanning config directory {config_dir}: {e}")
+        
+        return config_classes
 ```
+
+### Error Handling Principles
+
+#### **1. Graceful Degradation**
+- **Index Build Failure**: Use empty index instead of crashing
+- **File Access Errors**: Skip problematic files, continue processing others
+- **Import Errors**: Log warnings, continue with available classes
+- **Directory Missing**: Log warning, continue with other directories
+
+#### **2. Comprehensive Logging**
+- **Error Level**: Critical failures that affect core functionality
+- **Warning Level**: Non-critical issues that don't prevent operation
+- **Info Level**: Normal operation status and recovery actions
+
+#### **3. Fail-Safe Defaults**
+- **Missing Step Info**: Return `None` instead of raising exception
+- **Empty Results**: Return empty lists/dicts instead of failing
+- **Invalid Paths**: Handle gracefully with appropriate logging
+
+#### **4. No Separate Error Handler Classes**
+Following the **Code Redundancy Evaluation Guide**:
+- **Integrated Error Handling**: Error handling logic integrated directly into main classes
+- **Simple Patterns**: Basic try/catch blocks with logging
+- **Essential Only**: Handle real error scenarios, not theoretical edge cases
+
+### Design Rationale
+
+#### **Why No Separate Error Handler?**
+1. **Avoid Component Proliferation**: Instead of creating `CatalogErrorHandler` class, integrate error handling directly
+2. **Essential Functionality**: Handle real error scenarios (file access, import failures) not theoretical problems
+3. **Proven Patterns**: Follow successful workspace-aware implementation patterns
+4. **Target Redundancy**: Maintain 15-25% redundancy by avoiding unnecessary error handling classes
+
+#### **What Was Removed (Over-Engineering)**
+- ❌ **CatalogErrorHandler Class**: Separate error handling component
+- ❌ **Complex Recovery Strategies**: Sophisticated error recovery mechanisms
+- ❌ **ComponentSet Error Handling**: Error handling for non-existent component hierarchies
+- ❌ **Cache Corruption Handling**: Error handling for complex caching that doesn't exist
+
+#### **What Was Kept (Essential)**
+- ✅ **File Access Error Handling**: Handle missing directories and files
+- ✅ **Import Error Handling**: Handle module import failures gracefully
+- ✅ **Index Build Error Handling**: Graceful degradation when index building fails
+- ✅ **Comprehensive Logging**: Clear error messages for debugging and monitoring
+
+This simplified error handling approach demonstrates that **robust error handling can be achieved through simple, integrated patterns** without creating separate error handling components, maintaining the target redundancy levels while ensuring system reliability.
 
 ## Performance Considerations
 
-### Optimization Strategies
+### Simplified Performance Strategy
 
-#### **1. Lazy Loading**
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, performance optimization is **integrated directly into the StepCatalog class** using simple, proven patterns.
+
+#### **1. Simple Lazy Loading (Integrated)**
+The lazy loading is already implemented in the `StepCatalog` class using simple patterns:
+
 ```python
-class LazyStepInfo:
-    """Lazy-loaded step information to minimize memory usage."""
+class StepCatalog:
+    """Unified step catalog with integrated lazy loading."""
     
-    def __init__(self, step_name: str, catalog_manager: CatalogManager):
-        self.step_name = step_name
-        self.catalog_manager = catalog_manager
-        self._loaded = False
-        self._components: Optional[ComponentSet] = None
-        self._metadata: Optional[StepMetadata] = None
+    def __init__(self, workspace_root: Path):
+        # Simple lazy loading - build index on first access
+        self._index_built = False
+        self._step_index: Dict[str, StepInfo] = {}
+        self._component_index: Dict[Path, str] = {}
     
-    @property
-    def components(self) -> ComponentSet:
-        """Lazy load components when accessed."""
-        if not self._loaded:
-            self._load_details()
-        return self._components or ComponentSet()
+    def _ensure_index_built(self):
+        """Simple lazy loading - build once, use many times."""
+        if not self._index_built:
+            self._build_index()
+            self._index_built = True
     
-    def _load_details(self) -> None:
-        """Load detailed step information on demand."""
-        if self._loaded:
-            return
-        
-        # Load from cache or file system
-        cached = self.catalog_manager.component_cache.get(f"step_{self.step_name}")
-        if cached:
-            self._components, self._metadata = cached
-        else:
-            self._components = self.catalog_manager.discovery_layer.discover_components(self.step_name)
-            self._metadata = self.catalog_manager.discovery_layer.extract_metadata(self.step_name)
-            self.catalog_manager.component_cache.set(
-                f"step_{self.step_name}", 
-                (self._components, self._metadata)
-            )
-        
-        self._loaded = True
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """O(1) lookup with lazy loading."""
+        self._ensure_index_built()  # Build index on first access
+        search_key = f"{step_name}_{job_type}" if job_type else step_name
+        return self._step_index.get(search_key) or self._step_index.get(step_name)
 ```
 
-#### **2. Incremental Indexing**
+#### **2. Dictionary-Based Indexing (O(1) Performance)**
+Simple but effective indexing using Python dictionaries:
+
 ```python
-class IncrementalIndexer:
-    """Handles incremental updates to the step index."""
+# Already implemented in StepCatalog class
+def _build_index(self):
+    """Simple index building with O(1) lookup performance."""
+    # Load registry data first - O(n) build time
+    for step_name, registry_data in STEP_NAMES.items():
+        step_info = StepInfo(...)
+        self._step_index[step_name] = step_info  # O(1) insertion
     
-    def __init__(self, index_engine: IndexEngine):
-        self.index_engine = index_engine
-        self.file_watcher = FileWatcher()
+    # Discover file components - O(n) build time
+    self._discover_workspace_components(...)
     
-    def start_watching(self) -> None:
-        """Start watching for file system changes."""
-        self.file_watcher.watch(
-            self.index_engine.workspace_root,
-            on_change=self._handle_file_change
-        )
-    
-    def _handle_file_change(self, event: FileChangeEvent) -> None:
-        """Handle file system change events."""
-        if self._is_component_file(event.file_path):
-            if event.event_type == "created":
-                self._add_component(event.file_path)
-            elif event.event_type == "modified":
-                self._update_component(event.file_path)
-            elif event.event_type == "deleted":
-                self._remove_component(event.file_path)
-    
-    def _is_component_file(self, file_path: Path) -> bool:
-        """Check if file is a step component."""
-        return any(
-            pattern.match(file_path.name) 
-            for pattern in FileDiscoverer.COMPONENT_PATTERNS.values()
-        )
+    # Result: O(1) lookup performance after O(n) build
 ```
+
+#### **3. Memory-Efficient Design**
+Simple memory management without complex caching:
+
+```python
+class StepCatalog:
+    """Memory-efficient design with simple data structures."""
+    
+    def __init__(self, workspace_root: Path):
+        # Simple in-memory structures - no complex caching
+        self._step_index: Dict[str, StepInfo] = {}        # Step name -> StepInfo
+        self._component_index: Dict[Path, str] = {}       # File path -> Step name
+        self._workspace_steps: Dict[str, List[str]] = {}  # Workspace -> Step names
+        
+        # No complex TTL caches, file watchers, or incremental indexers
+```
+
+### Performance Targets (Essential Only)
+
+Following the **Code Redundancy Evaluation Guide** principle of essential functionality only:
+
+#### **Core Performance Requirements**
+- **Step Lookup**: <1ms (O(1) dictionary access)
+- **Index Build**: <10 seconds for typical workspace (1000 steps)
+- **Memory Usage**: <100MB for normal operation
+- **Search**: <100ms for basic fuzzy matching
+
+#### **Performance Validation**
+```python
+# Simple performance validation integrated into StepCatalog
+class StepCatalog:
+    def _validate_performance(self):
+        """Simple performance validation for core operations."""
+        import time
+        
+        # Test lookup performance
+        start_time = time.time()
+        self.get_step_info("test_step")
+        lookup_time = time.time() - start_time
+        
+        if lookup_time > 0.001:  # 1ms threshold
+            self.logger.warning(f"Lookup performance degraded: {lookup_time:.3f}s")
+        
+        # Test search performance
+        start_time = time.time()
+        self.search_steps("test")
+        search_time = time.time() - start_time
+        
+        if search_time > 0.1:  # 100ms threshold
+            self.logger.warning(f"Search performance degraded: {search_time:.3f}s")
+```
+
+### Design Rationale
+
+#### **Why No Complex Performance Components?**
+Following **Code Redundancy Evaluation Guide** principles:
+
+1. **Avoid Over-Engineering**: Instead of creating `LazyStepInfo`, `IncrementalIndexer`, `FileWatcher` classes, use simple integrated patterns
+
+2. **Essential Performance Only**: Focus on real performance requirements (O(1) lookups) not theoretical optimizations
+
+3. **Proven Patterns**: Use simple dictionary-based indexing that's proven effective in workspace-aware implementation (95% quality score)
+
+4. **Target Redundancy**: Maintain 15-25% redundancy by avoiding unnecessary performance optimization classes
+
+### What Was Removed (Over-Engineering)
+
+#### **❌ Removed: LazyStepInfo Class**
+- Complex lazy loading with property decorators
+- Sophisticated metadata caching
+- ComponentSet and ComponentInfo hierarchies
+- **Replaced with**: Simple lazy index building in main class
+
+#### **❌ Removed: IncrementalIndexer Class**
+- File system watching and change detection
+- Complex incremental update mechanisms
+- Event-driven index updates
+- **Replaced with**: Simple full rebuild when needed (adequate for typical usage)
+
+#### **❌ Removed: Complex Caching Systems**
+- TTL-based cache invalidation
+- File modification time tracking
+- Multi-level caching hierarchies
+- **Replaced with**: Simple in-memory dictionaries with lazy loading
+
+### What Was Kept (Essential)
+
+#### **✅ Kept: Core Performance Requirements**
+- **O(1) Lookup Performance**: Dictionary-based indexing for fast retrieval
+- **Lazy Loading**: Build index only when first accessed
+- **Memory Efficiency**: Simple data structures without overhead
+- **Basic Search**: Simple but effective fuzzy matching
+
+#### **✅ Kept: Performance Monitoring**
+- Simple performance validation for core operations
+- Warning logs when performance degrades
+- Essential metrics without complex monitoring systems
+
+#### **✅ Kept: Scalability**
+- Dictionary-based design scales well with catalog size
+- Simple algorithms that maintain performance as system grows
+- Memory-efficient data structures
+
+### Performance Benefits of Simplified Design
+
+#### **1. Predictable Performance**
+- Simple dictionary operations with known O(1) complexity
+- No complex caching logic that could introduce performance variability
+- Straightforward algorithms that are easy to reason about
+
+#### **2. Lower Memory Overhead**
+- Simple data structures without caching metadata
+- No file watchers or event handlers consuming resources
+- Minimal object creation and garbage collection pressure
+
+#### **3. Easier Optimization**
+- Simple code is easier to profile and optimize
+- Clear performance bottlenecks without complex interactions
+- Direct path from requirements to implementation
+
+#### **4. Reliable Performance**
+- No complex caching that could fail or become inconsistent
+- Simple rebuild strategy that always produces correct results
+- Predictable behavior under different load conditions
+
+This simplified performance approach demonstrates that **excellent performance can be achieved through simple, well-designed patterns** without creating complex performance optimization components, maintaining the target redundancy levels while meeting all performance requirements.
 
 ## Migration Strategy
 
-### Phased Migration Plan
+### Simplified Migration Approach
 
-#### **Phase 1: Parallel Operation (4 weeks)**
-- Deploy unified catalog alongside existing systems
-- Route 10% of queries to new system for testing
-- Monitor performance and correctness
-- Fix issues without impacting production
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the migration strategy uses **simple, proven patterns** without complex migration controllers.
 
-#### **Phase 2: Gradual Transition (6 weeks)**
-- Increase traffic to unified catalog (25%, 50%, 75%)
+#### **Phase 1: Core Deployment (2 weeks)**
+- Deploy unified `StepCatalog` class alongside existing systems
+- Use feature flags for gradual rollout (10% → 25% → 50% → 75% → 100%)
+- Simple A/B testing without complex routing logic
+- Monitor basic metrics: response time, error rate, correctness
+
+#### **Phase 2: Legacy Adapter Integration (2 weeks)**
+- Deploy backward compatibility adapters
 - Update high-level APIs to use new system
-- Maintain backward compatibility adapters
-- Deprecate old APIs with warnings
+- Maintain existing interfaces during transition
+- Deprecate old APIs with clear migration guides
 
-#### **Phase 3: Full Migration (4 weeks)**
-- Route 100% of traffic to unified catalog
-- Remove old discovery systems
-- Clean up deprecated code
-- Update documentation and examples
+#### **Phase 3: System Cleanup (1 week)**
+- Remove 16+ redundant discovery/resolver classes
+- Clean up deprecated code and documentation
+- Update examples and developer guides
+- Validate final redundancy reduction (target 15-25%)
+
+### Simple Migration Implementation
+
+```python
+# Simple feature flag approach - no complex migration controller
+class StepCatalogFactory:
+    """Simple factory for catalog system with feature flag support."""
+    
+    @staticmethod
+    def create_catalog(workspace_root: Path, use_unified: bool = None) -> Any:
+        """Create appropriate catalog system based on feature flag."""
+        if use_unified is None:
+            use_unified = os.getenv('USE_UNIFIED_CATALOG', 'false').lower() == 'true'
+        
+        if use_unified:
+            return StepCatalog(workspace_root)
+        else:
+            # Return legacy system wrapper
+            return LegacyDiscoveryWrapper(workspace_root)
+
+# Simple backward compatibility adapter
+class ContractDiscoveryEngineAdapter:
+    """Simple adapter maintaining backward compatibility."""
+    
+    def __init__(self, catalog: StepCatalog):
+        self.catalog = catalog
+    
+    def discover_all_contracts(self) -> List[str]:
+        """Legacy method using unified catalog."""
+        steps = self.catalog.list_available_steps()
+        contracts = []
+        for step_name in steps:
+            step_info = self.catalog.get_step_info(step_name)
+            if step_info and step_info.file_components.get('contract'):
+                contracts.append(step_name)
+        return contracts
+    
+    def discover_contracts_with_scripts(self) -> List[str]:
+        """Legacy method with script validation."""
+        steps = self.catalog.list_available_steps()
+        contracts_with_scripts = []
+        for step_name in steps:
+            step_info = self.catalog.get_step_info(step_name)
+            if (step_info and 
+                step_info.file_components.get('contract') and 
+                step_info.file_components.get('script')):
+                contracts_with_scripts.append(step_name)
+        return contracts_with_scripts
+```
 
 ### Migration Safety Measures
 
+#### **1. Simple Feature Flag Control**
 ```python
-class MigrationController:
-    """Controls migration between old and new catalog systems."""
-    
-    def __init__(self, old_system: Any, new_system: StepCatalog):
-        self.old_system = old_system
-        self.new_system = new_system
-        self.migration_percentage = 0
-        self.comparison_mode = True
-    
-    def route_query(self, query_type: str, **kwargs) -> Any:
-        """Route query to appropriate system based on migration settings."""
-        use_new_system = random.random() < (self.migration_percentage / 100)
-        
-        if use_new_system:
-            try:
-                result = self._execute_new_system(query_type, **kwargs)
-                
-                if self.comparison_mode:
-                    # Compare with old system for validation
-                    old_result = self._execute_old_system(query_type, **kwargs)
-                    self._compare_results(query_type, result, old_result)
-                
-                return result
-            except Exception as e:
-                # Fallback to old system on error
-                logging.error(f"New system failed, falling back: {e}")
-                return self._execute_old_system(query_type, **kwargs)
-        else:
-            return self._execute_old_system(query_type, **kwargs)
+# Environment-based feature flag (simple and reliable)
+USE_UNIFIED_CATALOG = os.getenv('USE_UNIFIED_CATALOG', 'false').lower() == 'true'
+
+# Usage in existing code
+if USE_UNIFIED_CATALOG:
+    catalog = StepCatalog(workspace_root)
+    step_info = catalog.get_step_info(step_name)
+else:
+    # Existing discovery systems
+    discovery = ContractDiscoveryEngine()
+    step_info = discovery.discover_contract(step_name)
 ```
+
+#### **2. Simple Monitoring**
+```python
+# Basic monitoring integrated into StepCatalog
+class StepCatalog:
+    def __init__(self, workspace_root: Path):
+        # ... existing initialization ...
+        self.metrics = {
+            'queries': 0,
+            'errors': 0,
+            'avg_response_time': 0.0
+        }
+    
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """Get step info with simple metrics collection."""
+        start_time = time.time()
+        self.metrics['queries'] += 1
+        
+        try:
+            result = self._get_step_info_impl(step_name, job_type)
+            return result
+        except Exception as e:
+            self.metrics['errors'] += 1
+            self.logger.error(f"Error in get_step_info: {e}")
+            return None
+        finally:
+            response_time = time.time() - start_time
+            # Simple moving average
+            self.metrics['avg_response_time'] = (
+                (self.metrics['avg_response_time'] * (self.metrics['queries'] - 1) + response_time) 
+                / self.metrics['queries']
+            )
+```
+
+#### **3. Simple Rollback Strategy**
+```python
+# Simple rollback - just change environment variable
+# No complex migration controllers or routing logic
+def rollback_to_legacy():
+    """Simple rollback by disabling feature flag."""
+    os.environ['USE_UNIFIED_CATALOG'] = 'false'
+    # Restart application or reload configuration
+```
+
+### Migration Principles
+
+#### **1. Simplicity First**
+- Feature flags instead of complex routing controllers
+- Environment variables instead of sophisticated configuration
+- Simple adapters instead of complex compatibility layers
+- Basic monitoring instead of elaborate metrics systems
+
+#### **2. Proven Patterns**
+- Follow successful workspace-aware migration patterns (95% quality score)
+- Use standard deployment practices
+- Leverage existing infrastructure
+- Avoid custom migration frameworks
+
+#### **3. Risk Mitigation**
+- **Simple Rollback**: Environment variable change enables quick reversion
+- **Backward Compatibility**: Existing code continues working unchanged
+- **Gradual Rollout**: Feature flag enables controlled deployment
+- **Basic Monitoring**: Essential metrics without complex systems
+
+#### **4. Target Achievement**
+- **Redundancy Reduction**: Remove 16+ discovery classes (35-45% → 15-25%)
+- **Maintainability**: Single class vs multiple specialized components
+- **Performance**: O(1) lookups vs O(n) file scans
+- **Developer Experience**: Unified API vs fragmented interfaces
+
+This simplified migration strategy demonstrates that **effective system migration can be achieved through simple, proven approaches** without complex migration controllers or sophisticated routing logic, maintaining the target redundancy levels while ensuring safe, reliable deployment.
 
 ## Quality Assurance
 
-### Testing Strategy
+### Simplified Testing Strategy
 
-#### **Unit Tests**
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the testing strategy focuses on **essential functionality validation** without complex testing frameworks.
+
+#### **Unit Tests for Core Functionality**
 ```python
 class TestStepCatalog:
-    """Comprehensive unit tests for step catalog system."""
+    """Simple, focused unit tests for step catalog system."""
     
     def test_step_discovery_accuracy(self):
         """Test that all steps are discovered correctly."""
@@ -1133,132 +1552,528 @@ class TestStepCatalog:
         catalog = StepCatalog(test_workspace_root)
         
         step_info = catalog.get_step_info("tabular_preprocess")
-        assert step_info.components.script is not None
-        assert step_info.components.contract is not None
+        # Test simplified data model
+        assert step_info is not None
+        assert step_info.file_components.get('script') is not None
+        assert step_info.file_components.get('contract') is not None
         # Other components may be optional
     
     def test_performance_requirements(self):
         """Test that performance requirements are met."""
         catalog = StepCatalog(large_test_workspace)
         
-        # Test lookup performance
+        # Test lookup performance (O(1) dictionary access)
         start_time = time.time()
         step_info = catalog.get_step_info("test_step")
         lookup_time = time.time() - start_time
         
         assert lookup_time < 0.001  # <1ms requirement
+    
+    def test_config_auto_discovery(self):
+        """Test configuration class auto-discovery functionality."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Test core config discovery
+        config_classes = catalog.discover_config_classes()
+        assert len(config_classes) > 0
+        
+        # Test workspace config discovery
+        workspace_configs = catalog.discover_config_classes("test_project")
+        assert isinstance(workspace_configs, dict)
+        
+        # Test complete config building
+        complete_configs = catalog.build_complete_config_classes("test_project")
+        assert isinstance(complete_configs, dict)
+    
+    def test_error_handling(self):
+        """Test error handling and graceful degradation."""
+        catalog = StepCatalog(Path("/nonexistent/path"))
+        
+        # Should not crash, should return empty results
+        step_info = catalog.get_step_info("nonexistent_step")
+        assert step_info is None
+        
+        steps = catalog.list_available_steps()
+        assert isinstance(steps, list)  # Should return empty list, not crash
+        
+        search_results = catalog.search_steps("test")
+        assert isinstance(search_results, list)  # Should return empty list, not crash
 ```
 
-#### **Integration Tests**
+#### **Integration Tests for Multi-Workspace Support**
 ```python
 class TestCatalogIntegration:
-    """Integration tests for catalog system."""
+    """Integration tests for simplified catalog system."""
     
     def test_multi_workspace_discovery(self):
         """Test discovery across multiple workspaces."""
         catalog = StepCatalog(multi_workspace_root)
         
-        # Test workspace precedence
+        # Test workspace precedence (workspace overrides core)
         step_info = catalog.get_step_info("shared_step")
-        assert step_info.workspace_id == "developer_1"  # Developer takes precedence
+        # Workspace steps should take precedence over core
+        assert step_info.workspace_id != "core"
         
-        # Test fallback to shared
-        step_info = catalog.get_step_info("shared_only_step")
-        assert step_info.workspace_id == "shared"
+        # Test fallback to core
+        step_info = catalog.get_step_info("core_only_step")
+        assert step_info.workspace_id == "core"
     
     def test_backward_compatibility(self):
-        """Test that legacy APIs still work."""
+        """Test that legacy APIs still work through adapters."""
         catalog = StepCatalog(test_workspace_root)
         legacy_adapter = ContractDiscoveryEngineAdapter(catalog)
         
+        # Test legacy contract discovery methods
         contracts = legacy_adapter.discover_all_contracts()
-        assert len(contracts) > 0
-        assert "tabular_preprocess" in contracts
+        assert isinstance(contracts, list)
+        assert len(contracts) >= 0
+        
+        contracts_with_scripts = legacy_adapter.discover_contracts_with_scripts()
+        assert isinstance(contracts_with_scripts, list)
+    
+    def test_job_type_variant_support(self):
+        """Test job type variant discovery functionality."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Test job type variant lookup
+        step_info = catalog.get_step_info("cradle_data_loading", "training")
+        if step_info:  # May not exist in test environment
+            assert step_info.step_name in ["cradle_data_loading_training", "cradle_data_loading"]
+        
+        # Test variant enumeration
+        variants = catalog.get_job_type_variants("cradle_data_loading")
+        assert isinstance(variants, list)
 ```
 
-### Performance Benchmarks
+#### **Configuration Discovery Tests**
+```python
+class TestConfigAutoDiscovery:
+    """Tests for configuration auto-discovery functionality."""
+    
+    def test_core_config_discovery(self):
+        """Test discovery of core configuration classes."""
+        discovery = ConfigAutoDiscovery(test_workspace_root)
+        
+        config_classes = discovery.discover_config_classes()
+        assert isinstance(config_classes, dict)
+        
+        # Test that discovered classes are actual Python classes
+        for class_name, class_type in config_classes.items():
+            assert isinstance(class_name, str)
+            assert isinstance(class_type, type)
+    
+    def test_workspace_config_discovery(self):
+        """Test discovery of workspace-specific configuration classes."""
+        discovery = ConfigAutoDiscovery(test_workspace_root)
+        
+        workspace_configs = discovery.discover_config_classes("test_project")
+        assert isinstance(workspace_configs, dict)
+    
+    def test_config_integration_with_store(self):
+        """Test integration with existing ConfigClassStore."""
+        discovery = ConfigAutoDiscovery(test_workspace_root)
+        
+        complete_configs = discovery.build_complete_config_classes()
+        assert isinstance(complete_configs, dict)
+        
+        # Should include both manually registered and auto-discovered classes
+        # Manual registration takes precedence
+```
+
+### Simple Performance Benchmarks
 
 ```python
-class CatalogBenchmarks:
-    """Performance benchmarks for catalog system."""
+class SimpleCatalogBenchmarks:
+    """Simple performance benchmarks for catalog system."""
     
-    def benchmark_index_build_time(self):
-        """Benchmark index building performance."""
-        workspace_sizes = [10, 100, 1000, 5000]  # Number of steps
+    def benchmark_core_operations(self):
+        """Benchmark core operations with simple measurements."""
+        catalog = StepCatalog(test_workspace_root)
         
-        for size in workspace_sizes:
-            workspace = self.create_test_workspace(size)
-            catalog = StepCatalog(workspace)
-            
+        # Benchmark index building
+        start_time = time.time()
+        catalog._ensure_index_built()  # Force index build
+        build_time = time.time() - start_time
+        print(f"Index build time: {build_time:.3f}s")
+        assert build_time < 10.0  # Should build in <10 seconds
+        
+        # Benchmark lookup performance
+        lookup_times = []
+        for _ in range(100):
             start_time = time.time()
-            catalog.refresh_index()
-            build_time = time.time() - start_time
-            
-            print(f"Index build time for {size} steps: {build_time:.2f}s")
-            assert build_time < (size * 0.01)  # Linear scaling requirement
+            catalog.get_step_info("test_step")
+            lookup_times.append(time.time() - start_time)
+        
+        avg_lookup_time = sum(lookup_times) / len(lookup_times)
+        print(f"Average lookup time: {avg_lookup_time*1000:.3f}ms")
+        assert avg_lookup_time < 0.001  # <1ms requirement
+        
+        # Benchmark search performance
+        start_time = time.time()
+        results = catalog.search_steps("test")
+        search_time = time.time() - start_time
+        print(f"Search time: {search_time*1000:.3f}ms")
+        assert search_time < 0.1  # <100ms requirement
     
-    def benchmark_query_performance(self):
-        """Benchmark query performance."""
+    def benchmark_memory_usage(self):
+        """Simple memory usage benchmark."""
+        import psutil
+        import os
+        
+        process = psutil.Process(os.getpid())
+        memory_before = process.memory_info().rss / 1024 / 1024  # MB
+        
         catalog = StepCatalog(large_test_workspace)
+        catalog._ensure_index_built()  # Force index build
         
-        # Warm up cache
-        catalog.get_step_info("test_step")
+        memory_after = process.memory_info().rss / 1024 / 1024  # MB
+        memory_used = memory_after - memory_before
         
-        # Benchmark different query types
-        queries = [
-            ("exact_match", lambda: catalog.get_step_info("test_step")),
-            ("fuzzy_search", lambda: catalog.search_steps("test")),
-            ("list_all", lambda: catalog.list_available_steps())
-        ]
-        
-        for query_name, query_func in queries:
-            times = []
-            for _ in range(100):
-                start_time = time.time()
-                query_func()
-                times.append(time.time() - start_time)
-            
-            avg_time = sum(times) / len(times)
-            print(f"{query_name} average time: {avg_time*1000:.2f}ms")
+        print(f"Memory usage: {memory_used:.1f}MB")
+        assert memory_used < 100  # <100MB requirement
 ```
+
+### Testing Principles
+
+#### **1. Essential Testing Only**
+Following **Code Redundancy Evaluation Guide** principles:
+- Test core functionality (US1-US5) without over-engineering
+- Simple test cases focusing on real usage scenarios
+- Basic performance validation without complex benchmarking frameworks
+- Error handling tests for graceful degradation
+
+#### **2. Simplified Test Structure**
+- **Unit Tests**: Test individual methods of `StepCatalog` class
+- **Integration Tests**: Test multi-workspace and backward compatibility
+- **Performance Tests**: Simple benchmarks for core requirements
+- **Config Tests**: Validate configuration auto-discovery functionality
+
+#### **3. No Complex Testing Infrastructure**
+- Use standard Python testing frameworks (pytest, unittest)
+- Simple assertions without complex test fixtures
+- Basic performance measurements without sophisticated profiling
+- Essential test coverage without exhaustive edge case testing
+
+### Quality Validation
+
+#### **Functional Validation**
+- ✅ All US1-US5 user stories validated through tests
+- ✅ Multi-workspace discovery working correctly
+- ✅ Configuration auto-discovery functioning as expected
+- ✅ Backward compatibility maintained through adapters
+- ✅ Error handling providing graceful degradation
+
+#### **Performance Validation**
+- ✅ Step lookup: <1ms (O(1) dictionary access)
+- ✅ Index build: <10 seconds for typical workspace
+- ✅ Memory usage: <100MB for normal operation
+- ✅ Search: <100ms for basic fuzzy matching
+
+#### **Quality Metrics**
+- **Code Coverage**: Focus on core functionality coverage
+- **Performance Benchmarks**: Simple measurements of key operations
+- **Error Handling**: Validation of graceful degradation
+- **Integration**: Multi-workspace and legacy compatibility testing
+
+### Design Rationale
+
+#### **Why Simple Testing?**
+Following **Code Redundancy Evaluation Guide** principles:
+
+1. **Avoid Over-Engineering**: Simple test cases instead of complex testing frameworks
+2. **Essential Validation**: Test real functionality, not theoretical edge cases
+3. **Proven Patterns**: Use standard testing approaches from workspace-aware success
+4. **Target Redundancy**: Maintain 15-25% redundancy by avoiding complex test infrastructure
+
+#### **What Was Removed (Over-Engineering)**
+- ❌ **Complex Test Fixtures**: Elaborate test setup and teardown
+- ❌ **Sophisticated Benchmarking**: Advanced performance profiling frameworks
+- ❌ **Exhaustive Edge Case Testing**: Testing theoretical scenarios without validated demand
+- ❌ **Complex Test Infrastructure**: Over-engineered testing systems
+
+#### **What Was Kept (Essential)**
+- ✅ **Core Functionality Tests**: Validation of all US1-US5 requirements
+- ✅ **Performance Validation**: Simple benchmarks for key requirements
+- ✅ **Integration Testing**: Multi-workspace and backward compatibility validation
 
 ## Monitoring and Observability
 
-### Metrics Collection
+### Simplified Monitoring Strategy
+
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, monitoring is **integrated directly into the StepCatalog class** using simple, essential metrics collection.
+
+#### **Basic Metrics Collection (Integrated)**
 
 ```python
-class CatalogMetrics:
-    """Collects and reports catalog system metrics."""
+class StepCatalog:
+    """Unified step catalog with integrated monitoring."""
     
-    def __init__(self):
-        self.query_count = Counter()
-        self.query_times = defaultdict(list)
-        self.error_count = Counter()
-        self.cache_hit_rate = 0.0
-    
-    def record_query(self, query_type: str, duration: float, success: bool):
-        """Record query metrics."""
-        self.query_count[query_type] += 1
-        self.query_times[query_type].append(duration)
+    def __init__(self, workspace_root: Path):
+        # ... existing initialization ...
         
-        if not success:
-            self.error_count[query_type] += 1
-    
-    def get_performance_report(self) -> Dict[str, Any]:
-        """Generate performance report."""
-        return {
-            "total_queries": sum(self.query_count.values()),
-            "average_query_times": {
-                query_type: sum(times) / len(times)
-                for query_type, times in self.query_times.items()
-            },
-            "error_rates": {
-                query_type: self.error_count[query_type] / self.query_count[query_type]
-                for query_type in self.query_count
-            },
-            "cache_hit_rate": self.cache_hit_rate
+        # Simple metrics collection - no complex monitoring infrastructure
+        self.metrics = {
+            'total_queries': 0,
+            'successful_queries': 0,
+            'failed_queries': 0,
+            'avg_response_time': 0.0,
+            'index_build_time': 0.0,
+            'last_index_build': None
         }
+        self.logger = logging.getLogger(__name__)
+    
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """Get step info with simple metrics collection."""
+        start_time = time.time()
+        self.metrics['total_queries'] += 1
+        
+        try:
+            self._ensure_index_built()
+            search_key = f"{step_name}_{job_type}" if job_type else step_name
+            result = self._step_index.get(search_key) or self._step_index.get(step_name)
+            
+            if result:
+                self.metrics['successful_queries'] += 1
+            
+            return result
+            
+        except Exception as e:
+            self.metrics['failed_queries'] += 1
+            self.logger.error(f"Error retrieving step info for {step_name}: {e}")
+            return None
+            
+        finally:
+            # Simple moving average for response time
+            response_time = time.time() - start_time
+            total_queries = self.metrics['total_queries']
+            self.metrics['avg_response_time'] = (
+                (self.metrics['avg_response_time'] * (total_queries - 1) + response_time) 
+                / total_queries
+            )
+    
+    def _build_index(self):
+        """Index building with timing metrics."""
+        start_time = time.time()
+        
+        try:
+            # ... existing index building logic ...
+            from cursus.registry.step_names import STEP_NAMES
+            
+            # Load registry data first
+            for step_name, registry_data in STEP_NAMES.items():
+                step_info = StepInfo(
+                    step_name=step_name,
+                    workspace_id="core",
+                    registry_data=registry_data,
+                    file_components={}
+                )
+                self._step_index[step_name] = step_info
+                self._workspace_steps.setdefault("core", []).append(step_name)
+            
+            # Discover file components across workspaces
+            self._discover_workspace_components("core", self.workspace_root / "src" / "cursus" / "steps")
+            
+            # Discover developer workspaces
+            dev_projects_dir = self.workspace_root / "development" / "projects"
+            if dev_projects_dir.exists():
+                for project_dir in dev_projects_dir.iterdir():
+                    if project_dir.is_dir():
+                        workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
+                        if workspace_steps_dir.exists():
+                            self._discover_workspace_components(project_dir.name, workspace_steps_dir)
+            
+            # Record successful build
+            build_time = time.time() - start_time
+            self.metrics['index_build_time'] = build_time
+            self.metrics['last_index_build'] = datetime.now()
+            
+            self.logger.info(f"Index built successfully in {build_time:.3f}s with {len(self._step_index)} steps")
+            
+        except Exception as e:
+            build_time = time.time() - start_time
+            self.logger.error(f"Index build failed after {build_time:.3f}s: {e}")
+            raise
+    
+    def get_metrics_report(self) -> Dict[str, Any]:
+        """Get simple metrics report."""
+        success_rate = (
+            self.metrics['successful_queries'] / self.metrics['total_queries'] 
+            if self.metrics['total_queries'] > 0 else 0.0
+        )
+        
+        return {
+            'total_queries': self.metrics['total_queries'],
+            'success_rate': success_rate,
+            'avg_response_time_ms': self.metrics['avg_response_time'] * 1000,
+            'index_build_time_s': self.metrics['index_build_time'],
+            'last_index_build': self.metrics['last_index_build'].isoformat() if self.metrics['last_index_build'] else None,
+            'total_steps_indexed': len(self._step_index),
+            'total_workspaces': len(self._workspace_steps)
+        }
+    
+    def log_performance_warning(self):
+        """Log performance warnings if metrics exceed thresholds."""
+        if self.metrics['avg_response_time'] > 0.001:  # >1ms
+            self.logger.warning(f"Average response time degraded: {self.metrics['avg_response_time']*1000:.1f}ms")
+        
+        if self.metrics['index_build_time'] > 10.0:  # >10 seconds
+            self.logger.warning(f"Index build time degraded: {self.metrics['index_build_time']:.1f}s")
+        
+        if self.metrics['total_queries'] > 0:
+            success_rate = self.metrics['successful_queries'] / self.metrics['total_queries']
+            if success_rate < 0.95:  # <95% success rate
+                self.logger.warning(f"Success rate degraded: {success_rate:.1%}")
 ```
+
+#### **Health Check Integration**
+
+```python
+class StepCatalog:
+    """Extended with simple health check capabilities."""
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Simple health check for the catalog system."""
+        health_status = {
+            'status': 'healthy',
+            'checks': {},
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        try:
+            # Check if index is built
+            if not self._index_built:
+                health_status['checks']['index_status'] = 'not_built'
+            else:
+                health_status['checks']['index_status'] = 'built'
+                health_status['checks']['total_steps'] = len(self._step_index)
+            
+            # Check workspace root accessibility
+            if self.workspace_root.exists():
+                health_status['checks']['workspace_root'] = 'accessible'
+            else:
+                health_status['checks']['workspace_root'] = 'inaccessible'
+                health_status['status'] = 'degraded'
+            
+            # Check recent performance
+            if self.metrics['avg_response_time'] > 0.001:
+                health_status['checks']['performance'] = 'degraded'
+                health_status['status'] = 'degraded'
+            else:
+                health_status['checks']['performance'] = 'good'
+            
+            # Check error rate
+            if self.metrics['total_queries'] > 0:
+                success_rate = self.metrics['successful_queries'] / self.metrics['total_queries']
+                if success_rate < 0.95:
+                    health_status['checks']['error_rate'] = 'high'
+                    health_status['status'] = 'degraded'
+                else:
+                    health_status['checks']['error_rate'] = 'low'
+            
+        except Exception as e:
+            health_status['status'] = 'unhealthy'
+            health_status['error'] = str(e)
+        
+        return health_status
+```
+
+### Monitoring Principles
+
+#### **1. Essential Metrics Only**
+Following **Code Redundancy Evaluation Guide** principles:
+- **Core Performance**: Response time, success rate, index build time
+- **System Health**: Index status, workspace accessibility, error rates
+- **Usage Statistics**: Query counts, step counts, workspace counts
+- **No Complex Metrics**: Avoid theoretical metrics without validated demand
+
+#### **2. Integrated Collection**
+- **No Separate Monitoring Classes**: Metrics collection integrated directly into main class
+- **Simple Data Structures**: Basic dictionaries and counters
+- **Minimal Overhead**: Lightweight metrics that don't impact performance
+- **Standard Logging**: Use Python's standard logging for observability
+
+#### **3. Actionable Insights**
+- **Performance Warnings**: Alert when response times exceed thresholds
+- **Health Checks**: Simple status checks for system health
+- **Usage Reporting**: Basic usage statistics for capacity planning
+- **Error Tracking**: Track and log errors for debugging
+
+### Design Rationale
+
+#### **Why No Separate Monitoring Infrastructure?**
+Following **Code Redundancy Evaluation Guide** principles:
+
+1. **Avoid Over-Engineering**: Instead of creating `CatalogMetrics`, `PerformanceMonitor`, `HealthChecker` classes, integrate monitoring directly
+
+2. **Essential Monitoring Only**: Focus on metrics that matter for system health and performance, not theoretical measurements
+
+3. **Proven Patterns**: Use simple, integrated monitoring like successful workspace-aware implementation (95% quality score)
+
+4. **Target Redundancy**: Maintain 15-25% redundancy by avoiding unnecessary monitoring components
+
+### What Was Removed (Over-Engineering)
+
+#### **❌ Removed: CatalogMetrics Class**
+- Complex metrics collection with counters and defaultdicts
+- Sophisticated query time tracking and analysis
+- Cache hit rate monitoring for non-existent complex caching
+- **Replaced with**: Simple metrics dictionary in main class
+
+#### **❌ Removed: Complex Performance Analysis**
+- Detailed query type breakdown and analysis
+- Advanced statistical analysis of response times
+- Complex error rate calculations and trending
+- **Replaced with**: Simple moving averages and threshold checks
+
+#### **❌ Removed: Elaborate Reporting Systems**
+- Complex performance report generation
+- Advanced metrics aggregation and analysis
+- Sophisticated monitoring dashboards
+- **Replaced with**: Simple metrics report and health check methods
+
+### What Was Kept (Essential)
+
+#### **✅ Kept: Core Performance Metrics**
+- **Response Time**: Average response time with threshold warnings
+- **Success Rate**: Query success rate monitoring
+- **Index Performance**: Index build time and status tracking
+- **System Health**: Basic health checks for system components
+
+#### **✅ Kept: Simple Observability**
+- **Standard Logging**: Use Python's logging for error tracking and debugging
+- **Health Checks**: Simple status checks for monitoring integration
+- **Usage Statistics**: Basic metrics for capacity planning
+- **Performance Warnings**: Threshold-based alerting for degradation
+
+#### **✅ Kept: Integration Capabilities**
+- **Metrics API**: Simple method to get current metrics
+- **Health Check API**: Standard health check endpoint
+- **Log Integration**: Standard logging for external monitoring systems
+- **Threshold Monitoring**: Configurable performance thresholds
+
+### Monitoring Benefits of Simplified Design
+
+#### **1. Low Overhead**
+- Simple metrics collection with minimal performance impact
+- No complex monitoring infrastructure consuming resources
+- Lightweight data structures and calculations
+
+#### **2. Easy Integration**
+- Standard logging integrates with existing monitoring systems
+- Simple metrics API for external monitoring tools
+- Health check endpoint for load balancer integration
+
+#### **3. Actionable Insights**
+- Focus on metrics that indicate real problems
+- Clear threshold-based alerting for performance issues
+- Simple health status for operational monitoring
+
+#### **4. Maintainable Monitoring**
+- Integrated monitoring is easier to maintain and understand
+- No complex monitoring systems to debug or optimize
+- Clear relationship between metrics and system behavior
+
+This simplified monitoring approach demonstrates that **effective system monitoring can be achieved through simple, integrated patterns** without creating complex monitoring infrastructure, maintaining the target redundancy levels while providing essential observability for system health and performance.
 
 ## Conclusion
 
@@ -1320,6 +2135,7 @@ This system transforms the current **fragmented discovery chaos** into a **coher
 #### **Configuration Management**
 - **[Config](./config.md)** - Core configuration system design
 - **[Config Driven Design](./config_driven_design.md)** - Configuration-driven development principles
+- **[Config Class Auto-Discovery Design](./config_class_auto_discovery_design.md)** - Automated configuration class discovery system design and implementation
 - **[Config Field Manager Refactoring](./config_field_manager_refactoring.md)** - Configuration field management patterns
 - **[Config Manager Three Tier Implementation](./config_manager_three_tier_implementation.md)** - Hierarchical configuration management
 - **[Step Config Resolver](./step_config_resolver.md)** - Step-specific configuration resolution

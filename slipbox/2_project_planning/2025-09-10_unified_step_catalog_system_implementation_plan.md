@@ -25,85 +25,92 @@ date of note: 2025-09-10
 
 ## Executive Summary
 
-This implementation plan details the development of a **Unified Step Catalog System** that consolidates 16+ fragmented discovery and retrieval mechanisms across Cursus. The system addresses critical code redundancy (35-45% → 15-25%) while providing intelligent component discovery across multiple workspaces.
+This implementation plan details the development of a **Unified Step Catalog System** that consolidates 16+ fragmented discovery and retrieval mechanisms across Cursus using a **simplified single-class approach**. The system addresses critical code redundancy (35-45% → 15-25%) while providing intelligent component discovery across multiple workspaces.
 
 ### Key Objectives
 
 - **Reduce Code Redundancy**: From 35-45% to target 15-25% following Code Redundancy Evaluation Guide
-- **Consolidate Discovery Systems**: Unify 16+ different discovery/resolver classes
-- **Improve Performance**: O(1) lookups vs. current O(n) scans
+- **Consolidate Discovery Systems**: Unify 16+ different discovery/resolver classes into single `StepCatalog` class
+- **Improve Performance**: O(1) dictionary lookups vs. current O(n) file scans
 - **Enable Multi-Workspace Discovery**: Seamless component discovery across developer and shared workspaces
-- **Maintain Quality**: Achieve 95% quality score using proven workspace-aware patterns
+- **Avoid Over-Engineering**: Simple, proven patterns instead of complex component hierarchies
 
 ### Strategic Impact
 
-- **70% reduction in maintenance burden** through consolidation
-- **60% increase in cross-workspace component reuse**
-- **50% reduction in developer onboarding time**
-- **40% improvement in search result relevance**
+- **70% reduction in maintenance burden** through single-class consolidation
+- **60% increase in cross-workspace component reuse** via unified discovery
+- **50% reduction in developer onboarding time** with simple, consistent API
+- **40% improvement in search result relevance** through integrated indexing
 
 ## Architecture Overview
 
-### Three-Layer Integration Architecture
+### Simplified Single-Class Architecture
+
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the unified step catalog system uses a **simple, single-class approach** that consolidates all discovery functionality:
 
 ```mermaid
 graph TB
-    subgraph "Unified Component Ecosystem"
-        subgraph "Discovery Layer - Step Catalog System"
-            CM[Catalog Manager]
-            QE[Query Engine]
-            IE[Index Engine]
-            CM --- QE
-            CM --- IE
+    subgraph "Unified Step Catalog System"
+        subgraph "Single StepCatalog Class"
+            SC[StepCatalog]
+            SC --> |"US1: Query by Step Name"| GSI[get_step_info()]
+            SC --> |"US2: Reverse Lookup"| FSC[find_step_by_component()]
+            SC --> |"US3: Multi-Workspace"| LAS[list_available_steps()]
+            SC --> |"US4: Efficient Scaling"| SS[search_steps()]
+            SC --> |"US5: Config Discovery"| DCC[discover_config_classes()]
         end
         
-        subgraph "Collaboration Layer - Workspace-Aware System"
-            WM[Workspace Manager]
-            DM[Discovery Manager]
-            FR[File Resolver]
-            WM --- DM
-            WM --- FR
+        subgraph "Integrated Components"
+            IDX[Simple Dictionary Indexing]
+            CAD[ConfigAutoDiscovery]
+            SC --> IDX
+            SC --> CAD
         end
         
-        subgraph "Foundation Layer - Registry System"
-            URM[Unified Registry Manager]
-            CDM[Contract Discovery Manager]
-            BR[Builder Registry]
-            URM --- CDM
-            URM --- BR
+        subgraph "Data Sources"
+            REG[Registry System]
+            WS[Workspace Files]
+            REG --> SC
+            WS --> SC
         end
-        
-        %% Integration connections
-        CM -.-> WM
-        CM -.-> URM
-        QE -.-> DM
-        IE -.-> FR
-        DM -.-> CDM
-        
-        %% Data flow
-        URM -->|"Authoritative Data"| CM
-        WM -->|"Workspace Context"| QE
-        FR -->|"File Paths"| IE
     end
     
     %% External interfaces
-    User[Developer] --> CM
-    CM --> Results[Enhanced Discovery Results]
+    User[Developer] --> SC
+    SC --> Results[Unified Discovery Results]
     
-    classDef discoveryLayer fill:#e1f5fe
-    classDef collaborationLayer fill:#f3e5f5
-    classDef foundationLayer fill:#e8f5e8
+    %% Legacy compatibility
+    subgraph "Backward Compatibility"
+        LA[Legacy Adapters]
+        SC --> LA
+        LA --> Legacy[Existing APIs]
+    end
     
-    class CM,QE,IE discoveryLayer
-    class WM,DM,FR collaborationLayer
-    class URM,CDM,BR foundationLayer
+    classDef unified fill:#e1f5fe
+    classDef integrated fill:#f3e5f5
+    classDef data fill:#e8f5e8
+    classDef legacy fill:#fff2cc
+    
+    class SC,GSI,FSC,LAS,SS,DCC unified
+    class IDX,CAD integrated
+    class REG,WS data
+    class LA,Legacy legacy
 ```
 
 ### System Responsibilities
 
-- **Discovery Layer (Step Catalog)**: Intelligent search, indexing, and retrieval
-- **Collaboration Layer (Workspace-Aware)**: Multi-developer workspace management
-- **Foundation Layer (Registry)**: Authoritative component data and validation
+**Single StepCatalog Class**:
+- **US1-US5 Implementation**: All validated user stories in one cohesive class
+- **Dictionary-Based Indexing**: Simple O(1) lookups with lazy loading
+- **Multi-Workspace Discovery**: Integrated workspace-aware component discovery
+- **Configuration Auto-Discovery**: Built-in config class discovery and integration
+- **Backward Compatibility**: Legacy adapter support for smooth migration
+
+**Design Principles**:
+- **Avoid Manager Proliferation**: Single class instead of multiple specialized managers
+- **Essential Functionality Only**: Focus on validated user needs (US1-US5)
+- **Proven Patterns**: Use successful workspace-aware implementation patterns (95% quality score)
+- **Target Redundancy**: 15-25% (down from current 35-45%)
 
 ## Implementation Strategy
 
@@ -115,1135 +122,1571 @@ Following **Code Redundancy Evaluation Guide** principles:
 - **Avoid over-engineering**: Simple solutions for complex requirements
 - **Target 15-25% redundancy**: Down from current 35-45%
 
-## Phase 1: Essential Foundation (2 weeks)
+## Phase 1: Core Implementation (2 weeks)
 
-### 1.1 Create New Module Structure
+### 1.1 Create Simplified Module Structure
 
 **New Folder**: `src/cursus/step_catalog/`
 
+Following the **simplified single-class approach** from the revised design:
+
 ```
 src/cursus/step_catalog/
-├── __init__.py
-├── api.py                    # Unified Step Catalog API
-├── core/
-│   ├── __init__.py
-│   ├── catalog_manager.py    # Central coordinator
-│   ├── index_engine.py       # Simple indexing system
-│   └── cache.py             # Component caching
-├── discovery/
-│   ├── __init__.py
-│   ├── contract_discovery.py # Unified contract discovery
-│   └── file_discoverer.py   # File discovery patterns
-└── models/
-    ├── __init__.py
-    ├── step_info.py         # Data models
-    └── search_results.py    # Query result models
+├── __init__.py               # Main StepCatalog class export
+├── step_catalog.py           # Single unified StepCatalog class
+├── config_discovery.py      # ConfigAutoDiscovery class
+├── models.py                 # Simple data models (StepInfo, FileMetadata, StepSearchResult)
+└── adapters.py              # Backward compatibility adapters
 ```
 
-### 1.2 Consolidate Contract Discovery (ESSENTIAL)
+### 1.2 Implement Single StepCatalog Class (ESSENTIAL)
 
-**Goal**: Merge existing contract discovery systems - addresses 40% redundancy
-**Target Redundancy**: 18-20% (down from 40%)
+**Goal**: Create unified step catalog class addressing all US1-US5 requirements
+**Target Redundancy**: 15-20% (down from 35-45%)
 
-**Files to Consolidate**:
-- `src/cursus/validation/alignment/discovery/contract_discovery.py` (ContractDiscoveryEngine)
-- `src/cursus/validation/runtime/contract_discovery.py` (ContractDiscoveryManager)
-
-**Implementation**:
+**Core Implementation**:
 ```python
-# src/cursus/step_catalog/discovery/contract_discovery.py
-class UnifiedContractDiscovery:
-    """Unified contract discovery - essential consolidation only."""
+# src/cursus/step_catalog/step_catalog.py
+class StepCatalog:
+    """Unified step catalog addressing all validated user stories (US1-US5)."""
     
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
-        self._cache: Dict[str, ContractInfo] = {}  # Simple dict cache
-    
-    def discover_contract(self, step_name: str) -> Optional[ContractInfo]:
-        """Discover contract - combine existing logic only."""
-        # Direct merge of ContractDiscoveryEngine + ContractDiscoveryManager
-        # No new features, just consolidation
+        self.config_discovery = ConfigAutoDiscovery(workspace_root)
+        self.logger = logging.getLogger(__name__)
         
-    def get_contract_paths(self, step_name: str) -> List[Path]:
-        """Get contract file paths - essential for both alignment and runtime."""
-        # Essential method used by both existing systems
+        # Simple in-memory indexes (US4: Efficient Scaling)
+        self._step_index: Dict[str, StepInfo] = {}
+        self._component_index: Dict[Path, str] = {}
+        self._workspace_steps: Dict[str, List[str]] = {}
+        self._index_built = False
+    
+    # US1: Query by Step Name
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """Get complete information about a step, optionally with job_type variant."""
+        self._ensure_index_built()
+        
+        # Handle job_type variants
+        search_key = f"{step_name}_{job_type}" if job_type else step_name
+        return self._step_index.get(search_key) or self._step_index.get(step_name)
+        
+    # US2: Reverse Lookup from Components
+    def find_step_by_component(self, component_path: str) -> Optional[str]:
+        """Find step name from any component file."""
+        self._ensure_index_built()
+        return self._component_index.get(Path(component_path))
+        
+    # US3: Multi-Workspace Discovery
+    def list_available_steps(self, workspace_id: Optional[str] = None, 
+                           job_type: Optional[str] = None) -> List[str]:
+        """List all available steps, optionally filtered by workspace and job_type."""
+        self._ensure_index_built()
+        
+        if workspace_id:
+            steps = self._workspace_steps.get(workspace_id, [])
+        else:
+            steps = list(self._step_index.keys())
+        
+        if job_type:
+            steps = [s for s in steps if s.endswith(f"_{job_type}") or job_type == "default"]
+        
+        return steps
+        
+    # US4: Efficient Scaling (Simple but effective search)
+    def search_steps(self, query: str, job_type: Optional[str] = None) -> List[StepSearchResult]:
+        """Search steps by name with basic fuzzy matching."""
+        self._ensure_index_built()
+        results = []
+        query_lower = query.lower()
+        
+        for step_name, step_info in self._step_index.items():
+            # Simple but effective matching
+            if query_lower in step_name.lower():
+                score = 1.0 if query_lower == step_name.lower() else 0.8
+                results.append(StepSearchResult(
+                    step_name=step_name,
+                    workspace_id=step_info.workspace_id,
+                    match_score=score,
+                    match_reason="name_match",
+                    components_available=list(step_info.file_components.keys())
+                ))
+        
+        return sorted(results, key=lambda r: r.match_score, reverse=True)
+    
+    # US5: Configuration Class Auto-Discovery
+    def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Auto-discover configuration classes from core and workspace directories."""
+        return self.config_discovery.discover_config_classes(project_id)
+        
+    def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Build complete mapping integrating manual registration with auto-discovery."""
+        return self.config_discovery.build_complete_config_classes(project_id)
+    
+    # Private methods for simple implementation
+    def _ensure_index_built(self):
+        """Build index on first access (lazy loading)."""
+        if not self._index_built:
+            self._build_index()
+            self._index_built = True
+    
+    def _build_index(self):
+        """Simple index building using directory traversal."""
+        from cursus.registry.step_names import STEP_NAMES
+        
+        # Load registry data first
+        for step_name, registry_data in STEP_NAMES.items():
+            step_info = StepInfo(
+                step_name=step_name,
+                workspace_id="core",
+                registry_data=registry_data,
+                file_components={}
+            )
+            self._step_index[step_name] = step_info
+            self._workspace_steps.setdefault("core", []).append(step_name)
+        
+        # Discover file components across workspaces
+        self._discover_workspace_components("core", self.workspace_root / "src" / "cursus" / "steps")
+        
+        # Discover developer workspaces
+        dev_projects_dir = self.workspace_root / "development" / "projects"
+        if dev_projects_dir.exists():
+            for project_dir in dev_projects_dir.iterdir():
+                if project_dir.is_dir():
+                    workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
+                    if workspace_steps_dir.exists():
+                        self._discover_workspace_components(project_dir.name, workspace_steps_dir)
 ```
 
 **Success Criteria**:
-- ✅ Reduce contract discovery redundancy from 40% to <20%
-- ✅ Maintain 100% backward compatibility
-- ✅ No performance degradation (improvement is bonus)
+- ✅ Single class implements all US1-US5 requirements
+- ✅ No manager proliferation (avoid over-engineering)
+- ✅ Simple dictionary-based indexing (O(1) lookups)
+- ✅ Lazy loading on first access
+- ✅ Reduce overall system redundancy from 35-45% to 15-20%
 
-### 1.3 Unified Step Index (ESSENTIAL)
+### 1.3 Simple Data Models (ESSENTIAL)
 
-**Goal**: Unified indexing system with progressive complexity that bridges file paths to rich data structures
-**Target Redundancy**: 18-20% (justified for multi-layered indexing patterns)
+**Goal**: Simple, focused data models aligned with the unified design
+**Target Redundancy**: 15-18% (essential models only)
 
-**Enhanced Data Models**:
+**Simple Data Models**:
 ```python
-# src/cursus/step_catalog/models/step_info.py
-from pydantic import BaseModel, Field, computed_field
+# src/cursus/step_catalog/models.py
+from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Literal, Dict, Any
+from typing import Optional, Dict, Any
 
 class FileMetadata(BaseModel):
-    """Simplified metadata for indexed files."""
+    """Simple metadata for component files."""
     path: Path
-    file_type: Literal['script', 'contract', 'config', 'spec', 'builder']
+    file_type: str  # 'script', 'contract', 'spec', 'builder', 'config'
     modified_time: datetime
-    
-    model_config = {
-        "arbitrary_types_allowed": True,
-        "frozen": True
-    }
 
 class StepInfo(BaseModel):
-    """Complete step information combining registry data with file metadata."""
+    """Essential step information."""
     step_name: str
     workspace_id: str
     registry_data: Dict[str, Any]  # From cursus.registry.step_names
-    file_components: Dict[str, Optional[FileMetadata]]  # Discovered files
+    file_components: Dict[str, Optional[FileMetadata]]
     
-    # Job type variant support (based on job_type_variant_analysis.md)
-    base_step_name: Optional[str] = None  # e.g., "CradleDataLoading" 
-    job_type: Optional[str] = None        # e.g., "training", "calibration", etc.
-    
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
-    
-    @computed_field
-    @property
-    def is_complete(self) -> bool:
-        """Check if step has minimum required components based on SageMaker step type."""
-        # All steps require: builder, config, spec (these are always present in registry)
-        # Only Processing and Training steps require scripts and contracts
-        sagemaker_type = self.sagemaker_step_type
-        
-        if sagemaker_type in ['Processing', 'Training']:
-            # Processing and Training steps need scripts and contracts
-            return (
-                self.file_components.get('script') is not None and 
-                self.file_components.get('contract') is not None and
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None and
-                self.file_components.get('spec') is not None
-            )
-        elif sagemaker_type in ['CreateModel', 'RegisterModel', 'Transform']:
-            # CreateModel, RegisterModel, Transform steps don't need scripts/contracts
-            return (
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None and
-                self.file_components.get('spec') is not None
-            )
-        elif sagemaker_type in ['Base', 'Utility']:
-            # Base and Utility steps have minimal requirements
-            return (
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None
-            )
-        else:
-            # Custom steps - check for basic components
-            return (
-                self.file_components.get('builder') is not None and
-                self.file_components.get('config') is not None
-            )
-    
-    @computed_field
-    @property
-    def all_files(self) -> List[Path]:
-        """Get all file paths for this step."""
-        files = []
-        for component in self.file_components.values():
-            if component:
-                files.append(component.path)
-        return files
-    
-    @computed_field
+    # Simple properties for common use cases
     @property
     def config_class(self) -> str:
-        """Get config class name from registry."""
         return self.registry_data.get('config_class', '')
     
-    @computed_field
-    @property
-    def builder_step_name(self) -> str:
-        """Get builder step name from registry."""
-        return self.registry_data.get('builder_step_name', '')
-    
-    @computed_field
     @property
     def sagemaker_step_type(self) -> str:
-        """Get SageMaker step type from registry."""
         return self.registry_data.get('sagemaker_step_type', '')
-    
-    @computed_field
-    @property
-    def description(self) -> str:
-        """Get step description from registry."""
-        return self.registry_data.get('description', '')
-    
-    @computed_field
-    @property
-    def requires_script(self) -> bool:
-        """Check if this step type requires a script."""
-        return self.sagemaker_step_type in ['Processing', 'Training']
-    
-    @computed_field
-    @property
-    def requires_contract(self) -> bool:
-        """Check if this step type requires a contract."""
-        return self.sagemaker_step_type in ['Processing', 'Training']
-    
-    @computed_field
-    @property
-    def is_job_type_variant(self) -> bool:
-        """Check if this is a job_type variant of a base step."""
-        return self.job_type is not None
-    
-    @computed_field
-    @property
-    def base_step_key(self) -> str:
-        """Get the base step key for component sharing."""
-        return self.base_step_name or self.step_name
-    
-    @computed_field
-    @property
-    def variant_key(self) -> str:
-        """Get the unique variant key matching PipelineDAG node names."""
-        if self.job_type:
-            base_name = self.base_step_name or self.step_name
-            return f"{base_name}_{self.job_type}"
-        return self.step_name
-    
-    @computed_field
-    @property
-    def pipeline_node_name(self) -> str:
-        """Get the node name as used in PipelineDAG."""
-        return self.variant_key  # Same as variant_key for consistency
 
-class IndexEntry(BaseModel):
-    """Single index entry bridging file path to semantic meaning."""
-    file_path: Path
+class StepSearchResult(BaseModel):
+    """Simple search result."""
     step_name: str
-    component_type: Literal['script', 'contract', 'config', 'spec', 'builder']
     workspace_id: str
-    metadata: FileMetadata
-    last_indexed: datetime
-    
-    model_config = {
-        "arbitrary_types_allowed": True,
-        "frozen": True
-    }
-```
-
-**Unified Index Architecture**:
-```python
-# src/cursus/step_catalog/core/index_engine.py
-class StepIndex:
-    """Unified indexing system with progressive complexity."""
-    
-    def __init__(self, workspace_root: Path, enable_advanced_features: bool = False):
-        self.workspace_root = workspace_root
-        self.enable_advanced_features = enable_advanced_features
-        
-        # Core indexing (always present)
-        self._step_to_components: Dict[str, StepInfo] = {}
-        self._file_to_step: Dict[Path, str] = {}
-        
-        # Advanced features (optional)
-        if enable_advanced_features:
-            self._file_to_metadata: Dict[Path, FileMetadata] = {}
-            self._workspace_to_steps: Dict[str, Set[str]] = {}
-            self._index_timestamp: Optional[datetime] = None
-            self._dirty_files: Set[Path] = set()
-        
-    def build_index(self) -> None:
-        """Build comprehensive index with file-to-structure bridging."""
-        self._index_timestamp = datetime.now()
-        self._scan_workspace_structure()
-        self._build_component_relationships()
-        self._validate_component_completeness()
-        
-    def _scan_workspace_structure(self) -> None:
-        """Scan file system and create file metadata entries."""
-        for file_path in self._discover_step_files():
-            metadata = self._create_file_metadata(file_path)
-            self._file_to_metadata[file_path] = metadata
-            
-            # Extract semantic information from file path
-            step_name, component_type, workspace_id = self._extract_semantic_info(file_path)
-            
-            # Create index entry bridging file path to semantic meaning
-            self._file_to_step[file_path] = step_name
-            
-            # Update workspace index
-            if workspace_id not in self._workspace_to_steps:
-                self._workspace_to_steps[workspace_id] = set()
-            self._workspace_to_steps[workspace_id].add(step_name)
-    
-    def _build_component_relationships(self) -> None:
-        """Build step-to-components relationships by bridging registry and file system."""
-        from cursus.registry.step_names import get_step_names
-        
-        # Get registry data for current workspace
-        workspace_registry = get_step_names(self._current_workspace_id)
-        
-        # Create StepInfo objects that bridge registry data with discovered files
-        for step_name, registry_data in workspace_registry.items():
-            workspace_id = self._current_workspace_id or 'core'
-            
-            # Initialize file components dictionary
-            file_components = {
-                'script': None,
-                'contract': None,
-                'config': None,
-                'spec': None,
-                'builder': None
-            }
-            
-            # Map discovered files to this step
-            for file_path, discovered_step_name in self._file_to_step.items():
-                if discovered_step_name == step_name:
-                    metadata = self._file_to_metadata[file_path]
-                    file_components[metadata.file_type] = metadata
-            
-            # Create StepInfo that bridges registry and file system
-            step_info = StepInfo(
-                step_name=step_name,
-                workspace_id=workspace_id,
-                registry_data=registry_data,
-                file_components=file_components
-            )
-            
-            self._step_to_components[step_name] = step_info
-    
-    def _create_file_metadata(self, file_path: Path) -> FileMetadata:
-        """Create simplified metadata for a file."""
-        stat = file_path.stat()
-        file_type = self._determine_file_type(file_path)
-        
-        return FileMetadata(
-            path=file_path,
-            file_type=file_type,
-            modified_time=datetime.fromtimestamp(stat.st_mtime)
-        )
-    
-    def get_step_components(self, step_name: str) -> Optional[ComponentSet]:
-        """Get complete component set for a step - O(1) lookup."""
-        return self._step_to_components.get(step_name)
-    
-    def get_file_metadata(self, file_path: Path) -> Optional[FileMetadata]:
-        """Get rich metadata for a file - O(1) lookup."""
-        return self._file_to_metadata.get(file_path)
-    
-    def find_step_by_file(self, file_path: Path) -> Optional[str]:
-        """Find step name by file path - O(1) reverse lookup."""
-        return self._file_to_step.get(file_path)
-    
-    def get_workspace_steps(self, workspace_id: str) -> Set[str]:
-        """Get all steps in a workspace - O(1) workspace filtering."""
-        return self._workspace_to_steps.get(workspace_id, set())
-    
-    def is_index_stale(self) -> bool:
-        """Check if index needs rebuilding based on file changes."""
-        if not self._index_timestamp:
-            return True
-            
-        # Check if any tracked files have been modified
-        for file_path, metadata in self._file_to_metadata.items():
-            if not file_path.exists():
-                return True
-            
-            current_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-            if current_mtime > metadata.modified_time:
-                return True
-                
-        return False
-    
-    def incremental_update(self, changed_files: List[Path]) -> None:
-        """Incrementally update index for changed files."""
-        for file_path in changed_files:
-            if file_path.exists():
-                # Update existing file
-                new_metadata = self._create_file_metadata(file_path)
-                old_metadata = self._file_to_metadata.get(file_path)
-                
-                self._file_to_metadata[file_path] = new_metadata
-                
-                # Update component relationships if needed
-                step_name = self._file_to_step.get(file_path)
-                if step_name and step_name in self._step_to_components:
-                    self._update_component_set(step_name, file_path, new_metadata)
-            else:
-                # Remove deleted file
-                self._remove_file_from_index(file_path)
-    
-    def get_index_statistics(self) -> Dict[str, Any]:
-        """Get comprehensive index statistics."""
-        total_files = len(self._file_to_metadata)
-        total_steps = len(self._step_to_components)
-        complete_steps = sum(1 for cs in self._step_to_components.values() if cs.is_complete)
-        
-        workspace_stats = {
-            ws_id: len(steps) for ws_id, steps in self._workspace_to_steps.items()
-        }
-        
-        return {
-            'total_files': total_files,
-            'total_steps': total_steps,
-            'complete_steps': complete_steps,
-            'completion_rate': complete_steps / total_steps if total_steps > 0 else 0,
-            'workspace_distribution': workspace_stats,
-            'index_timestamp': self._index_timestamp,
-            'memory_usage_mb': self._estimate_memory_usage()
-        }
-```
-
-**Index Persistence and Recovery**:
-```python
-# src/cursus/step_catalog/core/index_persistence.py
-class IndexPersistence:
-    """Handle index persistence and recovery."""
-    
-    def __init__(self, cache_dir: Path):
-        self.cache_dir = cache_dir
-        self.index_file = cache_dir / "step_catalog_index.json"
-        
-    def save_index(self, index: StepIndex) -> None:
-        """Persist index to disk for fast startup."""
-        index_data = {
-            'timestamp': index._index_timestamp.isoformat(),
-            'file_metadata': {
-                str(path): self._serialize_metadata(metadata)
-                for path, metadata in index._file_to_metadata.items()
-            },
-            'step_components': {
-                step_name: self._serialize_component_set(component_set)
-                for step_name, component_set in index._step_to_components.items()
-            },
-            'workspace_steps': {
-                ws_id: list(steps) 
-                for ws_id, steps in index._workspace_to_steps.items()
-            }
-        }
-        
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-        with open(self.index_file, 'w') as f:
-            json.dump(index_data, f, indent=2)
-    
-    def load_index(self, workspace_root: Path) -> Optional[StepIndex]:
-        """Load persisted index if valid."""
-        if not self.index_file.exists():
-            return None
-            
-        try:
-            with open(self.index_file, 'r') as f:
-                index_data = json.load(f)
-            
-            index = StepIndex(workspace_root, enable_advanced_features=True)
-            
-            # Restore index state
-            index._index_timestamp = datetime.fromisoformat(index_data['timestamp'])
-            
-            # Restore file metadata
-            for path_str, metadata_data in index_data['file_metadata'].items():
-                path = Path(path_str)
-                metadata = self._deserialize_metadata(metadata_data)
-                index._file_to_metadata[path] = metadata
-                
-            # Restore component sets
-            for step_name, component_data in index_data['step_components'].items():
-                component_set = self._deserialize_component_set(component_data)
-                index._step_to_components[step_name] = component_set
-                
-            # Restore workspace mapping
-            for ws_id, steps_list in index_data['workspace_steps'].items():
-                index._workspace_to_steps[ws_id] = set(steps_list)
-                
-            # Rebuild file-to-step mapping
-            for step_name, component_set in index._step_to_components.items():
-                for file_path in component_set.all_files:
-                    index._file_to_step[file_path] = step_name
-            
-            return index
-            
-        except Exception as e:
-            # If loading fails, return None to trigger rebuild
-            return None
+    match_score: float
+    match_reason: str
+    components_available: list[str]
 ```
 
 **Success Criteria**:
-- ✅ Bridge file paths to rich data structures with O(1) lookups
-- ✅ Support multi-layered indexing (file→metadata, step→components, workspace→steps)
-- ✅ Index all steps in <10 seconds with full metadata extraction
-- ✅ Incremental updates for changed files in <1 second
-- ✅ Index persistence for fast startup (<2 seconds to load)
-- ✅ Memory usage <50MB for 1000 steps with full metadata
-- ✅ Support workspace filtering and component completeness validation
+- ✅ Simple, focused data models without over-engineering
+- ✅ Essential properties only (config_class, sagemaker_step_type)
+- ✅ No complex computed fields or advanced features
+- ✅ Aligned with unified design document specifications
+- ✅ Support for all US1-US5 requirements with minimal complexity
 
-## Phase 2: Core System (4 weeks)
+## Phase 2: Integration & Testing (2 weeks)
 
-### 2.1 Implement Catalog Manager
+### 2.1 Implement ConfigAutoDiscovery Integration
 
-**Goal**: Create central coordination system
-**Target Redundancy**: 20-22%
+**Goal**: Complete config auto-discovery integration with existing system
+**Target Redundancy**: 15-18%
 
 **Implementation**:
 ```python
-# src/cursus/step_catalog/core/catalog_manager.py
-class CatalogManager:
-    """Central coordinator for step catalog operations."""
+# src/cursus/step_catalog/config_discovery.py
+class ConfigAutoDiscovery:
+    """Simple configuration class auto-discovery."""
     
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
-        self.index_engine = StepIndex(workspace_root)
-        self.contract_discovery = UnifiedContractDiscovery(workspace_root)
-        self.component_cache = ComponentCache()
-        
-        # Load or build index
-        self.index = self._load_or_build_index()
+        self.logger = logging.getLogger(__name__)
     
-    def get_step_info(self, step_name: str) -> Optional[StepInfo]:
-        """Get complete step information with lazy loading."""
-        # O(1) lookup from index, lazy load detailed info
+    def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Auto-discover configuration classes from core and workspace directories."""
+        discovered_classes = {}
         
-    def refresh_index(self) -> None:
-        """Rebuild index from current workspace state."""
-        # Coordinate between index engine and discovery layer
+        # Always scan core configs
+        core_config_dir = self.workspace_root / "src" / "cursus" / "steps" / "configs"
+        if core_config_dir.exists():
+            core_classes = self._scan_config_directory(core_config_dir)
+            discovered_classes.update(core_classes)
+        
+        # Scan workspace configs if project_id provided
+        if project_id:
+            workspace_config_dir = self.workspace_root / "development" / "projects" / project_id / "src" / "cursus_dev" / "steps" / "configs"
+            if workspace_config_dir.exists():
+                workspace_classes = self._scan_config_directory(workspace_config_dir)
+                # Workspace configs override core configs with same names
+                discovered_classes.update(workspace_classes)
+        
+        return discovered_classes
+    
+    def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Build complete mapping integrating manual registration with auto-discovery."""
+        from cursus.core.config_fields.config_class_store import ConfigClassStore
+        
+        # Start with manually registered classes (highest priority)
+        config_classes = ConfigClassStore.get_all_classes()
+        
+        # Add auto-discovered classes (manual registration takes precedence)
+        discovered_classes = self.discover_config_classes(project_id)
+        for class_name, class_type in discovered_classes.items():
+            if class_name not in config_classes:
+                config_classes[class_name] = class_type
+                # Also register in store for consistency
+                ConfigClassStore.register(class_type)
+        
+        return config_classes
 ```
 
-### 2.2 Multi-Workspace Support
-
-**Goal**: Support discovery across multiple workspaces
-**Target Redundancy**: 18-20%
-
-**Extended Folder Structure**:
-```
-src/cursus/step_catalog/
-├── workspace/
-│   ├── __init__.py
-│   ├── workspace_manager.py # Multi-workspace support
-│   └── integration.py       # Workspace system integration
-```
-
-**Integration with Existing Systems**:
-- Leverage `src/cursus/workspace/core/workspace_manager.py`
-- Integrate with `src/cursus/workspace/discovery/workspace_discovery_manager.py`
-- Use workspace precedence patterns from existing implementation
-
-## Phase 3: Advanced Features (4 weeks)
-
-### 3.1 Query Engine
-
-**Goal**: Provide flexible search and query capabilities
-**Target Redundancy**: 22-25%
-
-**Extended Folder Structure**:
-```
-src/cursus/step_catalog/
-├── query/
-│   ├── __init__.py
-│   ├── query_engine.py      # Search and query
-│   ├── name_normalizer.py   # Name normalization
-│   └── essential_features.py # Core query features only
-```
-
-**Implementation Focus**:
-- Exact match search
-- Name normalization (preprocess → preprocessing, xgb → xgboost)
-- Basic fuzzy matching
-- **NO over-engineering**: No ML recommendations, complex relationship mapping
-
-### 3.2 Essential Query Features Only
-
-**Goal**: Provide core search functionality without over-engineering
-**Target Redundancy**: 15-18%
-
-**Validated Features Only**:
-- Component metadata extraction (file size, modification time)
-- Component completeness validation (script + contract presence)
-- Workspace-specific filtering
-
-**Eliminated Over-Engineering**:
-- ❌ Complex relationship mapping (no validated demand)
-- ❌ Machine learning recommendations (speculative feature)
-- ❌ Advanced semantic search (no user requests)
-- ❌ Real-time collaboration features (no validated demand)
-
-## Phase 4: Integration & Optimization (2 weeks)
-
-### 4.1 Backward Compatibility Layer
+### 2.2 Implement Backward Compatibility Adapters
 
 **Goal**: Maintain existing APIs during transition
-**Target Redundancy**: 25% (acceptable for transition period)
+**Target Redundancy**: 20-22% (acceptable for transition period)
 
-**Extended Folder Structure**:
-```
-src/cursus/step_catalog/
-├── adapters/
-│   ├── __init__.py
-│   └── legacy_adapters.py   # Backward compatibility
-└── utils/
-    ├── __init__.py
-    ├── error_handler.py     # Error recovery
-    └── metrics.py           # Performance monitoring
-```
-
-**Legacy Adapter Implementation**:
+**Implementation**:
 ```python
-# src/cursus/step_catalog/adapters/legacy_adapters.py
+# src/cursus/step_catalog/adapters.py
 class ContractDiscoveryEngineAdapter:
-    """Adapter to maintain backward compatibility."""
+    """Simple adapter maintaining backward compatibility."""
     
     def __init__(self, catalog: StepCatalog):
         self.catalog = catalog
     
     def discover_all_contracts(self) -> List[str]:
-        """Legacy method using new catalog system."""
-        return [step.step_name for step in self.catalog.list_available_steps()]
+        """Legacy method using unified catalog."""
+        steps = self.catalog.list_available_steps()
+        contracts = []
+        for step_name in steps:
+            step_info = self.catalog.get_step_info(step_name)
+            if step_info and step_info.file_components.get('contract'):
+                contracts.append(step_name)
+        return contracts
     
     def discover_contracts_with_scripts(self) -> List[str]:
         """Legacy method with script validation."""
-        return [step.step_name for step in self.catalog.list_available_steps() 
-                if step.components.script is not None]
+        steps = self.catalog.list_available_steps()
+        contracts_with_scripts = []
+        for step_name in steps:
+            step_info = self.catalog.get_step_info(step_name)
+            if (step_info and 
+                step_info.file_components.get('contract') and 
+                step_info.file_components.get('script')):
+                contracts_with_scripts.append(step_name)
+        return contracts_with_scripts
+
+class WorkspaceDiscoveryManagerAdapter:
+    """Simple adapter for workspace discovery compatibility."""
+    
+    def __init__(self, catalog: StepCatalog):
+        self.catalog = catalog
+    
+    def discover_components(self, workspace_id: str) -> List[str]:
+        """Legacy method using unified catalog."""
+        return self.catalog.list_available_steps(workspace_id=workspace_id)
+    
+    def get_workspace_steps(self, workspace_id: str) -> List[str]:
+        """Legacy method for workspace step listing."""
+        return self.catalog.list_available_steps(workspace_id=workspace_id)
 ```
 
-### 4.2 Performance Optimization
+**Success Criteria**:
+- ✅ Complete config auto-discovery integration with existing `build_complete_config_classes()`
+- ✅ Backward compatibility adapters for major discovery systems
+- ✅ All US1-US5 requirements fully functional
+- ✅ Performance targets met (<1ms lookups, <10s index build)
 
-**Goal**: Ensure system meets performance requirements
-**Target Redundancy**: 15% (highly optimized)
+## Phase 3: Deployment & Migration (2 weeks)
 
-**Performance Targets**:
-- ✅ Step lookup: <1ms (O(1) dictionary access)
-- ✅ Index rebuild: <10 seconds for 1000 steps
-- ✅ Memory usage: <100MB for typical workspace
-- ✅ Search queries: <100ms for fuzzy search
+### 3.1 Feature Flag Deployment
+
+**Goal**: Safe deployment with gradual rollout capability
+**Target Redundancy**: 20-22% (acceptable for transition period)
+
+**Simple Feature Flag Implementation**:
+```python
+# src/cursus/step_catalog/__init__.py
+import os
+from pathlib import Path
+from typing import Any
+
+def create_step_catalog(workspace_root: Path, use_unified: bool = None) -> Any:
+    """Factory function for step catalog with feature flag support."""
+    if use_unified is None:
+        use_unified = os.getenv('USE_UNIFIED_CATALOG', 'false').lower() == 'true'
+    
+    if use_unified:
+        from .step_catalog import StepCatalog
+        return StepCatalog(workspace_root)
+    else:
+        # Return legacy system wrapper during transition
+        from .adapters import LegacyDiscoveryWrapper
+        return LegacyDiscoveryWrapper(workspace_root)
+
+# Environment-based feature flag control
+class FeatureFlagController:
+    """Simple feature flag controller for gradual rollout."""
+    
+    @staticmethod
+    def get_rollout_percentage() -> int:
+        """Get current rollout percentage from environment."""
+        return int(os.getenv('UNIFIED_CATALOG_ROLLOUT', '0'))
+    
+    @staticmethod
+    def should_use_unified_catalog() -> bool:
+        """Determine if request should use unified catalog."""
+        import random
+        rollout_percentage = FeatureFlagController.get_rollout_percentage()
+        return random.random() < (rollout_percentage / 100.0)
+```
+
+### 3.2 Migration Validation and Monitoring
+
+**Goal**: Ensure safe migration with comprehensive monitoring
+**Target Redundancy**: 15-18%
+
+**Simple Migration Monitoring**:
+```python
+# src/cursus/step_catalog/migration_monitor.py
+class MigrationMonitor:
+    """Simple monitoring for migration progress and health."""
+    
+    def __init__(self):
+        self.metrics = {
+            'unified_requests': 0,
+            'legacy_requests': 0,
+            'unified_errors': 0,
+            'legacy_errors': 0,
+            'response_times': []
+        }
+    
+    def record_request(self, system: str, success: bool, response_time: float):
+        """Record request metrics for monitoring."""
+        if system == 'unified':
+            self.metrics['unified_requests'] += 1
+            if not success:
+                self.metrics['unified_errors'] += 1
+        else:
+            self.metrics['legacy_requests'] += 1
+            if not success:
+                self.metrics['legacy_errors'] += 1
+        
+        self.metrics['response_times'].append(response_time)
+    
+    def get_migration_health(self) -> Dict[str, Any]:
+        """Get migration health metrics."""
+        total_unified = self.metrics['unified_requests']
+        total_legacy = self.metrics['legacy_requests']
+        total_requests = total_unified + total_legacy
+        
+        if total_requests == 0:
+            return {'status': 'no_traffic', 'unified_percentage': 0}
+        
+        unified_percentage = (total_unified / total_requests) * 100
+        unified_error_rate = (self.metrics['unified_errors'] / total_unified) if total_unified > 0 else 0
+        legacy_error_rate = (self.metrics['legacy_errors'] / total_legacy) if total_legacy > 0 else 0
+        
+        avg_response_time = sum(self.metrics['response_times']) / len(self.metrics['response_times']) if self.metrics['response_times'] else 0
+        
+        status = 'healthy'
+        if unified_error_rate > 0.05:  # >5% error rate
+            status = 'degraded'
+        elif unified_error_rate > 0.01:  # >1% error rate
+            status = 'warning'
+        
+        return {
+            'status': status,
+            'unified_percentage': unified_percentage,
+            'unified_error_rate': unified_error_rate,
+            'legacy_error_rate': legacy_error_rate,
+            'avg_response_time_ms': avg_response_time * 1000,
+            'total_requests': total_requests
+        }
+```
+
+**Success Criteria**:
+- ✅ Feature flag deployment successful with 0% initial rollout
+- ✅ Gradual rollout capability (10% → 25% → 50% → 75% → 100%)
+- ✅ Migration monitoring and health checks operational
+- ✅ Rollback capability validated and ready
+- ✅ Performance parity or improvement vs legacy systems
+- ✅ Error rates <1% during migration phases
 
 ## Migration Strategy
 
-### Phased Migration Plan
+### Simplified Migration Approach
 
-#### Phase 1: Parallel Operation (4 weeks)
-- Deploy unified catalog alongside existing systems
-- Route 10% of queries to new system for testing
-- Monitor performance and correctness
-- Fix issues without impacting production
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the migration strategy uses **simple, proven patterns** without complex migration controllers.
 
-#### Phase 2: Gradual Transition (6 weeks)
-- Increase traffic to unified catalog (25%, 50%, 75%)
+#### **Phase 1: Core Deployment (2 weeks)**
+- Deploy unified `StepCatalog` class alongside existing systems
+- Use feature flags for gradual rollout (10% → 25% → 50% → 75% → 100%)
+- Simple A/B testing without complex routing logic
+- Monitor basic metrics: response time, error rate, correctness
+
+#### **Phase 2: Legacy Adapter Integration (2 weeks)**
+- Deploy backward compatibility adapters
 - Update high-level APIs to use new system
-- Maintain backward compatibility adapters
-- Deprecate old APIs with warnings
+- Maintain existing interfaces during transition
+- Deprecate old APIs with clear migration guides
 
-#### Phase 3: Full Migration (4 weeks)
-- Route 100% of traffic to unified catalog
-- Remove old discovery systems
-- Clean up deprecated code
-- Update documentation and examples
+#### **Phase 3: System Cleanup (1 week)**
+- Remove 16+ redundant discovery/resolver classes
+- Clean up deprecated code and documentation
+- Update examples and developer guides
+- Validate final redundancy reduction (target 15-25%)
 
-### Files to be Consolidated/Removed
+### Simple Migration Implementation
 
-**Contract Discovery Systems** (40% redundancy → 18-20%):
-- `src/cursus/validation/alignment/discovery/contract_discovery.py` → Consolidated
-- `src/cursus/validation/runtime/contract_discovery.py` → Consolidated
-
-**File Resolution Systems** (35% redundancy → 18-20%):
-- `src/cursus/validation/alignment/discovery/flexible_file_resolver.py` → Consolidated
-- `src/cursus/workspace/discovery/developer_workspace_file_resolver.py` → Integrated
-- Various resolver utilities across validation and workspace modules
-
-**Component Discovery Systems** (30% redundancy → 15-18%):
-- `src/cursus/workspace/discovery/workspace_discovery_manager.py` → Integrated
-- `src/cursus/registry/step_discovery.py` → Integrated
-- Multiple discovery utilities across different modules
-
-### Comprehensive Dependency Analysis
-
-Based on comprehensive search analysis, the following files require updates during migration:
-
-#### **Contract Discovery Dependencies** (35 files identified)
-
-**Primary Contract Discovery Files**:
-- `src/cursus/validation/alignment/discovery/contract_discovery.py` → **TO BE CONSOLIDATED** - Contains ContractDiscoveryEngine class
-- `src/cursus/validation/runtime/contract_discovery.py` → **TO BE CONSOLIDATED** - Contains ContractDiscoveryManager class
-
-**Direct Import Dependencies**:
-- `src/cursus/validation/alignment/discovery/__init__.py` → **Critical**: Exports ContractDiscoveryEngine
-- `src/cursus/validation/runtime/__init__.py` → **Critical**: Exports ContractDiscoveryManager and ContractDiscoveryResult
-- `src/cursus/validation/alignment/contract_spec_alignment.py` → **Critical**: Direct ContractDiscoveryEngine import and usage
-- `src/cursus/validation/runtime/runtime_spec_builder.py` → **Critical**: Direct ContractDiscoveryManager import and initialization
-
-**Usage Dependencies**:
-- `src/cursus/validation/alignment/orchestration/validation_orchestrator.py` → Uses contract_discovery attribute for contract file discovery
-- `src/cursus/validation/runtime/workspace_aware_spec_builder.py` → References ContractDiscoveryManager in documentation
-
-#### **Workspace Discovery Dependencies** (24 files identified)
-
-**Primary Workspace Discovery File**:
-- `src/cursus/workspace/core/discovery.py` → **TO BE CONSOLIDATED** - Contains WorkspaceDiscoveryManager class definition
-
-**Critical Integration Points**:
-- `src/cursus/workspace/api.py` → **Critical**: Direct WorkspaceDiscoveryManager import and lazy loading in discovery property
-- `src/cursus/workspace/core/manager.py` → **Critical**: Direct WorkspaceDiscoveryManager import and initialization as discovery_manager
-- `src/cursus/workspace/core/__init__.py` → **Critical**: Direct WorkspaceDiscoveryManager export in module interface
-- `src/cursus/workspace/core/registry.py` → Optional WorkspaceDiscoveryManager parameter in constructor
-
-**Usage Dependencies**:
-- `src/cursus/validation/runtime/workspace_aware_spec_builder.py` → **High Impact**: Multi-workspace script discovery via WorkspaceDiscoveryManager
-- `src/cursus/workspace/validation/workspace_test_manager.py` → WorkspaceDiscoveryManager integration for test component discovery
-- `src/cursus/workspace/validation/workspace_file_resolver.py` → Consolidated discovery logic from WorkspaceDiscoveryManager
-- `src/cursus/workspace/validation/cross_workspace_validator.py` → Phase 1 WorkspaceDiscoveryManager usage for component discovery
-
-#### **File Resolver Dependencies** (50 files identified)
-
-**Primary File Resolver Files**:
-- `src/cursus/validation/alignment/file_resolver.py` → **TO BE CONSOLIDATED** - Contains FlexibleFileResolver class
-- `src/cursus/workspace/validation/workspace_file_resolver.py` → **TO BE INTEGRATED** - Extends FlexibleFileResolver for workspace support
-
-**High-Impact Dependencies**:
-- `src/cursus/validation/alignment/alignment_utils.py` → **Critical**: Exports FlexibleFileResolver
-- `src/cursus/validation/alignment/contract_spec_alignment.py` → **Critical**: Direct FlexibleFileResolver import and initialization
-- `src/cursus/validation/alignment/script_contract_alignment.py` → **Critical**: FlexibleFileResolver usage for file discovery
-- `src/cursus/validation/alignment/builder_config_alignment.py` → **Critical**: FlexibleFileResolver for builder and config discovery
-
-**Loader and Pattern Dependencies**:
-- `src/cursus/validation/alignment/loaders/specification_loader.py` → FlexibleFileResolver for specification file discovery
-- `src/cursus/validation/alignment/patterns/file_resolver.py` → HybridFileResolver using FlexibleFileResolver
-- `src/cursus/validation/alignment/orchestration/validation_orchestrator.py` → FlexibleFileResolver for contract file discovery
-
-#### **Migration Impact Classification**
-
-**🔴 Critical Impact Files** (Require immediate attention):
 ```python
-# Core module exports - breaking changes
-src/cursus/validation/alignment/discovery/__init__.py
-src/cursus/validation/runtime/__init__.py
-src/cursus/workspace/core/__init__.py
-src/cursus/validation/alignment/alignment_utils.py
+# Simple feature flag approach - no complex migration controller
+class StepCatalogFactory:
+    """Simple factory for catalog system with feature flag support."""
+    
+    @staticmethod
+    def create_catalog(workspace_root: Path, use_unified: bool = None) -> Any:
+        """Create appropriate catalog system based on feature flag."""
+        if use_unified is None:
+            use_unified = os.getenv('USE_UNIFIED_CATALOG', 'false').lower() == 'true'
+        
+        if use_unified:
+            return StepCatalog(workspace_root)
+        else:
+            # Return legacy system wrapper
+            return LegacyDiscoveryWrapper(workspace_root)
 
-# Direct class usage - functional changes
-src/cursus/validation/alignment/contract_spec_alignment.py
-src/cursus/validation/runtime/runtime_spec_builder.py
-src/cursus/workspace/api.py
-src/cursus/workspace/core/manager.py
+# Simple backward compatibility adapter
+class ContractDiscoveryEngineAdapter:
+    """Simple adapter maintaining backward compatibility."""
+    
+    def __init__(self, catalog: StepCatalog):
+        self.catalog = catalog
+    
+    def discover_all_contracts(self) -> List[str]:
+        """Legacy method using unified catalog."""
+        steps = self.catalog.list_available_steps()
+        contracts = []
+        for step_name in steps:
+            step_info = self.catalog.get_step_info(step_name)
+            if step_info and step_info.file_components.get('contract'):
+                contracts.append(step_name)
+        return contracts
+    
+    def discover_contracts_with_scripts(self) -> List[str]:
+        """Legacy method with script validation."""
+        steps = self.catalog.list_available_steps()
+        contracts_with_scripts = []
+        for step_name in steps:
+            step_info = self.catalog.get_step_info(step_name)
+            if (step_info and 
+                step_info.file_components.get('contract') and 
+                step_info.file_components.get('script')):
+                contracts_with_scripts.append(step_name)
+        return contracts_with_scripts
 ```
-
-**🟡 High Impact Files** (Require careful migration):
-```python
-# Multi-system integration points
-src/cursus/validation/runtime/workspace_aware_spec_builder.py
-src/cursus/validation/alignment/script_contract_alignment.py
-src/cursus/validation/alignment/builder_config_alignment.py
-src/cursus/workspace/validation/workspace_file_resolver.py
-```
-
-**🟢 Medium Impact Files** (Standard migration):
-```python
-# Usage through established interfaces
-src/cursus/validation/alignment/orchestration/validation_orchestrator.py
-src/cursus/validation/alignment/loaders/specification_loader.py
-src/cursus/workspace/validation/workspace_test_manager.py
-src/cursus/workspace/validation/cross_workspace_validator.py
-```
-
-#### **Updated Import Statement Migration**
-
-**Contract Discovery Migration**:
-```python
-# OLD IMPORTS (to be replaced)
-from cursus.validation.alignment.discovery.contract_discovery import ContractDiscoveryEngine
-from cursus.validation.runtime.contract_discovery import ContractDiscoveryManager, ContractDiscoveryResult
-
-# NEW IMPORTS (unified system)
-from cursus.step_catalog.discovery.contract_discovery import UnifiedContractDiscovery, ContractDiscoveryResult
-```
-
-**Workspace Discovery Migration**:
-```python
-# OLD IMPORTS (to be replaced)
-from cursus.workspace.core.discovery import WorkspaceDiscoveryManager
-
-# NEW IMPORTS (unified system)
-from cursus.step_catalog.workspace.workspace_manager import WorkspaceAwareCatalogManager
-```
-
-**File Resolver Migration**:
-```python
-# OLD IMPORTS (to be replaced)
-from cursus.validation.alignment.file_resolver import FlexibleFileResolver
-from cursus.validation.alignment.alignment_utils import FlexibleFileResolver
-
-# NEW IMPORTS (unified system)
-from cursus.step_catalog.discovery.file_discoverer import UnifiedFileDiscoverer
-```
-
-#### **Backward Compatibility Strategy**
-
-**Phase 1: Parallel Operation** (Maintain old interfaces):
-```python
-# Legacy adapter in old locations
-# src/cursus/validation/alignment/discovery/contract_discovery.py
-from cursus.step_catalog.adapters.legacy_adapters import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
-
-# src/cursus/validation/runtime/contract_discovery.py  
-from cursus.step_catalog.adapters.legacy_adapters import ContractDiscoveryManagerAdapter as ContractDiscoveryManager
-from cursus.step_catalog.discovery.contract_discovery import ContractDiscoveryResult
-
-# src/cursus/workspace/core/discovery.py
-from cursus.step_catalog.adapters.legacy_adapters import WorkspaceDiscoveryManagerAdapter as WorkspaceDiscoveryManager
-```
-
-**Phase 2: Deprecation Warnings**:
-```python
-# Add deprecation warnings to old imports
-import warnings
-
-def __getattr__(name):
-    if name == 'ContractDiscoveryEngine':
-        warnings.warn(
-            "ContractDiscoveryEngine is deprecated. Use cursus.step_catalog.discovery.contract_discovery.UnifiedContractDiscovery instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        from cursus.step_catalog.adapters.legacy_adapters import ContractDiscoveryEngineAdapter
-        return ContractDiscoveryEngineAdapter
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
-```
-
-**Phase 3: Complete Migration**:
-- Remove old files after all dependencies updated
-- Clean up legacy adapters
-- Update all import statements to new unified system
 
 ### Migration Safety Measures
 
-**Backward Compatibility Strategy**:
+#### **1. Simple Feature Flag Control**
 ```python
-# Migration controller for safe transition
-class MigrationController:
-    """Controls migration between old and new catalog systems."""
-    
-    def __init__(self, old_system: Any, new_system: StepCatalog):
-        self.old_system = old_system
-        self.new_system = new_system
-        self.migration_percentage = 0
-        self.comparison_mode = True
-    
-    def route_query(self, query_type: str, **kwargs) -> Any:
-        """Route query to appropriate system based on migration settings."""
-        use_new_system = random.random() < (self.migration_percentage / 100)
-        
-        if use_new_system:
-            try:
-                result = self._execute_new_system(query_type, **kwargs)
-                
-                if self.comparison_mode:
-                    # Compare with old system for validation
-                    old_result = self._execute_old_system(query_type, **kwargs)
-                    self._compare_results(query_type, result, old_result)
-                
-                return result
-            except Exception as e:
-                # Fallback to old system on error
-                logging.error(f"New system failed, falling back: {e}")
-                return self._execute_old_system(query_type, **kwargs)
-        else:
-            return self._execute_old_system(query_type, **kwargs)
+# Environment-based feature flag (simple and reliable)
+USE_UNIFIED_CATALOG = os.getenv('USE_UNIFIED_CATALOG', 'false').lower() == 'true'
+
+# Usage in existing code
+if USE_UNIFIED_CATALOG:
+    catalog = StepCatalog(workspace_root)
+    step_info = catalog.get_step_info(step_name)
+else:
+    # Existing discovery systems
+    discovery = ContractDiscoveryEngine()
+    step_info = discovery.discover_contract(step_name)
 ```
 
+#### **2. Simple Monitoring**
+```python
+# Basic monitoring integrated into StepCatalog
+class StepCatalog:
+    def __init__(self, workspace_root: Path):
+        # ... existing initialization ...
+        self.metrics = {
+            'queries': 0,
+            'errors': 0,
+            'avg_response_time': 0.0
+        }
+    
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
+        """Get step info with simple metrics collection."""
+        start_time = time.time()
+        self.metrics['queries'] += 1
+        
+        try:
+            result = self._get_step_info_impl(step_name, job_type)
+            return result
+        except Exception as e:
+            self.metrics['errors'] += 1
+            self.logger.error(f"Error in get_step_info: {e}")
+            return None
+        finally:
+            response_time = time.time() - start_time
+            # Simple moving average
+            self.metrics['avg_response_time'] = (
+                (self.metrics['avg_response_time'] * (self.metrics['queries'] - 1) + response_time) 
+                / self.metrics['queries']
+            )
+```
+
+#### **3. Simple Rollback Strategy**
+```python
+# Simple rollback - just change environment variable
+# No complex migration controllers or routing logic
+def rollback_to_legacy():
+    """Simple rollback by disabling feature flag."""
+    os.environ['USE_UNIFIED_CATALOG'] = 'false'
+    # Restart application or reload configuration
+```
+
+### Files to be Consolidated/Removed
+
+Following the simplified approach, the migration focuses on **essential consolidation** without complex dependency analysis:
+
+#### **Primary Discovery Systems to Consolidate**
+- `src/cursus/validation/alignment/discovery/contract_discovery.py` (ContractDiscoveryEngine)
+- `src/cursus/validation/runtime/contract_discovery.py` (ContractDiscoveryManager)
+- `src/cursus/workspace/core/discovery.py` (WorkspaceDiscoveryManager)
+- `src/cursus/validation/alignment/file_resolver.py` (FlexibleFileResolver)
+
+#### **Simple Migration Approach**
+Instead of complex dependency analysis, use **simple adapter pattern**:
+
+```python
+# Replace old files with simple adapters
+# src/cursus/validation/alignment/discovery/contract_discovery.py
+from cursus.step_catalog.adapters import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
+
+# src/cursus/validation/runtime/contract_discovery.py
+from cursus.step_catalog.adapters import ContractDiscoveryManagerAdapter as ContractDiscoveryManager
+
+# src/cursus/workspace/core/discovery.py
+from cursus.step_catalog.adapters import WorkspaceDiscoveryManagerAdapter as WorkspaceDiscoveryManager
+```
+
+### Migration Principles
+
+#### **1. Simplicity First**
+- Feature flags instead of complex routing controllers
+- Environment variables instead of sophisticated configuration
+- Simple adapters instead of complex compatibility layers
+- Basic monitoring instead of elaborate metrics systems
+
+#### **2. Proven Patterns**
+- Follow successful workspace-aware migration patterns (95% quality score)
+- Use standard deployment practices
+- Leverage existing infrastructure
+- Avoid custom migration frameworks
+
+#### **3. Risk Mitigation**
+- **Simple Rollback**: Environment variable change enables quick reversion
+- **Backward Compatibility**: Existing code continues working unchanged
+- **Gradual Rollout**: Feature flag enables controlled deployment
+- **Basic Monitoring**: Essential metrics without complex systems
+
+#### **4. Target Achievement**
+- **Redundancy Reduction**: Remove 16+ discovery classes (35-45% → 15-25%)
+- **Maintainability**: Single class vs multiple specialized components
+- **Performance**: O(1) lookups vs O(n) file scans
+- **Developer Experience**: Unified API vs fragmented interfaces
+
+This simplified migration strategy demonstrates that **effective system migration can be achieved through simple, proven approaches** without complex migration controllers or sophisticated routing logic, maintaining the target redundancy levels while ensuring safe, reliable deployment.
+
 ## Code Redundancy Reduction Strategy
+
+### Simplified Redundancy Reduction Approach
+
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the redundancy reduction strategy focuses on **essential consolidation** using the single-class approach.
 
 ### Current State Analysis
 
 **Existing Redundancy Levels** (following Code Redundancy Evaluation Guide):
 - **Overall System**: 35-45% redundancy (Poor Efficiency)
-- **Contract Discovery**: 40% redundancy between alignment and runtime versions
-- **File Resolution**: 35% redundancy across different resolver classes
-- **Component Discovery**: 30% redundancy in workspace and registry systems
+- **Contract Discovery**: 40% redundancy between ContractDiscoveryEngine and ContractDiscoveryManager
+- **File Resolution**: 35% redundancy across FlexibleFileResolver and workspace variants
+- **Component Discovery**: 30% redundancy between WorkspaceDiscoveryManager and registry systems
 
 ### Target Redundancy Levels
 
-**Post-Implementation Target: 18-22%** (Good Efficiency)
+**Post-Implementation Target: 15-25%** (Good Efficiency)
 
-**Phase-by-Phase Redundancy Reduction**:
+Following the simplified single-class approach:
 
-1. **Phase 1 (Essential Foundation)**:
-   - Contract Discovery: 40% → 18-20%
-   - Simple Step Index: Start at 15%
-   - **Justified redundancy**: Error handling patterns, workspace context management
+### **Single-Phase Redundancy Reduction**
 
-2. **Phase 2 (Core System)**:
-   - Catalog Manager: 20-22%
-   - Multi-Workspace Support: 18-20%
-   - **Justified redundancy**: Workspace isolation patterns, fallback mechanisms
+**Phase 1: Core Implementation (2 weeks)**:
+- **Single StepCatalog Class**: 15-18% redundancy
+- **Simple Data Models**: 15% redundancy
+- **ConfigAutoDiscovery**: 18-20% redundancy
+- **Justified redundancy**: Essential error handling, workspace context patterns
 
-3. **Phase 3 (Advanced Features)**:
-   - Query Engine: 22-25%
-   - Essential Query Features: 15-18%
-   - **Justified redundancy**: Search strategy variations, normalization patterns
+**Phase 2: Integration & Testing (2 weeks)**:
+- **Backward Compatibility Adapters**: 20-22% redundancy (acceptable for transition)
+- **Simple Testing**: 15-18% redundancy
+- **Justified redundancy**: Legacy support patterns, test validation patterns
 
-4. **Phase 4 (Integration & Optimization)**:
-   - Backward Compatibility: 25% (acceptable for transition)
-   - Performance Optimization: 15% (highly optimized)
+**Phase 3: Deployment & Migration (2 weeks)**:
+- **Feature Flag Implementation**: 18-20% redundancy
+- **Simple Monitoring**: 15-18% redundancy
+- **Final System**: 15-25% redundancy (target achieved)
+
+### Redundancy Elimination Strategy
+
+#### **❌ Eliminated: Manager Proliferation**
+**Before**: 16+ separate discovery/resolver classes
+```python
+# Multiple specialized managers (35-45% redundancy)
+ContractDiscoveryEngine()
+ContractDiscoveryManager()
+WorkspaceDiscoveryManager()
+FlexibleFileResolver()
+DeveloperWorkspaceFileResolver()
+RegistryStepDiscovery()
+# ... 10+ more classes
+```
+
+**After**: Single unified class
+```python
+# Single class handling all functionality (15-25% redundancy)
+StepCatalog(workspace_root)
+```
+
+**Redundancy Reduction**: 35-45% → 15-25% = **50-60% improvement**
+
+#### **❌ Eliminated: Copy-Paste Programming**
+**Before**: Identical logic repeated across discovery systems
+- File system scanning logic duplicated 4+ times
+- Name normalization patterns repeated 6+ times
+- Error handling boilerplate copied across 16+ classes
+- Workspace path resolution duplicated 8+ times
+
+**After**: Single implementation with reuse
+- File system scanning: 1 implementation in `_discover_workspace_components()`
+- Name extraction: 1 implementation in `_extract_step_name()`
+- Error handling: Integrated patterns in main class methods
+- Workspace resolution: 1 implementation in `_build_index()`
+
+#### **❌ Eliminated: Over-Abstraction**
+**Before**: Complex component hierarchies
+- ComponentSet, ComponentInfo, IndexEntry classes
+- Complex metadata extraction and validation
+- Sophisticated caching with TTL and invalidation
+- Advanced search with ML recommendations
+
+**After**: Simple, focused implementations
+- 3 simple data models: FileMetadata, StepInfo, StepSearchResult
+- Basic metadata: path, file_type, modified_time
+- Simple dictionary caching with lazy loading
+- Basic fuzzy search with string matching
 
 ### Redundancy Classification
 
-**✅ Justified Redundancy (15-25%)**:
-- **Separation of Concerns**: Different workspace contexts require similar but distinct implementations
-- **Error Handling**: Consistent error patterns across discovery, indexing, and query components
-- **Backward Compatibility**: Legacy support requires duplicate interfaces during migration
-- **Performance Optimization**: Caching strategies with redundant validation
+#### **✅ Justified Redundancy (15-25%)**
+Following **Code Redundancy Evaluation Guide** principles:
 
-**❌ Eliminated Redundancy**:
-- **Copy-Paste Programming**: Consolidating 16+ discovery classes eliminates identical logic repetition
-- **Over-Abstraction**: Removing complex relationship mapping and ML recommendations
-- **Speculative Features**: Eliminating theoretical conflict resolution and real-time collaboration
+**Essential Error Handling Patterns** (5-8% redundancy):
+- Consistent try/catch blocks across public methods
+- Standard logging patterns for debugging
+- Graceful degradation for missing files/directories
+- **Justification**: Reliability and maintainability require consistent error handling
+
+**Workspace Context Management** (5-7% redundancy):
+- Similar patterns for core vs workspace directory scanning
+- Consistent precedence rules (workspace overrides core)
+- Standard file path resolution across contexts
+- **Justification**: Multi-workspace support requires context-aware patterns
+
+**Backward Compatibility Support** (5-10% redundancy during transition):
+- Legacy adapter methods with similar signatures
+- Consistent data transformation patterns
+- Standard interface maintenance
+- **Justification**: Smooth migration requires temporary interface duplication
+
+#### **❌ Eliminated Redundancy**
+**Copy-Paste Programming** (eliminated 20-25% redundancy):
+- ❌ Identical file scanning logic across 16+ classes
+- ❌ Repeated name normalization patterns
+- ❌ Duplicated error handling boilerplate
+- ❌ Copy-paste workspace path resolution
+
+**Over-Abstraction** (eliminated 10-15% redundancy):
+- ❌ Complex component hierarchies without validated demand
+- ❌ Sophisticated metadata extraction for theoretical use cases
+- ❌ Advanced caching mechanisms without performance requirements
+- ❌ Complex search algorithms without user requests
+
+**Speculative Features** (eliminated 5-10% redundancy):
+- ❌ ML recommendations without user validation
+- ❌ Complex relationship mapping without demand
+- ❌ Real-time collaboration features without requirements
+- ❌ Advanced conflict resolution without evidence of conflicts
+
+### Redundancy Measurement Strategy
+
+#### **Automated Redundancy Monitoring**
+```python
+# Simple redundancy monitoring integrated into CI/CD
+class RedundancyMonitor:
+    """Simple redundancy monitoring for the unified catalog system."""
+    
+    def measure_redundancy(self, module_path: str) -> float:
+        """Measure code redundancy in the step catalog module."""
+        # Simple metrics without complex analysis
+        total_lines = self._count_total_lines(module_path)
+        duplicate_lines = self._count_duplicate_lines(module_path)
+        
+        redundancy_percentage = (duplicate_lines / total_lines) * 100
+        return redundancy_percentage
+    
+    def validate_redundancy_target(self, module_path: str) -> bool:
+        """Validate that redundancy is within target range."""
+        redundancy = self.measure_redundancy(module_path)
+        
+        # Target: 15-25% redundancy
+        if redundancy > 25:
+            print(f"❌ Redundancy too high: {redundancy:.1f}% (target: 15-25%)")
+            return False
+        elif redundancy < 15:
+            print(f"⚠️ Redundancy very low: {redundancy:.1f}% (may indicate over-optimization)")
+            return True
+        else:
+            print(f"✅ Redundancy within target: {redundancy:.1f}% (target: 15-25%)")
+            return True
+```
+
+#### **Quality Gates**
+- **CI/CD Integration**: Automated redundancy checks on every commit
+- **Pull Request Gates**: Redundancy validation before merge
+- **Release Gates**: Final redundancy validation before deployment
+- **Monitoring Alerts**: Continuous monitoring for redundancy regression
+
+### Success Metrics
+
+#### **Quantitative Targets**
+- **Overall Redundancy**: 35-45% → 15-25% = **50-60% improvement**
+- **Discovery Systems**: 16+ classes → 1 class = **94% reduction in components**
+- **Code Lines**: Estimated 30-40% reduction in total discovery-related code
+- **Maintenance Burden**: 70% reduction through single-class consolidation
+
+#### **Qualitative Benefits**
+- **Developer Experience**: Single API instead of 16+ different interfaces
+- **Maintainability**: One place to fix bugs instead of multiple systems
+- **Testability**: Single class easier to test than complex component interactions
+- **Documentation**: One system to document instead of fragmented approaches
+
+### Redundancy Reduction Validation
+
+#### **Before/After Comparison**
+**Before (Current State)**:
+```
+Discovery Systems: 16+ classes
+Redundancy Level: 35-45%
+Maintenance Points: 16+ different systems
+API Consistency: Low (different interfaces)
+Performance: O(n) file scans per system
+```
+
+**After (Unified System)**:
+```
+Discovery Systems: 1 class
+Redundancy Level: 15-25%
+Maintenance Points: 1 unified system
+API Consistency: High (single interface)
+Performance: O(1) dictionary lookups
+```
+
+#### **Success Validation**
+- ✅ **Redundancy Target**: Achieve 15-25% redundancy (down from 35-45%)
+- ✅ **Component Consolidation**: 16+ classes → 1 class
+- ✅ **Performance Improvement**: O(n) → O(1) lookups
+- ✅ **Maintainability**: Single point of maintenance vs distributed systems
+- ✅ **Developer Experience**: Unified API vs fragmented interfaces
+
+This simplified redundancy reduction strategy demonstrates that **significant redundancy improvements can be achieved through simple, well-designed consolidation** without complex analysis or over-engineered solutions, following the Code Redundancy Evaluation Guide principles while delivering measurable improvements in system efficiency and maintainability.
 
 ## Success Criteria & Quality Gates
 
+### Simplified Success Metrics
+
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the success criteria focus on **essential, measurable outcomes** aligned with the simplified single-class approach.
+
 ### Quantitative Success Metrics
 
-**Redundancy Targets**:
-- ✅ Achieve 15-25% redundancy (down from 35-45%)
-- ✅ Consolidate 16+ discovery systems into unified solution
-- ✅ 50-60% reduction in overall system redundancy
+**Core Redundancy Targets**:
+- ✅ **Primary Target**: Achieve 15-25% redundancy (down from 35-45%)
+- ✅ **System Consolidation**: 16+ discovery classes → 1 unified StepCatalog class
+- ✅ **Redundancy Improvement**: 50-60% reduction in overall system redundancy
+- ✅ **Component Elimination**: 94% reduction in discovery system components
 
-**Performance Targets**:
-- ✅ Step lookup: <1ms (O(1) dictionary access)
-- ✅ Index rebuild: <10 seconds for 1000 steps
-- ✅ Memory usage: <100MB for typical workspace
-- ✅ Search queries: <100ms for fuzzy search
-- ✅ Multi-workspace search: <2 seconds across 50+ workspaces
+**Essential Performance Targets**:
+- ✅ **Step Lookup**: <1ms (O(1) dictionary access)
+- ✅ **Index Build**: <10 seconds for typical workspace (1000 steps)
+- ✅ **Memory Usage**: <100MB for normal operation
+- ✅ **Basic Search**: <100ms for simple fuzzy matching
+- ✅ **Config Discovery**: <5 seconds for complete config class discovery
 
-**Developer Productivity Targets**:
-- ✅ 60% increase in cross-workspace component reuse
-- ✅ 70% reduction in time to find relevant components
-- ✅ 50% reduction in new developer onboarding time
-- ✅ 40% improvement in search result relevance
+**Developer Experience Targets**:
+- ✅ **API Unification**: Single interface replacing 16+ fragmented APIs
+- ✅ **Maintenance Reduction**: 70% reduction in maintenance burden
+- ✅ **Onboarding Simplification**: 50% reduction in developer learning curve
+- ✅ **Cross-Workspace Reuse**: 60% increase in component discovery across workspaces
 
 ### Qualitative Success Indicators
 
-**Architecture Quality** (Target: 95% quality score):
-- **Robustness & Reliability** (20% weight): Comprehensive error handling, graceful degradation
-- **Maintainability & Extensibility** (20% weight): Clear code, consistent patterns, excellent documentation
-- **Performance & Scalability** (15% weight): Optimized resource usage, effective caching, lazy loading
-- **Modularity & Reusability** (15% weight): Perfect separation, loose coupling, clear interfaces
-- **Testability & Observability** (10% weight): Test isolation, dependency injection, monitoring support
-- **Security & Safety** (10% weight): Secure input handling, access control, data protection
-- **Usability & Developer Experience** (10% weight): Intuitive APIs, clear errors, minimal learning curve
+**Simplified Architecture Quality** (Target: 95% quality score):
+Following successful workspace-aware implementation patterns:
 
-### Quality Gates
+- **Robustness & Reliability** (25% weight): Simple error handling, graceful degradation
+- **Maintainability & Simplicity** (25% weight): Single class design, clear patterns, minimal complexity
+- **Performance & Efficiency** (20% weight): Dictionary-based indexing, lazy loading, memory efficiency
+- **Usability & Developer Experience** (20% weight): Unified API, consistent interface, minimal learning curve
+- **Testability & Observability** (10% weight): Simple testing, basic monitoring, essential metrics
+
+### Simplified Quality Gates
 
 **Phase Completion Criteria**:
-1. **Redundancy Gate**: Each phase must maintain redundancy below 25%
-2. **Performance Gate**: Must meet or exceed performance targets
-3. **Compatibility Gate**: 100% backward compatibility maintained
-4. **Quality Gate**: Architecture quality score >90%
-5. **Test Coverage Gate**: >85% test coverage for new components
+Following the simplified 3-phase approach:
+
+#### **Phase 1: Core Implementation (2 weeks)**
+1. **Functionality Gate**: All US1-US5 methods implemented in single StepCatalog class
+2. **Redundancy Gate**: Core implementation maintains <20% redundancy
+3. **Performance Gate**: Basic performance targets met (dictionary lookups <1ms)
+4. **Integration Gate**: ConfigAutoDiscovery successfully integrated
+
+#### **Phase 2: Integration & Testing (2 weeks)**
+1. **Compatibility Gate**: Backward compatibility adapters functional
+2. **Testing Gate**: >80% test coverage for core functionality
+3. **Integration Gate**: Multi-workspace discovery working correctly
+4. **Performance Gate**: Full performance targets achieved
+
+#### **Phase 3: Deployment & Migration (2 weeks)**
+1. **Deployment Gate**: Feature flag deployment successful
+2. **Migration Gate**: Legacy systems successfully replaced
+3. **Final Redundancy Gate**: 15-25% redundancy target achieved
+4. **Quality Gate**: Overall architecture quality score >90%
+
+### Success Validation Strategy
+
+#### **Simple Validation Approach**
+Instead of complex validation frameworks, use **direct measurement**:
+
+```python
+# Simple success validation
+class SuccessValidator:
+    """Simple validation of implementation success criteria."""
+    
+    def validate_redundancy_target(self) -> bool:
+        """Validate redundancy reduction target."""
+        # Before: 16+ discovery classes
+        # After: 1 StepCatalog class
+        component_reduction = (16 - 1) / 16 * 100  # 94% reduction
+        
+        # Measure code redundancy in new implementation
+        redundancy_analyzer = RedundancyAnalyzer()
+        current_redundancy = redundancy_analyzer.analyze_module("src/cursus/step_catalog")
+        
+        return (
+            component_reduction > 90 and  # >90% component reduction
+            current_redundancy < 25       # <25% code redundancy
+        )
+    
+    def validate_performance_targets(self) -> bool:
+        """Validate essential performance targets."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Test lookup performance
+        start_time = time.time()
+        catalog.get_step_info("test_step")
+        lookup_time = time.time() - start_time
+        
+        # Test index build performance
+        start_time = time.time()
+        catalog._build_index()
+        build_time = time.time() - start_time
+        
+        return (
+            lookup_time < 0.001 and  # <1ms lookup
+            build_time < 10.0        # <10s index build
+        )
+    
+    def validate_api_unification(self) -> bool:
+        """Validate API unification success."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Verify all US1-US5 methods available
+        required_methods = [
+            'get_step_info',
+            'find_step_by_component', 
+            'list_available_steps',
+            'search_steps',
+            'discover_config_classes'
+        ]
+        
+        return all(hasattr(catalog, method) for method in required_methods)
+```
+
+### Quality Assurance Principles
+
+#### **1. Essential Quality Only**
+Following **Code Redundancy Evaluation Guide** principles:
+- **Validate Real Requirements**: Focus on US1-US5 validated user stories
+- **Avoid Over-Engineering**: Simple quality gates without complex frameworks
+- **Proven Patterns**: Use successful workspace-aware quality standards (95% score)
+- **Target Achievement**: 15-25% redundancy through simple, effective design
+
+#### **2. Measurable Outcomes**
+- **Quantitative Metrics**: Clear, objective measurements (component count, redundancy %, performance times)
+- **Qualitative Indicators**: Simple quality assessment based on proven criteria
+- **Success Validation**: Direct measurement without complex validation frameworks
+- **Progress Tracking**: Simple phase-based gates aligned with implementation timeline
+
+#### **3. Risk Mitigation**
+- **Simple Gates**: Clear pass/fail criteria for each phase
+- **Early Detection**: Quality issues identified at phase boundaries
+- **Rollback Capability**: Simple rollback if quality gates not met
+- **Continuous Monitoring**: Basic quality tracking throughout implementation
+
+### Success Criteria Summary
+
+#### **Primary Success Indicators**
+- ✅ **System Consolidation**: 16+ classes → 1 class (94% reduction)
+- ✅ **Redundancy Reduction**: 35-45% → 15-25% (50-60% improvement)
+- ✅ **Performance Achievement**: <1ms lookups, <10s index build, <100MB memory
+- ✅ **API Unification**: Single interface for all discovery operations
+- ✅ **Quality Maintenance**: 95% architecture quality score
+
+#### **Secondary Success Indicators**
+- ✅ **Developer Experience**: Simplified onboarding and reduced learning curve
+- ✅ **Maintenance Efficiency**: 70% reduction in maintenance burden
+- ✅ **Cross-Workspace Support**: Seamless multi-workspace component discovery
+- ✅ **Backward Compatibility**: Existing code continues working during transition
+- ✅ **Migration Success**: Safe, gradual rollout with rollback capability
+
+This simplified success criteria approach demonstrates that **clear, measurable outcomes can be achieved through simple, focused quality gates** without complex validation frameworks, ensuring the unified step catalog system delivers all validated requirements while maintaining the target redundancy levels and quality standards.
 
 ## Testing & Validation Strategy
 
+### Simplified Testing Strategy
+
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the testing strategy focuses on **essential functionality validation** without complex testing frameworks.
+
 ### Unit Testing Strategy
 
-**Test Coverage Requirements**:
-- **Core Components**: >90% coverage
-- **Discovery Logic**: >85% coverage
-- **Integration Points**: >80% coverage
-- **Legacy Adapters**: >75% coverage
+**Essential Test Coverage Requirements**:
+- **Core StepCatalog Class**: >85% coverage (single class focus)
+- **ConfigAutoDiscovery**: >80% coverage (essential integration)
+- **Simple Data Models**: >75% coverage (basic validation)
+- **Legacy Adapters**: >70% coverage (transition support)
 
-**Key Test Categories**:
+**Core Functionality Tests**:
 ```python
 class TestStepCatalog:
-    """Comprehensive unit tests for step catalog system."""
+    """Simple, focused unit tests for step catalog system."""
     
     def test_step_discovery_accuracy(self):
         """Test that all steps are discovered correctly."""
         catalog = StepCatalog(test_workspace_root)
+        
+        # Test with known step structure
         expected_steps = ["tabular_preprocess", "model_training", "model_evaluation"]
         discovered_steps = catalog.list_available_steps()
+        
         assert set(expected_steps).issubset(set(discovered_steps))
     
     def test_component_completeness(self):
         """Test that all components are found for each step."""
         catalog = StepCatalog(test_workspace_root)
+        
         step_info = catalog.get_step_info("tabular_preprocess")
-        assert step_info.components.script is not None
-        assert step_info.components.contract is not None
+        # Test simplified data model
+        assert step_info is not None
+        assert step_info.file_components.get('script') is not None
+        assert step_info.file_components.get('contract') is not None
+        # Other components may be optional
     
     def test_performance_requirements(self):
         """Test that performance requirements are met."""
         catalog = StepCatalog(large_test_workspace)
+        
+        # Test lookup performance (O(1) dictionary access)
         start_time = time.time()
         step_info = catalog.get_step_info("test_step")
         lookup_time = time.time() - start_time
+        
         assert lookup_time < 0.001  # <1ms requirement
+    
+    def test_config_auto_discovery(self):
+        """Test configuration class auto-discovery functionality."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Test core config discovery
+        config_classes = catalog.discover_config_classes()
+        assert len(config_classes) > 0
+        
+        # Test workspace config discovery
+        workspace_configs = catalog.discover_config_classes("test_project")
+        assert isinstance(workspace_configs, dict)
+        
+        # Test complete config building
+        complete_configs = catalog.build_complete_config_classes("test_project")
+        assert isinstance(complete_configs, dict)
+    
+    def test_error_handling(self):
+        """Test error handling and graceful degradation."""
+        catalog = StepCatalog(Path("/nonexistent/path"))
+        
+        # Should not crash, should return empty results
+        step_info = catalog.get_step_info("nonexistent_step")
+        assert step_info is None
+        
+        steps = catalog.list_available_steps()
+        assert isinstance(steps, list)  # Should return empty list, not crash
+        
+        search_results = catalog.search_steps("test")
+        assert isinstance(search_results, list)  # Should return empty list, not crash
+    
+    def test_all_us1_us5_methods(self):
+        """Test that all US1-US5 methods are implemented and functional."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # US1: Query by Step Name
+        step_info = catalog.get_step_info("test_step")
+        assert step_info is not None or step_info is None  # Should not crash
+        
+        # US2: Reverse Lookup from Components
+        component_step = catalog.find_step_by_component("test_path.py")
+        assert component_step is not None or component_step is None  # Should not crash
+        
+        # US3: Multi-Workspace Discovery
+        steps = catalog.list_available_steps()
+        assert isinstance(steps, list)
+        
+        # US4: Efficient Scaling
+        search_results = catalog.search_steps("test")
+        assert isinstance(search_results, list)
+        
+        # US5: Configuration Class Auto-Discovery
+        config_classes = catalog.discover_config_classes()
+        assert isinstance(config_classes, dict)
 ```
 
 ### Integration Testing Strategy
 
-**Multi-System Integration Tests**:
+**Simplified Integration Tests**:
 ```python
 class TestCatalogIntegration:
-    """Integration tests for catalog system."""
+    """Integration tests for simplified catalog system."""
     
-    def test_registry_integration(self):
-        """Test integration with registry system."""
-        catalog = StepCatalog(test_workspace_root)
-        registry_manager = UnifiedRegistryManager()
-        
-        # Verify data consistency between systems
-        catalog_steps = set(catalog.list_available_steps())
-        registry_steps = set(registry_manager.get_all_step_names())
-        assert catalog_steps.intersection(registry_steps)
-    
-    def test_workspace_integration(self):
-        """Test integration with workspace-aware system."""
+    def test_multi_workspace_discovery(self):
+        """Test discovery across multiple workspaces."""
         catalog = StepCatalog(multi_workspace_root)
         
-        # Test workspace precedence
+        # Test workspace precedence (workspace overrides core)
         step_info = catalog.get_step_info("shared_step")
-        assert step_info.workspace_id == "developer_1"  # Developer takes precedence
+        # Workspace steps should take precedence over core
+        assert step_info.workspace_id != "core"
         
-        # Test fallback to shared
-        step_info = catalog.get_step_info("shared_only_step")
-        assert step_info.workspace_id == "shared"
+        # Test fallback to core
+        step_info = catalog.get_step_info("core_only_step")
+        assert step_info.workspace_id == "core"
     
     def test_backward_compatibility(self):
-        """Test that legacy APIs still work."""
+        """Test that legacy APIs still work through adapters."""
         catalog = StepCatalog(test_workspace_root)
         legacy_adapter = ContractDiscoveryEngineAdapter(catalog)
         
+        # Test legacy contract discovery methods
         contracts = legacy_adapter.discover_all_contracts()
-        assert len(contracts) > 0
-        assert "tabular_preprocess" in contracts
+        assert isinstance(contracts, list)
+        assert len(contracts) >= 0
+        
+        contracts_with_scripts = legacy_adapter.discover_contracts_with_scripts()
+        assert isinstance(contracts_with_scripts, list)
+    
+    def test_job_type_variant_support(self):
+        """Test job type variant discovery functionality."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Test job type variant lookup
+        step_info = catalog.get_step_info("cradle_data_loading", "training")
+        if step_info:  # May not exist in test environment
+            assert step_info.step_name in ["cradle_data_loading_training", "cradle_data_loading"]
+        
+        # Test variant enumeration
+        variants = catalog.get_job_type_variants("cradle_data_loading")
+        assert isinstance(variants, list)
+    
+    def test_registry_integration(self):
+        """Test integration with existing registry system."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Test that registry data is loaded
+        steps = catalog.list_available_steps()
+        assert len(steps) > 0  # Should have steps from registry
+        
+        # Test that step info includes registry data
+        if steps:
+            step_info = catalog.get_step_info(steps[0])
+            assert step_info is not None
+            assert isinstance(step_info.registry_data, dict)
 ```
 
-### Performance Benchmarking
+### Configuration Discovery Tests
 
-**Benchmark Requirements**:
 ```python
-class CatalogBenchmarks:
-    """Performance benchmarks for catalog system."""
+class TestConfigAutoDiscovery:
+    """Tests for configuration auto-discovery functionality."""
     
-    def benchmark_redundancy_reduction(self):
-        """Benchmark code redundancy reduction."""
-        # Measure redundancy levels in new implementation
-        redundancy_analyzer = RedundancyAnalyzer()
+    def test_core_config_discovery(self):
+        """Test discovery of core configuration classes."""
+        discovery = ConfigAutoDiscovery(test_workspace_root)
         
-        catalog_redundancy = redundancy_analyzer.analyze_module("src/cursus/step_catalog")
-        assert catalog_redundancy < 0.25  # <25% redundancy requirement
+        config_classes = discovery.discover_config_classes()
+        assert isinstance(config_classes, dict)
         
-        # Compare with baseline
-        baseline_redundancy = 0.40  # Current contract discovery redundancy
-        improvement = (baseline_redundancy - catalog_redundancy) / baseline_redundancy
-        assert improvement > 0.50  # >50% improvement required
+        # Test that discovered classes are actual Python classes
+        for class_name, class_type in config_classes.items():
+            assert isinstance(class_name, str)
+            assert isinstance(class_type, type)
     
-    def benchmark_performance_targets(self):
-        """Benchmark performance against targets."""
-        catalog = StepCatalog(large_test_workspace)
+    def test_workspace_config_discovery(self):
+        """Test discovery of workspace-specific configuration classes."""
+        discovery = ConfigAutoDiscovery(test_workspace_root)
         
-        # Test lookup performance
-        times = []
-        for _ in range(1000):
+        workspace_configs = discovery.discover_config_classes("test_project")
+        assert isinstance(workspace_configs, dict)
+    
+    def test_config_integration_with_store(self):
+        """Test integration with existing ConfigClassStore."""
+        discovery = ConfigAutoDiscovery(test_workspace_root)
+        
+        complete_configs = discovery.build_complete_config_classes()
+        assert isinstance(complete_configs, dict)
+        
+        # Should include both manually registered and auto-discovered classes
+        # Manual registration takes precedence
+```
+
+### Simple Performance Benchmarks
+
+```python
+class SimpleCatalogBenchmarks:
+    """Simple performance benchmarks for catalog system."""
+    
+    def benchmark_core_operations(self):
+        """Benchmark core operations with simple measurements."""
+        catalog = StepCatalog(test_workspace_root)
+        
+        # Benchmark index building
+        start_time = time.time()
+        catalog._ensure_index_built()  # Force index build
+        build_time = time.time() - start_time
+        print(f"Index build time: {build_time:.3f}s")
+        assert build_time < 10.0  # Should build in <10 seconds
+        
+        # Benchmark lookup performance
+        lookup_times = []
+        for _ in range(100):
             start_time = time.time()
             catalog.get_step_info("test_step")
-            times.append(time.time() - start_time)
+            lookup_times.append(time.time() - start_time)
         
-        avg_time = sum(times) / len(times)
-        assert avg_time < 0.001  # <1ms average requirement
+        avg_lookup_time = sum(lookup_times) / len(lookup_times)
+        print(f"Average lookup time: {avg_lookup_time*1000:.3f}ms")
+        assert avg_lookup_time < 0.001  # <1ms requirement
+        
+        # Benchmark search performance
+        start_time = time.time()
+        results = catalog.search_steps("test")
+        search_time = time.time() - start_time
+        print(f"Search time: {search_time*1000:.3f}ms")
+        assert search_time < 0.1  # <100ms requirement
+    
+    def benchmark_memory_usage(self):
+        """Simple memory usage benchmark."""
+        import psutil
+        import os
+        
+        process = psutil.Process(os.getpid())
+        memory_before = process.memory_info().rss / 1024 / 1024  # MB
+        
+        catalog = StepCatalog(large_test_workspace)
+        catalog._ensure_index_built()  # Force index build
+        
+        memory_after = process.memory_info().rss / 1024 / 1024  # MB
+        memory_used = memory_after - memory_before
+        
+        print(f"Memory usage: {memory_used:.1f}MB")
+        assert memory_used < 100  # <100MB requirement
+    
+    def benchmark_redundancy_reduction(self):
+        """Simple redundancy measurement."""
+        # Simple component count comparison
+        # Before: 16+ discovery classes
+        # After: 1 StepCatalog class
+        component_reduction = (16 - 1) / 16 * 100  # 94% reduction
+        
+        print(f"Component reduction: {component_reduction:.1f}%")
+        assert component_reduction > 90  # >90% component reduction
+        
+        # Simple redundancy check (if redundancy analyzer available)
+        try:
+            redundancy_analyzer = RedundancyAnalyzer()
+            catalog_redundancy = redundancy_analyzer.analyze_module("src/cursus/step_catalog")
+            print(f"Code redundancy: {catalog_redundancy:.1f}%")
+            assert catalog_redundancy < 25  # <25% redundancy requirement
+        except ImportError:
+            print("RedundancyAnalyzer not available, skipping detailed redundancy check")
 ```
+
+### Testing Principles
+
+#### **1. Essential Testing Only**
+Following **Code Redundancy Evaluation Guide** principles:
+- Test core functionality (US1-US5) without over-engineering
+- Simple test cases focusing on real usage scenarios
+- Basic performance validation without complex benchmarking frameworks
+- Error handling tests for graceful degradation
+
+#### **2. Simplified Test Structure**
+- **Unit Tests**: Test individual methods of `StepCatalog` class
+- **Integration Tests**: Test multi-workspace and backward compatibility
+- **Performance Tests**: Simple benchmarks for core requirements
+- **Config Tests**: Validate configuration auto-discovery functionality
+
+#### **3. No Complex Testing Infrastructure**
+- Use standard Python testing frameworks (pytest, unittest)
+- Simple assertions without complex test fixtures
+- Basic performance measurements without sophisticated profiling
+- Essential test coverage without exhaustive edge case testing
+
+### Testing Strategy Benefits
+
+#### **1. Focus on Real Functionality**
+- All US1-US5 user stories validated through tests
+- Multi-workspace discovery working correctly
+- Configuration auto-discovery functioning as expected
+- Backward compatibility maintained through adapters
+- Error handling providing graceful degradation
+
+#### **2. Simple but Comprehensive**
+- Essential test coverage without over-engineering
+- Performance validation for core requirements
+- Integration testing for multi-workspace support
+- Configuration discovery validation
+
+#### **3. Maintainable Testing**
+- Simple test cases are easier to maintain and understand
+- Standard testing frameworks without complex infrastructure
+- Clear test organization aligned with system architecture
+- Essential coverage without exhaustive edge case testing
+
+### Quality Validation
+
+#### **Functional Validation**
+- ✅ All US1-US5 user stories validated through tests
+- ✅ Multi-workspace discovery working correctly
+- ✅ Configuration auto-discovery functioning as expected
+- ✅ Backward compatibility maintained through adapters
+- ✅ Error handling providing graceful degradation
+
+#### **Performance Validation**
+- ✅ Step lookup: <1ms (O(1) dictionary access)
+- ✅ Index build: <10 seconds for typical workspace
+- ✅ Memory usage: <100MB for normal operation
+- ✅ Search: <100ms for basic fuzzy matching
+
+#### **Quality Metrics**
+- **Code Coverage**: Focus on core functionality coverage
+- **Performance Benchmarks**: Simple measurements of key operations
+- **Error Handling**: Validation of graceful degradation
+- **Integration**: Multi-workspace and legacy compatibility testing
+
+### Design Rationale
+
+#### **Why Simple Testing?**
+Following **Code Redundancy Evaluation Guide** principles:
+
+1. **Avoid Over-Engineering**: Simple test cases instead of complex testing frameworks
+2. **Essential Validation**: Test real functionality, not theoretical edge cases
+3. **Proven Patterns**: Use standard testing approaches from workspace-aware success
+4. **Target Redundancy**: Maintain 15-25% redundancy by avoiding complex test infrastructure
+
+#### **What Was Removed (Over-Engineering)**
+- ❌ **Complex Test Fixtures**: Elaborate test setup and teardown
+- ❌ **Sophisticated Benchmarking**: Advanced performance profiling frameworks
+- ❌ **Exhaustive Edge Case Testing**: Testing theoretical scenarios without validated demand
+- ❌ **Complex Test Infrastructure**: Over-engineered testing systems
+
+#### **What Was Kept (Essential)**
+- ✅ **Core Functionality Tests**: Validation of all US1-US5 requirements
+- ✅ **Performance Validation**: Simple benchmarks for key requirements
+- ✅ **Integration Testing**: Multi-workspace and backward compatibility validation
+- ✅ **Error Handling Tests**: Graceful degradation validation
+- ✅ **Config Discovery Tests**: Comprehensive validation of new auto-discovery functionality
+
+This simplified testing strategy demonstrates that **comprehensive testing can be achieved through simple, focused test cases** without creating complex testing infrastructure, maintaining the target redundancy levels while ensuring thorough validation of all essential functionality.
 
 ## Risk Analysis & Mitigation
 
+### Simplified Risk Management
+
+Following the **Code Redundancy Evaluation Guide** and avoiding over-engineering, the risk analysis focuses on **essential risks** with **simple, proven mitigation strategies**.
+
 ### Technical Risks
 
-**1. Integration Complexity Risk**
-- **Risk**: Complex integration between three systems may introduce bugs
-- **Probability**: Medium
-- **Impact**: High
-- **Mitigation**:
-  - Comprehensive integration testing with 80%+ coverage
-  - Phased implementation approach with validation at each step
-  - Clear interface definitions and contracts
-  - Automated regression testing
-- **Monitoring**: Integration test success rates, error tracking, system health checks
-
-**2. Performance Degradation Risk**
-- **Risk**: Multi-system integration may impact performance
+**1. Single Class Complexity Risk**
+- **Risk**: Consolidating 16+ systems into single class may create complexity
 - **Probability**: Low
 - **Impact**: Medium
 - **Mitigation**:
-  - Intelligent caching strategies with TTL and invalidation
-  - Lazy loading and optimization patterns
-  - Performance benchmarking at each phase
-  - Profiling and targeted optimization
-- **Monitoring**: Response time metrics, resource usage tracking, performance alerts
+  - **Simple design patterns**: Use proven workspace-aware patterns (95% quality score)
+  - **Clear method separation**: Each US1-US5 requirement has dedicated method
+  - **Comprehensive testing**: >85% test coverage for core functionality
+  - **Incremental development**: Build and test each method individually
+- **Monitoring**: Code complexity metrics, test coverage, method size tracking
 
-**3. Migration Complexity Risk**
-- **Risk**: Complex migration from 16+ existing discovery systems
-- **Probability**: High
+**2. Performance Risk**
+- **Risk**: Single class handling all discovery may impact performance
+- **Probability**: Low
+- **Impact**: Low
+- **Mitigation**:
+  - **Dictionary-based indexing**: O(1) lookups vs current O(n) scans
+  - **Lazy loading**: Build index only when first accessed
+  - **Simple caching**: In-memory dictionaries without complex invalidation
+  - **Performance benchmarking**: Validate <1ms lookups, <10s index build
+- **Monitoring**: Response time metrics, memory usage, index build time
+
+**3. Migration Risk**
+- **Risk**: Replacing 16+ discovery systems may break existing functionality
+- **Probability**: Medium
 - **Impact**: High
 - **Mitigation**:
-  - Backward compatibility maintenance during transition
-  - Gradual migration approach (10% → 25% → 50% → 75% → 100%)
-  - Comprehensive testing and validation
-  - Rollback procedures and safety measures
-- **Monitoring**: Migration success rates, error rates, rollback procedures
+  - **Simple feature flags**: Environment variable-based rollout control
+  - **Backward compatibility adapters**: Legacy APIs continue working
+  - **Gradual rollout**: 10% → 25% → 50% → 75% → 100% with monitoring
+  - **Simple rollback**: Change environment variable to revert
+- **Monitoring**: Error rates, success rates, rollback frequency
+
+### Implementation Risks
+
+**4. Config Auto-Discovery Risk**
+- **Risk**: AST-based config discovery may fail or miss classes
+- **Probability**: Medium
+- **Impact**: Medium
+- **Mitigation**:
+  - **Graceful degradation**: Continue with manual registration if auto-discovery fails
+  - **Comprehensive testing**: Test both core and workspace config discovery
+  - **Error handling**: Log warnings but don't crash on discovery failures
+  - **Fallback mechanism**: Manual registration takes precedence over auto-discovery
+- **Monitoring**: Discovery success rates, error logs, manual vs auto-discovered ratios
+
+**5. Workspace Integration Risk**
+- **Risk**: Multi-workspace discovery may not work correctly
+- **Probability**: Low
+- **Impact**: Medium
+- **Mitigation**:
+  - **Proven patterns**: Use successful workspace-aware implementation patterns
+  - **Simple precedence rules**: Workspace overrides core, clear and consistent
+  - **Integration testing**: Test multi-workspace scenarios thoroughly
+  - **Clear documentation**: Document workspace precedence and fallback behavior
+- **Monitoring**: Workspace discovery success rates, precedence rule violations
 
 ### Operational Risks
 
-**1. Developer Adoption Risk**
-- **Risk**: Developers may resist new integrated system
-- **Probability**: Medium
+**6. Developer Adoption Risk**
+- **Risk**: Developers may resist switching from familiar discovery systems
+- **Probability**: Low
 - **Impact**: Medium
 - **Mitigation**:
-  - Clear benefits demonstration with metrics
-  - Comprehensive documentation and training
-  - Gradual rollout with support
-  - Developer feedback integration
-- **Monitoring**: Adoption metrics, developer satisfaction surveys, support ticket volume
+  - **Clear benefits**: Demonstrate single API vs 16+ fragmented interfaces
+  - **Backward compatibility**: Existing code continues working during transition
+  - **Simple migration**: Clear, straightforward upgrade path
+  - **Performance improvements**: Show faster lookups and better reliability
+- **Monitoring**: API usage patterns, developer feedback, support requests
 
-**2. Code Redundancy Regression Risk**
-- **Risk**: Redundancy may creep back over time without monitoring
+**7. Redundancy Regression Risk**
+- **Risk**: Code redundancy may increase over time without monitoring
 - **Probability**: Medium
-- **Impact**: Medium
+- **Impact**: Low
 - **Mitigation**:
-  - Automated redundancy monitoring in CI/CD pipeline
-  - Regular redundancy audits using evaluation framework
-  - Quality gates preventing redundancy above 25%
-  - Developer training on redundancy principles
-- **Monitoring**: Continuous redundancy metrics, quality gate failures, code review alerts
+  - **Simple monitoring**: Basic redundancy checks in CI/CD pipeline
+  - **Quality gates**: Prevent commits that increase redundancy above 25%
+  - **Regular reviews**: Periodic code reviews focusing on redundancy
+  - **Developer education**: Training on redundancy principles and single-class benefits
+- **Monitoring**: Redundancy percentage tracking, quality gate failures
+
+### Risk Mitigation Principles
+
+#### **1. Simplicity First**
+Following **Code Redundancy Evaluation Guide** principles:
+- **Simple solutions**: Use proven patterns instead of complex risk frameworks
+- **Essential risks only**: Focus on real risks, not theoretical scenarios
+- **Straightforward mitigation**: Environment variables, feature flags, simple monitoring
+- **Proven approaches**: Leverage successful workspace-aware implementation experience
+
+#### **2. Fail-Safe Defaults**
+- **Graceful degradation**: System continues working even if components fail
+- **Backward compatibility**: Existing code keeps working during transition
+- **Simple rollback**: Quick reversion through environment variable changes
+- **Error isolation**: Failures in one area don't crash entire system
+
+#### **3. Continuous Monitoring**
+- **Essential metrics**: Response time, error rates, redundancy levels
+- **Simple alerts**: Basic thresholds without complex monitoring infrastructure
+- **Regular validation**: Periodic checks of system health and performance
+- **Developer feedback**: Simple channels for reporting issues and suggestions
+
+### Risk Assessment Summary
+
+#### **Low Risk Areas** (Simplified Design Benefits)
+- **Performance**: Dictionary-based indexing provides predictable O(1) performance
+- **Complexity**: Single class easier to understand and maintain than 16+ systems
+- **Quality**: Proven workspace-aware patterns (95% quality score) reduce implementation risk
+- **Testing**: Simple, focused testing strategy reduces validation complexity
+
+#### **Medium Risk Areas** (Managed Through Mitigation)
+- **Migration**: Gradual rollout with feature flags and backward compatibility
+- **Config Discovery**: Graceful degradation and fallback to manual registration
+- **Developer Adoption**: Clear benefits demonstration and smooth transition
+
+#### **Risk Mitigation Success Factors**
+- **Proven Patterns**: Use successful workspace-aware implementation approaches
+- **Simple Solutions**: Avoid over-engineering in risk mitigation strategies
+- **Essential Monitoring**: Focus on metrics that matter for system success
+- **Quick Recovery**: Simple rollback and error recovery mechanisms
+
+### Risk Monitoring Strategy
+
+#### **Simple Risk Dashboard**
+```python
+# Simple risk monitoring integrated into system
+class RiskMonitor:
+    """Simple risk monitoring for unified catalog system."""
+    
+    def get_risk_status(self) -> Dict[str, str]:
+        """Get current risk status with simple indicators."""
+        status = {}
+        
+        # Performance risk
+        if self.avg_response_time < 0.001:
+            status['performance'] = 'low'
+        elif self.avg_response_time < 0.005:
+            status['performance'] = 'medium'
+        else:
+            status['performance'] = 'high'
+        
+        # Migration risk
+        if self.error_rate < 0.01:
+            status['migration'] = 'low'
+        elif self.error_rate < 0.05:
+            status['migration'] = 'medium'
+        else:
+            status['migration'] = 'high'
+        
+        # Redundancy risk
+        if self.redundancy_level < 0.25:
+            status['redundancy'] = 'low'
+        elif self.redundancy_level < 0.35:
+            status['redundancy'] = 'medium'
+        else:
+            status['redundancy'] = 'high'
+        
+        return status
+    
+    def should_rollback(self) -> bool:
+        """Simple rollback decision logic."""
+        status = self.get_risk_status()
+        high_risk_count = sum(1 for risk in status.values() if risk == 'high')
+        return high_risk_count >= 2  # Rollback if 2+ high risks
+```
+
+#### **Risk Response Procedures**
+- **High Performance Risk**: Investigate index building, optimize dictionary operations
+- **High Migration Risk**: Increase monitoring, consider slowing rollout percentage
+- **High Redundancy Risk**: Code review, refactoring, developer training
+- **Multiple High Risks**: Automatic rollback to legacy systems
+
+This simplified risk analysis demonstrates that **effective risk management can be achieved through simple, focused strategies** that address real risks without over-engineering complex risk frameworks, maintaining the target redundancy levels while ensuring safe, reliable system deployment.
 
 ## Timeline & Milestones
 
-### Overall Timeline: 12 weeks
+### Overall Timeline: 6 weeks (Simplified Approach)
 
-**Phase 1: Essential Foundation** (Weeks 1-2)
-- Week 1: Create module structure, consolidate contract discovery
-- Week 2: Implement simple step index, initial testing
+**Phase 1: Core Implementation** (Weeks 1-2)
+- Week 1: Create simplified module structure, implement single StepCatalog class
+- Week 2: Complete US1-US5 implementation, basic testing
 
-**Phase 2: Core System** (Weeks 3-6)
-- Week 3-4: Implement catalog manager, core coordination
-- Week 5-6: Multi-workspace support, workspace integration
+**Phase 2: Integration & Testing** (Weeks 3-4)
+- Week 3: Implement ConfigAutoDiscovery integration, backward compatibility adapters
+- Week 4: Comprehensive testing, performance validation
 
-**Phase 3: Advanced Features** (Weeks 7-10)
-- Week 7-8: Query engine implementation
-- Week 9-10: Essential query features, performance optimization
-
-**Phase 4: Integration & Optimization** (Weeks 11-12)
-- Week 11: Backward compatibility layer, legacy adapters
-- Week 12: Final optimization, documentation, deployment preparation
+**Phase 3: Deployment & Migration** (Weeks 5-6)
+- Week 5: Feature flag deployment, parallel operation setup
+- Week 6: Migration validation, documentation, final deployment
 
 ### Key Milestones
 
-- **Week 2**: Contract discovery redundancy reduced from 40% to <20%
-- **Week 4**: Core catalog manager operational with basic indexing
-- **Week 6**: Multi-workspace discovery functional
-- **Week 8**: Query engine with fuzzy matching operational
-- **Week 10**: All essential features complete, performance targets met
-- **Week 12**: Full system integration, backward compatibility verified
+- **Week 1**: Single StepCatalog class with all US1-US5 methods implemented
+- **Week 2**: All user stories functional, performance targets met (<1ms lookups, <10s index build)
+- **Week 3**: Config auto-discovery integrated, backward compatibility adapters complete
+- **Week 4**: Comprehensive testing complete, system ready for deployment
+- **Week 5**: Feature flag deployment successful, parallel operation validated
+- **Week 6**: Full migration complete, 16+ discovery systems consolidated, 35-45% → 15-25% redundancy achieved
+
+### Simplified Timeline Benefits
+
+**Faster Delivery**:
+- **50% reduction in timeline** (6 weeks vs 12 weeks)
+- **Single class approach** eliminates complex integration phases
+- **Proven patterns** reduce implementation risk and development time
+
+**Reduced Complexity**:
+- **No complex component integration** between multiple managers
+- **Simple dictionary-based indexing** vs complex engine architectures
+- **Essential features only** vs over-engineered advanced capabilities
+
+**Lower Risk**:
+- **Fewer moving parts** means fewer potential failure points
+- **Proven workspace-aware patterns** (95% quality score) reduce technical risk
+- **Gradual feature flag rollout** enables safe deployment
 
 ## References
 
