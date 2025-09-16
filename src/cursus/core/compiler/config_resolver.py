@@ -574,7 +574,8 @@ class StepConfigResolver:
         """
         # Check if we've already parsed this node name
         if node_name in self._config_cache:
-            return self._config_cache[node_name]
+            from typing import cast, Dict
+            return cast(Dict[str, str], self._config_cache[node_name])
 
         result = {}
 

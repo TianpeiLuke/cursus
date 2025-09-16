@@ -634,7 +634,8 @@ class TypeAwareConfigSerializer:
                 )
                 module = __import__(module_name, fromlist=[class_name])
                 if hasattr(module, class_name):
-                    return getattr(module, class_name)
+                    from typing import cast, Type
+                    return cast(Type, getattr(module, class_name))
             except ImportError as e:
                 self.logger.warning(
                     f"Failed to import {class_name} from {module_name}: {str(e)}"
@@ -659,7 +660,8 @@ class TypeAwareConfigSerializer:
         """
         # First check for step_name_override - highest priority
         if hasattr(config, "step_name_override") and config.step_name_override:
-            step_name_override = getattr(config, "step_name_override")
+            from typing import cast
+            step_name_override = cast(str, getattr(config, "step_name_override"))
             if step_name_override != config.__class__.__name__:
                 return step_name_override
 

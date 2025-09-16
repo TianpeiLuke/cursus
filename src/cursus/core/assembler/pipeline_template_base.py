@@ -313,7 +313,8 @@ class PipelineTemplateBase(ABC):
         # Check if explicit override is provided in the base config
         explicit_name = getattr(self.base_config, "explicit_pipeline_name", None)
         if explicit_name:
-            return explicit_name
+            from typing import cast
+            return cast(str, explicit_name)
 
         # Get pipeline_name from base_config, with fallback
         pipeline_name = getattr(self.base_config, "pipeline_name", "mods")

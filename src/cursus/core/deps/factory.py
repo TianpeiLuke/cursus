@@ -39,7 +39,8 @@ def get_thread_components() -> dict:
     """Get thread-specific component instances."""
     if not hasattr(_thread_local, "components"):
         _thread_local.components = create_pipeline_components()
-    return _thread_local.components
+    from typing import cast
+    return cast(dict, _thread_local.components)
 
 
 @contextmanager

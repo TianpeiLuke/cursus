@@ -368,7 +368,9 @@ class PipelineDAGCompiler:
             template = self.create_template(dag, **template_kwargs)
 
             # Build pipeline
-            pipeline = template.generate_pipeline()
+            from typing import cast
+            from sagemaker.workflow.pipeline import Pipeline as SageMakerPipeline
+            pipeline = cast(SageMakerPipeline, template.generate_pipeline())
 
             # Store the template after generate_pipeline() has updated its internal state
             self._last_template = template
