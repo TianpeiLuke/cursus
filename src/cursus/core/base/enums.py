@@ -18,13 +18,13 @@ class DependencyType(Enum):
     PAYLOAD_SAMPLES = "payload_samples"
     CUSTOM_PROPERTY = "custom_property"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Compare enum instances by value."""
         if isinstance(other, DependencyType):
             return self.value == other.value
         return super().__eq__(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Ensure hashability is maintained when used as dictionary keys."""
         return hash(self.value)
 
@@ -39,12 +39,12 @@ class NodeType(Enum):
     SINK = "sink"  # Has dependencies, no outputs (e.g., model registration)
     SINGULAR = "singular"  # No dependencies, no outputs (e.g., standalone operations)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Compare enum instances by value."""
         if isinstance(other, NodeType):
             return self.value == other.value
         return super().__eq__(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Ensure hashability is maintained when used as dictionary keys."""
         return hash(self.value)

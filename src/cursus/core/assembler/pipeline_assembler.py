@@ -417,7 +417,7 @@ class PipelineAssembler:
         config_map: Dict[str, BasePipelineConfig],
         step_builder_map: Dict[str, Type[StepBuilderBase]],
         context_name: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> "PipelineAssembler":
         """
         Create pipeline assembler with managed components.

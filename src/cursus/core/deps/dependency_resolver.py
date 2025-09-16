@@ -38,7 +38,7 @@ class UnifiedDependencyResolver:
         self.semantic_matcher = semantic_matcher
         self._resolution_cache: Dict[str, Dict[str, PropertyReference]] = {}
 
-    def register_specification(self, step_name: str, spec: StepSpecification):
+    def register_specification(self, step_name: str, spec: StepSpecification) -> None:
         """Register a step specification with the resolver."""
         self.registry.register(step_name, spec)
         # Clear cache when new specifications are added
@@ -674,7 +674,7 @@ class UnifiedDependencyResolver:
 
         return report
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear the resolution cache."""
         self._resolution_cache.clear()
         logger.debug("Dependency resolution cache cleared")

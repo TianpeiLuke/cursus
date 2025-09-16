@@ -303,7 +303,7 @@ def deserialize_config(
 
 
 # Convenient alias for the ConfigClassStore.register decorator
-def register_config_class(cls):
+def register_config_class(cls: Any) -> Any:
     """
     Register a configuration class with the ConfigClassStore.
 

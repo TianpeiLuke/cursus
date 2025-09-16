@@ -74,7 +74,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         config_resolver: Optional[StepConfigResolver] = None,
         builder_registry: Optional[StepBuilderRegistry] = None,
         skip_validation: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize dynamic template.

@@ -28,7 +28,7 @@ from .exceptions import (
 )
 
 
-def _get_dynamic_pipeline_template():
+def _get_dynamic_pipeline_template() -> type:
     """Lazy import to avoid circular import issues."""
     from .dynamic_template import DynamicPipelineTemplate
 
@@ -36,7 +36,7 @@ def _get_dynamic_pipeline_template():
 
 
 # Make DynamicPipelineTemplate available through lazy loading
-def __getattr__(name):
+def __getattr__(name: str) -> type:
     if name == "DynamicPipelineTemplate":
         return _get_dynamic_pipeline_template()
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

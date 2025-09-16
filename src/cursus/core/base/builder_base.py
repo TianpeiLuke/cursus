@@ -971,7 +971,7 @@ class StepBuilderBase(ABC):
                 )
 
     @abstractmethod
-    def create_step(self, **kwargs) -> Step:
+    def create_step(self, **kwargs: Any) -> Step:
         """
         Create pipeline step.
 

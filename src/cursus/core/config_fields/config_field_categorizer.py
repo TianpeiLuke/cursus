@@ -233,7 +233,7 @@ class ConfigFieldCategorizer:
 
         return False
 
-    def _is_likely_static(self, field_name: str, value: Any, config=None) -> bool:
+    def _is_likely_static(self, field_name: str, value: Any, config: Any = None) -> bool:
         """
         Determine if a field is likely static based on name and value.
 

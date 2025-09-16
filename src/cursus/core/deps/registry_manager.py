@@ -37,7 +37,7 @@ class RegistryManager:
             f"Initialized registry manager with workspace context: {workspace_context}"
         )
 
-    def _get_hybrid_manager(self):
+    def _get_hybrid_manager(self) -> Optional[Any]:
         """Get or create hybrid registry manager."""
         if self._hybrid_manager is None:
             try:
@@ -151,7 +151,7 @@ class RegistryManager:
             return True
         return False
 
-    def clear_all_contexts(self):
+    def clear_all_contexts(self) -> None:
         """Clear all registries."""
         context_count = len(self._registries)
         self._registries.clear()
@@ -277,8 +277,8 @@ __all__ = [
 
 # Integration with PipelineBuilderTemplate
 def integrate_with_pipeline_builder(
-    pipeline_builder_cls, manager: Optional[RegistryManager] = None
-):
+    pipeline_builder_cls: Any, manager: Optional[RegistryManager] = None
+) -> Any:
     """
     Decorator to integrate context-scoped registries with a pipeline builder class.
 
@@ -293,7 +293,7 @@ def integrate_with_pipeline_builder(
     """
     original_init = pipeline_builder_cls.__init__
 
-    def new_init(self, *args, **kwargs):
+    def new_init(self: Any, *args: Any, **kwargs: Any) -> None:
         # Call original __init__
         original_init(self, *args, **kwargs)
 

@@ -291,7 +291,7 @@ class ModelHyperparameters(BaseModel):
 
     @classmethod
     def from_base_hyperparam(
-        cls, base_hyperparam: "ModelHyperparameters", **kwargs
+        cls, base_hyperparam: "ModelHyperparameters", **kwargs: Any
     ) -> "ModelHyperparameters":
         """
         Create a new hyperparameter instance from a base hyperparameter.

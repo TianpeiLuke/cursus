@@ -346,8 +346,8 @@ class PipelineTemplateBase(ABC):
 
     @classmethod
     def create_with_components(
-        cls, config_path: str, context_name: Optional[str] = None, **kwargs
-    ):
+        cls, config_path: str, context_name: Optional[str] = None, **kwargs: Any
+    ) -> "PipelineTemplateBase":
         """
         Create template with managed dependency components.
 
@@ -371,7 +371,7 @@ class PipelineTemplateBase(ABC):
         )
 
     @classmethod
-    def build_with_context(cls, config_path: str, **kwargs) -> Pipeline:
+    def build_with_context(cls, config_path: str, **kwargs: Any) -> Pipeline:
         """
         Build pipeline with scoped dependency resolution context.
 
@@ -395,7 +395,7 @@ class PipelineTemplateBase(ABC):
             return template.generate_pipeline()
 
     @classmethod
-    def build_in_thread(cls, config_path: str, **kwargs) -> Pipeline:
+    def build_in_thread(cls, config_path: str, **kwargs: Any) -> Pipeline:
         """
         Build pipeline using thread-local component instances.
 

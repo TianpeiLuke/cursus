@@ -259,7 +259,7 @@ class ScriptAnalyzer:
         self._arguments_loaded = False
 
     @property
-    def ast_tree(self):
+    def ast_tree(self) -> Any:
         """Lazy load and parse the script AST"""
         if self._ast_tree is None:
             with open(self.script_path, "r") as f:

@@ -144,7 +144,7 @@ class BasePipelineConfig(BaseModel):
         return self._pipeline_s3_loc
 
     # Custom model_dump method to include derived properties
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         """Override model_dump to include derived properties."""
         data = super().model_dump(**kwargs)
         # Add derived properties to output
@@ -413,7 +413,7 @@ class BasePipelineConfig(BaseModel):
 
     @classmethod
     def from_base_config(
-        cls, base_config: "BasePipelineConfig", **kwargs
+        cls, base_config: "BasePipelineConfig", **kwargs: Any
     ) -> "BasePipelineConfig":
         """
         Create a new configuration instance from a base configuration.

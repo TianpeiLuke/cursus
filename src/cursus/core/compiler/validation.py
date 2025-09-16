@@ -261,7 +261,7 @@ class ConversionReport(BaseModel):
 class ValidationEngine:
     """Engine for validating DAG-config compatibility."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
 
     def validate_dag_compatibility(

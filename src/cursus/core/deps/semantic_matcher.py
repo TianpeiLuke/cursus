@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class SemanticMatcher:
     """Semantic similarity matching for dependency resolution."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the semantic matcher with common patterns."""
         # Common synonyms for pipeline concepts
         self.synonyms = {
@@ -123,7 +123,7 @@ class SemanticMatcher:
 
         return total_score
 
-    def calculate_similarity_with_aliases(self, name: str, output_spec) -> float:
+    def calculate_similarity_with_aliases(self, name: str, output_spec: Any) -> float:
         """
         Calculate semantic similarity between a name and an output specification,
         considering both logical_name and all aliases.

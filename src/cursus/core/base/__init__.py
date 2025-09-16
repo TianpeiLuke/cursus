@@ -23,35 +23,35 @@ if TYPE_CHECKING:
     from .builder_base import StepBuilderBase
 
 
-def get_base_pipeline_config():
+def get_base_pipeline_config() -> type:
     """Lazy import for BasePipelineConfig to avoid circular imports."""
     from .config_base import BasePipelineConfig
 
     return BasePipelineConfig
 
 
-def get_dependency_spec():
+def get_dependency_spec() -> type:
     """Lazy import for DependencySpec to avoid circular imports."""
     from .specification_base import DependencySpec
 
     return DependencySpec
 
 
-def get_output_spec():
+def get_output_spec() -> type:
     """Lazy import for OutputSpec to avoid circular imports."""
     from .specification_base import OutputSpec
 
     return OutputSpec
 
 
-def get_step_specification():
+def get_step_specification() -> type:
     """Lazy import for StepSpecification to avoid circular imports."""
     from .specification_base import StepSpecification
 
     return StepSpecification
 
 
-def get_step_builder_base():
+def get_step_builder_base() -> type:
     """Lazy import for StepBuilderBase to avoid circular imports."""
     from .builder_base import StepBuilderBase
 
@@ -59,7 +59,7 @@ def get_step_builder_base():
 
 
 # For backward compatibility, provide the classes via lazy loading
-def __getattr__(name):
+def __getattr__(name: str) -> type:
     """Provide lazy loading for backward compatibility."""
     if name == "BasePipelineConfig":
         return get_base_pipeline_config()

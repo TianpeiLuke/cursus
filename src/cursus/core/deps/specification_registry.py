@@ -27,7 +27,7 @@ class SpecificationRegistry:
         self._step_type_to_names: Dict[str, List[str]] = {}
         logger.info(f"Created specification registry for context '{context_name}'")
 
-    def register(self, step_name: str, specification: StepSpecification):
+    def register(self, step_name: str, specification: StepSpecification) -> None:
         """Register a step specification."""
         # Check if it's a StepSpecification by checking for required attributes
         # This is more robust than using isinstance which can fail with module reloading

@@ -11,7 +11,7 @@ from .registry_manager import RegistryManager
 from .dependency_resolver import UnifiedDependencyResolver, create_dependency_resolver
 
 
-def create_pipeline_components(context_name=None):
+def create_pipeline_components(context_name: str = None) -> dict:
     """Create all necessary pipeline components with proper dependencies."""
     semantic_matcher = SemanticMatcher()
     registry_manager = RegistryManager()
@@ -28,12 +28,13 @@ def create_pipeline_components(context_name=None):
 
 import threading
 from contextlib import contextmanager
+from typing import Generator, Dict, Any
 
 # Thread-local storage for per-thread instances
 _thread_local = threading.local()
 
 
-def get_thread_components():
+def get_thread_components() -> dict:
     """Get thread-specific component instances."""
     if not hasattr(_thread_local, "components"):
         _thread_local.components = create_pipeline_components()
@@ -41,7 +42,7 @@ def get_thread_components():
 
 
 @contextmanager
-def dependency_resolution_context(clear_on_exit=True):
+def dependency_resolution_context(clear_on_exit: bool = True) -> Generator[Dict[str, Any], None, None]:
     """Create a scoped dependency resolution context."""
     components = create_pipeline_components()
     try:
