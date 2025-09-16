@@ -246,7 +246,7 @@ class ScriptAnalyzer:
 
     def __init__(self, script_path: str):
         self.script_path = script_path
-        self._ast_tree = None
+        self._ast_tree: Optional[ast.AST] = None
         # Strategy 2 + 3: Early initialization with lazy loading flags
         self._input_paths: Set[str] = set()
         self._output_paths: Set[str] = set()

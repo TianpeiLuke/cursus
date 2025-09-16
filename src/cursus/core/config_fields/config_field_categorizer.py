@@ -157,7 +157,7 @@ class ConfigFieldCategorizer:
                 field_info["sources"][field_name].append(step_name)
 
                 # Track processing/non-processing sources
-                if isinstance(config, self.processing_base_class):
+                if self.processing_base_class and isinstance(config, self.processing_base_class):
                     field_info["processing_sources"][field_name].append(step_name)
                 else:
                     field_info["non_processing_sources"][field_name].append(step_name)
@@ -187,7 +187,7 @@ class ConfigFieldCategorizer:
         )
         self.logger.debug(
             f"Fields with multiple values: "
-            f"{[f for f, v in field_info['values'].items() if len(v) > 1]}"
+            f"{[f for f, v in field_info['values'].items() if hasattr(v, '__len__') and len(v) > 1]}"
         )
         self.logger.debug(
             f"Cross-type fields: {[f for f, v in field_info['is_cross_type'].items() if v]}"

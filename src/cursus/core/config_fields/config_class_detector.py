@@ -17,7 +17,7 @@ try:
     from ..base.config_base import BasePipelineConfig
 except ImportError:
     # For testing environments or when running outside the main project
-    BasePipelineConfig = None
+    BasePipelineConfig: Optional[Type[Any]] = None
 
 
 class ConfigClassDetector:

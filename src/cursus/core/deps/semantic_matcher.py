@@ -6,7 +6,7 @@ dependency names and output names to enable intelligent auto-resolution.
 """
 
 import re
-from typing import List, Set, Dict, Tuple
+from typing import List, Set, Dict, Tuple, Any
 from difflib import SequenceMatcher
 import logging
 
@@ -202,7 +202,7 @@ class SemanticMatcher:
         tokens2 = set(name2.split())
 
         # Find semantic matches
-        semantic_matches = 0
+        semantic_matches: float = 0.0
         total_comparisons = 0
 
         for token1 in tokens1:
@@ -279,7 +279,7 @@ class SemanticMatcher:
 
         return matches
 
-    def explain_similarity(self, name1: str, name2: str) -> Dict[str, float]:
+    def explain_similarity(self, name1: str, name2: str) -> Dict[str, Any]:
         """
         Provide detailed explanation of similarity calculation.
 

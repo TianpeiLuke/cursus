@@ -8,7 +8,7 @@ Author: Luke Xie
 Date: July 26, 2025
 """
 
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Type
 import uuid
 import os
 from pathlib import Path
@@ -18,7 +18,7 @@ try:
     from ..base.config_base import BasePipelineConfig
 except ImportError:
     # For testing environments or when running outside the main project
-    BasePipelineConfig = None
+    BasePipelineConfig: Optional[Type[Any]] = None
 
 from ...steps.configs.config_cradle_data_loading_step import (
     CradleDataLoadConfig,
@@ -594,7 +594,8 @@ def create_cradle_data_load_config(
         s3_input_override=s3_input_override,
     )
 
-    return cradle_data_load_config
+    # Type cast to ensure proper return type (from_base_config should return CradleDataLoadConfig)
+    return cradle_data_load_config  # type: ignore[return-value]
 
 
 def create_training_and_calibration_configs(

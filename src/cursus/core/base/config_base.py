@@ -305,7 +305,7 @@ class BasePipelineConfig(BaseModel):
         """
         return self.get_script_contract()
 
-    def get_script_path(self, default_path: Optional[str] = None) -> str:
+    def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
         Get script path, preferring contract-defined path if available.
 
@@ -371,7 +371,7 @@ class BasePipelineConfig(BaseModel):
 
                     # Get step registry using the actual available method
                     legacy_dict = hybrid_manager.create_legacy_step_names_dict(
-                        workspace_context
+                        workspace_context or "default"
                     )
 
                     # Convert to config step registry format (reverse mapping)

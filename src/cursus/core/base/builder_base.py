@@ -186,7 +186,7 @@ class StepBuilderBase(ABC):
 
                     # Get step names using the actual available method
                     legacy_dict = hybrid_manager.create_legacy_step_names_dict(
-                        workspace_context
+                        workspace_context or "default"
                     )
                     self._step_names = legacy_dict
 
@@ -491,12 +491,11 @@ class StepBuilderBase(ABC):
             *args, **kwargs: Values to format into the message
         """
         try:
-            # Convert args and kwargs to safe strings
+            # Convert args to safe strings
             safe_args = [safe_value_for_logging(arg) for arg in args]
-            safe_kwargs = {k: safe_value_for_logging(v) for k, v in kwargs.items()}
 
-            # Log with safe values
-            logger.info(message, *safe_args, **safe_kwargs)
+            # Log with safe values (logger.info doesn't accept **kwargs)
+            logger.info(message, *safe_args)
         except Exception as e:
             logger.info(
                 f"Original logging failed ({e}), logging raw message: {message}"
@@ -506,8 +505,7 @@ class StepBuilderBase(ABC):
         """Debug version of safe logging"""
         try:
             safe_args = [safe_value_for_logging(arg) for arg in args]
-            safe_kwargs = {k: safe_value_for_logging(v) for k, v in kwargs.items()}
-            logger.debug(message, *safe_args, **safe_kwargs)
+            logger.debug(message, *safe_args)
         except Exception as e:
             logger.debug(
                 f"Original logging failed ({e}), logging raw message: {message}"
@@ -517,8 +515,7 @@ class StepBuilderBase(ABC):
         """Warning version of safe logging"""
         try:
             safe_args = [safe_value_for_logging(arg) for arg in args]
-            safe_kwargs = {k: safe_value_for_logging(v) for k, v in kwargs.items()}
-            logger.warning(message, *safe_args, **safe_kwargs)
+            logger.warning(message, *safe_args)
         except Exception as e:
             logger.warning(
                 f"Original logging failed ({e}), logging raw message: {message}"
@@ -528,8 +525,7 @@ class StepBuilderBase(ABC):
         """Error version of safe logging"""
         try:
             safe_args = [safe_value_for_logging(arg) for arg in args]
-            safe_kwargs = {k: safe_value_for_logging(v) for k, v in kwargs.items()}
-            logger.error(message, *safe_args, **safe_kwargs)
+            logger.error(message, *safe_args)
         except Exception as e:
             logger.error(
                 f"Original logging failed ({e}), logging raw message: {message}"

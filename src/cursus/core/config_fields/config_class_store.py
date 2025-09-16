@@ -6,7 +6,7 @@ serializer and deserializer, following the Single Source of Truth principle.
 """
 
 import logging
-from typing import Dict, Type, Optional, List, Callable, TypeVar, cast, Any, Set
+from typing import Dict, Type, Optional, List, Callable, TypeVar, cast, Any, Set, Union
 
 # Type variable for generic class registration
 T = TypeVar("T")
@@ -28,7 +28,7 @@ class ConfigClassStore:
     @classmethod
     def register(
         cls, config_class: Optional[Type[T]] = None
-    ) -> Callable[[Type[T]], Type[T]]:
+    ) -> Union[Callable[[Type[T]], Type[T]], Type[T]]:
         """
         Register a config class.
 
