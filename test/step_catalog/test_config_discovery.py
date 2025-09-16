@@ -128,7 +128,8 @@ class TestConfig(BaseModel):
         with patch.object(config_discovery, 'discover_config_classes') as mock_discover:
             mock_discover.return_value = {"AutoConfig": Mock}
             
-            with patch.object(config_discovery, 'ConfigClassStore', mock_store_class):
+            # Mock the import inside the method
+            with patch('cursus.core.config_fields.config_class_store.ConfigClassStore', mock_store_class):
                 result = config_discovery.build_complete_config_classes()
                 
                 # Should include both manual and auto-discovered configs
@@ -143,8 +144,8 @@ class TestConfig(BaseModel):
         with patch.object(config_discovery, 'discover_config_classes') as mock_discover:
             mock_discover.return_value = {"AutoConfig": Mock}
             
-            # Mock import error
-            with patch('cursus.step_catalog.config_discovery.ConfigClassStore', side_effect=ImportError):
+            # Mock the import to raise ImportError
+            with patch('cursus.step_catalog.config_discovery.importlib.import_module', side_effect=ImportError("ConfigClassStore not found")):
                 result = config_discovery.build_complete_config_classes()
                 
                 # Should fallback to just auto-discovery

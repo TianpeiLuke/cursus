@@ -141,7 +141,7 @@ class DataPreprocessingConfig(BaseModel):
             }
         }
         
-        with patch('cursus.step_catalog.step_catalog.STEP_NAMES', mock_registry):
+        with patch('cursus.registry.step_names.STEP_NAMES', mock_registry):
             # Test US1: Query by Step Name
             step_info = catalog.get_step_info("data_preprocessing")
             assert step_info is not None
@@ -187,7 +187,7 @@ class DataPreprocessingConfig(BaseModel):
         """Test performance characteristics and metrics collection."""
         catalog = create_step_catalog(realistic_workspace)
         
-        with patch('cursus.step_catalog.step_catalog.STEP_NAMES', {}):
+        with patch('cursus.registry.step_names.STEP_NAMES', {}):
             # Perform multiple operations
             catalog.get_step_info("data_preprocessing")
             catalog.get_step_info("nonexistent_step")
@@ -209,7 +209,7 @@ class DataPreprocessingConfig(BaseModel):
         catalog = create_step_catalog(realistic_workspace)
         
         # Test with registry import error
-        with patch('cursus.step_catalog.step_catalog.STEP_NAMES', side_effect=ImportError("Registry not found")):
+        with patch('cursus.registry.step_names.STEP_NAMES', side_effect=ImportError("Registry not found")):
             # Should not crash
             step_info = catalog.get_step_info("any_step")
             # May return None, but should not raise exception
