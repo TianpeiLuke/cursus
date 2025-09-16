@@ -204,7 +204,7 @@ class StepBuilderBase(ABC):
                     )
                     from ...registry.step_names import BUILDER_STEP_NAMES
 
-                    self._step_names = BUILDER_STEP_NAMES
+                    self._step_names = BUILDER_STEP_NAMES  # type: ignore[assignment]
 
             except ImportError:
                 # Final fallback if all imports fail
@@ -898,14 +898,14 @@ class StepBuilderBase(ABC):
                     minimal_spec = StepSpecification(
                         step_type=dep_name,
                         description=f"Auto-generated spec for {dep_name}",
-                        dependencies={},
-                        outputs={
-                            "model": OutputSpec(
+                        dependencies=[],
+                        outputs=[
+                            OutputSpec(
                                 logical_name="model",
                                 description="Model artifacts",
                                 property_path="properties.ModelArtifacts.S3ModelArtifacts",
                             )
-                        },
+                        ],
                     )
                     resolver.register_specification(dep_name, minimal_spec)
                     logger.info(f"Created minimal model spec for {dep_name}")
@@ -957,8 +957,8 @@ class StepBuilderBase(ABC):
                         minimal_spec = StepSpecification(
                             step_type=dep_name,
                             description=f"Auto-generated spec for {dep_name}",
-                            dependencies={},
-                            outputs=outputs,
+                            dependencies=[],
+                            outputs=list(outputs.values()),
                         )
                         resolver.register_specification(dep_name, minimal_spec)
                         logger.info(

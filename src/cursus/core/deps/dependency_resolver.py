@@ -252,7 +252,7 @@ class UnifiedDependencyResolver:
                     )
 
         # Sort by score (highest first)
-        candidates.sort(key=lambda x: x["score"], reverse=True)
+        candidates.sort(key=lambda x: float(x["score"]) if isinstance(x["score"], (int, float, str)) else 0.0, reverse=True)
         return candidates
 
     def _get_score_breakdown(
@@ -669,7 +669,7 @@ class UnifiedDependencyResolver:
             "total_dependencies": total_deps,
             "resolved_dependencies": resolved_deps,
             "resolution_rate": resolved_deps / total_deps if total_deps > 0 else 0.0,
-            "steps_with_errors": len(report["unresolved_dependencies"]),
+            "steps_with_errors": len(report["unresolved_dependencies"]) if hasattr(report["unresolved_dependencies"], '__len__') else 0,
         }
 
         return report

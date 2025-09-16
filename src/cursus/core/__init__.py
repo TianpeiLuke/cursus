@@ -28,7 +28,7 @@ from .compiler import (
     compile_dag_to_pipeline,
     PipelineDAGCompiler,
     StepConfigResolver,
-    ValidationResult,
+    ValidationResult as CompilerValidationResult,
     ResolutionPreview,
     ConversionReport,
     ValidationEngine,

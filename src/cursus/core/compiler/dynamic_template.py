@@ -251,10 +251,11 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                         builder_class = self._builder_registry.get_builder_for_config(
                             config, node_name=node
                         )
+                        job_type = getattr(config, "job_type", None)
                         step_type = self._builder_registry._config_class_to_step_type(
                             type(config).__name__,
                             node_name=node,
-                            job_type=getattr(config, "job_type", None),
+                            job_type=str(job_type) if job_type is not None else "",
                         )
                         self.logger.debug(f"  {step_type} → {builder_class.__name__}")
                     except RegistryError as e:
@@ -683,7 +684,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             return {}
 
         # Create a basic configuration with required fields
-        exec_config = {
+        exec_config: Dict[str, Any] = {
             "source_model_inference_image_arn": image_uri,
         }
 
@@ -727,7 +728,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
 
         # Add load testing info if payload and package configs are available
         if payload_cfg and package_cfg:
-            load_testing_info = {}
+            load_testing_info: Dict[str, Any] = {}
 
             # Add bucket if available
             if hasattr(registration_cfg, "bucket"):

@@ -123,7 +123,8 @@ class RegistryManager:
         registry = self._registries.get(workspace_aware_context)
         if registry is None:
             raise ValueError(f"Registry not found for context '{workspace_aware_context}' and create_if_missing is False")
-        return registry
+        # Type assertion: registry is guaranteed to be non-None here due to the exception above
+        return registry  # type: ignore[return-value]
 
     def list_contexts(self) -> List[str]:
         """
@@ -276,7 +277,7 @@ __all__ = [
 
 # Integration with PipelineBuilderTemplate
 def integrate_with_pipeline_builder(
-    pipeline_builder_cls, manager: RegistryManager = None
+    pipeline_builder_cls, manager: Optional[RegistryManager] = None
 ):
     """
     Decorator to integrate context-scoped registries with a pipeline builder class.

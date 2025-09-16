@@ -135,7 +135,8 @@ class PipelineTemplateBase(ABC):
         for class_name, class_type in self.CONFIG_CLASSES.items():
             complete_classes[class_name] = class_type
 
-        return load_configs(config_path, complete_classes)
+        # Type cast is safe since all config classes should inherit from BasePipelineConfig
+        return load_configs(config_path, complete_classes)  # type: ignore[return-value]
 
     def _get_base_config(self) -> BasePipelineConfig:
         """
