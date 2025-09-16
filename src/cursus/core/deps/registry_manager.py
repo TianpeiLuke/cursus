@@ -120,11 +120,10 @@ class RegistryManager:
                 f"Created new workspace-aware registry for context '{workspace_aware_context}'"
             )
 
-        registry = self._registries.get(workspace_aware_context)
-        if registry is None:
+        if workspace_aware_context not in self._registries:
             raise ValueError(f"Registry not found for context '{workspace_aware_context}' and create_if_missing is False")
-        # Type assertion: registry is guaranteed to be non-None here due to the exception above
-        return registry  # type: ignore[return-value]
+        # Direct access: key is guaranteed to exist due to the check above
+        return self._registries[workspace_aware_context]
 
     def list_contexts(self) -> List[str]:
         """

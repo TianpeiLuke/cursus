@@ -14,7 +14,7 @@ from pydantic import (
     ValidationInfo,
     PrivateAttr,
 )
-from typing import List, Optional, Dict, Any, ClassVar, TYPE_CHECKING
+from typing import List, Optional, Dict, Any, ClassVar, TYPE_CHECKING, cast
 from pathlib import Path
 import json
 from datetime import datetime
@@ -261,7 +261,7 @@ class BasePipelineConfig(BaseModel):
         """
         # Check for hardcoded script_contract first (for backward compatibility)
         if hasattr(self, "_script_contract"):
-            return self._script_contract
+            return cast(Optional["ScriptContract"], self._script_contract)
 
         # Otherwise attempt to load based on class and job_type
         try:
@@ -275,7 +275,7 @@ class BasePipelineConfig(BaseModel):
                 try:
                     contract_module = __import__(module_name, fromlist=[""])
                     if hasattr(contract_module, contract_name):
-                        return getattr(contract_module, contract_name)
+                        return cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
                 except (ImportError, AttributeError):
                     pass
 
@@ -286,7 +286,7 @@ class BasePipelineConfig(BaseModel):
             try:
                 contract_module = __import__(module_name, fromlist=[""])
                 if hasattr(contract_module, contract_name):
-                    return getattr(contract_module, contract_name)
+                    return cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
             except (ImportError, AttributeError):
                 pass
 
@@ -318,11 +318,11 @@ class BasePipelineConfig(BaseModel):
         # Try to get from contract
         contract = self.get_script_contract()
         if contract and hasattr(contract, "script_path"):
-            return contract.script_path
+            return cast(Optional[str], contract.script_path)
 
         # Fall back to default or hardcoded path
         if hasattr(self, "script_path"):
-            return self.script_path
+            return cast(Optional[str], self.script_path)
 
         return default_path
 
@@ -409,7 +409,7 @@ class BasePipelineConfig(BaseModel):
                 logger.warning("Could not import step registry, using empty registry")
                 setattr(cls, cache_key, {})
 
-        return getattr(cls, cache_key)
+        return cast(Dict[str, str], getattr(cls, cache_key))
 
     @classmethod
     def from_base_config(

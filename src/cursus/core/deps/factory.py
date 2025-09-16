@@ -5,13 +5,14 @@ This module provides convenience functions for instantiating the core
 components of the dependency resolution system with proper wiring.
 """
 
+from typing import Optional
 from .semantic_matcher import SemanticMatcher
 from .specification_registry import SpecificationRegistry
 from .registry_manager import RegistryManager
 from .dependency_resolver import UnifiedDependencyResolver, create_dependency_resolver
 
 
-def create_pipeline_components(context_name: str = None) -> dict:
+def create_pipeline_components(context_name: Optional[str] = None) -> dict:
     """Create all necessary pipeline components with proper dependencies."""
     semantic_matcher = SemanticMatcher()
     registry_manager = RegistryManager()
