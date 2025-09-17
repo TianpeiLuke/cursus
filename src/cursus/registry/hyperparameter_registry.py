@@ -10,21 +10,21 @@ HYPERPARAMETER_REGISTRY = {
     # Base hyperparameter class
     "ModelHyperparameters": {
         "class_name": "ModelHyperparameters",
-        "module_path": "src.pipeline_steps.hyperparameters_base",
+        "module_path": "cursus.core.base.hyperparameters_base",
         "model_type": None,  # Base class is not specific to any model
         "description": "Base class for all model hyperparameters",
     },
     # XGBoost hyperparameters
     "XGBoostHyperparameters": {
         "class_name": "XGBoostHyperparameters",
-        "module_path": "src.pipeline_steps.hyperparameters_xgboost",
+        "module_path": "cursus.steps.hyperparams.xgboost_hyperparameters",
         "model_type": "xgboost",
         "description": "Hyperparameters for XGBoost models",
     },
     # BSM hyperparameters
     "BSMModelHyperparameters": {
         "class_name": "BSMModelHyperparameters",
-        "module_path": "src.pipeline_steps.hyperparameters_bsm",
+        "module_path": "cursus.steps.hyperparams.pytorch_hyperparameters",
         "model_type": "pytorch",
         "description": "Hyperparameters for BSM PyTorch models",
     },
