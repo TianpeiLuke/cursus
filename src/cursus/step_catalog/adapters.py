@@ -349,12 +349,17 @@ class LegacyDiscoveryWrapper:
     
     This class provides a unified interface that can be used as a drop-in
     replacement for legacy discovery systems during the migration phase.
+    It delegates all StepCatalog methods to the underlying catalog while
+    also providing access to legacy adapters.
     """
     
     def __init__(self, workspace_root: Path):
         """Initialize with all legacy adapters."""
         self.workspace_root = workspace_root
         self.catalog = StepCatalog(workspace_root)
+        
+        # Expose config_discovery for compatibility
+        self.config_discovery = self.catalog.config_discovery
         
         # Initialize all adapters
         self.contract_discovery_engine = ContractDiscoveryEngineAdapter(workspace_root)
@@ -364,6 +369,60 @@ class LegacyDiscoveryWrapper:
         self.hybrid_file_resolver = HybridFileResolverAdapter(workspace_root)
         
         self.logger = logging.getLogger(__name__)
+    
+    # Delegate all StepCatalog methods to the underlying catalog
+    def get_step_info(self, step_name: str, job_type: Optional[str] = None):
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.get_step_info(step_name, job_type)
+    
+    def find_step_by_component(self, component_path: str) -> Optional[str]:
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.find_step_by_component(component_path)
+    
+    def list_available_steps(self, workspace_id: Optional[str] = None, job_type: Optional[str] = None) -> List[str]:
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.list_available_steps(workspace_id, job_type)
+    
+    def search_steps(self, query: str, job_type: Optional[str] = None):
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.search_steps(query, job_type)
+    
+    def discover_config_classes(self, project_id: Optional[str] = None):
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.discover_config_classes(project_id)
+    
+    def build_complete_config_classes(self, project_id: Optional[str] = None):
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.build_complete_config_classes(project_id)
+    
+    def get_job_type_variants(self, step_name: str) -> List[str]:
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.get_job_type_variants(step_name)
+    
+    def get_metrics_report(self):
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.get_metrics_report()
+    
+    # Expanded discovery methods (Phase 4.1)
+    def discover_contracts_with_scripts(self) -> List[str]:
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.discover_contracts_with_scripts()
+    
+    def detect_framework(self, step_name: str) -> Optional[str]:
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.detect_framework(step_name)
+    
+    def discover_cross_workspace_components(self, workspace_ids: Optional[List[str]] = None):
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.discover_cross_workspace_components(workspace_ids)
+    
+    def get_builder_class_path(self, step_name: str) -> Optional[str]:
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.get_builder_class_path(step_name)
+    
+    def load_builder_class(self, step_name: str):
+        """Delegate to underlying StepCatalog."""
+        return self.catalog.load_builder_class(step_name)
     
     def get_adapter(self, adapter_type: str) -> Any:
         """Get specific legacy adapter by type."""

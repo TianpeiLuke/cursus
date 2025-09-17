@@ -40,7 +40,8 @@ class TestModuleIntegration:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)
             
-            catalog = create_step_catalog(workspace_root)
+            # Test with explicit use_unified=True to get StepCatalog
+            catalog = create_step_catalog(workspace_root, use_unified=True)
             
             assert isinstance(catalog, StepCatalog)
             assert catalog.workspace_root == workspace_root
@@ -50,17 +51,19 @@ class TestModuleIntegration:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)
             
-            # Test explicit True
+            # Test explicit True - should return StepCatalog
             catalog = create_step_catalog(workspace_root, use_unified=True)
             assert isinstance(catalog, StepCatalog)
             
-            # Test explicit False (should still return StepCatalog during development)
+            # Test explicit False - should return LegacyDiscoveryWrapper
             catalog = create_step_catalog(workspace_root, use_unified=False)
-            assert isinstance(catalog, StepCatalog)
+            from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
+            assert isinstance(catalog, LegacyDiscoveryWrapper)
             
-            # Test None (should check environment)
-            catalog = create_step_catalog(workspace_root, use_unified=None)
-            assert isinstance(catalog, StepCatalog)
+            # Test None with environment variable false (default)
+            with patch.dict(os.environ, {'USE_UNIFIED_CATALOG': 'false'}):
+                catalog = create_step_catalog(workspace_root, use_unified=None)
+                assert isinstance(catalog, LegacyDiscoveryWrapper)
     
     def test_factory_function_environment_variable(self):
         """Test factory function respects environment variables."""
@@ -75,12 +78,14 @@ class TestModuleIntegration:
             # Test with environment variable set to false
             with patch.dict(os.environ, {'USE_UNIFIED_CATALOG': 'false'}):
                 catalog = create_step_catalog(workspace_root)
-                assert isinstance(catalog, StepCatalog)  # Still returns unified during development
+                from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
+                assert isinstance(catalog, LegacyDiscoveryWrapper)
             
-            # Test with no environment variable
+            # Test with no environment variable (defaults to false)
             with patch.dict(os.environ, {}, clear=True):
                 catalog = create_step_catalog(workspace_root)
-                assert isinstance(catalog, StepCatalog)
+                from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
+                assert isinstance(catalog, LegacyDiscoveryWrapper)
 
 
 class TestEndToEndWorkflow:
@@ -127,7 +132,7 @@ class DataPreprocessingConfig(BaseModel):
     
     def test_complete_discovery_workflow(self, realistic_workspace):
         """Test complete step discovery workflow."""
-        catalog = create_step_catalog(realistic_workspace)
+        catalog = create_step_catalog(realistic_workspace, use_unified=True)
         
         # Mock registry to avoid import issues
         mock_registry = {
@@ -185,7 +190,7 @@ class DataPreprocessingConfig(BaseModel):
     
     def test_performance_and_metrics(self, realistic_workspace):
         """Test performance characteristics and metrics collection."""
-        catalog = create_step_catalog(realistic_workspace)
+        catalog = create_step_catalog(realistic_workspace, use_unified=True)
         
         with patch('cursus.registry.step_names.STEP_NAMES', {}):
             # Perform multiple operations
@@ -206,7 +211,7 @@ class DataPreprocessingConfig(BaseModel):
     
     def test_error_resilience(self, realistic_workspace):
         """Test system resilience to various error conditions."""
-        catalog = create_step_catalog(realistic_workspace)
+        catalog = create_step_catalog(realistic_workspace, use_unified=True)
         
         # Test with registry import error
         with patch('cursus.registry.step_names.STEP_NAMES', side_effect=ImportError("Registry not found")):
@@ -247,7 +252,7 @@ class TestBackwardCompatibility:
         """Test that existing APIs remain compatible."""
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)
-            catalog = create_step_catalog(workspace_root)
+            catalog = create_step_catalog(workspace_root, use_unified=True)
             
             # Test that all expected methods exist and are callable
             assert hasattr(catalog, 'get_step_info')

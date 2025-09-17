@@ -650,7 +650,7 @@ class TestFactoryFunction:
         
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)
-            catalog = create_step_catalog(workspace_root)
+            catalog = create_step_catalog(workspace_root, use_unified=True)
             
             assert isinstance(catalog, StepCatalog)
             assert catalog.workspace_root == workspace_root
@@ -658,17 +658,18 @@ class TestFactoryFunction:
     def test_create_step_catalog_with_feature_flag(self):
         """Test create_step_catalog with feature flag."""
         from cursus.step_catalog import create_step_catalog
+        from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
         
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)
             
-            # Test with explicit True
+            # Test with explicit True - should return StepCatalog
             catalog = create_step_catalog(workspace_root, use_unified=True)
             assert isinstance(catalog, StepCatalog)
             
-            # Test with explicit False (should still return StepCatalog during development)
+            # Test with explicit False - should return LegacyDiscoveryWrapper
             catalog = create_step_catalog(workspace_root, use_unified=False)
-            assert isinstance(catalog, StepCatalog)
+            assert isinstance(catalog, LegacyDiscoveryWrapper)
     
     def test_create_step_catalog_environment_variable(self):
         """Test create_step_catalog with environment variable."""

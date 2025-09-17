@@ -372,7 +372,7 @@ class TestAdapterErrorHandling:
 class TestAdapterIntegration:
     """Integration tests for adapters with real StepCatalog."""
     
-    @patch('src.cursus.step_catalog.adapters.StepCatalog')
+    @patch('cursus.step_catalog.adapters.StepCatalog')
     def test_contract_discovery_engine_integration(self, mock_catalog_class, mock_workspace_root):
         """Test ContractDiscoveryEngineAdapter integration."""
         # Setup mock catalog instance
