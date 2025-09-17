@@ -67,14 +67,21 @@ class ExecutionDocumentGenerator:
                               dag: PipelineDAG, 
                               execution_document: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Main entry point for filling execution documents.
+        Fill in the execution document with pipeline metadata.
+        
+        This method populates the execution document with:
+        1. Cradle data loading requests (if present in the pipeline)
+        2. Registration configurations (if present in the pipeline)
+        
+        This is ported from DynamicPipelineTemplate.fill_execution_document() to maintain
+        exact logic equivalence.
         
         Args:
             dag: PipelineDAG defining the pipeline structure
-            execution_document: Template execution document to fill
+            execution_document: Execution document to fill
             
         Returns:
-            Filled execution document
+            Updated execution document
             
         Raises:
             ExecutionDocumentGenerationError: If generation fails
@@ -82,23 +89,23 @@ class ExecutionDocumentGenerator:
         self.logger.info(f"Starting execution document generation for DAG with {len(dag.nodes)} nodes")
         
         try:
-            # Validate input execution document structure
-            if not validate_execution_document_structure(execution_document):
-                raise ExecutionDocumentGenerationError("Invalid execution document structure")
-            
-            # 1. Identify relevant steps in the DAG
-            relevant_steps = self._identify_relevant_steps(dag)
-            self.logger.info(f"Identified {len(relevant_steps)} relevant steps for execution document")
-            
-            # 2. Collect configurations for relevant steps
-            step_configs = self._collect_step_configurations(relevant_steps)
-            self.logger.info(f"Collected configurations for {len(step_configs)} steps")
-            
-            # 3. Fill execution document
-            filled_document = self._fill_document(execution_document, step_configs)
-            
+            # Validate input execution document structure (EXACT COPY from original logic)
+            if "PIPELINE_STEP_CONFIGS" not in execution_document:
+                self.logger.warning(
+                    "Execution document missing 'PIPELINE_STEP_CONFIGS' key"
+                )
+                return execution_document
+
+            pipeline_configs = execution_document["PIPELINE_STEP_CONFIGS"]
+
+            # 1. Handle Cradle data loading requests (EXACT COPY from original)
+            self._fill_cradle_configurations(dag, pipeline_configs)
+
+            # 2. Handle Registration configurations (EXACT COPY from original)
+            self._fill_registration_configurations(dag, pipeline_configs)
+
             self.logger.info("Successfully generated execution document")
-            return filled_document
+            return execution_document
             
         except Exception as e:
             self.logger.error(f"Failed to generate execution document: {e}")
@@ -405,3 +412,231 @@ class ExecutionDocumentGenerator:
             self.logger.debug(f"Filled execution document for step: {step_name}")
         
         return filled_document
+    
+    def _fill_cradle_configurations(self, dag: PipelineDAG, pipeline_configs: Dict[str, Any]) -> None:
+        """
+        Fill Cradle data loading configurations in the execution document.
+        
+        This method is ported from DynamicPipelineTemplate._fill_cradle_configurations()
+        to maintain exact logic equivalence.
+        
+        Args:
+            dag: PipelineDAG instance
+            pipeline_configs: Dictionary of pipeline step configurations
+        """
+        # Find cradle helper to extract configurations
+        cradle_helper = None
+        for helper in self.helpers:
+            if helper.__class__.__name__ == "CradleDataLoadingHelper":
+                cradle_helper = helper
+                break
+        
+        if not cradle_helper:
+            self.logger.debug("No Cradle helper found, skipping cradle configurations")
+            return
+        
+        # Find cradle steps in the DAG
+        cradle_steps = []
+        for step_name in dag.nodes:
+            config = self._get_config_for_step(step_name)
+            if config and cradle_helper.can_handle_step(step_name, config):
+                cradle_steps.append(step_name)
+        
+        if not cradle_steps:
+            self.logger.debug("No Cradle loading steps found in DAG")
+            return
+        
+        # Extract configurations for each cradle step
+        for step_name in cradle_steps:
+            if step_name not in pipeline_configs:
+                self.logger.warning(
+                    f"Cradle step '{step_name}' not found in execution document"
+                )
+                continue
+            
+            config = self._get_config_for_step(step_name)
+            if config:
+                try:
+                    # Extract step configuration using the cradle helper
+                    step_config = cradle_helper.extract_step_config(step_name, config)
+                    pipeline_configs[step_name]["STEP_CONFIG"] = step_config
+                    self.logger.info(f"Updated execution config for Cradle step: {step_name}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to extract cradle config for step {step_name}: {e}")
+    
+    def _fill_registration_configurations(self, dag: PipelineDAG, pipeline_configs: Dict[str, Any]) -> None:
+        """
+        Fill Registration configurations in the execution document.
+        
+        This method is ported from DynamicPipelineTemplate._fill_registration_configurations()
+        to maintain exact logic equivalence.
+        
+        Args:
+            dag: PipelineDAG instance
+            pipeline_configs: Dictionary of pipeline step configurations
+        """
+        # Find registration helper to extract configurations
+        registration_helper = None
+        for helper in self.helpers:
+            if helper.__class__.__name__ == "RegistrationHelper":
+                registration_helper = helper
+                break
+        
+        if not registration_helper:
+            self.logger.debug("No Registration helper found, skipping registration configurations")
+            return
+        
+        # Find registration configs in the loaded configs
+        registration_cfg = None
+        payload_cfg = None
+        package_cfg = None
+
+        # Find registration configuration (and related configs)
+        for _, cfg in self.configs.items():
+            cfg_type_name = type(cfg).__name__.lower()
+            if "registration" in cfg_type_name and not "payload" in cfg_type_name:
+                registration_cfg = cfg
+                self.logger.info(
+                    f"Found registration configuration: {type(cfg).__name__}"
+                )
+            elif "payload" in cfg_type_name:
+                payload_cfg = cfg
+                self.logger.debug(f"Found payload configuration: {type(cfg).__name__}")
+            elif "package" in cfg_type_name:
+                package_cfg = cfg
+                self.logger.debug(f"Found package configuration: {type(cfg).__name__}")
+
+        if not registration_cfg:
+            self.logger.debug("No registration configurations found")
+            return
+
+        # Find registration steps in the DAG using the helper
+        registration_nodes = self._find_registration_step_nodes(dag, registration_helper)
+        if not registration_nodes:
+            self.logger.debug("No registration steps found in DAG")
+            return
+
+        # Generate search patterns for registration step names (EXACT COPY from original)
+        region = getattr(registration_cfg, "region", "")
+
+        search_patterns = []
+        if region:
+            search_patterns.extend(
+                [
+                    f"ModelRegistration-{region}",  # Format from error logs
+                    f"Registration_{region}",  # Format from template code
+                ]
+            )
+
+        # Add the DAG node names we found earlier
+        search_patterns.extend(registration_nodes)
+
+        # Always add generic fallbacks
+        search_patterns.extend(
+            [
+                "model_registration",  # Common generic name
+                "Registration",  # Very generic fallback
+                "register_model",  # Another common name
+            ]
+        )
+
+        # Search for any step name containing 'registration' as final fallback
+        for step_name in pipeline_configs.keys():
+            if "registration" in step_name.lower():
+                if step_name not in search_patterns:
+                    search_patterns.append(step_name)
+
+        # Process each potential registration step (EXACT COPY from original)
+        registration_step_found = False
+        for pattern in search_patterns:
+            if pattern in pipeline_configs:
+                # If no STEP_CONFIG, at least ensure it exists
+                if "STEP_CONFIG" not in pipeline_configs[pattern]:
+                    pipeline_configs[pattern]["STEP_CONFIG"] = {}
+
+                # Add STEP_TYPE if missing (MODS requirement)
+                if "STEP_TYPE" not in pipeline_configs[pattern]:
+                    pipeline_configs[pattern]["STEP_TYPE"] = [
+                        "PROCESSING_STEP",
+                        "ModelRegistration",
+                    ]
+
+                # Try to create a config using the registration helper
+                try:
+                    # Use the registration helper to create execution config
+                    exec_config = registration_helper.create_execution_doc_config_with_related_configs(
+                        registration_cfg, payload_cfg, package_cfg
+                    )
+                    
+                    if exec_config:
+                        pipeline_configs[pattern]["STEP_CONFIG"] = exec_config
+                        self.logger.info(
+                            f"Created execution config for registration step: {pattern}"
+                        )
+                        registration_step_found = True
+
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to create execution doc config: {e}"
+                    )
+
+                if registration_step_found:
+                    break
+    
+    def _find_registration_step_nodes(self, dag: PipelineDAG, registration_helper) -> List[str]:
+        """
+        Find nodes in the DAG that correspond to registration steps.
+        
+        This method is ported from DynamicPipelineTemplate._find_registration_step_nodes()
+        to maintain exact logic equivalence.
+        
+        Args:
+            dag: PipelineDAG instance
+            registration_helper: Registration helper instance
+            
+        Returns:
+            List of node names for registration steps
+        """
+        registration_nodes = []
+
+        try:
+            # Look for registration steps by config type
+            for node_name in dag.nodes:
+                config = self._get_config_for_step(node_name)
+                if config:
+                    config_type_name = type(config).__name__.lower()
+
+                    # Check config type name
+                    if (
+                        "registration" in config_type_name
+                        and not "payload" in config_type_name
+                    ):
+                        registration_nodes.append(node_name)
+                        self.logger.info(
+                            f"Found registration step by config type: {node_name}"
+                        )
+                    # Check node name as fallback
+                    elif any(
+                        pattern in node_name.lower()
+                        for pattern in ["registration", "register"]
+                    ):
+                        registration_nodes.append(node_name)
+                        self.logger.info(
+                            f"Found registration step by name pattern: {node_name}"
+                        )
+
+        except Exception as e:
+            self.logger.warning(
+                f"Error finding registration nodes from config map: {e}"
+            )
+
+        # If no nodes found, try using DAG nodes directly
+        if not registration_nodes:
+            for node in dag.nodes:
+                if any(
+                    pattern in node.lower() for pattern in ["registration", "register"]
+                ):
+                    registration_nodes.append(node)
+                    self.logger.info(f"Found registration step from DAG nodes: {node}")
+
+        return registration_nodes

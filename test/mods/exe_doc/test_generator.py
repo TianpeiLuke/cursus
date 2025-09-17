@@ -155,8 +155,9 @@ class TestExecutionDocumentGenerator:
         
         invalid_doc = {"INVALID": "structure"}
         
-        with pytest.raises(ExecutionDocumentGenerationError, match="Invalid execution document structure"):
-            generator.fill_execution_document(dag, invalid_doc)
+        # New behavior: returns document with warning (matches DynamicPipelineTemplate)
+        result = generator.fill_execution_document(dag, invalid_doc)
+        assert result == invalid_doc  # Document returned unchanged
     
     @patch('cursus.steps.configs.utils.load_configs')
     @patch('cursus.steps.configs.utils.build_complete_config_classes')
@@ -169,7 +170,19 @@ class TestExecutionDocumentGenerator:
         mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
-        helper = MockHelper(can_handle_types=["CradleDataLoadConfig"])
+        
+        # Create a mock helper that matches the expected class name
+        class MockCradleHelper(ExecutionDocumentHelper):
+            def __init__(self):
+                self.__class__.__name__ = "CradleDataLoadingHelper"
+            
+            def can_handle_step(self, step_name: str, config) -> bool:
+                return "cradle" in type(config).__name__.lower()
+            
+            def extract_step_config(self, step_name: str, config) -> dict:
+                return {"mock_config": f"config_for_{step_name}"}
+        
+        helper = MockCradleHelper()
         generator.add_helper(helper)
         
         # Setup DAG
