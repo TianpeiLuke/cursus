@@ -3,6 +3,9 @@ Validation Orchestrator
 
 Coordinates the overall validation process by orchestrating different
 validation components and managing the validation workflow.
+
+PHASE 4.2 INTEGRATION: Updated to use StepCatalog for discovery while preserving
+validation business logic following Separation of Concerns principle.
 """
 
 from typing import Dict, List, Any, Optional
@@ -13,28 +16,38 @@ class ValidationOrchestrator:
     """
     Orchestrates the validation process across multiple components.
 
+    DESIGN PRINCIPLES COMPLIANCE:
+    - Uses StepCatalog for pure discovery operations (Separation of Concerns)
+    - Maintains specialized validation business logic (Single Responsibility)
+    - Explicit dependency injection (Explicit Dependencies)
+
     Coordinates:
-    - Contract discovery and loading
-    - Specification discovery and loading
-    - Smart specification selection
-    - Multi-level validation execution
-    - Result aggregation and processing
-    - Error handling and recovery
+    - Contract discovery and loading (via StepCatalog)
+    - Specification discovery and loading (via StepCatalog)
+    - Smart specification selection (business logic)
+    - Multi-level validation execution (business logic)
+    - Result aggregation and processing (business logic)
+    - Error handling and recovery (business logic)
     """
 
-    def __init__(self, contracts_dir: str, specs_dir: str):
+    def __init__(self, step_catalog, contracts_dir: str = None, specs_dir: str = None):
         """
-        Initialize the validation orchestrator.
+        Initialize the validation orchestrator with StepCatalog integration.
 
         Args:
-            contracts_dir: Directory containing script contracts
-            specs_dir: Directory containing step specifications
+            step_catalog: StepCatalog instance for discovery operations
+            contracts_dir: Directory containing script contracts (legacy compatibility)
+            specs_dir: Directory containing step specifications (legacy compatibility)
         """
-        self.contracts_dir = Path(contracts_dir)
-        self.specs_dir = Path(specs_dir)
+        # PHASE 4.2: Use StepCatalog for discovery
+        self.catalog = step_catalog
+        
+        # Legacy compatibility - maintain for backward compatibility during transition
+        self.contracts_dir = Path(contracts_dir) if contracts_dir else None
+        self.specs_dir = Path(specs_dir) if specs_dir else None
 
         # Initialize components (will be injected by main class)
-        self.contract_discovery = None
+        self.contract_discovery = None  # Will be deprecated in favor of catalog
         self.spec_processor = None
         self.contract_loader = None
         self.spec_loader = None
@@ -142,17 +155,32 @@ class ValidationOrchestrator:
         return results
 
     def _discover_contract_file(self, contract_name: str) -> Optional[str]:
-        """Discover contract file using the contract discovery engine."""
-        if self.contract_discovery:
-            # Use FlexibleFileResolver through contract discovery
-            from ..alignment_utils import FlexibleFileResolver
-
-            base_directories = {
-                "contracts": str(self.contracts_dir),
-                "specs": str(self.specs_dir),
-            }
-            file_resolver = FlexibleFileResolver(base_directories)
-            return file_resolver.find_contract_file(contract_name)
+        """
+        Discover contract file using StepCatalog (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for pure discovery, no business logic.
+        """
+        try:
+            # PHASE 4.2: Use StepCatalog for discovery
+            step_info = self.catalog.get_step_info(contract_name)
+            if step_info and step_info.file_components.get('contract'):
+                contract_metadata = step_info.file_components['contract']
+                return str(contract_metadata.path)
+            
+            # Fallback to legacy discovery during transition period
+            if self.contract_discovery and self.contracts_dir:
+                from ..alignment_utils import FlexibleFileResolver
+                base_directories = {
+                    "contracts": str(self.contracts_dir),
+                    "specs": str(self.specs_dir) if self.specs_dir else "",
+                }
+                file_resolver = FlexibleFileResolver(base_directories)
+                return file_resolver.find_contract_file(contract_name)
+                
+        except Exception as e:
+            # Log error but continue with fallback
+            print(f"⚠️  Error discovering contract file for {contract_name}: {e}")
+            
         return None
 
     def _load_contract_safely(
@@ -172,27 +200,43 @@ class ValidationOrchestrator:
     def _discover_and_load_specifications(
         self, contract_name: str
     ) -> Dict[str, Dict[str, Any]]:
-        """Discover and load all specifications for a contract."""
+        """
+        Discover and load all specifications for a contract using StepCatalog (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for discovery, maintains loading business logic.
+        """
         specifications = {}
 
-        if not self.spec_loader:
-            return specifications
-
         try:
-            # Find specification files using script_contract field
-            spec_files = self.spec_loader.find_specifications_by_contract(contract_name)
+            # PHASE 4.2: Use StepCatalog for specification discovery
+            step_info = self.catalog.get_step_info(contract_name)
+            if step_info and step_info.file_components.get('spec'):
+                spec_metadata = step_info.file_components['spec']
+                if spec_metadata and self.spec_loader:
+                    try:
+                        # Load specification using existing business logic
+                        spec = self.spec_loader.load_specification(
+                            spec_metadata.path, 
+                            {"contract_name": contract_name}
+                        )
+                        specifications[spec_metadata.path.stem] = spec
+                    except Exception as e:
+                        print(f"⚠️  Failed to load specification from {spec_metadata.path}: {str(e)}")
 
-            # Load specifications from Python files
-            for spec_file, spec_info in spec_files.items():
+            # Fallback to legacy discovery during transition period
+            if not specifications and self.spec_loader:
                 try:
-                    spec = self.spec_loader.load_specification(spec_file, spec_info)
-                    # Use the spec file name as the key since job type comes from config, not spec
-                    spec_key = spec_file.stem
-                    specifications[spec_key] = spec
+                    spec_files = self.spec_loader.find_specifications_by_contract(contract_name)
+                    for spec_file, spec_info in spec_files.items():
+                        try:
+                            spec = self.spec_loader.load_specification(spec_file, spec_info)
+                            spec_key = spec_file.stem
+                            specifications[spec_key] = spec
+                        except Exception as e:
+                            print(f"⚠️  Failed to load specification from {spec_file}: {str(e)}")
+                            continue
                 except Exception as e:
-                    # Log specification loading error but continue with others
-                    print(f"⚠️  Failed to load specification from {spec_file}: {str(e)}")
-                    continue
+                    print(f"⚠️  Error in legacy specification discovery for {contract_name}: {str(e)}")
 
             return specifications
 
@@ -324,13 +368,28 @@ class ValidationOrchestrator:
         }
 
     def _discover_contracts_with_scripts(self) -> List[str]:
-        """Discover contracts that have corresponding scripts."""
-        if self.contract_discovery:
-            return self.contract_discovery.discover_contracts_with_scripts()
-        else:
-            # Fallback: discover all contracts
+        """
+        Discover contracts that have corresponding scripts using StepCatalog (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for pure discovery, no business logic.
+        """
+        try:
+            # PHASE 4.2: Use StepCatalog expanded discovery method
+            return self.catalog.discover_contracts_with_scripts()
+            
+        except Exception as e:
+            print(f"⚠️  Error using catalog discovery, falling back to legacy: {e}")
+            
+            # Fallback to legacy discovery during transition period
+            if self.contract_discovery:
+                try:
+                    return self.contract_discovery.discover_contracts_with_scripts()
+                except Exception as legacy_e:
+                    print(f"⚠️  Legacy discovery also failed: {legacy_e}")
+            
+            # Final fallback: manual discovery
             contracts = []
-            if self.contracts_dir.exists():
+            if self.contracts_dir and self.contracts_dir.exists():
                 for contract_file in self.contracts_dir.glob("*_contract.py"):
                     if not contract_file.name.startswith("__"):
                         contract_name = contract_file.stem.replace("_contract", "")

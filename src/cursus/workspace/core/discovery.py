@@ -137,19 +137,32 @@ class DependencyGraph:
 
 class WorkspaceDiscoveryManager:
     """
-    Cross-workspace component discovery and resolution.
+    Cross-workspace component discovery and resolution with Phase 4.2 StepCatalog integration.
+
+    PHASE 4.2 INTEGRATION: Updated to use StepCatalog for discovery while preserving
+    workspace management business logic following Separation of Concerns principle.
+
+    DESIGN PRINCIPLES COMPLIANCE:
+    - Uses StepCatalog for pure discovery operations (Separation of Concerns)
+    - Maintains specialized workspace management business logic (Single Responsibility)
+    - Explicit dependency injection (Explicit Dependencies)
 
     Provides comprehensive component discovery across multiple workspaces,
     dependency resolution, and component compatibility analysis.
     """
 
-    def __init__(self, workspace_manager):
+    def __init__(self, step_catalog, workspace_manager=None):
         """
-        Initialize workspace discovery manager.
+        Initialize workspace discovery manager with StepCatalog integration.
 
         Args:
-            workspace_manager: Parent WorkspaceManager instance
+            step_catalog: StepCatalog instance for discovery operations
+            workspace_manager: Parent WorkspaceManager instance (legacy compatibility)
         """
+        # PHASE 4.2: Use StepCatalog for discovery
+        self.catalog = step_catalog
+        
+        # Legacy compatibility - maintain for backward compatibility during transition
         self.workspace_manager = workspace_manager
 
         # Component caches
@@ -160,7 +173,7 @@ class WorkspaceDiscoveryManager:
         # Cache expiration time (5 minutes)
         self.cache_expiry = 300
 
-        logger.info("Initialized workspace discovery manager")
+        logger.info("Initialized workspace discovery manager with Phase 4.2 StepCatalog integration")
 
     def discover_workspaces(self, workspace_root: Path) -> Dict[str, Any]:
         """
@@ -311,7 +324,9 @@ class WorkspaceDiscoveryManager:
         developer_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Discover components across workspaces.
+        Discover components across workspaces using StepCatalog (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for discovery, maintains workspace management business logic.
 
         Args:
             workspace_ids: Optional list of workspace IDs to search
@@ -333,22 +348,46 @@ class WorkspaceDiscoveryManager:
         inventory = ComponentInventory()
 
         try:
-            if not self.workspace_manager.workspace_root:
-                raise ValueError("No workspace root configured")
-
-            # Determine which workspaces to search
-            target_workspaces = self._determine_target_workspaces(
-                workspace_ids, developer_id
-            )
-
-            # Discover components in each workspace
-            for workspace_id in target_workspaces:
-                try:
-                    self._discover_workspace_components(workspace_id, inventory)
-                except Exception as e:
-                    logger.error(
-                        f"Error discovering components in workspace {workspace_id}: {e}"
-                    )
+            # PHASE 4.2: Use StepCatalog for cross-workspace discovery
+            cross_workspace_components = self.catalog.discover_cross_workspace_components(workspace_ids)
+            
+            # Transform catalog results into workspace inventory format (business logic)
+            for workspace_id, components in cross_workspace_components.items():
+                for component_name in components:
+                    # Extract step name from component string (format: "step_name:component_type")
+                    if ':' in component_name:
+                        step_name, component_type = component_name.split(':', 1)
+                    else:
+                        step_name = component_name
+                        component_type = "unknown"
+                    
+                    # Get detailed step info from catalog
+                    step_info = self.catalog.get_step_info(step_name)
+                    if step_info:
+                        component_id = f"{workspace_id}:{step_name}"
+                        component_info = {
+                            "developer_id": workspace_id,
+                            "step_name": step_name,
+                            "component_type": component_type,
+                            "config_class": step_info.config_class,
+                            "sagemaker_step_type": step_info.sagemaker_step_type,
+                            "file_components": list(step_info.file_components.keys()),
+                        }
+                        
+                        # Add to appropriate inventory category based on component type
+                        if component_type == "builder":
+                            inventory.add_component("builders", component_id, component_info)
+                        elif component_type == "config":
+                            inventory.add_component("configs", component_id, component_info)
+                        elif component_type == "contract":
+                            inventory.add_component("contracts", component_id, component_info)
+                        elif component_type == "spec":
+                            inventory.add_component("specs", component_id, component_info)
+                        elif component_type == "script":
+                            inventory.add_component("scripts", component_id, component_info)
+                        else:
+                            # Default to scripts for unknown types
+                            inventory.add_component("scripts", component_id, component_info)
 
             # Cache the results
             self._component_cache[cache_key] = inventory
@@ -362,35 +401,97 @@ class WorkspaceDiscoveryManager:
             return inventory.to_dict()
 
         except Exception as e:
-            logger.error(f"Failed to discover components: {e}")
+            logger.warning(f"StepCatalog discovery failed, falling back to legacy: {e}")
+            
+            # Fallback to legacy discovery during transition period
+            if self.workspace_manager and hasattr(self.workspace_manager, 'workspace_root'):
+                try:
+                    return self._legacy_discover_components(workspace_ids, developer_id, cache_key)
+                except Exception as legacy_e:
+                    logger.error(f"Legacy discovery also failed: {legacy_e}")
+            
+            return {"error": str(e)}
+
+    def _legacy_discover_components(
+        self, workspace_ids: Optional[List[str]], developer_id: Optional[str], cache_key: str
+    ) -> Dict[str, Any]:
+        """Legacy component discovery fallback method."""
+        inventory = ComponentInventory()
+        start_time = time.time()
+
+        try:
+            if not self.workspace_manager.workspace_root:
+                raise ValueError("No workspace root configured")
+
+            # Determine which workspaces to search
+            target_workspaces = self._determine_target_workspaces(workspace_ids, developer_id)
+
+            # Discover components in each workspace
+            for workspace_id in target_workspaces:
+                try:
+                    self._discover_workspace_components(workspace_id, inventory)
+                except Exception as e:
+                    logger.error(f"Error discovering components in workspace {workspace_id}: {e}")
+
+            # Cache the results
+            self._component_cache[cache_key] = inventory
+            self._cache_timestamp[cache_key] = time.time()
+
+            elapsed_time = time.time() - start_time
+            logger.info(f"Legacy discovered {inventory.summary['total_components']} components in {elapsed_time:.2f}s")
+
+            return inventory.to_dict()
+
+        except Exception as e:
+            logger.error(f"Failed to discover components with legacy method: {e}")
             return {"error": str(e)}
 
     def _determine_target_workspaces(
         self, workspace_ids: Optional[List[str]], developer_id: Optional[str]
     ) -> List[str]:
-        """Determine which workspaces to search."""
+        """
+        Determine which workspaces to search (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for workspace discovery when available.
+        """
         if workspace_ids:
             return workspace_ids
 
         if developer_id:
             return [developer_id]
 
-        # Search all available workspaces
-        target_workspaces = []
+        try:
+            # PHASE 4.2: Use StepCatalog to get available workspaces
+            all_steps = self.catalog.list_available_steps()
+            workspaces = set()
+            
+            for step_name in all_steps:
+                step_info = self.catalog.get_step_info(step_name)
+                if step_info and step_info.workspace_id:
+                    workspaces.add(step_info.workspace_id)
+            
+            return list(workspaces)
+            
+        except Exception as e:
+            logger.warning(f"Catalog workspace discovery failed, using legacy: {e}")
+            
+            # Fallback to legacy workspace discovery
+            target_workspaces = []
+            
+            if self.workspace_manager and hasattr(self.workspace_manager, 'workspace_root'):
+                # Add developer workspaces
+                developers_dir = self.workspace_manager.workspace_root / "developers"
+                if developers_dir.exists():
+                    for item in developers_dir.iterdir():
+                        if item.is_dir():
+                            target_workspaces.append(item.name)
 
-        # Add developer workspaces
-        developers_dir = self.workspace_manager.workspace_root / "developers"
-        if developers_dir.exists():
-            for item in developers_dir.iterdir():
-                if item.is_dir():
-                    target_workspaces.append(item.name)
+                # Add shared workspace if it exists
+                shared_dir = self.workspace_manager.workspace_root / "shared"
+                if shared_dir.exists():
+                    target_workspaces.append("shared")
 
-        # Add shared workspace if it exists
-        shared_dir = self.workspace_manager.workspace_root / "shared"
-        if shared_dir.exists():
-            target_workspaces.append("shared")
-
-        return target_workspaces
+            return target_workspaces
 
     def _discover_workspace_components(
         self, workspace_id: str, inventory: ComponentInventory

@@ -1,11 +1,14 @@
 """
 Contract Discovery Engine
 
+PHASE 4.2 INTEGRATION: Updated to use StepCatalog for discovery while preserving
+contract loading business logic following Separation of Concerns principle.
+
 Handles discovery and mapping of contract files, including:
-- Finding contract files by script name
-- Extracting contract references from specification files
-- Building entry point mappings
-- Matching contracts with their corresponding scripts
+- Finding contract files by script name (via StepCatalog)
+- Extracting contract references from specification files (business logic)
+- Building entry point mappings (business logic)
+- Matching contracts with their corresponding scripts (business logic)
 """
 
 import sys
@@ -16,97 +19,138 @@ from pathlib import Path
 
 class ContractDiscoveryEngine:
     """
-    Engine for discovering and mapping contract files.
+    Engine for discovering and mapping contract files with Phase 4.2 StepCatalog integration.
+
+    DESIGN PRINCIPLES COMPLIANCE:
+    - Uses StepCatalog for pure discovery operations (Separation of Concerns)
+    - Maintains specialized contract loading business logic (Single Responsibility)
+    - Explicit dependency injection (Explicit Dependencies)
 
     Provides robust contract file discovery using multiple strategies:
-    - Entry point mapping from contract files
-    - Specification file contract references
-    - Naming convention patterns
+    - Entry point mapping from contract files (business logic)
+    - Specification file contract references (business logic)
+    - Naming convention patterns (business logic)
+    - Component discovery via StepCatalog (discovery layer)
     """
 
-    def __init__(self, contracts_dir: str):
+    def __init__(self, step_catalog, contracts_dir: str = None):
         """
-        Initialize the contract discovery engine.
+        Initialize the contract discovery engine with StepCatalog integration.
 
         Args:
-            contracts_dir: Directory containing script contracts
+            step_catalog: StepCatalog instance for discovery operations
+            contracts_dir: Directory containing script contracts (legacy compatibility)
         """
-        self.contracts_dir = Path(contracts_dir)
+        # PHASE 4.2: Use StepCatalog for discovery
+        self.catalog = step_catalog
+        
+        # Legacy compatibility - maintain for backward compatibility during transition
+        self.contracts_dir = Path(contracts_dir) if contracts_dir else None
         self._entry_point_mapping = None
 
     def discover_all_contracts(self) -> List[str]:
-        """Discover all contract files in the contracts directory."""
-        contracts = []
-
-        if self.contracts_dir.exists():
-            for contract_file in self.contracts_dir.glob("*_contract.py"):
-                if not contract_file.name.startswith("__"):
-                    contract_name = contract_file.stem.replace("_contract", "")
-                    contracts.append(contract_name)
-
-        return sorted(contracts)
+        """
+        Discover all contract files using StepCatalog (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for pure discovery, no business logic.
+        """
+        try:
+            # PHASE 4.2: Use StepCatalog to find all steps with contracts
+            all_steps = self.catalog.list_available_steps()
+            contracts = []
+            
+            for step_name in all_steps:
+                step_info = self.catalog.get_step_info(step_name)
+                if step_info and step_info.file_components.get('contract'):
+                    contracts.append(step_name)
+            
+            return sorted(contracts)
+            
+        except Exception as e:
+            print(f"⚠️  StepCatalog discovery failed, falling back to legacy: {e}")
+            
+            # Fallback to legacy discovery during transition period
+            contracts = []
+            if self.contracts_dir and self.contracts_dir.exists():
+                for contract_file in self.contracts_dir.glob("*_contract.py"):
+                    if not contract_file.name.startswith("__"):
+                        contract_name = contract_file.stem.replace("_contract", "")
+                        contracts.append(contract_name)
+            
+            return sorted(contracts)
 
     def discover_contracts_with_scripts(self) -> List[str]:
         """
-        Discover contracts that have corresponding scripts by checking their entry_point field.
+        Discover contracts that have corresponding scripts using StepCatalog (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for discovery, maintains validation business logic.
 
-        This method loads each contract and checks if the script file referenced in the
-        entry_point field actually exists, preventing validation errors for contracts
-        without corresponding scripts.
+        This method uses StepCatalog to find steps with both contracts and scripts,
+        preventing validation errors for contracts without corresponding scripts.
 
         Returns:
             List of contract names that have corresponding scripts
         """
-        from ..unified_alignment_tester import UnifiedAlignmentTester
-
-        # Get the list of actual scripts for verification
-        tester = UnifiedAlignmentTester()
-        actual_scripts = set(tester.discover_scripts())
-
-        contracts_with_scripts = []
-
-        if not self.contracts_dir.exists():
-            return contracts_with_scripts
-
-        for contract_file in self.contracts_dir.glob("*_contract.py"):
-            if contract_file.name.startswith("__"):
-                continue
-
-            contract_name = contract_file.stem.replace("_contract", "")
-
+        try:
+            # PHASE 4.2: Use StepCatalog expanded discovery method
+            return self.catalog.discover_contracts_with_scripts()
+            
+        except Exception as e:
+            print(f"⚠️  StepCatalog discovery failed, falling back to legacy: {e}")
+            
+            # Fallback to legacy discovery during transition period
             try:
-                # Load the contract to get its entry_point
-                contract = self._load_contract_for_entry_point(
-                    contract_file, contract_name
-                )
-                entry_point = contract.get("entry_point", "")
+                from ..unified_alignment_tester import UnifiedAlignmentTester
 
-                if entry_point:
-                    # Extract script name from entry_point (remove .py extension)
-                    script_name = entry_point.replace(".py", "")
+                # Get the list of actual scripts for verification
+                tester = UnifiedAlignmentTester()
+                actual_scripts = set(tester.discover_scripts())
 
-                    # Check if this script exists in the discovered scripts
-                    if script_name in actual_scripts:
-                        contracts_with_scripts.append(contract_name)
-                    else:
-                        # Log that we're skipping this contract
-                        print(
-                            f"ℹ️  Skipping contract '{contract_name}' - script '{script_name}' not found in discovered scripts"
+                contracts_with_scripts = []
+
+                if not self.contracts_dir or not self.contracts_dir.exists():
+                    return contracts_with_scripts
+
+                for contract_file in self.contracts_dir.glob("*_contract.py"):
+                    if contract_file.name.startswith("__"):
+                        continue
+
+                    contract_name = contract_file.stem.replace("_contract", "")
+
+                    try:
+                        # Load the contract to get its entry_point (business logic)
+                        contract = self._load_contract_for_entry_point(
+                            contract_file, contract_name
                         )
-                else:
-                    # Contract has no entry_point, skip it
-                    print(
-                        f"ℹ️  Skipping contract '{contract_name}' - no entry_point defined"
-                    )
+                        entry_point = contract.get("entry_point", "")
 
-            except Exception as e:
-                # If we can't load the contract, skip it
-                print(
-                    f"⚠️  Skipping contract '{contract_name}' - failed to load: {str(e)}"
-                )
-                continue
+                        if entry_point:
+                            # Extract script name from entry_point (remove .py extension)
+                            script_name = entry_point.replace(".py", "")
 
-        return sorted(contracts_with_scripts)
+                            # Check if this script exists in the discovered scripts
+                            if script_name in actual_scripts:
+                                contracts_with_scripts.append(contract_name)
+                            else:
+                                print(
+                                    f"ℹ️  Skipping contract '{contract_name}' - script '{script_name}' not found in discovered scripts"
+                                )
+                        else:
+                            print(
+                                f"ℹ️  Skipping contract '{contract_name}' - no entry_point defined"
+                            )
+
+                    except Exception as contract_e:
+                        print(
+                            f"⚠️  Skipping contract '{contract_name}' - failed to load: {str(contract_e)}"
+                        )
+                        continue
+
+                return sorted(contracts_with_scripts)
+                
+            except Exception as legacy_e:
+                print(f"⚠️  Legacy discovery also failed: {legacy_e}")
+                return []
 
     def extract_contract_reference_from_spec(self, spec_file: Path) -> Optional[str]:
         """Extract the contract reference from a specification file."""

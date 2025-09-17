@@ -115,17 +115,24 @@ class CrossWorkspaceConfig(BaseModel):
 
 class CrossWorkspaceValidator:
     """
-    Comprehensive cross-workspace validation system integrating with Phase 1.
+    Comprehensive cross-workspace validation system with Phase 4.2 StepCatalog integration.
 
-    This validator provides advanced cross-workspace validation capabilities by
-    leveraging the Phase 1 consolidated workspace system. It validates:
-    - Component compatibility between workspaces
-    - Cross-workspace dependency resolution
-    - Integration readiness assessment
-    - Pipeline assembly validation
+    PHASE 4.2 INTEGRATION: Updated to use StepCatalog for discovery while preserving
+    validation business logic following Separation of Concerns principle.
 
-    Phase 3 Integration Features:
-    - Uses Phase 1 WorkspaceDiscoveryManager for component discovery
+    DESIGN PRINCIPLES COMPLIANCE:
+    - Uses StepCatalog for pure discovery operations (Separation of Concerns)
+    - Maintains specialized validation business logic (Single Responsibility)
+    - Explicit dependency injection (Explicit Dependencies)
+
+    This validator provides advanced cross-workspace validation capabilities:
+    - Component compatibility between workspaces (via StepCatalog)
+    - Cross-workspace dependency resolution (business logic)
+    - Integration readiness assessment (business logic)
+    - Pipeline assembly validation (business logic)
+
+    Phase 4.2 Integration Features:
+    - Uses StepCatalog for cross-workspace component discovery
     - Leverages Phase 1 WorkspaceIntegrationManager for integration validation
     - Integrates with Phase 2 optimized WorkspacePipelineAssembler
     - Coordinates with Phase 3 WorkspaceTestManager for validation testing
@@ -133,40 +140,63 @@ class CrossWorkspaceValidator:
 
     def __init__(
         self,
+        step_catalog,
         workspace_manager: Optional[WorkspaceManager] = None,
         validation_config: Optional[CrossWorkspaceConfig] = None,
         test_manager: Optional[WorkspaceTestManager] = None,
     ):
         """
-        Initialize cross-workspace validator.
+        Initialize cross-workspace validator with StepCatalog integration.
 
         Args:
-            workspace_manager: Phase 1 consolidated workspace manager
+            step_catalog: StepCatalog instance for discovery operations
+            workspace_manager: Phase 1 consolidated workspace manager (legacy compatibility)
             validation_config: Cross-workspace validation configuration
             test_manager: Phase 3 test workspace manager for validation testing
         """
-        # PHASE 3 INTEGRATION: Use Phase 1 consolidated workspace manager
+        # PHASE 4.2: Use StepCatalog for discovery
+        self.catalog = step_catalog
+
+        # Legacy compatibility - maintain for backward compatibility during transition
         if workspace_manager:
             self.workspace_manager = workspace_manager
         else:
-            from ..core.manager import WorkspaceManager
+            try:
+                from ..core.manager import WorkspaceManager
+                self.workspace_manager = WorkspaceManager()
+            except ImportError:
+                self.workspace_manager = None
 
-            self.workspace_manager = WorkspaceManager()
+        # Access Phase 1 specialized managers (with fallback)
+        if self.workspace_manager:
+            self.discovery_manager = getattr(self.workspace_manager, 'discovery_manager', None)
+            self.integration_manager = getattr(self.workspace_manager, 'integration_manager', None)
+        else:
+            self.discovery_manager = None
+            self.integration_manager = None
 
-        # Access Phase 1 specialized managers
-        self.discovery_manager = self.workspace_manager.discovery_manager
-        self.integration_manager = self.workspace_manager.integration_manager
+        # PHASE 2 INTEGRATION: Use optimized pipeline assembler (with fallback)
+        if self.workspace_manager:
+            try:
+                self.pipeline_assembler = WorkspacePipelineAssembler(
+                    workspace_root=self.workspace_manager.workspace_root,
+                    workspace_manager=self.workspace_manager,
+                )
+            except Exception:
+                self.pipeline_assembler = None
+        else:
+            self.pipeline_assembler = None
 
-        # PHASE 2 INTEGRATION: Use optimized pipeline assembler
-        self.pipeline_assembler = WorkspacePipelineAssembler(
-            workspace_root=self.workspace_manager.workspace_root,
-            workspace_manager=self.workspace_manager,
-        )
-
-        # PHASE 3 INTEGRATION: Use test manager for validation testing
-        self.test_manager = test_manager or WorkspaceTestManager(
-            workspace_manager=self.workspace_manager
-        )
+        # PHASE 3 INTEGRATION: Use test manager for validation testing (with fallback)
+        if test_manager:
+            self.test_manager = test_manager
+        elif self.workspace_manager:
+            try:
+                self.test_manager = WorkspaceTestManager(workspace_manager=self.workspace_manager)
+            except Exception:
+                self.test_manager = None
+        else:
+            self.test_manager = None
 
         # Cross-workspace validation configuration
         self.validation_config = validation_config or CrossWorkspaceConfig()
@@ -175,7 +205,7 @@ class CrossWorkspaceValidator:
         self.validation_cache: Dict[str, ValidationResult] = {}
         self.component_registry: Dict[str, Dict[str, Any]] = {}
 
-        logger.info("Initialized cross-workspace validator with Phase 1-3 integration")
+        logger.info("Initialized cross-workspace validator with Phase 4.2 StepCatalog integration")
 
     # Cross-Workspace Component Discovery and Analysis
 
@@ -183,7 +213,9 @@ class CrossWorkspaceValidator:
         self, workspace_ids: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        Discover components across multiple workspaces using Phase 1 discovery manager.
+        Discover components across multiple workspaces using StepCatalog (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Uses catalog for pure discovery, no business logic.
 
         Args:
             workspace_ids: Optional list of workspace IDs to analyze
@@ -196,24 +228,22 @@ class CrossWorkspaceValidator:
         )
 
         try:
-            # Use Phase 1 discovery manager for component discovery
-            discovery_result = self.discovery_manager.discover_components(
-                workspace_ids=workspace_ids
-            )
+            # PHASE 4.2: Use StepCatalog for cross-workspace discovery
+            discovery_result = self.catalog.discover_cross_workspace_components(workspace_ids)
+            
+            # Build cross-workspace component registry from catalog results
+            self.component_registry = self._build_component_registry_from_catalog(discovery_result)
 
-            # Build cross-workspace component registry
-            self.component_registry = self._build_component_registry(discovery_result)
-
-            # Analyze component relationships
+            # Analyze component relationships (business logic)
             component_analysis = self._analyze_component_relationships()
 
             result = {
                 "discovery_result": discovery_result,
                 "component_registry": self.component_registry,
                 "component_analysis": component_analysis,
-                "total_workspaces": len(discovery_result.get("workspaces", {})),
+                "total_workspaces": len(discovery_result),
                 "total_components": sum(
-                    len(components) for components in self.component_registry.values()
+                    len(components) for components in discovery_result.values()
                 ),
                 "discovery_timestamp": datetime.now().isoformat(),
             }
@@ -224,13 +254,80 @@ class CrossWorkspaceValidator:
             return result
 
         except Exception as e:
-            logger.error(f"Failed to discover cross-workspace components: {e}")
+            logger.warning(f"StepCatalog discovery failed, falling back to legacy: {e}")
+            
+            # Fallback to legacy discovery during transition period
+            if self.discovery_manager:
+                try:
+                    discovery_result = self.discovery_manager.discover_components(
+                        workspace_ids=workspace_ids
+                    )
+                    self.component_registry = self._build_component_registry(discovery_result)
+                    component_analysis = self._analyze_component_relationships()
+                    
+                    result = {
+                        "discovery_result": discovery_result,
+                        "component_registry": self.component_registry,
+                        "component_analysis": component_analysis,
+                        "total_workspaces": len(discovery_result.get("workspaces", {})),
+                        "total_components": sum(
+                            len(components) for components in self.component_registry.values()
+                        ),
+                        "discovery_timestamp": datetime.now().isoformat(),
+                    }
+                    return result
+                except Exception as legacy_e:
+                    logger.error(f"Legacy discovery also failed: {legacy_e}")
+            
             return {"error": str(e), "component_registry": {}}
+
+    def _build_component_registry_from_catalog(
+        self, discovery_result: Dict[str, List[str]]
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Build component registry from StepCatalog discovery results (PHASE 4.2 INTEGRATION).
+        
+        DESIGN PRINCIPLES: Transforms catalog discovery data for validation business logic.
+        """
+        registry = defaultdict(dict)
+
+        try:
+            for workspace_id, components in discovery_result.items():
+                for component_name in components:
+                    # Extract step name from component string (format: "step_name:component_type")
+                    if ':' in component_name:
+                        step_name, component_type = component_name.split(':', 1)
+                    else:
+                        step_name = component_name
+                        component_type = "unknown"
+                    
+                    # Get detailed step info from catalog
+                    step_info = self.catalog.get_step_info(step_name)
+                    if step_info:
+                        registry[workspace_id][step_name] = {
+                            "type": component_type,
+                            "workspace": workspace_id,
+                            "metadata": {
+                                "step_name": step_name,
+                                "config_class": step_info.config_class,
+                                "sagemaker_step_type": step_info.sagemaker_step_type,
+                                "file_components": list(step_info.file_components.keys()),
+                            },
+                            "dependencies": [],  # Could be enhanced with dependency analysis
+                            "interfaces": [step_info.sagemaker_step_type] if step_info.sagemaker_step_type else [],
+                            "version": "unknown",  # Could be enhanced with version detection
+                        }
+
+            return dict(registry)
+
+        except Exception as e:
+            logger.warning(f"Failed to build component registry from catalog: {e}")
+            return {}
 
     def _build_component_registry(
         self, discovery_result: Dict[str, Any]
     ) -> Dict[str, Dict[str, Any]]:
-        """Build component registry from discovery results."""
+        """Build component registry from legacy discovery results (fallback)."""
         registry = defaultdict(dict)
 
         try:
