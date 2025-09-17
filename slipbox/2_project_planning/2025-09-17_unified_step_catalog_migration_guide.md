@@ -30,13 +30,30 @@ This guide provides step-by-step instructions for migrating from the legacy frag
 
 ## Migration Strategy
 
+### Design Principles-Compliant Migration Approach
+
+Following the **[Unified Step Catalog System Expansion Design](../1_design/unified_step_catalog_system_expansion_design.md)**, this migration implements **Separation of Concerns** and **Single Responsibility Principle**:
+
+**Step Catalog Responsibilities** (Discovery Layer):
+- **DISCOVERY**: Find and catalog all components across workspaces
+- **DETECTION**: Identify frameworks, types, patterns, and relationships  
+- **MAPPING**: Map relationships between components and workspaces
+- **CATALOGING**: Build and maintain searchable indexes and metadata
+
+**Legacy System Responsibilities** (Business Logic Layer):
+- **ValidationOrchestrator**: Validation workflow orchestration and business rules
+- **CrossWorkspaceValidator**: Cross-workspace validation logic and policies
+- **UnifiedRegistryManager**: Registry management and conflict resolution
+- **WorkspaceTestManager**: Test execution and management workflows
+
 ### Phase 3: Deployment & Migration (Current Phase)
 
 The unified step catalog system is **production-ready** with:
 - ✅ **116 tests passing** (100% success rate)
 - ✅ **All US1-US5 requirements implemented** and validated
-- ✅ **Backward compatibility adapters** for 6 legacy discovery systems
-- ✅ **Feature flag system** with gradual rollout capability
+- ✅ **Design principles compliance** validated through comprehensive testing
+- ✅ **Pure discovery methods** with no business logic mixing
+- ✅ **Clean separation of concerns** between discovery and business logic layers
 - ✅ **Performance excellence** (O(1) lookups, <2ms response time)
 
 ## Pre-Migration Checklist
@@ -49,7 +66,7 @@ The unified step catalog system is **production-ready** with:
 - [ ] Rollback plan documented
 
 ### Legacy Systems Identified
-The comprehensive analysis revealed **19+ major discovery systems** across the codebase that will be replaced or integrated:
+The comprehensive analysis revealed **32+ major discovery systems** across the codebase that will be replaced or integrated:
 
 #### **Core Systems (High Priority)**
 1. `ContractDiscoveryEngine` (`src/cursus/validation/alignment/discovery/contract_discovery.py`) - Alignment validation
@@ -82,9 +99,14 @@ The comprehensive analysis revealed **19+ major discovery systems** across the c
 24. `RuntimeSpecBuilder._find_script_file()` and `resolve_script_execution_spec_from_node()` (`src/cursus/validation/runtime/runtime_spec_builder.py`) - Runtime script file discovery and resolution
 
 #### **Workspace Systems (Medium Priority)**
-15. `WorkspaceTypeDetector` (`src/cursus/workspace/validation/workspace_type_detector.py`) - Workspace type detection
-16. `WorkspaceManager.discover_workspaces()` - Multiple workspace discovery methods
-17. Cross-workspace discovery methods in various workspace modules
+25. `WorkspaceDiscoveryManager.discover_workspaces()` and `discover_components()` (`src/cursus/workspace/core/discovery.py`) - Cross-workspace component discovery and resolution
+26. `DeveloperWorkspaceFileResolver.discover_workspace_components()` and `discover_components_by_type()` (`src/cursus/workspace/validation/workspace_file_resolver.py`) - Workspace-aware file discovery and component resolution
+27. `WorkspaceManager.discover_workspaces()` and `_discover_developers()` (`src/cursus/workspace/validation/workspace_manager.py`) - Workspace structure discovery and developer workspace management
+28. `WorkspaceTypeDetector.detect_workspaces()` (`src/cursus/workspace/validation/workspace_type_detector.py`) - Workspace type detection and classification
+29. `CrossWorkspaceValidator.discover_cross_workspace_components()` and `_find_component_location()` (`src/cursus/workspace/validation/cross_workspace_validator.py`) - Cross-workspace component discovery and conflict detection
+30. `WorkspaceTestManager.discover_test_workspaces()` (`src/cursus/workspace/validation/workspace_test_manager.py`) - Test workspace discovery and management
+31. `WorkspaceModuleLoader.discover_workspace_modules()` (`src/cursus/workspace/validation/workspace_module_loader.py`) - Workspace module discovery and loading
+32. `WorkspaceAlignmentTester._discover_workspace_scripts()` (`src/cursus/workspace/validation/workspace_alignment_tester.py`) - Workspace script discovery for alignment testing
 
 #### **Pipeline/API Systems (Lower Priority)**
 18. Pipeline discovery functions (`src/cursus/pipeline_catalog/`) - `discover_all_pipelines()`, `discover_by_framework()`, `discover_by_tags()`
@@ -165,38 +187,137 @@ export UNIFIED_CATALOG_ROLLOUT=100
 - **Validate**: All traffic on unified catalog
 - **Success Criteria**: Full functionality, performance targets met
 
-### Step 4: Legacy System Replacement
+### Step 4: Legacy System Integration (Design Principles-Compliant)
 
-Once 100% rollout is stable for 1 week, begin legacy system replacement:
+Once 100% rollout is stable for 1 week, begin legacy system integration following **Separation of Concerns**:
 
-#### 4.1: Update Import Statements
-Replace legacy imports with unified catalog:
+#### 4.1: Update Legacy Systems to Use Catalog for Discovery
+Transform legacy systems to use catalog for discovery while maintaining their business logic:
 
 ```python
-# OLD: Multiple legacy imports
-from cursus.validation.alignment.discovery.contract_discovery import ContractDiscoveryEngine
-from cursus.validation.runtime.contract_discovery import ContractDiscoveryManager
-from cursus.validation.alignment.file_resolver import FlexibleFileResolver
+# BEFORE: Legacy system with mixed discovery and business logic
+class ValidationOrchestrator:
+    def __init__(self):
+        self.contract_engine = ContractDiscoveryEngine()  # Discovery mixed with business logic
+        self.file_resolver = FlexibleFileResolver()
+    
+    def orchestrate_validation_workflow(self, step_names: List[str]) -> ValidationResult:
+        # Mixed discovery and validation logic
+        contracts = self.contract_engine.discover_all_contracts()
+        for step_name in step_names:
+            contract_file = self.file_resolver.find_contract_file(step_name)
+            # Validation business logic...
 
-# NEW: Single unified import
-from cursus.step_catalog import create_step_catalog
+# AFTER: Clean separation - catalog for discovery, orchestrator for business logic
+class ValidationOrchestrator:
+    def __init__(self, step_catalog: StepCatalog):
+        self.catalog = step_catalog  # Uses catalog for discovery only
+    
+    def orchestrate_validation_workflow(self, step_names: List[str]) -> ValidationResult:
+        # Use catalog for pure discovery
+        contracts_with_scripts = self.catalog.discover_contracts_with_scripts()
+        frameworks = {name: self.catalog.detect_framework(name) for name in step_names}
+        
+        # Apply specialized validation business logic (stays here)
+        validation_results = []
+        for step_name in step_names:
+            if step_name in contracts_with_scripts:
+                result = self._validate_contract_script_alignment(step_name)
+            else:
+                result = self._validate_minimal_requirements(step_name)
+            
+            # Apply framework-specific validation rules (specialized logic)
+            framework = frameworks.get(step_name)
+            if framework:
+                result = self._apply_framework_validation_rules(result, framework)
+            
+            validation_results.append(result)
+        
+        return self._aggregate_validation_results(validation_results)
 ```
 
-#### 4.2: Update Usage Patterns
-Replace legacy usage with unified API:
+#### 4.2: Update Cross-Workspace Systems
+Transform workspace systems to use catalog for discovery:
 
 ```python
-# OLD: Multiple discovery systems
-contract_engine = ContractDiscoveryEngine()
-contracts = contract_engine.discover_all_contracts()
+# BEFORE: Mixed discovery and validation logic
+class CrossWorkspaceValidator:
+    def __init__(self):
+        self.workspace_discovery = WorkspaceDiscoveryManager()  # Discovery mixed with validation
+    
+    def validate_cross_workspace_dependencies(self, pipeline_def: Dict) -> ValidationResult:
+        # Mixed discovery and validation logic
+        components = self.workspace_discovery.discover_cross_workspace_components()
+        # Validation logic...
 
-file_resolver = FlexibleFileResolver()
-contract_file = file_resolver.find_contract_file(step_name)
+# AFTER: Clean separation
+class CrossWorkspaceValidator:
+    def __init__(self, step_catalog: StepCatalog):
+        self.catalog = step_catalog  # Uses catalog for discovery only
+    
+    def validate_cross_workspace_dependencies(self, pipeline_def: Dict[str, Any]) -> ValidationResult:
+        # Use catalog for discovery
+        cross_workspace_components = self.catalog.discover_cross_workspace_components()
+        component_locations = {}
+        for component in pipeline_def.get('dependencies', []):
+            component_locations[component] = self.catalog.find_component_location(component)
+        
+        # Apply specialized cross-workspace validation policies (stays here)
+        validation_issues = []
+        for step in pipeline_def.get('steps', []):
+            workspace_id = step.get('workspace_id')
+            dependencies = step.get('dependencies', [])
+            
+            for dep in dependencies:
+                dep_location = component_locations.get(dep)
+                if dep_location and dep_location.workspace_id != workspace_id:
+                    # Apply cross-workspace access policies (specialized logic)
+                    if not self._is_cross_workspace_access_allowed(workspace_id, dep_location.workspace_id):
+                        validation_issues.append(f"Cross-workspace access denied: {dep}")
+        
+        return ValidationResult(issues=validation_issues, passed=len(validation_issues) == 0)
+```
 
-# NEW: Single unified system
-catalog = create_step_catalog(workspace_root)
-step_info = catalog.get_step_info(step_name)
-contract_file = step_info.file_components.get('contract').path if step_info else None
+#### 4.3: Update Registry Management Systems
+Transform registry systems to use catalog for discovery:
+
+```python
+# BEFORE: Mixed discovery and management logic
+class UnifiedRegistryManager:
+    def __init__(self):
+        self.registry_discovery = RegistryStepDiscovery()  # Discovery mixed with management
+    
+    def resolve_registry_conflicts(self) -> List[ConflictInfo]:
+        # Mixed discovery and management logic
+        builder_paths = self.registry_discovery.get_all_builder_class_paths()
+        # Management logic...
+
+# AFTER: Clean separation
+class UnifiedRegistryManager:
+    def __init__(self, step_catalog: StepCatalog):
+        self.catalog = step_catalog  # Uses catalog for discovery only
+    
+    def resolve_registry_conflicts(self) -> List[ConflictInfo]:
+        # Use catalog for discovery
+        all_steps = self.catalog.list_available_steps()
+        builder_paths = {}
+        for step_name in all_steps:
+            builder_path = self.catalog.get_builder_class_path(step_name)
+            if builder_path:
+                builder_paths[step_name] = builder_path
+        
+        # Apply specialized conflict resolution logic (stays here)
+        conflicts = []
+        step_groups = self._group_steps_by_base_name(all_steps)
+        
+        for base_name, step_variants in step_groups.items():
+            if len(step_variants) > 1:
+                # Apply registry conflict resolution policies (specialized logic)
+                conflict_info = self._analyze_registry_conflicts(step_variants, builder_paths)
+                if conflict_info:
+                    conflicts.append(conflict_info)
+        
+        return conflicts
 ```
 
 #### 4.3: Gradual Legacy Removal

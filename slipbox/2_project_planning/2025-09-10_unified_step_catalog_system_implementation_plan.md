@@ -764,14 +764,20 @@ Following the comprehensive analysis, the migration addresses **16+ major discov
 - `src/cursus/validation/runtime/runtime_spec_builder.py` (RuntimeSpecBuilder with _find_script_file() and resolve_script_execution_spec_from_node())
 
 #### **Workspace Systems (Medium Priority - Phase 4)**
-- `src/cursus/workspace/validation/workspace_type_detector.py` (WorkspaceTypeDetector)
-- Various workspace discovery methods in workspace modules
+- `src/cursus/workspace/core/discovery.py` (WorkspaceDiscoveryManager with discover_workspaces() and discover_components())
+- `src/cursus/workspace/validation/workspace_file_resolver.py` (DeveloperWorkspaceFileResolver with discover_workspace_components() and discover_components_by_type())
+- `src/cursus/workspace/validation/workspace_manager.py` (WorkspaceManager with discover_workspaces() and _discover_developers())
+- `src/cursus/workspace/validation/workspace_type_detector.py` (WorkspaceTypeDetector with detect_workspaces())
+- `src/cursus/workspace/validation/cross_workspace_validator.py` (CrossWorkspaceValidator with discover_cross_workspace_components() and _find_component_location())
+- `src/cursus/workspace/validation/workspace_test_manager.py` (WorkspaceTestManager with discover_test_workspaces())
+- `src/cursus/workspace/validation/workspace_module_loader.py` (WorkspaceModuleLoader with discover_workspace_modules())
+- `src/cursus/workspace/validation/workspace_alignment_tester.py` (WorkspaceAlignmentTester with _discover_workspace_scripts())
 
 #### **Pipeline/API Systems (Lower Priority - Phase 5)**
 - `src/cursus/pipeline_catalog/` discovery functions
 - `src/cursus/api/dag/pipeline_dag_resolver.py` (PipelineDAGResolver)
 
-**Total Scope**: 19+ major systems, 217+ discovery/resolution functions with significant registry consolidation opportunities
+**Total Scope**: 32+ major systems, 217+ discovery/resolution functions with significant registry and workspace consolidation opportunities
 
 #### **Simple Migration Approach**
 Instead of complex dependency analysis, use **simple adapter pattern**:
@@ -1779,13 +1785,24 @@ This simplified risk analysis demonstrates that **effective risk management can 
 
 **📋 Complete Migration Documentation**: [Unified Step Catalog Migration Guide](./2025-09-17_unified_step_catalog_migration_guide.md)
 
-The migration guide provides comprehensive step-by-step instructions for:
+The migration guide provides comprehensive step-by-step instructions following **Design Principles** and **Separation of Concerns**:
+
+### **Design Principles-Compliant Migration**
+- **Separation of Concerns**: Step catalog handles pure discovery, legacy systems maintain business logic
+- **Single Responsibility**: Clear boundaries between discovery layer and business logic layer
+- **Dependency Inversion**: Legacy systems use catalog for discovery through constructor injection
+- **Explicit Dependencies**: All dependencies clearly declared and managed
+
+### **Migration Strategy**
 - **Feature flag deployment** with gradual rollout (0% → 10% → 25% → 50% → 75% → 100%)
-- **Backward compatibility adapters** for 6 legacy discovery systems
+- **Legacy system integration** using catalog for discovery while preserving specialized logic
+- **Clean separation implementation** with proper dependency injection patterns
 - **Monitoring and validation** procedures with key metrics
 - **Rollback procedures** for emergency and gradual rollback scenarios
-- **Legacy system replacement** strategy with phased approach
 - **Success criteria** and expected benefits validation
+
+### **Key Integration Examples**
+The migration guide shows how legacy systems like `ValidationOrchestrator`, `CrossWorkspaceValidator`, and `UnifiedRegistryManager` will be updated to use the catalog for discovery while maintaining their specialized business logic responsibilities.
 
 ## References
 
