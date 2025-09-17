@@ -309,27 +309,23 @@ class TestPipelineTemplateBase:
         mocks["mock_generate_name"].assert_not_called()
 
     def test_store_pipeline_metadata(self, setup_mocks):
-        """Test that pipeline metadata is stored correctly."""
+        """Test that pipeline metadata is stored correctly (after cleanup)."""
         mocks = setup_mocks
 
         template = ConcretePipelineTemplate(config_path="test_config.json")
 
-        # Mock assembler with metadata
+        # Mock assembler with metadata (no cradle_loading_requests after cleanup)
         mock_assembler = MagicMock()
-        mock_assembler.cradle_loading_requests = {"step1": {"request": "data"}}
         mock_assembler.step_instances = {"step1": MagicMock(), "step2": MagicMock()}
 
         # Call _store_pipeline_metadata
         template._store_pipeline_metadata(mock_assembler)
 
-        # Verify metadata was stored
-        assert template.pipeline_metadata["cradle_loading_requests"] == {
-            "step1": {"request": "data"}
-        }
-        assert (
-            template.pipeline_metadata["step_instances"]
-            == mock_assembler.step_instances
-        )
+        # Verify only step_instances metadata was stored (cradle_loading_requests removed)
+        assert template.pipeline_metadata["step_instances"] == mock_assembler.step_instances
+        
+        # Verify cradle_loading_requests is NOT stored (removed in Phase 2 cleanup)
+        assert "cradle_loading_requests" not in template.pipeline_metadata
 
     def test_create_with_components_class_method(self, setup_mocks):
         """Test create_with_components class method."""
@@ -396,18 +392,14 @@ class TestPipelineTemplateBase:
             # Verify pipeline was returned
             assert pipeline == mocks["mock_pipeline"]
 
-    def test_fill_execution_document(self, setup_mocks):
-        """Test fill_execution_document method."""
-        mocks = setup_mocks
-
-        template = ConcretePipelineTemplate(config_path="test_config.json")
-
-        # Test default implementation
-        doc = {"existing": "data"}
-        result = template.fill_execution_document(doc)
-
-        # Should return unchanged document
-        assert result == doc
+    # Note: fill_execution_document method removed as part of execution document refactoring
+    # The method was removed from PipelineTemplateBase to achieve clean separation between
+    # pipeline generation and execution document generation.
+    #
+    # For execution document generation, use the standalone module:
+    # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+    # generator = ExecutionDocumentGenerator(config_path=config_path)
+    # filled_doc = generator.fill_execution_document(dag, execution_doc)
 
     def test_initialization_with_notebook_root(self, setup_mocks):
         """Test initialization with custom notebook_root."""

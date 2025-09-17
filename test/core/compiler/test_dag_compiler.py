@@ -718,41 +718,13 @@ class TestPipelineDAGCompilerUtilityMethods:
         # Should return the template
         assert compiler.get_last_template() == mock_template
 
-    @patch("cursus.core.compiler.dag_compiler.Path")
-    @patch("cursus.core.compiler.dag_compiler.StepBuilderRegistry")
-    @patch("cursus.core.compiler.dag_compiler.StepConfigResolver")
-    def test_compile_and_fill_execution_doc(
-        self, mock_resolver, mock_registry, mock_path
-    ):
-        """Test compile_and_fill_execution_doc method."""
-        # Setup mocks
-        mock_path_instance = MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path.return_value = mock_path_instance
-
-        # Create compiler
-        compiler = PipelineDAGCompiler(config_path=self.config_path)
-
-        # Mock compile method
-        mock_pipeline = MagicMock()
-        compiler.compile = MagicMock(return_value=mock_pipeline)
-
-        # Mock template with fill_execution_document method
-        mock_template = MagicMock()
-        filled_doc = {"filled": True}
-        mock_template.fill_execution_document.return_value = filled_doc
-        compiler._last_template = mock_template
-
-        # Test method
-        dag = PipelineDAG()
-        dag.add_node("test")
-        execution_doc = {"template": True}
-
-        pipeline, result_doc = compiler.compile_and_fill_execution_doc(
-            dag, execution_doc
-        )
-
-        # Verify results
-        assert pipeline == mock_pipeline
-        assert result_doc == filled_doc
-        mock_template.fill_execution_document.assert_called_once_with(execution_doc)
+    # Note: compile_and_fill_execution_doc method removed as part of execution document refactoring
+    # The method was removed to achieve clean separation between pipeline compilation and 
+    # execution document generation. Users should now:
+    # 1. Use compiler.compile(dag) to generate pipeline
+    # 2. Use standalone execution document generator for execution documents
+    #
+    # For execution document generation, use:
+    # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+    # generator = ExecutionDocumentGenerator(config_path=config_path)
+    # filled_doc = generator.fill_execution_document(dag, execution_doc)

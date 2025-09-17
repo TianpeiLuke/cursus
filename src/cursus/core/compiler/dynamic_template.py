@@ -389,152 +389,26 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         """
         Store pipeline metadata from template.
 
-        This method dynamically discovers and stores metadata from various step types,
-        particularly focused on Cradle data loading requests and registration step configurations
-        for use in filling execution documents.
+        This method stores general pipeline metadata (non-execution document related).
+        Execution document metadata is now handled by the standalone execution document generator
+        (ExecutionDocumentGenerator in cursus.mods.exe_doc.generator).
 
         Args:
             assembler: PipelineAssembler instance
         """
-        # Store Cradle data loading requests if available
-        if hasattr(assembler, "cradle_loading_requests"):
-            self.pipeline_metadata["cradle_loading_requests"] = (
-                assembler.cradle_loading_requests
-            )
-            self.logger.info(
-                f"Stored {len(assembler.cradle_loading_requests)} Cradle loading requests"
-            )
+        # Store general pipeline metadata (non-execution document related)
+        if hasattr(assembler, "step_instances"):
+            self.pipeline_metadata["step_instances"] = assembler.step_instances
+            self.logger.info(f"Stored {len(assembler.step_instances)} step instances")
 
-        # Find and store registration steps and configurations
-        try:
-            # Find all registration steps in the pipeline
-            registration_steps = []
-
-            # Approach 1: Check step instances dictionary if available
-            if hasattr(assembler, "step_instances"):
-                for step_name, step_instance in assembler.step_instances.items():
-                    # Check for registration step using name pattern or type
-                    if (
-                        "registration" in step_name.lower()
-                        or "registration" in str(type(step_instance)).lower()
-                    ):
-                        registration_steps.append(step_instance)
-                        self.logger.info(f"Found registration step: {step_name}")
-
-            # Approach 2: Check steps dictionary if available
-            elif hasattr(assembler, "steps"):
-                for step_name, step in assembler.steps.items():
-                    # Check for registration step using name pattern
-                    if "registration" in step_name.lower():
-                        registration_steps.append(step)
-                        self.logger.info(f"Found registration step: {step_name}")
-
-            # If registration steps found, process and store configurations
-            if registration_steps:
-                # Find registration config
-                registration_cfg = None
-                for _, cfg in self.configs.items():
-                    cfg_type_name = type(cfg).__name__.lower()
-                    if (
-                        "registration" in cfg_type_name
-                        and not "payload" in cfg_type_name
-                    ):
-                        registration_cfg = cfg
-                        break
-
-                if registration_cfg:
-                    # Try to get image URI
-                    try:
-                        from sagemaker.image_uris import retrieve
-
-                        # Check if we have all required framework attributes
-                        if all(
-                            hasattr(registration_cfg, attr)
-                            for attr in [
-                                "framework",
-                                "aws_region",
-                                "framework_version",
-                                "py_version",
-                                "inference_instance_type",
-                            ]
-                        ):
-                            try:
-                                image_uri = retrieve(
-                                    framework=registration_cfg.framework,
-                                    region=registration_cfg.aws_region,
-                                    version=registration_cfg.framework_version,
-                                    py_version=registration_cfg.py_version,
-                                    instance_type=registration_cfg.inference_instance_type,
-                                    image_scope="inference",
-                                )
-                                self.logger.info(f"Retrieved image URI: {image_uri}")
-                            except Exception as e:
-                                self.logger.warning(
-                                    f"Could not retrieve image URI: {e}"
-                                )
-                                image_uri = "image-uri-placeholder"  # Use placeholder
-                        else:
-                            self.logger.warning(
-                                "Registration config missing framework attributes"
-                            )
-                            image_uri = "image-uri-placeholder"
-
-                        # Create execution document config
-                        exec_config = self._create_execution_doc_config(image_uri)
-
-                        # Store configs for all registration steps found
-                        registration_configs = {}
-                        for step in registration_steps:
-                            if hasattr(step, "name"):
-                                registration_configs[step.name] = exec_config
-                                self.logger.info(
-                                    f"Stored execution doc config for registration step: {step.name}"
-                                )
-                            elif isinstance(step, dict):
-                                # Handle case where step might be a dict of steps
-                                for name, s in step.items():
-                                    if hasattr(s, "name"):
-                                        registration_configs[s.name] = exec_config
-                                        self.logger.info(
-                                            f"Stored execution doc config for registration step: {s.name}"
-                                        )
-
-                        # Store in pipeline metadata
-                        self.pipeline_metadata["registration_configs"] = (
-                            registration_configs
-                        )
-
-                    except Exception as e:
-                        self.logger.warning(
-                            f"Failed to create execution doc configs: {e}"
-                        )
-
-                # Try to extract model name from registration steps
-                for step in registration_steps:
-                    if hasattr(step, "model_name"):
-                        self.pipeline_metadata["model_name"] = step.model_name
-                        self.logger.info(f"Stored model name: {step.model_name}")
-                        break
-
-        except Exception as e:
-            self.logger.warning(f"Error while processing registration steps: {e}")
-
-        # Log property reference handling for debugging
-        if hasattr(assembler, "steps"):
-            property_ref_count = 0
-            for step_name, step in assembler.steps.items():
-                # Check if step has inputs that might be property references
-                if hasattr(step, "inputs") and step.inputs:
-                    for input_item in step.inputs:
-                        if hasattr(input_item, "source") and not isinstance(
-                            input_item.source, str
-                        ):
-                            property_ref_count += 1
-
-            if property_ref_count > 0:
-                self.logger.info(
-                    f"Pipeline contains {property_ref_count} property references that benefit from automatic handling"
-                )
+        # Note: Cradle data loading requests and registration configs storage removed
+        # as part of Phase 2 cleanup. Execution document metadata is now handled by
+        # the standalone execution document generator.
+        #
+        # For execution document generation with Cradle data loading and registration, use:
+        # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+        # generator = ExecutionDocumentGenerator(config_path=config_path)
+        # filled_doc = generator.fill_execution_document(dag, execution_doc)
 
     def get_builder_registry_stats(self) -> Dict[str, Any]:
         """

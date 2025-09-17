@@ -172,40 +172,32 @@ def _fill_registration_configurations(self, pipeline_configs: Dict[str, Any]) ->
                     break
 ```
 
-**`_store_pipeline_metadata()` - Enhanced metadata collection from assembler**:
+**`_store_pipeline_metadata()` - ✅ CLEANED UP (Execution Document Logic Removed)**:
 ```python
 def _store_pipeline_metadata(self, assembler: "PipelineAssembler") -> None:
-    """Store pipeline metadata from template."""
-    # Store Cradle data loading requests if available
-    if hasattr(assembler, "cradle_loading_requests"):
-        self.pipeline_metadata["cradle_loading_requests"] = assembler.cradle_loading_requests
-        self.logger.info(f"Stored {len(assembler.cradle_loading_requests)} Cradle loading requests")
+    """
+    Store pipeline metadata from template.
 
-    # Find and store registration steps and configurations
-    try:
-        registration_steps = []
-        # Check step instances dictionary if available
-        if hasattr(assembler, "step_instances"):
-            for step_name, step_instance in assembler.step_instances.items():
-                if "registration" in step_name.lower() or "registration" in str(type(step_instance)).lower():
-                    registration_steps.append(step_instance)
-                    self.logger.info(f"Found registration step: {step_name}")
+    This method stores general pipeline metadata (non-execution document related).
+    Execution document metadata is now handled by the standalone execution document generator
+    (ExecutionDocumentGenerator in cursus.mods.exe_doc.generator).
+    """
+    # Store general pipeline metadata (non-execution document related)
+    if hasattr(assembler, "step_instances"):
+        self.pipeline_metadata["step_instances"] = assembler.step_instances
+        self.logger.info(f"Stored {len(assembler.step_instances)} step instances")
 
-        # If registration steps found, process and store configurations
-        if registration_steps:
-            # Store configs for all registration steps found
-            registration_configs = {}
-            for step in registration_steps:
-                if hasattr(step, "name"):
-                    exec_config = self._create_execution_doc_config("image-uri-placeholder")
-                    registration_configs[step.name] = exec_config
-                    self.logger.info(f"Stored execution doc config for registration step: {step.name}")
-            
-            self.pipeline_metadata["registration_configs"] = registration_configs
-
-    except Exception as e:
-        self.logger.warning(f"Error while processing registration steps: {e}")
+    # Note: Cradle data loading requests and registration configs storage removed
+    # as part of Phase 2 cleanup. Execution document metadata is now handled by
+    # the standalone execution document generator.
+    #
+    # For execution document generation with Cradle data loading and registration, use:
+    # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+    # generator = ExecutionDocumentGenerator(config_path=config_path)
+    # filled_doc = generator.fill_execution_document(dag, execution_doc)
 ```
+
+**✅ REFACTORING COMPLETED**: All execution document methods have been removed from the dynamic template as part of the successful refactoring project. The dynamic template now focuses solely on pipeline generation, while execution document generation is handled by the standalone module.
 
 **Execution Document Structure**:
 ```python

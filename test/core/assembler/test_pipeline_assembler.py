@@ -509,46 +509,46 @@ class TestPipelineAssembler:
         result = assembler._get_dependency_resolver()
         assert result == mock_dependency_resolver
 
-    def test_cradle_loading_requests_storage(
+    # Note: cradle_loading_requests functionality removed as part of execution document refactoring
+    # The Cradle request collection logic was removed from PipelineAssembler to achieve clean
+    # separation between pipeline generation and execution document generation.
+    #
+    # For execution document generation with Cradle data loading, use:
+    # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+    # generator = ExecutionDocumentGenerator(config_path=config_path)
+    # filled_doc = generator.fill_execution_document(dag, execution_doc)
+    
+    def test_step_instantiation_without_cradle_requests(
         self, mock_registry_manager, mock_dependency_resolver
     ):
-        """Test that Cradle data loading requests are stored correctly."""
+        """Test that step instantiation works without Cradle request collection."""
 
-        # Create a mock builder that has get_request_dict method
-        class MockCradleBuilder(MockStepBuilder):
-            def get_request_dict(self):
-                return {"request": "test_cradle_request"}
-
-        # Create a mock config that will be identified as CradleDataLoading
+        # Create a mock config that would previously be identified as CradleDataLoading
         class MockCradleConfig(MockConfig):
             pass
 
         # Update step builder map and config
         cradle_config_map = {"step1": MockCradleConfig()}
-        cradle_builder_map = {"CradleDataLoading": MockCradleBuilder}
+        cradle_builder_map = {"MockCradleConfig": MockStepBuilder}  # Use the actual class name
         cradle_dag = PipelineDAG(nodes=["step1"], edges=[])
 
-        with patch(
-            "cursus.core.assembler.pipeline_assembler.BasePipelineConfig.get_step_name"
-        ) as mock_get_step_name:
-            mock_get_step_name.return_value = "CradleDataLoading"
+        assembler = PipelineAssembler(
+            dag=cradle_dag,
+            config_map=cradle_config_map,
+            step_builder_map=cradle_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
 
-            assembler = PipelineAssembler(
-                dag=cradle_dag,
-                config_map=cradle_config_map,
-                step_builder_map=cradle_builder_map,
-                registry_manager=mock_registry_manager,
-                dependency_resolver=mock_dependency_resolver,
-            )
+        # Instantiate the step
+        step = assembler._instantiate_step("step1")
 
-            # Instantiate the step
-            step = assembler._instantiate_step("step1")
-
-            # Verify request was stored
-            assert step.name in assembler.cradle_loading_requests
-            assert assembler.cradle_loading_requests[step.name] == {
-                "request": "test_cradle_request"
-            }
+        # Verify step was created successfully without Cradle request collection
+        assert step is not None
+        assert hasattr(step, "name")
+        
+        # Verify no cradle_loading_requests attribute exists (removed)
+        assert not hasattr(assembler, "cradle_loading_requests")
 
     def test_pipeline_regeneration(
         self,
