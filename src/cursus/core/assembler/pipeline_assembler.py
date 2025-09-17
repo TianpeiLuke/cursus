@@ -52,8 +52,9 @@ class PipelineAssembler:
     each step is responsible for its own configuration and input/output handling.
     """
 
-    # Dictionary to store Cradle data loading requests
-    cradle_loading_requests = {}
+    # Note: cradle_loading_requests removed as part of Phase 2 cleanup
+    # Cradle data loading requests are now handled by the standalone execution document generator
+    # (CradleDataLoadingHelper in cursus.mods.exe_doc.cradle_helper)
 
     def __init__(
         self,
@@ -398,12 +399,9 @@ class PipelineAssembler:
             step = builder.create_step(**kwargs)
             logger.info(f"Built step {step_name}")
 
-            # Special case for CradleDataLoading steps - store request dict for execution document
-            config = self.config_map[step_name]
-            step_type = BasePipelineConfig.get_step_name(type(config).__name__)
-            if "CradleDataLoad" in step_type and hasattr(builder, "get_request_dict"):
-                self.cradle_loading_requests[step.name] = builder.get_request_dict()
-                logger.info(f"Stored Cradle data loading request for step: {step.name}")
+            # Note: Cradle data loading request collection removed as part of Phase 2 cleanup
+            # This is now handled by the standalone execution document generator
+            # (CradleDataLoadingHelper in cursus.mods.exe_doc.cradle_helper)
 
             return step
         except Exception as e:

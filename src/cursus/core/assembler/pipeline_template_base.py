@@ -329,19 +329,17 @@ class PipelineTemplateBase(ABC):
         """
         Store pipeline metadata from template.
 
-        This method can be overridden by subclasses to store step-specific
-        metadata like Cradle requests or execution document configurations.
+        This method can be overridden by subclasses to store pipeline-specific
+        metadata (excluding execution document data which is now handled separately).
 
         Args:
             template: PipelineAssembler instance
         """
-        # Store Cradle data loading requests if available
-        if hasattr(template, "cradle_loading_requests"):
-            self.pipeline_metadata["cradle_loading_requests"] = (
-                template.cradle_loading_requests
-            )
+        # Note: Cradle data loading requests storage removed as part of Phase 2 cleanup
+        # Execution document metadata is now handled by the standalone execution document generator
+        # (ExecutionDocumentGenerator in cursus.mods.exe_doc.generator)
 
-        # Store any other template-specific metadata
+        # Store general pipeline metadata (non-execution document related)
         if hasattr(template, "step_instances"):
             self.pipeline_metadata["step_instances"] = template.step_instances
 
@@ -419,20 +417,6 @@ class PipelineTemplateBase(ABC):
         )
         return template.generate_pipeline()
 
-    def fill_execution_document(
-        self, execution_document: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Fill in the execution document with pipeline metadata.
-
-        This method is a placeholder that subclasses can override to fill in
-        execution documents with step-specific metadata from the pipeline.
-
-        Args:
-            execution_document: Execution document to fill
-
-        Returns:
-            Updated execution document
-        """
-        # Default implementation does nothing
-        return execution_document
+    # Note: fill_execution_document() method removed as part of Phase 2 cleanup
+    # Execution document generation is now handled by the standalone execution document generator
+    # (ExecutionDocumentGenerator in cursus.mods.exe_doc.generator)

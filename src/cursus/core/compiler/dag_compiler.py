@@ -579,35 +579,10 @@ class PipelineDAGCompiler:
         """
         return self._last_template
 
-    def compile_and_fill_execution_doc(
-        self,
-        dag: PipelineDAG,
-        execution_doc: Dict[str, Any],
-        pipeline_name: Optional[str] = None,
-        **kwargs: Any,
-    ) -> Tuple[Pipeline, Dict[str, Any]]:
-        """
-        Compile a DAG to pipeline and fill an execution document in one step.
-
-        This method ensures proper sequencing of the pipeline generation and
-        execution document filling, addressing timing issues with template metadata.
-
-        Args:
-            dag: PipelineDAG instance to compile
-            execution_doc: Execution document template to fill
-            pipeline_name: Optional pipeline name override
-            **kwargs: Additional arguments for template
-
-        Returns:
-            Tuple of (compiled_pipeline, filled_execution_doc)
-        """
-        # First compile the pipeline (this also stores the template)
-        pipeline = self.compile(dag, pipeline_name=pipeline_name, **kwargs)
-
-        # Now use the stored template to fill the execution document
-        if self._last_template is not None:
-            filled_doc = self._last_template.fill_execution_document(execution_doc)
-            return pipeline, filled_doc
-        else:
-            self.logger.warning("No template available for execution document filling")
-            return pipeline, execution_doc
+    # Note: compile_and_fill_execution_doc() method removed as part of Phase 2 cleanup
+    # Execution document generation is now handled by the standalone execution document generator
+    # (ExecutionDocumentGenerator in cursus.mods.exe_doc.generator)
+    # 
+    # Users should now:
+    # 1. Use compile() to generate the pipeline
+    # 2. Use ExecutionDocumentGenerator separately to fill execution documents
