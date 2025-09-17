@@ -26,13 +26,17 @@ class StepCatalog:
     while maintaining simple, efficient O(1) lookups through dictionary-based indexing.
     """
     
-    def __init__(self, workspace_root: Path):
+    def __init__(self, workspace_root: Optional[Path] = None):
         """
         Initialize the unified step catalog.
         
         Args:
-            workspace_root: Root directory of the workspace
+            workspace_root: Root directory of the workspace. Defaults to src/cursus/steps
         """
+        if workspace_root is None:
+            # Default to src/cursus/steps relative to this module's location
+            catalog_dir = Path(__file__).parent  # src/cursus/step_catalog/
+            workspace_root = catalog_dir.parent / 'steps'  # src/cursus/steps
         self.workspace_root = workspace_root
         self.config_discovery = ConfigAutoDiscovery(workspace_root)
         self.logger = logging.getLogger(__name__)
