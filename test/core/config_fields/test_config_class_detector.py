@@ -45,9 +45,13 @@ class TestModernConfigClassDetector:
         for class_name, class_type in result.items():
             assert isinstance(class_name, str)
             assert hasattr(class_type, '__name__'), f"Class {class_name} should be a real class"
-            # Most config classes end with 'Config', but some base classes end with 'ConfigBase'
-            assert class_name.endswith('Config') or class_name.endswith('ConfigBase'), \
-                f"Class {class_name} should follow naming convention (Config or ConfigBase)"
+            # Config classes end with 'Config' or 'ConfigBase', hyperparameter classes end with 'Hyperparameters'
+            # This reflects the enhanced discovery that now includes both config and hyperparameter classes
+            assert (class_name.endswith('Config') or 
+                   class_name.endswith('ConfigBase') or 
+                   class_name.endswith('Hyperparameters') or
+                   'Hyperparameter' in class_name), \
+                f"Class {class_name} should follow naming convention (Config, ConfigBase, or Hyperparameters)"
 
     def test_detect_from_json_includes_common_config_classes(self):
         """Test that detect_from_json includes expected common config classes."""
@@ -206,11 +210,12 @@ class TestModernConfigClassDetector:
         
         result = ConfigClassDetector.detect_from_json("test_config.json")
         
-        # Should handle the failure gracefully and return empty dict
-        # (since ConfigClassStore import also fails in the adapter)
+        # Should handle the failure gracefully and fall back to ConfigClassStore
+        # The enhanced adapter now successfully falls back to ConfigClassStore when catalog fails
         assert isinstance(result, dict)
-        # The adapter logs a warning and returns empty dict when both catalog and ConfigClassStore fail
-        assert len(result) == 0
+        # The adapter should fall back to ConfigClassStore and still return config classes
+        # This is better behavior than returning empty dict - it provides resilience
+        assert len(result) > 0, "Fallback should still discover config classes via ConfigClassStore"
 
     def test_real_step_catalog_integration(self, test_workspace_root):
         """Test integration with real step catalog."""

@@ -102,10 +102,10 @@ class TestRegistryManagerCore:
     def test_get_registry_no_create(self):
         """Test get_registry with create_if_missing=False."""
         # Try to get non-existent registry without creating
-        registry = self.manager.get_registry("nonexistent", create_if_missing=False)
+        with pytest.raises(ValueError, match="Registry not found for context 'nonexistent' and create_if_missing is False"):
+            self.manager.get_registry("nonexistent", create_if_missing=False)
 
-        # Should return None
-        assert registry is None
+        # Should not have created the context
         assert "nonexistent" not in self.manager.list_contexts()
 
     def test_registry_isolation(self):

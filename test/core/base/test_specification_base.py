@@ -326,9 +326,9 @@ class TestStepSpecification:
         """Test basic validation."""
         spec = StepSpecification(**spec_data)
 
-        result = spec.validate()
+        result = spec.validate_specification()
 
-        # The validate method returns a list, not a ValidationResult
+        # The validate_specification method returns a list, not a ValidationResult
         assert isinstance(result, list)
         assert len(result) == 0  # Empty list means valid
 
