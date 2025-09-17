@@ -480,121 +480,267 @@ class WorkspaceDiscoveryManagerAdapter:
 - ✅ **Backward Compatibility Adapters**: 6 legacy adapters for smooth transition
 - ✅ **Comprehensive Testing**: 116 tests with 100% pass rate
 
-## Phase 4: Extended Legacy System Integration (3 weeks)
+## Phase 4: Expansion Implementation (3 weeks) - Following Design Principles
 
-### 4.1 Core System Integration
+### 4.1 Core Discovery Methods Expansion (Week 1)
 
-**Goal**: Integrate core compiler and config systems with unified catalog
-**Target Redundancy**: 18-22% (integration complexity acceptable)
+**Goal**: Implement pure discovery methods following **Separation of Concerns**
+**Target Redundancy**: 18-22% (expansion complexity acceptable)
 
-**Simple Feature Flag Implementation**:
+**Design Principles-Compliant Implementation**:
+Following the **[Unified Step Catalog System Expansion Design](../1_design/unified_step_catalog_system_expansion_design.md)**:
+
 ```python
-# src/cursus/step_catalog/__init__.py
-import os
-from pathlib import Path
-from typing import Any
-
-def create_step_catalog(workspace_root: Path, use_unified: bool = None) -> Any:
-    """Factory function for step catalog with feature flag support."""
-    if use_unified is None:
-        use_unified = os.getenv('USE_UNIFIED_CATALOG', 'false').lower() == 'true'
+# src/cursus/step_catalog/step_catalog.py - Expansion Methods
+class StepCatalog:
+    """Expanded step catalog with design principles-compliant discovery methods."""
     
-    if use_unified:
-        from .step_catalog import StepCatalog
-        return StepCatalog(workspace_root)
-    else:
-        # Return legacy system wrapper during transition
-        from .adapters import LegacyDiscoveryWrapper
-        return LegacyDiscoveryWrapper(workspace_root)
-
-# Environment-based feature flag control
-class FeatureFlagController:
-    """Simple feature flag controller for gradual rollout."""
+    # EXPANDED DISCOVERY & DETECTION METHODS (Pure Discovery - No Business Logic)
+    def discover_contracts_with_scripts(self) -> List[str]:
+        """DISCOVERY: Find all steps that have both contract and script components."""
+        self._ensure_index_built()
+        steps_with_both = []
+        
+        for step_name, step_info in self._step_index.items():
+            if (step_info.file_components.get('contract') and 
+                step_info.file_components.get('script')):
+                steps_with_both.append(step_name)
+        
+        return steps_with_both
     
-    @staticmethod
-    def get_rollout_percentage() -> int:
-        """Get current rollout percentage from environment."""
-        return int(os.getenv('UNIFIED_CATALOG_ROLLOUT', '0'))
+    def detect_framework(self, step_name: str) -> Optional[str]:
+        """DETECTION: Detect ML framework for a step."""
+        if step_name in self._framework_cache:
+            return self._framework_cache[step_name]
+        
+        step_info = self.get_step_info(step_name)
+        if not step_info:
+            return None
+        
+        framework = None
+        
+        # Simple pattern matching (no business logic)
+        if 'framework' in step_info.registry_data:
+            framework = step_info.registry_data['framework']
+        elif step_info.registry_data.get('builder_step_name'):
+            builder_name = step_info.registry_data['builder_step_name'].lower()
+            if 'xgboost' in builder_name:
+                framework = 'xgboost'
+            elif 'pytorch' in builder_name or 'torch' in builder_name:
+                framework = 'pytorch'
+        
+        self._framework_cache[step_name] = framework
+        return framework
     
-    @staticmethod
-    def should_use_unified_catalog() -> bool:
-        """Determine if request should use unified catalog."""
-        import random
-        rollout_percentage = FeatureFlagController.get_rollout_percentage()
-        return random.random() < (rollout_percentage / 100.0)
+    def discover_cross_workspace_components(self, workspace_ids: Optional[List[str]] = None) -> Dict[str, List[str]]:
+        """DISCOVERY: Find components across multiple workspaces."""
+        self._ensure_index_built()
+        if workspace_ids is None:
+            workspace_ids = list(self._workspace_steps.keys())
+        
+        cross_workspace_components = {}
+        for workspace_id in workspace_ids:
+            workspace_steps = self._workspace_steps.get(workspace_id, [])
+            components = []
+            
+            for step_name in workspace_steps:
+                step_info = self.get_step_info(step_name)
+                if step_info:
+                    for component_type, metadata in step_info.file_components.items():
+                        if metadata:
+                            components.append(f"{step_name}:{component_type}")
+            
+            cross_workspace_components[workspace_id] = components
+        
+        return cross_workspace_components
+    
+    def get_builder_class_path(self, step_name: str) -> Optional[str]:
+        """RESOLUTION: Get builder class path for a step."""
+        step_info = self.get_step_info(step_name)
+        if not step_info:
+            return None
+        
+        # Check registry data first
+        if 'builder_step_name' in step_info.registry_data:
+            builder_name = step_info.registry_data['builder_step_name']
+            return f"cursus.steps.builders.{builder_name.lower()}.{builder_name}"
+        
+        # Check file components
+        builder_metadata = step_info.file_components.get('builder')
+        if builder_metadata:
+            return str(builder_metadata.path)
+        
+        return None
+    
+    def load_builder_class(self, step_name: str) -> Optional[Type]:
+        """RESOLUTION: Load builder class for a step."""
+        if step_name in self._builder_class_cache:
+            return self._builder_class_cache[step_name]
+        
+        builder_path = self.get_builder_class_path(step_name)
+        if not builder_path:
+            return None
+        
+        try:
+            import importlib
+            import importlib.util
+            
+            # Simple import mechanism
+            if builder_path.startswith('cursus.'):
+                module_path, class_name = builder_path.rsplit('.', 1)
+                module = importlib.import_module(module_path)
+                builder_class = getattr(module, class_name)
+            else:
+                spec = importlib.util.spec_from_file_location("builder_module", builder_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                
+                builder_class = None
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if (isinstance(attr, type) and 
+                        (attr_name.endswith('Builder') or attr_name.endswith('StepBuilder'))):
+                        builder_class = attr
+                        break
+                
+                if not builder_class:
+                    return None
+            
+            self._builder_class_cache[step_name] = builder_class
+            return builder_class
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to load builder class for {step_name}: {e}")
+            return None
 ```
 
-### 3.2 Migration Validation and Monitoring
+### 4.2 Legacy System Integration (Week 2)
 
-**Goal**: Ensure safe migration with comprehensive monitoring
-**Target Redundancy**: 15-18%
+**Goal**: Integrate legacy systems using catalog for discovery while preserving business logic
+**Target Redundancy**: 20-25% (integration complexity acceptable)
 
-**Simple Migration Monitoring**:
+**Design Principles-Compliant Integration**:
+Following the **[Migration Guide](./2025-09-17_unified_step_catalog_migration_guide.md)** integration patterns:
+
 ```python
-# src/cursus/step_catalog/migration_monitor.py
-class MigrationMonitor:
-    """Simple monitoring for migration progress and health."""
+# Update legacy systems to use catalog for discovery
+class ValidationOrchestrator:
+    """Updated to use catalog for discovery, maintains validation business logic."""
     
-    def __init__(self):
-        self.metrics = {
-            'unified_requests': 0,
-            'legacy_requests': 0,
-            'unified_errors': 0,
-            'legacy_errors': 0,
-            'response_times': []
-        }
+    def __init__(self, step_catalog: StepCatalog):
+        self.catalog = step_catalog  # Uses catalog for discovery only
     
-    def record_request(self, system: str, success: bool, response_time: float):
-        """Record request metrics for monitoring."""
-        if system == 'unified':
-            self.metrics['unified_requests'] += 1
-            if not success:
-                self.metrics['unified_errors'] += 1
-        else:
-            self.metrics['legacy_requests'] += 1
-            if not success:
-                self.metrics['legacy_errors'] += 1
+    def orchestrate_validation_workflow(self, step_names: List[str]) -> ValidationResult:
+        """ORCHESTRATION: Complex validation workflow (specialized responsibility)."""
         
-        self.metrics['response_times'].append(response_time)
+        # Use catalog for pure discovery
+        contracts_with_scripts = self.catalog.discover_contracts_with_scripts()
+        frameworks = {name: self.catalog.detect_framework(name) for name in step_names}
+        
+        # Apply specialized validation business logic (stays here)
+        validation_results = []
+        for step_name in step_names:
+            if step_name in contracts_with_scripts:
+                result = self._validate_contract_script_alignment(step_name)
+            else:
+                result = self._validate_minimal_requirements(step_name)
+            
+            # Apply framework-specific validation rules (specialized logic)
+            framework = frameworks.get(step_name)
+            if framework:
+                result = self._apply_framework_validation_rules(result, framework)
+            
+            validation_results.append(result)
+        
+        return self._aggregate_validation_results(validation_results)
+
+class CrossWorkspaceValidator:
+    """Updated to use catalog for discovery, maintains validation policies."""
     
-    def get_migration_health(self) -> Dict[str, Any]:
-        """Get migration health metrics."""
-        total_unified = self.metrics['unified_requests']
-        total_legacy = self.metrics['legacy_requests']
-        total_requests = total_unified + total_legacy
+    def __init__(self, step_catalog: StepCatalog):
+        self.catalog = step_catalog  # Uses catalog for discovery only
+    
+    def validate_cross_workspace_dependencies(self, pipeline_def: Dict[str, Any]) -> ValidationResult:
+        """VALIDATION: Cross-workspace dependency validation (specialized responsibility)."""
         
-        if total_requests == 0:
-            return {'status': 'no_traffic', 'unified_percentage': 0}
+        # Use catalog for discovery
+        cross_workspace_components = self.catalog.discover_cross_workspace_components()
+        component_locations = {}
+        for component in pipeline_def.get('dependencies', []):
+            component_locations[component] = self.catalog.find_component_location(component)
         
-        unified_percentage = (total_unified / total_requests) * 100
-        unified_error_rate = (self.metrics['unified_errors'] / total_unified) if total_unified > 0 else 0
-        legacy_error_rate = (self.metrics['legacy_errors'] / total_legacy) if total_legacy > 0 else 0
+        # Apply specialized cross-workspace validation policies (stays here)
+        validation_issues = []
+        for step in pipeline_def.get('steps', []):
+            workspace_id = step.get('workspace_id')
+            dependencies = step.get('dependencies', [])
+            
+            for dep in dependencies:
+                dep_location = component_locations.get(dep)
+                if dep_location and dep_location.workspace_id != workspace_id:
+                    # Apply cross-workspace access policies (specialized logic)
+                    if not self._is_cross_workspace_access_allowed(workspace_id, dep_location.workspace_id):
+                        validation_issues.append(f"Cross-workspace access denied: {dep}")
         
-        avg_response_time = sum(self.metrics['response_times']) / len(self.metrics['response_times']) if self.metrics['response_times'] else 0
+        return ValidationResult(issues=validation_issues, passed=len(validation_issues) == 0)
+```
+
+### 4.3 Comprehensive Testing & Validation (Week 3)
+
+**Goal**: Validate design principles compliance and comprehensive coverage
+**Target Redundancy**: 15-20% (final target achieved)
+
+**Design Principles Validation Testing**:
+```python
+class TestDesignPrinciplesCompliance:
+    """Test compliance with design principles."""
+    
+    def test_single_responsibility_principle(self):
+        """Verify step catalog handles only discovery operations."""
+        catalog = StepCatalog(workspace_root)
         
-        status = 'healthy'
-        if unified_error_rate > 0.05:  # >5% error rate
-            status = 'degraded'
-        elif unified_error_rate > 0.01:  # >1% error rate
-            status = 'warning'
+        # Discovery methods should return pure data
+        contracts_with_scripts = catalog.discover_contracts_with_scripts()
+        assert isinstance(contracts_with_scripts, list)
+        # Should not contain validation logic
         
-        return {
-            'status': status,
-            'unified_percentage': unified_percentage,
-            'unified_error_rate': unified_error_rate,
-            'legacy_error_rate': legacy_error_rate,
-            'avg_response_time_ms': avg_response_time * 1000,
-            'total_requests': total_requests
-        }
+        frameworks = catalog.detect_framework('test_step')
+        assert isinstance(frameworks, (str, type(None)))
+        # Should not contain framework-specific business logic
+        
+    def test_separation_of_concerns(self):
+        """Verify clean separation between discovery and business logic."""
+        catalog = StepCatalog(workspace_root)
+        
+        # Discovery methods should not contain business logic
+        cross_workspace_components = catalog.discover_cross_workspace_components()
+        # Should return pure component data, no validation policies
+        
+        # Business logic should be in specialized systems
+        orchestrator = ValidationOrchestrator(catalog)
+        # Should contain validation business logic methods
+        assert hasattr(orchestrator, '_validate_contract_script_alignment')
+        assert hasattr(orchestrator, '_apply_framework_validation_rules')
+        
+    def test_explicit_dependencies(self):
+        """Verify all dependencies are explicit."""
+        catalog = StepCatalog(workspace_root)
+        
+        # Legacy systems should explicitly declare catalog dependency
+        orchestrator = ValidationOrchestrator(catalog)
+        assert orchestrator.catalog is catalog
+        
+        validator = CrossWorkspaceValidator(catalog)
+        assert validator.catalog is catalog
 ```
 
 **Success Criteria**:
-- ✅ Feature flag deployment successful with 0% initial rollout
-- ✅ Gradual rollout capability (10% → 25% → 50% → 75% → 100%)
-- ✅ Migration monitoring and health checks operational
-- ✅ Rollback capability validated and ready
-- ✅ Performance parity or improvement vs legacy systems
-- ✅ Error rates <1% during migration phases
+- ✅ All expansion discovery methods implemented with pure discovery logic
+- ✅ Legacy systems successfully integrated using catalog for discovery
+- ✅ Business logic preserved in specialized legacy systems
+- ✅ Design principles compliance validated through comprehensive testing
+- ✅ 95-98% direct coverage achieved through pure discovery methods
+- ✅ Target redundancy of 15-25% achieved
 
 ## Migration Strategy
 

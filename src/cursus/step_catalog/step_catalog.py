@@ -43,6 +43,11 @@ class StepCatalog:
         self._workspace_steps: Dict[str, List[str]] = {}
         self._index_built = False
         
+        # Simple caches for expanded functionality (avoid over-engineering)
+        self._framework_cache: Dict[str, str] = {}
+        self._validation_metadata_cache: Dict[str, Any] = {}
+        self._builder_class_cache: Dict[str, Type] = {}
+        
         # Simple metrics collection
         self.metrics: Dict[str, Any] = {
             'queries': 0,
@@ -211,6 +216,191 @@ class StepCatalog:
             Complete dictionary of config classes (manual + auto-discovered)
         """
         return self.config_discovery.build_complete_config_classes(project_id)
+    
+    # EXPANDED DISCOVERY & DETECTION METHODS (Pure Discovery - No Business Logic)
+    def discover_contracts_with_scripts(self) -> List[str]:
+        """
+        DISCOVERY: Find all steps that have both contract and script components.
+        
+        Returns:
+            List of step names that have both contract and script components
+        """
+        try:
+            self._ensure_index_built()
+            steps_with_both = []
+            
+            for step_name, step_info in self._step_index.items():
+                if (step_info.file_components.get('contract') and 
+                    step_info.file_components.get('script')):
+                    steps_with_both.append(step_name)
+            
+            return steps_with_both
+            
+        except Exception as e:
+            self.logger.error(f"Error discovering contracts with scripts: {e}")
+            return []
+    
+    def detect_framework(self, step_name: str) -> Optional[str]:
+        """
+        DETECTION: Detect ML framework for a step.
+        
+        Args:
+            step_name: Name of the step to analyze
+            
+        Returns:
+            Framework name (e.g., 'xgboost', 'pytorch') or None if not detected
+        """
+        try:
+            if step_name in self._framework_cache:
+                return self._framework_cache[step_name]
+            
+            step_info = self.get_step_info(step_name)
+            if not step_info:
+                return None
+            
+            framework = None
+            
+            # Simple pattern matching (no business logic)
+            if 'framework' in step_info.registry_data:
+                framework = step_info.registry_data['framework']
+            elif step_info.registry_data.get('builder_step_name'):
+                builder_name = step_info.registry_data['builder_step_name'].lower()
+                if 'xgboost' in builder_name:
+                    framework = 'xgboost'
+                elif 'pytorch' in builder_name or 'torch' in builder_name:
+                    framework = 'pytorch'
+            
+            # Check step name patterns as fallback
+            if not framework:
+                step_name_lower = step_name.lower()
+                if 'xgboost' in step_name_lower:
+                    framework = 'xgboost'
+                elif 'pytorch' in step_name_lower or 'torch' in step_name_lower:
+                    framework = 'pytorch'
+            
+            self._framework_cache[step_name] = framework
+            return framework
+            
+        except Exception as e:
+            self.logger.error(f"Error detecting framework for {step_name}: {e}")
+            return None
+    
+    def discover_cross_workspace_components(self, workspace_ids: Optional[List[str]] = None) -> Dict[str, List[str]]:
+        """
+        DISCOVERY: Find components across multiple workspaces.
+        
+        Args:
+            workspace_ids: Optional list of workspace IDs to search (defaults to all)
+            
+        Returns:
+            Dictionary mapping workspace IDs to lists of component identifiers
+        """
+        try:
+            self._ensure_index_built()
+            if workspace_ids is None:
+                workspace_ids = list(self._workspace_steps.keys())
+            
+            cross_workspace_components = {}
+            for workspace_id in workspace_ids:
+                workspace_steps = self._workspace_steps.get(workspace_id, [])
+                components = []
+                
+                for step_name in workspace_steps:
+                    step_info = self.get_step_info(step_name)
+                    if step_info:
+                        for component_type, metadata in step_info.file_components.items():
+                            if metadata:
+                                components.append(f"{step_name}:{component_type}")
+                
+                cross_workspace_components[workspace_id] = components
+            
+            return cross_workspace_components
+            
+        except Exception as e:
+            self.logger.error(f"Error discovering cross-workspace components: {e}")
+            return {}
+    
+    def get_builder_class_path(self, step_name: str) -> Optional[str]:
+        """
+        RESOLUTION: Get builder class path for a step.
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            Path to builder class or None if not found
+        """
+        try:
+            step_info = self.get_step_info(step_name)
+            if not step_info:
+                return None
+            
+            # Check registry data first
+            if 'builder_step_name' in step_info.registry_data:
+                builder_name = step_info.registry_data['builder_step_name']
+                return f"cursus.steps.builders.{builder_name.lower()}.{builder_name}"
+            
+            # Check file components
+            builder_metadata = step_info.file_components.get('builder')
+            if builder_metadata:
+                return str(builder_metadata.path)
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting builder class path for {step_name}: {e}")
+            return None
+    
+    def load_builder_class(self, step_name: str) -> Optional[Type]:
+        """
+        RESOLUTION: Load builder class for a step.
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            Builder class type or None if not found/loadable
+        """
+        try:
+            if step_name in self._builder_class_cache:
+                return self._builder_class_cache[step_name]
+            
+            builder_path = self.get_builder_class_path(step_name)
+            if not builder_path:
+                return None
+            
+            import importlib
+            import importlib.util
+            
+            # Simple import mechanism
+            if builder_path.startswith('cursus.'):
+                # Registry-based import
+                module_path, class_name = builder_path.rsplit('.', 1)
+                module = importlib.import_module(module_path)
+                builder_class = getattr(module, class_name)
+            else:
+                # File-based import
+                spec = importlib.util.spec_from_file_location("builder_module", builder_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                
+                builder_class = None
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if (isinstance(attr, type) and 
+                        (attr_name.endswith('Builder') or attr_name.endswith('StepBuilder'))):
+                        builder_class = attr
+                        break
+                
+                if not builder_class:
+                    return None
+            
+            self._builder_class_cache[step_name] = builder_class
+            return builder_class
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to load builder class for {step_name}: {e}")
+            return None
     
     # Additional utility methods for job type variants
     def get_job_type_variants(self, base_step_name: str) -> List[str]:

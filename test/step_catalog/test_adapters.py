@@ -9,7 +9,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from src.cursus.step_catalog.adapters import (
+from cursus.step_catalog.adapters import (
     ContractDiscoveryEngineAdapter,
     ContractDiscoveryManagerAdapter,
     FlexibleFileResolverAdapter,
@@ -18,7 +18,7 @@ from src.cursus.step_catalog.adapters import (
     HybridFileResolverAdapter,
     LegacyDiscoveryWrapper,
 )
-from src.cursus.step_catalog.models import StepInfo, FileMetadata
+from cursus.step_catalog.models import StepInfo, FileMetadata
 from datetime import datetime
 
 
