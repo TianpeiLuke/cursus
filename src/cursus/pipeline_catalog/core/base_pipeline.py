@@ -228,31 +228,17 @@ class BasePipeline(ABC):
         """
         return self._last_template or self.dag_compiler.get_last_template()
 
-    def fill_execution_document(self, execution_doc: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Fill an execution document for the pipeline with all necessary parameters.
-
-        This method gets the last template used during compilation and uses it to fill
-        the execution document with the correct parameters.
-
-        Args:
-            execution_doc: Initial execution document with default parameters
-
-        Returns:
-            Dict[str, Any]: Filled execution document ready for pipeline execution
-
-        Raises:
-            RuntimeError: If called before generate_pipeline() or if template not available
-        """
-        # Get the last template directly from the compiler
-        pipeline_template_builder = self.get_last_template()
-        if pipeline_template_builder is None:
-            raise RuntimeError("No template available. Call generate_pipeline() first.")
-
-        # Fill the execution document using the template builder
-        filled_doc = pipeline_template_builder.fill_execution_document(execution_doc)
-        logger.info("Execution document filled successfully")
-        return filled_doc
+    # Note: fill_execution_document() method removed to achieve complete independence
+    # between pipeline generation and execution document generation modules.
+    #
+    # For execution document generation, use the standalone module:
+    # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+    # generator = ExecutionDocumentGenerator(config_path=config_path)
+    # filled_doc = generator.fill_execution_document(dag, execution_doc)
+    #
+    # Or use the pipeline catalog integration:
+    # from cursus.pipeline_catalog.pipeline_exe import generate_execution_document_for_pipeline
+    # filled_doc = generate_execution_document_for_pipeline(pipeline_name, config_path, execution_doc)
 
     def sync_to_registry(self) -> bool:
         """

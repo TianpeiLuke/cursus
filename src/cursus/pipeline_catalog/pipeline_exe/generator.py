@@ -91,101 +91,24 @@ def generate_execution_document_for_pipeline(
         raise
 
 
-def generate_execution_document_for_pipeline_with_base_pipeline(
-    base_pipeline_instance,
-    execution_doc_template: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    """
-    Generate execution document using a BasePipeline instance.
-    
-    This function provides integration with existing BasePipeline instances,
-    using the new standalone execution document generator instead of the
-    old template-based approach.
-    
-    Args:
-        base_pipeline_instance: Instance of BasePipeline or its subclass
-        execution_doc_template: Optional execution document template
-        
-    Returns:
-        Dict[str, Any]: Filled execution document
-        
-    Example:
-        >>> pipeline_instance = XGBoostE2EComprehensivePipeline(config_path="config.json")
-        >>> execution_doc = generate_execution_document_for_pipeline_with_base_pipeline(
-        ...     pipeline_instance,
-        ...     execution_doc_template
-        ... )
-    """
-    try:
-        logger.info("Generating execution document using BasePipeline instance")
-        
-        # Get configuration path from pipeline instance
-        config_path = base_pipeline_instance.config_path
-        if not config_path:
-            raise ValueError("BasePipeline instance must have config_path set")
-        
-        # Get DAG from pipeline instance
-        dag = base_pipeline_instance.dag
-        
-        # Create execution document template if not provided
-        if execution_doc_template is None:
-            # Try to get pipeline name from metadata
-            try:
-                metadata = base_pipeline_instance.get_enhanced_dag_metadata()
-                pipeline_name = metadata.zettelkasten_metadata.atomic_id
-                execution_doc_template = create_execution_doc_template_for_pipeline(pipeline_name)
-            except Exception:
-                # Fallback to generic template
-                execution_doc_template = create_execution_doc_template_for_pipeline("generic")
-            logger.info("Created execution document template from pipeline metadata")
-        
-        # Create standalone execution document generator
-        generator = ExecutionDocumentGenerator(
-            config_path=config_path,
-            sagemaker_session=base_pipeline_instance.sagemaker_session,
-            role=base_pipeline_instance.execution_role,
-        )
-        logger.info("Created execution document generator from BasePipeline instance")
-        
-        # Generate execution document
-        filled_execution_doc = generator.fill_execution_document(dag, execution_doc_template)
-        logger.info("Successfully generated execution document using BasePipeline instance")
-        
-        return filled_execution_doc
-        
-    except Exception as e:
-        logger.error(f"Failed to generate execution document using BasePipeline instance: {e}")
-        raise
-
-
-def update_base_pipeline_fill_execution_document():
-    """
-    Update BasePipeline.fill_execution_document to use the new standalone generator.
-    
-    This function can be used to monkey-patch the existing BasePipeline class
-    to use the new standalone execution document generator instead of the old
-    template-based approach.
-    
-    This provides a migration path for existing code that uses BasePipeline.fill_execution_document().
-    """
-    try:
-        from ..core.base_pipeline import BasePipeline
-        
-        def new_fill_execution_document(self, execution_doc: Dict[str, Any]) -> Dict[str, Any]:
-            """
-            Fill an execution document using the new standalone generator.
-            
-            This method replaces the old template-based approach with the new
-            standalone execution document generator.
-            """
-            return generate_execution_document_for_pipeline_with_base_pipeline(
-                self, execution_doc
-            )
-        
-        # Replace the method
-        BasePipeline.fill_execution_document = new_fill_execution_document
-        logger.info("Successfully updated BasePipeline.fill_execution_document to use standalone generator")
-        
-    except Exception as e:
-        logger.error(f"Failed to update BasePipeline.fill_execution_document: {e}")
-        raise
+# Note: BasePipeline integration functions removed to achieve complete independence
+# between pipeline generation and execution document generation modules.
+#
+# The two modules are now completely independent:
+# 1. Pipeline generation: cursus.pipeline_catalog.core.base_pipeline
+# 2. Execution document generation: cursus.mods.exe_doc.generator
+#
+# Users should use the modules independently:
+#
+# For pipeline generation:
+# pipeline_instance = XGBoostE2EComprehensivePipeline(config_path="config.json")
+# pipeline = pipeline_instance.generate_pipeline()
+#
+# For execution document generation:
+# from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+# generator = ExecutionDocumentGenerator(config_path="config.json")
+# filled_doc = generator.fill_execution_document(dag, execution_doc_template)
+#
+# Or use the pipeline catalog integration:
+# from cursus.pipeline_catalog.pipeline_exe import generate_execution_document_for_pipeline
+# filled_doc = generate_execution_document_for_pipeline("xgb_e2e_comprehensive", "config.json", execution_doc)
