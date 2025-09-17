@@ -24,10 +24,7 @@ CRADLE_DATA_LOADING_CONTRACT = ScriptContract(
         # No strictly required environment variables
     ],
     optional_env_vars={"OUTPUT_PATH": ""},  # Optional override for data output path
-    framework_requirements={
-        "python": ">=3.7",
-        "secure_ai_sandbox_python_lib": "*",  # Core dependency for Cradle integration
-    },
+    framework_requirements={"python": ">=3.7"},
     description="""
     Cradle data loading script that:
     1. Reads data loading configuration from config file

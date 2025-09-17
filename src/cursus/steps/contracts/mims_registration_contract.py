@@ -24,10 +24,7 @@ MIMS_REGISTRATION_CONTRACT = ScriptContract(
         "MODS_WORKFLOW_EXECUTION_ID"
     ],
     optional_env_vars={"PERFORMANCE_METADATA_PATH": ""},
-    framework_requirements={
-        "python": ">=3.7"
-        # Uses secure_ai_sandbox_python_lib libraries and standard modules
-    },
+    framework_requirements={"python": ">=3.7"},
     description="""
     MIMS model registration script that:
     1. Uploads model artifacts to temporary S3 location
