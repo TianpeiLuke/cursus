@@ -1,7 +1,7 @@
 # Developer Guide: Adding a New Step to the Pipeline
 
-**Version**: 1.2.5  
-**Date**: September 14, 2025  
+**Version**: 1.2.6  
+**Date**: September 16, 2025  
 **Author**: Tianpei Xie
 
 ## Overview

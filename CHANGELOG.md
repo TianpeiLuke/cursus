@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2025-09-16
+
+### Added
+- **Step Catalog System** - New unified step catalog architecture for better component discovery and management
+  - **Step Catalog Infrastructure** - Complete step catalog system with models, discovery, and integration capabilities
+  - **Config Discovery System** - Automated configuration discovery and validation for step catalog components
+  - **Step Catalog Integration** - Enhanced integration between step catalog and existing pipeline components
+  - **Catalog CLI Tools** - New command-line interface tools for step catalog management and operations
+
+- **Execution Document Generator** - Standalone execution document generation system
+  - **MODS Execution Document Generator** - Complete execution document generator for MODS pipelines
+  - **Cradle Helper System** - Enhanced cradle data loading helper with improved configuration management
+  - **Registration Helper** - New registration helper for model registration and management workflows
+  - **Execution Document Utilities** - Comprehensive utilities for execution document generation and management
+
+- **Enhanced Pipeline Catalog** - Major improvements to pipeline catalog architecture
+  - **Pipeline Catalog Refactoring** - Complete refactoring of pipeline catalog with improved organization
+  - **MODS Pipeline Collection** - Expanded collection of MODS pipeline templates and examples
+  - **Pipeline Execution System** - New pipeline execution utilities and generator capabilities
+  - **Catalog Registry System** - Enhanced catalog registry with better validation and discovery
+
+### Enhanced
+- **Core Type Safety Improvements** - Comprehensive MyPy type safety enhancements across core modules
+  - **MyPy Core Optimization** - 12 iterations of MyPy improvements for better type safety and code quality
+  - **Type Safety Validation** - Enhanced type checking and validation across all core components
+  - **Import Path Optimization** - Improved import paths and module organization for better maintainability
+  - **Error Handling Enhancement** - Better error handling and type safety in core modules
+
+- **Pipeline Generation Independence** - Major architectural improvement separating pipeline and execution generation
+  - **Independent Generation Systems** - Pipeline generation and execution document generation now operate independently
+  - **Template State Management** - Enhanced template state management for better pipeline compilation
+  - **Execution Document Separation** - Clean separation between pipeline compilation and execution document filling
+  - **Improved Workflow Flexibility** - Better workflow flexibility with independent generation capabilities
+
+- **Docker Infrastructure Updates** - Enhanced Docker containers with improved scripts and functionality
+  - **XGBoost Container Improvements** - Updated XGBoost containers with enhanced training, calibration, and inference scripts
+  - **Script Error Fixes** - Fixed errors in training, calibration, packaging, and payload scripts
+  - **Container Reliability** - Improved reliability and functionality of Docker container infrastructure
+  - **Script Standardization** - Standardized scripts across different container types for consistency
+
+### Fixed
+- **Pipeline Catalog Organization** - Resolved issues with pipeline catalog structure and organization
+  - **Catalog Structure Cleanup** - Cleaned up pipeline catalog structure with better organization
+  - **MODS Pipeline Integration** - Fixed integration issues with MODS pipeline catalog components
+  - **Catalog Index Management** - Improved catalog index management and validation
+  - **Migration Guide Updates** - Updated migration guides for pipeline catalog changes
+
+- **Core Module Stability** - Enhanced stability and reliability of core modules
+  - **Import Path Corrections** - Fixed import path issues across core modules and components
+  - **Module Organization** - Improved module organization and dependency management
+  - **Configuration Management** - Enhanced configuration management with better validation and error handling
+  - **Test Infrastructure** - Improved test infrastructure with better coverage and reliability
+
+- **Builder CLI Improvements** - Fixed issues in builder CLI and related tools
+  - **CLI Error Handling** - Enhanced error handling in CLI tools and commands
+  - **Builder Test Integration** - Improved integration between builder tests and CLI tools
+  - **Command Reliability** - Enhanced reliability of CLI commands and operations
+  - **User Experience** - Better user experience with improved CLI feedback and error messages
+
+### Technical Details
+- **Step Catalog Architecture** - Complete step catalog system with discovery, models, and integration capabilities
+- **Execution Document System** - Standalone execution document generator with comprehensive helper systems
+- **Type Safety Framework** - Enhanced type safety with comprehensive MyPy improvements across all modules
+- **Pipeline Independence** - Architectural improvement separating pipeline and execution document generation
+- **Docker Infrastructure** - Updated Docker containers with improved scripts and enhanced functionality
+
+### Quality Assurance
+- **Comprehensive Testing** - Enhanced test coverage for step catalog, execution document generation, and core improvements
+- **Type Safety Validation** - Comprehensive type safety validation with MyPy across all core modules
+- **Integration Testing** - Improved integration testing for step catalog and execution document systems
+- **Docker Validation** - Enhanced validation of Docker container functionality and script reliability
+
+### Performance Improvements
+- **Catalog Performance** - Optimized step catalog operations with better discovery and validation algorithms
+- **Generation Performance** - Improved performance of pipeline and execution document generation processes
+- **Type Checking Speed** - Enhanced type checking performance with optimized MyPy configurations
+- **CLI Responsiveness** - Improved responsiveness of CLI tools and catalog operations
+
 ## [1.2.5] - 2025-09-14
 
 ### Added
