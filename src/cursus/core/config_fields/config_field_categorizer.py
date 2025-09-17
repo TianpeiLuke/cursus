@@ -140,89 +140,41 @@ class ConfigFieldCategorizer:
                 if field_name == "_metadata":
                     continue
 
-                # Track raw value
-                if isinstance(field_info, dict) and "raw_values" in field_info:
-                    raw_values = field_info["raw_values"]
-                    if isinstance(raw_values, dict) and field_name in raw_values:
-                        field_values = raw_values[field_name]
-                        if isinstance(field_values, dict):
-                            field_values[step_name] = value
+                # Track raw value - use defaultdict behavior directly
+                field_info["raw_values"][field_name][step_name] = value
 
-                # Track serialized value for comparison
+                # Track serialized value for comparison - use defaultdict behavior directly
                 try:
                     value_str = json.dumps(value, sort_keys=True)
-                    if isinstance(field_info, dict) and "values" in field_info:
-                        values = field_info["values"]
-                        if isinstance(values, dict) and field_name in values:
-                            field_values = values[field_name]
-                            if hasattr(field_values, 'add'):
-                                field_values.add(value_str)
+                    field_info["values"][field_name].add(value_str)
                 except (TypeError, ValueError):
                     # If not JSON serializable, use object ID as placeholder
-                    if isinstance(field_info, dict) and "values" in field_info:
-                        values = field_info["values"]
-                        if isinstance(values, dict) and field_name in values:
-                            field_values = values[field_name]
-                            if hasattr(field_values, 'add'):
-                                field_values.add(f"__non_serializable_{id(value)}__")
+                    field_info["values"][field_name].add(f"__non_serializable_{id(value)}__")
 
-                # Track sources
-                if isinstance(field_info, dict) and "sources" in field_info:
-                    sources = field_info["sources"]
-                    if isinstance(sources, dict) and field_name in sources:
-                        field_sources = sources[field_name]
-                        if hasattr(field_sources, 'append'):
-                            field_sources.append(step_name)
+                # Track sources - use defaultdict behavior directly
+                field_info["sources"][field_name].append(step_name)
 
-                # Track processing/non-processing sources
+                # Track processing/non-processing sources - use defaultdict behavior directly
                 if self.processing_base_class and isinstance(config, self.processing_base_class):
-                    if isinstance(field_info, dict) and "processing_sources" in field_info:
-                        processing_sources = field_info["processing_sources"]
-                        if isinstance(processing_sources, dict) and field_name in processing_sources:
-                            field_processing_sources = processing_sources[field_name]
-                            if hasattr(field_processing_sources, 'append'):
-                                field_processing_sources.append(step_name)
+                    field_info["processing_sources"][field_name].append(step_name)
                 else:
-                    if isinstance(field_info, dict) and "non_processing_sources" in field_info:
-                        non_processing_sources = field_info["non_processing_sources"]
-                        if isinstance(non_processing_sources, dict) and field_name in non_processing_sources:
-                            field_non_processing_sources = non_processing_sources[field_name]
-                            if hasattr(field_non_processing_sources, 'append'):
-                                field_non_processing_sources.append(step_name)
+                    field_info["non_processing_sources"][field_name].append(step_name)
 
-                # Determine if cross-type
-                if isinstance(field_info, dict) and "processing_sources" in field_info and "non_processing_sources" in field_info:
-                    processing_sources = field_info["processing_sources"]
-                    non_processing_sources = field_info["non_processing_sources"]
-                    is_processing = False
-                    is_non_processing = False
-                    
-                    if isinstance(processing_sources, dict) and field_name in processing_sources:
-                        is_processing = bool(processing_sources[field_name])
-                    if isinstance(non_processing_sources, dict) and field_name in non_processing_sources:
-                        is_non_processing = bool(non_processing_sources[field_name])
-                    if "is_cross_type" in field_info:
-                        is_cross_type = field_info["is_cross_type"]
-                        if isinstance(is_cross_type, dict):
-                            is_cross_type[field_name] = (
-                                is_processing and is_non_processing
-                            )
+                # Determine if cross-type - use defaultdict behavior directly
+                field_info["is_cross_type"][field_name] = (
+                    bool(field_info["processing_sources"][field_name]) and 
+                    bool(field_info["non_processing_sources"][field_name])
+                )
 
-                # Check if special
-                if isinstance(field_info, dict) and "is_special" in field_info:
-                    is_special = field_info["is_special"]
-                    if isinstance(is_special, dict):
-                        is_special[field_name] = self._is_special_field(
-                            field_name, value, config
-                        )
+                # Check if special - use defaultdict behavior directly
+                field_info["is_special"][field_name] = self._is_special_field(
+                    field_name, value, config
+                )
 
-                # Check if static
-                if isinstance(field_info, dict) and "is_static" in field_info:
-                    is_static = field_info["is_static"]
-                    if isinstance(is_static, dict):
-                        is_static[field_name] = self._is_likely_static(
-                            field_name, value
-                        )
+                # Check if static - use defaultdict behavior directly
+                field_info["is_static"][field_name] = self._is_likely_static(
+                    field_name, value
+                )
 
         # Log statistics about field collection
         sources = field_info['sources']
