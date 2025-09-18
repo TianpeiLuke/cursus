@@ -1,8 +1,8 @@
 """
-Contract discovery adapters for backward compatibility.
+Modernized contract discovery adapters using unified StepCatalog system.
 
-This module provides adapters that maintain existing contract discovery APIs
-during the migration from legacy discovery systems to the unified StepCatalog system.
+This module provides streamlined adapters that leverage the unified StepCatalog
+for discovery operations while maintaining backward compatibility.
 """
 
 import logging
@@ -18,39 +18,31 @@ class ContractDiscoveryResult:
     """
     Legacy result class for contract discovery operations.
     
-    Maintains backward compatibility with existing tests and code that
-    expect ContractDiscoveryResult objects from contract discovery operations.
+    Maintains backward compatibility with existing tests and code.
     """
     
-    def __init__(self, contract: Optional[Any] = None, contract_path: Optional[str] = None, 
-                 error: Optional[str] = None, cached: bool = False):
-        """
-        Initialize contract discovery result.
-        
-        Args:
-            contract: The discovered contract object (if any)
-            contract_path: Path to the contract file
-            error: Error message if discovery failed
-            cached: Whether this result was retrieved from cache
-        """
+    def __init__(self, contract: Optional[Any] = None, contract_name: Optional[str] = None, 
+                 discovery_method: str = "step_catalog", error_message: Optional[str] = None):
+        """Initialize contract discovery result."""
         self.contract = contract
-        self.contract_path = contract_path
-        self.error = error
-        self.cached = cached
-        self.success = contract is not None and error is None
+        self.contract_name = contract_name
+        self.discovery_method = discovery_method
+        self.error_message = error_message
+        self.success = contract is not None and error_message is None
     
     def __repr__(self) -> str:
         if self.success:
-            return f"ContractDiscoveryResult(contract={self.contract}, path={self.contract_path}, cached={self.cached})"
+            return f"ContractDiscoveryResult(contract={self.contract_name}, method={self.discovery_method})"
         else:
-            return f"ContractDiscoveryResult(error={self.error})"
+            return f"ContractDiscoveryResult(error={self.error_message})"
 
 
 class ContractDiscoveryEngineAdapter:
     """
-    Adapter maintaining backward compatibility with ContractDiscoveryEngine.
+    Modernized adapter using unified StepCatalog for all discovery operations.
     
     Replaces: src/cursus/validation/alignment/discovery/contract_discovery.py
+    All methods now use the step catalog's built-in discovery capabilities.
     """
     
     def __init__(self, workspace_root: Path):
@@ -58,127 +50,329 @@ class ContractDiscoveryEngineAdapter:
         self.catalog = StepCatalog(workspace_root)
         self.logger = logging.getLogger(__name__)
     
-    def discover_all_contracts(self) -> List[str]:
-        """Legacy method: discover all contracts using unified catalog."""
-        try:
-            steps = self.catalog.list_available_steps()
-            contracts = []
-            
-            for step_name in steps:
-                step_info = self.catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('contract'):
-                    contracts.append(step_name)
-            
-            self.logger.debug(f"Discovered {len(contracts)} contracts via unified catalog")
-            return contracts
-            
-        except Exception as e:
-            self.logger.error(f"Error discovering contracts: {e}")
-            return []
-    
     def discover_contracts_with_scripts(self) -> List[str]:
-        """Legacy method: discover contracts that have associated scripts."""
+        """
+        MODERNIZED: Use step catalog's built-in method.
+        
+        This is the primary method used by ContractSpecificationAlignmentTester.
+        """
         try:
-            steps = self.catalog.list_available_steps()
-            contracts_with_scripts = []
-            
-            for step_name in steps:
-                step_info = self.catalog.get_step_info(step_name)
-                if (step_info and 
-                    step_info.file_components.get('contract') and 
-                    step_info.file_components.get('script')):
-                    contracts_with_scripts.append(step_name)
-            
-            self.logger.debug(f"Discovered {len(contracts_with_scripts)} contracts with scripts")
-            return contracts_with_scripts
+            # Use step catalog's built-in method - no redundant code needed
+            return self.catalog.discover_contracts_with_scripts()
             
         except Exception as e:
             self.logger.error(f"Error discovering contracts with scripts: {e}")
             return []
     
-    def extract_contract_reference_from_spec(self, spec_path: str) -> Optional[str]:
-        """Legacy method: extract contract reference from specification."""
+    def discover_all_contracts(self) -> List[str]:
+        """
+        MODERNIZED: Discover all steps that have contracts using step catalog.
+        
+        Used by alignment validation system.
+        """
         try:
-            # Use reverse lookup to find step, then get contract
-            step_name = self.catalog.find_step_by_component(spec_path)
-            if step_name:
-                step_info = self.catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('contract'):
-                    return step_name
-            return None
+            all_steps = self.catalog.list_available_steps()
+            contracts = []
+            
+            for step in all_steps:
+                step_info = self.catalog.get_step_info(step)
+                if step_info and 'contract' in step_info.file_components:
+                    contracts.append(step)
+            
+            return contracts
             
         except Exception as e:
-            self.logger.error(f"Error extracting contract reference from {spec_path}: {e}")
-            return None
+            self.logger.error(f"Error discovering all contracts: {e}")
+            return []
     
-    def build_entry_point_mapping(self) -> Dict[str, str]:
-        """Legacy method: build mapping of entry points."""
+    def extract_contract_reference_from_spec(self, spec_file: str) -> Optional[str]:
+        """
+        MODERNIZED: Extract contract reference from spec file using step catalog.
+        
+        Used by alignment validation system to find which step corresponds to a spec file.
+        
+        Args:
+            spec_file: Name of the spec file (e.g., "xgboost_training_spec.py")
+            
+        Returns:
+            Step name if found, None otherwise
+        """
         try:
-            steps = self.catalog.list_available_steps()
-            entry_point_mapping = {}
-            
-            for step_name in steps:
+            # Use step catalog to find step by spec component
+            step_name = self.catalog.find_step_by_component(spec_file)
+            if step_name:
+                # Verify the step has a contract
                 step_info = self.catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('script'):
-                    script_path = step_info.file_components['script'].path
-                    entry_point_mapping[step_name] = str(script_path)
+                if step_info and 'contract' in step_info.file_components:
+                    return step_name
             
-            return entry_point_mapping
+            return None
             
         except Exception as e:
-            self.logger.error(f"Error building entry point mapping: {e}")
-            return {}
+            self.logger.error(f"Error extracting contract reference from {spec_file}: {e}")
+            return None
 
 
 class ContractDiscoveryManagerAdapter:
     """
-    Adapter maintaining backward compatibility with ContractDiscoveryManager.
+    Modernized adapter using unified StepCatalog with minimal business logic.
     
     Replaces: src/cursus/validation/runtime/contract_discovery.py
+    Focuses on test-specific functionality while leveraging step catalog for discovery.
     """
     
-    def __init__(self, workspace_root: Path):
-        """Initialize with unified catalog."""
+    def __init__(self, test_data_dir: Optional[str] = None, workspace_root: Optional[Path] = None):
+        """Initialize with unified catalog and test directory."""
+        # Support both test_data_dir (for tests) and workspace_root (for production)
+        if test_data_dir is not None:
+            self.test_data_dir = Path(test_data_dir)
+            workspace_root = Path(test_data_dir)
+        elif workspace_root is not None:
+            self.test_data_dir = workspace_root
+        else:
+            self.test_data_dir = Path('.')
+            workspace_root = Path('.')
+            
         self.catalog = StepCatalog(workspace_root)
         self.logger = logging.getLogger(__name__)
+        
+        # Minimal cache for test performance
+        self._contract_cache = {}
     
-    def discover_contract(self, step_name: str) -> Optional[str]:
-        """Legacy method: discover contract for a specific step."""
+    def discover_contract(self, step_name: str, canonical_name: Optional[str] = None) -> ContractDiscoveryResult:
+        """
+        MODERNIZED: Use step catalog for discovery with contract loading.
+        
+        Args:
+            step_name: Name of the step/script
+            canonical_name: Optional canonical name for the step
+            
+        Returns:
+            ContractDiscoveryResult with contract information
+        """
         try:
+            # Check cache first
+            cache_key = f"{step_name}:{canonical_name}"
+            if cache_key in self._contract_cache:
+                return self._contract_cache[cache_key]
+            
+            # MODERNIZED: Use step catalog for discovery
             step_info = self.catalog.get_step_info(step_name)
             if step_info and step_info.file_components.get('contract'):
-                return str(step_info.file_components['contract'].path)
-            return None
+                # Try to load actual contract if possible
+                contract_path = step_info.file_components['contract'].path
+                contract = self._load_contract_from_path(contract_path, step_name)
+                
+                result = ContractDiscoveryResult(
+                    contract=contract,
+                    contract_name=f"{step_name.upper()}_CONTRACT",
+                    discovery_method="step_catalog",
+                    error_message=None
+                )
+                
+                self._contract_cache[cache_key] = result
+                return result
+            
+            # Fallback: Try direct import for legacy contracts
+            result = self._try_direct_import(step_name, canonical_name)
+            self._contract_cache[cache_key] = result
+            return result
             
         except Exception as e:
             self.logger.error(f"Error discovering contract for {step_name}: {e}")
+            return ContractDiscoveryResult(
+                contract=None,
+                contract_name="error",
+                discovery_method="error",
+                error_message=str(e)
+            )
+    
+    def _load_contract_from_path(self, contract_path: Path, step_name: str) -> Optional[Any]:
+        """Load contract object from file path."""
+        try:
+            import importlib.util
+            import sys
+            
+            # Load module from file
+            spec = importlib.util.spec_from_file_location("contract_module", contract_path)
+            if spec is None or spec.loader is None:
+                return None
+                
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Look for contract object
+            contract_name = f"{step_name.upper()}_CONTRACT"
+            if hasattr(module, contract_name):
+                return getattr(module, contract_name)
+            
+            # Fallback: look for any contract-like object
+            for attr_name in dir(module):
+                if attr_name.endswith('_CONTRACT') or attr_name.endswith('Contract'):
+                    return getattr(module, attr_name)
+            
+            return None
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to load contract from {contract_path}: {e}")
             return None
     
-    def get_contract_input_paths(self, step_name: str) -> List[str]:
-        """Legacy method: get contract input paths."""
+    def _try_direct_import(self, step_name: str, canonical_name: Optional[str] = None) -> ContractDiscoveryResult:
+        """Try direct import as fallback."""
         try:
-            # This would require parsing the contract file, which is beyond
-            # the scope of the unified catalog. Return empty list for now.
-            self.logger.warning(f"get_contract_input_paths not fully implemented for {step_name}")
-            return []
+            import importlib
+            
+            module_patterns = [
+                f"cursus.steps.contracts.{step_name}_contract",
+                f"cursus_dev.steps.contracts.{step_name}_contract",
+            ]
+            
+            for module_pattern in module_patterns:
+                try:
+                    module = importlib.import_module(module_pattern)
+                    contract_name = f"{step_name.upper()}_CONTRACT"
+                    
+                    if hasattr(module, contract_name):
+                        contract = getattr(module, contract_name)
+                        return ContractDiscoveryResult(
+                            contract=contract,
+                            contract_name=contract_name,
+                            discovery_method="direct_import",
+                            error_message=None
+                        )
+                except ImportError:
+                    continue
+            
+            return ContractDiscoveryResult(
+                contract=None,
+                contract_name="not_found",
+                discovery_method="none",
+                error_message=f"No contract found for {step_name}"
+            )
             
         except Exception as e:
-            self.logger.error(f"Error getting contract input paths for {step_name}: {e}")
-            return []
+            return ContractDiscoveryResult(
+                contract=None,
+                contract_name="error",
+                discovery_method="error",
+                error_message=str(e)
+            )
     
-    def get_contract_output_paths(self, step_name: str) -> List[str]:
-        """Legacy method: get contract output paths."""
+    # Contract analysis methods (business logic - cannot be replaced by step catalog)
+    def get_contract_input_paths(self, contract: Any, step_name: str) -> Dict[str, str]:
+        """Get contract input paths with local adaptation."""
         try:
-            # This would require parsing the contract file, which is beyond
-            # the scope of the unified catalog. Return empty list for now.
-            self.logger.warning(f"get_contract_output_paths not fully implemented for {step_name}")
-            return []
+            if not hasattr(contract, 'expected_input_paths') or contract.expected_input_paths is None:
+                return {}
+            
+            adapted_paths = {}
+            base_data_dir = self.test_data_dir / step_name
+            
+            for key, path in contract.expected_input_paths.items():
+                adapted_path = self._adapt_path_for_local_testing(path, base_data_dir, "input")
+                adapted_paths[key] = str(adapted_path)
+            
+            return adapted_paths
             
         except Exception as e:
-            self.logger.error(f"Error getting contract output paths for {step_name}: {e}")
-            return []
+            self.logger.error(f"Error getting contract input paths: {e}")
+            return {}
     
-    def _adapt_path_for_local_testing(self, path: str) -> str:
-        """Legacy method: adapt path for local testing."""
-        # Simple passthrough for now
-        return path
+    def get_contract_output_paths(self, contract: Any, step_name: str) -> Dict[str, str]:
+        """Get contract output paths with local adaptation."""
+        try:
+            if not hasattr(contract, 'expected_output_paths') or contract.expected_output_paths is None:
+                return {}
+            
+            adapted_paths = {}
+            base_data_dir = self.test_data_dir / step_name
+            
+            for key, path in contract.expected_output_paths.items():
+                adapted_path = self._adapt_path_for_local_testing(path, base_data_dir, "output")
+                adapted_paths[key] = str(adapted_path)
+            
+            return adapted_paths
+            
+        except Exception as e:
+            self.logger.error(f"Error getting contract output paths: {e}")
+            return {}
+    
+    def get_contract_environ_vars(self, contract: Any) -> Dict[str, str]:
+        """Get environment variables from contract."""
+        try:
+            environ_vars = {
+                "PYTHONPATH": "/opt/ml/code",
+                "CURSUS_ENV": "testing",
+            }
+            
+            if hasattr(contract, 'required_env_vars') and contract.required_env_vars:
+                for var in contract.required_env_vars:
+                    if isinstance(var, dict):
+                        environ_vars.update(var)
+                    else:
+                        environ_vars[var] = ""
+            
+            if hasattr(contract, 'optional_env_vars') and contract.optional_env_vars:
+                for var in contract.optional_env_vars:
+                    if isinstance(var, dict):
+                        environ_vars.update(var)
+                    else:
+                        environ_vars[var] = ""
+            
+            return environ_vars
+            
+        except Exception as e:
+            self.logger.error(f"Error getting contract environment variables: {e}")
+            return {"CURSUS_ENV": "testing"}
+    
+    def get_contract_job_args(self, contract: Any, step_name: str) -> Dict[str, Any]:
+        """Get job arguments from contract."""
+        try:
+            job_args = {
+                "script_name": step_name,
+                "execution_mode": "testing",
+                "log_level": "INFO",
+            }
+            
+            if hasattr(contract, 'job_args') and contract.job_args:
+                job_args.update(contract.job_args)
+            elif hasattr(contract, 'metadata') and contract.metadata and 'job_args' in contract.metadata:
+                job_args.update(contract.metadata['job_args'])
+            
+            return job_args
+            
+        except Exception as e:
+            self.logger.error(f"Error getting contract job args: {e}")
+            return {"script_name": step_name, "execution_mode": "testing"}
+    
+    def _adapt_path_for_local_testing(self, path: str, base_data_dir: Path, path_type: str) -> Path:
+        """Adapt SageMaker paths for local testing (test infrastructure - cannot be replaced)."""
+        try:
+            # Handle SageMaker paths
+            if "/opt/ml/" in path:
+                if "/input/" in path:
+                    # Extract the part after /input/
+                    suffix = path.split("/input/", 1)[1] if "/input/" in path else "data"
+                    return base_data_dir / "input" / suffix
+                elif "/output/" in path:
+                    # Extract the part after /output/
+                    suffix = path.split("/output/", 1)[1] if "/output/" in path else "data"
+                    return base_data_dir / "output" / suffix
+                elif "/processing/" in path:
+                    if "/processing/input/" in path:
+                        suffix = path.split("/processing/input/", 1)[1]
+                        return base_data_dir / "input" / suffix
+                    elif "/processing/output/" in path:
+                        suffix = path.split("/processing/output/", 1)[1]
+                        return base_data_dir / "output" / suffix
+            
+            # Handle custom paths
+            path_parts = Path(path).parts
+            if len(path_parts) > 1:
+                return base_data_dir / path_type / path_parts[-1]
+            else:
+                return base_data_dir / path_type / "data"
+                
+        except Exception as e:
+            self.logger.warning(f"Error adapting path {path}: {e}")
+            return base_data_dir / path_type / "data"

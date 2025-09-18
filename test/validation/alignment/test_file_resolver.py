@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 # Import the modernized adapter
-from cursus.step_catalog.adapters import FlexibleFileResolverAdapter as FlexibleFileResolver
+from cursus.step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 
 
 @pytest.fixture
