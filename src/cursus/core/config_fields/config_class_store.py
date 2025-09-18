@@ -24,4 +24,5 @@ the build_complete_config_classes() function now uses the unified StepCatalog's
 automated discovery capabilities.
 """
 
-from cursus.step_catalog.adapters import ConfigClassStoreAdapter as ConfigClassStore, build_complete_config_classes
+from ...step_catalog.adapters.config_class_detector import ConfigClassStoreAdapter as ConfigClassStore
+from ...step_catalog.adapters.legacy_wrappers import build_complete_config_classes

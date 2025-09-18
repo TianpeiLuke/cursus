@@ -25,4 +25,5 @@ The complex JSON configuration file analysis has been replaced with the
 unified StepCatalog's discover_config_classes() method.
 """
 
-from cursus.step_catalog.adapters import ConfigClassDetectorAdapter as ConfigClassDetector, detect_config_classes_from_json, build_complete_config_classes
+from ...step_catalog.adapters.config_class_detector import ConfigClassDetectorAdapter as ConfigClassDetector
+from ...step_catalog.adapters.legacy_wrappers import detect_config_classes_from_json, build_complete_config_classes

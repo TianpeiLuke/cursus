@@ -32,7 +32,60 @@ class SageMakerStepTypeValidator:
         )
 
     def _detect_step_name(self) -> Optional[str]:
-        """Detect step name from builder class name."""
+        """Detect step name from builder class name using step catalog with legacy fallback."""
+        # Try using step catalog first
+        try:
+            from ...step_catalog import StepCatalog
+            from pathlib import Path
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Use catalog's unified discovery
+            return self._find_step_name_with_catalog(catalog)
+                    
+        except ImportError:
+            pass  # Fall back to legacy method
+        except Exception:
+            pass  # Fall back to legacy method
+
+        # FALLBACK METHOD: Legacy registry lookup
+        return self._find_step_name_legacy()
+
+    def _find_step_name_with_catalog(self, catalog) -> Optional[str]:
+        """Find step name using step catalog."""
+        class_name = self.builder_class.__name__
+        
+        # Try exact match first
+        available_steps = catalog.list_available_steps()
+        for step_name in available_steps:
+            step_info = catalog.get_step_info(step_name)
+            if step_info and step_info.registry_data.get('builder_step_name'):
+                builder_name = step_info.registry_data['builder_step_name']
+                if builder_name == class_name:
+                    return step_name
+                    
+        # Try partial matching (remove suffixes and match)
+        return self._find_step_name_with_suffix_matching(available_steps, catalog, class_name)
+
+    def _find_step_name_with_suffix_matching(self, available_steps, catalog, class_name: str) -> Optional[str]:
+        """Find step name using suffix matching logic."""
+        suffixes = ["StepBuilder", "Builder", "Step"]
+        for suffix in suffixes:
+            if class_name.endswith(suffix):
+                base_name = class_name[: -len(suffix)]
+                for step_name in available_steps:
+                    step_info = catalog.get_step_info(step_name)
+                    if step_info and step_info.registry_data.get('builder_step_name'):
+                        builder_name = step_info.registry_data['builder_step_name']
+                        if (builder_name.replace("StepBuilder", "").replace("Builder", "") == base_name):
+                            return step_name
+                break
+        return None
+
+    def _find_step_name_legacy(self) -> Optional[str]:
+        """Find step name using legacy registry lookup."""
         class_name = self.builder_class.__name__
 
         # Remove common suffixes to get base name

@@ -3,12 +3,12 @@ Step information detection utilities for universal step builder tests.
 """
 
 from typing import Dict, Any, Optional, Type
+from pathlib import Path
 from ...core.base.builder_base import StepBuilderBase
-from ...registry.step_names import STEP_NAMES, get_sagemaker_step_type
 
 
 class StepInfoDetector:
-    """Detects step information from builder classes."""
+    """Detects step information from builder classes using step catalog."""
 
     def __init__(self, builder_class: Type[StepBuilderBase]):
         """
@@ -19,94 +19,102 @@ class StepInfoDetector:
         """
         self.builder_class = builder_class
         self._step_info = None
+        self._catalog = None
 
     def detect_step_info(self) -> Dict[str, Any]:
         """
-        Detect comprehensive step information from builder class.
+        Detect comprehensive step information from builder class using step catalog.
 
         Returns:
             Dictionary containing step information
         """
         if self._step_info is None:
-            self._step_info = self._analyze_builder_class()
+            self._step_info = self._analyze_builder_class_with_catalog()
         return self._step_info
 
-    def _analyze_builder_class(self) -> Dict[str, Any]:
-        """Analyze builder class to extract step information."""
+    def _get_step_catalog(self):
+        """Get step catalog instance with lazy loading."""
+        if self._catalog is None:
+            try:
+                from ...step_catalog import StepCatalog
+                
+                # Initialize step catalog
+                workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+                self._catalog = StepCatalog(workspace_root)
+            except ImportError:
+                self._catalog = None
+        return self._catalog
+
+    def _analyze_builder_class_with_catalog(self) -> Dict[str, Any]:
+        """Analyze builder class using step catalog for step information."""
         class_name = self.builder_class.__name__
+        catalog = self._get_step_catalog()
+        
+        if catalog:
+            # Use step catalog to find step information
+            step_name = self._find_step_name_via_catalog(class_name, catalog)
+            
+            if step_name:
+                # Get comprehensive step info from catalog
+                step_info = catalog.get_step_info(step_name)
+                if step_info:
+                    # Use catalog's framework detection
+                    framework = catalog.detect_framework(step_name)
+                    
+                    return {
+                        "builder_class_name": class_name,
+                        "step_name": step_name,
+                        "sagemaker_step_type": step_info.sagemaker_step_type,
+                        "framework": framework,
+                        "test_pattern": self._detect_test_pattern(class_name, step_info.sagemaker_step_type),
+                        "is_custom_step": self._is_custom_step(class_name),
+                        "registry_info": step_info.registry_data,
+                    }
+        
+        # Fallback to basic analysis if catalog unavailable
+        return self._fallback_analysis(class_name)
 
-        # Detect step name from class name
-        step_name = self._detect_step_name_from_class(class_name)
-
-        # Get SageMaker step type from registry
-        sagemaker_step_type = get_sagemaker_step_type(step_name) if step_name else None
-
-        # Detect framework from class name or methods
-        framework = self._detect_framework()
-
-        # Detect test pattern
-        test_pattern = self._detect_test_pattern(class_name, sagemaker_step_type)
-
-        return {
-            "builder_class_name": class_name,
-            "step_name": step_name,
-            "sagemaker_step_type": sagemaker_step_type,
-            "framework": framework,
-            "test_pattern": test_pattern,
-            "is_custom_step": self._is_custom_step(class_name),
-            "registry_info": STEP_NAMES.get(step_name, {}) if step_name else {},
-        }
-
-    def _detect_step_name_from_class(self, class_name: str) -> Optional[str]:
-        """Detect step name from builder class name."""
-        # Remove common suffixes
-        suffixes = ["StepBuilder", "Builder", "Step"]
-        base_name = class_name
-        for suffix in suffixes:
-            if base_name.endswith(suffix):
-                base_name = base_name[: -len(suffix)]
-                break
-
-        # Try to find matching step name in registry
-        for step_name, info in STEP_NAMES.items():
-            builder_step_name = info.get("builder_step_name", "")
-            if builder_step_name:
-                # Extract base name from builder step name
-                builder_base = builder_step_name.replace("StepBuilder", "").replace(
-                    "Builder", ""
-                )
-                if builder_base == base_name:
+    def _find_step_name_via_catalog(self, class_name: str, catalog) -> Optional[str]:
+        """Find step name using step catalog's builder class information."""
+        try:
+            # Get all available steps
+            available_steps = catalog.list_available_steps()
+            
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.registry_data.get("builder_step_name") == class_name:
                     return step_name
-
+                    
+        except Exception:
+            pass  # Fall back to basic analysis
+            
         return None
 
-    def _detect_framework(self) -> Optional[str]:
-        """Detect framework used by the builder."""
-        class_name = self.builder_class.__name__.lower()
+    def _fallback_analysis(self, class_name: str) -> Dict[str, Any]:
+        """Fallback analysis when step catalog is unavailable."""
+        return {
+            "builder_class_name": class_name,
+            "step_name": None,
+            "sagemaker_step_type": None,
+            "framework": self._detect_framework_basic(class_name),
+            "test_pattern": "standard",
+            "is_custom_step": self._is_custom_step(class_name),
+            "registry_info": {},
+        }
 
-        # Check for framework indicators in class name
-        if "xgboost" in class_name:
+    def _detect_framework_basic(self, class_name: str) -> Optional[str]:
+        """Basic framework detection from class name."""
+        class_name_lower = class_name.lower()
+        
+        if "xgboost" in class_name_lower:
             return "xgboost"
-        elif "pytorch" in class_name:
+        elif "pytorch" in class_name_lower:
             return "pytorch"
-        elif "tensorflow" in class_name:
+        elif "tensorflow" in class_name_lower:
             return "tensorflow"
-        elif "sklearn" in class_name:
+        elif "sklearn" in class_name_lower:
             return "sklearn"
-
-        # Check for framework indicators in methods
-        method_names = [method.lower() for method in dir(self.builder_class)]
-        method_string = " ".join(method_names)
-
-        if "xgboost" in method_string:
-            return "xgboost"
-        elif "pytorch" in method_string:
-            return "pytorch"
-        elif "tensorflow" in method_string:
-            return "tensorflow"
-        elif "sklearn" in method_string:
-            return "sklearn"
-
+            
         return None
 
     def _detect_test_pattern(
@@ -118,7 +126,7 @@ class StepInfoDetector:
             return "custom_step"
 
         # Check for custom package patterns
-        framework = self._detect_framework()
+        framework = self._detect_framework_basic(class_name)
         if framework and framework != "sklearn":
             return "custom_package"
 

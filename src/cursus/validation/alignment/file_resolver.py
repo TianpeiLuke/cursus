@@ -19,4 +19,4 @@ The sophisticated pattern matching and fuzzy search logic has been replaced
 with precise O(1) dictionary lookups from the unified StepCatalog index.
 """
 
-from cursus.step_catalog.adapters import FlexibleFileResolverAdapter as FlexibleFileResolver
+from ...step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver

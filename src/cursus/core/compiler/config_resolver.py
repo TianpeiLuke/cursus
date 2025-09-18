@@ -25,4 +25,4 @@ The complex DAG node to configuration matching algorithms have been replaced wit
 catalog lookups using the step catalog's config class information.
 """
 
-from cursus.step_catalog.adapters import StepConfigResolverAdapter as StepConfigResolver
+from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver

@@ -21,4 +21,4 @@ and multiple fallback mechanisms have been replaced with precise pattern-based
 lookups from the unified StepCatalog index.
 """
 
-from cursus.step_catalog.adapters import HybridFileResolverAdapter as HybridFileResolver
+from ....step_catalog.adapters.file_resolver import HybridFileResolverAdapter as HybridFileResolver

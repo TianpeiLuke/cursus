@@ -86,7 +86,7 @@ class RegistryStepDiscovery:
     @staticmethod
     def get_builder_class_path(step_name: str) -> Tuple[str, str]:
         """
-        Get the module path and class name for a step builder from registry.
+        Get the module path and class name for a step builder using step catalog.
 
         Args:
             step_name: The step name from the registry
@@ -98,28 +98,35 @@ class RegistryStepDiscovery:
             KeyError: If step_name is not found in registry
             ValueError: If registry entry is missing required information
         """
-        if step_name not in STEP_NAMES:
-            raise KeyError(f"Step '{step_name}' not found in registry")
-
-        step_info = STEP_NAMES[step_name]
-
-        # Get builder class name
-        builder_class_name = step_info.get("builder_step_name")
-        if not builder_class_name:
-            raise ValueError(f"No builder_step_name found for step '{step_name}'")
-
-        # Use dynamic file discovery to find the correct module name
-        module_name = RegistryStepDiscovery._find_builder_module_name(step_name)
-
-        # Construct module path
-        module_path = f"cursus.steps.builders.builder_{module_name}_step"
-
-        return module_path, builder_class_name
+        # Use step catalog for discovery
+        try:
+            from ...step_catalog import StepCatalog
+            from pathlib import Path
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Use catalog's get_builder_class_path method
+            builder_path = catalog.get_builder_class_path(step_name)
+            if builder_path:
+                # Extract module path and class name from builder path
+                if builder_path.startswith('cursus.'):
+                    module_path, class_name = builder_path.rsplit('.', 1)
+                    return module_path, class_name
+                    
+        except ImportError:
+            raise ImportError("Step catalog not available - builder discovery disabled")
+        except Exception as e:
+            raise ValueError(f"Step catalog discovery failed for '{step_name}': {e}")
+            
+        # If we get here, step catalog didn't find the builder
+        raise KeyError(f"Step '{step_name}' not found in step catalog")
 
     @staticmethod
     def load_builder_class(step_name: str) -> Type[StepBuilderBase]:
         """
-        Dynamically load a step builder class from registry information.
+        Dynamically load a step builder class using step catalog.
 
         Args:
             step_name: The step name from the registry
@@ -131,25 +138,27 @@ class RegistryStepDiscovery:
             ImportError: If the module cannot be imported
             AttributeError: If the class cannot be found in the module
         """
-        module_path, class_name = RegistryStepDiscovery.get_builder_class_path(
-            step_name
-        )
-
+        # Use step catalog for loading
         try:
-            # Import the module
-            module = importlib.import_module(module_path)
-
-            # Get the class from the module
-            builder_class = getattr(module, class_name)
-
-            return builder_class
-
-        except ImportError as e:
-            raise ImportError(f"Could not import module '{module_path}': {e}")
-        except AttributeError as e:
-            raise AttributeError(
-                f"Could not find class '{class_name}' in module '{module_path}': {e}"
-            )
+            from ...step_catalog import StepCatalog
+            from pathlib import Path
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Use catalog's load_builder_class method
+            builder_class = catalog.load_builder_class(step_name)
+            if builder_class:
+                return builder_class
+                
+        except ImportError:
+            raise ImportError("Step catalog not available - builder loading disabled")
+        except Exception as e:
+            raise ImportError(f"Step catalog loading failed for '{step_name}': {e}")
+            
+        # If we get here, step catalog didn't find the builder
+        raise AttributeError(f"Builder class for step '{step_name}' not found in step catalog")
 
     @staticmethod
     def get_all_builder_classes_by_type(
@@ -309,121 +318,6 @@ class RegistryStepDiscovery:
 
         return report
 
-    @staticmethod
-    def _find_builder_module_name(step_name: str) -> str:
-        """
-        Dynamically find the correct module name for a step builder by scanning the file system.
-
-        Args:
-            step_name: The step name from the registry
-
-        Returns:
-            The module name (without 'builder_' prefix and '_step' suffix)
-
-        Raises:
-            ValueError: If no matching builder file is found
-        """
-        import os
-        import glob
-
-        # Get the builders directory path
-        current_file = Path(__file__)
-        builders_dir = current_file.parent.parent.parent / "steps" / "builders"
-
-        if not builders_dir.exists():
-            # Fallback to relative path discovery
-            possible_paths = [
-                "src/cursus/steps/builders",
-                "cursus/steps/builders",
-                "steps/builders",
-            ]
-
-            builders_dir = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    builders_dir = Path(path)
-                    break
-
-            if not builders_dir:
-                raise ValueError(
-                    f"Could not find builders directory for step '{step_name}'"
-                )
-
-        # Get all builder files
-        builder_files = list(builders_dir.glob("builder_*_step.py"))
-
-        # Create a mapping of possible step names to file names
-        step_to_file = {}
-        for file_path in builder_files:
-            # Extract module name: builder_xyz_step.py -> xyz
-            file_name = file_path.stem  # removes .py
-            if file_name.startswith("builder_") and file_name.endswith("_step"):
-                module_name = file_name[8:-5]  # Remove "builder_" and "_step"
-                step_to_file[module_name] = module_name
-
-        # Try different matching strategies
-
-        # Strategy 1: Direct lowercase match
-        step_lower = step_name.lower()
-        if step_lower in step_to_file:
-            return step_to_file[step_lower]
-
-        # Strategy 2: Standard camel_to_snake conversion
-        snake_case = RegistryStepDiscovery._camel_to_snake(step_name)
-        if snake_case in step_to_file:
-            return step_to_file[snake_case]
-
-        # Strategy 3: Try partial matches for compound names
-        for module_name in step_to_file.keys():
-            # Check if step_name components match module_name
-            step_parts = step_name.lower().replace("_", "").replace("-", "")
-            module_parts = module_name.lower().replace("_", "").replace("-", "")
-
-            if step_parts == module_parts:
-                return step_to_file[module_name]
-
-        # Strategy 4: Fuzzy matching for known patterns
-        step_normalized = step_name.lower()
-        for module_name in step_to_file.keys():
-            module_normalized = module_name.lower()
-
-            # Handle common abbreviations and variations
-            if (
-                step_normalized.replace("pytorch", "pytorch") == module_normalized
-                or step_normalized.replace("xgboost", "xgboost") == module_normalized
-                or step_normalized.replace("_", "")
-                == module_normalized.replace("_", "")
-            ):
-                return step_to_file[module_name]
-
-        # If no match found, raise an error with helpful information
-        available_modules = list(step_to_file.keys())
-        raise ValueError(
-            f"Could not find builder module for step '{step_name}'. "
-            f"Available modules: {available_modules}. "
-            f"Tried: {step_lower}, {snake_case}"
-        )
-
-    @staticmethod
-    def _camel_to_snake(name: str) -> str:
-        """
-        Convert CamelCase to snake_case.
-
-        Args:
-            name: CamelCase string
-
-        Returns:
-            snake_case string
-        """
-        import re
-
-        # Insert underscore before uppercase letters that follow lowercase letters
-        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
-
-        # Insert underscore before uppercase letters that follow lowercase letters or digits
-        s2 = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1)
-
-        return s2.lower()
 
 
 # Convenience functions for backward compatibility and ease of use

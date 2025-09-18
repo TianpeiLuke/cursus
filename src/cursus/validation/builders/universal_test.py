@@ -479,24 +479,83 @@ class UniversalStepBuilderTest:
         return results
 
     def _infer_step_name(self) -> str:
-        """Infer step name from builder class name."""
+        """Infer step name from builder class name using step catalog with fallback."""
+        # Try using step catalog first
+        try:
+            from ...step_catalog import StepCatalog
+            from pathlib import Path
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Use unified step name matching logic
+            return self._find_step_name_with_catalog(catalog)
+                            
+        except ImportError:
+            pass  # Fall back to legacy method
+        except Exception:
+            pass  # Fall back to legacy method
+
+        # FALLBACK METHOD: Legacy registry lookup
+        return self._find_step_name_legacy()
+
+    def _find_step_name_with_catalog(self, catalog) -> str:
+        """Find step name using step catalog with unified matching logic."""
         class_name = self.builder_class.__name__
+        
+        # Try exact match first
+        available_steps = catalog.list_available_steps()
+        for step_name in available_steps:
+            step_info = catalog.get_step_info(step_name)
+            if step_info and step_info.registry_data.get('builder_step_name'):
+                builder_name = step_info.registry_data['builder_step_name']
+                if builder_name == class_name:
+                    return step_name
+        
+        # Try suffix matching using unified logic
+        return self._find_step_name_with_suffix_matching(available_steps, catalog, class_name)
 
-        # Remove "StepBuilder" suffix
-        if class_name.endswith("StepBuilder"):
-            step_name = class_name[:-11]  # Remove "StepBuilder"
-        else:
-            step_name = class_name
+    def _find_step_name_with_suffix_matching(self, available_steps, catalog, class_name: str) -> str:
+        """Find step name using unified suffix matching logic."""
+        # Extract base name using unified logic
+        base_name = self._extract_base_name(class_name)
+        
+        # Try matching with catalog data
+        for step_name in available_steps:
+            step_info = catalog.get_step_info(step_name)
+            if step_info and step_info.registry_data.get('builder_step_name'):
+                builder_name = step_info.registry_data['builder_step_name']
+                if builder_name.replace("StepBuilder", "") == base_name:
+                    return step_name
+        
+        # Return base name if no match found
+        return base_name
 
-        # Look for matching step name in registry
+    def _find_step_name_legacy(self) -> str:
+        """Find step name using legacy registry lookup with unified logic."""
+        class_name = self.builder_class.__name__
+        
+        # Extract base name using unified logic
+        base_name = self._extract_base_name(class_name)
+
+        # Look for matching step name in registry using unified logic
         for name, info in STEP_NAMES.items():
             if (
                 info.get("builder_step_name", "").replace("StepBuilder", "")
-                == step_name
+                == base_name
             ):
                 return name
 
-        return step_name
+        return base_name
+
+    def _extract_base_name(self, class_name: str) -> str:
+        """Extract base name from builder class name using unified logic."""
+        # Remove "StepBuilder" suffix if present
+        if class_name.endswith("StepBuilder"):
+            return class_name[:-11]  # Remove "StepBuilder"
+        else:
+            return class_name
 
     def _report_consolidated_results_with_scoring(
         self, results: Dict[str, Dict[str, Any]], score_report: Dict[str, Any]
