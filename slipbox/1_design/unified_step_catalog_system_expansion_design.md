@@ -1058,6 +1058,252 @@ The expanded unified step catalog system delivers on the comprehensive expansion
 
 **Architectural Achievement**: Successfully avoided over-engineering while delivering maximum functionality through optimal separation of concerns and adherence to design principles.
 
+## Workspace Data Structures Integration Design
+
+### ComponentInventory and DependencyGraph Recovery
+
+Following the **Separation of Concerns** principle, we have recovered the critical workspace data structures (`ComponentInventory` and `DependencyGraph`) as proper workspace-specific business logic components, separate from the unified step catalog system.
+
+#### Integration Architecture
+
+The step catalog system integrates with these workspace data structures through a **data transformation layer** that maintains strict separation of concerns:
+
+```
+StepCatalog Discovery → ComponentInventory Organization → Workspace Management
+     ↓                           ↓                            ↓
+Raw step metadata    →    Workspace-organized components  →  Business Logic
+```
+
+### ComponentInventory Integration
+
+**Purpose**: Workspace-specific component organization and tracking
+**Location**: `src/cursus/workspace/core/inventory.py`
+**Responsibility**: Transform raw step catalog data into workspace business logic
+
+#### How Integration Works:
+
+```python
+# Step catalog discovers raw components
+steps = catalog.list_available_steps()
+inventory = ComponentInventory()
+
+for step_name in steps:
+    step_info = catalog.get_step_info(step_name)
+    component_id = f"{step_info.workspace_id}:{step_name}"
+    component_info = {
+        "developer_id": step_info.workspace_id,
+        "step_name": step_name,
+        "config_class": step_info.config_class,
+        "sagemaker_step_type": step_info.sagemaker_step_type,
+    }
+    inventory.add_component("builders", component_id, component_info)
+```
+
+#### ComponentInventory Capabilities:
+
+- **Workspace Organization**: Groups components by type (builders, configs, contracts, specs, scripts)
+- **Developer Tracking**: Maintains developer ownership and workspace boundaries
+- **Summary Statistics**: Provides component counts, developer lists, step type tracking
+- **Business Logic Queries**: Workspace-specific component querying and filtering
+
+### DependencyGraph Integration
+
+**Purpose**: Cross-workspace dependency analysis and validation
+**Location**: `src/cursus/workspace/core/dependency_graph.py`
+**Responsibility**: Safety-critical dependency validation using step catalog data
+
+#### How Integration Works:
+
+```python
+# Pipeline definition with cross-workspace dependencies
+pipeline = {
+    "steps": [
+        {"step_name": "data_prep", "developer_id": "alice", "dependencies": []},
+        {"step_name": "model_train", "developer_id": "bob", "dependencies": ["alice:data_prep"]}
+    ]
+}
+
+# DependencyGraph uses StepCatalog for validation
+dep_graph = DependencyGraph()
+for step in pipeline["steps"]:
+    component_id = f"{step['developer_id']}:{step['step_name']}"
+    
+    # Verify component exists using StepCatalog
+    step_info = catalog.get_step_info(step['step_name'])
+    if step_info:
+        dep_graph.add_component(component_id, step)
+        
+        # Add validated dependencies
+        for dep in step.get("dependencies", []):
+            if catalog.get_step_info(dep.split(':')[1]):  # Validate dependency exists
+                dep_graph.add_dependency(component_id, dep)
+
+# Safety-critical circular dependency check
+if dep_graph.has_circular_dependencies():
+    raise DeploymentError("Cannot deploy pipeline with circular dependencies")
+```
+
+#### DependencyGraph Capabilities:
+
+- **Circular Dependency Detection**: Uses DFS with recursion stack tracking (safety-critical)
+- **Cross-Workspace Validation**: Ensures components exist across workspace boundaries
+- **Topological Sorting**: Provides execution order for pipeline deployment
+- **Impact Analysis**: Analyzes effects of component changes across workspaces
+- **Execution Planning**: Groups components by execution levels for parallel processing
+
+### Separation of Concerns Architecture
+
+The integration maintains perfect separation of concerns:
+
+#### StepCatalog Responsibilities (Discovery Layer):
+- **Pure Discovery**: Find and catalog components across workspaces
+- **Component Metadata**: Provide step information and file component details
+- **Existence Verification**: Validate that referenced components exist
+- **No Business Logic**: Contains no workspace management or dependency policies
+
+#### ComponentInventory Responsibilities (Organization Layer):
+- **Workspace Organization**: Group and categorize components by workspace business rules
+- **Developer Tracking**: Maintain developer ownership and workspace boundaries
+- **Summary Statistics**: Generate workspace-specific metrics and reports
+- **Component Querying**: Provide workspace-aware component search and filtering
+
+#### DependencyGraph Responsibilities (Analysis Layer):
+- **Dependency Modeling**: Model complex cross-workspace dependency relationships
+- **Safety Validation**: Prevent circular dependencies that break pipelines
+- **Impact Analysis**: Analyze effects of component changes
+- **Execution Planning**: Provide topological ordering for safe pipeline execution
+
+### Integration Benefits
+
+#### 1. **Maintained Critical Functionality**
+- **ComponentInventory**: Preserves sophisticated workspace component organization
+- **DependencyGraph**: Maintains safety-critical circular dependency detection
+- **Cross-Workspace Analysis**: Enables complex multi-developer pipeline validation
+
+#### 2. **Enhanced with Step Catalog**
+- **Superior Discovery**: Uses step catalog's unified discovery for component detection
+- **Validated Dependencies**: Leverages step catalog's existence verification
+- **Comprehensive Metadata**: Enriches workspace data with step catalog metadata
+
+#### 3. **Clean Architecture**
+- **Single Responsibility**: Each component has one clear purpose
+- **Explicit Dependencies**: Clear interfaces between discovery and business logic
+- **Separation of Concerns**: No business logic in discovery, no discovery in business logic
+
+### Implementation Example
+
+#### WorkspaceDiscoveryManager Integration:
+
+```python
+class WorkspaceDiscoveryManagerAdapter:
+    """Adapter integrating step catalog with workspace data structures."""
+    
+    def __init__(self, workspace_manager):
+        self.workspace_manager = workspace_manager
+        self.catalog = StepCatalog(workspace_manager.workspace_root)
+        
+    def discover_components(self, workspace_ids=None, developer_id=None):
+        """Discover components using step catalog, organize with ComponentInventory."""
+        from ..workspace.core.inventory import ComponentInventory
+        inventory = ComponentInventory()
+        
+        if self.catalog:
+            steps = self.catalog.list_available_steps()
+            for step_name in steps:
+                step_info = self.catalog.get_step_info(step_name)
+                if step_info:
+                    component_id = f"{step_info.workspace_id or 'core'}:{step_name}"
+                    component_info = {
+                        "developer_id": step_info.workspace_id or "core",
+                        "step_name": step_name,
+                        "config_class": step_info.config_class,
+                        "sagemaker_step_type": step_info.sagemaker_step_type,
+                    }
+                    inventory.add_component("builders", component_id, component_info)
+        
+        return inventory.to_dict()
+    
+    def resolve_cross_workspace_dependencies(self, pipeline_definition):
+        """Resolve dependencies using step catalog, validate with DependencyGraph."""
+        from ..workspace.core.dependency_graph import DependencyGraph
+        
+        dep_graph = DependencyGraph()
+        
+        # Extract steps from pipeline definition
+        steps = pipeline_definition.get("steps", [])
+        
+        # Add components to dependency graph with step catalog validation
+        for step in steps:
+            step_name = step.get("step_name", "")
+            workspace_id = step.get("developer_id", step.get("workspace_id", ""))
+            component_id = f"{workspace_id}:{step_name}"
+            
+            # Verify component exists using step catalog
+            step_info = self.catalog.get_step_info(step_name)
+            if step_info:
+                dep_graph.add_component(component_id, step)
+                
+                # Add validated dependencies
+                dependencies = step.get("dependencies", [])
+                for dep in dependencies:
+                    if ":" not in dep:
+                        dep = f"{workspace_id}:{dep}"
+                    
+                    # Validate dependency exists
+                    dep_step_name = dep.split(':')[1]
+                    if self.catalog.get_step_info(dep_step_name):
+                        dep_graph.add_dependency(component_id, dep)
+        
+        # Safety-critical validation
+        resolution_result = {
+            "pipeline_definition": pipeline_definition,
+            "resolved_dependencies": {},
+            "dependency_graph": dep_graph.to_dict(),
+            "issues": [],
+            "warnings": [],
+        }
+        
+        if dep_graph.has_circular_dependencies():
+            resolution_result["issues"].append("Circular dependencies detected")
+        
+        return resolution_result
+```
+
+### Design Principles Compliance
+
+#### ✅ Single Responsibility Principle
+- **StepCatalog**: Single responsibility for component discovery and metadata
+- **ComponentInventory**: Single responsibility for workspace component organization
+- **DependencyGraph**: Single responsibility for dependency analysis and validation
+
+#### ✅ Separation of Concerns
+- **Discovery Layer**: Step catalog handles all discovery operations
+- **Organization Layer**: ComponentInventory handles workspace business logic
+- **Analysis Layer**: DependencyGraph handles dependency validation
+- **Clear Boundaries**: No cross-layer responsibilities
+
+#### ✅ Dependency Inversion Principle
+- Workspace components depend on StepCatalog abstraction for discovery
+- StepCatalog doesn't depend on workspace components
+- Clean dependency flow: Workspace Logic → Discovery Interface
+
+#### ✅ Explicit Dependencies
+- All dependencies clearly declared through constructor injection
+- No hidden dependencies or global state
+- Clear interfaces between all layers
+
+### Strategic Impact
+
+This integration design achieves:
+
+1. **Preserved Critical Functionality**: All sophisticated workspace management capabilities maintained
+2. **Enhanced Discovery**: Superior component discovery through unified step catalog
+3. **Safety-Critical Validation**: Maintained circular dependency detection and cross-workspace validation
+4. **Clean Architecture**: Perfect separation of concerns with explicit dependencies
+5. **Backward Compatibility**: All existing workspace APIs preserved during migration
+
+The design demonstrates how the unified step catalog system can integrate with specialized business logic components while maintaining strict architectural boundaries and preserving critical functionality.
+
 ## References
 
 ### Primary Design Documents
@@ -1071,3 +1317,8 @@ The expanded unified step catalog system delivers on the comprehensive expansion
 ### Supporting Documentation
 - **[Code Redundancy Evaluation Guide](./code_redundancy_evaluation_guide.md)** - Framework for architectural efficiency and redundancy targets
 - **[Documentation YAML Frontmatter Standard](./documentation_yaml_frontmatter_standard.md)** - Documentation metadata format standards
+
+### Workspace Integration References
+- **ComponentInventory Implementation**: `src/cursus/workspace/core/inventory.py` - Workspace component organization and tracking
+- **DependencyGraph Implementation**: `src/cursus/workspace/core/dependency_graph.py` - Cross-workspace dependency analysis and validation
+- **Discovery Integration**: `src/cursus/workspace/core/discovery.py` - Integration layer between step catalog and workspace components
