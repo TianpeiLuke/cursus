@@ -240,7 +240,67 @@ class WorkspaceUnifiedAlignmentTester(UnifiedAlignmentTester):
             }
 
     def _discover_workspace_scripts(self) -> List[str]:
-        """Discover all scripts in the current workspace."""
+        """Discover all scripts in the current workspace using step catalog with fallback."""
+        # Try using step catalog first for enhanced discovery
+        try:
+            return self._discover_workspace_scripts_with_catalog()
+        except ImportError:
+            logger.debug("Step catalog not available, using workspace manager")
+        except Exception as e:
+            logger.warning(f"Step catalog discovery failed: {e}, falling back to workspace manager")
+
+        # FALLBACK METHOD: Use workspace manager and directory scanning
+        return self._discover_workspace_scripts_legacy()
+
+    def _discover_workspace_scripts_with_catalog(self) -> List[str]:
+        """Discover workspace scripts using step catalog."""
+        from ...step_catalog import StepCatalog
+        
+        catalog = StepCatalog(self.workspace_root)
+        
+        # Get cross-workspace components
+        cross_workspace_components = catalog.discover_cross_workspace_components()
+        
+        # Look for scripts in the current developer workspace
+        scripts = []
+        
+        if self.developer_id in cross_workspace_components:
+            components = cross_workspace_components[self.developer_id]
+            
+            for component in components:
+                # Parse component format: "step_name:component_type"
+                if ":" in component:
+                    step_name, component_type = component.split(":", 1)
+                    if component_type.lower() == "script":
+                        scripts.append(step_name)
+                else:
+                    # If no component type specified, check if it looks like a script
+                    if "script" in component.lower():
+                        scripts.append(component)
+        
+        # If no scripts found in developer workspace, check shared workspace if enabled
+        if not scripts and self.enable_shared_fallback and "shared" in cross_workspace_components:
+            shared_components = cross_workspace_components["shared"]
+            
+            for component in shared_components:
+                # Parse component format: "step_name:component_type"
+                if ":" in component:
+                    step_name, component_type = component.split(":", 1)
+                    if component_type.lower() == "script":
+                        scripts.append(step_name)
+                else:
+                    # If no component type specified, check if it looks like a script
+                    if "script" in component.lower():
+                        scripts.append(component)
+        
+        # Remove duplicates and sort
+        scripts = sorted(set(scripts))
+        
+        logger.info(f"Discovered {len(scripts)} scripts via catalog: {scripts}")
+        return scripts
+
+    def _discover_workspace_scripts_legacy(self) -> List[str]:
+        """Legacy method: Discover scripts using workspace manager and directory scanning."""
         try:
             workspace_info = self.workspace_manager.get_workspace_info()
             if (
@@ -267,7 +327,7 @@ class WorkspaceUnifiedAlignmentTester(UnifiedAlignmentTester):
                 script_name = script_file.stem
                 scripts.append(script_name)
 
-            logger.info(f"Discovered {len(scripts)} scripts in workspace: {scripts}")
+            logger.info(f"Discovered {len(scripts)} scripts in workspace (legacy): {scripts}")
             return scripts
 
         except Exception as e:

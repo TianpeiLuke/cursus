@@ -393,7 +393,7 @@ class WorkspaceModuleLoader:
         self, module_type: str = "builders"
     ) -> Dict[str, List[str]]:
         """
-        Discover available modules in workspace.
+        Discover available modules in workspace using step catalog with fallback.
 
         Args:
             module_type: Type of modules to discover (builders, contracts, etc.)
@@ -404,6 +404,63 @@ class WorkspaceModuleLoader:
         if not self.workspace_mode:
             return {}
 
+        # Try using step catalog first for enhanced discovery
+        try:
+            return self._discover_workspace_modules_with_catalog(module_type)
+        except ImportError:
+            logger.debug("Step catalog not available, using directory scanning")
+        except Exception as e:
+            logger.warning(f"Step catalog discovery failed: {e}, falling back to directory scanning")
+
+        # FALLBACK METHOD: Directory scanning
+        return self._discover_workspace_modules_legacy(module_type)
+
+    def _discover_workspace_modules_with_catalog(self, module_type: str) -> Dict[str, List[str]]:
+        """Discover workspace modules using step catalog."""
+        from ...step_catalog import StepCatalog
+        
+        catalog = StepCatalog(self.workspace_root)
+        
+        # Get cross-workspace components
+        cross_workspace_components = catalog.discover_cross_workspace_components()
+        
+        discovered = {}
+        
+        for workspace_id, components in cross_workspace_components.items():
+            # Filter components by module type
+            matching_modules = []
+            
+            for component in components:
+                # Parse component format: "step_name:component_type"
+                if ":" in component:
+                    step_name, component_type = component.split(":", 1)
+                    if component_type.lower() == module_type.lower():
+                        matching_modules.append(step_name)
+                else:
+                    # If no component type specified, check if it matches the module type pattern
+                    if module_type.lower() in component.lower():
+                        matching_modules.append(component)
+            
+            if matching_modules:
+                # Format workspace key consistently
+                if workspace_id == "core":
+                    continue  # Skip core workspace for module discovery
+                elif workspace_id == "shared":
+                    discovered["shared"] = sorted(set(matching_modules))
+                else:
+                    discovered[f"developer:{workspace_id}"] = sorted(set(matching_modules))
+        
+        # If no modules found via catalog, fall back to directory scanning for current workspace
+        if not discovered:
+            return self._discover_workspace_modules_legacy(module_type)
+        
+        logger.debug(f"Discovered {sum(len(modules) for modules in discovered.values())} "
+                    f"{module_type} modules via catalog across {len(discovered)} workspaces")
+        
+        return discovered
+
+    def _discover_workspace_modules_legacy(self, module_type: str) -> Dict[str, List[str]]:
+        """Legacy method: Discover modules using directory scanning."""
         discovered = {}
 
         # Discover in developer workspace

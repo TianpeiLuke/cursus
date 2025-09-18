@@ -127,7 +127,7 @@ class WorkspaceManager:
         self, workspace_root: Optional[Union[str, Path]] = None
     ) -> WorkspaceInfo:
         """
-        Discover and analyze workspace structure.
+        Discover and analyze workspace structure using step catalog with fallback.
 
         Args:
             workspace_root: Root directory to discover (uses instance default if None)
@@ -141,6 +141,90 @@ class WorkspaceManager:
         if not self.workspace_root or not self.workspace_root.exists():
             raise ValueError(f"Workspace root does not exist: {self.workspace_root}")
 
+        # Try using step catalog first
+        try:
+            return self._discover_workspaces_with_catalog()
+        except ImportError:
+            logger.debug("Step catalog not available, using legacy discovery")
+        except Exception as e:
+            logger.warning(f"Step catalog discovery failed: {e}, falling back to legacy")
+
+        # FALLBACK METHOD: Legacy workspace discovery
+        return self._discover_workspaces_legacy()
+
+    def _discover_workspaces_with_catalog(self) -> WorkspaceInfo:
+        """Discover workspaces using step catalog."""
+        from ...step_catalog import StepCatalog
+        
+        catalog = StepCatalog(self.workspace_root)
+        workspace_info = WorkspaceInfo(workspace_root=str(self.workspace_root))
+
+        # Check for shared workspace
+        shared_dir = self.workspace_root / "shared"
+        workspace_info.has_shared = shared_dir.exists()
+
+        # Use catalog to discover workspace components
+        try:
+            # Get all available steps and group by workspace
+            steps = catalog.list_available_steps()
+            workspace_components = {}
+            
+            for step_name in steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.workspace_id:
+                    workspace_id = step_info.workspace_id
+                    if workspace_id not in workspace_components:
+                        workspace_components[workspace_id] = []
+                    workspace_components[workspace_id].append(step_name)
+            
+            # Convert catalog data to developer info
+            developers = []
+            for workspace_id, components in workspace_components.items():
+                if workspace_id != "core" and workspace_id != "shared":
+                    # This is a developer workspace
+                    dev_info = self._create_developer_info_from_catalog(workspace_id, components)
+                    if dev_info:
+                        developers.append(dev_info)
+            
+            workspace_info.developers = sorted(developers, key=lambda d: d.developer_id)
+            workspace_info.total_developers = len(developers)
+            workspace_info.total_modules = sum(dev.module_count for dev in developers)
+            
+            # If catalog found no developers, fall back to legacy discovery
+            if workspace_info.total_developers == 0:
+                logger.debug("Step catalog found no developers, falling back to legacy discovery")
+                developers_dir = self.workspace_root / "developers"
+                if developers_dir.exists():
+                    workspace_info.developers = self._discover_developers_legacy(developers_dir)
+                    workspace_info.total_developers = len(workspace_info.developers)
+                    workspace_info.total_modules = sum(
+                        dev.module_count for dev in workspace_info.developers
+                    )
+            
+        except Exception as e:
+            logger.warning(f"Catalog-based discovery failed: {e}, using legacy for developers")
+            # Fall back to legacy developer discovery
+            developers_dir = self.workspace_root / "developers"
+            if developers_dir.exists():
+                workspace_info.developers = self._discover_developers_legacy(developers_dir)
+                workspace_info.total_developers = len(workspace_info.developers)
+                workspace_info.total_modules = sum(
+                    dev.module_count for dev in workspace_info.developers
+                )
+
+        # Check for workspace config file (same as legacy)
+        workspace_info.config_file = self._find_workspace_config_file()
+
+        self.workspace_info = workspace_info
+        logger.info(
+            f"Discovered workspace with {workspace_info.total_developers} "
+            f"developers and {workspace_info.total_modules} modules (via catalog)"
+        )
+
+        return workspace_info
+
+    def _discover_workspaces_legacy(self) -> WorkspaceInfo:
+        """Legacy workspace discovery method."""
         workspace_info = WorkspaceInfo(workspace_root=str(self.workspace_root))
 
         # Check for shared workspace
@@ -150,13 +234,61 @@ class WorkspaceManager:
         # Discover developer workspaces
         developers_dir = self.workspace_root / "developers"
         if developers_dir.exists():
-            workspace_info.developers = self._discover_developers(developers_dir)
+            workspace_info.developers = self._discover_developers_legacy(developers_dir)
             workspace_info.total_developers = len(workspace_info.developers)
             workspace_info.total_modules = sum(
                 dev.module_count for dev in workspace_info.developers
             )
 
         # Check for workspace config file
+        workspace_info.config_file = self._find_workspace_config_file()
+
+        self.workspace_info = workspace_info
+        logger.info(
+            f"Discovered workspace with {workspace_info.total_developers} "
+            f"developers and {workspace_info.total_modules} modules (legacy)"
+        )
+
+        return workspace_info
+
+    def _create_developer_info_from_catalog(self, workspace_id: str, components: List[str]) -> Optional[DeveloperInfo]:
+        """Create DeveloperInfo from catalog component data."""
+        # Determine workspace path
+        developers_dir = self.workspace_root / "developers"
+        workspace_path = developers_dir / workspace_id
+        
+        if not workspace_path.exists():
+            return None
+
+        dev_info = DeveloperInfo(
+            developer_id=workspace_id,
+            workspace_path=str(workspace_path)
+        )
+
+        # Analyze components to determine what types are available
+        has_builders = any("builder" in comp.lower() for comp in components)
+        has_contracts = any("contract" in comp.lower() for comp in components)
+        has_specs = any("spec" in comp.lower() for comp in components)
+        has_scripts = any("script" in comp.lower() for comp in components)
+        has_configs = any("config" in comp.lower() for comp in components)
+
+        dev_info.has_builders = has_builders
+        dev_info.has_contracts = has_contracts
+        dev_info.has_specs = has_specs
+        dev_info.has_scripts = has_scripts
+        dev_info.has_configs = has_configs
+        dev_info.module_count = len(components)
+
+        # Get last modified time
+        try:
+            dev_info.last_modified = str(int(workspace_path.stat().st_mtime))
+        except OSError:
+            pass
+
+        return dev_info
+
+    def _find_workspace_config_file(self) -> Optional[str]:
+        """Find workspace configuration file."""
         config_candidates = [
             self.workspace_root / "workspace.json",
             self.workspace_root / "workspace.yaml",
@@ -167,19 +299,12 @@ class WorkspaceManager:
 
         for config_path in config_candidates:
             if config_path.exists():
-                workspace_info.config_file = str(config_path)
-                break
+                return str(config_path)
+        
+        return None
 
-        self.workspace_info = workspace_info
-        logger.info(
-            f"Discovered workspace with {workspace_info.total_developers} "
-            f"developers and {workspace_info.total_modules} modules"
-        )
-
-        return workspace_info
-
-    def _discover_developers(self, developers_dir: Path) -> List[DeveloperInfo]:
-        """Discover developer workspaces in developers directory."""
+    def _discover_developers_legacy(self, developers_dir: Path) -> List[DeveloperInfo]:
+        """Legacy method: Discover developer workspaces in developers directory."""
         developers = []
 
         for item in developers_dir.iterdir():
@@ -234,6 +359,10 @@ class WorkspaceManager:
             developers.append(dev_info)
 
         return sorted(developers, key=lambda d: d.developer_id)
+
+    def _discover_developers(self, developers_dir: Path) -> List[DeveloperInfo]:
+        """Discover developer workspaces in developers directory (legacy compatibility)."""
+        return self._discover_developers_legacy(developers_dir)
 
     def validate_workspace_structure(
         self, workspace_root: Optional[Union[str, Path]] = None, strict: bool = False

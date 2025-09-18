@@ -397,13 +397,90 @@ class WorkspaceTestManager:
 
     def discover_test_workspaces(self) -> Dict[str, Any]:
         """
-        Discover test workspaces using Phase 1 discovery manager.
+        Discover test workspaces using step catalog with Phase 1 discovery manager fallback.
 
         Returns:
             Dictionary containing discovered test workspace information
         """
-        logger.info("Discovering test workspaces using Phase 1 discovery manager")
+        logger.info("Discovering test workspaces using step catalog with fallback")
 
+        # Try using step catalog first for enhanced discovery
+        try:
+            return self._discover_test_workspaces_with_catalog()
+        except ImportError:
+            logger.debug("Step catalog not available, using Phase 1 discovery manager")
+        except Exception as e:
+            logger.warning(f"Step catalog discovery failed: {e}, falling back to Phase 1 manager")
+
+        # FALLBACK METHOD: Use Phase 1 discovery manager
+        return self._discover_test_workspaces_with_phase1()
+
+    def _discover_test_workspaces_with_catalog(self) -> Dict[str, Any]:
+        """Discover test workspaces using step catalog."""
+        from ...step_catalog import StepCatalog
+        
+        catalog = StepCatalog(self.core_workspace_manager.workspace_root)
+        
+        # Get cross-workspace components
+        cross_workspace_components = catalog.discover_cross_workspace_components()
+        
+        # Filter for test workspaces (workspaces with "test" in the name or test-specific patterns)
+        test_workspaces = {}
+        
+        for workspace_id, components in cross_workspace_components.items():
+            if (workspace_id.startswith("test_") or 
+                "test" in workspace_id.lower() or
+                any("test" in comp.lower() for comp in components)):
+                
+                # Determine workspace path
+                if workspace_id == "shared":
+                    workspace_path = str(self.core_workspace_manager.workspace_root / "shared")
+                elif workspace_id == "core":
+                    workspace_path = str(self.core_workspace_manager.workspace_root)
+                else:
+                    workspace_path = str(self.core_workspace_manager.workspace_root / "developers" / workspace_id)
+                
+                workspace_info = {
+                    "workspace_id": workspace_id,
+                    "workspace_type": "test" if workspace_id.startswith("test_") else "development",
+                    "workspace_path": workspace_path,
+                    "components": components,
+                    "component_count": len(components),
+                    "has_builders": any("builder" in comp.lower() for comp in components),
+                    "has_contracts": any("contract" in comp.lower() for comp in components),
+                    "has_specs": any("spec" in comp.lower() for comp in components),
+                    "has_scripts": any("script" in comp.lower() for comp in components),
+                    "has_configs": any("config" in comp.lower() for comp in components),
+                    "metadata": {
+                        "discovery_method": "step_catalog",
+                        "components": components
+                    }
+                }
+                test_workspaces[workspace_id] = workspace_info
+
+        # Update active test environments
+        for workspace_id, workspace_info in test_workspaces.items():
+            if workspace_id not in self.active_test_environments:
+                # Create test environment entry for discovered test workspace
+                test_env = WorkspaceTestEnvironment(
+                    test_id=workspace_id.replace("test_", "") if workspace_id.startswith("test_") else workspace_id,
+                    workspace_id=workspace_id,
+                    environment_path=workspace_info.get("workspace_path", ""),
+                    test_type="discovered",
+                    metadata=workspace_info.get("metadata", {}),
+                )
+                self.active_test_environments[workspace_id] = test_env
+
+        logger.info(f"Discovered {len(test_workspaces)} test workspaces (via catalog)")
+        return {
+            "test_workspaces": test_workspaces,
+            "total_test_workspaces": len(test_workspaces),
+            "discovery_timestamp": datetime.now().isoformat(),
+            "discovery_method": "step_catalog"
+        }
+
+    def _discover_test_workspaces_with_phase1(self) -> Dict[str, Any]:
+        """Fallback: Discover test workspaces using Phase 1 discovery manager."""
         try:
             # Use Phase 1 discovery manager for workspace discovery
             discovery_result = self.discovery_manager.discover_workspaces(
@@ -432,11 +509,12 @@ class WorkspaceTestManager:
                     )
                     self.active_test_environments[workspace_id] = test_env
 
-            logger.info(f"Discovered {len(test_workspaces)} test workspaces")
+            logger.info(f"Discovered {len(test_workspaces)} test workspaces (via Phase 1)")
             return {
                 "test_workspaces": test_workspaces,
                 "total_test_workspaces": len(test_workspaces),
                 "discovery_timestamp": datetime.now().isoformat(),
+                "discovery_method": "phase1_discovery_manager"
             }
 
         except Exception as e:

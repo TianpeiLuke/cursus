@@ -60,7 +60,7 @@ class WorkspaceTypeDetector:
 
     def detect_workspaces(self) -> Dict[str, Any]:
         """
-        Returns unified workspace dictionary regardless of workspace type.
+        Returns unified workspace dictionary regardless of workspace type using step catalog with fallback.
 
         This method normalizes workspace detection to always return a dictionary
         where keys are workspace identifiers and values are workspace information.
@@ -79,7 +79,50 @@ class WorkspaceTypeDetector:
 
         logger.info(f"Detecting workspace structure at: {self.workspace_root}")
 
-        # Discover workspace structure
+        # Try using step catalog first for enhanced detection
+        try:
+            self._detected_workspaces = self._detect_workspaces_with_catalog()
+            if self._detected_workspaces:
+                logger.info(
+                    f"Detected {self._workspace_type} workspace with "
+                    f"{len(self._detected_workspaces)} workspace(s) (via catalog)"
+                )
+                return self._detected_workspaces
+        except ImportError:
+            logger.debug("Step catalog not available, using workspace manager")
+        except Exception as e:
+            logger.warning(f"Step catalog detection failed: {e}, falling back to workspace manager")
+
+        # FALLBACK METHOD: Use workspace manager (which has its own catalog fallback)
+        return self._detect_workspaces_with_manager()
+
+    def _detect_workspaces_with_catalog(self) -> Dict[str, Any]:
+        """Detect workspaces using step catalog directly."""
+        from ...step_catalog import StepCatalog
+        
+        catalog = StepCatalog(self.workspace_root)
+        
+        # Get cross-workspace components
+        cross_workspace_components = catalog.discover_cross_workspace_components()
+        
+        # Determine workspace type based on catalog data
+        developer_workspaces = {
+            ws_id: components for ws_id, components in cross_workspace_components.items()
+            if ws_id not in ["core", "shared"]
+        }
+        
+        if len(developer_workspaces) > 0:
+            # Multi-workspace scenario
+            self._workspace_type = "multi"
+            return self._create_multi_workspace_dict_from_catalog(cross_workspace_components)
+        else:
+            # Single workspace scenario
+            self._workspace_type = "single"
+            return self._create_single_workspace_dict_from_catalog(cross_workspace_components)
+
+    def _detect_workspaces_with_manager(self) -> Dict[str, Any]:
+        """Fallback: Detect workspaces using workspace manager."""
+        # Discover workspace structure using workspace manager
         try:
             self._workspace_info = self.workspace_manager.discover_workspaces()
         except Exception as e:
@@ -97,10 +140,96 @@ class WorkspaceTypeDetector:
 
         logger.info(
             f"Detected {self._workspace_type} workspace with "
-            f"{len(self._detected_workspaces)} workspace(s)"
+            f"{len(self._detected_workspaces)} workspace(s) (via manager)"
         )
 
         return self._detected_workspaces
+
+    def _create_multi_workspace_dict_from_catalog(self, cross_workspace_components: Dict[str, list]) -> Dict[str, Any]:
+        """Create multi-workspace dictionary from catalog data."""
+        workspaces = {}
+        
+        for workspace_id, components in cross_workspace_components.items():
+            if workspace_id in ["core"]:
+                continue  # Skip core workspace
+                
+            if workspace_id == "shared":
+                # Add shared workspace
+                shared_info = {
+                    "workspace_id": "shared",
+                    "workspace_type": "shared",
+                    "workspace_path": str(self.workspace_root / "shared"),
+                    "developer_info": {
+                        "developer_id": "shared",
+                        "has_builders": any("builder" in comp.lower() for comp in components),
+                        "has_contracts": any("contract" in comp.lower() for comp in components),
+                        "has_specs": any("spec" in comp.lower() for comp in components),
+                        "has_scripts": any("script" in comp.lower() for comp in components),
+                        "has_configs": any("config" in comp.lower() for comp in components),
+                        "module_count": len(components),
+                        "last_modified": None,
+                    },
+                    "workspace_root": str(self.workspace_root),
+                    "has_shared_fallback": False,
+                }
+                workspaces["shared"] = shared_info
+            else:
+                # Developer workspace
+                workspace_path = self.workspace_root / "developers" / workspace_id
+                if workspace_path.exists():
+                    workspace_info = {
+                        "workspace_id": workspace_id,
+                        "workspace_type": "developer",
+                        "workspace_path": str(workspace_path),
+                        "developer_info": {
+                            "developer_id": workspace_id,
+                            "has_builders": any("builder" in comp.lower() for comp in components),
+                            "has_contracts": any("contract" in comp.lower() for comp in components),
+                            "has_specs": any("spec" in comp.lower() for comp in components),
+                            "has_scripts": any("script" in comp.lower() for comp in components),
+                            "has_configs": any("config" in comp.lower() for comp in components),
+                            "module_count": len(components),
+                            "last_modified": None,
+                        },
+                        "workspace_root": str(self.workspace_root),
+                        "has_shared_fallback": "shared" in cross_workspace_components,
+                    }
+                    workspaces[workspace_id] = workspace_info
+        
+        return workspaces
+
+    def _create_single_workspace_dict_from_catalog(self, cross_workspace_components: Dict[str, list]) -> Dict[str, Any]:
+        """Create single workspace dictionary from catalog data."""
+        # Check if shared workspace exists
+        if "shared" in cross_workspace_components:
+            components = cross_workspace_components["shared"]
+            workspace_path = str(self.workspace_root / "shared")
+            workspace_type = "shared"
+        else:
+            # Use core components or empty
+            components = cross_workspace_components.get("core", [])
+            workspace_path = str(self.workspace_root)
+            workspace_type = "single"
+
+        workspace_info = {
+            "workspace_id": "default",
+            "workspace_type": workspace_type,
+            "workspace_path": workspace_path,
+            "developer_info": {
+                "developer_id": "default",
+                "has_builders": any("builder" in comp.lower() for comp in components),
+                "has_contracts": any("contract" in comp.lower() for comp in components),
+                "has_specs": any("spec" in comp.lower() for comp in components),
+                "has_scripts": any("script" in comp.lower() for comp in components),
+                "has_configs": any("config" in comp.lower() for comp in components),
+                "module_count": len(components),
+                "last_modified": None,
+            },
+            "workspace_root": str(self.workspace_root),
+            "has_shared_fallback": False,
+        }
+
+        return {"default": workspace_info}
 
     def is_single_workspace(self) -> bool:
         """

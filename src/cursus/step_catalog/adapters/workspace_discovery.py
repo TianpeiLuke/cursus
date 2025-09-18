@@ -56,27 +56,34 @@ class WorkspaceDiscoveryManagerAdapter:
             if developers_dir.exists():
                 for item in developers_dir.iterdir():
                     if item.is_dir():
+                        # Count components in this workspace
+                        component_count = self._count_workspace_components(item)
+                        
                         workspace_info = {
                             "workspace_id": item.name,
                             "workspace_path": str(item),
                             "developer_id": item.name,
                             "workspace_type": "developer",
-                            "component_count": 0,
+                            "component_count": component_count,
                         }
                         discovery_result["workspaces"].append(workspace_info)
                         discovery_result["summary"]["total_developers"] += 1
+                        discovery_result["summary"]["total_components"] += component_count
             
             # Discover shared workspace
             shared_dir = workspace_root / "shared"
             if shared_dir.exists():
+                component_count = self._count_workspace_components(shared_dir)
+                
                 shared_workspace = {
                     "workspace_id": "shared",
                     "workspace_path": str(shared_dir),
                     "developer_id": None,
                     "workspace_type": "shared",
-                    "component_count": 0,
+                    "component_count": component_count,
                 }
                 discovery_result["workspaces"].append(shared_workspace)
+                discovery_result["summary"]["total_components"] += component_count
             
             discovery_result["summary"]["total_workspaces"] = len(discovery_result["workspaces"])
             return discovery_result
@@ -85,26 +92,74 @@ class WorkspaceDiscoveryManagerAdapter:
             self.logger.error(f"Error discovering workspaces: {e}")
             return {"error": str(e)}
     
+    def _count_workspace_components(self, workspace_path: Path) -> int:
+        """Count components in a workspace directory."""
+        try:
+            component_count = 0
+            cursus_dev_path = workspace_path / "src" / "cursus_dev" / "steps"
+            
+            if cursus_dev_path.exists():
+                # Count builders
+                builders_path = cursus_dev_path / "builders"
+                if builders_path.exists():
+                    component_count += len([f for f in builders_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
+                
+                # Count configs
+                configs_path = cursus_dev_path / "configs"
+                if configs_path.exists():
+                    component_count += len([f for f in configs_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
+                
+                # Count contracts
+                contracts_path = cursus_dev_path / "contracts"
+                if contracts_path.exists():
+                    component_count += len([f for f in contracts_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
+                
+                # Count specs
+                specs_path = cursus_dev_path / "specs"
+                if specs_path.exists():
+                    component_count += len([f for f in specs_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
+                
+                # Count scripts
+                scripts_path = cursus_dev_path / "scripts"
+                if scripts_path.exists():
+                    component_count += len([f for f in scripts_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
+            
+            return component_count
+            
+        except Exception as e:
+            self.logger.error(f"Error counting components in {workspace_path}: {e}")
+            return 0
+    
     def discover_components(self, workspace_ids: Optional[List[str]] = None, developer_id: Optional[str] = None) -> Dict[str, Any]:
         """Legacy method: discover components in workspace."""
         try:
+            # Check if workspace root is configured
+            if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root') or self.workspace_manager.workspace_root is None:
+                return {"error": "No workspace root configured"}
+            
             from ...workspace.core.inventory import ComponentInventory
             inventory = ComponentInventory()
             
-            if self.catalog:
+            # Only discover components if we have specific workspace constraints
+            # This respects workspace isolation - empty workspaces should return empty results
+            if self.catalog and (workspace_ids or developer_id):
+                # Filter by specific workspace IDs if provided
+                target_workspaces = workspace_ids or ([developer_id] if developer_id else [])
+                
                 steps = self.catalog.list_available_steps()
                 for step_name in steps:
                     step_info = self.catalog.get_step_info(step_name)
-                    if step_info:
-                        component_id = f"{step_info.workspace_id or 'core'}:{step_name}"
+                    if step_info and step_info.workspace_id in target_workspaces:
+                        component_id = f"{step_info.workspace_id}:{step_name}"
                         component_info = {
-                            "developer_id": step_info.workspace_id or "core",
+                            "developer_id": step_info.workspace_id,
                             "step_name": step_name,
                             "config_class": step_info.config_class,
                             "sagemaker_step_type": step_info.sagemaker_step_type,
                         }
                         inventory.add_component("builders", component_id, component_info)
             
+            # If no workspace constraints, return empty inventory (respects workspace isolation)
             return inventory.to_dict()
             
         except Exception as e:
@@ -163,7 +218,7 @@ class WorkspaceDiscoveryManagerAdapter:
     
     def get_file_resolver(self, developer_id: Optional[str] = None, **kwargs):
         """Legacy method: get file resolver."""
-        if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root'):
+        if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root') or self.workspace_manager.workspace_root is None:
             raise ValueError("No workspace root configured")
         
         from .file_resolver import DeveloperWorkspaceFileResolverAdapter
@@ -174,7 +229,7 @@ class WorkspaceDiscoveryManagerAdapter:
     
     def get_module_loader(self, developer_id: Optional[str] = None, **kwargs):
         """Legacy method: get module loader."""
-        if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root'):
+        if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root') or self.workspace_manager.workspace_root is None:
             raise ValueError("No workspace root configured")
         
         # Return a mock module loader for now
