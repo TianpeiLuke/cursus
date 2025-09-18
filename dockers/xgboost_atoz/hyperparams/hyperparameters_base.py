@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator, PrivateAttr
+from pydantic import BaseModel, Field, model_validator, PrivateAttr, ConfigDict
 from typing import List, Union, Dict, Any, Optional, ClassVar
 import json
 from io import StringIO
@@ -82,11 +82,12 @@ class ModelHyperparameters(BaseModel):
     _is_binary: Optional[bool] = PrivateAttr(default=None)
     _num_classes: Optional[int] = PrivateAttr(default=None)
 
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
-        extra = "allow"  # Changed from "forbid" to "allow" to fix circular reference handling
-        protected_namespaces = ()
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="allow",  # Changed from "forbid" to "allow" to fix circular reference handling
+        protected_namespaces=(),
+    )
 
     # Public read-only properties for derived fields
 
