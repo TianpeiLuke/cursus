@@ -46,6 +46,113 @@ Each of these outputs must be stored in well-defined locations to ensure:
 - Proper cleanup of temporary files
 - Compatibility with SageMaker Pipeline execution
 
+### The Portability Challenge
+
+The current system faces a critical portability issue when configurations are saved and used by external systems:
+
+1. **Configuration Serialization**: When users call `merge_and_save_configs()` from `cursus/steps/configs/utils.py`, all computed values including `pipeline_s3_loc` are serialized into the JSON configuration file.
+
+2. **Hard-coded S3 Paths**: The `pipeline_s3_loc` property in `BasePipelineConfig` generates paths like:
+   ```
+   s3://user-bucket/MODS/author-service-xgboost-NA_1.0/
+   ```
+   These paths are specific to the user's AWS account and configuration.
+
+3. **External System Limitations**: When external systems load these saved configurations to trigger the pipeline DAG compiler, they cannot modify the pre-computed S3 paths without editing the configuration file.
+
+4. **Static Path Construction**: Step builders use string interpolation with these hard-coded paths:
+   ```python
+   destination = f"{self.config.pipeline_s3_loc}/packaging/{logical_name}"
+   ```
+   This approach cannot adapt to runtime parameters.
+
+### Current System Architecture
+
+The pipeline generation flow currently follows this pattern:
+
+```
+BasePipelineConfig.pipeline_s3_loc → merge_and_save_configs() → JSON Config → 
+External System → PipelineDAGCompiler → DynamicPipelineTemplate → 
+PipelineAssembler → StepBuilders → Hard-coded output paths
+```
+
+This architecture creates a dependency on the original user's AWS environment and prevents true portability across different execution contexts.
+
+### Required Parameter Flow Architecture
+
+To achieve true portability, the system must support a comprehensive parameter flow from external systems through all layers:
+
+```mermaid
+flowchart TD
+    A[External System] --> B[DAGCompiler]
+    B --> C[DynamicTemplate]
+    C --> D[PipelineTemplateBase]
+    D --> E[PipelineAssembler]
+    E --> F[StepBuilders]
+    
+    A --> A1[Provide Complete<br/>Parameter Set]
+    B --> B1[Store Parameters<br/>Internally]
+    C --> C1[Override _get_pipeline_parameters<br/>Method]
+    D --> D1[Call _get_pipeline_parameters<br/>Bridge to Assembler]
+    E --> E1[Extract PIPELINE_EXECUTION_TEMP_DIR<br/>Pass to Builders]
+    F --> F1[Apply Join Pattern<br/>for Path Construction]
+    
+    A1 -.-> B1
+    B1 -.-> C1
+    C1 -.-> D1
+    D1 -.-> E1
+    E1 -.-> F1
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#fce4ec
+    style F fill:#f1f8e9
+```
+
+#### Complete Parameter Set
+
+External systems must be able to provide the full set of pipeline parameters:
+
+```python
+# Complete parameter set from mods_workflow_core.utils.constants
+PIPELINE_EXECUTION_TEMP_DIR           # Primary: output destinations
+KMS_ENCRYPTION_KEY_PARAM             # Security: encryption
+PROCESSING_JOB_SHARED_NETWORK_CONFIG # Network: shared config object
+SECURITY_GROUP_ID                    # Network: security groups
+VPC_SUBNET                           # Network: VPC configuration
+```
+
+#### Key Architecture Components
+
+**1. DAGCompiler Parameter Storage**
+- Accept complete parameter set from external systems
+- Store parameters internally for template creation
+- Pass parameters to template during instantiation
+
+**2. PipelineTemplateBase Parameter Management**
+- Add internal parameter storage attribute
+- Provide setter method for parameter injection
+- Override `_get_pipeline_parameters()` to return stored parameters
+- Bridge parameters to PipelineAssembler via existing connection
+
+**3. DynamicPipelineTemplate Parameter Integration**
+- Inherit parameter storage from PipelineTemplateBase
+- No longer generate parameters internally
+- Use parent's parameter management system
+- Maintain backward compatibility
+
+**4. PipelineAssembler Parameter Distribution**
+- Extract PIPELINE_EXECUTION_TEMP_DIR for step builders
+- Use other parameters for network and security configuration
+- Pass execution prefix to builders during initialization
+
+**5. StepBuilder Parameter Application**
+- Use `_get_base_output_path()` for intelligent path resolution
+- Apply `Join()` pattern for all path construction
+- Ensure proper parameter substitution at runtime
+
 ## Current Architecture
 
 ### Output Path Resolution Strategy

@@ -180,6 +180,20 @@ class PipelineAssembler:
                     registry_manager=self._registry_manager,  # Pass component
                     dependency_resolver=self._dependency_resolver,  # Pass component
                 )
+                
+                # Pass execution prefix to the builder using the public method
+                # Find PIPELINE_EXECUTION_TEMP_DIR in pipeline_parameters and pass it to the builder
+                execution_prefix = None
+                for param in self.pipeline_parameters:
+                    if hasattr(param, "name") and param.name == "EXECUTION_S3_PREFIX":
+                        execution_prefix = param
+                        break
+                
+                if execution_prefix:
+                    builder.set_execution_prefix(execution_prefix)
+                    logger.info(f"Set execution prefix for {step_name}")
+                # If no PIPELINE_EXECUTION_TEMP_DIR found, builder will fall back to config.pipeline_s3_loc
+                
                 self.step_builders[step_name] = builder
                 logger.info(
                     f"Initialized builder for step {step_name} of type {step_type}"
@@ -273,7 +287,8 @@ class PipelineAssembler:
         Generate outputs dictionary using step builder's specification.
 
         This implementation leverages the step builder's specification
-        to generate appropriate outputs.
+        to generate appropriate outputs using the new _get_base_output_path method
+        and Join() for proper ParameterString support.
 
         Args:
             step_name: Name of the step to generate outputs for
@@ -282,7 +297,6 @@ class PipelineAssembler:
             Dictionary with output paths based on specification
         """
         builder = self.step_builders[step_name]
-        config = self.config_map[step_name]
 
         # If builder has no specification, return empty dict
         if not hasattr(builder, "spec") or not builder.spec:
@@ -291,8 +305,8 @@ class PipelineAssembler:
             )
             return {}
 
-        # Get base S3 location - single source of truth
-        base_s3_loc = getattr(config, "pipeline_s3_loc", "s3://default-bucket/pipeline")
+        # Get base S3 location using the new method that supports PIPELINE_EXECUTION_TEMP_DIR
+        base_s3_loc = builder._get_base_output_path()
 
         # Generate outputs dictionary based on specification
         outputs = {}
@@ -300,8 +314,9 @@ class PipelineAssembler:
 
         # Use each output specification to generate standard output path
         for logical_name, output_spec in builder.spec.outputs.items():
-            # Standard path pattern: {base_s3_loc}/{step_type}/{logical_name}
-            outputs[logical_name] = f"{base_s3_loc}/{step_type}/{logical_name}"
+            # Standard path pattern using Join instead of f-string to ensure proper parameter substitution
+            from sagemaker.workflow.functions import Join
+            outputs[logical_name] = Join(on="/", values=[base_s3_loc, step_type, logical_name])
 
             # Add debug log
             logger.debug(

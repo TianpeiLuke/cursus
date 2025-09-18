@@ -300,6 +300,7 @@ class StepBuilderBase(ABC):
         self.notebook_root = notebook_root or Path.cwd()
         self._registry_manager = registry_manager
         self._dependency_resolver = dependency_resolver
+        self.execution_prefix: Optional[Union[str, Any]] = None  # Initialize execution prefix for PIPELINE_EXECUTION_TEMP_DIR support
 
         # Get contract from specification if available, or directly from config
         self.contract = getattr(spec, "script_contract", None) if spec else None
@@ -640,6 +641,49 @@ class StepBuilderBase(ABC):
 
         # If we end up with an empty list, return None instead
         return None
+
+    def set_execution_prefix(self, execution_prefix: Optional[Union[str, Any]] = None) -> None:
+        """
+        Set the execution prefix for dynamic output path resolution.
+        
+        This method is called by PipelineAssembler to provide the execution prefix
+        that step builders use for dynamic output path generation.
+        
+        Based on analysis of regional_xgboost.py, only PIPELINE_EXECUTION_TEMP_DIR
+        is used by step builders for output paths. Other pipeline parameters 
+        (KMS_ENCRYPTION_KEY_PARAM, VPC_SUBNET, SECURITY_GROUP_ID) are used at
+        the pipeline level, not in step builders.
+        
+        Args:
+            execution_prefix: The execution prefix that can be either:
+                           - ParameterString: PIPELINE_EXECUTION_TEMP_DIR from pipeline parameters
+                           - str: config.pipeline_s3_loc as fallback
+                           - None: No parameter found, will fall back to config.pipeline_s3_loc
+        """
+        self.execution_prefix = execution_prefix
+        self.log_debug("Set execution prefix: %s", execution_prefix)
+
+    def _get_base_output_path(self) -> Union[str, Any]:
+        """
+        Get base path for output destinations with PIPELINE_EXECUTION_TEMP_DIR support.
+        
+        This method checks for the execution_prefix (set by PipelineAssembler) and falls
+        back to the traditional pipeline_s3_loc from config.
+        
+        Returns:
+            The base path for output destinations. Returns a ParameterString if
+            execution_prefix was set from PIPELINE_EXECUTION_TEMP_DIR, otherwise 
+            returns the string value from config.pipeline_s3_loc.
+        """
+        # Check if execution_prefix has been set by PipelineAssembler
+        if hasattr(self, "execution_prefix") and self.execution_prefix is not None:
+            self.log_info("Using execution_prefix for base output path")
+            return self.execution_prefix
+        
+        # Fall back to pipeline_s3_loc from config (current behavior)
+        base_path = self.config.pipeline_s3_loc
+        self.log_debug("No execution_prefix set, using config.pipeline_s3_loc for base output path")
+        return base_path
 
     @abstractmethod
     def validate_configuration(self) -> None:

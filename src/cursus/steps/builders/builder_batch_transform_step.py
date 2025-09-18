@@ -243,32 +243,40 @@ class BatchTransformStepBuilder(StepBuilderBase):
 
     def _get_outputs(self, outputs: Dict[str, Any]) -> Dict[str, str]:
         """
-        Process outputs based on specification.
+        Process outputs based on specification using consistent folder structure.
 
-        For batch transform, this simply returns a dictionary of output information
-        for reference, as the TransformStep doesn't take explicit output destinations.
+        For batch transform, this returns a dictionary of output information with
+        consistent path structure using the base output path and Join pattern.
 
         Args:
             outputs: Output destinations keyed by logical name
 
         Returns:
-            Dictionary of output information
+            Dictionary of output information with consistent path structure
         """
-        # No explicit outputs need to be configured for TransformStep
-        # Just log the outputs that will be available
         result = {}
 
-        # If we have a specification, include output information
+        # Get the base output path (using PIPELINE_EXECUTION_TEMP_DIR if available)
+        base_output_path = self._get_base_output_path()
+
+        # If we have a specification, include output information with consistent paths
         if self.spec:
+            step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'batch_transform'
+            
             for output_spec in self.spec.outputs.values():
                 logical_name = output_spec.logical_name
                 if logical_name in outputs:
-                    # If explicit output path provided
+                    # If explicit output path provided, use it
                     result[logical_name] = outputs[logical_name]
                 else:
-                    # Default transform output path will be determined by SageMaker
-                    result[logical_name] = (
-                        f"Will be available at: {output_spec.property_path}"
+                    # Generate consistent output path using Join pattern
+                    from sagemaker.workflow.functions import Join
+                    consistent_path = Join(on="/", values=[base_output_path, step_type, logical_name])
+                    result[logical_name] = consistent_path
+                    self.log_info(
+                        "Generated consistent output path for '%s': %s",
+                        logical_name,
+                        consistent_path,
                     )
 
         self.log_info("Transform step will produce outputs: %s", list(result.keys()))

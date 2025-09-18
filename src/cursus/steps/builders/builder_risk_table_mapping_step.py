@@ -488,8 +488,10 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             if logical_name in outputs:
                 destination = outputs[logical_name]
             else:
-                # Generate destination from config
-                destination = f"{self.config.pipeline_s3_loc}/risk_table_mapping/{self.config.job_type}/{logical_name}"
+                # Generate destination using base output path and Join for parameter compatibility
+                from sagemaker.workflow.functions import Join
+                base_output_path = self._get_base_output_path()
+                destination = Join(on="/", values=[base_output_path, "risk_table_mapping", self.config.job_type, logical_name])
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

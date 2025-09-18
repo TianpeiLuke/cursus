@@ -111,83 +111,8 @@ class DummyTrainingStepBuilder(StepBuilderBase):
 
         self.log_info("DummyTrainingConfig validation succeeded.")
 
-    def _normalize_s3_uri(self, uri: str, description: str = "S3 URI") -> str:
-        """
-        Normalizes an S3 URI to ensure it has no trailing slashes and is properly formatted.
-        Uses S3PathHandler for consistent path handling.
 
-        Args:
-            uri: The S3 URI to normalize
-            description: Description for logging purposes
 
-        Returns:
-            Normalized S3 URI
-        """
-        # Handle PipelineVariable objects
-        if hasattr(uri, "expr"):
-            uri = str(uri.expr)
-            self.log_info(f"Normalizing PipelineVariable URI: {uri}")
-
-        # Handle Pipeline step references with Get key
-        if isinstance(uri, dict) and "Get" in uri:
-            self.log_info("Found Pipeline step reference: %s", uri)
-            return uri
-
-        if not isinstance(uri, str):
-            self.log_warning("Invalid %s URI type: %s", description, type(uri).__name__)
-            return str(uri)
-
-        return S3PathHandler.normalize(uri, description)
-
-    def _validate_s3_uri(self, uri: str, description: str = "S3 URI") -> bool:
-        """
-        Validates that a string is a properly formatted S3 URI.
-        Uses S3PathHandler for consistent path validation.
-
-        Args:
-            uri: The URI to validate
-            description: Description for error messages
-
-        Returns:
-            True if valid, False otherwise
-        """
-        # Handle PipelineVariable objects
-        if hasattr(uri, "expr"):
-            self.log_info(f"Validating PipelineVariable URI: {uri.expr}")
-            return True
-
-        # Handle Pipeline step references
-        if isinstance(uri, dict) and "Get" in uri:
-            self.log_info(f"Validating Pipeline reference URI: {uri}")
-            return True
-
-        return S3PathHandler.is_valid(uri)
-
-    def _get_s3_directory_path(self, uri: str, filename: str = None) -> str:
-        """
-        Gets the directory part of an S3 URI, handling special cases correctly.
-        Uses S3PathHandler for consistent path handling.
-
-        Args:
-            uri: The S3 URI which may or may not contain a filename
-            filename: Optional filename to check for at the end of the URI
-
-        Returns:
-            The directory part of the URI without trailing slash
-        """
-        # Handle PipelineVariable objects
-        if hasattr(uri, "expr"):
-            uri = str(uri.expr)
-            self.log_info(f"Getting directory path for PipelineVariable URI: {uri}")
-
-        # Handle Pipeline step references
-        if isinstance(uri, dict) and "Get" in uri:
-            self.log_info(
-                f"Cannot extract directory from Pipeline reference URI: {uri}"
-            )
-            return uri
-
-        return S3PathHandler.ensure_directory(uri, filename)
 
     def _upload_model_to_s3(self) -> str:
         """
@@ -203,14 +128,13 @@ class DummyTrainingStepBuilder(StepBuilderBase):
             f"Uploading pretrained model from {self.config.pretrained_model_path}"
         )
 
-        # Construct target S3 URI
-        target_s3_uri = (
-            f"{self.config.pipeline_s3_loc}/dummy_training/input/model.tar.gz"
-        )
-        target_s3_uri = self._normalize_s3_uri(target_s3_uri)
+        # Construct target S3 URI using base output path and Join for parameter compatibility
+        from sagemaker.workflow.functions import Join
+        base_output_path = self._get_base_output_path()
+        target_s3_uri = Join(on="/", values=[base_output_path, "dummy_training", "input", "model.tar.gz"])
 
         try:
-            # Upload the file
+            # Upload the file - S3Uploader handles Join objects properly
             S3Uploader.upload(
                 self.config.pretrained_model_path,
                 target_s3_uri,
@@ -231,92 +155,85 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         Serializes the hyperparameters to JSON, uploads it to S3, and
         returns that full S3 URI.
 
+        This method is optimized for AWS Lambda execution with proper error handling,
+        resource management, and disk space considerations.
+
         Returns:
-            S3 URI where the hyperparameters were uploaded
+            S3 URI or Join object that will resolve to the hyperparameters file location
 
         Raises:
-            Exception: If hyperparameters serialization or upload fails
+            ValueError: If hyperparameters serialization fails
+            Exception: If S3 upload fails after retries
         """
-        hyperparams_dict = self.config.hyperparameters.model_dump()
-        local_dir = Path(tempfile.mkdtemp())
+        # Serialize hyperparameters with error handling
+        try:
+            hyperparams_dict = self.config.hyperparameters.model_dump()
+        except Exception as e:
+            raise ValueError(f"Failed to serialize hyperparameters: {e}") from e
+
+        # Use Lambda-friendly temporary directory with unique naming
+        import uuid
+        unique_id = str(uuid.uuid4())[:8]  # Short unique identifier
+        local_dir = Path(tempfile.gettempdir()) / f"hyperparams_{unique_id}"
         local_file = local_dir / "hyperparameters.json"
 
         try:
-            # Write JSON locally
-            with open(local_file, "w") as f:
-                json.dump(hyperparams_dict, indent=2, fp=f)
-            self.log_info("Created hyperparameters JSON file at %s", local_file)
-
-            # Construct S3 URI for the config directory
-            prefix = (
-                self.config.hyperparameters_s3_uri
-                if hasattr(self.config, "hyperparameters_s3_uri")
-                else None
-            )
-            if not prefix:
-                # Fallback path construction
-                bucket = (
-                    self.config.bucket
-                    if hasattr(self.config, "bucket")
-                    else "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um"
-                )
-                pipeline_name = (
-                    self.config.pipeline_name
-                    if hasattr(self.config, "pipeline_name")
-                    else "dummy-training"
-                )
-                current_date = getattr(self.config, "current_date", "2025-06-02")
-                prefix = f"s3://{bucket}/{pipeline_name}/training_config/{current_date}"  # No trailing slash
-
-            # Use our helper methods for consistent path handling
-            config_dir = self._normalize_s3_uri(prefix, "hyperparameters prefix")
-            self.log_info("Normalized hyperparameters prefix: %s", config_dir)
-
-            # Check if hyperparameters.json is already in the path
-            if S3PathHandler.get_name(config_dir) == "hyperparameters.json":
-                # Use path as is if it already includes the filename
-                target_s3_uri = config_dir
-                self.log_info("Using existing hyperparameters path: %s", target_s3_uri)
-            else:
-                # Otherwise append the filename using S3PathHandler.join for proper path handling
-                target_s3_uri = S3PathHandler.join(config_dir, "hyperparameters.json")
-                self.log_info("Constructed hyperparameters path: %s", target_s3_uri)
-
-            self.log_info("Using hyperparameters S3 target URI: %s", target_s3_uri)
-
-            # Check if file exists and handle appropriately
-            s3_parts = target_s3_uri.replace("s3://", "").split("/", 1)
-            bucket = s3_parts[0]
-            key = s3_parts[1]
-
-            s3_client = self.session.boto_session.client("s3")
+            # Create directory and ensure it exists
+            local_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Write JSON locally with error handling
             try:
-                s3_client.head_object(Bucket=bucket, Key=key)
-                self.log_info(
-                    "Found existing hyperparameters file at %s", target_s3_uri
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "404":
-                    self.log_info(
-                        "No existing hyperparameters file found at %s", target_s3_uri
+                with open(local_file, "w", encoding='utf-8') as f:
+                    json.dump(hyperparams_dict, f, indent=2, ensure_ascii=False)
+                self.log_info("Created hyperparameters JSON file at %s (size: %d bytes)", 
+                             local_file, local_file.stat().st_size)
+            except (IOError, OSError) as e:
+                raise ValueError(f"Failed to write hyperparameters file: {e}") from e
+
+            # Construct target S3 URI using base output path and Join for parameter compatibility
+            # Always use the unified system path for consistency and portability
+            from sagemaker.workflow.functions import Join
+            base_output_path = self._get_base_output_path()
+            target_s3_uri = Join(on="/", values=[base_output_path, "training_config", "hyperparameters.json"])
+            self.log_info("Using unified system hyperparameters path: %s", target_s3_uri)
+
+            # Upload the file with enhanced error handling for Lambda environment
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self.log_info("Uploading hyperparameters from %s to %s (attempt %d/%d)", 
+                                 local_file, target_s3_uri, attempt + 1, max_retries)
+                    
+                    S3Uploader.upload(
+                        str(local_file), 
+                        target_s3_uri, 
+                        sagemaker_session=self.session
                     )
-                else:
-                    self.log_warning("Error checking existing file: %s", str(e))
+                    
+                    self.log_info("Hyperparameters successfully uploaded to %s", target_s3_uri)
+                    return target_s3_uri
+                    
+                except Exception as e:
+                    if attempt == max_retries - 1:  # Last attempt
+                        self.log_error("Failed to upload hyperparameters after %d attempts: %s", max_retries, e)
+                        raise Exception(f"S3 upload failed after {max_retries} attempts: {e}") from e
+                    else:
+                        self.log_warning("Upload attempt %d failed, retrying: %s", attempt + 1, e)
+                        import time
+                        time.sleep(2 ** attempt)  # Exponential backoff
 
-            # Upload the file
-            self.log_info(
-                "Uploading hyperparameters from %s to %s", local_file, target_s3_uri
-            )
-            S3Uploader.upload(
-                str(local_file), target_s3_uri, sagemaker_session=self.session
-            )
-
-            self.log_info("Hyperparameters successfully uploaded to %s", target_s3_uri)
-            return target_s3_uri
-
+        except Exception as e:
+            self.log_error("Error in _prepare_hyperparameters_file: %s", e)
+            raise
         finally:
-            # Clean up temporary files
-            shutil.rmtree(local_dir)
+            # Robust cleanup - ensure temporary files are removed even if upload fails
+            try:
+                if local_dir.exists():
+                    shutil.rmtree(local_dir, ignore_errors=True)
+                    self.log_debug("Cleaned up temporary directory: %s", local_dir)
+            except Exception as cleanup_error:
+                self.log_warning("Failed to clean up temporary directory %s: %s", local_dir, cleanup_error)
+                # Don't raise cleanup errors - they shouldn't fail the main operation
 
     def _get_processor(self):
         """
@@ -453,8 +370,10 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         if not self.contract:
             raise ValueError("Script contract is required for output mapping")
 
-        # Use the pipeline S3 location to construct output path
-        default_output_path = f"{self.config.pipeline_s3_loc}/dummy_training/output"
+        # Use the pipeline S3 location to construct output path using base output path and Join for parameter compatibility
+        from sagemaker.workflow.functions import Join
+        base_output_path = self._get_base_output_path()
+        default_output_path = Join(on="/", values=[base_output_path, "dummy_training", "output"])
         output_path = outputs.get("model_input", default_output_path)
 
         # Handle PipelineVariable objects in output_path

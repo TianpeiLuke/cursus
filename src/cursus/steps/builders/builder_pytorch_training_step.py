@@ -384,8 +384,10 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
 
         # If no output path was provided, generate a default one
         if primary_output_path is None:
-            # Generate a clean path that will be used as the base for all outputs
-            primary_output_path = f"{self.config.pipeline_s3_loc}/pytorch_training/"
+            # Generate a clean path using base output path and Join for parameter compatibility
+            from sagemaker.workflow.functions import Join
+            base_output_path = self._get_base_output_path()
+            primary_output_path = Join(on="/", values=[base_output_path, "pytorch_training"])
             self.log_info(f"Using generated base output path: {primary_output_path}")
 
         # Remove trailing slash if present for consistency with S3 path handling

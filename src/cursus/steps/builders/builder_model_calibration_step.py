@@ -475,7 +475,10 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
                 destination = outputs[logical_name]
             else:
                 # Generate destination from config including job_type
-                destination = f"{self.config.pipeline_s3_loc}/model_calibration/{self.config.job_type}/{logical_name}"
+                # Generate destination from base path using Join instead of f-string
+                from sagemaker.workflow.functions import Join
+                base_output_path = self._get_base_output_path()
+                destination = Join(on="/", values=[base_output_path, "model_calibration", self.config.job_type, logical_name])
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
