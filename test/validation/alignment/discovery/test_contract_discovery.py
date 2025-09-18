@@ -23,17 +23,17 @@ def temp_dir():
 
 
 @pytest.fixture
-def engine(workspace_root):
+def engine(temp_dir):
     """Set up ContractDiscoveryEngineAdapter fixture."""
-    return ContractDiscoveryEngineAdapter(workspace_root)
+    return ContractDiscoveryEngineAdapter(Path(temp_dir))
 
 
 class TestContractDiscoveryEngine:
     """Test cases for ContractDiscoveryEngineAdapter class."""
 
-    def test_init(self, workspace_root):
+    def test_init(self, temp_dir):
         """Test ContractDiscoveryEngineAdapter initialization."""
-        engine = ContractDiscoveryEngineAdapter(workspace_root)
+        engine = ContractDiscoveryEngineAdapter(Path(temp_dir))
 
         assert hasattr(engine, 'catalog')
         assert engine.catalog is not None
@@ -46,10 +46,10 @@ class TestContractDiscoveryEngine:
         assert isinstance(contracts, list)
         # Verify it returns step names, not file-based names
         
-    def test_discover_all_contracts_empty_catalog(self, workspace_root):
+    def test_discover_all_contracts_empty_catalog(self, temp_dir):
         """Test discovering contracts when catalog is empty."""
         # Create adapter with empty workspace
-        empty_workspace = workspace_root / "empty"
+        empty_workspace = Path(temp_dir) / "empty"
         empty_workspace.mkdir(exist_ok=True)
         engine = ContractDiscoveryEngineAdapter(empty_workspace)
         contracts = engine.discover_all_contracts()
@@ -87,9 +87,9 @@ class TestContractDiscoveryEngine:
         # Should return a list even if some steps have issues
         assert isinstance(contracts, list)
         
-    def test_discover_contracts_empty_workspace(self, workspace_root):
+    def test_discover_contracts_empty_workspace(self, temp_dir):
         """Test discovering contracts when workspace is empty."""
-        empty_workspace = workspace_root / "empty_test"
+        empty_workspace = Path(temp_dir) / "empty_test"
         empty_workspace.mkdir(exist_ok=True)
         engine = ContractDiscoveryEngineAdapter(empty_workspace)
         

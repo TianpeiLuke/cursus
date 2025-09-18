@@ -51,7 +51,10 @@ class BuilderConfigurationAlignmentTester:
         self.config_analyzer = ConfigurationAnalyzer(str(self.configs_dir))
         self.builder_analyzer = BuilderCodeAnalyzer()
         self.pattern_recognizer = PatternRecognizer()
-        self.file_resolver = HybridFileResolver(base_directories)
+        
+        # Use modern HybridFileResolverAdapter with workspace root (expects Path, not dict)
+        workspace_root = self.builders_dir.parent  # src/cursus/steps
+        self.file_resolver = HybridFileResolver(workspace_root)
 
         # Keep FlexibleFileResolver for backward compatibility
         self.flexible_resolver = FlexibleFileResolver(base_directories)
@@ -463,11 +466,11 @@ class BuilderConfigurationAlignmentTester:
 
     def _find_builder_file_hybrid(self, builder_name: str) -> Optional[str]:
         """
-        Hybrid builder file resolution with multiple fallback strategies.
+        Modern builder file resolution using step catalog.
 
         Priority:
-        1. Standard pattern: builder_{builder_name}_step.py
-        2. FlexibleFileResolver patterns (includes fuzzy matching)
+        1. Step catalog lookup for superior discovery
+        2. Standard pattern fallback: builder_{builder_name}_step.py
 
         Args:
             builder_name: Name of the builder to find
@@ -475,15 +478,21 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             Path to the builder file or None if not found
         """
-        # Strategy 1: Try standard naming convention first
+        # Strategy 1: Use modern step catalog for superior discovery
+        try:
+            step_info = self.file_resolver.catalog.get_step_info(builder_name)
+            if step_info and step_info.file_components.get('builder'):
+                builder_path = step_info.file_components['builder'].path
+                if builder_path.exists():
+                    return str(builder_path)
+        except Exception as e:
+            # Continue with fallback if catalog lookup fails
+            pass
+
+        # Strategy 2: Try standard naming convention as fallback
         standard_path = self.builders_dir / f"builder_{builder_name}_step.py"
         if standard_path.exists():
             return str(standard_path)
-
-        # Strategy 2: Use FlexibleFileResolver for known patterns and fuzzy matching
-        flexible_path = self.file_resolver.find_builder_file(builder_name)
-        if flexible_path and Path(flexible_path).exists():
-            return flexible_path
 
         # Strategy 3: Return None if nothing found
         return None
@@ -572,12 +581,12 @@ class BuilderConfigurationAlignmentTester:
 
     def _find_config_file_hybrid(self, builder_name: str) -> Optional[str]:
         """
-        Hybrid config file resolution with production registry integration.
+        Modern config file resolution using step catalog.
 
         Priority:
-        1. Production registry mapping: script_name -> canonical_name -> config_name
-        2. Standard pattern: config_{builder_name}_step.py
-        3. FlexibleFileResolver patterns (includes fuzzy matching)
+        1. Step catalog lookup for superior discovery
+        2. Production registry mapping: script_name -> canonical_name -> config_name
+        3. Standard pattern: config_{builder_name}_step.py
 
         Args:
             builder_name: Name of the builder to find config for
@@ -585,7 +594,18 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             Path to the config file or None if not found
         """
-        # Strategy 1: Use production registry mapping
+        # Strategy 1: Use modern step catalog for superior discovery
+        try:
+            step_info = self.file_resolver.catalog.get_step_info(builder_name)
+            if step_info and step_info.file_components.get('config'):
+                config_path = step_info.file_components['config'].path
+                if config_path.exists():
+                    return str(config_path)
+        except Exception as e:
+            # Continue with fallback if catalog lookup fails
+            pass
+
+        # Strategy 2: Use production registry mapping as fallback
         try:
             canonical_name = self._get_canonical_step_name(builder_name)
             config_base_name = self._get_config_name_from_canonical(canonical_name)
@@ -596,15 +616,10 @@ class BuilderConfigurationAlignmentTester:
             # Continue with other strategies if registry mapping fails
             pass
 
-        # Strategy 2: Try standard naming convention
+        # Strategy 3: Try standard naming convention as final fallback
         standard_path = self.configs_dir / f"config_{builder_name}_step.py"
         if standard_path.exists():
             return str(standard_path)
-
-        # Strategy 3: Use FlexibleFileResolver for known patterns and fuzzy matching
-        flexible_path = self.file_resolver.find_config_file(builder_name)
-        if flexible_path and Path(flexible_path).exists():
-            return flexible_path
 
         # Strategy 4: Return None if nothing found
         return None
