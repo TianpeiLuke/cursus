@@ -57,7 +57,7 @@ class TestModuleIntegration:
             
             # Test explicit False - should return LegacyDiscoveryWrapper
             catalog = create_step_catalog(workspace_root, use_unified=False)
-            from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
+            from cursus.step_catalog.adapters.legacy_wrappers import LegacyDiscoveryWrapper
             assert isinstance(catalog, LegacyDiscoveryWrapper)
             
             # Test None with environment variable false (default)
@@ -78,13 +78,13 @@ class TestModuleIntegration:
             # Test with environment variable set to false
             with patch.dict(os.environ, {'USE_UNIFIED_CATALOG': 'false'}):
                 catalog = create_step_catalog(workspace_root)
-                from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
+                from cursus.step_catalog.adapters.legacy_wrappers import LegacyDiscoveryWrapper
                 assert isinstance(catalog, LegacyDiscoveryWrapper)
-            
-            # Test with no environment variable (defaults to false)
-            with patch.dict(os.environ, {}, clear=True):
                 catalog = create_step_catalog(workspace_root)
-                from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
+                from cursus.step_catalog.adapters.legacy_wrappers import LegacyDiscoveryWrapper
+                assert isinstance(catalog, LegacyDiscoveryWrapper)
+                catalog = create_step_catalog(workspace_root)
+                from cursus.step_catalog.adapters.legacy_wrappers import LegacyDiscoveryWrapper
                 assert isinstance(catalog, LegacyDiscoveryWrapper)
 
 

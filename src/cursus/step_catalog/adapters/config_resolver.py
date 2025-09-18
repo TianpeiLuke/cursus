@@ -494,3 +494,109 @@ class StepConfigResolverAdapter:
         except Exception as e:
             self.logger.error(f"Error previewing resolution: {e}")
             return {"error": str(e)}
+    
+    def _parse_node_name(self, node_name: str) -> Dict[str, str]:
+        """
+        Parse node name to extract config type and job type information.
+        
+        Based on legacy implementation patterns from the original StepConfigResolver.
+        
+        Args:
+            node_name: DAG node name
+            
+        Returns:
+            Dictionary with extracted information
+        """
+        # Check cache first
+        if node_name in self._config_cache:
+            from typing import cast, Dict
+            return cast(Dict[str, str], self._config_cache[node_name])
+
+        result = {}
+
+        # Common patterns from legacy implementation
+        patterns = [
+            # Pattern 1: ConfigType_JobType (e.g., CradleDataLoading_training)
+            (r"^([A-Za-z]+[A-Za-z0-9]*)_([a-z]+)$", "config_first"),
+            # Pattern 2: JobType_Task (e.g., training_data_load)
+            (r"^([a-z]+)_([A-Za-z_]+)$", "job_first"),
+        ]
+
+        import re
+        for pattern, pattern_type in patterns:
+            match = re.match(pattern, node_name)
+            if match:
+                parts = match.groups()
+
+                if pattern_type == "config_first":  # ConfigType_JobType
+                    result["config_type"] = parts[0]
+                    result["job_type"] = parts[1]
+                else:  # JobType_Task
+                    result["job_type"] = parts[0]
+
+                    # Try to infer config type from task (from legacy task_map)
+                    task_map = {
+                        "data_load": "CradleDataLoading",
+                        "preprocess": "TabularPreprocessing",
+                        "train": "XGBoostTraining",
+                        "eval": "XGBoostModelEval",
+                        "calibrat": "ModelCalibration",
+                        "packag": "Package",
+                        "regist": "Registration",
+                        "payload": "Payload",
+                    }
+
+                    for task_pattern, config_type in task_map.items():
+                        if task_pattern in parts[1]:
+                            result["config_type"] = config_type
+                            break
+
+                break
+
+        # Cache the result
+        self._config_cache[node_name] = result
+        return result
+    
+    def _job_type_matching_enhanced(self, job_type: str, configs: Dict[str, Any], config_type: Optional[str] = None) -> List[tuple]:
+        """
+        Enhanced job type matching with config type filtering.
+        
+        Args:
+            job_type: Job type string (e.g., "training", "calibration")
+            configs: Available configurations
+            config_type: Optional config type to filter by
+            
+        Returns:
+            List of (config, confidence, method) tuples
+        """
+        matches = []
+        normalized_job_type = job_type.lower()
+        
+        for config_name, config in configs.items():
+            if hasattr(config, "job_type"):
+                config_job_type = getattr(config, "job_type", "").lower()
+                
+                # Skip if job types don't match
+                if config_job_type != normalized_job_type:
+                    continue
+                
+                # Start with base confidence for job type match
+                base_confidence = 0.8
+                
+                # If config_type is specified, check for match to boost confidence
+                if config_type:
+                    config_class_name = type(config).__name__
+                    config_type_lower = config_type.lower()
+                    class_name_lower = config_class_name.lower()
+                    
+                    # Different levels of match for config type
+                    if config_class_name == config_type:
+                        # Exact match
+                        base_confidence = 0.9
+                    elif (config_type_lower in class_name_lower or class_name_lower in config_type_lower):
+                        # Partial match
+                        base_confidence = 0.85
+                
+                matches.append((config, base_confidence, "job_type_enhanced"))
+        
+        return sorted(matches, key=lambda x: x[1], reverse=True)

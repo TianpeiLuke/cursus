@@ -182,7 +182,7 @@ class TestModernConfigClassDetector:
         # Should only extract the valid config
         assert result == {'ValidConfig'}
 
-    @patch('cursus.step_catalog.adapters.StepCatalog')
+    @patch('cursus.step_catalog.adapters.config_class_detector.StepCatalog')
     def test_detect_from_json_with_mocked_catalog(self, mock_catalog_class):
         """Test detect_from_json with mocked step catalog."""
         # Mock the catalog instance and its methods
@@ -202,7 +202,7 @@ class TestModernConfigClassDetector:
         mock_catalog.build_complete_config_classes.assert_called_once()
         assert result == mock_config_classes
 
-    @patch('cursus.step_catalog.adapters.StepCatalog')
+    @patch('cursus.step_catalog.adapters.config_class_detector.StepCatalog')
     def test_detect_from_json_fallback_behavior(self, mock_catalog_class):
         """Test detect_from_json fallback behavior when catalog fails."""
         # Mock catalog to raise exception

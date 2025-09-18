@@ -658,7 +658,7 @@ class TestFactoryFunction:
     def test_create_step_catalog_with_feature_flag(self):
         """Test create_step_catalog with feature flag."""
         from cursus.step_catalog import create_step_catalog
-        from cursus.step_catalog.adapters import LegacyDiscoveryWrapper
+        from cursus.step_catalog.adapters.legacy_wrappers import LegacyDiscoveryWrapper
         
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)

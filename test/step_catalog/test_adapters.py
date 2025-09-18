@@ -9,13 +9,19 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from cursus.step_catalog.adapters import (
+from cursus.step_catalog.adapters.contract_discovery import (
     ContractDiscoveryEngineAdapter,
     ContractDiscoveryManagerAdapter,
+)
+from cursus.step_catalog.adapters.file_resolver import (
     FlexibleFileResolverAdapter,
     DeveloperWorkspaceFileResolverAdapter,
-    WorkspaceDiscoveryManagerAdapter,
     HybridFileResolverAdapter,
+)
+from cursus.step_catalog.adapters.workspace_discovery import (
+    WorkspaceDiscoveryManagerAdapter,
+)
+from cursus.step_catalog.adapters.legacy_wrappers import (
     LegacyDiscoveryWrapper,
 )
 from cursus.step_catalog.models import StepInfo, FileMetadata
