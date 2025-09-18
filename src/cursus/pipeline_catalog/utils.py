@@ -118,9 +118,11 @@ class PipelineCatalogManager:
         elif "tags" in kwargs:
             return self.discovery.find_by_tags(kwargs["tags"])
         elif "use_case" in kwargs:
-            return self.discovery.find_by_use_case(kwargs["use_case"])
+            # Use text search for use case since find_by_use_case doesn't exist
+            search_results = self.discovery.search_by_text(kwargs["use_case"])
+            return [result[0] for result in search_results]  # Extract pipeline IDs from (id, score) tuples
         else:
-            return self.registry.get_all_pipeline_ids()
+            return self.registry.get_all_pipelines()
 
     def get_pipeline_connections(self, pipeline_id: str) -> Dict[str, List[str]]:
         """
@@ -132,7 +134,13 @@ class PipelineCatalogManager:
         Returns:
             Dictionary of connection types and their targets
         """
-        return self.traverser.get_connections(pipeline_id)
+        # get_all_connections returns Dict[str, List[PipelineConnection]]
+        # We need to convert it to Dict[str, List[str]] for backwards compatibility
+        connections = self.traverser.get_all_connections(pipeline_id)
+        result = {}
+        for conn_type, conn_list in connections.items():
+            result[conn_type] = [conn.target_id for conn in conn_list]
+        return result
 
     def find_path(self, source: str, target: str) -> Optional[List[str]]:
         """
@@ -145,7 +153,7 @@ class PipelineCatalogManager:
         Returns:
             List of pipeline IDs forming the path, or None if no path exists
         """
-        return self.traverser.find_path(source, target)
+        return self.traverser.find_shortest_path(source, target)
 
     def get_recommendations(self, use_case: str, **kwargs) -> List[Dict[str, Any]]:
         """
