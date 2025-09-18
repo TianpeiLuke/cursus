@@ -728,7 +728,7 @@ def _create_example_implementations(
 Example custom step configuration for {workspace_id} workspace.
 """
 from ...core.base.config_base import BasePipelineConfig
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from typing import Optional
 
 class ExampleCustomStepConfig(BasePipelineConfig):
@@ -741,10 +741,10 @@ class ExampleCustomStepConfig(BasePipelineConfig):
     # Workspace identification
     workspace_id: str = Field(default="{workspace_id}", description="Workspace identifier")
     
-    class Config:
-        """Pydantic configuration."""
-        extra = "forbid"
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+    )
 '''
     )
 
