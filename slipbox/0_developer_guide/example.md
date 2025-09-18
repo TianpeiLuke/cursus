@@ -737,11 +737,14 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
         return processing_inputs
 
     def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
-        """Get outputs for the step using specification and contract."""
+        """Get outputs for the step using specification and contract with consistent folder structure."""
         if not self.spec or not self.contract:
             raise ValueError("Step specification and contract are required")
             
         processing_outputs = []
+        
+        # Get the base output path (using PIPELINE_EXECUTION_TEMP_DIR if available)
+        base_output_path = self._get_base_output_path()
         
         # Process each output in the specification
         for logical_name, output_spec in self.spec.outputs.items():
@@ -749,11 +752,19 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
             if logical_name in self.contract.expected_output_paths:
                 container_path = self.contract.expected_output_paths[logical_name]
                 
-                # Generate destination from config or use provided
+                # Generate destination using consistent folder structure
                 if logical_name in outputs:
                     destination = outputs[logical_name]
                 else:
-                    destination = f"{self.config.output_path}/{logical_name}/"
+                    # Generate consistent output path using Join pattern
+                    from sagemaker.workflow.functions import Join
+                    step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'feature_selection'
+                    destination = Join(on="/", values=[base_output_path, step_type, logical_name])
+                    self.log_info(
+                        "Generated consistent output path for '%s': %s",
+                        logical_name,
+                        destination,
+                    )
                 
                 processing_outputs.append(ProcessingOutput(
                     output_name=logical_name,

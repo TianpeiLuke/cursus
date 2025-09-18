@@ -364,8 +364,54 @@ def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
 
 def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
     """Get outputs for the processor using the specification and contract."""
-    # Use the built-in method that leverages the specification and contract
-    return self._get_spec_driven_processor_outputs(outputs)
+    if not self.spec:
+        raise ValueError("Step specification is required")
+
+    if not self.contract:
+        raise ValueError("Script contract is required for output mapping")
+
+    processing_outputs = []
+
+    # Get the base output path (using PIPELINE_EXECUTION_TEMP_DIR if available)
+    base_output_path = self._get_base_output_path()
+
+    # Process each output in the specification
+    for _, output_spec in self.spec.outputs.items():
+        logical_name = output_spec.logical_name
+
+        # Get container path from contract
+        container_path = None
+        if logical_name in self.contract.expected_output_paths:
+            container_path = self.contract.expected_output_paths[logical_name]
+        else:
+            raise ValueError(f"No container path found for output: {logical_name}")
+
+        # Try to find destination in outputs
+        destination = None
+
+        # Look in outputs by logical name
+        if logical_name in outputs:
+            destination = outputs[logical_name]
+        else:
+            # Generate destination from base path using Join instead of f-string
+            from sagemaker.workflow.functions import Join
+            step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'processing'
+            destination = Join(on="/", values=[base_output_path, step_type, logical_name])
+            self.log_info(
+                "Using generated destination for '%s': %s",
+                logical_name,
+                destination,
+            )
+
+        processing_outputs.append(
+            ProcessingOutput(
+                output_name=logical_name,
+                source=container_path,
+                destination=destination,
+            )
+        )
+
+    return processing_outputs
 ```
 
 ### 4. Set Up Environment Variables

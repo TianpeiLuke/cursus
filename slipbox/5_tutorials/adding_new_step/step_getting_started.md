@@ -849,7 +849,12 @@ class FeatureSelectionConfig(BasePipelineConfig):
         description="Number of instances for processing job"
     )
 
-    model_config = BasePipelineConfig.model_config
+    # Update to Pydantic V2 style model_config (based on real patterns from codebase)
+    model_config = BasePipelineConfig.model_config.copy()
+    model_config.update({
+        'arbitrary_types_allowed': True,
+        'validate_assignment': True
+    })
 
     @field_validator("selection_method")
     @classmethod
@@ -1060,11 +1065,23 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
             if logical_name in self.contract.expected_output_paths:
                 container_path = self.contract.expected_output_paths[logical_name]
                 
-                # Generate destination from config or use provided
+                # Try to find destination in outputs
+                destination = None
+                
+                # Look in outputs by logical name
                 if logical_name in outputs:
                     destination = outputs[logical_name]
                 else:
-                    destination = f"{self.config.output_path}/{logical_name}/"
+                    # Generate destination from base path using Join instead of f-string
+                    from sagemaker.workflow.functions import Join
+                    base_output_path = self._get_base_output_path()
+                    step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'processing'
+                    destination = Join(on="/", values=[base_output_path, step_type, logical_name])
+                    self.log_info(
+                        "Using generated destination for '%s': %s",
+                        logical_name,
+                        destination,
+                    )
                 
                 processing_outputs.append(ProcessingOutput(
                     output_name=logical_name,

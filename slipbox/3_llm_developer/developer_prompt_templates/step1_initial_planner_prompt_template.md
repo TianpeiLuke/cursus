@@ -664,6 +664,98 @@ def _get_inputs(self, inputs: Dict[str, Any]) -> Dict[str, TrainingInput]:
     return training_inputs
 ```
 
+#### 11. **Hyperparameter Handling Patterns (Training Steps)**
+
+**Reference Implementation**: For complete hyperparameter handling patterns, see `src/cursus/steps/builders/builder_xgboost_training_step.py` which provides the definitive implementation for:
+
+- **Lambda-Optimized File Operations**: Robust S3 upload with retry logic and resource management
+- **Serverless Environment Compatibility**: Proper error handling for AWS Lambda execution
+- **Configuration Serialization**: Converting config objects to hyperparameter dictionaries
+- **S3 Path Generation**: Using Join() pattern for consistent path construction
+
+**Key Hyperparameter Method Pattern**:
+```python
+def _prepare_hyperparameters_file(self) -> str:
+    """
+    Prepare hyperparameters file and upload to S3.
+    
+    This method follows the Lambda-optimized pattern from XGBoostTrainingStepBuilder
+    with comprehensive error handling and resource management.
+    
+    Returns:
+        S3 URI of the uploaded hyperparameters file
+    """
+    from sagemaker.workflow.functions import Join
+    import json
+    import tempfile
+    import boto3
+    from botocore.exceptions import ClientError
+    import time
+    import os
+    
+    # Generate hyperparameters dictionary from config
+    hyperparams = self.config.to_hyperparameter_dict()
+    
+    # Create S3 path using Join pattern for consistency
+    base_output_path = self._get_base_output_path()
+    hyperparams_s3_uri = Join(
+        on="/", 
+        values=[base_output_path, "xgboost_training", "hyperparameters", "hyperparameters.json"]
+    )
+    
+    # Lambda-optimized file upload with retry logic
+    max_retries = 3
+    retry_delay = 1
+    
+    for attempt in range(max_retries):
+        temp_file_path = None
+        try:
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                json.dump(hyperparams, temp_file, indent=2)
+                temp_file_path = temp_file.name
+            
+            # Upload to S3 with proper error handling
+            s3_client = boto3.client('s3')
+            bucket, key = self._parse_s3_uri(hyperparams_s3_uri)
+            
+            with open(temp_file_path, 'rb') as file_obj:
+                s3_client.upload_fileobj(file_obj, bucket, key)
+            
+            self.log_info(f"Successfully uploaded hyperparameters to: {hyperparams_s3_uri}")
+            return hyperparams_s3_uri
+            
+        except ClientError as e:
+            self.log_warning(f"S3 upload attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay * (2 ** attempt))  # Exponential backoff
+            else:
+                raise ValueError(f"Failed to upload hyperparameters after {max_retries} attempts: {e}")
+                
+        except Exception as e:
+            self.log_error(f"Unexpected error during hyperparameters upload: {e}")
+            raise
+            
+        finally:
+            # Clean up temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                except OSError as e:
+                    self.log_warning(f"Failed to clean up temporary file {temp_file_path}: {e}")
+
+def _parse_s3_uri(self, s3_uri: str) -> tuple:
+    """Parse S3 URI into bucket and key components."""
+    if not s3_uri.startswith('s3://'):
+        raise ValueError(f"Invalid S3 URI: {s3_uri}")
+    
+    parts = s3_uri[5:].split('/', 1)
+    if len(parts) != 2:
+        raise ValueError(f"Invalid S3 URI format: {s3_uri}")
+    
+    return parts[0], parts[1]
+```
+
 **Model Steps - _get_inputs:**
 ```python
 def _get_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -696,12 +788,22 @@ def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
             container_path = self.contract.expected_output_paths[logical_name]
             
             # Try to find destination in outputs
+            destination = None
+            
+            # Look in outputs by logical name
             if logical_name in outputs:
                 destination = outputs[logical_name]
             else:
-                # Generate destination from config
-                destination = f"{self.config.pipeline_s3_loc}/{step_name}/{self.config.job_type}/{logical_name}"
-                self.log_info("Using generated destination for '%s': %s", logical_name, destination)
+                # Generate destination from base path using Join instead of f-string
+                from sagemaker.workflow.functions import Join
+                base_output_path = self._get_base_output_path()
+                step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'processing'
+                destination = Join(on="/", values=[base_output_path, step_type, logical_name])
+                self.log_info(
+                    "Using generated destination for '%s': %s",
+                    logical_name,
+                    destination,
+                )
             
             processing_outputs.append(
                 ProcessingOutput(
@@ -719,24 +821,76 @@ def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
 **Training Steps - _get_outputs:**
 ```python
 def _get_outputs(self, outputs: Dict[str, Any]) -> str:
-    """Get output path for model artifacts and evaluation results."""
-    if not self.spec or not self.contract:
-        raise ValueError("Step specification and contract are required")
-        
-    # Check if any output path is explicitly provided
+    """
+    Get outputs for the step using specification and contract.
+
+    For training steps, this returns the output path where model artifacts and evaluation results will be stored.
+    SageMaker uses this single output_path parameter for both:
+    - model.tar.gz (from /opt/ml/model/)
+    - output.tar.gz (from /opt/ml/output/data/)
+
+    Args:
+        outputs: Output destinations keyed by logical name
+
+    Returns:
+        Output path for model artifacts and evaluation results
+
+    Raises:
+        ValueError: If no specification or contract is available
+    """
+    if not self.spec:
+        raise ValueError("Step specification is required")
+
+    if not self.contract:
+        raise ValueError("Script contract is required for output mapping")
+
+    # First, check if any output path is explicitly provided in the outputs dictionary
     primary_output_path = None
-    output_logical_names = [spec.logical_name for _, spec in self.spec.outputs.items()]
-    
+
+    # Check if model_output or evaluation_output are in the outputs dictionary
+    output_logical_names = [
+        spec.logical_name for _, spec in self.spec.outputs.items()
+    ]
+
     for logical_name in output_logical_names:
         if logical_name in outputs:
             primary_output_path = outputs[logical_name]
+            self.log_info(
+                f"Using provided output path from '{logical_name}': {primary_output_path}"
+            )
             break
-            
+
     # If no output path was provided, generate a default one
     if primary_output_path is None:
-        primary_output_path = f"{self.config.pipeline_s3_loc}/xgboost_training/"
-        
-    return primary_output_path.rstrip('/')
+        # Generate a clean path using base output path and Join for parameter compatibility
+        from sagemaker.workflow.functions import Join
+        base_output_path = self._get_base_output_path()
+        primary_output_path = Join(on="/", values=[base_output_path, "xgboost_training"])
+        self.log_info(f"Using generated base output path: {primary_output_path}")
+
+    # Remove trailing slash if present for consistency with S3 path handling
+    if primary_output_path.endswith("/"):
+        primary_output_path = primary_output_path[:-1]
+
+    # Get base job name for logging purposes
+    base_job_name = self._generate_job_name()
+
+    # Log how SageMaker will structure outputs under this path
+    self.log_info(
+        f"SageMaker will organize outputs using base job name: {base_job_name}"
+    )
+    self.log_info(f"Full job name will be: {base_job_name}-[timestamp]")
+    self.log_info(
+        f"Output path structure will be: {primary_output_path}/{base_job_name}-[timestamp]/"
+    )
+    self.log_info(
+        f"  - Model artifacts will be in: {primary_output_path}/{base_job_name}-[timestamp]/output/model.tar.gz"
+    )
+    self.log_info(
+        f"  - Evaluation results will be in: {primary_output_path}/{base_job_name}-[timestamp]/output/output.tar.gz"
+    )
+
+    return primary_output_path
 ```
 
 #### 7. **Dependency Extraction Patterns**
@@ -857,7 +1011,7 @@ def log_info(self, message, *args, **kwargs):
 
 Present your plan in the following format:
 
-```
+
 # Implementation Plan for [Step Name]
 
 ## 1. Step Overview
@@ -1375,9 +1529,12 @@ class [StepName]Config(ProcessingStepConfigBase):  # Or BasePipelineConfig for n
     _computed_s3_path: Optional[str] = PrivateAttr(default=None)
     _full_script_path: Optional[str] = PrivateAttr(default=None)
 
-    class Config(ProcessingStepConfigBase.Config):
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    # Update to Pydantic V2 style model_config (based on real patterns from codebase)
+    model_config = ProcessingStepConfigBase.model_config.copy()
+    model_config.update({
+        'arbitrary_types_allowed': True,
+        'validate_assignment': True
+    })
     
     # ===== Properties for Derived Fields =====
     

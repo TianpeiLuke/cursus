@@ -549,47 +549,71 @@ The step specification defines:
 
 ### 6. Create the Step Builder
 
-Implement the builder that creates the SageMaker step using the modern hybrid registry system:
+Implement the builder that creates the SageMaker step using real implementation patterns from the codebase:
 
 **Create New File**: `src/cursus/steps/builders/builder_your_new_step.py`
 
 ```python
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+import logging
 
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow.steps import ProcessingStep
+from sagemaker.sklearn import SKLearnProcessor
 
-from ...registry.hybrid.manager import UnifiedRegistryManager
-from ...core.base.specification_base import StepSpecification
-from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_your_new_step import YourNewStepConfig
-from ..specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
+from ...core.base.builder_base import StepBuilderBase
+from ...core.deps.registry_manager import RegistryManager
+from ...core.deps.dependency_resolver import UnifiedDependencyResolver
+from ...registry.builder_registry import register_builder
 
+# Import the step specification
+try:
+    from ..specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
+    SPEC_AVAILABLE = True
+except ImportError:
+    YOUR_NEW_STEP_SPEC = None
+    SPEC_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+
+
+@register_builder()
 class YourNewStepBuilder(StepBuilderBase):
-    """Builder for YourNewStep processing step."""
-    
+    """
+    Builder for YourNewStep Processing Step.
+    This class is responsible for configuring and creating a SageMaker ProcessingStep
+    that performs your custom processing logic.
+    """
+
     def __init__(
-        self, 
-        config, 
-        sagemaker_session=None, 
-        role=None, 
-        notebook_root=None,
-        registry_manager=None,
-        dependency_resolver=None
+        self,
+        config: YourNewStepConfig,
+        sagemaker_session=None,
+        role: Optional[str] = None,
+        notebook_root: Optional[Path] = None,
+        registry_manager: Optional["RegistryManager"] = None,
+        dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
-        # Get job type if available
-        job_type = getattr(config, 'job_type', None)
-        
-        # Get the appropriate specification based on job type
-        if job_type and hasattr(self, '_get_spec_for_job_type'):
-            spec = self._get_spec_for_job_type(job_type)
-        else:
-            spec = YOUR_NEW_STEP_SPEC
-        
-        # Get the script contract from the specification
-        contract = spec.script_contract if spec else None
-        
+        """
+        Initializes the builder with a specific configuration for the processing step.
+
+        Args:
+            config: A YourNewStepConfig instance containing all necessary settings.
+            sagemaker_session: The SageMaker session object to manage interactions with AWS.
+            role: The IAM role ARN to be used by the SageMaker Processing Job.
+            notebook_root: The root directory of the notebook environment, used for resolving
+                         local paths if necessary.
+            registry_manager: Optional registry manager for dependency injection
+            dependency_resolver: Optional dependency resolver for dependency injection
+        """
+        if not isinstance(config, YourNewStepConfig):
+            raise ValueError("YourNewStepBuilder requires a YourNewStepConfig instance.")
+
+        # Use the step specification if available
+        spec = YOUR_NEW_STEP_SPEC if SPEC_AVAILABLE else None
+
         super().__init__(
             config=config,
             spec=spec,
@@ -597,86 +621,281 @@ class YourNewStepBuilder(StepBuilderBase):
             role=role,
             notebook_root=notebook_root,
             registry_manager=registry_manager,
-            dependency_resolver=dependency_resolver
+            dependency_resolver=dependency_resolver,
         )
         self.config: YourNewStepConfig = config
-        
-        # Register with UnifiedRegistryManager (automatic discovery handles this)
-        if registry_manager is None:
-            registry_manager = UnifiedRegistryManager()
-        # Registration is handled automatically by the hybrid registry system
-        # based on naming conventions and file location
-    
-    def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
-        """Get inputs for the processor using the specification and contract."""
-        # Use the specification-driven approach to generate inputs
-        return self._get_spec_driven_processor_inputs(inputs)
-    
-    def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
-        """Get outputs for the processor using the specification and contract."""
-        # Use the specification-driven approach to generate outputs
-        return self._get_spec_driven_processor_outputs(outputs)
-    
-    def _get_processor_env_vars(self) -> Dict[str, str]:
-        """Get environment variables for the processor."""
-        env_vars = {
-            "REQUIRED_PARAM_1": self.config.param1,
-            "REQUIRED_PARAM_2": str(self.config.param2)
-            # Add any other environment variables needed by your script
-        }
-        return env_vars
-    
-    def create_step(self, **kwargs) -> ProcessingStep:
-        """Create the processing step.
-        
-        Args:
-            **kwargs: Additional keyword arguments for step creation.
-                     Should include 'dependencies' list if step has dependencies.
-        
-        Returns:
-            ProcessingStep: The SageMaker processing step
+
+    def validate_configuration(self) -> None:
         """
-        # Extract inputs from dependencies using the resolver
-        dependencies = kwargs.get('dependencies', [])
-        extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
-        
-        # Get processor inputs and outputs
-        inputs = self._get_inputs(extracted_inputs)
-        outputs = self._get_outputs({})
-        
-        # Create processor
-        processor = self._get_processor()
-        
-        # Set environment variables
-        env_vars = self._get_processor_env_vars()
-        
-        # Create and return the step
-        step_name = kwargs.get('step_name', 'YourNewStep')
-        step = processor.run(
-            inputs=inputs,
-            outputs=outputs,
-            container_arguments=[],
-            container_entrypoint=["python", self.config.get_script_path()],
-            job_name=self._generate_job_name(step_name),
-            wait=False,
-            environment=env_vars
+        Validates the provided configuration to ensure all required fields for this
+        specific step are present and valid before attempting to build the step.
+
+        Raises:
+            ValueError: If any required configuration is missing or invalid.
+        """
+        self.log_info("Validating YourNewStepConfig...")
+
+        # Validate required attributes
+        required_attrs = [
+            "param1",
+            "instance_type",
+            "instance_count",
+            "volume_size_gb",
+            "max_runtime_seconds",
+        ]
+
+        for attr in required_attrs:
+            if not hasattr(self.config, attr) or getattr(self.config, attr) in [
+                None,
+                "",
+            ]:
+                raise ValueError(f"YourNewStepConfig missing required attribute: {attr}")
+
+        self.log_info("YourNewStepConfig validation succeeded.")
+
+    def _create_processor(self) -> SKLearnProcessor:
+        """
+        Creates and configures the SKLearnProcessor for the SageMaker Processing Job.
+        This defines the execution environment for the script, including the instance
+        type, framework version, and environment variables.
+
+        Returns:
+            An instance of sagemaker.sklearn.SKLearnProcessor.
+        """
+        # Get framework version
+        framework_version = getattr(
+            self.config, "framework_version", "1.0-1"
         )
-        
-        # Store specification in step for future reference
-        setattr(step, '_spec', self.spec)
-        
+
+        return SKLearnProcessor(
+            framework_version=framework_version,
+            role=self.role,
+            instance_type=self.config.instance_type,
+            instance_count=self.config.instance_count,
+            volume_size_in_gb=self.config.volume_size_gb,
+            base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
+            sagemaker_session=self.session,
+            env=self._get_environment_variables(),
+        )
+
+    def _get_environment_variables(self) -> Dict[str, str]:
+        """
+        Constructs a dictionary of environment variables to be passed to the processing job.
+
+        Returns:
+            A dictionary of environment variables.
+        """
+        # Get base environment variables from contract
+        env_vars = super()._get_environment_variables()
+
+        # Add step-specific environment variables
+        if hasattr(self.config, "param1"):
+            env_vars["REQUIRED_PARAM_1"] = self.config.param1
+
+        if hasattr(self.config, "param2"):
+            env_vars["REQUIRED_PARAM_2"] = str(self.config.param2)
+
+        if hasattr(self.config, "region"):
+            env_vars["REGION"] = self.config.region
+
+        self.log_info("Step environment variables: %s", env_vars)
+        return env_vars
+
+    def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
+        """
+        Get inputs for the step using specification and contract.
+
+        This method creates ProcessingInput objects for each dependency defined in the specification.
+
+        Args:
+            inputs: Input data sources keyed by logical name
+
+        Returns:
+            List of ProcessingInput objects
+
+        Raises:
+            ValueError: If no specification or contract is available
+        """
+        if not self.spec:
+            raise ValueError("Step specification is required")
+
+        if not self.contract:
+            raise ValueError("Script contract is required for input mapping")
+
+        processing_inputs = []
+
+        # Process each dependency in the specification
+        for _, dependency_spec in self.spec.dependencies.items():
+            logical_name = dependency_spec.logical_name
+
+            # Skip if optional and not provided
+            if not dependency_spec.required and logical_name not in inputs:
+                continue
+
+            # Make sure required inputs are present
+            if dependency_spec.required and logical_name not in inputs:
+                raise ValueError(f"Required input '{logical_name}' not provided")
+
+            # Get container path from contract
+            container_path = None
+            if logical_name in self.contract.expected_input_paths:
+                container_path = self.contract.expected_input_paths[logical_name]
+            else:
+                raise ValueError(f"No container path found for input: {logical_name}")
+
+            # Use the input value directly - property references are handled by PipelineAssembler
+            processing_inputs.append(
+                ProcessingInput(
+                    input_name=logical_name,
+                    source=inputs[logical_name],
+                    destination=container_path,
+                )
+            )
+
+        return processing_inputs
+
+    def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
+        """
+        Get outputs for the step using specification and contract.
+
+        This method creates ProcessingOutput objects for each output defined in the specification.
+
+        Args:
+            outputs: Output destinations keyed by logical name
+
+        Returns:
+            List of ProcessingOutput objects
+
+        Raises:
+            ValueError: If no specification or contract is available
+        """
+        if not self.spec:
+            raise ValueError("Step specification is required")
+
+        if not self.contract:
+            raise ValueError("Script contract is required for output mapping")
+
+        processing_outputs = []
+
+        # Process each output in the specification
+        for _, output_spec in self.spec.outputs.items():
+            logical_name = output_spec.logical_name
+
+            # Get container path from contract
+            container_path = None
+            if logical_name in self.contract.expected_output_paths:
+                container_path = self.contract.expected_output_paths[logical_name]
+            else:
+                raise ValueError(f"No container path found for output: {logical_name}")
+
+            # Try to find destination in outputs
+            destination = None
+
+            # Look in outputs by logical name
+            if logical_name in outputs:
+                destination = outputs[logical_name]
+            else:
+                # Generate destination from base path using Join instead of f-string
+                from sagemaker.workflow.functions import Join
+                base_output_path = self._get_base_output_path()
+                step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'processing'
+                destination = Join(on="/", values=[base_output_path, step_type, logical_name])
+                self.log_info(
+                    "Using generated destination for '%s': %s",
+                    logical_name,
+                    destination,
+                )
+
+            processing_outputs.append(
+                ProcessingOutput(
+                    output_name=logical_name,
+                    source=container_path,
+                    destination=destination,
+                )
+            )
+
+        return processing_outputs
+
+    def create_step(self, **kwargs) -> ProcessingStep:
+        """
+        Creates the final, fully configured SageMaker ProcessingStep for the pipeline
+        using the specification-driven approach.
+
+        Args:
+            **kwargs: Keyword arguments for configuring the step, including:
+                - inputs: Input data sources keyed by logical name
+                - outputs: Output destinations keyed by logical name
+                - dependencies: Optional list of steps that this step depends on
+                - enable_caching: A boolean indicating whether to cache the results of this step
+
+        Returns:
+            A configured sagemaker.workflow.steps.ProcessingStep instance.
+        """
+        self.log_info("Creating ProcessingStep...")
+
+        # Extract parameters
+        inputs_raw = kwargs.get("inputs", {})
+        outputs = kwargs.get("outputs", {})
+        dependencies = kwargs.get("dependencies", [])
+        enable_caching = kwargs.get("enable_caching", True)
+
+        # Handle inputs
+        inputs = {}
+
+        # If dependencies are provided, extract inputs from them
+        if dependencies:
+            try:
+                extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                inputs.update(extracted_inputs)
+            except Exception as e:
+                self.log_warning("Failed to extract inputs from dependencies: %s", e)
+
+        # Add explicitly provided inputs (overriding any extracted ones)
+        inputs.update(inputs_raw)
+
+        # Create processor and get inputs/outputs
+        processor = self._create_processor()
+        proc_inputs = self._get_inputs(inputs)
+        proc_outputs = self._get_outputs(outputs)
+        job_args = self._get_job_arguments()
+
+        # Get step name using standardized method with auto-detection
+        step_name = self._get_step_name()
+
+        # Get full script path from config or contract
+        script_path = self.config.get_script_path()
+        if not script_path and self.contract:
+            script_path = self.contract.entry_point
+
+        # Create step
+        step = ProcessingStep(
+            name=step_name,
+            processor=processor,
+            inputs=proc_inputs,
+            outputs=proc_outputs,
+            code=script_path,
+            job_arguments=job_args,
+            depends_on=dependencies,
+            cache_config=self._get_cache_config(enable_caching),
+        )
+
+        # Attach specification to the step for future reference
+        if hasattr(self, "spec") and self.spec:
+            setattr(step, "_spec", self.spec)
+
+        self.log_info("Created ProcessingStep with name: %s", step.name)
         return step
 ```
 
 The step builder:
-- Integrates with the hybrid registry system through automatic discovery
-- Gets the appropriate specification based on job type
-- Creates a SageMaker processor (Processing step in this example)
-- Sets up inputs and outputs based on the specification
-- Configures environment variables from the config
-- Creates and returns the SageMaker step
+- Uses the `@register_builder()` decorator for automatic registration
+- Implements proper validation of configuration
+- Creates a SageMaker processor with the correct parameters
+- Uses specification-driven input/output handling with Join() pattern for consistent folder structure
+- Implements the complete `create_step()` method following real patterns from PackageStepBuilder
+- Handles dependencies, caching, and step creation properly
 
-**Important**: The `create_step()` method returns a `ProcessingStep` in this example. Your step's `sagemaker_step_type` must match the actual SageMaker step type returned by this method. Available
+**Important**: The `create_step()` method returns a `ProcessingStep` in this example. Your step's `sagemaker_step_type` must match the actual SageMaker step type returned by this method.
 
 ### 7. Register Step with Hybrid Registry System
 

@@ -1101,9 +1101,12 @@ class [StepName]Config(ProcessingStepConfigBase):  # Or BasePipelineConfig for n
     _computed_s3_path: Optional[str] = PrivateAttr(default=None)
     _full_script_path: Optional[str] = PrivateAttr(default=None)
 
-    class Config(ProcessingStepConfigBase.Config):
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    # Update to Pydantic V2 style model_config (based on real patterns from codebase)
+    model_config = ProcessingStepConfigBase.model_config.copy()
+    model_config.update({
+        'arbitrary_types_allowed': True,
+        'validate_assignment': True
+    })
     
     # ===== Properties for Derived Fields =====
     
@@ -1564,15 +1567,29 @@ def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
         if logical_name in self.contract.expected_output_paths:
             container_path = self.contract.expected_output_paths[logical_name]
             
-            # Generate default output path if not provided
-            output_path = outputs.get(logical_name, 
-                f"{self.config.pipeline_s3_loc}/custom_step/{logical_name}")
+            # Try to find destination in outputs
+            destination = None
+            
+            # Look in outputs by logical name
+            if logical_name in outputs:
+                destination = outputs[logical_name]
+            else:
+                # Generate destination from base path using Join instead of f-string
+                from sagemaker.workflow.functions import Join
+                base_output_path = self._get_base_output_path()
+                step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'processing'
+                destination = Join(on="/", values=[base_output_path, step_type, logical_name])
+                self.log_info(
+                    "Using generated destination for '%s': %s",
+                    logical_name,
+                    destination,
+                )
             
             # Add output to processing outputs
             processing_outputs.append(
                 ProcessingOutput(
                     source=container_path,
-                    destination=output_path,
+                    destination=destination,
                     output_name=logical_name
                 )
             )
