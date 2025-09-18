@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr
+from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr, ConfigDict, field_serializer
 from typing import Union, Optional, Dict, List, Any, ClassVar, Tuple
 from enum import Enum
 from datetime import datetime
@@ -165,12 +165,24 @@ class RegistrationConfig(BasePipelineConfig):
     )
 
     # Update to Pydantic V2 style model_config
-    model_config = {
-        "arbitrary_types_allowed": True,
-        "validate_assignment": True,
-        "extra": "allow",  # Accept metadata fields during deserialization
-        "json_encoders": {VariableType: lambda v: v.value},
-    }
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="allow",  # Accept metadata fields during deserialization
+    )
+
+    # Custom serializer for VariableType fields (Pydantic V2 approach)
+    @field_serializer('source_model_inference_output_variable_list')
+    def serialize_output_variable_list(self, value: Dict[str, VariableType]) -> Dict[str, str]:
+        """Serialize VariableType enum values to strings"""
+        return {k: v.value if isinstance(v, VariableType) else v for k, v in value.items()}
+
+    @field_serializer('source_model_inference_input_variable_list')
+    def serialize_input_variable_list(self, value: Union[Dict[str, Union[VariableType, str]], List[List[str]]]) -> Union[Dict[str, str], List[List[str]]]:
+        """Serialize VariableType enum values to strings in input variable list"""
+        if isinstance(value, dict):
+            return {k: v.value if isinstance(v, VariableType) else v for k, v in value.items()}
+        return value  # List format already uses string values
 
     # ===== Property Accessors for Derived Fields =====
     # (No property accessor needed for source_model_inference_input_variable_list since it's now a field)

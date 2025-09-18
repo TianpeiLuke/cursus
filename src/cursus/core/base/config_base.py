@@ -13,6 +13,7 @@ from pydantic import (
     field_validator,
     ValidationInfo,
     PrivateAttr,
+    ConfigDict,
 )
 from typing import List, Optional, Dict, Any, ClassVar, TYPE_CHECKING, cast
 from pathlib import Path
@@ -99,11 +100,12 @@ class BasePipelineConfig(BaseModel):
     _pipeline_description: Optional[str] = PrivateAttr(default=None)
     _pipeline_s3_loc: Optional[str] = PrivateAttr(default=None)
 
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
-        extra = "allow"  # Allow extra fields for type-aware serialization
-        protected_namespaces = ()
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="allow",  # Allow extra fields for type-aware serialization
+        protected_namespaces=(),
+    )
 
     # Public read-only properties for derived fields
 

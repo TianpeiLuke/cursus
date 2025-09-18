@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr
+from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr, ConfigDict, field_serializer
 from typing import Optional, Dict, List, Any, Union, TYPE_CHECKING, ClassVar
 from pathlib import Path
 from datetime import datetime
@@ -118,12 +118,19 @@ class PayloadConfig(ProcessingStepConfigBase):
     _VALID_TYPES: ClassVar[List[str]] = ["NUMERIC", "TEXT"]
 
     # Update to Pydantic V2 style model_config
-    model_config = {
-        "arbitrary_types_allowed": True,
-        "validate_assignment": False,  # Changed from True to False to prevent recursion
-        "extra": "allow",  # Changed from 'forbid' to 'allow' to accept metadata fields during deserialization
-        "json_encoders": {Path: str},
-    }
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=False,  # Changed from True to False to prevent recursion
+        extra="allow",  # Changed from 'forbid' to 'allow' to accept metadata fields during deserialization
+    )
+
+    # Custom serializer for Path fields (Pydantic V2 approach)
+    @field_serializer('processing_source_dir', 'source_dir', when_used='json')
+    def serialize_path_fields(self, value: Optional[Union[str, Path]]) -> Optional[str]:
+        """Serialize Path objects to strings"""
+        if value is None:
+            return None
+        return str(value)
 
     # Property for read-only access to sample_payload_s3_key
     @property
