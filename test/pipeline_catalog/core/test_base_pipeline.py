@@ -25,14 +25,17 @@ class ConcretePipeline(BasePipeline):
     def create_dag(self) -> PipelineDAG:
         """Create a simple test DAG."""
         dag = PipelineDAG()
-        dag.add_node("step1", {"type": "training"})
-        dag.add_node("step2", {"type": "evaluation"})
+        dag.add_node("step1")
+        dag.add_node("step2")
         dag.add_edge("step1", "step2")
         return dag
 
     def get_enhanced_dag_metadata(self) -> EnhancedDAGMetadata:
         """Return test metadata."""
-        return Mock(spec=EnhancedDAGMetadata)
+        mock_metadata = Mock(spec=EnhancedDAGMetadata)
+        mock_metadata.zettelkasten_metadata = Mock()
+        mock_metadata.zettelkasten_metadata.atomic_id = "test_pipeline"
+        return mock_metadata
 
 
 class TestBasePipeline:
@@ -72,8 +75,11 @@ class TestBasePipeline:
         config_file.write_text(json.dumps(config_data))
         return str(config_file)
 
-    def test_init_with_defaults(self, mock_session):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_init_with_defaults(self, mock_compiler_class, mock_session):
         """Test initialization with default parameters."""
+        mock_compiler_class.return_value = Mock()
+        
         with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
             pipeline = ConcretePipeline()
 
@@ -84,8 +90,11 @@ class TestBasePipeline:
             assert pipeline.config == {}
             assert isinstance(pipeline.dag, PipelineDAG)
 
-    def test_init_with_config_file(self, mock_session, temp_config_file):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_init_with_config_file(self, mock_compiler_class, mock_session, temp_config_file):
         """Test initialization with config file."""
+        mock_compiler_class.return_value = Mock()
+        
         with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
             pipeline = ConcretePipeline(config_path=temp_config_file)
 
@@ -93,16 +102,22 @@ class TestBasePipeline:
             assert pipeline.config["pipeline_name"] == "test_pipeline"
             assert pipeline.config["parameters"]["param1"] == "value1"
 
-    def test_init_with_nonexistent_config(self, mock_session):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_init_with_nonexistent_config(self, mock_compiler_class, mock_session):
         """Test initialization with non-existent config file."""
+        # Mock the compiler to not raise FileNotFoundError
+        mock_compiler_class.return_value = Mock()
+        
         with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
             pipeline = ConcretePipeline(config_path="/nonexistent/config.json")
 
             assert pipeline.config_path == "/nonexistent/config.json"
             assert pipeline.config == {}
 
-    def test_init_with_custom_parameters(self, mock_session):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_init_with_custom_parameters(self, mock_compiler_class, mock_session):
         """Test initialization with custom parameters."""
+        mock_compiler_class.return_value = Mock()
         custom_role = "arn:aws:iam::123456789012:role/custom-role"
         
         pipeline = ConcretePipeline(
@@ -306,6 +321,7 @@ class TestBasePipeline:
         """Test create_pipeline compatibility method."""
         mock_compiler = Mock()
         mock_pipeline = Mock(spec=Pipeline)
+        mock_pipeline.name = "test_pipeline"  # Add name attribute
         mock_report = Mock(avg_confidence=0.95)
         mock_template = Mock()
         
@@ -326,8 +342,11 @@ class TestBasePipeline:
                 assert compiler == mock_compiler
                 assert template == mock_template
 
-    def test_save_execution_document(self, mock_session, tmp_path):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_save_execution_document(self, mock_compiler_class, mock_session, tmp_path):
         """Test saving execution document."""
+        mock_compiler_class.return_value = Mock()
+        
         with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
             pipeline = ConcretePipeline()
             
@@ -340,8 +359,11 @@ class TestBasePipeline:
             saved_data = json.loads(output_path.read_text())
             assert saved_data == document
 
-    def test_get_pipeline_config(self, mock_session, temp_config_file):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_pipeline_config(self, mock_compiler_class, mock_session, temp_config_file):
         """Test getting pipeline configuration."""
+        mock_compiler_class.return_value = Mock()
+        
         with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
             pipeline = ConcretePipeline(config_path=temp_config_file)
             
@@ -354,8 +376,11 @@ class TestBasePipeline:
             config["new_key"] = "new_value"
             assert "new_key" not in pipeline.config
 
-    def test_update_pipeline_config(self, mock_session):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_update_pipeline_config(self, mock_compiler_class, mock_session):
         """Test updating pipeline configuration."""
+        mock_compiler_class.return_value = Mock()
+        
         with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
             pipeline = ConcretePipeline()
             
@@ -365,8 +390,11 @@ class TestBasePipeline:
             assert pipeline.config["new_param"] == "new_value"
             assert pipeline.config["existing_param"] == "updated_value"
 
-    def test_get_dag_info(self, mock_session):
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_dag_info(self, mock_compiler_class, mock_session):
         """Test getting DAG information."""
+        mock_compiler_class.return_value = Mock()
+        
         with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
             pipeline = ConcretePipeline()
             
