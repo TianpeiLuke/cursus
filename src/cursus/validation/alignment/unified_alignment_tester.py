@@ -672,7 +672,48 @@ class UnifiedAlignmentTester:
         return results
 
     def discover_scripts(self) -> List[str]:
-        """Discover all Python scripts in the scripts directory."""
+        """Discover all Python scripts using step catalog with fallback."""
+        # Try using step catalog first
+        try:
+            catalog = self._get_step_catalog()
+            if catalog:
+                scripts_with_components = self._discover_scripts_with_catalog(catalog)
+                if scripts_with_components:
+                    return sorted(scripts_with_components)
+                            
+        except ImportError:
+            pass  # Fall back to legacy method
+        except Exception:
+            pass  # Fall back to legacy method
+
+        # FALLBACK METHOD: Legacy file system discovery
+        return self._discover_scripts_legacy()
+
+    def _get_step_catalog(self):
+        """Get step catalog instance with unified initialization logic."""
+        from ...step_catalog import StepCatalog
+        from pathlib import Path
+        
+        # Initialize step catalog
+        workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+        return StepCatalog(workspace_root)
+
+    def _discover_scripts_with_catalog(self, catalog) -> List[str]:
+        """Discover scripts using step catalog."""
+        # Get all available steps from catalog
+        available_steps = catalog.list_available_steps()
+        
+        # Filter steps that have script components
+        scripts_with_components = []
+        for step_name in available_steps:
+            step_info = catalog.get_step_info(step_name)
+            if step_info and step_info.file_components.get('script'):
+                scripts_with_components.append(step_name)
+        
+        return scripts_with_components
+
+    def _discover_scripts_legacy(self) -> List[str]:
+        """Discover scripts using legacy file system discovery."""
         scripts = []
 
         if self.scripts_dir.exists():

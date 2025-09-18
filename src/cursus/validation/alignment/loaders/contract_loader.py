@@ -34,7 +34,7 @@ class ContractLoader:
 
     def load_contract(self, contract_path: Path, contract_name: str) -> Dict[str, Any]:
         """
-        Load contract from Python file using robust sys.path management.
+        Load contract from Python file using step catalog for discovery.
 
         Args:
             contract_path: Path to the contract file
@@ -46,6 +46,27 @@ class ContractLoader:
         Raises:
             Exception: If contract loading fails
         """
+        # Try using step catalog first to get contract information
+        try:
+            from ....step_catalog import StepCatalog
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Get step info from catalog
+            step_info = catalog.get_step_info(contract_name)
+            if step_info and step_info.file_components.get('contract'):
+                contract_metadata = step_info.file_components['contract']
+                if contract_metadata and contract_metadata.path:
+                    # Use catalog-provided path
+                    contract_path = contract_metadata.path
+                    
+        except ImportError:
+            pass  # Fall back to provided path
+        except Exception:
+            pass  # Fall back to provided path
+
         try:
             # Add the project root to sys.path temporarily to handle relative imports
             # Go up to the project root (where src/ is located)

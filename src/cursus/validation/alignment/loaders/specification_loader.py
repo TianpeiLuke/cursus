@@ -47,8 +47,7 @@ class SpecificationLoader:
 
     def find_specification_files(self, spec_name: str) -> List[Path]:
         """
-        Find all specification files for a specification using hybrid approach.
-        PRIMARY: Direct file matching, FALLBACK: FlexibleFileResolver for fuzzy name matching.
+        Find all specification files for a specification using step catalog.
 
         Args:
             spec_name: Name of the specification to find files for
@@ -58,30 +57,44 @@ class SpecificationLoader:
         """
         spec_files = []
 
-        # PRIMARY METHOD: Direct file matching
-        direct_spec_file = self.specs_dir / f"{spec_name}_spec.py"
-        if direct_spec_file.exists():
-            spec_files.append(direct_spec_file)
+        # Try using step catalog first
+        try:
+            from ....step_catalog import StepCatalog
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Get step info from catalog
+            step_info = catalog.get_step_info(spec_name)
+            if step_info and step_info.file_components.get('spec'):
+                spec_metadata = step_info.file_components['spec']
+                if spec_metadata and spec_metadata.path:
+                    spec_files.append(spec_metadata.path)
+                    
+                    # Look for job type variants in the same directory
+                    spec_dir = spec_metadata.path.parent
+                    base_name = spec_metadata.path.stem.replace("_spec", "")
+                    
+                    for job_type in ["training", "validation", "testing", "calibration"]:
+                        variant_file = spec_dir / f"{base_name}_{job_type}_spec.py"
+                        if variant_file.exists() and variant_file not in spec_files:
+                            spec_files.append(variant_file)
+                            
+        except ImportError:
+            pass  # Fall back to legacy method
+        except Exception:
+            pass  # Fall back to legacy method
 
-            # Look for job type variants in the same directory
-            for job_type in ["training", "validation", "testing", "calibration"]:
-                variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
-                if variant_file.exists() and variant_file not in spec_files:
-                    spec_files.append(variant_file)
-
-        # FALLBACK METHOD: Use FlexibleFileResolver for fuzzy name matching
+        # FALLBACK METHOD: Direct file matching if catalog unavailable
         if not spec_files:
-            primary_spec = self.file_resolver.find_spec_file(spec_name)
-            if primary_spec:
-                spec_files.append(Path(primary_spec))
+            direct_spec_file = self.specs_dir / f"{spec_name}_spec.py"
+            if direct_spec_file.exists():
+                spec_files.append(direct_spec_file)
 
                 # Look for job type variants in the same directory
-                spec_dir = Path(primary_spec).parent
-                base_name = Path(primary_spec).stem.replace("_spec", "")
-
-                # Find all variants: {base_name}_{job_type}_spec.py
                 for job_type in ["training", "validation", "testing", "calibration"]:
-                    variant_file = spec_dir / f"{base_name}_{job_type}_spec.py"
+                    variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
                     if variant_file.exists() and variant_file not in spec_files:
                         spec_files.append(variant_file)
 

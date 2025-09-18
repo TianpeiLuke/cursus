@@ -119,14 +119,26 @@ class TestSpecificationLoader:
 
     def test_find_specification_files_no_direct_match(self, loader, specs_dir):
         """Test finding specification files when no direct match exists."""
-        # Mock the file resolver fallback
-        with patch.object(loader.file_resolver, "find_spec_file") as mock_find:
-            mock_find.return_value = str(specs_dir / "model_training_spec.py")
-
-            spec_files = loader.find_specification_files("nonexistent_spec")
-
-            assert len(spec_files) >= 1
-            assert Path(mock_find.return_value) in spec_files
+        # Create a temporary spec file that exists but doesn't match the requested name
+        existing_spec = specs_dir / "model_training_spec.py"
+        try:
+            existing_spec.touch()
+            
+            # Mock the step catalog import to return None (no step info found)
+            with patch("cursus.step_catalog.StepCatalog") as mock_catalog_class:
+                mock_catalog = Mock()
+                mock_catalog.get_step_info.return_value = None
+                mock_catalog_class.return_value = mock_catalog
+                
+                # Test with a spec name that doesn't have a direct file match
+                spec_files = loader.find_specification_files("nonexistent_spec")
+                
+                # Should return empty list since no direct match exists and catalog returns None
+                assert spec_files == []
+        finally:
+            # Ensure temporary file is cleaned up
+            if existing_spec.exists():
+                existing_spec.unlink()
 
     def test_find_specification_files_no_match(self, loader):
         """Test finding specification files when no match exists."""
