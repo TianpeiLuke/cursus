@@ -40,9 +40,9 @@
 <body>
     <div class="header">
         <h1>Alignment Validation Report</h1>
-        <p>Generated: 2025-09-07 20:07:42</p>
+        <p>Generated: 2025-09-18 07:45:55</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
-        <p>Overall Alignment Score: <strong>100.0/100</strong></p>
+        <p>Overall Alignment Score: <strong>71.4/100</strong></p>
     </div>
     
     <div class="summary">
@@ -68,10 +68,10 @@
         <h2>Alignment Scoring</h2>
         <div class="score-grid">
             
-        <div class="score-card score-excellent">
+        <div class="score-card score-fair">
             <h4>Overall Alignment</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
+            <div class="score-value">71.4</div>
+            <p>Fair</p>
         </div>
         
         <div class="score-card score-excellent">
@@ -86,10 +86,10 @@
             <p>Excellent</p>
         </div>
                 
-        <div class="score-card score-excellent">
+        <div class="score-card score-poor">
             <h4>Specification ↔ Dependencies</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
+            <div class="score-value">0.0</div>
+            <p>Poor</p>
         </div>
                 
         <div class="score-card score-excellent">
@@ -236,7 +236,7 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args, environ_vars
+                    <strong>WARNING:</strong> Testability parameters defined but not used: environ_vars, job_args
                     <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
                 </div>
                 
@@ -282,6 +282,11 @@
                 </div>
                 
                 <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
                     <strong>INFO:</strong> Consider using dictionary-style access for input_paths
                     <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
                 </div>
@@ -299,11 +304,6 @@
                 <div class="issue info">
                     <strong>INFO:</strong> Consider using dictionary-style access for output_paths
                     <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
-                </div>
-                
-                <div class="issue info">
-                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
-                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
                 </div>
                 
                 <div class="issue info">
@@ -386,16 +386,6 @@
             <div class="test-result test-passed">
                 <h4>package</h4>
                 <p>Status: PASSED</p>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Contract declares path not used in script: /opt/ml/processing/input/calibration
-                    <br><em>Recommendation: Either use path /opt/ml/processing/input/calibration in script or remove from contract</em>
-                </div>
-                
-                <div class="issue info">
-                    <strong>INFO:</strong> Contract declares input not read by script: /opt/ml/processing/input/calibration
-                    <br><em>Recommendation: Either read /opt/ml/processing/input/calibration in script or remove from contract inputs</em>
-                </div>
                 
                 <div class="issue info">
                     <strong>INFO:</strong> Main function follows testability pattern with all required parameters
@@ -606,9 +596,14 @@
         <div class="level-section">
             <div class="level-header">Level 3: Specification ↔ Dependencies</div>
         
-            <div class="test-result test-passed">
+            <div class="test-result test-failed">
                 <h4>currency_conversion</h4>
-                <p>Status: PASSED</p>
+                <p>Status: FAILED</p>
+                
+                <div class="issue critical">
+                    <strong>CRITICAL:</strong> Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/currency_conversion_spec.py
+                    <br><em>Recommendation: Create the specification file currency_conversion_spec.py</em>
+                </div>
                 
             </div>
             
@@ -693,8 +688,8 @@
                 <p>Status: PASSED</p>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_objective
-                    <br><em>Recommendation: Access required field model_objective in builder or make it optional</em>
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
+                    <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
                 </div>
                 
                 <div class="issue warning">
@@ -703,13 +698,8 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_domain
-                    <br><em>Recommendation: Access required field model_domain in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
-                    <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_owner
+                    <br><em>Recommendation: Access required field model_owner in builder or make it optional</em>
                 </div>
                 
                 <div class="issue warning">
@@ -718,13 +708,18 @@
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_owner
-                    <br><em>Recommendation: Access required field model_owner in builder or make it optional</em>
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
+                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
                 </div>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
-                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_objective
+                    <br><em>Recommendation: Access required field model_objective in builder or make it optional</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_domain
+                    <br><em>Recommendation: Access required field model_domain in builder or make it optional</em>
                 </div>
                 
                 <div class="issue info">

@@ -40,9 +40,9 @@
 <body>
     <div class="header">
         <h1>Alignment Validation Report</h1>
-        <p>Generated: 2025-09-07 20:07:41</p>
+        <p>Generated: 2025-09-18 07:45:54</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
-        <p>Overall Alignment Score: <strong>100.0/100</strong></p>
+        <p>Overall Alignment Score: <strong>71.4/100</strong></p>
     </div>
     
     <div class="summary">
@@ -68,10 +68,10 @@
         <h2>Alignment Scoring</h2>
         <div class="score-grid">
             
-        <div class="score-card score-excellent">
+        <div class="score-card score-fair">
             <h4>Overall Alignment</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
+            <div class="score-value">71.4</div>
+            <p>Fair</p>
         </div>
         
         <div class="score-card score-excellent">
@@ -86,10 +86,10 @@
             <p>Excellent</p>
         </div>
                 
-        <div class="score-card score-excellent">
+        <div class="score-card score-poor">
             <h4>Specification ↔ Dependencies</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
+            <div class="score-value">0.0</div>
+            <p>Poor</p>
         </div>
                 
         <div class="score-card score-excellent">
@@ -253,9 +253,14 @@
         <div class="level-section">
             <div class="level-header">Level 3: Specification ↔ Dependencies</div>
         
-            <div class="test-result test-passed">
+            <div class="test-result test-failed">
                 <h4>currency_conversion</h4>
-                <p>Status: PASSED</p>
+                <p>Status: FAILED</p>
+                
+                <div class="issue critical">
+                    <strong>CRITICAL:</strong> Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/currency_conversion_spec.py
+                    <br><em>Recommendation: Create the specification file currency_conversion_spec.py</em>
+                </div>
                 
             </div>
             </div>

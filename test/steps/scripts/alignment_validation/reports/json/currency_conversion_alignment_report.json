@@ -10,24 +10,25 @@
     "warning_issues": 0,
     "info_issues": 1,
     "highest_severity": "INFO",
-    "validation_timestamp": "2025-09-07T20:07:41.402152",
+    "validation_timestamp": "2025-09-18T07:45:54.252233",
     "is_passing": true
   },
   "scoring": {
-    "overall_score": 100.0,
+    "overall_score": 71.42857142857143,
+    "quality_rating": "Satisfactory",
     "level_scores": {
       "level1_script_contract": 100.0,
       "level2_contract_spec": 100.0,
-      "level3_spec_dependencies": 100.0,
+      "level3_spec_dependencies": 0.0,
       "level4_builder_config": 100.0
     },
     "scoring_report": {
       "overall": {
-        "score": 100.0,
-        "rating": "Excellent",
-        "passed": 4,
+        "score": 71.42857142857143,
+        "rating": "Satisfactory",
+        "passed": 3,
         "total": 4,
-        "pass_rate": 100.0
+        "pass_rate": 75.0
       },
       "levels": {
         "level1_script_contract": {
@@ -47,11 +48,11 @@
           }
         },
         "level3_spec_dependencies": {
-          "score": 100.0,
-          "passed": 1,
+          "score": 0.0,
+          "passed": 0,
           "total": 1,
           "tests": {
-            "currency_conversion": true
+            "currency_conversion": false
           }
         },
         "level4_builder_config": {
@@ -63,7 +64,13 @@
           }
         }
       },
-      "failed_tests": [],
+      "failed_tests": [
+        {
+          "name": "currency_conversion",
+          "level": "level3_spec_dependencies",
+          "error": "1 alignment issues found"
+        }
+      ],
       "metadata": {
         "scoring_system": "alignment_validation",
         "level_weights": {
@@ -89,7 +96,7 @@
     "currency_conversion": {
       "test_name": "script_contract_currency_conversion",
       "passed": true,
-      "timestamp": "2025-09-07T20:07:41.383081",
+      "timestamp": "2025-09-18T07:45:54.239628",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -99,9 +106,9 @@
             "script": "currency_conversion",
             "testability_parameters": [
               "input_paths",
-              "job_args",
+              "output_paths",
               "environ_vars",
-              "output_paths"
+              "job_args"
             ]
           },
           "recommendation": "No action needed - script follows testability best practices",
@@ -120,42 +127,42 @@
               {
                 "function": null,
                 "variable": "TRAIN_RATIO",
-                "line_number": 285
+                "line_number": 303
               },
               {
                 "function": null,
                 "variable": "TEST_VAL_RATIO",
-                "line_number": 286
+                "line_number": 308
               },
               {
                 "function": null,
                 "variable": "CURRENCY_CONVERSION_VARS",
-                "line_number": 310
+                "line_number": 331
               },
               {
                 "function": null,
                 "variable": "CURRENCY_CONVERSION_DICT",
-                "line_number": 311
+                "line_number": 334
               },
               {
                 "function": null,
                 "variable": "MARKETPLACE_INFO",
-                "line_number": 312
+                "line_number": 337
               },
               {
                 "function": null,
                 "variable": "LABEL_FIELD",
-                "line_number": 313
+                "line_number": 338
               },
               {
                 "function": null,
                 "variable": "TRAIN_RATIO",
-                "line_number": 314
+                "line_number": 339
               },
               {
                 "function": null,
                 "variable": "TEST_VAL_RATIO",
-                "line_number": 315
+                "line_number": 340
               }
             ]
           },
@@ -186,7 +193,7 @@
             "script": "currency_conversion",
             "parameter": "job_args",
             "current_pattern": "job_args.job_type",
-            "line_number": 157
+            "line_number": 164
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -202,7 +209,7 @@
             "script": "currency_conversion",
             "parameter": "job_args",
             "current_pattern": "job_args.mode",
-            "line_number": 158
+            "line_number": 165
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -218,7 +225,7 @@
             "script": "currency_conversion",
             "parameter": "environ_vars",
             "current_pattern": "environ_vars.get",
-            "line_number": 161
+            "line_number": 168
           },
           "recommendation": "Use environ_vars['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -234,7 +241,7 @@
             "script": "currency_conversion",
             "parameter": "environ_vars",
             "current_pattern": "environ_vars.get",
-            "line_number": 162
+            "line_number": 169
           },
           "recommendation": "Use environ_vars['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -250,7 +257,7 @@
             "script": "currency_conversion",
             "parameter": "environ_vars",
             "current_pattern": "environ_vars.get",
-            "line_number": 163
+            "line_number": 170
           },
           "recommendation": "Use environ_vars['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -266,7 +273,7 @@
             "script": "currency_conversion",
             "parameter": "input_paths",
             "current_pattern": "input_paths.get",
-            "line_number": 166
+            "line_number": 173
           },
           "recommendation": "Use input_paths['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -282,7 +289,7 @@
             "script": "currency_conversion",
             "parameter": "output_paths",
             "current_pattern": "output_paths.get",
-            "line_number": 167
+            "line_number": 174
           },
           "recommendation": "Use output_paths['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -298,38 +305,6 @@
             "script": "currency_conversion",
             "parameter": "job_args",
             "current_pattern": "job_args.enable_conversion",
-            "line_number": 173
-          },
-          "recommendation": "Use job_args['key'] for accessing nested values",
-          "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
-          "step_type": "Processing",
-          "framework_context": "pandas",
-          "reference_examples": []
-        },
-        {
-          "level": "SeverityLevel.INFO",
-          "category": "testability_parameter_access",
-          "message": "Consider using dictionary-style access for job_args",
-          "details": {
-            "script": "currency_conversion",
-            "parameter": "job_args",
-            "current_pattern": "job_args.marketplace_id_col",
-            "line_number": 176
-          },
-          "recommendation": "Use job_args['key'] for accessing nested values",
-          "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
-          "step_type": "Processing",
-          "framework_context": "pandas",
-          "reference_examples": []
-        },
-        {
-          "level": "SeverityLevel.INFO",
-          "category": "testability_parameter_access",
-          "message": "Consider using dictionary-style access for job_args",
-          "details": {
-            "script": "currency_conversion",
-            "parameter": "job_args",
-            "current_pattern": "job_args.currency_col",
             "line_number": 180
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
@@ -345,8 +320,40 @@
           "details": {
             "script": "currency_conversion",
             "parameter": "job_args",
+            "current_pattern": "job_args.marketplace_id_col",
+            "line_number": 183
+          },
+          "recommendation": "Use job_args['key'] for accessing nested values",
+          "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
+          "step_type": "Processing",
+          "framework_context": "pandas",
+          "reference_examples": []
+        },
+        {
+          "level": "SeverityLevel.INFO",
+          "category": "testability_parameter_access",
+          "message": "Consider using dictionary-style access for job_args",
+          "details": {
+            "script": "currency_conversion",
+            "parameter": "job_args",
+            "current_pattern": "job_args.currency_col",
+            "line_number": 187
+          },
+          "recommendation": "Use job_args['key'] for accessing nested values",
+          "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
+          "step_type": "Processing",
+          "framework_context": "pandas",
+          "reference_examples": []
+        },
+        {
+          "level": "SeverityLevel.INFO",
+          "category": "testability_parameter_access",
+          "message": "Consider using dictionary-style access for job_args",
+          "details": {
+            "script": "currency_conversion",
+            "parameter": "job_args",
             "current_pattern": "job_args.default_currency",
-            "line_number": 181
+            "line_number": 188
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -362,7 +369,7 @@
             "script": "currency_conversion",
             "parameter": "job_args",
             "current_pattern": "job_args.skip_invalid_currencies",
-            "line_number": 182
+            "line_number": 189
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -378,7 +385,7 @@
             "script": "currency_conversion",
             "parameter": "job_args",
             "current_pattern": "job_args.n_workers",
-            "line_number": 183
+            "line_number": 190
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -394,7 +401,7 @@
             "script": "currency_conversion",
             "parameter": "environ_vars",
             "current_pattern": "environ_vars.get",
-            "line_number": 201
+            "line_number": 208
           },
           "recommendation": "Use environ_vars['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -410,7 +417,7 @@
             "script": "currency_conversion",
             "parameter": "job_args",
             "current_pattern": "job_args.train_ratio",
-            "line_number": 204
+            "line_number": 211
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -426,7 +433,7 @@
             "script": "currency_conversion",
             "parameter": "job_args",
             "current_pattern": "job_args.test_val_ratio",
-            "line_number": 210
+            "line_number": 217
           },
           "recommendation": "Use job_args['key'] for accessing nested values",
           "alignment_level": "AlignmentLevel.SCRIPT_CONTRACT",
@@ -465,14 +472,14 @@
               "TEST_VAL_RATIO"
             ],
             "line_numbers": [
-              285,
-              286,
-              310,
-              311,
-              312,
-              313,
-              314,
-              315
+              303,
+              308,
+              331,
+              334,
+              337,
+              338,
+              339,
+              340
             ]
           },
           "recommendation": "Refactor 'None' to accept environment variables as parameters",
@@ -508,9 +515,9 @@
               "script": "currency_conversion",
               "testability_parameters": [
                 "input_paths",
-                "job_args",
+                "output_paths",
                 "environ_vars",
-                "output_paths"
+                "job_args"
               ]
             },
             "recommendation": "No action needed - script follows testability best practices"
@@ -525,42 +532,42 @@
                 {
                   "function": null,
                   "variable": "TRAIN_RATIO",
-                  "line_number": 285
+                  "line_number": 303
                 },
                 {
                   "function": null,
                   "variable": "TEST_VAL_RATIO",
-                  "line_number": 286
+                  "line_number": 308
                 },
                 {
                   "function": null,
                   "variable": "CURRENCY_CONVERSION_VARS",
-                  "line_number": 310
+                  "line_number": 331
                 },
                 {
                   "function": null,
                   "variable": "CURRENCY_CONVERSION_DICT",
-                  "line_number": 311
+                  "line_number": 334
                 },
                 {
                   "function": null,
                   "variable": "MARKETPLACE_INFO",
-                  "line_number": 312
+                  "line_number": 337
                 },
                 {
                   "function": null,
                   "variable": "LABEL_FIELD",
-                  "line_number": 313
+                  "line_number": 338
                 },
                 {
                   "function": null,
                   "variable": "TRAIN_RATIO",
-                  "line_number": 314
+                  "line_number": 339
                 },
                 {
                   "function": null,
                   "variable": "TEST_VAL_RATIO",
-                  "line_number": 315
+                  "line_number": 340
                 }
               ]
             },
@@ -583,7 +590,7 @@
               "script": "currency_conversion",
               "parameter": "job_args",
               "current_pattern": "job_args.job_type",
-              "line_number": 157
+              "line_number": 164
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
           },
@@ -595,7 +602,7 @@
               "script": "currency_conversion",
               "parameter": "job_args",
               "current_pattern": "job_args.mode",
-              "line_number": 158
+              "line_number": 165
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
           },
@@ -607,7 +614,7 @@
               "script": "currency_conversion",
               "parameter": "environ_vars",
               "current_pattern": "environ_vars.get",
-              "line_number": 161
+              "line_number": 168
             },
             "recommendation": "Use environ_vars['key'] for accessing nested values"
           },
@@ -619,7 +626,7 @@
               "script": "currency_conversion",
               "parameter": "environ_vars",
               "current_pattern": "environ_vars.get",
-              "line_number": 162
+              "line_number": 169
             },
             "recommendation": "Use environ_vars['key'] for accessing nested values"
           },
@@ -631,7 +638,7 @@
               "script": "currency_conversion",
               "parameter": "environ_vars",
               "current_pattern": "environ_vars.get",
-              "line_number": 163
+              "line_number": 170
             },
             "recommendation": "Use environ_vars['key'] for accessing nested values"
           },
@@ -643,7 +650,7 @@
               "script": "currency_conversion",
               "parameter": "input_paths",
               "current_pattern": "input_paths.get",
-              "line_number": 166
+              "line_number": 173
             },
             "recommendation": "Use input_paths['key'] for accessing nested values"
           },
@@ -655,7 +662,7 @@
               "script": "currency_conversion",
               "parameter": "output_paths",
               "current_pattern": "output_paths.get",
-              "line_number": 167
+              "line_number": 174
             },
             "recommendation": "Use output_paths['key'] for accessing nested values"
           },
@@ -667,30 +674,6 @@
               "script": "currency_conversion",
               "parameter": "job_args",
               "current_pattern": "job_args.enable_conversion",
-              "line_number": 173
-            },
-            "recommendation": "Use job_args['key'] for accessing nested values"
-          },
-          {
-            "severity": "INFO",
-            "category": "testability_parameter_access",
-            "message": "Consider using dictionary-style access for job_args",
-            "details": {
-              "script": "currency_conversion",
-              "parameter": "job_args",
-              "current_pattern": "job_args.marketplace_id_col",
-              "line_number": 176
-            },
-            "recommendation": "Use job_args['key'] for accessing nested values"
-          },
-          {
-            "severity": "INFO",
-            "category": "testability_parameter_access",
-            "message": "Consider using dictionary-style access for job_args",
-            "details": {
-              "script": "currency_conversion",
-              "parameter": "job_args",
-              "current_pattern": "job_args.currency_col",
               "line_number": 180
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
@@ -702,8 +685,32 @@
             "details": {
               "script": "currency_conversion",
               "parameter": "job_args",
+              "current_pattern": "job_args.marketplace_id_col",
+              "line_number": 183
+            },
+            "recommendation": "Use job_args['key'] for accessing nested values"
+          },
+          {
+            "severity": "INFO",
+            "category": "testability_parameter_access",
+            "message": "Consider using dictionary-style access for job_args",
+            "details": {
+              "script": "currency_conversion",
+              "parameter": "job_args",
+              "current_pattern": "job_args.currency_col",
+              "line_number": 187
+            },
+            "recommendation": "Use job_args['key'] for accessing nested values"
+          },
+          {
+            "severity": "INFO",
+            "category": "testability_parameter_access",
+            "message": "Consider using dictionary-style access for job_args",
+            "details": {
+              "script": "currency_conversion",
+              "parameter": "job_args",
               "current_pattern": "job_args.default_currency",
-              "line_number": 181
+              "line_number": 188
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
           },
@@ -715,7 +722,7 @@
               "script": "currency_conversion",
               "parameter": "job_args",
               "current_pattern": "job_args.skip_invalid_currencies",
-              "line_number": 182
+              "line_number": 189
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
           },
@@ -727,7 +734,7 @@
               "script": "currency_conversion",
               "parameter": "job_args",
               "current_pattern": "job_args.n_workers",
-              "line_number": 183
+              "line_number": 190
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
           },
@@ -739,7 +746,7 @@
               "script": "currency_conversion",
               "parameter": "environ_vars",
               "current_pattern": "environ_vars.get",
-              "line_number": 201
+              "line_number": 208
             },
             "recommendation": "Use environ_vars['key'] for accessing nested values"
           },
@@ -751,7 +758,7 @@
               "script": "currency_conversion",
               "parameter": "job_args",
               "current_pattern": "job_args.train_ratio",
-              "line_number": 204
+              "line_number": 211
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
           },
@@ -763,7 +770,7 @@
               "script": "currency_conversion",
               "parameter": "job_args",
               "current_pattern": "job_args.test_val_ratio",
-              "line_number": 210
+              "line_number": 217
             },
             "recommendation": "Use job_args['key'] for accessing nested values"
           },
@@ -794,14 +801,14 @@
                 "TEST_VAL_RATIO"
               ],
               "line_numbers": [
-                285,
-                286,
-                310,
-                311,
-                312,
-                313,
-                314,
-                315
+                303,
+                308,
+                331,
+                334,
+                337,
+                338,
+                339,
+                340
               ]
             },
             "recommendation": "Refactor 'None' to accept environment variables as parameters"
@@ -892,35 +899,35 @@
         "script_analysis": {
           "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py",
           "path_references": [
-            "path='Get currency code for a given marketplace ID.' line_number=25 context='    default_currency: str\\n) -> str:\\n>>>     \"\"\"Get currency code for a given marketplace ID.\"\"\"\\n    try:\\n        if pd.isna(marketplace_id) or str(int(marketplace_id)) not in marketplace_info:' is_hardcoded=True construction_method=None",
-            "path='Combine currency codes from marketplace ID and existing currency column.' line_number=42 context='    skip_invalid_currencies: bool\\n) -> Tuple[pd.DataFrame, str]:\\n>>>     \"\"\"Combine currency codes from marketplace ID and existing currency column.\"\"\"\\n    df[\"currency_code_from_marketplace_id\"] = df[marketplace_id_col].apply(\\n        lambda x: get_currency_code(x, marketplace_info, default_currency)' is_hardcoded=True construction_method=None",
-            "path=\"Convert single variable's currency values.\" line_number=66 context='    args: Tuple[pd.DataFrame, str, pd.Series]\\n) -> pd.Series:\\n>>>     \"\"\"Convert single variable\\'s currency values.\"\"\"\\n    df, variable, exchange_rate_series = args\\n    return df[variable] / exchange_rate_series.values' is_hardcoded=True construction_method=None",
-            "path='Perform parallel currency conversion on multiple variables.' line_number=78 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Perform parallel currency conversion on multiple variables.\"\"\"\\n    exchange_rate_series = df[currency_col].apply(lambda x: currency_conversion_dict.get(x, 1.0))\\n    processes = min(cpu_count(), len(currency_conversion_vars), n_workers)' is_hardcoded=True construction_method=None",
-            "path='Process currency conversion.' line_number=103 context='    n_workers: int = 50\\n) -> pd.DataFrame:\\n>>>     \"\"\"Process currency conversion.\"\"\"\\n    # Drop rows with missing marketplace IDs\\n    df = df.dropna(subset=[marketplace_id_col]).reset_index(drop=True)' is_hardcoded=True construction_method=None",
-            "path='/opt/ml/processing/input/data' line_number=166 context='    \\n    # Extract paths from parameters\\n>>>     input_base = Path(input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\"))\\n    output_base = Path(output_paths.get(\"data_output\", \"/opt/ml/processing/output\"))\\n    output_base.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
-            "path='/opt/ml/processing/output' line_number=167 context='    # Extract paths from parameters\\n    input_base = Path(input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\"))\\n>>>     output_base = Path(output_paths.get(\"data_output\", \"/opt/ml/processing/output\"))\\n    output_base.mkdir(parents=True, exist_ok=True)\\n    ' is_hardcoded=True construction_method=None",
-            "path='_processed_data.csv' line_number=194 context='        dfs = []\\n        for sp in splits:\\n>>>             fpath = input_base / sp / f\"{sp}_processed_data.csv\"\\n            logger.info(f\"  Reading split {sp} from {fpath}\")\\n            dfs.append(pd.read_csv(fpath))' is_hardcoded=True construction_method=None",
-            "path='_processed_data.csv' line_number=221 context='            # processed\\n            proc = split_df.copy()\\n>>>             proc_path = out_dir / f\"{split_name}_processed_data.csv\"\\n            proc.to_csv(proc_path, index=False)\\n            logger.info(f\"Wrote converted processed: {proc_path} (shape={proc.shape})\")' is_hardcoded=True construction_method=None",
-            "path='_full_data.csv' line_number=227 context='            # full (just alias here\u2014but you could re-read your full_data.csv if needed)\\n            full = proc.copy()\\n>>>             full_path = out_dir / f\"{split_name}_full_data.csv\"\\n            full.to_csv(full_path, index=False)\\n            logger.info(f\"Wrote converted full: {full_path} (shape={full.shape})\")' is_hardcoded=True construction_method=None",
-            "path='_processed_data.csv' line_number=240 context='        for sp in splits:\\n            in_dir = input_base / sp\\n>>>             proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n            full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n' is_hardcoded=True construction_method=None",
-            "path='_full_data.csv' line_number=241 context='            in_dir = input_base / sp\\n            proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n>>>             full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n\\n            df_proc = pd.read_csv(proc_in_path)' is_hardcoded=True construction_method=None",
-            "path='_processed_data.csv' line_number=250 context='\\n            # write processed\\n>>>             proc_out = out_dir / f\"{sp}_processed_data.csv\"\\n            df_conv.to_csv(proc_out, index=False)\\n            logger.info(f\"Converted processed for \\'{sp}\\' \u2192 {proc_out} (shape={df_conv.shape})\")' is_hardcoded=True construction_method=None",
-            "path='_full_data.csv' line_number=258 context='                df_full = pd.read_csv(full_in_path)\\n                df_full_conv = apply_conversion(df_full)\\n>>>                 full_out = out_dir / f\"{sp}_full_data.csv\"\\n                df_full_conv.to_csv(full_out, index=False)\\n                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")' is_hardcoded=True construction_method=None",
-            "path='Currency conversion step complete.' line_number=262 context='                logger.info(f\"Converted full for \\'{sp}\\' \u2192 {full_out} (shape={df_full_conv.shape})\")\\n\\n>>>     logger.info(\"Currency conversion step complete.\")\\n\\n' is_hardcoded=True construction_method=None",
-            "path='/opt/ml/processing/input/data' line_number=296 context='        \\n        # Standard SageMaker paths\\n>>>         INPUT_PATH = \"/opt/ml/processing/input/data\"\\n        OUTPUT_PATH = \"/opt/ml/processing/output\"\\n        ' is_hardcoded=True construction_method=None",
-            "path='/opt/ml/processing/output' line_number=297 context='        # Standard SageMaker paths\\n        INPUT_PATH = \"/opt/ml/processing/input/data\"\\n>>>         OUTPUT_PATH = \"/opt/ml/processing/output\"\\n        \\n        # Set up path dictionaries' is_hardcoded=True construction_method=None",
-            "path='0.7' line_number=314 context='            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>             \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }' is_hardcoded=True construction_method=None",
-            "path='0.5' line_number=315 context='            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n>>>             \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }\\n        ' is_hardcoded=True construction_method=None"
+            "path='Get currency code for a given marketplace ID.' line_number=25 context='    default_currency: str,\\n) -> str:\\n>>>     \"\"\"Get currency code for a given marketplace ID.\"\"\"\\n    try:\\n        if pd.isna(marketplace_id) or str(int(marketplace_id)) not in marketplace_info:' is_hardcoded=True construction_method=None",
+            "path='Combine currency codes from marketplace ID and existing currency column.' line_number=42 context='    skip_invalid_currencies: bool,\\n) -> Tuple[pd.DataFrame, str]:\\n>>>     \"\"\"Combine currency codes from marketplace ID and existing currency column.\"\"\"\\n    df[\"currency_code_from_marketplace_id\"] = df[marketplace_id_col].apply(\\n        lambda x: get_currency_code(x, marketplace_info, default_currency)' is_hardcoded=True construction_method=None",
+            "path=\"Convert single variable's currency values.\" line_number=68 context='    args: Tuple[pd.DataFrame, str, pd.Series]\\n) -> pd.Series:\\n>>>     \"\"\"Convert single variable\\'s currency values.\"\"\"\\n    df, variable, exchange_rate_series = args\\n    return df[variable] / exchange_rate_series.values' is_hardcoded=True construction_method=None",
+            "path='Perform parallel currency conversion on multiple variables.' line_number=80 context='    n_workers: int = 50,\\n) -> pd.DataFrame:\\n>>>     \"\"\"Perform parallel currency conversion on multiple variables.\"\"\"\\n    exchange_rate_series = df[currency_col].apply(\\n        lambda x: currency_conversion_dict.get(x, 1.0)' is_hardcoded=True construction_method=None",
+            "path='Process currency conversion.' line_number=110 context='    n_workers: int = 50,\\n) -> pd.DataFrame:\\n>>>     \"\"\"Process currency conversion.\"\"\"\\n    # Drop rows with missing marketplace IDs\\n    df = df.dropna(subset=[marketplace_id_col]).reset_index(drop=True)' is_hardcoded=True construction_method=None",
+            "path='/opt/ml/processing/input/data' line_number=173 context='\\n    # Extract paths from parameters\\n>>>     input_base = Path(input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\"))\\n    output_base = Path(output_paths.get(\"data_output\", \"/opt/ml/processing/output\"))\\n    output_base.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
+            "path='/opt/ml/processing/output' line_number=174 context='    # Extract paths from parameters\\n    input_base = Path(input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\"))\\n>>>     output_base = Path(output_paths.get(\"data_output\", \"/opt/ml/processing/output\"))\\n    output_base.mkdir(parents=True, exist_ok=True)\\n' is_hardcoded=True construction_method=None",
+            "path='_processed_data.csv' line_number=201 context='        dfs = []\\n        for sp in splits:\\n>>>             fpath = input_base / sp / f\"{sp}_processed_data.csv\"\\n            logger.info(f\"  Reading split {sp} from {fpath}\")\\n            dfs.append(pd.read_csv(fpath))' is_hardcoded=True construction_method=None",
+            "path='_processed_data.csv' line_number=232 context='            # processed\\n            proc = split_df.copy()\\n>>>             proc_path = out_dir / f\"{split_name}_processed_data.csv\"\\n            proc.to_csv(proc_path, index=False)\\n            logger.info(f\"Wrote converted processed: {proc_path} (shape={proc.shape})\")' is_hardcoded=True construction_method=None",
+            "path='_full_data.csv' line_number=238 context='            # full (just alias here\u2014but you could re-read your full_data.csv if needed)\\n            full = proc.copy()\\n>>>             full_path = out_dir / f\"{split_name}_full_data.csv\"\\n            full.to_csv(full_path, index=False)\\n            logger.info(f\"Wrote converted full: {full_path} (shape={full.shape})\")' is_hardcoded=True construction_method=None",
+            "path='_processed_data.csv' line_number=251 context='        for sp in splits:\\n            in_dir = input_base / sp\\n>>>             proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n            full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n' is_hardcoded=True construction_method=None",
+            "path='_full_data.csv' line_number=252 context='            in_dir = input_base / sp\\n            proc_in_path = in_dir / f\"{sp}_processed_data.csv\"\\n>>>             full_in_path = in_dir / f\"{sp}_full_data.csv\"\\n\\n            df_proc = pd.read_csv(proc_in_path)' is_hardcoded=True construction_method=None",
+            "path='_processed_data.csv' line_number=261 context='\\n            # write processed\\n>>>             proc_out = out_dir / f\"{sp}_processed_data.csv\"\\n            df_conv.to_csv(proc_out, index=False)\\n            logger.info(' is_hardcoded=True construction_method=None",
+            "path='_full_data.csv' line_number=271 context='                df_full = pd.read_csv(full_in_path)\\n                df_full_conv = apply_conversion(df_full)\\n>>>                 full_out = out_dir / f\"{sp}_full_data.csv\"\\n                df_full_conv.to_csv(full_out, index=False)\\n                logger.info(' is_hardcoded=True construction_method=None",
+            "path='Currency conversion step complete.' line_number=277 context='                )\\n\\n>>>     logger.info(\"Currency conversion step complete.\")\\n\\n' is_hardcoded=True construction_method=None",
+            "path='/opt/ml/processing/input/data' line_number=321 context='\\n        # Standard SageMaker paths\\n>>>         INPUT_PATH = \"/opt/ml/processing/input/data\"\\n        OUTPUT_PATH = \"/opt/ml/processing/output\"\\n' is_hardcoded=True construction_method=None",
+            "path='/opt/ml/processing/output' line_number=322 context='        # Standard SageMaker paths\\n        INPUT_PATH = \"/opt/ml/processing/input/data\"\\n>>>         OUTPUT_PATH = \"/opt/ml/processing/output\"\\n\\n        # Set up path dictionaries' is_hardcoded=True construction_method=None",
+            "path='0.7' line_number=339 context='            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>             \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\"),\\n        }' is_hardcoded=True construction_method=None",
+            "path='0.5' line_number=340 context='            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n>>>             \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\"),\\n        }\\n' is_hardcoded=True construction_method=None"
           ],
           "env_var_accesses": [
-            "variable_name='TRAIN_RATIO' line_number=285 context='            )\\n        )\\n>>>         parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n        parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n        parser.add_argument(\"--n-workers\", type=int, default=50)' access_method='os.environ.get' has_default=True default_value=None",
-            "variable_name='TEST_VAL_RATIO' line_number=286 context='        )\\n        parser.add_argument(\"--train-ratio\", type=float, default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)))\\n>>>         parser.add_argument(\"--test-val-ratio\", type=float, default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)))\\n        parser.add_argument(\"--n-workers\", type=int, default=50)\\n        parser.add_argument(\"--marketplace-id-col\", required=True)' access_method='os.environ.get' has_default=True default_value=None",
-            "variable_name='CURRENCY_CONVERSION_VARS' line_number=310 context='        # Environment variables dictionary\\n        environ_vars = {\\n>>>             \"CURRENCY_CONVERSION_VARS\": os.environ.get(\"CURRENCY_CONVERSION_VARS\", \"[]\"),\\n            \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),' access_method='os.environ.get' has_default=True default_value='[]'",
-            "variable_name='CURRENCY_CONVERSION_DICT' line_number=311 context='        environ_vars = {\\n            \"CURRENCY_CONVERSION_VARS\": os.environ.get(\"CURRENCY_CONVERSION_VARS\", \"[]\"),\\n>>>             \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),' access_method='os.environ.get' has_default=True default_value='{}'",
-            "variable_name='MARKETPLACE_INFO' line_number=312 context='            \"CURRENCY_CONVERSION_VARS\": os.environ.get(\"CURRENCY_CONVERSION_VARS\", \"[]\"),\\n            \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n>>>             \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),' access_method='os.environ.get' has_default=True default_value='{}'",
-            "variable_name='LABEL_FIELD' line_number=313 context='            \"CURRENCY_CONVERSION_DICT\": os.environ.get(\"CURRENCY_CONVERSION_DICT\", \"{}\"),\\n            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n>>>             \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")' access_method='os.environ.get' has_default=True default_value='label'",
-            "variable_name='TRAIN_RATIO' line_number=314 context='            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>             \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }' access_method='os.environ.get' has_default=True default_value='0.7'",
-            "variable_name='TEST_VAL_RATIO' line_number=315 context='            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n>>>             \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\")\\n        }\\n        ' access_method='os.environ.get' has_default=True default_value='0.5'"
+            "variable_name='TRAIN_RATIO' line_number=303 context='            \"--train-ratio\",\\n            type=float,\\n>>>             default=float(os.environ.get(\"TRAIN_RATIO\", 0.7)),\\n        )\\n        parser.add_argument(' access_method='os.environ.get' has_default=True default_value=None",
+            "variable_name='TEST_VAL_RATIO' line_number=308 context='            \"--test-val-ratio\",\\n            type=float,\\n>>>             default=float(os.environ.get(\"TEST_VAL_RATIO\", 0.5)),\\n        )\\n        parser.add_argument(\"--n-workers\", type=int, default=50)' access_method='os.environ.get' has_default=True default_value=None",
+            "variable_name='CURRENCY_CONVERSION_VARS' line_number=331 context='        # Environment variables dictionary\\n        environ_vars = {\\n>>>             \"CURRENCY_CONVERSION_VARS\": os.environ.get(\\n                \"CURRENCY_CONVERSION_VARS\", \"[]\"\\n            ),' access_method='os.environ.get' has_default=True default_value='[]'",
+            "variable_name='CURRENCY_CONVERSION_DICT' line_number=334 context='                \"CURRENCY_CONVERSION_VARS\", \"[]\"\\n            ),\\n>>>             \"CURRENCY_CONVERSION_DICT\": os.environ.get(\\n                \"CURRENCY_CONVERSION_DICT\", \"{}\"\\n            ),' access_method='os.environ.get' has_default=True default_value='{}'",
+            "variable_name='MARKETPLACE_INFO' line_number=337 context='                \"CURRENCY_CONVERSION_DICT\", \"{}\"\\n            ),\\n>>>             \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),' access_method='os.environ.get' has_default=True default_value='{}'",
+            "variable_name='LABEL_FIELD' line_number=338 context='            ),\\n            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n>>>             \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\"),' access_method='os.environ.get' has_default=True default_value='label'",
+            "variable_name='TRAIN_RATIO' line_number=339 context='            \"MARKETPLACE_INFO\": os.environ.get(\"MARKETPLACE_INFO\", \"{}\"),\\n            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n>>>             \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n            \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\"),\\n        }' access_method='os.environ.get' has_default=True default_value='0.7'",
+            "variable_name='TEST_VAL_RATIO' line_number=340 context='            \"LABEL_FIELD\": os.environ.get(\"LABEL_FIELD\", \"label\"),\\n            \"TRAIN_RATIO\": os.environ.get(\"TRAIN_RATIO\", \"0.7\"),\\n>>>             \"TEST_VAL_RATIO\": os.environ.get(\"TEST_VAL_RATIO\", \"0.5\"),\\n        }\\n' access_method='os.environ.get' has_default=True default_value='0.5'"
           ],
           "imports": [
             "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
@@ -937,16 +944,16 @@
             "module_name='sklearn.model_selection' import_alias=None line_number=13 is_from_import=True imported_items=['train_test_split']"
           ],
           "argument_definitions": [
-            "argument_name='job_type' line_number=268 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']",
-            "argument_name='mode' line_number=275 is_required=False has_default=True default_value='per_split' argument_type='str' choices=['per_split', 'split_after_conversion']",
-            "argument_name='train_ratio' line_number=285 is_required=False has_default=True default_value=None argument_type='float' choices=None",
-            "argument_name='test_val_ratio' line_number=286 is_required=False has_default=True default_value=None argument_type='float' choices=None",
-            "argument_name='n_workers' line_number=287 is_required=False has_default=True default_value=50 argument_type='int' choices=None",
-            "argument_name='marketplace_id_col' line_number=288 is_required=True has_default=False default_value=None argument_type=None choices=None",
-            "argument_name='currency_col' line_number=289 is_required=False has_default=True default_value=None argument_type=None choices=None",
-            "argument_name='default_currency' line_number=290 is_required=False has_default=True default_value='USD' argument_type=None choices=None",
-            "argument_name='skip_invalid_currencies' line_number=291 is_required=False has_default=False default_value=None argument_type=None choices=None",
-            "argument_name='enable_conversion' line_number=292 is_required=False has_default=True default_value=True argument_type=None choices=None"
+            "argument_name='job_type' line_number=283 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']",
+            "argument_name='mode' line_number=290 is_required=False has_default=True default_value='per_split' argument_type='str' choices=['per_split', 'split_after_conversion']",
+            "argument_name='train_ratio' line_number=300 is_required=False has_default=True default_value=None argument_type='float' choices=None",
+            "argument_name='test_val_ratio' line_number=305 is_required=False has_default=True default_value=None argument_type='float' choices=None",
+            "argument_name='n_workers' line_number=310 is_required=False has_default=True default_value=50 argument_type='int' choices=None",
+            "argument_name='marketplace_id_col' line_number=311 is_required=True has_default=False default_value=None argument_type=None choices=None",
+            "argument_name='currency_col' line_number=312 is_required=False has_default=True default_value=None argument_type=None choices=None",
+            "argument_name='default_currency' line_number=313 is_required=False has_default=True default_value='USD' argument_type=None choices=None",
+            "argument_name='skip_invalid_currencies' line_number=314 is_required=False has_default=False default_value=None argument_type=None choices=None",
+            "argument_name='enable_conversion' line_number=315 is_required=False has_default=True default_value=True argument_type=None choices=None"
           ],
           "file_operations": [],
           "step_type": "Processing",
@@ -1036,7 +1043,7 @@
     "currency_conversion": {
       "test_name": "contract_spec_currency_conversion",
       "passed": true,
-      "timestamp": "2025-09-07T20:07:41.392064",
+      "timestamp": "2025-09-18T07:45:54.247463",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -1538,48 +1545,37 @@
   "level3_results": {
     "currency_conversion": {
       "test_name": "spec_dependency_currency_conversion",
-      "passed": true,
-      "timestamp": "2025-09-07T20:07:41.398860",
-      "issues": [],
-      "details": {
-        "passed": true,
-        "issues": [],
-        "specification": {
-          "step_type": "CurrencyConversion_Testing",
-          "node_type": "internal",
-          "dependencies": [
-            {
-              "logical_name": "data_input",
-              "dependency_type": "processing_output",
-              "required": true,
-              "compatible_sources": [
-                "TabularPreprocessing",
-                "CradleDataLoading",
-                "ProcessingStep"
-              ],
-              "data_type": "S3Uri",
-              "description": "Processed testing data requiring currency conversion"
-            }
-          ],
-          "outputs": [
-            {
-              "logical_name": "converted_data",
-              "output_type": "processing_output",
-              "property_path": "properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
-              "data_type": "S3Uri",
-              "description": "Currency-converted testing data with standardized monetary values"
-            }
-          ]
+      "passed": false,
+      "timestamp": "2025-09-18T07:45:54.248844",
+      "issues": [
+        {
+          "level": "SeverityLevel.CRITICAL",
+          "category": "missing_file",
+          "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/currency_conversion_spec.py",
+          "details": {},
+          "recommendation": "Create the specification file currency_conversion_spec.py",
+          "alignment_level": "AlignmentLevel.SPECIFICATION_DEPENDENCY"
         }
+      ],
+      "details": {
+        "passed": false,
+        "issues": [
+          {
+            "severity": "CRITICAL",
+            "category": "missing_file",
+            "message": "Specification file not found: /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/specs/currency_conversion_spec.py",
+            "recommendation": "Create the specification file currency_conversion_spec.py"
+          }
+        ]
       },
-      "severity_level": null
+      "severity_level": "CRITICAL"
     }
   },
   "level4_results": {
     "currency_conversion": {
       "test_name": "builder_config_currency_conversion",
       "passed": true,
-      "timestamp": "2025-09-07T20:07:41.402130",
+      "timestamp": "2025-09-18T07:45:54.252162",
       "issues": [
         {
           "level": "SeverityLevel.INFO",
@@ -1587,16 +1583,16 @@
           "message": "Builder has required fields but no explicit validation logic detected",
           "details": {
             "required_fields": [
-              "region",
-              "author",
-              "label_field",
-              "bucket",
+              "marketplace_info",
               "currency_conversion_dict",
+              "pipeline_version",
+              "marketplace_id_col",
+              "region",
               "role",
               "service_name",
-              "marketplace_info",
-              "pipeline_version",
-              "marketplace_id_col"
+              "label_field",
+              "author",
+              "bucket"
             ],
             "builder": "currency_conversion"
           },
@@ -1613,16 +1609,16 @@
             "message": "Builder has required fields but no explicit validation logic detected",
             "details": {
               "required_fields": [
-                "region",
-                "author",
-                "label_field",
-                "bucket",
+                "marketplace_info",
                 "currency_conversion_dict",
+                "pipeline_version",
+                "marketplace_id_col",
+                "region",
                 "role",
                 "service_name",
-                "marketplace_info",
-                "pipeline_version",
-                "marketplace_id_col"
+                "label_field",
+                "author",
+                "bucket"
               ],
               "builder": "currency_conversion"
             },
@@ -1633,143 +1629,143 @@
           "config_accesses": [
             {
               "field_name": "job_type",
-              "line_number": 67,
-              "context": "line_67"
+              "line_number": 78,
+              "context": "line_78"
             },
             {
               "field_name": "job_type",
-              "line_number": 120,
-              "context": "line_120"
+              "line_number": 148,
+              "context": "line_148"
             },
             {
               "field_name": "job_type",
-              "line_number": 121,
-              "context": "line_121"
+              "line_number": 154,
+              "context": "line_154"
             },
             {
               "field_name": "enable_currency_conversion",
-              "line_number": 124,
-              "context": "line_124"
+              "line_number": 157,
+              "context": "line_157"
             },
             {
               "field_name": "marketplace_id_col",
-              "line_number": 125,
-              "context": "line_125"
+              "line_number": 158,
+              "context": "line_158"
             },
             {
               "field_name": "currency_conversion_var_list",
-              "line_number": 127,
-              "context": "line_127"
-            },
-            {
-              "field_name": "use_large_processing_instance",
-              "line_number": 137,
-              "context": "line_137"
-            },
-            {
-              "field_name": "processing_instance_type_large",
-              "line_number": 137,
-              "context": "line_137"
-            },
-            {
-              "field_name": "processing_instance_type_small",
-              "line_number": 137,
-              "context": "line_137"
-            },
-            {
-              "field_name": "processing_framework_version",
-              "line_number": 140,
-              "context": "line_140"
-            },
-            {
-              "field_name": "processing_instance_count",
-              "line_number": 143,
-              "context": "line_143"
-            },
-            {
-              "field_name": "processing_volume_size",
-              "line_number": 144,
-              "context": "line_144"
-            },
-            {
-              "field_name": "currency_conversion_var_list",
-              "line_number": 160,
-              "context": "line_160"
-            },
-            {
-              "field_name": "currency_conversion_dict",
-              "line_number": 161,
-              "context": "line_161"
-            },
-            {
-              "field_name": "marketplace_info",
               "line_number": 162,
               "context": "line_162"
             },
             {
+              "field_name": "use_large_processing_instance",
+              "line_number": 176,
+              "context": "line_176"
+            },
+            {
+              "field_name": "processing_instance_type_large",
+              "line_number": 175,
+              "context": "line_175"
+            },
+            {
+              "field_name": "processing_instance_type_small",
+              "line_number": 177,
+              "context": "line_177"
+            },
+            {
+              "field_name": "processing_framework_version",
+              "line_number": 181,
+              "context": "line_181"
+            },
+            {
+              "field_name": "processing_instance_count",
+              "line_number": 184,
+              "context": "line_184"
+            },
+            {
+              "field_name": "processing_volume_size",
+              "line_number": 185,
+              "context": "line_185"
+            },
+            {
+              "field_name": "currency_conversion_var_list",
+              "line_number": 202,
+              "context": "line_202"
+            },
+            {
+              "field_name": "currency_conversion_dict",
+              "line_number": 205,
+              "context": "line_205"
+            },
+            {
+              "field_name": "marketplace_info",
+              "line_number": 207,
+              "context": "line_207"
+            },
+            {
               "field_name": "label_field",
-              "line_number": 163,
-              "context": "line_163"
+              "line_number": 208,
+              "context": "line_208"
             },
             {
               "field_name": "train_ratio",
-              "line_number": 164,
-              "context": "line_164"
+              "line_number": 209,
+              "context": "line_209"
             },
             {
               "field_name": "test_val_ratio",
-              "line_number": 165,
-              "context": "line_165"
+              "line_number": 210,
+              "context": "line_210"
             },
             {
               "field_name": "pipeline_s3_loc",
-              "line_number": 264,
-              "context": "line_264"
+              "line_number": 309,
+              "context": "line_309"
             },
             {
               "field_name": "job_type",
-              "line_number": 264,
-              "context": "line_264"
+              "line_number": 309,
+              "context": "line_309"
             },
             {
               "field_name": "job_type",
-              "line_number": 285,
-              "context": "line_285"
+              "line_number": 335,
+              "context": "line_335"
             },
             {
               "field_name": "mode",
-              "line_number": 286,
-              "context": "line_286"
+              "line_number": 337,
+              "context": "line_337"
             },
             {
               "field_name": "marketplace_id_col",
-              "line_number": 287,
-              "context": "line_287"
+              "line_number": 339,
+              "context": "line_339"
             },
             {
               "field_name": "default_currency",
-              "line_number": 288,
-              "context": "line_288"
+              "line_number": 341,
+              "context": "line_341"
             },
             {
               "field_name": "enable_currency_conversion",
-              "line_number": 289,
-              "context": "line_289"
+              "line_number": 343,
+              "context": "line_343"
             },
             {
               "field_name": "currency_col",
-              "line_number": 293,
-              "context": "line_293"
+              "line_number": 347,
+              "context": "line_347"
             },
             {
               "field_name": "currency_col",
-              "line_number": 294,
-              "context": "line_294"
+              "line_number": 348,
+              "context": "line_348"
             },
             {
               "field_name": "skip_invalid_currencies",
-              "line_number": 296,
-              "context": "line_296"
+              "line_number": 352,
+              "context": "line_352"
             }
           ],
           "validation_calls": [],
@@ -1777,7 +1773,7 @@
           "class_definitions": [
             {
               "class_name": "CurrencyConversionStepBuilder",
-              "line_number": 31,
+              "line_number": 42,
               "base_classes": [
                 "StepBuilderBase"
               ],
@@ -1789,7 +1785,7 @@
           "method_definitions": [
             {
               "method_name": "__init__",
-              "line_number": 39,
+              "line_number": 50,
               "args": [
                 "self",
                 "config",
@@ -1804,7 +1800,7 @@
             },
             {
               "method_name": "validate_configuration",
-              "line_number": 100,
+              "line_number": 125,
               "args": [
                 "self"
               ],
@@ -1813,7 +1809,7 @@
             },
             {
               "method_name": "_create_processor",
-              "line_number": 130,
+              "line_number": 167,
               "args": [
                 "self"
               ],
@@ -1822,7 +1818,7 @@
             },
             {
               "method_name": "_get_environment_variables",
-              "line_number": 150,
+              "line_number": 191,
               "args": [
                 "self"
               ],
@@ -1831,7 +1827,7 @@
             },
             {
               "method_name": "_get_inputs",
-              "line_number": 170,
+              "line_number": 215,
               "args": [
                 "self",
                 "inputs"
@@ -1841,7 +1837,7 @@
             },
             {
               "method_name": "_get_outputs",
-              "line_number": 222,
+              "line_number": 267,
               "args": [
                 "self",
                 "outputs"
@@ -1851,7 +1847,7 @@
             },
             {
               "method_name": "_get_job_arguments",
-              "line_number": 277,
+              "line_number": 326,
               "args": [
                 "self"
               ],
@@ -1860,7 +1856,7 @@
             },
             {
               "method_name": "create_step",
-              "line_number": 301,
+              "line_number": 358,
               "args": [
                 "self"
               ],
@@ -1998,27 +1994,27 @@
               "module": "specs.currency_conversion_calibration_spec",
               "name": "CURRENCY_CONVERSION_CALIBRATION_SPEC",
               "alias": null,
-              "line_number": 19
+              "line_number": 21
             },
             {
               "type": "from_import",
               "module": "specs.currency_conversion_validation_spec",
               "name": "CURRENCY_CONVERSION_VALIDATION_SPEC",
               "alias": null,
-              "line_number": 20
+              "line_number": 24
             },
             {
               "type": "from_import",
               "module": "specs.currency_conversion_testing_spec",
               "name": "CURRENCY_CONVERSION_TESTING_SPEC",
               "alias": null,
-              "line_number": 21
+              "line_number": 27
             },
             {
               "type": "import",
               "module": "json",
               "alias": null,
-              "line_number": 157
+              "line_number": 198
             }
           ],
           "config_class_usage": []
