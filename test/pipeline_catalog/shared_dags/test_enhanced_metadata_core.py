@@ -56,9 +56,9 @@ class TestEnhancedDAGMetadata:
         edm = sample_enhanced_metadata
 
         assert edm.description == "XGBoost training pipeline for tabular data"
-        assert edm.complexity == ComplexityLevel.SIMPLE
+        assert edm.complexity == ComplexityLevel.SIMPLE.value
         assert edm.features == ["training"]
-        assert edm.framework == PipelineFramework.XGBOOST
+        assert edm.framework == PipelineFramework.XGBOOST.value
         assert edm.node_count == 3
         assert edm.edge_count == 2
 
@@ -96,7 +96,7 @@ class TestEnhancedDAGMetadata:
             node_count=1,
             edge_count=0,
         )
-        assert edm.complexity == ComplexityLevel.ADVANCED
+        assert edm.complexity == ComplexityLevel.ADVANCED.value
 
     def test_complexity_validation_string(self):
         """Test complexity validation with string values."""
@@ -122,7 +122,7 @@ class TestEnhancedDAGMetadata:
             node_count=1,
             edge_count=0,
         )
-        assert edm.framework == PipelineFramework.PYTORCH
+        assert edm.framework == PipelineFramework.PYTORCH.value
 
     def test_framework_validation_string(self):
         """Test framework validation with string values."""
@@ -354,9 +354,9 @@ class TestDAGMetadataAdapter:
 
         assert isinstance(enhanced, EnhancedDAGMetadata)
         assert enhanced.description == "Legacy XGBoost training pipeline"
-        assert enhanced.complexity == ComplexityLevel.STANDARD
+        assert enhanced.complexity == ComplexityLevel.STANDARD.value
         assert enhanced.features == ["training", "evaluation"]
-        assert enhanced.framework == PipelineFramework.XGBOOST
+        assert enhanced.framework == PipelineFramework.XGBOOST.value
         assert enhanced.node_count == 4
         assert enhanced.edge_count == 3
 

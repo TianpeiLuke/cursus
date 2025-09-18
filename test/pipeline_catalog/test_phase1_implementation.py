@@ -25,18 +25,19 @@ from cursus.pipeline_catalog.shared_dags.registry_sync import (
     DAGMetadataRegistrySync,
     RegistryValidationError,
 )
-from cursus.pipeline_catalog.utils.catalog_registry import CatalogRegistry
-from cursus.pipeline_catalog.utils.connection_traverser import (
+from cursus.pipeline_catalog.core.catalog_registry import CatalogRegistry
+from cursus.pipeline_catalog.core.connection_traverser import (
     ConnectionTraverser,
-    PipelineConnection,
 )
-from cursus.pipeline_catalog.utils.tag_discovery import TagBasedDiscovery
-from cursus.pipeline_catalog.utils.recommendation_engine import (
+from cursus.pipeline_catalog.core.tag_discovery import TagBasedDiscovery
+from cursus.pipeline_catalog.core.recommendation_engine import (
     PipelineRecommendationEngine,
     RecommendationResult,
-    CompositionRecommendation,
 )
-from cursus.pipeline_catalog.utils.registry_validator import (
+from cursus.pipeline_catalog.core.registry_validator import (
+    RegistryValidator,
+)
+from cursus.pipeline_catalog.core.registry_validator import (
     RegistryValidator,
     ValidationReport,
     ValidationSeverity,
@@ -71,8 +72,8 @@ class TestEnhancedDAGMetadata:
         )
 
         assert metadata.description == "Simple XGBoost training pipeline"
-        assert metadata.complexity == ComplexityLevel.SIMPLE
-        assert metadata.framework == PipelineFramework.XGBOOST
+        assert metadata.complexity == ComplexityLevel.SIMPLE.value
+        assert metadata.framework == PipelineFramework.XGBOOST.value
         assert metadata.zettelkasten_metadata.atomic_id == "xgb_simple_training"
         assert "xgboost" in metadata.zettelkasten_metadata.framework_tags
 
@@ -146,8 +147,8 @@ class TestEnhancedDAGMetadata:
         enhanced = DAGMetadataAdapter.from_legacy_dag_metadata(legacy)
 
         assert enhanced.description == "Legacy pipeline"
-        assert enhanced.complexity == ComplexityLevel.SIMPLE
-        assert enhanced.framework == PipelineFramework.XGBOOST
+        assert enhanced.complexity == ComplexityLevel.SIMPLE.value
+        assert enhanced.framework == PipelineFramework.XGBOOST.value
         assert enhanced.zettelkasten_metadata.atomic_id == "xgboost_training_simple"
 
     def test_metadata_validation(self):
@@ -445,6 +446,11 @@ class TestUtilityFunctions:
                     "single_responsibility": "XGBoost model training",
                     "input_interface": ["tabular_data"],
                     "output_interface": ["trained_model"],
+                    "independence_level": "fully_self_contained",
+                    "side_effects": "none",
+                    "dependencies": ["sagemaker"],
+                    "node_count": 3,
+                    "edge_count": 2,
                 },
                 "zettelkasten_metadata": {
                     "framework": "xgboost",
@@ -477,6 +483,11 @@ class TestUtilityFunctions:
                     "single_responsibility": "PyTorch model training",
                     "input_interface": ["tensor_data"],
                     "output_interface": ["trained_model"],
+                    "independence_level": "fully_self_contained",
+                    "side_effects": "none",
+                    "dependencies": ["torch", "sagemaker"],
+                    "node_count": 4,
+                    "edge_count": 3,
                 },
                 "zettelkasten_metadata": {
                     "framework": "pytorch",
