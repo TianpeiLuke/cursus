@@ -30,17 +30,25 @@ The Three-Tier Classification divides configuration fields into three categories
 
 ## Implementation Guide
 
-### Base Structure Using Pydantic
+### Base Structure Using Pydantic v2
 
-All configuration classes should use Pydantic for validation and field management:
+All configuration classes should use Pydantic v2 for validation and field management:
 
 ```python
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, ConfigDict, field_serializer
 from typing import Dict, List, Optional, Any, ClassVar
 
 class BasePipelineConfig(BaseModel):
     # Configuration fields here
     ...
+    
+    # Pydantic v2 model configuration
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="allow",
+        protected_namespaces=(),
+    )
 ```
 
 ### Implementing Tier 1 (Essential Fields)
@@ -150,8 +158,9 @@ Here's a complete example of a configuration class using the Three-Tier design:
 
 ```python
 from typing import Dict, Any, Optional, ClassVar, List
-from pydantic import BaseModel, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator, ConfigDict, field_serializer
 from datetime import datetime
+from pathlib import Path
 
 class TrainingStepConfig(BaseModel):
     """
@@ -177,9 +186,9 @@ class TrainingStepConfig(BaseModel):
     py_version: str = Field(default="py3", description="Python version")
     
     # Tier 3: Derived fields (private with property access)
-    _objective: Optional[str] = Field(default=None, exclude=True)
-    _eval_metric: Optional[List[str]] = Field(default=None, exclude=True)
-    _hyperparameter_file: Optional[str] = Field(default=None, exclude=True)
+    _objective: Optional[str] = PrivateAttr(default=None)
+    _eval_metric: Optional[List[str]] = PrivateAttr(default=None)
+    _hyperparameter_file: Optional[str] = PrivateAttr(default=None)
     
     # Non-serializable internal state
     _cache: Dict[str, Any] = PrivateAttr(default_factory=dict)
@@ -190,6 +199,22 @@ class TrainingStepConfig(BaseModel):
         "EU": "eu-west-1", 
         "FE": "us-west-2"
     }
+    
+    # Pydantic v2 model configuration
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="allow",
+        protected_namespaces=(),
+    )
+    
+    # Custom serializer for Path fields (if any)
+    @field_serializer('pipeline_s3_loc', when_used='json')
+    def serialize_path_fields(self, value: Optional[str]) -> Optional[str]:
+        """Serialize Path objects to strings"""
+        if value is None:
+            return None
+        return str(value)
     
     # Public properties for derived fields
     @property

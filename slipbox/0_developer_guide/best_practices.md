@@ -279,7 +279,7 @@ Example of a well-specified output:
 Example of good configuration handling using Pydantic BaseModel:
 
 ```python
-from pydantic import BaseModel, Field, field_validator, PrivateAttr
+from pydantic import BaseModel, Field, field_validator, PrivateAttr, ConfigDict
 from typing import Dict, Any, Optional, List
 from ...core.base.config_base import BasePipelineConfig
 
@@ -308,6 +308,14 @@ class YourStepConfig(BasePipelineConfig):
     # Tier 3: Derived fields (private with property access)
     _script_path: Optional[str] = PrivateAttr(default=None)
     _output_path: Optional[str] = PrivateAttr(default=None)
+    
+    # Pydantic v2 model configuration
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="allow",
+        protected_namespaces=(),
+    )
     
     @field_validator('model_type')
     @classmethod

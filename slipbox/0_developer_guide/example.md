@@ -44,7 +44,7 @@ Let's create the configuration class for our step using the three-tier field cla
 **File**: `src/cursus/steps/configs/config_feature_selection.py`
 
 ```python
-from pydantic import BaseModel, Field, field_validator, PrivateAttr
+from pydantic import BaseModel, Field, field_validator, PrivateAttr, ConfigDict
 from typing import Dict, Any, Optional
 from ...core.base.config_base import BasePipelineConfig
 
@@ -74,6 +74,14 @@ class FeatureSelectionConfig(BasePipelineConfig):
     # Tier 3: Derived fields (private with property access)
     _script_path: Optional[str] = PrivateAttr(default=None)
     _output_path: Optional[str] = PrivateAttr(default=None)
+    
+    # Pydantic v2 model configuration
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="allow",
+        protected_namespaces=(),
+    )
     
     @field_validator('selection_method')
     @classmethod
