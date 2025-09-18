@@ -18,6 +18,7 @@ from .config_discovery import ConfigAutoDiscovery
 from .adapters import (
     ContractDiscoveryEngineAdapter,
     ContractDiscoveryManagerAdapter,
+    ContractDiscoveryResult,
     FlexibleFileResolverAdapter,
     DeveloperWorkspaceFileResolverAdapter,
     WorkspaceDiscoveryManagerAdapter,
@@ -34,7 +35,8 @@ __all__ = [
     "create_step_catalog",
     # Legacy adapters
     "ContractDiscoveryEngineAdapter",
-    "ContractDiscoveryManagerAdapter", 
+    "ContractDiscoveryManagerAdapter",
+    "ContractDiscoveryResult",
     "FlexibleFileResolverAdapter",
     "DeveloperWorkspaceFileResolverAdapter",
     "WorkspaceDiscoveryManagerAdapter",

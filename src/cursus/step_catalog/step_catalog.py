@@ -369,38 +369,44 @@ class StepCatalog:
             if step_name in self._builder_class_cache:
                 return self._builder_class_cache[step_name]
             
-            builder_path = self.get_builder_class_path(step_name)
-            if not builder_path:
+            step_info = self.get_step_info(step_name)
+            if not step_info:
+                self.logger.warning(f"Failed to load builder class for {step_name}: Step not found in catalog")
                 return None
             
+            # Get builder class name from registry data
+            builder_class_name = step_info.registry_data.get('builder_step_name')
+            if not builder_class_name:
+                self.logger.warning(f"Failed to load builder class for {step_name}: No builder_step_name in registry")
+                return None
+            
+            # Convert step name to module name using consistent naming convention
+            import re
             import importlib
-            import importlib.util
             
-            # Simple import mechanism
-            if builder_path.startswith('cursus.'):
-                # Registry-based import
-                module_path, class_name = builder_path.rsplit('.', 1)
+            # Convert CamelCase to snake_case for module name
+            words = re.findall(r'[A-Z][a-z]*', step_name)
+            snake_case_parts = [word.lower() for word in words]
+            module_name = f"builder_{'_'.join(snake_case_parts)}_step"
+            
+            # Try to import the builder module
+            try:
+                # Use absolute import path
+                module_path = f"cursus.steps.builders.{module_name}"
                 module = importlib.import_module(module_path)
-                builder_class = getattr(module, class_name)
-            else:
-                # File-based import
-                spec = importlib.util.spec_from_file_location("builder_module", builder_path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
                 
-                builder_class = None
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if (isinstance(attr, type) and 
-                        (attr_name.endswith('Builder') or attr_name.endswith('StepBuilder'))):
-                        builder_class = attr
-                        break
-                
-                if not builder_class:
+                # Get the builder class from the module
+                if hasattr(module, builder_class_name):
+                    builder_class = getattr(module, builder_class_name)
+                    self._builder_class_cache[step_name] = builder_class
+                    return builder_class
+                else:
+                    self.logger.warning(f"Failed to load builder class for {step_name}: Class {builder_class_name} not found in module {module_path}")
                     return None
-            
-            self._builder_class_cache[step_name] = builder_class
-            return builder_class
+                    
+            except ImportError as e:
+                self.logger.warning(f"Failed to load builder class for {step_name}: Could not import module {module_path}: {e}")
+                return None
             
         except Exception as e:
             self.logger.warning(f"Failed to load builder class for {step_name}: {e}")
@@ -458,9 +464,10 @@ class StepCatalog:
         try:
             # Load registry data first
             try:
-                from ..registry.step_names import STEP_NAMES
+                from ..registry.step_names import get_step_names
                 
-                for step_name, registry_data in STEP_NAMES.items():
+                step_names_dict = get_step_names()
+                for step_name, registry_data in step_names_dict.items():
                     step_info = StepInfo(
                         step_name=step_name,
                         workspace_id="core",
@@ -470,25 +477,35 @@ class StepCatalog:
                     self._step_index[step_name] = step_info
                     self._workspace_steps.setdefault("core", []).append(step_name)
                 
-                step_names_dict = STEP_NAMES() if callable(STEP_NAMES) else STEP_NAMES
                 self.logger.debug(f"Loaded {len(step_names_dict)} steps from registry")
                 
             except ImportError as e:
                 self.logger.warning(f"Could not import STEP_NAMES registry: {e}")
             
             # Discover file components across workspaces
-            core_steps_dir = self.workspace_root / "src" / "cursus" / "steps"
-            if core_steps_dir.exists():
-                self._discover_workspace_components("core", core_steps_dir)
-            
-            # Discover developer workspaces
-            dev_projects_dir = self.workspace_root / "development" / "projects"
-            if dev_projects_dir.exists():
-                for project_dir in dev_projects_dir.iterdir():
-                    if project_dir.is_dir():
-                        workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
-                        if workspace_steps_dir.exists():
-                            self._discover_workspace_components(project_dir.name, workspace_steps_dir)
+            try:
+                if isinstance(self.workspace_root, (str, Path)):
+                    workspace_root_path = Path(self.workspace_root)
+                else:
+                    # Handle case where workspace_root might be something else (like dict)
+                    self.logger.warning(f"Unexpected workspace_root type: {type(self.workspace_root)}, using current directory")
+                    workspace_root_path = Path('.')
+                    
+                core_steps_dir = workspace_root_path / "src" / "cursus" / "steps"
+                if core_steps_dir.exists():
+                    self._discover_workspace_components("core", core_steps_dir)
+                    
+                # Discover developer workspaces
+                dev_projects_dir = workspace_root_path / "development" / "projects"
+                if dev_projects_dir.exists():
+                    for project_dir in dev_projects_dir.iterdir():
+                        if project_dir.is_dir():
+                            workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
+                            if workspace_steps_dir.exists():
+                                self._discover_workspace_components(project_dir.name, workspace_steps_dir)
+            except Exception as e:
+                self.logger.error(f"Error during workspace component discovery: {e}")
+                # Continue with empty workspace discovery
             
             # Record successful build
             build_time = time.time() - start_time
