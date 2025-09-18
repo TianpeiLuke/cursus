@@ -7,11 +7,10 @@ with any PipelineDAG structure without requiring custom template classes.
 
 from __future__ import annotations
 
-from typing import Dict, Type, Any, Optional, List, TYPE_CHECKING
+from typing import Dict, Type, Any, Optional, List, TYPE_CHECKING, Union
 import logging
 
 from sagemaker.workflow.parameters import ParameterString
-from sagemaker.network import NetworkConfig
 
 from ...api.dag.base_dag import PipelineDAG
 from ..base import StepBuilderBase, BasePipelineConfig
@@ -24,33 +23,6 @@ from ...registry.builder_registry import StepBuilderRegistry
 from .validation import ValidationEngine
 from .exceptions import ConfigurationError, ValidationError
 from ...registry.exceptions import RegistryError
-
-# Import constants from core library (with fallback)
-try:
-    from mods_workflow_core.utils.constants import (
-        PIPELINE_EXECUTION_TEMP_DIR,
-        KMS_ENCRYPTION_KEY_PARAM,
-        PROCESSING_JOB_SHARED_NETWORK_CONFIG,
-        SECURITY_GROUP_ID,
-        VPC_SUBNET,
-    )
-except ImportError:
-    logger = logging.getLogger(__name__)
-    logger.warning(
-        "Could not import constants from mods_workflow_core, using local definitions"
-    )
-    # Define pipeline parameters locally if import fails
-    PIPELINE_EXECUTION_TEMP_DIR = ParameterString(name="EXECUTION_S3_PREFIX")
-    KMS_ENCRYPTION_KEY_PARAM = ParameterString(name="KMS_ENCRYPTION_KEY_PARAM")
-    SECURITY_GROUP_ID = ParameterString(name="SECURITY_GROUP_ID")
-    VPC_SUBNET = ParameterString(name="VPC_SUBNET")
-    # Also create the network config
-    PROCESSING_JOB_SHARED_NETWORK_CONFIG = NetworkConfig(
-        enable_network_isolation=False,
-        security_group_ids=[SECURITY_GROUP_ID],
-        subnets=[VPC_SUBNET],
-        encrypt_inter_container_traffic=True,
-    )
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +46,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         config_resolver: Optional[StepConfigResolver] = None,
         builder_registry: Optional[StepBuilderRegistry] = None,
         skip_validation: bool = False,
+        pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
         **kwargs: Any,
     ):
         """
@@ -84,6 +57,8 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             config_path: Path to configuration file
             config_resolver: Custom config resolver (optional)
             builder_registry: Custom builder registry (optional)
+            skip_validation: Whether to skip validation (for testing)
+            pipeline_parameters: Custom pipeline parameters from DAGCompiler (optional)
             **kwargs: Additional arguments for base template
         """
         # Initialize logger first so it's available in all methods
@@ -117,6 +92,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         self._builder_map_loaded = False
 
         # Call parent constructor AFTER setting CONFIG_CLASSES
+        # Pass pipeline_parameters directly to parent - parent handles storage
         super().__init__(
             config_path=config_path,
             sagemaker_session=kwargs.get("sagemaker_session"),
@@ -124,6 +100,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             notebook_root=kwargs.get("notebook_root"),
             registry_manager=kwargs.get("registry_manager"),
             dependency_resolver=kwargs.get("dependency_resolver"),
+            pipeline_parameters=pipeline_parameters,  # Pass directly to parent
         )
 
     def _detect_config_classes(self) -> Dict[str, Type[BasePipelineConfig]]:
@@ -457,25 +434,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             self.logger.error(f"Failed to get execution order: {e}")
             return list(self._dag.nodes)
 
-    def _get_pipeline_parameters(self) -> List[ParameterString]:
-        """
-        Get pipeline parameters.
-
-        Returns standard parameters used by most pipelines:
-        - PIPELINE_EXECUTION_TEMP_DIR: S3 prefix for execution data
-        - KMS_ENCRYPTION_KEY_PARAM: KMS key for encryption
-        - SECURITY_GROUP_ID: Security group for network isolation
-        - VPC_SUBNET: VPC subnet for network isolation
-
-        Returns:
-            List of pipeline parameters
-        """
-        return [
-            PIPELINE_EXECUTION_TEMP_DIR,
-            KMS_ENCRYPTION_KEY_PARAM,
-            SECURITY_GROUP_ID,
-            VPC_SUBNET,
-        ]
+    # NOTE: _get_pipeline_parameters() method is no longer needed!
+    # Parent class (PipelineTemplateBase) handles parameter storage and retrieval automatically.
+    # DAGCompiler provides default parameters when none are specified.
 
     # Note: All execution document methods removed as part of Phase 2 cleanup
     # Execution document generation is now handled by the standalone execution document generator

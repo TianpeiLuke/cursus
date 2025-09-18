@@ -7,7 +7,7 @@ and best practices across different pipeline templates.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Type, Set, Tuple
+from typing import Dict, List, Any, Optional, Type, Set, Tuple, Union
 from pathlib import Path
 import logging
 import json
@@ -64,6 +64,7 @@ class PipelineTemplateBase(ABC):
         notebook_root: Optional[Path] = None,
         registry_manager: Optional[RegistryManager] = None,
         dependency_resolver: Optional[UnifiedDependencyResolver] = None,
+        pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
     ):
         """
         Initialize base template.
@@ -75,11 +76,15 @@ class PipelineTemplateBase(ABC):
             notebook_root: Root directory of notebook
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
+            pipeline_parameters: Pipeline parameters from DAGCompiler (optional)
         """
         self.config_path = config_path
         self.session = sagemaker_session
         self.role = role
         self.notebook_root = notebook_root or Path.cwd()
+
+        # Store pipeline parameters for template
+        self._stored_pipeline_parameters: Optional[List[Union[str, ParameterString]]] = pipeline_parameters
 
         # Load configurations
         logger.info(f"Loading configs from: {config_path}")
@@ -250,16 +255,36 @@ class PipelineTemplateBase(ABC):
         """
         pass
 
+    def set_pipeline_parameters(self, parameters: Optional[List[ParameterString]] = None) -> None:
+        """
+        Set pipeline parameters for this template.
+        
+        This method allows DAGCompiler to inject custom parameters that will be used
+        instead of the default parameters defined in subclasses.
+        
+        Args:
+            parameters: List of pipeline parameters to use
+        """
+        self._stored_pipeline_parameters = parameters
+        logger.info(f"Set {len(parameters) if parameters else 0} custom pipeline parameters")
+
     def _get_pipeline_parameters(self) -> List[ParameterString]:
         """
         Get pipeline parameters.
-
+        
+        Returns stored parameters if available, otherwise delegates to subclass implementation.
+        This method is called by generate_pipeline() to get parameters for PipelineAssembler.
+        
         Returns:
             List of pipeline parameters
         """
-        # Default implementation returns empty list
-        # Subclasses can override this to add parameters
-        return []
+        if self._stored_pipeline_parameters is not None:
+            logger.info("Using stored custom pipeline parameters")
+            return self._stored_pipeline_parameters
+        
+        # Fallback to subclass implementation (existing behavior)
+        logger.info("No stored parameters, using default implementation")
+        return []  # Default empty list, subclasses can override
 
     def generate_pipeline(self) -> Pipeline:
         """

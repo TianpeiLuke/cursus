@@ -7,14 +7,43 @@ into executable SageMaker pipelines.
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List, Union
 import logging
 from pathlib import Path
 
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.network import NetworkConfig
 
 from ...api.dag.base_dag import PipelineDAG
+
+# Import constants from core library (with fallback)
+try:
+    from mods_workflow_core.utils.constants import (
+        PIPELINE_EXECUTION_TEMP_DIR,
+        KMS_ENCRYPTION_KEY_PARAM,
+        PROCESSING_JOB_SHARED_NETWORK_CONFIG,
+        SECURITY_GROUP_ID,
+        VPC_SUBNET,
+    )
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "Could not import constants from mods_workflow_core, using local definitions"
+    )
+    # Define pipeline parameters locally if import fails
+    PIPELINE_EXECUTION_TEMP_DIR = ParameterString(name="EXECUTION_S3_PREFIX")
+    KMS_ENCRYPTION_KEY_PARAM = ParameterString(name="KMS_ENCRYPTION_KEY_PARAM")
+    SECURITY_GROUP_ID = ParameterString(name="SECURITY_GROUP_ID")
+    VPC_SUBNET = ParameterString(name="VPC_SUBNET")
+    # Also create the network config
+    PROCESSING_JOB_SHARED_NETWORK_CONFIG = NetworkConfig(
+        enable_network_isolation=False,
+        security_group_ids=[SECURITY_GROUP_ID],
+        subnets=[VPC_SUBNET],
+        encrypt_inter_container_traffic=True,
+    )
 from .config_resolver import StepConfigResolver
 from ...registry.builder_registry import StepBuilderRegistry
 from .validation import (
@@ -121,6 +150,7 @@ class PipelineDAGCompiler:
         role: Optional[str] = None,
         config_resolver: Optional[StepConfigResolver] = None,
         builder_registry: Optional[StepBuilderRegistry] = None,
+        pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -132,12 +162,25 @@ class PipelineDAGCompiler:
             role: IAM role for pipeline execution
             config_resolver: Custom config resolver (optional)
             builder_registry: Custom builder registry (optional)
+            pipeline_parameters: Pipeline parameters to pass to template (optional)
             **kwargs: Additional arguments for template constructor
         """
         self.config_path = config_path
         self.sagemaker_session = sagemaker_session
         self.role = role
         self.template_kwargs = kwargs
+
+        # Store pipeline parameters for template creation
+        # Use default parameters if none provided
+        if pipeline_parameters is None:
+            self.pipeline_parameters = [
+                PIPELINE_EXECUTION_TEMP_DIR,
+                KMS_ENCRYPTION_KEY_PARAM,
+                SECURITY_GROUP_ID,
+                VPC_SUBNET,
+            ]
+        else:
+            self.pipeline_parameters = pipeline_parameters
 
         # Initialize components
         self.config_resolver = config_resolver or StepConfigResolver()
@@ -514,6 +557,7 @@ class PipelineDAGCompiler:
                 builder_registry=self.builder_registry,
                 sagemaker_session=self.sagemaker_session,
                 role=self.role,
+                pipeline_parameters=self.pipeline_parameters,  # Pass parameters to template
                 **template_kwargs,
             )
 
