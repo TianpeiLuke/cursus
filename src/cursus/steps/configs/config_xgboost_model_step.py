@@ -72,8 +72,7 @@ class XGBoostModelStepConfig(BasePipelineConfig):
         default=6, ge=1, le=100, description="Max payload size (MB) for inference."
     )
 
-    class Config(BasePipelineConfig.Config):
-        pass
+    model_config = BasePipelineConfig.model_config
 
     @model_validator(mode="after")
     def validate_configuration(self) -> "XGBoostModelStepConfig":

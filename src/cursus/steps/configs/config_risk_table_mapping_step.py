@@ -63,10 +63,10 @@ class RiskTableMappingConfig(ProcessingStepConfigBase):
         description="Optional model hyperparameters for advanced configuration",
     )
 
-    class Config(ProcessingStepConfigBase.Config):
-        """Configuration settings for the model."""
-
-        arbitrary_types_allowed = True
+    model_config = ProcessingStepConfigBase.model_config.copy()
+    model_config.update({
+        'arbitrary_types_allowed': True
+    })
 
     @field_validator("job_type")
     @classmethod

@@ -77,8 +77,7 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         default=True, description="Whether to use large instance type for processing"
     )
 
-    class Config(ProcessingStepConfigBase.Config):
-        pass
+    model_config = ProcessingStepConfigBase.model_config
 
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes

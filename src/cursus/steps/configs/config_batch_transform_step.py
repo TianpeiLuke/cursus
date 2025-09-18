@@ -62,10 +62,7 @@ class BatchTransformStepConfig(BasePipelineConfig):
 
     # Note: input_names and output_names have been removed in favor of script contracts
 
-    class Config(BasePipelineConfig.Config):
-        """inherit all your BasePipelineConfig config settings"""
-
-        pass
+    model_config = BasePipelineConfig.model_config
 
     @field_validator("job_type")
     def _validate_job_type(cls, v: str) -> str:

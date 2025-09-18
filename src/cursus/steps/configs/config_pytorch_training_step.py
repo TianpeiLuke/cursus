@@ -45,8 +45,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
         None, description="Model hyperparameters"
     )
 
-    class Config(BasePipelineConfig.Config):  # Inherit base config settings
-        pass
+    model_config = BasePipelineConfig.model_config
 
     @model_validator(mode="after")
     def validate_field_lists(self) -> "PyTorchTrainingConfig":

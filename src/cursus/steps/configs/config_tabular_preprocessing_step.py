@@ -75,9 +75,8 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
 
     _full_script_path: Optional[str] = PrivateAttr(default=None)
 
-    class Config(ProcessingStepConfigBase.Config):
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    model_config = ProcessingStepConfigBase.model_config.copy()
+    model_config.update({"arbitrary_types_allowed": True, "validate_assignment": True})
 
     # ===== Properties for Derived Fields =====
 

@@ -53,8 +53,7 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
         default=None, description="S3 URI where hyperparameters.json will be saved."
     )
 
-    class Config(ProcessingStepConfigBase.Config):
-        pass
+    model_config = ProcessingStepConfigBase.model_config
 
     @model_validator(mode="after")
     def validate_config(self) -> "DummyTrainingConfig":

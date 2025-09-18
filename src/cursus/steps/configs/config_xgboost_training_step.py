@@ -74,8 +74,7 @@ class XGBoostTrainingConfig(BasePipelineConfig):
 
     _hyperparameter_file: Optional[str] = PrivateAttr(default=None)
 
-    class Config(BasePipelineConfig.Config):
-        pass
+    model_config = BasePipelineConfig.model_config
 
     # Public read-only properties for derived fields
 

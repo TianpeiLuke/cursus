@@ -80,8 +80,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     _effective_instance_type: Optional[str] = PrivateAttr(default=None)
     _script_path: Optional[str] = PrivateAttr(default=None)
 
-    class Config(BasePipelineConfig.Config):
-        pass
+    model_config = BasePipelineConfig.model_config
 
     # Public read-only properties for derived fields
 

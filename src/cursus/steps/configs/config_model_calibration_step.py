@@ -107,8 +107,7 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
     # For now, there are no derived fields specific to model calibration beyond
     # what's inherited from the ProcessingStepConfigBase class
 
-    class Config(ProcessingStepConfigBase.Config):
-        pass
+    model_config = ProcessingStepConfigBase.model_config
 
     # Initialize derived fields at creation time to avoid potential validation loops
     @model_validator(mode="after")
