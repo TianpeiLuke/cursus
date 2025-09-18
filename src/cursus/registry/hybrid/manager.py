@@ -106,14 +106,43 @@ class UnifiedRegistryManager:
             raise RegistryLoadError(f"Failed to load core registry: {str(e)}")
 
     def _discover_and_load_workspaces(self):
-        """Auto-discover and load workspace registries."""
-        if not self.workspaces_root.exists():
+        """Auto-discover and load workspace registries using step catalog."""
+        # Avoid circular imports by checking if we're already in a step catalog context
+        import sys
+        
+        # Check if step catalog is already being imported to avoid recursion
+        if 'cursus.step_catalog' in sys.modules or 'src.cursus.step_catalog' in sys.modules:
+            logger.debug("Step catalog already in import chain, skipping workspace discovery")
             return
-
-        for workspace_dir in self.workspaces_root.iterdir():
-            if workspace_dir.is_dir():
-                workspace_id = workspace_dir.name
-                self._load_workspace_registry(workspace_id, workspace_dir)
+            
+        # Try using step catalog for cross-workspace discovery
+        try:
+            # Use lazy import to avoid circular dependency
+            import importlib
+            step_catalog_module = importlib.import_module('cursus.step_catalog.step_catalog')
+            StepCatalog = step_catalog_module.StepCatalog
+            
+            from pathlib import Path
+            
+            # Initialize step catalog for cross-workspace discovery
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Use catalog's cross-workspace discovery
+            cross_workspace_components = catalog.discover_cross_workspace_components()
+            
+            # Load workspaces discovered by catalog
+            for workspace_id, components in cross_workspace_components.items():
+                if workspace_id != "core" and components:  # Skip core, focus on workspaces
+                    workspace_path = self.workspaces_root / workspace_id
+                    if workspace_path.exists():
+                        self._load_workspace_registry(workspace_id, workspace_path)
+                        logger.debug(f"Loaded workspace '{workspace_id}' via step catalog with {len(components)} components")
+                        
+        except ImportError:
+            logger.debug("Step catalog not available - workspace discovery disabled")
+        except Exception as e:
+            logger.debug(f"Step catalog workspace discovery failed: {e}")
 
     def _load_workspace_registry(self, workspace_id: str, workspace_path: Path):
         """Load workspace registry from the workspace path."""

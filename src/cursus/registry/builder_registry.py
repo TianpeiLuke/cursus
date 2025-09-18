@@ -230,133 +230,49 @@ class StepBuilderRegistry:
     @classmethod
     def discover_builders(cls):
         """
-        Automatically discover and register step builders.
+        Automatically discover and register step builders using step catalog.
 
         Returns:
             Dict[str, Type[StepBuilderBase]]: Dictionary of discovered builders
         """
-
         discovered_builders = {}
 
-        # Get the package containing step builders
+        # Use step catalog for discovery
         try:
-            from ..steps.builders import __path__ as builders_path
-
-            # Walk through all modules in the package
-            for _, module_name, _ in pkgutil.iter_modules(builders_path):
-                if module_name.startswith("builder_"):
-                    try:
-                        # Import the module
-                        module = importlib.import_module(
-                            f"...steps.builders.{module_name}", __name__
+            from ..step_catalog import StepCatalog
+            from pathlib import Path
+            
+            # Initialize step catalog for discovery
+            workspace_root = Path(__file__).parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Get all available steps from catalog
+            available_steps = catalog.list_available_steps()
+            
+            for step_name in available_steps:
+                try:
+                    # Use catalog's load_builder_class method
+                    builder_class = catalog.load_builder_class(step_name)
+                    if builder_class:
+                        discovered_builders[step_name] = builder_class
+                        registry_logger.debug(
+                            f"Discovered builder via catalog: {step_name} -> {builder_class.__name__}"
                         )
-
-                        # Find builder classes in the module
-                        # Import at runtime to avoid circular import
-                        from ..core.base.builder_base import (
-                            StepBuilderBase as RuntimeStepBuilderBase,
-                        )
-
-                        for name, obj in inspect.getmembers(module):
-                            if (
-                                inspect.isclass(obj)
-                                and issubclass(obj, RuntimeStepBuilderBase)
-                                and obj != RuntimeStepBuilderBase
-                            ):
-
-                                # Use the same logic as register_builder decorator for consistency
-                                step_type = None
-
-                                # First, try to find in STEP_NAMES registry (single source of truth)
-                                if name in REVERSE_BUILDER_MAPPING:
-                                    step_type = REVERSE_BUILDER_MAPPING[name]
-                                    registry_logger.debug(
-                                        f"Found step type '{step_type}' for class '{name}' in STEP_NAMES registry"
-                                    )
-                                else:
-                                    # Fallback to current logic for backward compatibility
-                                    if name.endswith("StepBuilder"):
-                                        step_type = name[:-11]  # Remove 'StepBuilder'
-                                    else:
-                                        step_type = name
-                                    registry_logger.debug(
-                                        f"Class '{name}' not found in STEP_NAMES registry, using fallback step type '{step_type}'"
-                                    )
-
-                                discovered_builders[step_type] = obj
-                                registry_logger.debug(
-                                    f"Discovered builder: {step_type} -> {name}"
-                                )
-
-                    except (ImportError, AttributeError) as e:
-                        registry_logger.warning(
-                            f"Error discovering builders in {module_name}: {e}"
-                        )
-
+                except Exception as e:
+                    registry_logger.debug(
+                        f"Could not load builder for {step_name} via catalog: {e}"
+                    )
+                    
+            registry_logger.info(f"Discovered {len(discovered_builders)} builders via step catalog")
+            
         except ImportError:
-            registry_logger.warning(
-                "Could not import builders package for builder discovery"
-            )
-
-        # Manual import and registration of known step builders to ensure backward compatibility
-        cls._register_known_builders(discovered_builders)
+            registry_logger.error("Step catalog not available - builder discovery disabled")
+            return {}
+        except Exception as e:
+            registry_logger.error(f"Step catalog discovery failed: {e}")
+            return {}
 
         return discovered_builders
-
-    @classmethod
-    def _register_known_builders(
-        cls, builder_map: Dict[str, Type[StepBuilderBase]]
-    ) -> None:
-        """Register known step builders to ensure backward compatibility."""
-        # Import step builders with error handling for missing dependencies
-        # Use STEP_NAMES registry as Single Source of Truth
-        known_builders = {}
-
-        # Generate builder imports from STEP_NAMES registry (Single Source of Truth)
-        for step_name, step_info in STEP_NAMES.items():
-            # Skip Base and Processing steps as they're not concrete builders
-            if step_name in ("Base", "Processing"):
-                continue
-
-            builder_class_name = step_info["builder_step_name"]
-
-            # Convert step name to module name using consistent naming convention
-            # e.g., "CradleDataLoading" -> "builder_cradle_data_loading_step"
-            # e.g., "XGBoostTraining" -> "builder_xgboost_training_step"
-            module_name_parts = []
-
-            # Split camelCase into words
-            import re
-
-            words = re.findall(r"[A-Z][a-z]*", step_name)
-
-            # Convert to snake_case
-            snake_case_parts = [word.lower() for word in words]
-            module_name = f"builder_{'_'.join(snake_case_parts)}_step"
-            module_path = f"...steps.builders.{module_name}"
-
-            # Import each builder with error handling
-            try:
-                module = importlib.import_module(module_path, __name__)
-                builder_class = getattr(module, builder_class_name)
-                known_builders[step_name] = builder_class
-                registry_logger.debug(
-                    f"Successfully imported builder: {step_name} -> {builder_class_name}"
-                )
-            except (ImportError, AttributeError) as e:
-                registry_logger.warning(
-                    f"Could not import builder {step_name} from {module_path}: {e}"
-                )
-                # Continue with other builders even if one fails
-                continue
-
-        # Add any known builders that weren't discovered automatically
-        for step_type, builder_class in known_builders.items():
-            if step_type not in builder_map:
-                builder_map[step_type] = builder_class
-                registry_logger.debug(
-                    f"Added known builder: {step_type} -> {builder_class.__name__}"
-                )
 
     def __init__(self):
         """Initialize the registry."""

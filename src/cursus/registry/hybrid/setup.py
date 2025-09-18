@@ -277,7 +277,7 @@ def create_example_implementations(workspace_dir: Path, developer_id: str) -> No
 Example custom step configuration for {developer_id} workspace.
 """
 from cursus.core.base.config_base import BasePipelineConfig
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from typing import Optional
 
 class ExampleCustomStepConfig(BasePipelineConfig):
@@ -290,10 +290,10 @@ class ExampleCustomStepConfig(BasePipelineConfig):
     # Workspace identification
     workspace_id: str = Field(default="{developer_id}", description="Workspace identifier")
     
-    class Config:
-        """Pydantic configuration."""
-        extra = "forbid"
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+    )
 '''
     )
 

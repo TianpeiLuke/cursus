@@ -119,6 +119,11 @@ class StepDefinition(BaseModel):
             return v.strip()
         return v
 
+    @property
+    def step_name(self) -> str:
+        """Alias for name attribute to maintain compatibility with step catalog."""
+        return self.name
+
     def to_legacy_format(self) -> Dict[str, Any]:
         """Convert to legacy STEP_NAMES format using shared converter."""
         from .utils import to_legacy_format
