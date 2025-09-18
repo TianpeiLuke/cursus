@@ -140,9 +140,9 @@ class WorkspaceAwarePipelineTestingSpecBuilder(PipelineTestingSpecBuilder):
 
     def _find_in_workspace(self, script_name: str) -> List[Tuple[str, Path]]:
         """
-        Enhanced workspace-aware script discovery using WorkspaceDiscoveryManager.
+        Enhanced workspace-aware script discovery using step catalog.
 
-        This method leverages the cursus workspace system to discover scripts across
+        This method leverages the unified step catalog to discover scripts across
         multiple developer workspaces, providing intelligent fallback when scripts
         are not found in the immediate test environment.
 
@@ -163,60 +163,88 @@ class WorkspaceAwarePipelineTestingSpecBuilder(PipelineTestingSpecBuilder):
             return self._workspace_cache[script_name]
 
         try:
-            # Try to import workspace components
-            from cursus.workspace.api import WorkspaceAPI
-            from cursus.workspace.core import WorkspaceDiscoveryManager
-
-            # Initialize workspace discovery manager
-            discovery_manager = WorkspaceDiscoveryManager()
-            workspace_api = WorkspaceAPI()
-
-            # Get available workspaces
-            workspaces = discovery_manager.discover_workspaces(
-                max_depth=self.max_workspace_depth
-            )
-
-            # Search each workspace for script directories
-            for workspace in workspaces:
-                workspace_path = Path(workspace.root_path)
-
-                for pattern in self.workspace_script_patterns:
-                    script_dir = workspace_path / pattern
-
-                    if script_dir.exists() and script_dir.is_dir():
-                        # Check if the expected script exists in this directory
-                        script_file = script_dir / f"{script_name}.py"
-                        if script_file.exists():
-                            location_name = f"workspace_{workspace.name}_{pattern.replace('/', '_').rstrip('_')}"
+            # Try using step catalog for workspace-aware discovery
+            from ...step_catalog import StepCatalog
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Get all available steps and check for scripts
+            available_steps = catalog.list_available_steps()
+            
+            for step in available_steps:
+                step_info = catalog.get_step_info(step)
+                if step_info and step_info.file_components.get('script'):
+                    script_metadata = step_info.file_components['script']
+                    if script_metadata and script_metadata.path:
+                        script_dir = script_metadata.path.parent
+                        location_name = f"workspace_catalog_scripts"
+                        
+                        # Check if this matches our expected script
+                        if script_name in str(script_metadata.path) or not script_name:
                             workspace_dirs.append((location_name, script_dir))
-
-                        # Also add directory for fuzzy matching even if exact match not found
-                        elif any(
-                            f.suffix == ".py" and f.name != "__init__.py"
-                            for f in script_dir.iterdir()
-                        ):
-                            location_name = f"workspace_{workspace.name}_{pattern.replace('/', '_').rstrip('_')}_fuzzy"
-                            workspace_dirs.append((location_name, script_dir))
-
-            # Sort by priority: exact matches first, then fuzzy match directories
-            workspace_dirs.sort(
-                key=lambda x: (
-                    0 if "fuzzy" not in x[0] else 1,  # Exact matches first
-                    x[0],  # Then alphabetical
-                )
-            )
 
         except ImportError:
-            # Workspace system not available, fall back to hardcoded paths
-            print(
-                "Warning: Workspace system not available, using hardcoded workspace paths"
-            )
-            workspace_dirs.extend(self._get_fallback_workspace_dirs())
+            # Step catalog not available, fall back to workspace discovery adapter
+            try:
+                # Use the unified workspace discovery adapter
+                from ...step_catalog.adapters.workspace_discovery import WorkspaceDiscoveryManagerAdapter
+                from unittest.mock import Mock
+                
+                # Create mock workspace manager for adapter
+                mock_workspace_manager = Mock()
+                mock_workspace_manager.workspace_root = Path(__file__).parent.parent.parent.parent.parent
+                
+                # Initialize workspace discovery adapter
+                adapter = WorkspaceDiscoveryManagerAdapter(mock_workspace_manager)
+                
+                # Get available developers/workspaces
+                developers = adapter.list_available_developers()
+                
+                # Search each workspace for script directories
+                for developer_id in developers:
+                    workspace_info = adapter.get_workspace_info(developer_id=developer_id)
+                    if workspace_info and not workspace_info.get('error'):
+                        workspace_path = Path(workspace_info['workspace_path'])
+                        
+                        for pattern in self.workspace_script_patterns:
+                            script_dir = workspace_path / pattern
+                            
+                            if script_dir.exists() and script_dir.is_dir():
+                                # Check if the expected script exists in this directory
+                                script_file = script_dir / f"{script_name}.py"
+                                if script_file.exists():
+                                    location_name = f"workspace_{developer_id}_{pattern.replace('/', '_').rstrip('_')}"
+                                    workspace_dirs.append((location_name, script_dir))
+                                
+                                # Also add directory for fuzzy matching even if exact match not found
+                                elif any(
+                                    f.suffix == ".py" and f.name != "__init__.py"
+                                    for f in script_dir.iterdir()
+                                ):
+                                    location_name = f"workspace_{developer_id}_{pattern.replace('/', '_').rstrip('_')}_fuzzy"
+                                    workspace_dirs.append((location_name, script_dir))
+
+            except ImportError:
+                # Workspace adapter not available, fall back to hardcoded paths
+                print(
+                    "Warning: Workspace adapter not available, using hardcoded workspace paths"
+                )
+                workspace_dirs.extend(self._get_fallback_workspace_dirs())
 
         except Exception as e:
             # Log workspace discovery errors but don't fail the entire resolution
             print(f"Warning: Workspace discovery failed: {e}")
             workspace_dirs.extend(self._get_fallback_workspace_dirs())
+
+        # Sort by priority: exact matches first, then fuzzy match directories
+        workspace_dirs.sort(
+            key=lambda x: (
+                0 if "fuzzy" not in x[0] else 1,  # Exact matches first
+                x[0],  # Then alphabetical
+            )
+        )
 
         # Cache results for future use
         self._workspace_cache[script_name] = workspace_dirs

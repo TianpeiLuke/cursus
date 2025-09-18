@@ -1,8 +1,8 @@
 """
-Pytest tests for contract discovery system
+Modernized tests for contract discovery system using unified StepCatalog.
 
-Tests the ContractDiscoveryManager and ContractDiscoveryResult classes
-for intelligent discovery and loading of script contracts.
+Tests the modernized ContractDiscoveryManagerAdapter and ContractDiscoveryEngineAdapter
+that leverage the unified StepCatalog system while maintaining backward compatibility.
 """
 
 import pytest
@@ -19,7 +19,7 @@ from cursus.core.base.contract_base import ScriptContract
 
 
 class TestContractDiscoveryResult:
-    """Test ContractDiscoveryResult model"""
+    """Test ContractDiscoveryResult model with modernized approach"""
 
     def test_contract_discovery_result_creation(self):
         """Test creating a ContractDiscoveryResult"""
@@ -27,14 +27,15 @@ class TestContractDiscoveryResult:
         result = ContractDiscoveryResult(
             contract=mock_contract,
             contract_name="test_contract",
-            discovery_method="direct_import",
+            discovery_method="step_catalog",
             error_message=None,
         )
 
         assert result.contract == mock_contract
         assert result.contract_name == "test_contract"
-        assert result.discovery_method == "direct_import"
+        assert result.discovery_method == "step_catalog"
         assert result.error_message is None
+        assert result.success is True
 
     def test_contract_discovery_result_with_error(self):
         """Test creating a ContractDiscoveryResult with error"""
@@ -49,10 +50,11 @@ class TestContractDiscoveryResult:
         assert result.contract_name == "not_found"
         assert result.discovery_method == "none"
         assert result.error_message == "Contract not found"
+        assert result.success is False
 
 
-class TestContractDiscoveryManager:
-    """Test ContractDiscoveryManager class"""
+class TestModernizedContractDiscoveryManager:
+    """Test modernized ContractDiscoveryManager using step catalog"""
 
     @pytest.fixture
     def temp_dir(self):
@@ -66,202 +68,75 @@ class TestContractDiscoveryManager:
         return ContractDiscoveryManager(test_data_dir=temp_dir)
 
     def test_contract_discovery_manager_initialization(self, temp_dir):
-        """Test ContractDiscoveryManager initialization"""
+        """Test ContractDiscoveryManager initialization with modernized approach"""
         manager = ContractDiscoveryManager(test_data_dir=temp_dir)
 
         assert manager.test_data_dir == Path(temp_dir)
         assert isinstance(manager._contract_cache, dict)
-        assert len(manager.contract_patterns) > 0
-        assert len(manager.contract_module_paths) > 0
+        assert hasattr(manager, 'catalog')  # Should have step catalog
+        assert hasattr(manager.catalog, 'get_step_info')  # Should be StepCatalog instance
 
-    def test_discover_contract_cache_hit(self, discovery_manager):
-        """Test contract discovery with cache hit"""
-        # Pre-populate cache
-        mock_contract = Mock(spec=ScriptContract)
-        cached_result = ContractDiscoveryResult(
-            contract=mock_contract,
-            contract_name="cached_contract",
-            discovery_method="cached",
-            error_message=None,
-        )
-        discovery_manager._contract_cache["test_script:None"] = cached_result
+    def test_discover_contract_using_step_catalog(self, discovery_manager):
+        """Test contract discovery using step catalog (modernized approach)"""
+        # Mock step catalog to return step info
+        mock_step_info = Mock()
+        mock_step_info.file_components = {
+            'contract': Mock(path=Path('/mock/contract/path.py'))
+        }
+        
+        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
+            with patch.object(discovery_manager, '_load_contract_from_path', return_value=Mock()):
+                result = discovery_manager.discover_contract("test_script")
 
-        result = discovery_manager.discover_contract("test_script")
+                assert result.success is True
+                assert result.discovery_method == "step_catalog"
+                assert result.contract_name == "TEST_SCRIPT_CONTRACT"
 
-        assert result == cached_result
-        assert result.discovery_method == "cached"
+    def test_discover_contract_fallback_to_direct_import(self, discovery_manager):
+        """Test fallback to direct import when step catalog doesn't find contract"""
+        # Mock step catalog to return None (not found)
+        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=None):
+            with patch.object(discovery_manager, '_try_direct_import') as mock_import:
+                mock_import.return_value = ContractDiscoveryResult(
+                    contract=Mock(),
+                    contract_name="TEST_SCRIPT_CONTRACT",
+                    discovery_method="direct_import",
+                    error_message=None
+                )
+                
+                result = discovery_manager.discover_contract("test_script")
 
-    @patch("importlib.import_module")
-    def test_discover_by_direct_import_success(self, mock_import, discovery_manager):
-        """Test successful direct import discovery"""
-        # Create mock contract
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.entry_point = "test_script.py"
+                assert result.success is True
+                assert result.discovery_method == "direct_import"
+                mock_import.assert_called_once_with("test_script", None)
 
-        # Create mock module
-        mock_module = Mock()
-        mock_module.TEST_SCRIPT_CONTRACT = mock_contract
-        mock_import.return_value = mock_module
+    def test_discover_contract_caching(self, discovery_manager):
+        """Test that contract discovery results are cached"""
+        # First call
+        mock_step_info = Mock()
+        mock_step_info.file_components = {
+            'contract': Mock(path=Path('/mock/contract/path.py'))
+        }
+        
+        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info) as mock_get_step:
+            with patch.object(discovery_manager, '_load_contract_from_path', return_value=Mock()):
+                result1 = discovery_manager.discover_contract("test_script")
+                result2 = discovery_manager.discover_contract("test_script")
 
-        result = discovery_manager._discover_by_direct_import("test_script")
+                # Should be same cached result
+                assert result1 is result2
+                # Step catalog should only be called once
+                mock_get_step.assert_called_once()
 
-        assert result.contract == mock_contract
-        assert result.contract_name == "TEST_SCRIPT_CONTRACT"
-        assert result.discovery_method == "direct_import"
-        assert result.error_message is None
-
-    @patch("importlib.import_module")
-    def test_discover_by_direct_import_module_not_found(
-        self, mock_import, discovery_manager
-    ):
-        """Test direct import discovery when module not found"""
-        mock_import.side_effect = ImportError("No module named 'test_module'")
-
-        result = discovery_manager._discover_by_direct_import("test_script")
-
-        assert result.contract is None
-        assert result.contract_name == "not_found"
-        assert result.discovery_method == "direct_import"
-        assert "No contract module found" in result.error_message
-
-    @patch("importlib.import_module")
-    def test_discover_by_direct_import_entry_point_mismatch(
-        self, mock_import, discovery_manager
-    ):
-        """Test direct import discovery with entry point mismatch"""
-        # Create mock contract with wrong entry point
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.entry_point = "wrong_script.py"
-
-        # Create mock module
-        mock_module = Mock()
-        mock_module.TEST_SCRIPT_CONTRACT = mock_contract
-        mock_import.return_value = mock_module
-
-        result = discovery_manager._discover_by_direct_import("test_script")
-
-        # Should continue searching and eventually fail
-        assert result.contract is None
-        assert result.discovery_method == "direct_import"
-
-    def test_discover_by_pattern_matching_no_modules(self, discovery_manager):
-        """Test pattern matching discovery when no modules available"""
-        result = discovery_manager._discover_by_pattern_matching("test_script")
-
-        assert result.contract is None
-        assert result.contract_name == "not_found"
-        assert result.discovery_method == "pattern_matching"
-        assert result.error_message == "Pattern matching failed"
-
-    def test_discover_by_fuzzy_search_not_implemented(self, discovery_manager):
-        """Test fuzzy search discovery (not implemented)"""
-        result = discovery_manager._discover_by_fuzzy_search("test_script")
-
-        assert result.contract is None
-        assert result.contract_name == "not_found"
-        assert result.discovery_method == "fuzzy_search"
-        assert result.error_message == "Fuzzy search not implemented"
-
-    def test_is_contract_match_with_entry_point(self, discovery_manager):
-        """Test contract matching using entry_point field"""
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.entry_point = "test_script.py"
-
-        result = discovery_manager._is_contract_match(mock_contract, "test_script")
-
-        assert result is True
-
-    def test_is_contract_match_entry_point_mismatch(self, discovery_manager):
-        """Test contract matching with entry_point mismatch"""
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.entry_point = "other_script.py"
-
-        result = discovery_manager._is_contract_match(mock_contract, "test_script")
-
-        assert result is False
-
-    def test_is_contract_match_no_entry_point_fallback(self, discovery_manager):
-        """Test contract matching fallback when no entry_point"""
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.__class__.__name__ = "TestScriptContract"
-        # No entry_point attribute
-        del mock_contract.entry_point
-
-        with patch.object(
-            discovery_manager, "_fallback_name_matching", return_value=True
-        ):
-            result = discovery_manager._is_contract_match(mock_contract, "test_script")
-
-            assert result is True
-
-    def test_fallback_name_matching_substring_match(self, discovery_manager):
-        """Test fallback name matching with substring match"""
-        # This should match because "testscript" is in "testscriptcontract" when lowercased
-        result = discovery_manager._fallback_name_matching(
-            "TestScriptContract", "testscript"
-        )
-
-        assert result is True
-
-    def test_fallback_name_matching_no_match(self, discovery_manager):
-        """Test fallback name matching with no match"""
-        result = discovery_manager._fallback_name_matching(
-            "CompletelyDifferentContract", "test_script"
-        )
-
-        assert result is False
-
-    def test_fallback_name_matching_canonical_name(self, discovery_manager):
-        """Test fallback name matching with canonical name"""
-        result = discovery_manager._fallback_name_matching(
-            "TabularPreprocessingContract", "tabular_preprocess", "TabularPreprocessing"
-        )
-
-        assert result is True
-
-    def test_to_constant_case_basic(self, discovery_manager):
-        """Test converting PascalCase to CONSTANT_CASE"""
-        result = discovery_manager._to_constant_case("TabularPreprocessing")
-
-        assert result == "TABULAR_PREPROCESSING"
-
-    def test_to_constant_case_special_cases(self, discovery_manager):
-        """Test converting special cases to CONSTANT_CASE"""
-        test_cases = [
-            ("XGBoostTraining", "XGBOOST_TRAINING"),
-            ("PyTorchModel", "PYTORCH_MODEL"),
-            ("MLFlowTracking", "MLFLOW_TRACKING"),
-            ("TensorFlowServing", "TENSORFLOW_SERVING"),
-            ("SageMakerEndpoint", "SAGEMAKER_ENDPOINT"),
-            ("AutoMLPipeline", "AUTOML_PIPELINE"),
-        ]
-
-        for input_case, expected in test_cases:
-            result = discovery_manager._to_constant_case(input_case)
-            assert result == expected
-
-    def test_get_contract_input_paths_empty(self, discovery_manager):
-        """Test getting contract input paths when none exist"""
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.expected_input_paths = None
-
-        result = discovery_manager.get_contract_input_paths(
-            mock_contract, "test_script"
-        )
-
-        assert result == {}
-
-    def test_get_contract_input_paths_with_paths(self, discovery_manager, temp_dir):
-        """Test getting contract input paths with adaptation"""
+    def test_contract_input_paths_adaptation(self, discovery_manager, temp_dir):
+        """Test contract input paths with SageMaker path adaptation"""
         mock_contract = Mock(spec=ScriptContract)
         mock_contract.expected_input_paths = {
             "training_data": "/opt/ml/input/data/training",
             "validation_data": "/opt/ml/input/data/validation",
         }
 
-        result = discovery_manager.get_contract_input_paths(
-            mock_contract, "test_script"
-        )
+        result = discovery_manager.get_contract_input_paths(mock_contract, "test_script")
 
         assert len(result) == 2
         assert "training_data" in result
@@ -269,18 +144,18 @@ class TestContractDiscoveryManager:
         # Should adapt SageMaker paths to local paths
         assert temp_dir in result["training_data"]
         assert temp_dir in result["validation_data"]
+        assert "input" in result["training_data"]
+        assert "input" in result["validation_data"]
 
-    def test_get_contract_output_paths_with_paths(self, discovery_manager, temp_dir):
-        """Test getting contract output paths with adaptation"""
+    def test_contract_output_paths_adaptation(self, discovery_manager, temp_dir):
+        """Test contract output paths with SageMaker path adaptation"""
         mock_contract = Mock(spec=ScriptContract)
         mock_contract.expected_output_paths = {
             "model_output": "/opt/ml/output/model",
             "metrics_output": "/opt/ml/output/metrics",
         }
 
-        result = discovery_manager.get_contract_output_paths(
-            mock_contract, "test_script"
-        )
+        result = discovery_manager.get_contract_output_paths(mock_contract, "test_script")
 
         assert len(result) == 2
         assert "model_output" in result
@@ -288,8 +163,10 @@ class TestContractDiscoveryManager:
         # Should adapt SageMaker paths to local paths
         assert temp_dir in result["model_output"]
         assert temp_dir in result["metrics_output"]
+        assert "output" in result["model_output"]
+        assert "output" in result["metrics_output"]
 
-    def test_get_contract_environ_vars_required_vars(self, discovery_manager):
+    def test_contract_environ_vars(self, discovery_manager):
         """Test getting environment variables from contract"""
         mock_contract = Mock(spec=ScriptContract)
         mock_contract.required_env_vars = ["MODEL_TYPE", "BATCH_SIZE"]
@@ -304,21 +181,7 @@ class TestContractDiscoveryManager:
         assert "CURSUS_ENV" in result
         assert result["CURSUS_ENV"] == "testing"
 
-    def test_get_contract_environ_vars_dict_format(self, discovery_manager):
-        """Test getting environment variables in dict format"""
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.required_env_vars = [
-            {"MODEL_TYPE": "xgboost", "BATCH_SIZE": "1000"}
-        ]
-        mock_contract.optional_env_vars = [{"DEBUG_MODE": "false"}]
-
-        result = discovery_manager.get_contract_environ_vars(mock_contract)
-
-        assert result["MODEL_TYPE"] == "xgboost"
-        assert result["BATCH_SIZE"] == "1000"
-        assert result["DEBUG_MODE"] == "false"
-
-    def test_get_contract_job_args_basic(self, discovery_manager):
+    def test_contract_job_args(self, discovery_manager):
         """Test getting job arguments from contract"""
         mock_contract = Mock(spec=ScriptContract)
         mock_contract.job_args = {"max_depth": 6, "learning_rate": 0.1}
@@ -331,41 +194,27 @@ class TestContractDiscoveryManager:
         assert result["max_depth"] == 6
         assert result["learning_rate"] == 0.1
 
-    def test_get_contract_job_args_from_metadata(self, discovery_manager):
-        """Test getting job arguments from contract metadata"""
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.job_args = None
-        mock_contract.metadata = {"job_args": {"custom_param": "custom_value"}}
-
-        result = discovery_manager.get_contract_job_args(mock_contract, "test_script")
-
-        assert result["custom_param"] == "custom_value"
-        assert result["script_name"] == "test_script"
-
-    def test_adapt_path_for_local_testing_sagemaker_patterns(
-        self, discovery_manager, temp_dir
-    ):
-        """Test adapting SageMaker paths to local testing paths"""
+    def test_sagemaker_path_adaptation_patterns(self, discovery_manager, temp_dir):
+        """Test various SageMaker path adaptation patterns"""
         base_data_dir = Path(temp_dir) / "test_script"
 
         test_cases = [
-            ("/opt/ml/input/data/training", "input/training"),
-            ("/opt/ml/output/model", "output/model"),
-            ("/opt/ml/processing/input/features", "input/features"),
-            ("/opt/ml/processing/output/predictions", "output/predictions"),
+            ("/opt/ml/input/data/training", "input", "training"),
+            ("/opt/ml/output/model", "output", "model"),
+            ("/opt/ml/processing/input/features", "input", "features"),
+            ("/opt/ml/processing/output/predictions", "output", "predictions"),
         ]
 
-        for original_path, expected_suffix in test_cases:
+        for original_path, expected_type, expected_suffix in test_cases:
             result = discovery_manager._adapt_path_for_local_testing(
-                original_path, base_data_dir, "input"
+                original_path, base_data_dir, expected_type
             )
 
             assert str(result).endswith(expected_suffix)
             assert str(base_data_dir) in str(result)
+            assert expected_type in str(result)
 
-    def test_adapt_path_for_local_testing_non_sagemaker(
-        self, discovery_manager, temp_dir
-    ):
+    def test_non_sagemaker_path_adaptation(self, discovery_manager, temp_dir):
         """Test adapting non-SageMaker paths"""
         base_data_dir = Path(temp_dir) / "test_script"
 
@@ -378,63 +227,9 @@ class TestContractDiscoveryManager:
         assert "input" in str(result)
         assert "data" in str(result)
 
-    def test_discover_contract_full_workflow_success(self, discovery_manager):
-        """Test complete contract discovery workflow with success"""
-        with patch.object(
-            discovery_manager, "_discover_by_direct_import"
-        ) as mock_direct:
-            mock_contract = Mock(spec=ScriptContract)
-            mock_direct.return_value = ContractDiscoveryResult(
-                contract=mock_contract,
-                contract_name="TEST_SCRIPT_CONTRACT",
-                discovery_method="direct_import",
-                error_message=None,
-            )
 
-            result = discovery_manager.discover_contract("test_script")
-
-            assert result.contract == mock_contract
-            assert result.discovery_method == "direct_import"
-            assert result.error_message is None
-
-            # Should be cached
-            cache_key = "test_script:None"
-            assert cache_key in discovery_manager._contract_cache
-
-    def test_discover_contract_full_workflow_failure(self, discovery_manager):
-        """Test complete contract discovery workflow with failure"""
-        with patch.object(
-            discovery_manager, "_discover_by_direct_import"
-        ) as mock_direct:
-            with patch.object(
-                discovery_manager, "_discover_by_pattern_matching"
-            ) as mock_pattern:
-                with patch.object(
-                    discovery_manager, "_discover_by_fuzzy_search"
-                ) as mock_fuzzy:
-                    # All methods fail
-                    failure_result = ContractDiscoveryResult(
-                        contract=None,
-                        contract_name="not_found",
-                        discovery_method="none",
-                        error_message="Failed",
-                    )
-                    mock_direct.return_value = failure_result
-                    mock_pattern.return_value = failure_result
-                    mock_fuzzy.return_value = failure_result
-
-                    result = discovery_manager.discover_contract("nonexistent_script")
-
-                    assert result.contract is None
-                    assert "No contract found" in result.error_message
-
-                    # Should be cached
-                    cache_key = "nonexistent_script:None"
-                    assert cache_key in discovery_manager._contract_cache
-
-
-class TestContractDiscoveryIntegration:
-    """Integration tests for contract discovery system"""
+class TestModernizedContractDiscoveryIntegration:
+    """Integration tests for modernized contract discovery system"""
 
     @pytest.fixture
     def temp_dir(self):
@@ -447,13 +242,10 @@ class TestContractDiscoveryIntegration:
         """Create ContractDiscoveryManager instance"""
         return ContractDiscoveryManager(test_data_dir=temp_dir)
 
-    def test_end_to_end_contract_discovery_and_adaptation(
-        self, discovery_manager, temp_dir
-    ):
-        """Test complete end-to-end contract discovery and path adaptation"""
+    def test_end_to_end_step_catalog_discovery(self, discovery_manager, temp_dir):
+        """Test complete end-to-end contract discovery using step catalog"""
         # Create mock contract with realistic SageMaker paths
         mock_contract = Mock(spec=ScriptContract)
-        mock_contract.entry_point = "tabular_preprocessing.py"
         mock_contract.expected_input_paths = {
             "raw_data": "/opt/ml/input/data/training",
             "config": "/opt/ml/input/config/preprocessing.json",
@@ -465,96 +257,146 @@ class TestContractDiscoveryIntegration:
         mock_contract.required_env_vars = ["PREPROCESSING_MODE", "FEATURE_COLUMNS"]
         mock_contract.job_args = {"batch_size": 1000, "normalize": True}
 
-        with patch.object(
-            discovery_manager, "_discover_by_direct_import"
-        ) as mock_direct:
-            mock_direct.return_value = ContractDiscoveryResult(
-                contract=mock_contract,
-                contract_name="TABULAR_PREPROCESSING_CONTRACT",
-                discovery_method="direct_import",
-                error_message=None,
-            )
+        # Mock step catalog to find the contract
+        mock_step_info = Mock()
+        mock_step_info.file_components = {
+            'contract': Mock(path=Path('/mock/contract/tabular_preprocessing_contract.py'))
+        }
+        
+        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
+            with patch.object(discovery_manager, '_load_contract_from_path', return_value=mock_contract):
+                # Discover contract using step catalog
+                result = discovery_manager.discover_contract("tabular_preprocessing")
 
-            # Discover contract
-            result = discovery_manager.discover_contract("tabular_preprocessing")
+                assert result.success is True
+                assert result.discovery_method == "step_catalog"
+                assert result.contract == mock_contract
 
-            assert result.contract == mock_contract
-            assert result.discovery_method == "direct_import"
+                # Test path adaptation
+                input_paths = discovery_manager.get_contract_input_paths(
+                    mock_contract, "tabular_preprocessing"
+                )
+                output_paths = discovery_manager.get_contract_output_paths(
+                    mock_contract, "tabular_preprocessing"
+                )
 
-            # Test path adaptation
-            input_paths = discovery_manager.get_contract_input_paths(
-                mock_contract, "tabular_preprocessing"
-            )
-            output_paths = discovery_manager.get_contract_output_paths(
-                mock_contract, "tabular_preprocessing"
-            )
+                # Verify paths are adapted to local testing structure
+                assert len(input_paths) == 2
+                assert len(output_paths) == 2
+                assert temp_dir in input_paths["raw_data"]
+                assert temp_dir in output_paths["processed_data"]
 
-            # Verify paths are adapted to local testing structure
-            assert len(input_paths) == 2
-            assert len(output_paths) == 2
-            assert temp_dir in input_paths["raw_data"]
-            assert temp_dir in output_paths["processed_data"]
+                # Test environment variables
+                environ_vars = discovery_manager.get_contract_environ_vars(mock_contract)
+                assert "PREPROCESSING_MODE" in environ_vars
+                assert "FEATURE_COLUMNS" in environ_vars
+                assert environ_vars["CURSUS_ENV"] == "testing"
 
-            # Test environment variables
-            environ_vars = discovery_manager.get_contract_environ_vars(mock_contract)
-            assert "PREPROCESSING_MODE" in environ_vars
-            assert "FEATURE_COLUMNS" in environ_vars
-            assert environ_vars["CURSUS_ENV"] == "testing"
+                # Test job arguments
+                job_args = discovery_manager.get_contract_job_args(
+                    mock_contract, "tabular_preprocessing"
+                )
+                assert job_args["batch_size"] == 1000
+                assert job_args["normalize"] is True
+                assert job_args["script_name"] == "tabular_preprocessing"
 
-            # Test job arguments
-            job_args = discovery_manager.get_contract_job_args(
-                mock_contract, "tabular_preprocessing"
-            )
-            assert job_args["batch_size"] == 1000
-            assert job_args["normalize"] is True
-            assert job_args["script_name"] == "tabular_preprocessing"
+    def test_step_catalog_not_found_fallback(self, discovery_manager):
+        """Test fallback behavior when step catalog doesn't find contract"""
+        # Mock step catalog to return None
+        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=None):
+            # Mock direct import to also fail
+            with patch('importlib.import_module', side_effect=ImportError("No module")):
+                result = discovery_manager.discover_contract("nonexistent_script")
 
-    def test_contract_discovery_with_canonical_name(self, discovery_manager):
-        """Test contract discovery using canonical name"""
-        mock_contract = Mock(spec=ScriptContract)
-        mock_contract.entry_point = "tabular_preprocessing.py"
+                assert result.success is False
+                assert result.discovery_method == "none"
+                assert "No contract found" in result.error_message
 
-        with patch.object(
-            discovery_manager, "_discover_by_direct_import"
-        ) as mock_direct:
-            mock_direct.return_value = ContractDiscoveryResult(
-                contract=mock_contract,
-                contract_name="TABULAR_PREPROCESSING_CONTRACT",
-                discovery_method="direct_import",
-                error_message=None,
-            )
+    def test_multiple_discovery_caching_with_step_catalog(self, discovery_manager):
+        """Test that multiple contract discoveries use caching with step catalog"""
+        mock_step_info = Mock()
+        mock_step_info.file_components = {
+            'contract': Mock(path=Path('/mock/contract/test_contract.py'))
+        }
+        
+        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info) as mock_get_step:
+            with patch.object(discovery_manager, '_load_contract_from_path', return_value=Mock()):
+                # First discovery
+                result1 = discovery_manager.discover_contract("test_script")
 
-            result = discovery_manager.discover_contract(
-                "tabular_preprocessing", canonical_name="TabularPreprocessing"
-            )
+                # Second discovery (should use cache)
+                result2 = discovery_manager.discover_contract("test_script")
 
-            assert result.contract == mock_contract
+                assert result1 is result2
+                # Step catalog should only be called once due to caching
+                mock_get_step.assert_called_once()
 
-            # Verify canonical name was used in discovery
-            mock_direct.assert_called_once_with(
-                "tabular_preprocessing", "TabularPreprocessing"
-            )
 
-    def test_multiple_contract_discovery_caching(self, discovery_manager):
-        """Test that multiple contract discoveries use caching effectively"""
-        mock_contract = Mock(spec=ScriptContract)
+class TestModernizedContractDiscoveryEngine:
+    """Test modernized ContractDiscoveryEngine using step catalog"""
 
-        with patch.object(
-            discovery_manager, "_discover_by_direct_import"
-        ) as mock_direct:
-            mock_direct.return_value = ContractDiscoveryResult(
-                contract=mock_contract,
-                contract_name="TEST_CONTRACT",
-                discovery_method="direct_import",
-                error_message=None,
-            )
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield temp_dir
 
-            # First discovery
-            result1 = discovery_manager.discover_contract("test_script")
+    def test_discover_contracts_with_scripts_using_step_catalog(self, temp_dir):
+        """Test discovering contracts with scripts using step catalog"""
+        from cursus.step_catalog.adapters.contract_discovery import ContractDiscoveryEngineAdapter
+        
+        engine = ContractDiscoveryEngineAdapter(Path(temp_dir))
+        
+        # Mock step catalog to return contracts with scripts
+        with patch.object(engine.catalog, 'discover_contracts_with_scripts') as mock_discover:
+            mock_discover.return_value = ["tabular_preprocessing", "xgboost_training", "model_evaluation"]
+            
+            result = engine.discover_contracts_with_scripts()
 
-            # Second discovery (should use cache)
-            result2 = discovery_manager.discover_contract("test_script")
+            assert len(result) == 3
+            assert "tabular_preprocessing" in result
+            assert "xgboost_training" in result
+            assert "model_evaluation" in result
+            mock_discover.assert_called_once()
 
-            assert result1 == result2
-            # Direct import should only be called once
-            mock_direct.assert_called_once()
+    def test_discover_contracts_with_scripts_error_handling(self, temp_dir):
+        """Test error handling in contract discovery"""
+        from cursus.step_catalog.adapters.contract_discovery import ContractDiscoveryEngineAdapter
+        
+        engine = ContractDiscoveryEngineAdapter(Path(temp_dir))
+        
+        # Mock step catalog to raise exception
+        with patch.object(engine.catalog, 'discover_contracts_with_scripts', side_effect=Exception("Test error")):
+            result = engine.discover_contracts_with_scripts()
+
+            # Should return empty list on error
+            assert result == []
+
+
+# Test utilities for modernized approach
+class TestModernizedUtilities:
+    """Test utilities and helper functions for modernized approach"""
+
+    def test_contract_loading_from_path(self):
+        """Test loading contract from file path"""
+        from cursus.step_catalog.adapters.contract_discovery import ContractDiscoveryManagerAdapter
+        
+        manager = ContractDiscoveryManagerAdapter()
+        
+        # Test with non-existent path
+        result = manager._load_contract_from_path(Path("/nonexistent/path.py"), "test_script")
+        assert result is None
+
+    def test_direct_import_fallback(self):
+        """Test direct import fallback mechanism"""
+        from cursus.step_catalog.adapters.contract_discovery import ContractDiscoveryManagerAdapter
+        
+        manager = ContractDiscoveryManagerAdapter()
+        
+        # Test with non-existent module
+        with patch('importlib.import_module', side_effect=ImportError("No module")):
+            result = manager._try_direct_import("nonexistent_script")
+            
+            assert result.success is False
+            assert result.discovery_method == "none"
+            assert "No contract found" in result.error_message

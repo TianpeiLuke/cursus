@@ -7,7 +7,7 @@ Extends the runtime testing framework to support offline testing of inference ha
 
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from datetime import datetime
 
 # Import for inheritance
@@ -64,11 +64,15 @@ class InferenceHandlerSpec(BaseModel):
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
     updated_at: Optional[datetime] = Field(default_factory=datetime.now)
     
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+    model_config = ConfigDict()
+
+    # Custom serializer for datetime fields (Pydantic V2 approach)
+    @field_serializer('created_at', 'updated_at')
+    def serialize_datetime_fields(self, value: Optional[datetime]) -> Optional[str]:
+        """Serialize datetime objects to ISO format strings"""
+        if value is None:
+            return None
+        return value.isoformat()
     
     def validate_configuration(self) -> List[str]:
         """Validate the specification configuration."""
@@ -167,11 +171,13 @@ class InferenceTestResult(BaseModel):
     errors: List[str] = Field(default_factory=list, description="List of all errors encountered")
     warnings: List[str] = Field(default_factory=list, description="List of warnings")
     
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+    model_config = ConfigDict()
+
+    # Custom serializer for datetime fields (Pydantic V2 approach)
+    @field_serializer('test_timestamp')
+    def serialize_datetime_fields(self, value: datetime) -> str:
+        """Serialize datetime objects to ISO format strings"""
+        return value.isoformat()
     
     def get_overall_success_rate(self) -> float:
         """Get overall success rate across all tests."""

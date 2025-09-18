@@ -516,13 +516,14 @@ class PipelineTestingSpecBuilder:
 
     def _find_script_file(self, script_name: str) -> Path:
         """
-        Find actual script file with workspace-first lookup and fuzzy matching.
+        Find actual script file using step catalog with fallback to legacy discovery.
 
         Priority order:
-        1. Test workspace scripts (self.scripts_dir) - for testing environment
-        2. Core framework scripts (workspace discovery) - fallback
-        3. Fuzzy matching for similar names - error recovery
-        4. Create placeholder script - last resort
+        1. Step catalog script discovery - unified discovery system
+        2. Test workspace scripts (self.scripts_dir) - for testing environment
+        3. Core framework scripts (workspace discovery) - fallback
+        4. Fuzzy matching for similar names - error recovery
+        5. Create placeholder script - last resort
 
         Args:
             script_name: snake_case script name
@@ -533,22 +534,46 @@ class PipelineTestingSpecBuilder:
         Raises:
             FileNotFoundError: If no suitable script can be found or created
         """
-        # Priority 1: Test workspace scripts
+        # Priority 1: Step catalog script discovery
+        try:
+            from ...step_catalog import StepCatalog
+            
+            # Initialize step catalog
+            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
+            catalog = StepCatalog(workspace_root)
+            
+            # Try to find step by script name
+            available_steps = catalog.list_available_steps()
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.file_components.get('script'):
+                    script_metadata = step_info.file_components['script']
+                    if script_metadata and script_metadata.path:
+                        # Check if this script matches our expected name
+                        if script_name in str(script_metadata.path) or script_metadata.path.stem == script_name:
+                            return script_metadata.path
+                            
+        except ImportError:
+            pass  # Fall back to legacy discovery
+        except Exception:
+            pass  # Fall back to legacy discovery
+
+        # Priority 2: Test workspace scripts
         test_script_path = self.scripts_dir / f"{script_name}.py"
         if test_script_path.exists():
             return test_script_path
 
-        # Priority 2: Core framework scripts (workspace discovery)
+        # Priority 3: Core framework scripts (workspace discovery)
         workspace_script = self._find_in_workspace(script_name)
         if workspace_script:
             return workspace_script
 
-        # Priority 3: Fuzzy matching fallback
+        # Priority 4: Fuzzy matching fallback
         fuzzy_match = self._find_fuzzy_match(script_name)
         if fuzzy_match:
             return fuzzy_match
 
-        # Priority 4: Create placeholder script
+        # Priority 5: Create placeholder script
         return self._create_placeholder_script(script_name)
 
     def _find_in_workspace(self, script_name: str) -> Optional[Path]:

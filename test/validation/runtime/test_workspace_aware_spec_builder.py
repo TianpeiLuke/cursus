@@ -96,44 +96,46 @@ class TestWorkspaceAwarePipelineTestingSpecBuilder:
         try:
             os.chdir(self.temp_dir)
 
-            # Mock workspace system to raise ImportError
-            with patch("cursus.workspace.api.WorkspaceAPI", side_effect=ImportError):
-                workspace_dirs = self.builder._find_in_workspace("test_script")
+            # Mock step catalog and workspace adapter to raise ImportError
+            with patch("cursus.step_catalog.StepCatalog", side_effect=ImportError):
+                with patch("cursus.step_catalog.adapters.workspace_discovery.WorkspaceDiscoveryManagerAdapter", side_effect=ImportError):
+                    workspace_dirs = self.builder._find_in_workspace("test_script")
 
-                # Should find fallback directory
-                location_names = [name for name, _ in workspace_dirs]
-                assert any("workspace_local_scripts" in name for name in location_names)
+                    # Should find fallback directory
+                    location_names = [name for name, _ in workspace_dirs]
+                    assert any("workspace_local_scripts" in name for name in location_names)
         finally:
             os.chdir(original_cwd)
 
-    @patch("cursus.workspace.core.WorkspaceDiscoveryManager")
-    @patch("cursus.workspace.api.WorkspaceAPI")
-    def test_workspace_discovery_success(
-        self, mock_workspace_api, mock_discovery_manager
-    ):
-        """Test successful workspace discovery."""
-        # Mock workspace objects
-        mock_workspace = Mock()
-        mock_workspace.name = "test_workspace"
-        mock_workspace.root_path = str(Path(self.temp_dir) / "workspace1")
+    def test_workspace_discovery_success(self):
+        """Test successful workspace discovery using WorkspaceDiscoveryManagerAdapter."""
+        # Create workspace directory structure
+        workspace_root = Path(self.temp_dir) / "workspace_root"
+        developers_dir = workspace_root / "developers" / "test_workspace"
+        scripts_dir = developers_dir / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (scripts_dir / "test_script.py").write_text("# Workspace script")
 
-        mock_discovery_instance = Mock()
-        mock_discovery_instance.discover_workspaces.return_value = [mock_workspace]
-        mock_discovery_manager.return_value = mock_discovery_instance
+        # Mock step catalog to fail so we use the workspace adapter
+        with patch("cursus.step_catalog.StepCatalog", side_effect=ImportError):
+            # Mock the workspace adapter
+            with patch("cursus.step_catalog.adapters.workspace_discovery.WorkspaceDiscoveryManagerAdapter") as mock_adapter_class:
+                mock_adapter = Mock()
+                mock_adapter.list_available_developers.return_value = ["test_workspace"]
+                mock_adapter.get_workspace_info.return_value = {
+                    "workspace_id": "test_workspace",
+                    "workspace_path": str(developers_dir),
+                    "workspace_type": "developer",
+                    "exists": True
+                }
+                mock_adapter_class.return_value = mock_adapter
 
-        # Create workspace script directory
-        workspace_scripts_dir = Path(mock_workspace.root_path) / "scripts"
-        workspace_scripts_dir.mkdir(parents=True)
-        (workspace_scripts_dir / "test_script.py").write_text("# Workspace script")
+                workspace_dirs = self.builder._find_in_workspace("test_script")
 
-        workspace_dirs = self.builder._find_in_workspace("test_script")
-
-        # Should find workspace script
-        assert len(workspace_dirs) > 0
-        location_names = [name for name, _ in workspace_dirs]
-        assert any(
-            "workspace_test_workspace_scripts" in name for name in location_names
-        )
+                # Should find workspace script
+                assert len(workspace_dirs) > 0
+                location_names = [name for name, _ in workspace_dirs]
+                assert any("workspace_test_workspace_scripts" in name for name in location_names)
 
     def test_workspace_cache(self):
         """Test workspace discovery caching."""
