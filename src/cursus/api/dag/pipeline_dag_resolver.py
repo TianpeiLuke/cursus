@@ -182,7 +182,7 @@ class PipelineDAGResolver:
 
     def _discover_step_contract(self, step_name: str) -> Optional[ScriptContract]:
         """
-        Dynamically discover step contract using registry helper functions.
+        Dynamically discover step contract using step catalog with fallback.
 
         Args:
             step_name: Name of the step to discover contract for
@@ -190,6 +190,71 @@ class PipelineDAGResolver:
         Returns:
             ScriptContract if found, None otherwise
         """
+        # Try using step catalog first for enhanced discovery
+        try:
+            return self._discover_step_contract_with_catalog(step_name)
+        except ImportError:
+            logger.debug("Step catalog not available, using legacy discovery")
+        except Exception as e:
+            logger.warning(f"Step catalog contract discovery failed: {e}, falling back to legacy")
+
+        # FALLBACK METHOD: Legacy contract discovery
+        return self._discover_step_contract_legacy(step_name)
+
+    def _discover_step_contract_with_catalog(self, step_name: str) -> Optional[ScriptContract]:
+        """Discover step contract using step catalog."""
+        from ...step_catalog import StepCatalog
+        
+        # Initialize step catalog
+        try:
+            workspace_root = Path(__file__).parent.parent.parent.parent
+            catalog = StepCatalog(workspace_root)
+        except Exception:
+            # If we can't determine workspace root, fall back to legacy
+            return self._discover_step_contract_legacy(step_name)
+        
+        # Get step info from catalog
+        step_info = catalog.get_step_info(step_name)
+        if not step_info:
+            logger.debug(f"No step info found in catalog for: {step_name}")
+            return None
+        
+        # Check if step has contract component
+        contract_metadata = step_info.file_components.get('contract')
+        if not contract_metadata:
+            logger.debug(f"No contract component found for step: {step_name}")
+            return None
+        
+        # Try to load contract from file path
+        try:
+            contract_path = contract_metadata.path
+            # Use dynamic import to load contract
+            spec = importlib.util.spec_from_file_location("contract_module", contract_path)
+            if spec and spec.loader:
+                contract_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(contract_module)
+                
+                # Look for contract class or instance
+                for attr_name in dir(contract_module):
+                    attr = getattr(contract_module, attr_name)
+                    if isinstance(attr, ScriptContract):
+                        logger.debug(f"Found contract instance for step {step_name} via catalog")
+                        return attr
+                    elif (isinstance(attr, type) and 
+                          issubclass(attr, ScriptContract) and 
+                          attr != ScriptContract):
+                        logger.debug(f"Found contract class for step {step_name} via catalog")
+                        return attr()
+                
+                logger.debug(f"No contract found in module for step: {step_name}")
+                return None
+                
+        except Exception as e:
+            logger.warning(f"Failed to load contract from catalog path for {step_name}: {e}")
+            return None
+
+    def _discover_step_contract_legacy(self, step_name: str) -> Optional[ScriptContract]:
+        """Legacy step contract discovery method."""
         try:
             # Convert step name to canonical name
             canonical_name = get_canonical_name_from_file_name(step_name)

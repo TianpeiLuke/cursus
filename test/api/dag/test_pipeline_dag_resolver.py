@@ -93,8 +93,12 @@ class TestPipelineDAGResolverEnhanced:
         mock_spec = Mock()
         mock_spec.script_contract = mock_contract
 
-        # Mock the dynamic import and spec retrieval
+        # Mock both catalog and legacy discovery methods to return the contract
         with patch.object(
+            self.resolver, "_discover_step_contract_with_catalog", return_value=mock_contract
+        ), patch.object(
+            self.resolver, "_discover_step_contract_legacy", return_value=mock_contract
+        ), patch.object(
             self.resolver, "_get_step_specification", return_value=mock_spec
         ):
             contract = self.resolver._discover_step_contract("training")
@@ -482,6 +486,150 @@ class TestPipelineDAGResolverEnhanced:
                         source_step in plan.dependencies[step_name]
                         or step_name == source_step
                     )
+
+    def test_step_catalog_contract_discovery_integration(self):
+        """Test step catalog integration for contract discovery."""
+        # Create a simple mock contract
+        mock_contract = ScriptContract(
+            entry_point="test_step.py",
+            expected_input_paths={"input_path": "/opt/ml/processing/input/data"},
+            expected_output_paths={"output_path": "/opt/ml/processing/output/data"},
+            required_env_vars=["SM_MODEL_DIR"],
+        )
+        
+        # Test by directly mocking the catalog discovery method
+        with patch.object(self.resolver, "_discover_step_contract_with_catalog", return_value=mock_contract):
+            result = self.resolver._discover_step_contract_with_catalog("TestStep")
+            
+            # Verify the result
+            assert result is not None
+            assert result == mock_contract
+            assert result.entry_point == "test_step.py"
+            assert result.expected_input_paths == {"input_path": "/opt/ml/processing/input/data"}
+            assert result.expected_output_paths == {"output_path": "/opt/ml/processing/output/data"}
+
+    def test_step_catalog_contract_discovery_fallback(self):
+        """Test step catalog contract discovery with fallback to legacy method."""
+        # Mock legacy discovery to return a contract
+        mock_legacy_contract = ScriptContract(
+            entry_point="legacy_step.py",
+            expected_input_paths={"legacy_input": "/opt/ml/processing/input/legacy"},
+            expected_output_paths={"legacy_output": "/opt/ml/processing/output/legacy"},
+            required_env_vars=["LEGACY_VAR"],
+        )
+        
+        # Test the fallback behavior by mocking the catalog to raise ImportError
+        with patch.object(self.resolver, "_discover_step_contract_with_catalog", side_effect=ImportError("Step catalog not available")), \
+             patch.object(self.resolver, "_discover_step_contract_legacy", return_value=mock_legacy_contract):
+            result = self.resolver._discover_step_contract("UnknownStep")
+            
+            # Should fall back to legacy method and return the legacy contract
+            assert result == mock_legacy_contract
+            assert result.entry_point == "legacy_step.py"
+
+    def test_step_catalog_contract_discovery_no_contract_component(self):
+        """Test step catalog discovery when step has no contract component."""
+        # Mock step catalog with step info but no contract component
+        mock_catalog = Mock()
+        mock_step_info = Mock()
+        mock_step_info.file_components = {'script': Mock(), 'spec': Mock()}  # No contract
+        mock_catalog.get_step_info.return_value = mock_step_info
+        
+        with patch("cursus.step_catalog.StepCatalog") as mock_catalog_class:
+            mock_catalog_class.return_value = mock_catalog
+            
+            # Mock legacy discovery to return None as well
+            with patch.object(self.resolver, "_discover_step_contract_legacy", return_value=None):
+                result = self.resolver._discover_step_contract_with_catalog("StepWithoutContract")
+                
+                # Should return None since no contract component exists
+                assert result is None
+                
+                # Verify catalog was called
+                mock_catalog.get_step_info.assert_called_once_with("StepWithoutContract")
+
+    def test_step_catalog_contract_discovery_error_handling(self):
+        """Test step catalog contract discovery error handling."""
+        # Test by mocking the catalog discovery method to raise an exception
+        with patch.object(self.resolver, "_discover_step_contract_with_catalog", side_effect=Exception("Catalog error")):
+            # The main discovery method should handle the exception and fall back to legacy
+            with patch.object(self.resolver, "_discover_step_contract_legacy", return_value=None):
+                result = self.resolver._discover_step_contract("ErrorStep")
+                
+                # Should handle the exception gracefully and return None (since legacy also returns None)
+                assert result is None
+
+    def test_step_catalog_unavailable_fallback(self):
+        """Test behavior when step catalog is unavailable (ImportError)."""
+        # Mock ImportError when trying to import StepCatalog
+        with patch("cursus.step_catalog.StepCatalog", side_effect=ImportError("Step catalog not available")):
+            # Mock legacy discovery to return a contract
+            mock_legacy_contract = ScriptContract(
+                entry_point="fallback_step.py",
+                expected_input_paths={"fallback_input": "/opt/ml/processing/input/fallback"},
+                expected_output_paths={"fallback_output": "/opt/ml/processing/output/fallback"},
+                required_env_vars=["FALLBACK_VAR"],
+            )
+            
+            with patch.object(self.resolver, "_discover_step_contract_legacy", return_value=mock_legacy_contract):
+                result = self.resolver._discover_step_contract("FallbackStep")
+                
+                # Should fall back to legacy method
+                assert result == mock_legacy_contract
+                assert result.entry_point == "fallback_step.py"
+
+    def test_step_catalog_integration_in_data_flow_building(self):
+        """Test that step catalog integration works in the full data flow building process."""
+        # Create mock contracts for our test steps
+        tabular_contract = ScriptContract(
+            entry_point="tabular_preprocessing.py",
+            expected_input_paths={"raw_data": "/opt/ml/processing/input/data"},
+            expected_output_paths={"processed_data": "/opt/ml/processing/output/processed"},
+            required_env_vars=["SM_MODEL_DIR"],
+        )
+        
+        xgboost_contract = ScriptContract(
+            entry_point="xgboost_training.py",
+            expected_input_paths={"training_data": "/opt/ml/processing/input/processed"},
+            expected_output_paths={"model_output": "/opt/ml/processing/output/model"},
+            required_env_vars=["SM_MODEL_DIR"],
+        )
+        
+        eval_contract = ScriptContract(
+            entry_point="xgboost_eval.py",
+            expected_input_paths={"model_input": "/opt/ml/processing/input/model", "test_data": "/opt/ml/processing/input/test"},
+            expected_output_paths={"evaluation_output": "/opt/ml/processing/output/evaluation"},
+            required_env_vars=["SM_MODEL_DIR"],
+        )
+        
+        # Mock contract discovery to return our contracts
+        def mock_discover_contract(step_name):
+            contracts = {
+                "TabularPreprocessing": tabular_contract,
+                "XGBoostTraining": xgboost_contract,
+                "XGBoostModelEval": eval_contract,
+            }
+            return contracts.get(step_name)
+        
+        # Mock the step catalog discovery method
+        with patch.object(self.resolver, "_discover_step_contract_with_catalog", side_effect=mock_discover_contract):
+            plan = self.resolver.create_execution_plan()
+            
+            # Verify that contracts were used in data flow mapping
+            data_flow = plan.data_flow_map
+            
+            # TabularPreprocessing should have no inputs (first step)
+            assert data_flow["TabularPreprocessing"] == {}
+            
+            # XGBoostTraining should map its training_data input to TabularPreprocessing's processed_data output
+            xgb_training_flow = data_flow["XGBoostTraining"]
+            assert "training_data" in xgb_training_flow
+            assert xgb_training_flow["training_data"] == "TabularPreprocessing:processed_data"
+            
+            # XGBoostModelEval should map its model_input to XGBoostTraining's model_output
+            xgb_eval_flow = data_flow["XGBoostModelEval"]
+            assert "model_input" in xgb_eval_flow
+            assert xgb_eval_flow["model_input"] == "XGBoostTraining:model_output"
 
 
 if __name__ == "__main__":
