@@ -52,7 +52,7 @@ class PipelineCatalogManager:
 
     def discover_pipelines(self, **kwargs) -> List[str]:
         """
-        Discover pipelines based on various criteria.
+        Discover pipelines based on various criteria using step catalog with fallback.
 
         Args:
             **kwargs: Search criteria (framework, complexity, tags, etc.)
@@ -60,6 +60,57 @@ class PipelineCatalogManager:
         Returns:
             List of pipeline IDs matching the criteria
         """
+        # Try using step catalog first for enhanced discovery
+        try:
+            return self._discover_pipelines_with_catalog(**kwargs)
+        except ImportError:
+            # Step catalog not available, use legacy discovery
+            pass
+        except Exception as e:
+            # Step catalog discovery failed, log and fall back
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Step catalog discovery failed: {e}, falling back to legacy")
+
+        # FALLBACK METHOD: Legacy pipeline discovery
+        return self._discover_pipelines_legacy(**kwargs)
+
+    def _discover_pipelines_with_catalog(self, **kwargs) -> List[str]:
+        """Discover pipelines using step catalog."""
+        from ..step_catalog import StepCatalog
+        
+        # Initialize step catalog (assuming workspace root can be determined)
+        try:
+            workspace_root = Path(__file__).parent.parent.parent
+            catalog = StepCatalog(workspace_root)
+        except Exception:
+            # If we can't determine workspace root, fall back to legacy
+            return self._discover_pipelines_legacy(**kwargs)
+        
+        # Use step catalog to discover relevant steps/pipelines
+        if "framework" in kwargs:
+            # Use catalog's framework detection
+            all_steps = catalog.list_available_steps()
+            framework_steps = []
+            for step_name in all_steps:
+                framework = catalog.detect_framework(step_name)
+                if framework and framework.lower() == kwargs["framework"].lower():
+                    framework_steps.append(step_name)
+            return framework_steps
+        elif "tags" in kwargs:
+            # Use catalog's search functionality for tag-like queries
+            search_results = catalog.search_steps(" ".join(kwargs["tags"]))
+            return [result.step_name for result in search_results]
+        elif "use_case" in kwargs:
+            # Use catalog's search functionality for use case queries
+            search_results = catalog.search_steps(kwargs["use_case"])
+            return [result.step_name for result in search_results]
+        else:
+            # Return all available steps from catalog
+            return catalog.list_available_steps()
+
+    def _discover_pipelines_legacy(self, **kwargs) -> List[str]:
+        """Legacy pipeline discovery method."""
         if "framework" in kwargs:
             return self.discovery.find_by_framework(kwargs["framework"])
         elif "complexity" in kwargs:
