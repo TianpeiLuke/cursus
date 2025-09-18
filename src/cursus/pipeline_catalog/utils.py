@@ -169,9 +169,11 @@ class PipelineCatalogManager:
         """
         report = self.validator.generate_validation_report()
         return {
-            "is_valid": len(report.issues) == 0,
-            "issues": [issue.model_dump() for issue in report.issues],
-            "statistics": report.statistics,
+            "is_valid": report.is_valid,
+            "total_issues": report.total_issues,
+            "issues_by_severity": report.issues_by_severity,
+            "issues_by_category": report.issues_by_category,
+            "all_issues": [issue.model_dump() for issue in report.all_issues],
         }
 
     def sync_pipeline(self, metadata: EnhancedDAGMetadata, filename: str) -> bool:
