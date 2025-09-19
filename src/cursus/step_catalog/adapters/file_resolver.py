@@ -25,29 +25,19 @@ class FlexibleFileResolverAdapter:
     while maintaining backward compatibility with legacy FlexibleFileResolver APIs.
     """
     
-    def __init__(self, workspace_root_or_base_dirs: Union[Path, Dict[str, str]]):
-        """Initialize with unified catalog or legacy base_dirs."""
-        if isinstance(workspace_root_or_base_dirs, dict):
-            # Legacy initialization with base_dirs dict
-            self.base_dirs = workspace_root_or_base_dirs
-            # Try to infer workspace root from base_dirs
-            if 'contracts' in workspace_root_or_base_dirs:
-                contracts_path = Path(workspace_root_or_base_dirs['contracts'])
-                # Go up to find workspace root (contracts should be under src/cursus/steps/contracts)
-                workspace_root = contracts_path.parent.parent.parent.parent  # up from contracts/steps/cursus/src
-                if not workspace_root.exists():
-                    workspace_root = Path('.')  # fallback to current directory
-            else:
-                workspace_root = Path('.')
-            self.catalog = StepCatalog(workspace_root)
-        else:
-            # Modern initialization with workspace_root Path
-            workspace_root = workspace_root_or_base_dirs
-            self.catalog = StepCatalog(workspace_root)
-            self.base_dirs = None
+    def __init__(self, workspace_root: Path):
+        """
+        Initialize file resolver with workspace root.
         
+        Args:
+            workspace_root: Path to workspace root directory for workspace-aware discovery
+        """
+        # PORTABLE: Use workspace-aware discovery with dual search space API
+        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         self.logger = logging.getLogger(__name__)
-        # Legacy compatibility attributes
+        
+        # Legacy compatibility attributes (kept for backward compatibility)
+        self.base_dirs = None  # No longer used, but kept to avoid breaking existing code
         self.file_cache = {}
         self._refresh_cache()
     
@@ -536,7 +526,8 @@ class HybridFileResolverAdapter:
     
     def __init__(self, workspace_root: Path):
         """Initialize with unified catalog."""
-        self.catalog = StepCatalog(workspace_root)
+        # PORTABLE: Use workspace-aware discovery for pattern-based file resolution
+        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         self.logger = logging.getLogger(__name__)
     
     def resolve_file_pattern(self, pattern: str, component_type: str) -> List[Path]:

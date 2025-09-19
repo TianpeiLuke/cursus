@@ -256,7 +256,8 @@ class WorkspaceUnifiedAlignmentTester(UnifiedAlignmentTester):
         """Discover workspace scripts using step catalog."""
         from ...step_catalog import StepCatalog
         
-        catalog = StepCatalog(self.workspace_root)
+        # PORTABLE: Use workspace-aware discovery for script discovery
+        catalog = StepCatalog(workspace_dirs=[self.workspace_root])
         
         # Get cross-workspace components
         cross_workspace_components = catalog.discover_cross_workspace_components()

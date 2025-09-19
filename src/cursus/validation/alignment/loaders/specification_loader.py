@@ -61,9 +61,8 @@ class SpecificationLoader:
         try:
             from ....step_catalog import StepCatalog
             
-            # Initialize step catalog
-            workspace_root = Path(__file__).parent.parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_root)
+            # PORTABLE: Package-only discovery (works in all deployment scenarios)
+            catalog = StepCatalog(workspace_dirs=None)
             
             # Get step info from catalog
             step_info = catalog.get_step_info(spec_name)

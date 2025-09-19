@@ -100,7 +100,8 @@ class WorkspaceTypeDetector:
         """Detect workspaces using step catalog directly."""
         from ...step_catalog import StepCatalog
         
-        catalog = StepCatalog(self.workspace_root)
+        # PORTABLE: Use workspace-aware discovery for workspace detection
+        catalog = StepCatalog(workspace_dirs=[self.workspace_root])
         
         # Get cross-workspace components
         cross_workspace_components = catalog.discover_cross_workspace_components()

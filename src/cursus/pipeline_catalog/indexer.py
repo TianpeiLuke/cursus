@@ -38,9 +38,8 @@ class CatalogIndexer:
         self._step_catalog = None
         try:
             from ..step_catalog import StepCatalog
-            # Assume workspace root is parent of catalog root
-            workspace_root = self.catalog_root.parent
-            self._step_catalog = StepCatalog(workspace_root)
+            # PORTABLE: Use package-only discovery for pipeline indexing
+            self._step_catalog = StepCatalog(workspace_dirs=None)
             logger.info("Using StepCatalog for enhanced pipeline indexing")
         except ImportError:
             logger.warning("StepCatalog not available, using legacy indexing")

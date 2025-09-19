@@ -156,7 +156,8 @@ class WorkspaceManager:
         """Discover workspaces using step catalog."""
         from ...step_catalog import StepCatalog
         
-        catalog = StepCatalog(self.workspace_root)
+        # PORTABLE: Use workspace_dirs parameter for workspace-aware discovery
+        catalog = StepCatalog(workspace_dirs=[self.workspace_root])
         workspace_info = WorkspaceInfo(workspace_root=str(self.workspace_root))
 
         # Check for shared workspace

@@ -36,11 +36,9 @@ class SageMakerStepTypeValidator:
         # Try using step catalog first
         try:
             from ...step_catalog import StepCatalog
-            from pathlib import Path
             
-            # Initialize step catalog
-            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_root)
+            # PORTABLE: Package-only discovery (works in all deployment scenarios)
+            catalog = StepCatalog(workspace_dirs=None)
             
             # Use catalog's unified discovery
             return self._find_step_name_with_catalog(catalog)

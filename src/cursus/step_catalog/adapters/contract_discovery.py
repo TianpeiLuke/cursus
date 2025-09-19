@@ -47,7 +47,8 @@ class ContractDiscoveryEngineAdapter:
     
     def __init__(self, workspace_root: Path):
         """Initialize with unified catalog."""
-        self.catalog = StepCatalog(workspace_root)
+        # PORTABLE: Use workspace-aware discovery for contract discovery
+        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         self.logger = logging.getLogger(__name__)
     
     def discover_contracts_with_scripts(self) -> List[str]:
@@ -133,7 +134,8 @@ class ContractDiscoveryManagerAdapter:
             self.test_data_dir = Path('.')
             workspace_root = Path('.')
             
-        self.catalog = StepCatalog(workspace_root)
+        # PORTABLE: Use workspace-aware discovery for contract discovery
+        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         self.logger = logging.getLogger(__name__)
         
         # Minimal cache for test performance

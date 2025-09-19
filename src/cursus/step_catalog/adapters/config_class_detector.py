@@ -32,9 +32,13 @@ class ConfigClassDetectorAdapter:
     CONFIGURATION_FIELD = "configuration"
     SPECIFIC_FIELD = "specific"
     
-    def __init__(self, workspace_root: Path):
+    def __init__(self, workspace_root: Optional[Path] = None):
         """Initialize with unified catalog."""
-        self.catalog = StepCatalog(workspace_root)
+        # PORTABLE: Use package-only discovery by default (works in all deployment scenarios)
+        if workspace_root is None:
+            self.catalog = StepCatalog(workspace_dirs=None)
+        else:
+            self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         self.logger = logging.getLogger(__name__)
     
     @staticmethod
@@ -56,14 +60,8 @@ class ConfigClassDetectorAdapter:
             Dictionary mapping config class names to config class types
         """
         try:
-            from pathlib import Path
-            
-            # Determine workspace root from config path
-            config_file = Path(config_path)
-            workspace_root = config_file.parent.parent  # Go up to find workspace root
-            
-            # Use step catalog's superior AST-based discovery
-            catalog = StepCatalog(workspace_root)
+            # PORTABLE: Use package-only discovery (works in all deployment scenarios)
+            catalog = StepCatalog(workspace_dirs=None)
             
             # Get complete config classes (AST discovery + ConfigClassStore integration)
             config_classes = catalog.build_complete_config_classes()
@@ -203,10 +201,8 @@ class ConfigClassStoreAdapter:
 def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str, Any]:
     """Legacy function: build complete config classes using catalog."""
     try:
-        # Use a default workspace root for catalog initialization
-        from pathlib import Path
-        workspace_root = Path('.')
-        catalog = StepCatalog(workspace_root)
+        # PORTABLE: Use package-only discovery (works in all deployment scenarios)
+        catalog = StepCatalog(workspace_dirs=None)
         
         # Use catalog's build_complete_config_classes method
         config_classes = catalog.build_complete_config_classes(project_id)

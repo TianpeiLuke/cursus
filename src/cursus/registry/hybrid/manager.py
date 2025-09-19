@@ -42,12 +42,20 @@ class UnifiedRegistryManager:
     """
 
     def __init__(self, core_registry_path: str = None, workspaces_root: str = None):
-        self.core_registry_path = (
-            core_registry_path or "src/cursus/registry/step_names.py"
-        )
-        self.workspaces_root = Path(
-            workspaces_root or "developer_workspaces/developers"
-        )
+        # PORTABLE: Use package-relative paths instead of hardcoded assumptions
+        if core_registry_path:
+            self.core_registry_path = core_registry_path
+        else:
+            # Find package root and use relative path
+            package_root = self._find_package_root()
+            self.core_registry_path = str(package_root / "registry" / "step_names.py")
+        
+        # PORTABLE: Only set workspaces_root if explicitly provided by user
+        if workspaces_root:
+            self.workspaces_root = Path(workspaces_root)
+        else:
+            # No default workspace assumption - user must provide if needed
+            self.workspaces_root = None
 
         # Core registry data
         self._core_steps: Dict[str, StepDefinition] = {}
@@ -79,6 +87,29 @@ class UnifiedRegistryManager:
         # Initialize registries
         self._load_core_registry()
         self._discover_and_load_workspaces()
+
+    def _find_package_root(self) -> Path:
+        """
+        Find cursus package root using relative path navigation.
+        
+        Works in all deployment scenarios:
+        - PyPI: site-packages/cursus/
+        - Source: src/cursus/
+        - Submodule: parent_package/cursus/
+        """
+        # From cursus/registry/hybrid/manager.py, navigate to cursus package root
+        current_file = Path(__file__)
+        
+        # Navigate up to find cursus package root
+        current_dir = current_file.parent
+        while current_dir.name != 'cursus' and current_dir.parent != current_dir:
+            current_dir = current_dir.parent
+        
+        if current_dir.name == 'cursus':
+            return current_dir
+        else:
+            # Fallback: assume we're in cursus package structure
+            return current_file.parent.parent.parent  # hybrid -> registry -> cursus
 
     def _load_core_registry(self):
         """Load core registry from original step names to avoid circular imports."""
@@ -115,34 +146,34 @@ class UnifiedRegistryManager:
             logger.debug("Step catalog already in import chain, skipping workspace discovery")
             return
             
-        # Try using step catalog for cross-workspace discovery
-        try:
-            # Use lazy import to avoid circular dependency
-            import importlib
-            step_catalog_module = importlib.import_module('cursus.step_catalog.step_catalog')
-            StepCatalog = step_catalog_module.StepCatalog
-            
-            from pathlib import Path
-            
-            # Initialize step catalog for cross-workspace discovery
-            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_root)
-            
-            # Use catalog's cross-workspace discovery
-            cross_workspace_components = catalog.discover_cross_workspace_components()
-            
-            # Load workspaces discovered by catalog
-            for workspace_id, components in cross_workspace_components.items():
-                if workspace_id != "core" and components:  # Skip core, focus on workspaces
-                    workspace_path = self.workspaces_root / workspace_id
-                    if workspace_path.exists():
-                        self._load_workspace_registry(workspace_id, workspace_path)
-                        logger.debug(f"Loaded workspace '{workspace_id}' via step catalog with {len(components)} components")
-                        
-        except ImportError:
-            logger.debug("Step catalog not available - workspace discovery disabled")
-        except Exception as e:
-            logger.debug(f"Step catalog workspace discovery failed: {e}")
+        # Try using step catalog for workspace discovery (only if workspaces_root is provided)
+        if self.workspaces_root:
+            try:
+                # Use lazy import to avoid circular dependency
+                import importlib
+                step_catalog_module = importlib.import_module('cursus.step_catalog.step_catalog')
+                StepCatalog = step_catalog_module.StepCatalog
+                
+                # PORTABLE: Use workspace-aware discovery with user-provided workspace root
+                catalog = StepCatalog(workspace_dirs=[self.workspaces_root])
+                
+                # Use catalog's cross-workspace discovery
+                cross_workspace_components = catalog.discover_cross_workspace_components()
+                
+                # Load workspaces discovered by catalog
+                for workspace_id, components in cross_workspace_components.items():
+                    if workspace_id != "core" and components:  # Skip core, focus on workspaces
+                        workspace_path = self.workspaces_root / workspace_id
+                        if workspace_path.exists():
+                            self._load_workspace_registry(workspace_id, workspace_path)
+                            logger.debug(f"Loaded workspace '{workspace_id}' via step catalog with {len(components)} components")
+                            
+            except ImportError:
+                logger.debug("Step catalog not available - workspace discovery disabled")
+            except Exception as e:
+                logger.debug(f"Step catalog workspace discovery failed: {e}")
+        else:
+            logger.debug("No workspaces_root provided - skipping workspace discovery (package-only mode)")
 
     def _load_workspace_registry(self, workspace_id: str, workspace_path: Path):
         """Load workspace registry from the workspace path."""

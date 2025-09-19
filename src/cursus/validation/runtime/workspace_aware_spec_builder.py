@@ -26,21 +26,46 @@ class WorkspaceAwarePipelineTestingSpecBuilder(PipelineTestingSpecBuilder):
     """
 
     def __init__(
-        self, test_data_dir: str = "test/integration/runtime", **workspace_config
+        self, 
+        test_data_dir: str = "test/integration/runtime",
+        **workspace_config
     ):
         """
-        Initialize workspace-aware spec builder.
-
+        Initialize workspace-aware spec builder for runtime validation.
+        
+        For runtime validation, test_data_dir is treated as the primary workspace
+        and has priority over the package's own workspace.
+        
         Args:
-            test_data_dir: Root directory for test data and specs
-            **workspace_config: Workspace configuration options:
+            test_data_dir: Test data directory (serves as primary workspace for runtime validation)
+            **workspace_config: Additional workspace configuration options:
                 - workspace_discovery_enabled: Enable workspace-aware discovery (default: True)
                 - max_workspace_depth: Maximum workspace search depth (default: 3)
                 - workspace_script_patterns: Script directory patterns to search
         """
         super().__init__(test_data_dir)
 
-        # Workspace configuration
+        # SYSTEM AUTONOMOUS: Package discovery always works
+        try:
+            from ...step_catalog import StepCatalog
+            self.package_catalog = StepCatalog(workspace_dirs=None)
+        except ImportError:
+            self.package_catalog = None
+        
+        # RUNTIME VALIDATION: test_data_dir serves as primary workspace with priority
+        self.test_workspace_dir = Path(test_data_dir)
+        
+        # Create workspace catalog with test_data_dir as workspace (priority over package)
+        self.workspace_catalog = None
+        if self.package_catalog is not None:
+            try:
+                # For runtime validation, test_data_dir is the workspace
+                self.workspace_catalog = StepCatalog(workspace_dirs=[self.test_workspace_dir])
+            except Exception as e:
+                print(f"Warning: Could not initialize workspace catalog with test_data_dir: {e}")
+                self.workspace_catalog = None
+
+        # Workspace configuration (backward compatibility)
         self.workspace_discovery_enabled = workspace_config.get(
             "workspace_discovery_enabled", True
         )
@@ -163,27 +188,35 @@ class WorkspaceAwarePipelineTestingSpecBuilder(PipelineTestingSpecBuilder):
             return self._workspace_cache[script_name]
 
         try:
-            # Try using step catalog for workspace-aware discovery
-            from ...step_catalog import StepCatalog
+            # PRIORITY 1: Use test workspace catalog (test_data_dir has priority)
+            if self.workspace_catalog:
+                test_workspace_steps = self.workspace_catalog.list_available_steps()
+                for step in test_workspace_steps:
+                    step_info = self.workspace_catalog.get_step_info(step)
+                    if step_info and step_info.file_components.get('script'):
+                        script_metadata = step_info.file_components['script']
+                        if script_metadata and script_metadata.path:
+                            script_dir = script_metadata.path.parent
+                            location_name = f"test_workspace_scripts"
+                            
+                            # Check if this matches our expected script
+                            if script_name in str(script_metadata.path) or not script_name:
+                                workspace_dirs.append((location_name, script_dir))
             
-            # Initialize step catalog
-            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_root)
-            
-            # Get all available steps and check for scripts
-            available_steps = catalog.list_available_steps()
-            
-            for step in available_steps:
-                step_info = catalog.get_step_info(step)
-                if step_info and step_info.file_components.get('script'):
-                    script_metadata = step_info.file_components['script']
-                    if script_metadata and script_metadata.path:
-                        script_dir = script_metadata.path.parent
-                        location_name = f"workspace_catalog_scripts"
-                        
-                        # Check if this matches our expected script
-                        if script_name in str(script_metadata.path) or not script_name:
-                            workspace_dirs.append((location_name, script_dir))
+            # PRIORITY 2: Use package catalog for additional scripts (lower priority)
+            if self.package_catalog:
+                package_steps = self.package_catalog.list_available_steps()
+                for step in package_steps:
+                    step_info = self.package_catalog.get_step_info(step)
+                    if step_info and step_info.file_components.get('script'):
+                        script_metadata = step_info.file_components['script']
+                        if script_metadata and script_metadata.path:
+                            script_dir = script_metadata.path.parent
+                            location_name = f"package_catalog_scripts"
+                            
+                            # Check if this matches our expected script
+                            if script_name in str(script_metadata.path) or not script_name:
+                                workspace_dirs.append((location_name, script_dir))
 
         except ImportError:
             # Step catalog not available, fall back to workspace discovery adapter

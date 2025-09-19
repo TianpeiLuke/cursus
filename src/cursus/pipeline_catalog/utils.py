@@ -79,12 +79,11 @@ class PipelineCatalogManager:
         """Discover pipelines using step catalog."""
         from ..step_catalog import StepCatalog
         
-        # Initialize step catalog (assuming workspace root can be determined)
+        # PORTABLE: Use package-only discovery for pipeline discovery
         try:
-            workspace_root = Path(__file__).parent.parent.parent
-            catalog = StepCatalog(workspace_root)
+            catalog = StepCatalog(workspace_dirs=None)
         except Exception:
-            # If we can't determine workspace root, fall back to legacy
+            # If step catalog initialization fails, fall back to legacy
             return self._discover_pipelines_legacy(**kwargs)
         
         # Use step catalog to discover relevant steps/pipelines

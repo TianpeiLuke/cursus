@@ -38,9 +38,8 @@ class StepInfoDetector:
             try:
                 from ...step_catalog import StepCatalog
                 
-                # Initialize step catalog
-                workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-                self._catalog = StepCatalog(workspace_root)
+                # PORTABLE: Package-only discovery (works in all deployment scenarios)
+                self._catalog = StepCatalog(workspace_dirs=None)
             except ImportError:
                 self._catalog = None
         return self._catalog

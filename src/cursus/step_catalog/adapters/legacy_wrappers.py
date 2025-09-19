@@ -31,7 +31,8 @@ class LegacyDiscoveryWrapper:
     def __init__(self, workspace_root: Path):
         """Initialize with all legacy adapters."""
         self.workspace_root = workspace_root
-        self.catalog = StepCatalog(workspace_root)
+        # PORTABLE: Use workspace-aware discovery for legacy wrapper
+        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         
         # Expose config_discovery for compatibility
         self.config_discovery = self.catalog.config_discovery
@@ -332,10 +333,8 @@ class LegacyDiscoveryWrapper:
 def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str, Any]:
     """Legacy function: build complete config classes using catalog."""
     try:
-        # Use a default workspace root for catalog initialization
-        from pathlib import Path
-        workspace_root = Path('.')
-        catalog = StepCatalog(workspace_root)
+        # PORTABLE: Use package-only discovery for legacy function
+        catalog = StepCatalog(workspace_dirs=None)
         
         # Use catalog's build_complete_config_classes method
         config_classes = catalog.build_complete_config_classes(project_id)

@@ -419,7 +419,8 @@ class WorkspaceTestManager:
         """Discover test workspaces using step catalog."""
         from ...step_catalog import StepCatalog
         
-        catalog = StepCatalog(self.core_workspace_manager.workspace_root)
+        # PORTABLE: Use workspace-aware discovery for test workspace detection
+        catalog = StepCatalog(workspace_dirs=[self.core_workspace_manager.workspace_root])
         
         # Get cross-workspace components
         cross_workspace_components = catalog.discover_cross_workspace_components()

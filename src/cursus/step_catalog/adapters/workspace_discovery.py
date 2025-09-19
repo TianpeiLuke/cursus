@@ -26,9 +26,11 @@ class WorkspaceDiscoveryManagerAdapter:
         """Initialize with workspace manager (legacy compatibility)."""
         self.workspace_manager = workspace_manager
         if hasattr(workspace_manager, 'workspace_root') and workspace_manager.workspace_root:
-            self.catalog = StepCatalog(workspace_manager.workspace_root)
+            # PORTABLE: Use workspace-aware discovery for workspace discovery
+            self.catalog = StepCatalog(workspace_dirs=[workspace_manager.workspace_root])
         else:
-            self.catalog = None
+            # PORTABLE: Use package-only discovery as fallback
+            self.catalog = StepCatalog(workspace_dirs=None)
         self.logger = logging.getLogger(__name__)
         
         # Legacy compatibility attributes

@@ -51,11 +51,11 @@ class StepConfigResolverAdapter:
     
     def __init__(self, workspace_root: Optional[Path] = None, confidence_threshold: float = 0.7):
         """Initialize with unified catalog."""
+        # PORTABLE: Use package-only discovery by default (works in all deployment scenarios)
         if workspace_root is None:
-            # Default to src/cursus/steps relative to the adapter's location
-            adapter_dir = Path(__file__).parent  # src/cursus/step_catalog/adapters/
-            workspace_root = adapter_dir.parent.parent / 'steps'  # src/cursus/steps
-        self.catalog = StepCatalog(workspace_root)
+            self.catalog = StepCatalog(workspace_dirs=None)
+        else:
+            self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         self.confidence_threshold = confidence_threshold
         self.logger = logging.getLogger(__name__)
         self._metadata_mapping = {}
