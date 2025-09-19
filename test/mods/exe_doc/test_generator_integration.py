@@ -322,3 +322,114 @@ class TestExecutionDocumentGeneratorIntegration:
         assert "PIPELINE_STEP_CONFIGS" in result
         assert "PIPELINE_ADDITIONAL_PARAMS" in result
         assert len(result["PIPELINE_STEP_CONFIGS"]) > 0
+
+    def test_debug_load_configs(self, config_path, project_root):
+        """
+        Debug test to examine the output of load_configs with the actual config file.
+        
+        This test loads the configuration and prints detailed information about
+        the loaded config objects to understand their structure.
+        """
+        from cursus.steps.configs.utils import load_configs, build_complete_config_classes
+        import json
+        
+        print(f"\n=== DEBUG: Loading configs from {config_path} ===")
+        
+        # Build config classes
+        config_classes = build_complete_config_classes()
+        print(f"Available config classes: {list(config_classes.keys())}")
+        
+        # Load configs
+        try:
+            loaded_configs = load_configs(config_path, config_classes)
+            print(f"Successfully loaded {len(loaded_configs)} configs")
+            print(f"Config keys: {list(loaded_configs.keys())}")
+            
+            # Examine each loaded config
+            for config_name, config_obj in loaded_configs.items():
+                print(f"\n--- Config: {config_name} ---")
+                print(f"Type: {type(config_obj).__name__}")
+                print(f"Module: {type(config_obj).__module__}")
+                
+                # Print all attributes
+                attrs = [attr for attr in dir(config_obj) if not attr.startswith('_')]
+                print(f"Attributes: {attrs[:10]}...")  # First 10 attributes
+                
+                # Check for specific attributes we expect
+                key_attrs = ['data_sources_spec', 'transform_spec', 'output_spec', 'cradle_job_spec', 
+                           'model_domain', 'model_objective', 'source_model_inference_content_types']
+                
+                for attr in key_attrs:
+                    if hasattr(config_obj, attr):
+                        value = getattr(config_obj, attr)
+                        print(f"  {attr}: {type(value).__name__} = {str(value)[:100]}...")
+                
+                # For CradleDataLoadConfig, examine the data_sources_spec structure
+                if 'CradleDataLoad' in type(config_obj).__name__:
+                    print(f"\n  === Cradle Config Details ===")
+                    if hasattr(config_obj, 'data_sources_spec'):
+                        ds_spec = config_obj.data_sources_spec
+                        print(f"  data_sources_spec type: {type(ds_spec).__name__}")
+                        if hasattr(ds_spec, 'data_sources'):
+                            data_sources = ds_spec.data_sources
+                            print(f"  data_sources type: {type(data_sources).__name__}")
+                            print(f"  data_sources value: {str(data_sources)[:200]}...")
+                            
+                            # Check if it has a 'value' attribute (for list wrappers)
+                            if hasattr(data_sources, 'value'):
+                                print(f"  data_sources.value type: {type(data_sources.value).__name__}")
+                                print(f"  data_sources.value length: {len(data_sources.value) if hasattr(data_sources.value, '__len__') else 'N/A'}")
+                                
+                                if hasattr(data_sources.value, '__iter__') and len(data_sources.value) > 0:
+                                    first_ds = data_sources.value[0]
+                                    print(f"  First data source type: {type(first_ds).__name__}")
+                                    if hasattr(first_ds, 'data_source_name'):
+                                        print(f"  First data source name: {first_ds.data_source_name}")
+                                    if hasattr(first_ds, 'data_source_type'):
+                                        print(f"  First data source type: {first_ds.data_source_type}")
+                
+                # For Registration config, examine key fields
+                if 'Registration' in type(config_obj).__name__:
+                    print(f"\n  === Registration Config Details ===")
+                    reg_attrs = ['model_domain', 'model_objective', 'framework', 'aws_region']
+                    for attr in reg_attrs:
+                        if hasattr(config_obj, attr):
+                            value = getattr(config_obj, attr)
+                            print(f"  {attr}: {value}")
+            
+            # Save detailed config info to file
+            debug_output = {}
+            for config_name, config_obj in loaded_configs.items():
+                config_info = {
+                    'type': type(config_obj).__name__,
+                    'module': type(config_obj).__module__,
+                    'attributes': {}
+                }
+                
+                # Get all non-private attributes
+                for attr in dir(config_obj):
+                    if not attr.startswith('_'):
+                        try:
+                            value = getattr(config_obj, attr)
+                            # Convert to string representation for JSON serialization
+                            if hasattr(value, '__dict__'):
+                                config_info['attributes'][attr] = str(value)
+                            else:
+                                config_info['attributes'][attr] = value
+                        except Exception as e:
+                            config_info['attributes'][attr] = f"Error accessing: {str(e)}"
+                
+                debug_output[config_name] = config_info
+            
+            # Save debug output
+            debug_path = project_root / "pipeline_config" / "config_NA_xgboost_AtoZ_v2" / "debug_loaded_configs.json"
+            with open(debug_path, 'w') as f:
+                json.dump(debug_output, f, indent=2, default=str)
+            
+            print(f"\nDebug output saved to: {debug_path}")
+            
+        except Exception as e:
+            print(f"Error loading configs: {e}")
+            import traceback
+            traceback.print_exc()
+            raise

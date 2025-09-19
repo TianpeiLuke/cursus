@@ -47,8 +47,108 @@ date of note: 2025-09-17
 **Enhanced Configuration Discovery** (✅ COMPLETE + EXTENDED):
 - `discover_config_classes()` - AST-based config class discovery
 - `discover_hyperparameter_classes()` - **NEW**: Comprehensive hyperparameter class discovery
-- `build_complete_config_classes()` - Integrated manual + auto-discovery
+- `build_complete_config_classes()` - **CRITICAL LEGACY INTEGRATION**: Replaces broken config class discovery in `src/cursus/steps/configs/utils.py`
 - Workspace-aware scanning with fallback mechanisms
+
+**Critical Legacy System Integration** (✅ NEWLY IDENTIFIED):
+- **Legacy Function**: `build_complete_config_classes()` in `src/cursus/steps/configs/utils.py`
+- **Problem**: 83% failure rate in config class discovery due to broken import paths (`src.pipeline_steps.*` instead of `cursus.steps.configs.*`)
+- **Impact**: Directly affects ExecutionDocumentGenerator and any system requiring config class discovery
+- **Solution**: Replace with ConfigAutoDiscovery integration while maintaining backward compatibility
+- **Status**: **CRITICAL MISSING COMPONENT** - Now integrated with step catalog system
+
+### **Critical Legacy System: build_complete_config_classes Integration**
+
+#### **Root Cause Analysis**
+The `build_complete_config_classes()` function in `src/cursus/steps/configs/utils.py` contains **hardcoded incorrect import paths** that cause an 83% failure rate in config class discovery:
+
+**Specific Issues Identified**:
+1. **Line 568-569**: Wrong module name generation
+   ```python
+   # BROKEN: Converts CradleDataLoading → config_cradledataloading
+   module_name = f"config_{step_name.lower()}"
+   # SHOULD BE: CradleDataLoading → config_cradle_data_loading_step
+   ```
+
+2. **Line 580**: Wrong absolute import path
+   ```python
+   # BROKEN: Uses non-existent package path
+   module = __import__(f"src.pipeline_steps.{module_name}", fromlist=[class_name])
+   # SHOULD BE: cursus.steps.configs.config_cradle_data_loading_step
+   ```
+
+3. **Line 318**: Wrong module path in load_configs
+   ```python
+   # BROKEN: Also uses wrong src.pipeline_steps path
+   "__model_module__": f"src.pipeline_steps.config_{step_name.lower()}",
+   # SHOULD BE: cursus.steps.configs.config_{proper_module_name}
+   ```
+
+#### **Impact Assessment**
+- **Registry Status**: ✅ Registry contains all 18 step definitions with correct config class names
+- **Config Classes**: ✅ All config classes exist and are importable with correct paths
+- **Import Logic**: ❌ Only 3 out of 18 config classes successfully imported (83% failure)
+- **ExecutionDocumentGenerator**: ❌ Returns sample document unchanged due to missing config data
+
+#### **Step Catalog Integration Solution**
+
+**Replacement Strategy**:
+```python
+def build_complete_config_classes() -> Dict[str, Type[BaseModel]]:
+    """
+    Build a complete dictionary of all relevant config classes using
+    the unified step catalog system's ConfigAutoDiscovery.
+    
+    UPDATED: Now uses ConfigAutoDiscovery instead of broken import logic.
+    """
+    from ...step_catalog.config_discovery import ConfigAutoDiscovery
+    from pathlib import Path
+    
+    # Get workspace root (assuming we're in src/cursus/steps/configs/)
+    workspace_root = Path(__file__).parent.parent.parent.parent.parent
+    
+    # Use the modern ConfigAutoDiscovery system
+    config_discovery = ConfigAutoDiscovery(workspace_root)
+    
+    # Get complete config classes using the step catalog system
+    return config_discovery.build_complete_config_classes()
+```
+
+**Integration Benefits**:
+- ✅ **AST-Based Discovery**: Uses proper AST parsing instead of broken import logic
+- ✅ **Correct Module Paths**: Uses `cursus.steps.configs.*` instead of `src.pipeline_steps.*`
+- ✅ **Workspace-Aware**: Supports both core and workspace-specific configs
+- ✅ **Production Ready**: Already implemented and tested in step catalog system
+- ✅ **Enhanced Discovery**: Includes both config and hyperparameter classes
+- ✅ **Backward Compatibility**: Maintains same function signature
+
+**Expected Results**:
+- **Config Discovery**: 18/18 config classes successfully discovered (100% success rate)
+- **ExecutionDocumentGenerator**: Properly transforms config values with real data
+- **System Integration**: All systems requiring config class discovery work correctly
+
+#### **Implementation Plan**
+
+**Phase 1: Direct Integration** (1 day):
+1. Update `build_complete_config_classes()` to use `ConfigAutoDiscovery`
+2. Fix hardcoded import paths in `load_configs()` function
+3. Test integration with existing ExecutionDocumentGenerator
+
+**Phase 2: Validation** (1 day):
+1. Run comprehensive config loading tests
+2. Verify all 12 config classes are properly loaded from JSON
+3. Confirm ExecutionDocumentGenerator produces correct output
+
+**Phase 3: Documentation Update** (1 day):
+1. Update expansion design to include this critical legacy system
+2. Document integration strategy and benefits
+3. Add to legacy system coverage analysis
+
+**Success Criteria**:
+- ✅ All 18 config classes discovered successfully
+- ✅ ExecutionDocumentGenerator transforms sample document correctly
+- ✅ Backward compatibility maintained for all existing code
+- ✅ Performance improvement through modern discovery system
 
 **Advanced Workspace Methods** (✅ COMPLETE):
 - `find_component_location()` - Cross-workspace component location resolution

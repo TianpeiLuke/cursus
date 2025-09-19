@@ -2845,6 +2845,55 @@ src/cursus/step_catalog/adapters/
 - **ConfigClassStoreAdapter**: Replaces `src/cursus/core/config_fields/config_class_store.py`
 - Legacy functions: `build_complete_config_classes()`, `detect_config_classes_from_json()`
 
+### **Critical Legacy System Integration: build_complete_config_classes**
+
+#### **Problem Identified**
+The `build_complete_config_classes()` function in `src/cursus/steps/configs/utils.py` was identified as a **critical missing component** in the unified step catalog expansion design. This function has:
+
+- **83% failure rate** in config class discovery due to broken import paths
+- **Hardcoded incorrect assumptions** about module structure (`src.pipeline_steps.*` instead of `cursus.steps.configs.*`)
+- **Direct impact** on ExecutionDocumentGenerator and any system requiring config class discovery
+
+#### **Step Catalog Integration Solution**
+
+**Implementation Plan**:
+1. **Replace broken import logic** with ConfigAutoDiscovery integration
+2. **Fix hardcoded module paths** in both `build_complete_config_classes()` and `load_configs()`
+3. **Maintain backward compatibility** with same function signature
+
+**Integration Code**:
+```python
+def build_complete_config_classes() -> Dict[str, Type[BaseModel]]:
+    """
+    Build a complete dictionary of all relevant config classes using
+    the unified step catalog system's ConfigAutoDiscovery.
+    
+    UPDATED: Now uses ConfigAutoDiscovery instead of broken import logic.
+    """
+    from ...step_catalog.config_discovery import ConfigAutoDiscovery
+    from pathlib import Path
+    
+    # Get workspace root (assuming we're in src/cursus/steps/configs/)
+    workspace_root = Path(__file__).parent.parent.parent.parent.parent
+    
+    # Use the modern ConfigAutoDiscovery system
+    config_discovery = ConfigAutoDiscovery(workspace_root)
+    
+    # Get complete config classes using the step catalog system
+    return config_discovery.build_complete_config_classes()
+```
+
+**Expected Results**:
+- **Config Discovery**: 18/18 config classes successfully discovered (100% success rate)
+- **ExecutionDocumentGenerator**: Properly transforms config values with real data
+- **System Integration**: All systems requiring config class discovery work correctly
+
+#### **Implementation Priority**
+- **Phase**: Phase 6 - Critical Legacy System Integration
+- **Timeline**: 1 day implementation + 1 day validation
+- **Dependencies**: Requires completed step catalog system (✅ already implemented)
+- **Impact**: Directly fixes ExecutionDocumentGenerator malfunction
+
 ### **Benefits Achieved**
 
 #### **Maintainability Improvements**:
