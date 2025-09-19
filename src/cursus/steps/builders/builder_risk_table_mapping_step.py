@@ -213,135 +213,13 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
         self.log_info("Processing environment variables: %s", env_vars)
         return env_vars
 
-    def _prepare_hyperparameters_file(self) -> str:
-        """
-        Serializes the hyperparameters to JSON, uploads it to S3, and
-        returns that full S3 URI. This eliminates the need for a separate
-        hyperparameter preparation step in the pipeline.
-
-        Returns:
-            S3 URI of the uploaded hyperparameters.json file
-        """
-        hyperparams_dict = self.config.get_hyperparameters_dict()
-        local_dir = Path(tempfile.mkdtemp())
-        local_file = local_dir / "hyperparameters.json"
-
-        try:
-            # Write JSON locally
-            with open(local_file, "w") as f:
-                json.dump(hyperparams_dict, indent=2, fp=f)
-            self.log_info("Created hyperparameters JSON file at %s", local_file)
-
-            # Construct S3 URI for the config directory
-            prefix = None
-
-            # Check for hyperparameters_s3_uri in config with proper type handling
-            if hasattr(self.config, "hyperparameters_s3_uri"):
-                prefix_value = self.config.hyperparameters_s3_uri
-
-                # Handle PipelineVariable objects
-                if hasattr(prefix_value, "expr"):
-                    self.log_info(
-                        "Found PipelineVariable for hyperparameters_s3_uri: %s",
-                        str(prefix_value.expr),
-                    )
-                    prefix = str(prefix_value.expr)
-                # Handle Pipeline step references with Get key
-                elif isinstance(prefix_value, dict) and "Get" in prefix_value:
-                    self.log_info(
-                        "Found Pipeline step reference for hyperparameters_s3_uri: %s",
-                        prefix_value,
-                    )
-                    prefix = prefix_value
-                # Handle string values
-                elif isinstance(prefix_value, str) and prefix_value:
-                    prefix = prefix_value
-
-            if not prefix:
-                # Fallback path construction
-                bucket = getattr(
-                    self.config,
-                    "bucket",
-                    "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
-                )
-                pipeline_name = getattr(
-                    self.config, "pipeline_name", "risk-table-mapping"
-                )
-                current_date = getattr(self.config, "current_date", "2025-07-16")
-                prefix = f"s3://{bucket}/{pipeline_name}/config/{current_date}"  # No trailing slash
-                self.log_info("Using fallback S3 path: %s", prefix)
-
-            # Use S3PathHandler for consistent path handling with proper type checking
-            if isinstance(prefix, str) and prefix.startswith("s3://"):
-                config_dir = S3PathHandler.normalize(prefix, "hyperparameters prefix")
-                self.log_info("Normalized hyperparameters prefix: %s", config_dir)
-
-                # Check if hyperparameters.json is already in the path
-                if S3PathHandler.get_name(config_dir) == "hyperparameters.json":
-                    # Use path as is if it already includes the filename
-                    target_s3_uri = config_dir
-                    self.log_info(
-                        "Using existing hyperparameters path: %s", target_s3_uri
-                    )
-                else:
-                    # Otherwise append the filename
-                    target_s3_uri = S3PathHandler.join(
-                        config_dir, "hyperparameters.json"
-                    )
-                    self.log_info("Constructed hyperparameters path: %s", target_s3_uri)
-            else:
-                # For non-string or Pipeline variable types, pass through as is
-                # This handles PipelineVariables and dict references that will be resolved during execution
-                target_s3_uri = prefix
-                if isinstance(prefix, dict) and "Get" in prefix:
-                    self.log_info("Using Pipeline reference as hyperparameters path")
-                else:
-                    self.log_info(
-                        "Using provided hyperparameters path: %s", str(prefix)
-                    )
-
-            self.log_info("Final hyperparameters S3 target URI: %s", target_s3_uri)
-
-            # Check if file exists and handle appropriately
-            s3_parts = target_s3_uri.replace("s3://", "").split("/", 1)
-            bucket = s3_parts[0]
-            key = s3_parts[1]
-
-            s3_client = self.session.boto_session.client("s3")
-            try:
-                s3_client.head_object(Bucket=bucket, Key=key)
-                self.log_info(
-                    "Found existing hyperparameters file at %s", target_s3_uri
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "404":
-                    self.log_info(
-                        "No existing hyperparameters file found at %s", target_s3_uri
-                    )
-                else:
-                    self.log_warning("Error checking existing file: %s", str(e))
-
-            # Upload the file
-            self.log_info(
-                "Uploading hyperparameters from %s to %s", local_file, target_s3_uri
-            )
-            S3Uploader.upload(
-                str(local_file), target_s3_uri, sagemaker_session=self.session
-            )
-
-            self.log_info("Hyperparameters successfully uploaded to %s", target_s3_uri)
-            return target_s3_uri
-
-        finally:
-            # Clean up temporary files
-            shutil.rmtree(local_dir)
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """
         Get inputs for the step using specification and contract.
 
         This method creates ProcessingInput objects for each dependency defined in the specification.
-        It also adds a config input with the hyperparameters.json file.
+        After refactor: Only handles data inputs, hyperparameters are embedded in source directory.
 
         Args:
             inputs: Input data sources keyed by logical name
@@ -356,73 +234,17 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             raise ValueError("Script contract is required for input mapping")
 
         processing_inputs = []
-        matched_inputs = set()  # Track which inputs we've handled
-
-        # SPECIAL CASE: Always generate hyperparameters internally first
-        hyperparameters_key = "hyperparameters_s3_uri"
-
-        # Generate hyperparameters file regardless of whether inputs contains it
-        internal_hyperparams_s3_uri = self._prepare_hyperparameters_file()
-        self.log_info(
-            "[PROCESSING INPUT OVERRIDE] Generated hyperparameters internally at: %s",
-            internal_hyperparams_s3_uri,
-        )
-        self.log_info(
-            "[PROCESSING INPUT OVERRIDE] This will be used regardless of any dependency-provided values"
-        )
-
-        # Get container path from contract for the hyperparameters
-        config_container_path = self.contract.expected_input_paths.get(
-            "hyperparameters_s3_uri", "/opt/ml/processing/input/config"
-        )
-
-        # Add the config input with hyperparameters.json - using the contract's expected input name
-        processing_inputs.append(
-            ProcessingInput(
-                input_name="hyperparameters_s3_uri",
-                source=internal_hyperparams_s3_uri,
-                destination=config_container_path,
-                s3_data_distribution_type="FullyReplicated",
-            )
-        )
-        self.log_info("Added hyperparameters input to %s", config_container_path)
-
-        matched_inputs.add(hyperparameters_key)
-
-        # Create a copy of the inputs dictionary
-        working_inputs = inputs.copy()
-
-        # Remove our special case from the inputs dictionary
-        if hyperparameters_key in working_inputs:
-            external_path = working_inputs[hyperparameters_key]
-            self.log_info(
-                "[PROCESSING INPUT OVERRIDE] Ignoring dependency-provided hyperparameters: %s",
-                external_path,
-            )
-            self.log_info(
-                "[PROCESSING INPUT OVERRIDE] Using internal hyperparameters instead: %s",
-                internal_hyperparams_s3_uri,
-            )
-            del working_inputs[hyperparameters_key]
 
         # Process each dependency in the specification
         for _, dependency_spec in self.spec.dependencies.items():
             logical_name = dependency_spec.logical_name
 
-            # Skip inputs we've already handled
-            if logical_name in matched_inputs:
-                continue
-
-            # Skip hyperparameters_s3_uri as we've already handled it
-            if logical_name == "hyperparameters_s3_uri":
-                continue
-
             # Skip if optional and not provided
-            if not dependency_spec.required and logical_name not in working_inputs:
+            if not dependency_spec.required and logical_name not in inputs:
                 continue
 
             # Make sure required inputs are present
-            if dependency_spec.required and logical_name not in working_inputs:
+            if dependency_spec.required and logical_name not in inputs:
                 raise ValueError(f"Required input '{logical_name}' not provided")
 
             # Get container path from contract
@@ -436,7 +258,7 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             processing_inputs.append(
                 ProcessingInput(
                     input_name=logical_name,
-                    source=working_inputs[logical_name],
+                    source=inputs[logical_name],
                     destination=container_path,
                     s3_data_distribution_type="FullyReplicated",
                 )
@@ -444,7 +266,7 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             self.log_info(
                 "Added %s input from %s to %s",
                 logical_name,
-                working_inputs[logical_name],
+                inputs[logical_name],
                 container_path,
             )
 
@@ -526,7 +348,10 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
 
     def create_step(self, **kwargs) -> ProcessingStep:
         """
-        Create the ProcessingStep.
+        Create the ProcessingStep following the pattern from XGBoostModelEvalStepBuilder.
+        
+        This implementation uses processor.run() with both code and source_dir parameters,
+        which is the correct pattern for ProcessingSteps that need source directory access.
 
         Args:
             **kwargs: Step parameters including:
@@ -538,56 +363,70 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
         Returns:
             Configured ProcessingStep
         """
-        # Extract parameters
-        inputs_raw = kwargs.get("inputs", {})
-        outputs = kwargs.get("outputs", {})
-        dependencies = kwargs.get("dependencies", [])
-        enable_caching = kwargs.get("enable_caching", True)
+        try:
+            # Extract parameters
+            inputs_raw = kwargs.get("inputs", {})
+            outputs = kwargs.get("outputs", {})
+            dependencies = kwargs.get("dependencies", [])
+            enable_caching = kwargs.get("enable_caching", True)
 
-        # Handle inputs
-        inputs = {}
+            # Handle inputs
+            inputs = {}
 
-        # If dependencies are provided, extract inputs from them
-        if dependencies:
-            try:
-                extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
-                inputs.update(extracted_inputs)
-            except Exception as e:
-                self.log_warning("Failed to extract inputs from dependencies: %s", e)
+            # If dependencies are provided, extract inputs from them
+            if dependencies:
+                try:
+                    extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                    inputs.update(extracted_inputs)
+                except Exception as e:
+                    self.log_warning("Failed to extract inputs from dependencies: %s", e)
 
-        # Add explicitly provided inputs (overriding any extracted ones)
-        inputs.update(inputs_raw)
+            # Add explicitly provided inputs (overriding any extracted ones)
+            inputs.update(inputs_raw)
 
-        # Add direct keyword arguments (e.g., DATA, METADATA from template)
-        for key in ["data_input", "config_input", "risk_tables"]:
-            if key in kwargs and key not in inputs:
-                inputs[key] = kwargs[key]
+            # Add direct keyword arguments (e.g., DATA, METADATA from template)
+            for key in ["data_input", "config_input", "risk_tables"]:
+                if key in kwargs and key not in inputs:
+                    inputs[key] = kwargs[key]
 
-        # Create processor and get inputs/outputs
-        processor = self._create_processor()
-        proc_inputs = self._get_inputs(inputs)
-        proc_outputs = self._get_outputs(outputs)
-        job_args = self._get_job_arguments()
+            # Create processor and get inputs/outputs
+            processor = self._create_processor()
+            proc_inputs = self._get_inputs(inputs)
+            proc_outputs = self._get_outputs(outputs)
+            job_args = self._get_job_arguments()
 
-        # Get step name using standardized method with auto-detection
-        step_name = self._get_step_name()
+            # Get step name using standardized method with auto-detection
+            step_name = self._get_step_name()
 
-        # Get script path from contract or config
-        script_path = self.config.get_script_path()
+            # CRITICAL: Follow XGBoostModelEvalStepBuilder pattern for source directory
+            # Use processor.run() with both code and source_dir parameters
+            script_path = self.config.get_script_path()  # Entry point only
+            source_dir = self.config.get_effective_source_dir()  # Source directory path
 
-        # Create step
-        step = ProcessingStep(
-            name=step_name,
-            processor=processor,
-            inputs=proc_inputs,
-            outputs=proc_outputs,
-            code=script_path,
-            job_arguments=job_args,
-            depends_on=dependencies,
-            cache_config=self._get_cache_config(enable_caching),
-        )
+            # Create step arguments using processor.run()
+            step_args = processor.run(
+                code=script_path,
+                source_dir=source_dir,  # This ensures source directory is available in container
+                inputs=proc_inputs,
+                outputs=proc_outputs,
+                arguments=job_args,
+            )
 
-        # Attach specification to the step for future reference
-        setattr(step, "_spec", self.spec)
+            # Create and return the step using step_args
+            processing_step = ProcessingStep(
+                name=step_name,
+                step_args=step_args,
+                depends_on=dependencies,
+                cache_config=self._get_cache_config(enable_caching),
+            )
 
-        return step
+            # Attach specification to the step for future reference
+            setattr(processing_step, "_spec", self.spec)
+
+            return processing_step
+
+        except Exception as e:
+            self.log_error(f"Error creating RiskTableMapping step: {e}")
+            import traceback
+            self.log_error(traceback.format_exc())
+            raise ValueError(f"Failed to create RiskTableMapping step: {str(e)}") from e

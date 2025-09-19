@@ -291,7 +291,7 @@ class RegistrationStepBuilder(StepBuilderBase):
         processing_inputs = self._get_inputs(inputs)
 
         # Create step with clean, simple logic using standardized auto-detection method
-        step_name = self._get_step_name() + f"-{self.config.region}"
+        step_name = self._get_step_name() + "-" + self.config.region
 
         try:
             # Create registration step

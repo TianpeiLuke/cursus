@@ -14,7 +14,7 @@ from unittest.mock import patch, MagicMock, mock_open
 
 from cursus.api.dag.base_dag import PipelineDAG
 from cursus.core.compiler.dynamic_template import DynamicPipelineTemplate
-from cursus.core.compiler.dynamic_template import (
+from cursus.core.compiler.dag_compiler import (
     PIPELINE_EXECUTION_TEMP_DIR,
     KMS_ENCRYPTION_KEY_PARAM,
     SECURITY_GROUP_ID,
@@ -448,6 +448,8 @@ class TestDynamicPipelineTemplate:
         mock_template_load_configs.return_value = mock_configs
 
         # Create the template with mocked builder_registry and skip_validation
+        # Note: DynamicPipelineTemplate no longer defines its own _get_pipeline_parameters
+        # It inherits from PipelineTemplateBase which returns empty list by default
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
@@ -455,12 +457,143 @@ class TestDynamicPipelineTemplate:
             skip_validation=True,
         )
 
-        # Get pipeline parameters
+        # Get pipeline parameters - should return empty list since no parameters were provided
         params = template._get_pipeline_parameters()
 
-        # Verify the standard parameters are returned
-        assert len(params) == 4, "Should return 4 parameters"
-        assert PIPELINE_EXECUTION_TEMP_DIR in params
-        assert KMS_ENCRYPTION_KEY_PARAM in params
-        assert SECURITY_GROUP_ID in params
-        assert VPC_SUBNET in params
+        # DynamicPipelineTemplate inherits from PipelineTemplateBase which returns [] by default
+        assert len(params) == 0, "Should return empty list when no parameters provided"
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_init_with_pipeline_parameters(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """Test DynamicPipelineTemplate initialization with custom pipeline parameters."""
+        from sagemaker.workflow.parameters import ParameterString
+        
+        custom_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://custom-bucket/execution")
+        ]
+        
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            pipeline_parameters=custom_params,
+            builder_registry=self.mock_builder_registry,
+            skip_validation=True,
+        )
+        
+        # Verify parameters were passed to parent
+        assert hasattr(template, '_stored_pipeline_parameters')
+        assert template._stored_pipeline_parameters == custom_params
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_get_pipeline_parameters_with_custom_params(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """Test _get_pipeline_parameters returns custom parameters when provided."""
+        from sagemaker.workflow.parameters import ParameterString
+        
+        custom_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://custom-bucket/execution")
+        ]
+        
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            pipeline_parameters=custom_params,
+            builder_registry=self.mock_builder_registry,
+            skip_validation=True,
+        )
+        
+        # Get pipeline parameters - should return custom params plus standard ones
+        params = template._get_pipeline_parameters()
+        
+        # Should include the custom EXECUTION_S3_PREFIX parameter
+        param_names = [p.name for p in params if hasattr(p, 'name')]
+        assert "EXECUTION_S3_PREFIX" in param_names
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_get_pipeline_parameters_fallback_to_standard(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """Test _get_pipeline_parameters falls back to empty list when no custom params."""
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            builder_registry=self.mock_builder_registry,
+            skip_validation=True,
+        )
+        
+        # Get pipeline parameters - should return empty list since no parameters provided
+        params = template._get_pipeline_parameters()
+        
+        # DynamicPipelineTemplate inherits from PipelineTemplateBase which returns [] by default
+        assert len(params) == 0, "Should return empty list when no parameters provided"
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_parameter_inheritance_from_base_class(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """Test that parameter management is inherited from PipelineTemplateBase."""
+        from sagemaker.workflow.parameters import ParameterString
+        
+        custom_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution"),
+            ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="test-key"),
+        ]
+        
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            pipeline_parameters=custom_params,
+            builder_registry=self.mock_builder_registry,
+            skip_validation=True,
+        )
+        
+        # Test that parameter management methods work (inherited from base)
+        assert hasattr(template, '_get_pipeline_parameters')
+        assert hasattr(template, 'set_pipeline_parameters')
+        
+        # Test setting parameters via inherited method
+        new_params = [ParameterString(name="NEW_PARAM", default_value="new-value")]
+        template.set_pipeline_parameters(new_params)
+        
+        # Should return the newly set parameters
+        result_params = template._get_pipeline_parameters()
+        assert result_params == new_params

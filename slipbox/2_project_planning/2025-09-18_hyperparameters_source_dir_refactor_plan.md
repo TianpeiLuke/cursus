@@ -813,28 +813,336 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
 - **Assessment**: PyTorch training does NOT use `_prepare_hyperparameters_file` - hyperparameters are passed directly to estimator constructor
 - **Conclusion**: PyTorchTrainingStepBuilder is not affected by this refactor
 
-### Phase 5: Testing and Validation
+### Phase 6: RiskTableMappingStepBuilder Refactoring
 
-#### 5.1 Unit Testing
+**Critical Discovery**: RiskTableMappingStepBuilder has the same `_prepare_hyperparameters_file` timing conflict as XGBoost training. This step builder handles multiple job types (training, validation, testing, calibration) and needs the same source directory integration approach.
+
+#### 6.1 Remove _prepare_hyperparameters_file Method
+- **Target**: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
+- **Action**: Complete removal of `_prepare_hyperparameters_file` method (lines 200-320)
+- **Impact**: Eliminates S3 upload logic and timing conflicts with `PIPELINE_EXECUTION_TEMP_DIR`
+
+#### 6.2 Update _get_inputs Method
+- **Target**: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
+- **Action**: Remove hyperparameters special case handling and internal generation logic
+- **Changes**:
+  - Remove hyperparameters override logic (lines 150-200)
+  - Remove internal `_prepare_hyperparameters_file()` call
+  - Remove complex hyperparameters input processing
+  - Simplify to only process dependencies from specification
+
+**Detailed Implementation:**
+```python
+def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
+    """
+    Get inputs for the step using specification and contract.
+
+    This method creates ProcessingInput objects for each dependency defined in the specification.
+    After refactor: Only handles data inputs, hyperparameters are embedded in source directory.
+
+    Args:
+        inputs: Input data sources keyed by logical name
+
+    Returns:
+        List of ProcessingInput objects
+    """
+    if not self.spec:
+        raise ValueError("Step specification is required")
+
+    if not self.contract:
+        raise ValueError("Script contract is required for input mapping")
+
+    processing_inputs = []
+
+    # Process each dependency in the specification
+    for _, dependency_spec in self.spec.dependencies.items():
+        logical_name = dependency_spec.logical_name
+
+        # Skip if optional and not provided
+        if not dependency_spec.required and logical_name not in inputs:
+            continue
+
+        # Make sure required inputs are present
+        if dependency_spec.required and logical_name not in inputs:
+            raise ValueError(f"Required input '{logical_name}' not provided")
+
+        # Get container path from contract
+        container_path = None
+        if logical_name in self.contract.expected_input_paths:
+            container_path = self.contract.expected_input_paths[logical_name]
+        else:
+            raise ValueError(f"No container path found for input: {logical_name}")
+
+        # Use the input value directly - property references are handled by PipelineAssembler
+        processing_inputs.append(
+            ProcessingInput(
+                input_name=logical_name,
+                source=inputs[logical_name],
+                destination=container_path,
+                s3_data_distribution_type="FullyReplicated",
+            )
+        )
+        self.log_info(
+            "Added %s input from %s to %s",
+            logical_name,
+            inputs[logical_name],
+            container_path,
+        )
+
+    return processing_inputs
+```
+
+**Key Changes from Original:**
+1. **Removed hyperparameters special case**: No more `hyperparameters_key = "hyperparameters_s3_uri"` handling
+2. **Removed internal hyperparameters generation**: No more `_prepare_hyperparameters_file()` call
+3. **Removed complex override logic**: No more external vs internal hyperparameters handling
+4. **Simplified flow**: Only processes dependencies from specification, creates appropriate inputs
+
+#### 6.3 Update Risk Table Mapping Script
+- **Target**: `src/cursus/steps/scripts/risk_table_mapping.py`
+- **Action**: Update hyperparameters loading to use source directory fallback (following XGBoost training script pattern)
+- **Reference**: Follow the same pattern implemented in `src/cursus/steps/scripts/xgboost_training.py`
+
+**Implementation:**
+```python
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: Optional[argparse.Namespace] = None,
+) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
+    """
+    Standardized main entry point for risk table mapping script.
+    """
+    try:
+        # Extract paths from input parameters - required keys must be present
+        if "data_input" not in input_paths:
+            raise ValueError("Missing required input path: data_input")
+        if "data_output" not in output_paths:
+            raise ValueError("Missing required output path: data_output")
+
+        # Extract job_type from args
+        if job_args is None or not hasattr(job_args, "job_type"):
+            raise ValueError("job_args must contain job_type parameter")
+
+        job_type = job_args.job_type
+        input_dir = input_paths["data_input"]
+        output_dir = output_paths["data_output"]
+        config_dir = input_paths.get("config_input", DEFAULT_CONFIG_DIR)
+
+        # For non-training jobs, check if risk table input path is provided
+        risk_table_input_dir = None
+        if job_type != "training":
+            risk_table_input_dir = input_paths.get("risk_table_input")
+            if not risk_table_input_dir:
+                logger.warning(
+                    f"No risk_table_input path provided for non-training job {job_type}. "
+                    + "Risk table mapping may fail."
+                )
+
+        # Log input/output paths for clarity
+        logger.info(f"Input data directory: {input_dir}")
+        logger.info(f"Output directory: {output_dir}")
+        if risk_table_input_dir:
+            logger.info(f"Risk table input directory: {risk_table_input_dir}")
+            logger.info(
+                f"Expected risk table path: {Path(risk_table_input_dir) / RISK_TABLE_FILENAME}"
+            )
+
+        # Load hyperparameters with source directory fallback (same pattern as XGBoost)
+        # Use provided hyperparameters path, with source directory fallback
+        if "hyperparameters_s3_uri" in input_paths:
+            hparam_path = input_paths["hyperparameters_s3_uri"]
+            if not hparam_path.endswith("hyperparameters.json"):
+                hparam_path = os.path.join(hparam_path, "hyperparameters.json")
+        else:
+            # Fallback to source directory if not provided
+            hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
+
+        logger.info(f"Loading hyperparameters from {hparam_path}")
+
+        if os.path.exists(hparam_path):
+            hyperparams = load_json_config(hparam_path)
+        else:
+            # FAIL with clear error instead of using arbitrary defaults
+            raise FileNotFoundError(
+                f"Hyperparameters file not found at {hparam_path}. "
+                f"Risk table mapping requires hyperparameters to be provided either via "
+                f"input channel or in source directory at /opt/ml/code/hyperparams/hyperparameters.json"
+            )
+
+        # Execute the internal main logic
+        return internal_main(
+            job_type=job_type,
+            input_dir=input_dir,
+            output_dir=output_dir,
+            hyperparams=hyperparams,
+            risk_table_input_dir=risk_table_input_dir,
+        )
+
+    except Exception as e:
+        logger.error(f"Error in risk table mapping: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise
+```
+
+**Key Changes from XGBoost Pattern:**
+1. **Same Fallback Logic**: Uses `hyperparameters_s3_uri` from input_paths with source directory fallback
+2. **Consistent Path Handling**: Handles both directory and file paths like XGBoost training
+3. **Source Directory Path**: Falls back to `/opt/ml/code/hyperparams/hyperparameters.json`
+4. **Fail Fast Approach**: Raises clear error when hyperparameters not found instead of using defaults
+5. **Logging Consistency**: Same logging pattern as XGBoost training script
+
+#### 6.4 Source Directory Structure
+- **Expected Structure**:
+```
+source_dir/
+├── risk_table_mapping.py          # Main script (entry point)
+└── hyperparams/                   # Hyperparameters directory
+    └── hyperparameters.json       # Generated hyperparameters file
+```
+
+#### 6.5 Update RiskTableMappingStepBuilder create_step Method
+- **Target**: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
+- **Action**: Update `create_step()` method to use ProcessingStep pattern with `processor.run()` and source directory
+- **Rationale**: Like DummyTraining, RiskTableMapping needs source directory access for hyperparameters fallback
+
+**Current Implementation (OLD):**
+```python
+def create_step(self, **kwargs) -> ProcessingStep:
+    """Create the ProcessingStep."""
+    # ... parameter extraction ...
+    
+    # Create step
+    step = ProcessingStep(
+        name=step_name,
+        processor=processor,
+        inputs=proc_inputs,
+        outputs=proc_outputs,
+        code=script_path,  # OLD: Only provides entry point script
+        job_arguments=job_args,
+        depends_on=dependencies,
+        cache_config=self._get_cache_config(enable_caching),
+    )
+    
+    return step
+```
+
+**New Implementation (Following DummyTraining Pattern):**
+```python
+def create_step(self, **kwargs) -> ProcessingStep:
+    """
+    Create the ProcessingStep following the pattern from XGBoostModelEvalStepBuilder.
+    
+    This implementation uses processor.run() with both code and source_dir parameters,
+    which is the correct pattern for ProcessingSteps that need source directory access.
+    """
+    try:
+        # Extract parameters
+        inputs_raw = kwargs.get("inputs", {})
+        outputs = kwargs.get("outputs", {})
+        dependencies = kwargs.get("dependencies", [])
+        enable_caching = kwargs.get("enable_caching", True)
+
+        # Handle inputs
+        inputs = {}
+
+        # If dependencies are provided, extract inputs from them
+        if dependencies:
+            try:
+                extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                inputs.update(extracted_inputs)
+            except Exception as e:
+                self.log_warning("Failed to extract inputs from dependencies: %s", e)
+
+        # Add explicitly provided inputs (overriding any extracted ones)
+        inputs.update(inputs_raw)
+
+        # Add direct keyword arguments (e.g., DATA, METADATA from template)
+        for key in ["data_input", "config_input", "risk_tables"]:
+            if key in kwargs and key not in inputs:
+                inputs[key] = kwargs[key]
+
+        # Create processor and get inputs/outputs
+        processor = self._create_processor()
+        proc_inputs = self._get_inputs(inputs)
+        proc_outputs = self._get_outputs(outputs)
+        job_args = self._get_job_arguments()
+
+        # Get step name using standardized method with auto-detection
+        step_name = self._get_step_name()
+
+        # CRITICAL: Follow XGBoostModelEvalStepBuilder pattern for source directory
+        # Use processor.run() with both code and source_dir parameters
+        script_path = self.config.get_script_path()  # Entry point only
+        source_dir = self.config.get_effective_source_dir()  # Source directory path
+
+        # Create step arguments using processor.run()
+        step_args = processor.run(
+            code=script_path,
+            source_dir=source_dir,  # This ensures source directory is available in container
+            inputs=proc_inputs,
+            outputs=proc_outputs,
+            arguments=job_args,
+        )
+
+        # Create and return the step using step_args
+        processing_step = ProcessingStep(
+            name=step_name,
+            step_args=step_args,
+            depends_on=dependencies,
+            cache_config=self._get_cache_config(enable_caching),
+        )
+
+        # Attach specification to the step for future reference
+        setattr(processing_step, "_spec", self.spec)
+
+        return processing_step
+
+    except Exception as e:
+        self.log_error(f"Error creating RiskTableMapping step: {e}")
+        import traceback
+        self.log_error(traceback.format_exc())
+        raise ValueError(f"Failed to create RiskTableMapping step: {str(e)}") from e
+```
+
+**Key Changes:**
+1. **ProcessingStep Pattern**: Uses `processor.run()` instead of direct ProcessingStep constructor
+2. **Source Directory Access**: Provides both `code` and `source_dir` parameters to processor
+3. **Step Arguments**: Uses `step_args` from `processor.run()` for ProcessingStep creation
+4. **Error Handling**: Comprehensive error handling with detailed logging
+5. **Specification Attachment**: Maintains specification reference for future use
+
+#### 6.6 Specifications and Contract (No Changes Needed)
+- **Specifications**: Already have `hyperparameters_s3_uri` as optional dependency
+- **Contract**: Maintains existing input paths for backward compatibility
+- **Job Types**: All job types (training, validation, testing, calibration) use same approach
+
+### Phase 7: Testing and Validation
+
+#### 7.1 Unit Testing
 - **Target**: Test hyperparameters loading in source directory
 - **Tests**:
   - Verify hyperparameters.json is created in source directory
   - Validate hyperparameters content and format
   - Test source directory preparation and cleanup
+  - Test RiskTableMapping fallback mechanisms and error handling
 
-#### 5.2 Integration Testing
+#### 7.2 Integration Testing
 - **Target**: End-to-end pipeline execution
 - **Tests**:
   - Verify training script can load hyperparameters from `/opt/ml/code/hyperparams/`
   - Test pipeline execution with `PIPELINE_EXECUTION_TEMP_DIR`
   - Validate model training and output generation
+  - Test RiskTableMapping with all job types (training, validation, testing, calibration)
 
-#### 5.3 External System Integration Testing
+#### 7.3 External System Integration Testing
 - **Target**: Test with custom `PIPELINE_EXECUTION_TEMP_DIR`
 - **Tests**:
   - Verify external systems can provide custom execution directories
   - Test parameter flow with dynamic output paths
   - Validate backward compatibility
+  - Test RiskTableMapping with external system integration
 
 ## Risk Assessment and Mitigation
 
@@ -1020,10 +1328,127 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
 - **Robust Fallback Mechanisms**: Script includes comprehensive file discovery with multiple search paths
 - **Clean Configuration Model**: Configuration validates SOURCE node requirements and documents expected directory structure
 
-### 🔄 **Phase 5: Testing and Validation - PENDING**
-- [ ] **5.1 Unit Testing** (including fallback path testing and config validation)
-- [ ] **5.2 Integration Testing**
-- [ ] **5.3 External System Integration Testing**
+### ✅ **Phase 6: RiskTableMappingStepBuilder Refactor - COMPLETED**
+
+**Critical Discovery**: RiskTableMappingStepBuilder has the same `_prepare_hyperparameters_file` timing conflict as XGBoost training. This step builder handles multiple job types (training, validation, testing, calibration) and needs the same source directory integration approach.
+
+#### **6.1 Remove _prepare_hyperparameters_file Method** ✅ **COMPLETED**
+- **Target**: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
+- **Action**: Complete removal of `_prepare_hyperparameters_file` method (120+ lines)
+- **Impact**: Eliminated S3 upload logic and timing conflicts with `PIPELINE_EXECUTION_TEMP_DIR`
+
+#### **6.2 Update _get_inputs Method** ✅ **COMPLETED**
+- **Target**: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
+- **Action**: Removed hyperparameters special case handling and internal generation logic
+- **Changes**:
+  - Removed hyperparameters override logic and internal generation
+  - Removed internal `_prepare_hyperparameters_file()` call
+  - Removed complex hyperparameters input processing
+  - Simplified to only process dependencies from specification
+
+#### **6.3 Update Risk Table Mapping Script** ✅ **COMPLETED**
+- **Target**: `src/cursus/steps/scripts/risk_table_mapping.py`
+- **Action**: Updated hyperparameters loading to use source directory fallback (following XGBoost training script pattern)
+- **Reference**: Followed the same pattern implemented in `src/cursus/steps/scripts/xgboost_training.py`
+- **Implementation**:
+```python
+# Follow XGBoost training script pattern for hyperparameters loading
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: Optional[argparse.Namespace] = None,
+) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
+    """Main entry point for risk table mapping script."""
+    try:
+        # Extract paths from input parameters
+        job_type = job_args.job_type
+        input_dir = input_paths["data_input"]
+        output_dir = output_paths["data_output"]
+        config_dir = input_paths.get("config_input", DEFAULT_CONFIG_DIR)
+
+        # Load hyperparameters with source directory fallback (same pattern as XGBoost)
+        # Use provided hyperparameters path, with source directory fallback
+        if "hyperparameters_s3_uri" in input_paths:
+            hparam_path = input_paths["hyperparameters_s3_uri"]
+            if not hparam_path.endswith("hyperparameters.json"):
+                hparam_path = os.path.join(hparam_path, "hyperparameters.json")
+        else:
+            # Fallback to source directory if not provided
+            hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
+
+        logger.info(f"Loading hyperparameters from {hparam_path}")
+
+        if os.path.exists(hparam_path):
+            hyperparams = load_json_config(hparam_path)
+        else:
+            # FAIL with clear error instead of using arbitrary defaults
+            raise FileNotFoundError(
+                f"Hyperparameters file not found at {hparam_path}. "
+                f"Risk table mapping requires hyperparameters to be provided either via "
+                f"input channel or in source directory at /opt/ml/code/hyperparams/hyperparameters.json"
+            )
+
+        # Continue with existing logic...
+        return internal_main(
+            job_type=job_type,
+            input_dir=input_dir,
+            output_dir=output_dir,
+            hyperparams=hyperparams,
+            risk_table_input_dir=risk_table_input_dir,
+        )
+```
+
+**Key Changes from XGBoost Pattern:**
+1. **Same Fallback Logic**: Uses `hyperparameters_s3_uri` from input_paths with source directory fallback
+2. **Consistent Path Handling**: Handles both directory and file paths like XGBoost training
+3. **Source Directory Path**: Falls back to `/opt/ml/code/hyperparams/hyperparameters.json`
+4. **Graceful Defaults**: Provides sensible defaults when no hyperparameters file found
+5. **Logging Consistency**: Same logging pattern as XGBoost training script
+
+#### **6.4 Update DEFAULT_CONFIG_DIR** ✅ **COMPLETED**
+- **Target**: `src/cursus/steps/scripts/risk_table_mapping.py`
+- **Action**: Changed `DEFAULT_CONFIG_DIR` from `/opt/ml/processing/input/config` to `/opt/ml/code/hyperparams`
+- **Impact**: Script now defaults to source directory for hyperparameters
+
+#### **6.5 Update create_step Method** ✅ **COMPLETED**
+- **Target**: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
+- **Action**: Updated `create_step()` method to use ProcessingStep pattern with `processor.run()` and source directory
+- **Implementation**: Following XGBoostModelEvalStepBuilder and DummyTraining patterns
+- **Key Features**:
+  - Uses `processor.run()` instead of direct ProcessingStep constructor
+  - Provides both `code` and `source_dir` parameters to processor
+  - Uses `step_args` from `processor.run()` for ProcessingStep creation
+  - Comprehensive error handling with detailed logging
+  - Maintains specification reference for future use
+
+#### **6.6 Source Directory Structure**
+- **Expected Structure**:
+```
+source_dir/
+├── risk_table_mapping.py          # Main script (entry point)
+└── hyperparams/                   # Hyperparameters directory
+    └── hyperparameters.json       # Generated hyperparameters file
+```
+
+#### **6.7 Specifications and Contract (No Changes Needed)**
+- **Specifications**: Already have `hyperparameters_s3_uri` as optional dependency
+- **Contract**: Maintains existing input paths for backward compatibility
+- **Job Types**: All job types (training, validation, testing, calibration) use same approach
+
+**Implementation Summary:**
+- **Complete Refactor**: All 5 subsections successfully implemented with comprehensive code changes
+- **Same Pattern as XGBoost**: Uses identical source directory integration approach
+- **Multiple Job Types**: Single refactor handles all risk table mapping job types (training, validation, testing, calibration)
+- **ProcessingStep Modernization**: Updated to use modern ProcessingStep pattern with source directory access
+- **Timing Conflict Resolution**: Completely eliminated `_prepare_hyperparameters_file` timing conflicts
+- **Backward Compatibility**: Maintains existing contract and specification structure
+- **Source Directory Fallback**: Script falls back to source directory when hyperparameters not provided via input channel
+
+### 🔄 **Phase 7: Testing and Validation - PENDING**
+- [ ] **7.1 Unit Testing** (including fallback path testing and config validation)
+- [ ] **7.2 Integration Testing**
+- [ ] **7.3 External System Integration Testing**
 
 ## Conclusion
 

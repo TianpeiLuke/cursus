@@ -101,7 +101,7 @@ class XGBoostModelStepBuilder(StepBuilderBase):
         region = getattr(self.config, "aws_region", "us-east-1")
         if region != "us-east-1":
             self.log_info(
-                f"Region '{region}' specified, but forcing to 'us-east-1' due to environment limitations"
+                "Region '%s' specified, but forcing to 'us-east-1' due to environment limitations", region
             )
         region = "us-east-1"
 
@@ -115,7 +115,7 @@ class XGBoostModelStepBuilder(StepBuilderBase):
             image_scope="inference",
         )
 
-        self.log_info(f"Generated XGBoost image URI: {image_uri}")
+        self.log_info("Generated XGBoost image URI: %s", image_uri)
         return image_uri
 
     def _create_model(self, model_data: str) -> XGBoostModel:

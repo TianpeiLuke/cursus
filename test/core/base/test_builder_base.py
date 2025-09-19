@@ -406,3 +406,49 @@ class TestStepBuilderBase:
         # Should contain expected common properties
         assert "dependencies" in builder.COMMON_PROPERTIES
         assert "enable_caching" in builder.COMMON_PROPERTIES
+
+    def test_set_execution_prefix(self, config):
+        """Test setting execution prefix for dynamic output path resolution."""
+        builder = ConcreteStepBuilder(config=config)
+        
+        # Test with ParameterString
+        from sagemaker.workflow.parameters import ParameterString
+        param = ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
+        builder.set_execution_prefix(param)
+        assert builder.execution_prefix == param
+        
+        # Test with string
+        builder.set_execution_prefix("s3://test-bucket/string-path")
+        assert builder.execution_prefix == "s3://test-bucket/string-path"
+        
+        # Test with None
+        builder.set_execution_prefix(None)
+        assert builder.execution_prefix is None
+
+    def test_get_base_output_path_with_execution_prefix(self, config):
+        """Test _get_base_output_path with execution prefix set."""
+        builder = ConcreteStepBuilder(config=config)
+        
+        # Test with execution_prefix set
+        from sagemaker.workflow.parameters import ParameterString
+        param = ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
+        builder.set_execution_prefix(param)
+        
+        result = builder._get_base_output_path()
+        assert result == param
+
+    def test_get_base_output_path_fallback_to_config(self, config):
+        """Test _get_base_output_path falls back to config.pipeline_s3_loc."""
+        builder = ConcreteStepBuilder(config=config)
+        
+        # No execution_prefix set, should fall back to config
+        result = builder._get_base_output_path()
+        assert result == config.pipeline_s3_loc
+
+    def test_execution_prefix_initialization(self, config):
+        """Test that execution_prefix is properly initialized."""
+        builder = ConcreteStepBuilder(config=config)
+        
+        # Should be initialized to None
+        assert hasattr(builder, 'execution_prefix')
+        assert builder.execution_prefix is None

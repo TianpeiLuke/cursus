@@ -170,7 +170,7 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         # Handle PipelineVariable objects in output_path
         if hasattr(output_path, "expr"):
             self.log_info(
-                f"Processing PipelineVariable for output_path: {output_path.expr}"
+                "Processing PipelineVariable for output_path: %s", output_path.expr
             )
 
         # Get source path from contract

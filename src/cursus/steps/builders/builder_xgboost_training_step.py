@@ -316,9 +316,9 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         for logical_name in output_logical_names:
             if logical_name in outputs:
                 primary_output_path = outputs[logical_name]
-                self.log_info(
-                    f"Using provided output path from '{logical_name}': {primary_output_path}"
-                )
+                self.log_info("Using provided output path from '%s': %s", 
+                              logical_name, primary_output_path
+                              )
                 break
 
         # If no output path was provided, generate a default one
@@ -327,7 +327,7 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
             from sagemaker.workflow.functions import Join
             base_output_path = self._get_base_output_path()
             primary_output_path = Join(on="/", values=[base_output_path, "xgboost_training"])
-            self.log_info(f"Using generated base output path: {primary_output_path}")
+            self.log_info("Using generated base output path: %s", primary_output_path)
 
         # Remove trailing slash if present for consistency with S3 path handling
         if primary_output_path.endswith("/"):
@@ -338,17 +338,17 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
 
         # Log how SageMaker will structure outputs under this path
         self.log_info(
-            f"SageMaker will organize outputs using base job name: {base_job_name}"
+            "SageMaker will organize outputs using base job name: %s", base_job_name
         )
-        self.log_info(f"Full job name will be: {base_job_name}-[timestamp]")
+        self.log_info("Full job name will be: %s-[timestamp]", base_job_name)
         self.log_info(
-            f"Output path structure will be: {primary_output_path}/{base_job_name}-[timestamp]/"
-        )
-        self.log_info(
-            f"  - Model artifacts will be in: {primary_output_path}/{base_job_name}-[timestamp]/output/model.tar.gz"
+            "Output path structure will be: %s/%s-[timestamp]/", primary_output_path, base_job_name
         )
         self.log_info(
-            f"  - Evaluation results will be in: {primary_output_path}/{base_job_name}-[timestamp]/output/output.tar.gz"
+            "  - Model artifacts will be in: %s/%s-[timestamp]/output/model.tar.gz", primary_output_path, base_job_name
+        )
+        self.log_info(
+            "  - Evaluation results will be in: %s/%s-[timestamp]/output/output.tar.gz", primary_output_path, base_job_name
         )
 
         return primary_output_path

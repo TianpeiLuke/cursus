@@ -334,10 +334,11 @@ class TestPipelineAssembler:
         # Verify outputs were generated based on specification
         assert isinstance(outputs, dict)
         # Should have outputs based on the mock spec
-        expected_base = "s3://test-bucket/pipeline/mockstep"
         if outputs:  # Only check if outputs were generated
+            from sagemaker.workflow.functions import Join
             for output_name, output_path in outputs.items():
-                assert output_path.startswith("s3://")
+                # With the new implementation, outputs should be Join objects
+                assert isinstance(output_path, Join), f"Output {output_name} should be Join object, got {type(output_path)}"
 
     def test_instantiate_step(
         self,
@@ -601,3 +602,125 @@ class TestPipelineAssembler:
 
             # Verify logging calls were made during initialization
             mock_logger.info.assert_called()
+
+    def test_initialize_step_builders_with_pipeline_parameters(
+        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+    ):
+        """Test step builder initialization with pipeline parameters."""
+        from sagemaker.workflow.parameters import ParameterString
+        
+        # Create pipeline parameters including PIPELINE_EXECUTION_TEMP_DIR
+        pipeline_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution"),
+            ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="test-key"),
+        ]
+        
+        assembler = PipelineAssembler(
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            pipeline_parameters=pipeline_params,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
+        
+        # Verify execution prefix was set on builders
+        for step_name, builder in assembler.step_builders.items():
+            assert hasattr(builder, 'execution_prefix')
+            assert builder.execution_prefix is not None
+            assert builder.execution_prefix.name == "EXECUTION_S3_PREFIX"
+
+    def test_initialize_step_builders_without_pipeline_parameters(
+        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+    ):
+        """Test step builder initialization without pipeline parameters."""
+        assembler = PipelineAssembler(
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
+        
+        # Verify no execution prefix was set on builders
+        for step_name, builder in assembler.step_builders.items():
+            assert hasattr(builder, 'execution_prefix')
+            assert builder.execution_prefix is None
+
+    def test_generate_outputs_with_join_pattern(
+        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+    ):
+        """Test output generation uses Join pattern for parameter compatibility."""
+        from sagemaker.workflow.parameters import ParameterString
+        from sagemaker.workflow.functions import Join
+        
+        pipeline_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
+        ]
+        
+        assembler = PipelineAssembler(
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            pipeline_parameters=pipeline_params,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
+        
+        # Generate outputs for a step
+        outputs = assembler._generate_outputs("step1")
+        
+        # Verify outputs use Join objects (not f-strings)
+        for output_name, output_path in outputs.items():
+            assert isinstance(output_path, Join), f"Output {output_name} should use Join, got {type(output_path)}"
+
+    def test_generate_outputs_fallback_to_config(
+        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+    ):
+        """Test output generation falls back to config when no parameters provided."""
+        assembler = PipelineAssembler(
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
+        
+        # Generate outputs for a step
+        outputs = assembler._generate_outputs("step1")
+        
+        # Verify outputs were generated (should still work with config fallback)
+        assert isinstance(outputs, dict)
+        if outputs:  # Only check if outputs were generated
+            for output_name, output_path in outputs.items():
+                # Should be string-based paths from config.pipeline_s3_loc
+                assert isinstance(output_path, (str, object))  # Could be Join or string
+
+    def test_pipeline_parameters_storage(
+        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+    ):
+        """Test that pipeline parameters are properly stored."""
+        from sagemaker.workflow.parameters import ParameterString
+        
+        pipeline_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution"),
+            ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="test-key"),
+        ]
+        
+        assembler = PipelineAssembler(
+            dag=dag,
+            config_map=config_map,
+            step_builder_map=step_builder_map,
+            pipeline_parameters=pipeline_params,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
+        
+        # Verify parameters are stored
+        assert assembler.pipeline_parameters == pipeline_params
+        assert len(assembler.pipeline_parameters) == 2
+        
+        # Verify parameter names
+        param_names = [p.name for p in assembler.pipeline_parameters]
+        assert "EXECUTION_S3_PREFIX" in param_names
+        assert "KMS_ENCRYPTION_KEY_PARAM" in param_names

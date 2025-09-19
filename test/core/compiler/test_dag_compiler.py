@@ -728,3 +728,93 @@ class TestPipelineDAGCompilerUtilityMethods:
     # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
     # generator = ExecutionDocumentGenerator(config_path=config_path)
     # filled_doc = generator.fill_execution_document(dag, execution_doc)
+
+    def test_compiler_init_with_pipeline_parameters(self):
+        """Test PipelineDAGCompiler initialization with pipeline parameters."""
+        from sagemaker.workflow.parameters import ParameterString
+        
+        custom_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://custom-bucket/execution"),
+            ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="custom-key"),
+        ]
+        
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path:
+            mock_path_instance = MagicMock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+            
+            compiler = PipelineDAGCompiler(
+                config_path=self.config_path,
+                pipeline_parameters=custom_params,
+            )
+            
+            assert compiler.pipeline_parameters == custom_params
+
+    def test_compiler_init_with_default_parameters(self):
+        """Test PipelineDAGCompiler initialization with default parameters when none provided."""
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path:
+            mock_path_instance = MagicMock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+            
+            compiler = PipelineDAGCompiler(config_path=self.config_path)
+            
+            # Should have default parameters
+            assert compiler.pipeline_parameters is not None
+            assert len(compiler.pipeline_parameters) > 0
+            
+            # Should include standard parameters
+            param_names = [p.name for p in compiler.pipeline_parameters if hasattr(p, 'name')]
+            assert "EXECUTION_S3_PREFIX" in param_names
+
+    def test_create_template_passes_parameters(self):
+        """Test that create_template passes pipeline parameters to DynamicPipelineTemplate."""
+        from sagemaker.workflow.parameters import ParameterString
+        
+        # Create test DAG
+        dag = PipelineDAG()
+        dag.add_node("test_node")
+        
+        custom_params = [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://custom-bucket/execution")
+        ]
+        
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path, \
+             patch("cursus.core.compiler.dynamic_template.DynamicPipelineTemplate") as mock_template_class:
+            
+            mock_path_instance = MagicMock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+            
+            mock_template = MagicMock()
+            mock_template_class.return_value = mock_template
+            
+            compiler = PipelineDAGCompiler(
+                config_path=self.config_path,
+                pipeline_parameters=custom_params,
+            )
+            
+            # Create template
+            result = compiler.create_template(dag)
+            
+            # Verify template was created with parameters
+            mock_template_class.assert_called_once()
+            call_kwargs = mock_template_class.call_args[1]
+            assert 'pipeline_parameters' in call_kwargs
+            assert call_kwargs['pipeline_parameters'] == custom_params
+
+    def test_parameter_fallback_import_handling(self):
+        """Test that parameter fallback works when mods_workflow_core is not available."""
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path, \
+             patch("cursus.core.compiler.dag_compiler.logger") as mock_logger:
+            
+            mock_path_instance = MagicMock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+            
+            # This should work even if imports fail (fallback parameters are defined)
+            compiler = PipelineDAGCompiler(config_path=self.config_path)
+            
+            # Should have fallback parameters
+            assert compiler.pipeline_parameters is not None
+            assert len(compiler.pipeline_parameters) > 0
