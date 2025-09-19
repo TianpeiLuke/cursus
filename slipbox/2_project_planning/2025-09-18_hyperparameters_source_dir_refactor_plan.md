@@ -1422,7 +1422,20 @@ def main(
   - Comprehensive error handling with detailed logging
   - Maintains specification reference for future use
 
-#### **6.6 Source Directory Structure**
+#### **6.6 Update RiskTableMappingConfig** ✅ **COMPLETED**
+- **Target**: `src/cursus/steps/configs/config_risk_table_mapping_step.py`
+- **Action**: Removed unnecessary fields and methods that are no longer used after Phase 6 refactor
+- **Changes Implemented**:
+  - Removed `hyperparameters_s3_uri` field (no longer needed with source directory integration)
+  - Removed `hyperparameters` field (eliminated ModelHyperparameters complexity)
+  - Removed `get_hyperparameters_dict()` method (no longer used since `_prepare_hyperparameters_file` was removed)
+  - Cleaned up unused imports (`Optional`, `Dict`, `Any`, `ModelHyperparameters`)
+  - Updated documentation to reflect Phase 6 source directory integration
+  - Simplified validation logic to focus on core configuration without S3 upload concerns
+  - Renamed validator from `validate_hyperparameters` to `validate_risk_table_config` for clarity
+  - Enhanced numeric parameter validation (non-negative checks)
+
+#### **6.7 Source Directory Structure**
 - **Expected Structure**:
 ```
 source_dir/
@@ -1431,7 +1444,7 @@ source_dir/
     └── hyperparameters.json       # Generated hyperparameters file
 ```
 
-#### **6.7 Specifications and Contract (No Changes Needed)**
+#### **6.8 Specifications and Contract (No Changes Needed)**
 - **Specifications**: Already have `hyperparameters_s3_uri` as optional dependency
 - **Contract**: Maintains existing input paths for backward compatibility
 - **Job Types**: All job types (training, validation, testing, calibration) use same approach
